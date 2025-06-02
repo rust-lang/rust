@@ -915,7 +915,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let name_suffix = match self.type_kind(dest_typ) {
             TypeKind::Float => "tisf",
             TypeKind::Double => "tidf",
-            TypeKind::FP128 => "tixf",
+            TypeKind::FP128 => "titf",
             kind => panic!("cannot cast a non-native integer to type {:?}", kind),
         };
         let sign = if signed { "" } else { "un" };

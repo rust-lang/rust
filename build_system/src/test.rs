@@ -710,7 +710,15 @@ fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     println!("[TEST] libcore");
     let path = get_sysroot_dir().join("sysroot_src/library/coretests");
     let _ = remove_dir_all(path.join("target"));
-    run_cargo_command(&[&"test"], Some(&path), env, args)?;
+    // TODO(antoyo): run in release mode when we fix the failures.
+    // TODO(antoyo): remove the --skip f16::test_total_cmp when this issue is fixed:
+    // https://github.com/rust-lang/rust/issues/141503
+    run_cargo_command(
+        &[&"test", &"--", &"--skip", &"f16::test_total_cmp"],
+        Some(&path),
+        env,
+        args,
+    )?;
     Ok(())
 }
 
