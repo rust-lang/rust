@@ -264,13 +264,13 @@ static KIND_TO_ATTRIBUTES: LazyLock<FxHashMap<SyntaxKind, &[&str]>> = LazyLock::
             FN,
             attrs!(
                 item, linkable,
-                "cold", "ignore", "inline", "must_use", "panic_handler", "proc_macro",
+                "cold", "ignore", "inline", "panic_handler", "proc_macro",
                 "proc_macro_derive", "proc_macro_attribute", "should_panic", "target_feature",
                 "test", "track_caller"
             ),
         ),
         (STATIC, attrs!(item, linkable, "global_allocator", "used")),
-        (TRAIT, attrs!(item, "must_use")),
+        (TRAIT, attrs!(item)),
         (IMPL, attrs!(item, "automatically_derived")),
         (ASSOC_ITEM_LIST, attrs!(item)),
         (EXTERN_BLOCK, attrs!(item, "link")),
