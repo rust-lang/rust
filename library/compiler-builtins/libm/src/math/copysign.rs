@@ -59,9 +59,17 @@ mod tests {
 
         // Not required but we expect it
         assert_biteq!(f(F::NAN, F::NAN), F::NAN);
-        assert_biteq!(f(F::NEG_NAN, F::NAN), F::NAN);
+        assert_biteq!(f(F::NAN, F::ONE), F::NAN);
+        assert_biteq!(f(F::NAN, F::NEG_ONE), F::NEG_NAN);
         assert_biteq!(f(F::NAN, F::NEG_NAN), F::NEG_NAN);
+        assert_biteq!(f(F::NEG_NAN, F::NAN), F::NAN);
+        assert_biteq!(f(F::NEG_NAN, F::ONE), F::NAN);
+        assert_biteq!(f(F::NEG_NAN, F::NEG_ONE), F::NEG_NAN);
         assert_biteq!(f(F::NEG_NAN, F::NEG_NAN), F::NEG_NAN);
+        assert_biteq!(f(F::ONE, F::NAN), F::ONE);
+        assert_biteq!(f(F::ONE, F::NEG_NAN), F::NEG_ONE);
+        assert_biteq!(f(F::NEG_ONE, F::NAN), F::ONE);
+        assert_biteq!(f(F::NEG_ONE, F::NEG_NAN), F::NEG_ONE);
     }
 
     #[test]
