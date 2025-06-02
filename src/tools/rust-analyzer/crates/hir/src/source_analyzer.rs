@@ -1303,6 +1303,7 @@ impl<'db> SourceAnalyzer<'db> {
         false
     }
 
+    /// Returns the range of the implicit template argument and its resolution at the given `offset`
     pub(crate) fn resolve_offset_in_format_args(
         &self,
         db: &'db dyn HirDatabase,

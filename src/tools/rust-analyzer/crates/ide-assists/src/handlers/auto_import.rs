@@ -128,11 +128,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
             format!("Import `{import_name}`"),
             range,
             |builder| {
-                let scope = match scope.clone() {
-                    ImportScope::File(it) => ImportScope::File(builder.make_mut(it)),
-                    ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
-                    ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
-                };
+                let scope = builder.make_import_scope_mut(scope.clone());
                 insert_use(&scope, mod_path_to_ast(&import_path, edition), &ctx.config.insert_use);
             },
         );
@@ -153,11 +149,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                     format!("Import `{import_name} as _`"),
                     range,
                     |builder| {
-                        let scope = match scope.clone() {
-                            ImportScope::File(it) => ImportScope::File(builder.make_mut(it)),
-                            ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
-                            ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
-                        };
+                        let scope = builder.make_import_scope_mut(scope.clone());
                         insert_use_as_alias(
                             &scope,
                             mod_path_to_ast(&import_path, edition),
@@ -1875,6 +1867,32 @@ fn main() {
     takes_ordering(Ordering::V);
 }
 ",
+        );
+    }
+
+    #[test]
+    fn carries_cfg_attr() {
+        check_assist(
+            auto_import,
+            r#"
+mod m {
+    pub struct S;
+}
+
+#[cfg(test)]
+fn foo(_: S$0) {}
+"#,
+            r#"
+#[cfg(test)]
+use m::S;
+
+mod m {
+    pub struct S;
+}
+
+#[cfg(test)]
+fn foo(_: S) {}
+"#,
         );
     }
 }
