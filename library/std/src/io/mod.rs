@@ -917,6 +917,13 @@ pub trait Read {
     /// # }
     /// ```
     ///
+    /// # Notes
+    ///
+    /// Be careful using this trait method with streams that are expected to be continuous. For example, using 
+    /// `read_to_end` with streams like `stdin` will simply lock the application into waiting on the 
+    /// transmission of data to conclude. It is recommended you use this method if you know the stream will be closed
+    /// at the other end. The problem is that EOF or End of File is never reached for streams that never close or are finite.
+    ///
     /// [`Vec::try_reserve`]: crate::vec::Vec::try_reserve
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
@@ -956,6 +963,13 @@ pub trait Read {
     ///     Ok(())
     /// }
     /// ```
+    ///
+    /// # Notes
+    ///
+    /// Be careful using this trait method with streams that are expected to be continuous. For example, using 
+    /// `read_to_string` with streams like `stdin` will simply lock the application into waiting on the 
+    /// transmission of data to conclude. It is recommended you use this method if you know the stream will be closed
+    /// at the other end. The problem is that EOF or End of File is never reached for streams that never close or are finite.
     ///
     /// (See also the [`std::fs::read_to_string`] convenience function for
     /// reading from a file.)
