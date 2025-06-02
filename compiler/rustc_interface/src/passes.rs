@@ -8,9 +8,9 @@ use std::{env, fs, iter};
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::jobserver::Proxy;
-use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
+use rustc_data_structures::{parallel, thousands};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -205,7 +205,7 @@ fn configure_and_expand(
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
 
-        // The rest is error reporting
+        // The rest is error reporting and stats
 
         sess.psess.buffered_lints.with_lock(|buffered_lints: &mut Vec<BufferedEarlyLint>| {
             buffered_lints.append(&mut ecx.buffered_early_lint);
@@ -226,6 +226,10 @@ fn configure_and_expand(
             unsafe {
                 env::set_var("PATH", &old_path);
             }
+        }
+
+        if ecx.sess.opts.unstable_opts.macro_stats {
+            print_macro_stats(&ecx);
         }
 
         krate
@@ -286,6 +290,84 @@ fn configure_and_expand(
     CStore::from_tcx(tcx).report_incompatible_target_modifiers(tcx, &krate);
     CStore::from_tcx(tcx).report_incompatible_async_drop_feature(tcx, &krate);
     krate
+}
+
+fn print_macro_stats(ecx: &ExtCtxt<'_>) {
+    use std::fmt::Write;
+
+    // No instability because we immediately sort the produced vector.
+    #[allow(rustc::potential_query_instability)]
+    let mut macro_stats: Vec<_> = ecx
+        .macro_stats
+        .iter()
+        .map(|((name, kind), stat)| {
+            // This gives the desired sort order: sort by bytes, then lines, etc.
+            (stat.bytes, stat.lines, stat.count, name.as_str(), *kind)
+        })
+        .collect();
+    macro_stats.sort_unstable();
+    macro_stats.reverse(); // bigger items first
+
+    let prefix = "macro-stats";
+    let name_w = 32;
+    let kind_w = 7;
+    let count_w = 7;
+    let avg_lines_w = 11;
+    let lines_w = 11;
+    let bytes_w = 11;
+
+    // We write all the text into a string and print it with a single
+    // `eprint!`. This is an attempt to minimize interleaved text if multiple
+    // rustc processes are printing macro-stats at the same time (e.g. with
+    // `RUSTFLAGS='-Zmacro-stats' cargo build`). It still doesn't guarantee
+    // non-interleaving, though.
+    let mut s = String::new();
+    _ = writeln!(
+        s,
+        "{prefix} ==============================================================================="
+    );
+    _ = writeln!(s, "{prefix} MACRO EXPANSION STATS: {}", ecx.ecfg.crate_name);
+    _ = writeln!(
+        s,
+        "{prefix} {:<name_w$}{:<kind_w$}{:>count_w$}{:>avg_lines_w$}{:>lines_w$}{:>bytes_w$}",
+        "Macro Name", "Kind", "Count", "Avg Lines", "Lines", "Bytes",
+    );
+    _ = writeln!(
+        s,
+        "{prefix} -------------------------------------------------------------------------------"
+    );
+    // It's helpful to print something when there are no entries, otherwise it
+    // might look like something went wrong.
+    if macro_stats.is_empty() {
+        _ = writeln!(s, "{prefix} (none)");
+    }
+    for (bytes, lines, count, name, kind) in macro_stats {
+        let mut name = kind.macro_stats_decorated_name(name);
+        let label = kind.macro_stats_label();
+        let avg_lines = lines as f64 / count as f64;
+        if name.len() >= name_w {
+            // If the name is long, print it on a line by itself, then
+            // set the name to empty and print things normally, to show the
+            // stats on the next line.
+            _ = writeln!(s, "{prefix} {:<name_w$}", name);
+            name = String::new();
+        }
+        _ = writeln!(
+            s,
+            "{prefix} {:<name_w$}{:<kind_w$}{:>count_w$}{:>avg_lines_w$}{:>lines_w$}{:>bytes_w$}",
+            name,
+            label,
+            thousands::usize_with_underscores(count),
+            thousands::f64p1_with_underscores(avg_lines),
+            thousands::isize_with_underscores(lines),
+            thousands::isize_with_underscores(bytes),
+        );
+    }
+    _ = writeln!(
+        s,
+        "{prefix} ==============================================================================="
+    );
+    eprint!("{s}");
 }
 
 fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {

@@ -53,6 +53,18 @@ pub fn item_to_string(i: &ast::Item) -> String {
     State::new().item_to_string(i)
 }
 
+pub fn assoc_item_to_string(i: &ast::AssocItem) -> String {
+    State::new().assoc_item_to_string(i)
+}
+
+pub fn foreign_item_to_string(i: &ast::ForeignItem) -> String {
+    State::new().foreign_item_to_string(i)
+}
+
+pub fn stmt_to_string(s: &ast::Stmt) -> String {
+    State::new().stmt_to_string(s)
+}
+
 pub fn path_to_string(p: &ast::Path) -> String {
     State::new().path_to_string(p)
 }

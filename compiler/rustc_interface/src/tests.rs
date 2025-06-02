@@ -709,6 +709,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(llvm_time_trace, true);
     untracked!(ls, vec!["all".to_owned()]);
     untracked!(macro_backtrace, true);
+    untracked!(macro_stats, true);
     untracked!(meta_stats, true);
     untracked!(mir_include_spans, MirIncludeSpans::On);
     untracked!(nll_facts, true);
