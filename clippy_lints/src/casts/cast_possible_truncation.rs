@@ -91,15 +91,14 @@ pub(super) fn check(
     cast_to: Ty<'_>,
     cast_to_span: Span,
 ) {
-    let msg = match (cast_from.kind(), cast_to.is_integral()) {
-        (ty::Int(_) | ty::Uint(_), true) => {
+    let msg = match (cast_from.kind(), utils::int_ty_to_nbits(cx.tcx, cast_to)) {
+        (ty::Int(_) | ty::Uint(_), Some(to_nbits)) => {
             let from_nbits = apply_reductions(
                 cx,
-                utils::int_ty_to_nbits(cast_from, cx.tcx),
+                utils::int_ty_to_nbits(cx.tcx, cast_from).unwrap(),
                 cast_expr,
                 cast_from.is_signed(),
             );
-            let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
 
             let (should_lint, suffix) = match (is_isize_or_usize(cast_from), is_isize_or_usize(cast_to)) {
                 (true, true) | (false, false) => (to_nbits < from_nbits, ""),
@@ -121,7 +120,7 @@ pub(super) fn check(
             format!("casting `{cast_from}` to `{cast_to}` may truncate the value{suffix}",)
         },
 
-        (ty::Adt(def, _), true) if def.is_enum() => {
+        (ty::Adt(def, _), Some(to_nbits)) if def.is_enum() => {
             let (from_nbits, variant) = if let ExprKind::Path(p) = &cast_expr.kind
                 && let Res::Def(DefKind::Ctor(..), id) = cx.qpath_res(p, cast_expr.hir_id)
             {
@@ -132,7 +131,6 @@ pub(super) fn check(
             } else {
                 (utils::enum_ty_to_nbits(*def, cx.tcx), None)
             };
-            let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
 
             let cast_from_ptr_size = def.repr().int.is_none_or(|ty| matches!(ty, IntegerType::Pointer(_),));
             let suffix = match (cast_from_ptr_size, is_isize_or_usize(cast_to)) {
@@ -157,11 +155,11 @@ pub(super) fn check(
             format!("casting `{cast_from}` to `{cast_to}` may truncate the value{suffix}")
         },
 
-        (ty::Float(_), true) => {
+        (ty::Float(_), Some(_)) => {
             format!("casting `{cast_from}` to `{cast_to}` may truncate the value")
         },
 
-        (ty::Float(FloatTy::F64), false) if matches!(cast_to.kind(), &ty::Float(FloatTy::F32)) => {
+        (ty::Float(FloatTy::F64), None) if matches!(cast_to.kind(), &ty::Float(FloatTy::F32)) => {
             "casting `f64` to `f32` may truncate the value".to_string()
         },
 
