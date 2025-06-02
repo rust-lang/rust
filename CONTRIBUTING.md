@@ -33,7 +33,7 @@ To run specific tests, use appropriate flags such as:
 
 - `./y.sh test --test-libcore`
 - `./y.sh test --std-tests`
-- `cargo test -- <name of test>`
+- `./y.sh test --cargo-tests -- <name of test>`
 
 Additionally, you can run the tests of `libgccjit`:
 

@@ -1,0 +1,9 @@
+[default.extend-words]
+ba = "ba"
+hsa = "hsa"
+olt = "olt"
+seh = "seh"
+typ = "typ"
+
+[files]
+extend-exclude = ["src/intrinsic/archs.rs"]

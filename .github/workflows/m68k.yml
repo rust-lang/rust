@@ -65,8 +65,8 @@ jobs:
     - name: Set env
       run: |
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-        echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
+        
+        
 
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
@@ -95,7 +95,7 @@ jobs:
         ./y.sh prepare --only-libcore --cross
         ./y.sh build --sysroot --features compiler_builtins/no-f16-f128 --target-triple m68k-unknown-linux-gnu
         ./y.sh test --mini-tests
-        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test
+        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu ./y.sh test --cargo-tests
         ./y.sh clean all
 
     - name: Prepare dependencies

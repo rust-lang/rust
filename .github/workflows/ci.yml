@@ -64,8 +64,6 @@ jobs:
     - name: Set env
       run: |
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-        echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
 
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
@@ -80,8 +78,7 @@ jobs:
       run: |
         ./y.sh prepare --only-libcore
         ./y.sh build --sysroot
-        ./y.sh test --mini-tests
-        cargo test
+        ./y.sh test --cargo-tests
 
     - name: Run y.sh cargo build
       run: |
@@ -114,6 +111,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python tools/check_intrinsics_duplicates.py
+
+  spell_check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crate-ci/typos@v1.32.0
 
   build_system:
     runs-on: ubuntu-24.04

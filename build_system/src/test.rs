@@ -42,7 +42,7 @@ fn get_runners() -> Runners {
     );
     runners.insert("--extended-regex-tests", ("Run extended regex tests", extended_regex_tests));
     runners.insert("--mini-tests", ("Run mini tests", mini_tests));
-
+    runners.insert("--cargo-tests", ("Run cargo tests", cargo_tests));
     runners
 }
 
@@ -88,6 +88,8 @@ struct TestArg {
     use_system_gcc: bool,
     runners: Vec<String>,
     flags: Vec<String>,
+    /// Additional arguments, to be passed to commands like `cargo test`.
+    test_args: Vec<String>,
     nb_parts: Option<usize>,
     current_part: Option<usize>,
     sysroot_panic_abort: bool,
@@ -144,6 +146,7 @@ impl TestArg {
                     show_usage();
                     return Ok(None);
                 }
+                "--" => test_arg.test_args.extend(&mut args),
                 x if runners.contains_key(x)
                     && !test_arg.runners.iter().any(|runner| runner == x) =>
                 {
@@ -201,6 +204,33 @@ fn clean(_env: &Env, args: &TestArg) -> Result<(), String> {
     let _ = remove_dir_all(&args.config_info.cargo_target_dir);
     let path = Path::new(&args.config_info.cargo_target_dir).join("gccjit");
     create_dir(&path)
+}
+
+fn cargo_tests(test_env: &Env, test_args: &TestArg) -> Result<(), String> {
+    // First, we call `mini_tests` to build minicore for us. This ensures we are testing with a working `minicore`,
+    // and that any changes we have made affect `minicore`(since it would get rebuilt).
+    mini_tests(test_env, test_args)?;
+    // Then, we copy some of the env vars from `test_env`
+    // We don't want to pass things like `RUSTFLAGS`, since they contain the -Zcodegen-backend flag.
+    // That would force `cg_gcc` to *rebuild itself* and only then run tests, which is undesirable.
+    let mut env = HashMap::new();
+    env.insert(
+        "LD_LIBRARY_PATH".into(),
+        test_env.get("LD_LIBRARY_PATH").expect("LD_LIBRARY_PATH missing!").to_string(),
+    );
+    env.insert(
+        "LIBRARY_PATH".into(),
+        test_env.get("LIBRARY_PATH").expect("LIBRARY_PATH missing!").to_string(),
+    );
+    env.insert(
+        "CG_RUSTFLAGS".into(),
+        test_env.get("CG_RUSTFLAGS").map(|s| s.as_str()).unwrap_or("").to_string(),
+    );
+    // Pass all the default args + the user-specified ones.
+    let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"test"];
+    args.extend(test_args.test_args.iter().map(|s| s as &dyn AsRef<OsStr>));
+    run_command_with_output_and_env(&args, None, Some(&env))?;
+    Ok(())
 }
 
 fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
@@ -680,7 +710,15 @@ fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     println!("[TEST] libcore");
     let path = get_sysroot_dir().join("sysroot_src/library/coretests");
     let _ = remove_dir_all(path.join("target"));
-    run_cargo_command(&[&"test"], Some(&path), env, args)?;
+    // TODO(antoyo): run in release mode when we fix the failures.
+    // TODO(antoyo): remove the --skip f16::test_total_cmp when this issue is fixed:
+    // https://github.com/rust-lang/rust/issues/141503
+    run_cargo_command(
+        &[&"test", &"--", &"--skip", &"f16::test_total_cmp"],
+        Some(&path),
+        env,
+        args,
+    )?;
     Ok(())
 }
 
@@ -1217,7 +1255,9 @@ fn run_all(env: &Env, args: &TestArg) -> Result<(), String> {
     // asm_tests(env, args)?;
     test_libcore(env, args)?;
     extended_sysroot_tests(env, args)?;
+    cargo_tests(env, args)?;
     test_rustc(env, args)?;
+
     Ok(())
 }
 
