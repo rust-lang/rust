@@ -5,7 +5,7 @@ use rustc_middle::traits::solve::GoalSource;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_trait_selection::solve::inspect::{
-    InspectConfig, InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor,
+    InspectConfig, InspectGoal, InferCtxtProofTreeExt, ProofTreeVisitor,
 };
 use tracing::{debug, instrument, trace};
 

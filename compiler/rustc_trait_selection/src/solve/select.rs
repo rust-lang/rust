@@ -11,7 +11,7 @@ use rustc_macros::extension;
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 
-use crate::solve::inspect::{self, ProofTreeInferCtxtExt};
+use crate::solve::inspect::{self, InferCtxtProofTreeExt};
 
 #[extension(pub trait InferCtxtSelectExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
