@@ -790,13 +790,7 @@ intrinsics:
       - [int32x2_t, '.i32']
       - [int32x4_t, '.i32']
     compose:
-      - LLVMLink:
-          name: "vclz{neon_type[0].no}"
-          links:
-            - link: "llvm.ctlz.{neon_type[0]}"
-              arch: arm
-            - link: "llvm.ctlz.{neon_type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_ctlz, [a]]
 
   - name: "vclz{neon_type[0].no}"
     doc: "Count leading zero bits"
@@ -6562,14 +6556,7 @@ intrinsics:
       - float32x2_t
       - float32x4_t
     compose:
-      - LLVMLink:
-          name: "fma.{neon_type}"
-          links:
-            - link: "llvm.fma.{neon_type}"
-              arch: aarch64
-            - link: "llvm.fma.{neon_type}"
-              arch: arm
-      - FnCall: ["_vfma{neon_type.no}", [b, c, a], [], true]
+      - FnCall: [simd_fma, [b, c, a]]
 
 
   - name: "vfma{neon_type.no}"
@@ -6587,14 +6574,7 @@ intrinsics:
       - float16x4_t
       - float16x8_t
     compose:
-      - LLVMLink:
-          name: "fma.{neon_type}"
-          links:
-            - link: "llvm.fma.{neon_type}"
-              arch: aarch64
-            - link: "llvm.fma.{neon_type}"
-              arch: arm
-      - FnCall: ["_vfma{neon_type.no}", [b, c, a], [], true]
+      - FnCall: [simd_fma, [b, c, a]]
 
 
   - name: "vfma{neon_type[0].N}"
@@ -13359,13 +13339,7 @@ intrinsics:
       - int8x8_t
       - int8x16_t
     compose:
-      - LLVMLink:
-          name: "vcnt{neon_type.no}"
-          links:
-            - link: "llvm.ctpop.{neon_type}"
-              arch: aarch64,arm64ec
-            - link: "llvm.ctpop.{neon_type}"
-              arch: arm
+      - FnCall: [simd_ctpop, [a]]
 
   - name: "vcnt{neon_type[0].no}"
     doc: "Population count per byte."

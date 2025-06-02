@@ -10072,14 +10072,7 @@ pub fn vextq_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmadd))]
 pub fn vfma_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.fma.v1f64"
-        )]
-        fn _vfma_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t;
-    }
-    unsafe { _vfma_f64(b, c, a) }
+    unsafe { simd_fma(b, c, a) }
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_lane_f16)"]
@@ -10281,17 +10274,10 @@ pub fn vfma_n_f64(a: float64x1_t, b: float64x1_t, c: f64) -> float64x1_t {
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vfmad_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) -> f64 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.fma.f64"
-        )]
-        fn _vfmad_lane_f64(a: f64, b: f64, c: f64) -> f64;
-    }
     static_assert!(LANE == 0);
     unsafe {
         let c: f64 = simd_extract!(c, LANE as u32);
-        _vfmad_lane_f64(b, c, a)
+        fmaf64(b, c, a)
     }
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
@@ -10301,14 +10287,7 @@ pub fn vfmad_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) -> f64 {
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 pub fn vfmah_f16(a: f16, b: f16, c: f16) -> f16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.fma.f16"
-        )]
-        fn _vfmah_f16(a: f16, b: f16, c: f16) -> f16;
-    }
-    unsafe { _vfmah_f16(b, c, a) }
+    unsafe { fmaf16(b, c, a) }
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmah_lane_f16)"]
@@ -10345,14 +10324,7 @@ pub fn vfmah_laneq_f16<const LANE: i32>(a: f16, b: f16, v: float16x8_t) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fmla))]
 pub fn vfmaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.fma.v2f64"
-        )]
-        fn _vfmaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t;
-    }
-    unsafe { _vfmaq_f64(b, c, a) }
+    unsafe { simd_fma(b, c, a) }
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_lane_f64)"]
@@ -10386,17 +10358,10 @@ pub fn vfmaq_n_f64(a: float64x2_t, b: float64x2_t, c: f64) -> float64x2_t {
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) -> f32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.fma.f32"
-        )]
-        fn _vfmas_lane_f32(a: f32, b: f32, c: f32) -> f32;
-    }
     static_assert_uimm_bits!(LANE, 1);
     unsafe {
         let c: f32 = simd_extract!(c, LANE as u32);
-        _vfmas_lane_f32(b, c, a)
+        fmaf32(b, c, a)
     }
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
@@ -10407,17 +10372,10 @@ pub fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) -> f32 {
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vfmas_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -> f32 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.fma.f32"
-        )]
-        fn _vfmas_laneq_f32(a: f32, b: f32, c: f32) -> f32;
-    }
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
         let c: f32 = simd_extract!(c, LANE as u32);
-        _vfmas_laneq_f32(b, c, a)
+        fmaf32(b, c, a)
     }
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
@@ -10428,17 +10386,10 @@ pub fn vfmas_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -> f32 {
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vfmad_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.fma.f64"
-        )]
-        fn _vfmad_laneq_f64(a: f64, b: f64, c: f64) -> f64;
-    }
     static_assert_uimm_bits!(LANE, 1);
     unsafe {
         let c: f64 = simd_extract!(c, LANE as u32);
-        _vfmad_laneq_f64(b, c, a)
+        fmaf64(b, c, a)
     }
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (vector)."]
@@ -23406,14 +23357,7 @@ pub fn vrnd64z_f64(a: float64x1_t) -> float64x1_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrnd_f16(a: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.trunc.v4f16"
-        )]
-        fn _vrnd_f16(a: float16x4_t) -> float16x4_t;
-    }
-    unsafe { _vrnd_f16(a) }
+    unsafe { simd_trunc(a) }
 }
 #[doc = "Floating-point round to integral, toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndq_f16)"]
@@ -23422,14 +23366,7 @@ pub fn vrnd_f16(a: float16x4_t) -> float16x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrndq_f16(a: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.trunc.v8f16"
-        )]
-        fn _vrndq_f16(a: float16x8_t) -> float16x8_t;
-    }
-    unsafe { _vrndq_f16(a) }
+    unsafe { simd_trunc(a) }
 }
 #[doc = "Floating-point round to integral, toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd_f32)"]
@@ -23438,14 +23375,7 @@ pub fn vrndq_f16(a: float16x8_t) -> float16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrnd_f32(a: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.trunc.v2f32"
-        )]
-        fn _vrnd_f32(a: float32x2_t) -> float32x2_t;
-    }
-    unsafe { _vrnd_f32(a) }
+    unsafe { simd_trunc(a) }
 }
 #[doc = "Floating-point round to integral, toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndq_f32)"]
@@ -23454,14 +23384,7 @@ pub fn vrnd_f32(a: float32x2_t) -> float32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrndq_f32(a: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.trunc.v4f32"
-        )]
-        fn _vrndq_f32(a: float32x4_t) -> float32x4_t;
-    }
-    unsafe { _vrndq_f32(a) }
+    unsafe { simd_trunc(a) }
 }
 #[doc = "Floating-point round to integral, toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd_f64)"]
@@ -23470,14 +23393,7 @@ pub fn vrndq_f32(a: float32x4_t) -> float32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrnd_f64(a: float64x1_t) -> float64x1_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.trunc.v1f64"
-        )]
-        fn _vrnd_f64(a: float64x1_t) -> float64x1_t;
-    }
-    unsafe { _vrnd_f64(a) }
+    unsafe { simd_trunc(a) }
 }
 #[doc = "Floating-point round to integral, toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndq_f64)"]
@@ -23486,14 +23402,7 @@ pub fn vrnd_f64(a: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrndq_f64(a: float64x2_t) -> float64x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.trunc.v2f64"
-        )]
-        fn _vrndq_f64(a: float64x2_t) -> float64x2_t;
-    }
-    unsafe { _vrndq_f64(a) }
+    unsafe { simd_trunc(a) }
 }
 #[doc = "Floating-point round to integral, to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnda_f16)"]
@@ -23502,14 +23411,7 @@ pub fn vrndq_f64(a: float64x2_t) -> float64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrnda_f16(a: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.round.v4f16"
-        )]
-        fn _vrnda_f16(a: float16x4_t) -> float16x4_t;
-    }
-    unsafe { _vrnda_f16(a) }
+    unsafe { simd_round(a) }
 }
 #[doc = "Floating-point round to integral, to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndaq_f16)"]
@@ -23518,14 +23420,7 @@ pub fn vrnda_f16(a: float16x4_t) -> float16x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrndaq_f16(a: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.round.v8f16"
-        )]
-        fn _vrndaq_f16(a: float16x8_t) -> float16x8_t;
-    }
-    unsafe { _vrndaq_f16(a) }
+    unsafe { simd_round(a) }
 }
 #[doc = "Floating-point round to integral, to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnda_f32)"]
@@ -23534,14 +23429,7 @@ pub fn vrndaq_f16(a: float16x8_t) -> float16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrnda_f32(a: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.round.v2f32"
-        )]
-        fn _vrnda_f32(a: float32x2_t) -> float32x2_t;
-    }
-    unsafe { _vrnda_f32(a) }
+    unsafe { simd_round(a) }
 }
 #[doc = "Floating-point round to integral, to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndaq_f32)"]
@@ -23550,14 +23438,7 @@ pub fn vrnda_f32(a: float32x2_t) -> float32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrndaq_f32(a: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.round.v4f32"
-        )]
-        fn _vrndaq_f32(a: float32x4_t) -> float32x4_t;
-    }
-    unsafe { _vrndaq_f32(a) }
+    unsafe { simd_round(a) }
 }
 #[doc = "Floating-point round to integral, to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnda_f64)"]
@@ -23566,14 +23447,7 @@ pub fn vrndaq_f32(a: float32x4_t) -> float32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrnda_f64(a: float64x1_t) -> float64x1_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.round.v1f64"
-        )]
-        fn _vrnda_f64(a: float64x1_t) -> float64x1_t;
-    }
-    unsafe { _vrnda_f64(a) }
+    unsafe { simd_round(a) }
 }
 #[doc = "Floating-point round to integral, to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndaq_f64)"]
@@ -23582,14 +23456,7 @@ pub fn vrnda_f64(a: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrndaq_f64(a: float64x2_t) -> float64x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.round.v2f64"
-        )]
-        fn _vrndaq_f64(a: float64x2_t) -> float64x2_t;
-    }
-    unsafe { _vrndaq_f64(a) }
+    unsafe { simd_round(a) }
 }
 #[doc = "Floating-point round to integral, to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndah_f16)"]
@@ -23598,14 +23465,7 @@ pub fn vrndaq_f64(a: float64x2_t) -> float64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frinta))]
 pub fn vrndah_f16(a: f16) -> f16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.round.f16"
-        )]
-        fn _vrndah_f16(a: f16) -> f16;
-    }
-    unsafe { _vrndah_f16(a) }
+    unsafe { roundf16(a) }
 }
 #[doc = "Floating-point round to integral, to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndh_f16)"]
@@ -23614,14 +23474,7 @@ pub fn vrndah_f16(a: f16) -> f16 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintz))]
 pub fn vrndh_f16(a: f16) -> f16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.trunc.f16"
-        )]
-        fn _vrndh_f16(a: f16) -> f16;
-    }
-    unsafe { _vrndh_f16(a) }
+    unsafe { truncf16(a) }
 }
 #[doc = "Floating-point round to integral, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndi_f16)"]
@@ -23742,14 +23595,7 @@ pub fn vrndih_f16(a: f16) -> f16 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndm_f16(a: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.floor.v4f16"
-        )]
-        fn _vrndm_f16(a: float16x4_t) -> float16x4_t;
-    }
-    unsafe { _vrndm_f16(a) }
+    unsafe { simd_floor(a) }
 }
 #[doc = "Floating-point round to integral, toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndmq_f16)"]
@@ -23758,14 +23604,7 @@ pub fn vrndm_f16(a: float16x4_t) -> float16x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndmq_f16(a: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.floor.v8f16"
-        )]
-        fn _vrndmq_f16(a: float16x8_t) -> float16x8_t;
-    }
-    unsafe { _vrndmq_f16(a) }
+    unsafe { simd_floor(a) }
 }
 #[doc = "Floating-point round to integral, toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndm_f32)"]
@@ -23774,14 +23613,7 @@ pub fn vrndmq_f16(a: float16x8_t) -> float16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndm_f32(a: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.floor.v2f32"
-        )]
-        fn _vrndm_f32(a: float32x2_t) -> float32x2_t;
-    }
-    unsafe { _vrndm_f32(a) }
+    unsafe { simd_floor(a) }
 }
 #[doc = "Floating-point round to integral, toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndmq_f32)"]
@@ -23790,14 +23622,7 @@ pub fn vrndm_f32(a: float32x2_t) -> float32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndmq_f32(a: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.floor.v4f32"
-        )]
-        fn _vrndmq_f32(a: float32x4_t) -> float32x4_t;
-    }
-    unsafe { _vrndmq_f32(a) }
+    unsafe { simd_floor(a) }
 }
 #[doc = "Floating-point round to integral, toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndm_f64)"]
@@ -23806,14 +23631,7 @@ pub fn vrndmq_f32(a: float32x4_t) -> float32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndm_f64(a: float64x1_t) -> float64x1_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.floor.v1f64"
-        )]
-        fn _vrndm_f64(a: float64x1_t) -> float64x1_t;
-    }
-    unsafe { _vrndm_f64(a) }
+    unsafe { simd_floor(a) }
 }
 #[doc = "Floating-point round to integral, toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndmq_f64)"]
@@ -23822,14 +23640,7 @@ pub fn vrndm_f64(a: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndmq_f64(a: float64x2_t) -> float64x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.floor.v2f64"
-        )]
-        fn _vrndmq_f64(a: float64x2_t) -> float64x2_t;
-    }
-    unsafe { _vrndmq_f64(a) }
+    unsafe { simd_floor(a) }
 }
 #[doc = "Floating-point round to integral, toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndmh_f16)"]
@@ -23838,14 +23649,7 @@ pub fn vrndmq_f64(a: float64x2_t) -> float64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintm))]
 pub fn vrndmh_f16(a: f16) -> f16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.floor.f16"
-        )]
-        fn _vrndmh_f16(a: f16) -> f16;
-    }
-    unsafe { _vrndmh_f16(a) }
+    unsafe { floorf16(a) }
 }
 #[doc = "Floating-point round to integral, to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndn_f64)"]
@@ -23918,14 +23722,7 @@ pub fn vrndns_f32(a: f32) -> f32 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndp_f16(a: float16x4_t) -> float16x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.ceil.v4f16"
-        )]
-        fn _vrndp_f16(a: float16x4_t) -> float16x4_t;
-    }
-    unsafe { _vrndp_f16(a) }
+    unsafe { simd_ceil(a) }
 }
 #[doc = "Floating-point round to integral, toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndpq_f16)"]
@@ -23934,14 +23731,7 @@ pub fn vrndp_f16(a: float16x4_t) -> float16x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndpq_f16(a: float16x8_t) -> float16x8_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.ceil.v8f16"
-        )]
-        fn _vrndpq_f16(a: float16x8_t) -> float16x8_t;
-    }
-    unsafe { _vrndpq_f16(a) }
+    unsafe { simd_ceil(a) }
 }
 #[doc = "Floating-point round to integral, toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndp_f32)"]
@@ -23950,14 +23740,7 @@ pub fn vrndpq_f16(a: float16x8_t) -> float16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndp_f32(a: float32x2_t) -> float32x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.ceil.v2f32"
-        )]
-        fn _vrndp_f32(a: float32x2_t) -> float32x2_t;
-    }
-    unsafe { _vrndp_f32(a) }
+    unsafe { simd_ceil(a) }
 }
 #[doc = "Floating-point round to integral, toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndpq_f32)"]
@@ -23966,14 +23749,7 @@ pub fn vrndp_f32(a: float32x2_t) -> float32x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndpq_f32(a: float32x4_t) -> float32x4_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.ceil.v4f32"
-        )]
-        fn _vrndpq_f32(a: float32x4_t) -> float32x4_t;
-    }
-    unsafe { _vrndpq_f32(a) }
+    unsafe { simd_ceil(a) }
 }
 #[doc = "Floating-point round to integral, toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndp_f64)"]
@@ -23982,14 +23758,7 @@ pub fn vrndpq_f32(a: float32x4_t) -> float32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndp_f64(a: float64x1_t) -> float64x1_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.ceil.v1f64"
-        )]
-        fn _vrndp_f64(a: float64x1_t) -> float64x1_t;
-    }
-    unsafe { _vrndp_f64(a) }
+    unsafe { simd_ceil(a) }
 }
 #[doc = "Floating-point round to integral, toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndpq_f64)"]
@@ -23998,14 +23767,7 @@ pub fn vrndp_f64(a: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndpq_f64(a: float64x2_t) -> float64x2_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.ceil.v2f64"
-        )]
-        fn _vrndpq_f64(a: float64x2_t) -> float64x2_t;
-    }
-    unsafe { _vrndpq_f64(a) }
+    unsafe { simd_ceil(a) }
 }
 #[doc = "Floating-point round to integral, toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndph_f16)"]
@@ -24014,14 +23776,7 @@ pub fn vrndpq_f64(a: float64x2_t) -> float64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintp))]
 pub fn vrndph_f16(a: f16) -> f16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.ceil.f16"
-        )]
-        fn _vrndph_f16(a: f16) -> f16;
-    }
-    unsafe { _vrndph_f16(a) }
+    unsafe { ceilf16(a) }
 }
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndx_f16)"]
@@ -24126,14 +23881,7 @@ pub fn vrndxq_f64(a: float64x2_t) -> float64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(frintx))]
 pub fn vrndxh_f16(a: f16) -> f16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.rint.f16"
-        )]
-        fn _vrndxh_f16(a: f16) -> f16;
-    }
-    unsafe { _vrndxh_f16(a) }
+    round_ties_even_f16(a)
 }
 #[doc = "Signed rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshld_s64)"]
@@ -25561,14 +25309,7 @@ pub fn vsqrtq_f64(a: float64x2_t) -> float64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg_attr(test, assert_instr(fsqrt))]
 pub fn vsqrth_f16(a: f16) -> f16 {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.sqrt.f16"
-        )]
-        fn _vsqrth_f16(a: f16) -> f16;
-    }
-    unsafe { _vsqrth_f16(a) }
+    unsafe { sqrtf16(a) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_s8)"]

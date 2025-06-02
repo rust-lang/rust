@@ -3015,11 +3015,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - LLVMLink:
-          name: "llvm.rint.{type[0]}"
-          links:
-            - link: "llvm.rint.{type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [round_ties_even_f16, [a]]
 
 
   - name: "vrnda{neon_type.no}"
@@ -3035,11 +3031,7 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - LLVMLink:
-          name: "llvm.round.{neon_type}"
-          links:
-            - link: "llvm.round.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_round, [a]]
 
 
   - name: "vrnda{neon_type.no}"
@@ -3055,11 +3047,7 @@ intrinsics:
       - float16x4_t
       - float16x8_t
     compose:
-      - LLVMLink:
-          name: "llvm.round.{neon_type}"
-          links:
-            - link: "llvm.round.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_round, [a]]
 
 
   - name: "vrnda{type[1]}{type[0]}"
@@ -3074,11 +3062,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - LLVMLink:
-          name: "llvm.round.{type[0]}"
-          links:
-            - link: "llvm.round.{type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [roundf16, [a], [], true]
 
   - name: "vrndn{neon_type.no}"
     doc: "Floating-point round to integral, to nearest with ties to even"
@@ -3144,11 +3128,7 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - LLVMLink:
-          name: "llvm.floor.{neon_type}"
-          links:
-            - link: "llvm.floor.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_floor, [a]]
 
 
   - name: "vrndm{neon_type.no}"
@@ -3164,11 +3144,7 @@ intrinsics:
       - float16x4_t
       - float16x8_t
     compose:
-      - LLVMLink:
-          name: "llvm.floor.{neon_type}"
-          links:
-            - link: "llvm.floor.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_floor, [a]]
 
 
   - name: "vrndm{type[1]}{type[0]}"
@@ -3183,11 +3159,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - LLVMLink:
-          name: "llvm.floor.{type[0]}"
-          links:
-            - link: "llvm.floor.{type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [floorf16, [a], [], true]
 
 
 
@@ -3204,11 +3176,7 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - LLVMLink:
-          name: "llvm.ceil.{neon_type}"
-          links:
-            - link: "llvm.ceil.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_ceil, [a]]
 
 
   - name: "vrndp{neon_type.no}"
@@ -3224,11 +3192,7 @@ intrinsics:
       - float16x4_t
       - float16x8_t
     compose:
-      - LLVMLink:
-          name: "llvm.ceil.{neon_type}"
-          links:
-            - link: "llvm.ceil.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_ceil, [a]]
 
   - name: "vrndp{type[1]}{type[0]}"
     doc: "Floating-point round to integral, toward plus infinity"
@@ -3242,11 +3206,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - LLVMLink:
-          name: "llvm.ceil.{type[0]}"
-          links:
-            - link: "llvm.ceil.{type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [ceilf16, [a], [], true]
 
   - name: "vrnd{neon_type.no}"
     doc: "Floating-point round to integral, toward zero"
@@ -3261,11 +3221,7 @@ intrinsics:
       - float64x1_t
       - float64x2_t
     compose:
-      - LLVMLink:
-          name: "llvm.trunc.{neon_type}"
-          links:
-            - link: "llvm.trunc.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_trunc, [a]]
 
   - name: "vrnd{neon_type.no}"
     doc: "Floating-point round to integral, toward zero"
@@ -3280,11 +3236,7 @@ intrinsics:
       - float16x4_t
       - float16x8_t
     compose:
-      - LLVMLink:
-          name: "llvm.trunc.{neon_type}"
-          links:
-            - link: "llvm.trunc.{neon_type}"
-              arch: aarch64,arm64ec
+      - FnCall: [simd_trunc, [a]]
 
 
   - name: "vrnd{type[1]}{type[0]}"
@@ -3299,11 +3251,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - LLVMLink:
-          name: "llvm.trunc.{type[0]}"
-          links:
-            - link: "llvm.trunc.{type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [truncf16, [a], [], true]
 
 
   - name: "vrndi{neon_type.no}"
@@ -5543,13 +5491,7 @@ intrinsics:
     types:
       - float64x1_t
     compose:
-      - LLVMLink:
-          name: "_vfma{neon_type.no}"
-          arguments: ["a: {type}", "b: {type}", "c: {type}"]
-          links:
-            - link: "llvm.fma.{neon_type}"
-              arch: aarch64,arm64ec
-      - FnCall: ["_vfma{neon_type.no}", [b, c, a], [], true]
+      - FnCall: [simd_fma, [b, c, a]]
 
   - name: "vfma{neon_type.no}"
     doc: Floating-point fused Multiply-Add to accumulator(vector)
@@ -5562,13 +5504,7 @@ intrinsics:
     types:
       - float64x2_t
     compose:
-      - LLVMLink:
-          name: "_vfma{neon_type.no}"
-          arguments: ["a: {type}", "b: {type}", "c: {type}"]
-          links:
-            - link: "llvm.fma.{neon_type}"
-              arch: aarch64,arm64ec
-      - FnCall: ["_vfma{neon_type.no}", [b, c, a], [], true]
+      - FnCall: [simd_fma, [b, c, a]]
 
   - name: "vfma_n_f64"
     doc: Floating-point fused Multiply-Add to accumulator(vector)
@@ -8511,11 +8447,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - LLVMLink:
-          name: "llvm.sqrt.{type[0]}"
-          links:
-            - link: "llvm.sqrt.{type[0]}"
-              arch: aarch64,arm64ec
+      - FnCall: [sqrtf16, [a], [], true]
 
   - name: "vrsqrts{type[0]}"
     doc: "Floating-point reciprocal square root step"
@@ -10429,15 +10361,9 @@ intrinsics:
       - ["f32", float32x4_t, "s_laneq_f32", '2']
       - ["f64", float64x2_t, "d_laneq_f64", '1']
     compose:
-      - LLVMLink:
-          name: "_vfma{type[2]}"
-          arguments: ["a: {type[0]}", "b: {type[0]}", "c: {type[0]}"]
-          links:
-            - link: "llvm.fma.{type[0]}"
-              arch: aarch64,arm64ec
       - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
       - Let: [c, "{type[0]}", {FnCall: [simd_extract!, [c, 'LANE as u32']]}]
-      - FnCall: ["_vfma{type[2]}", [b, c, a], [], true]
+      - FnCall: ["fma{type[0]}", [b, c, a]]
 
   - name: "vfmad_lane_f64"
     doc: "Floating-point fused multiply-add to accumulator"
@@ -10452,15 +10378,9 @@ intrinsics:
     types:
       - ["f64", float64x1_t]
     compose:
-      - LLVMLink:
-          name: "_vfmad_lane_f64"
-          arguments: ["a: f64", "b: f64", "c: f64"]
-          links:
-            - link: "llvm.fma.{type[0]}"
-              arch: aarch64,arm64ec
       - FnCall: [static_assert!, ['LANE == 0']]
       - Let: [c, "{type[0]}", {FnCall: [simd_extract!, [c, 'LANE as u32']]}]
-      - FnCall: ["_vfmad_lane_f64", [b, c, a]]
+      - FnCall: [fmaf64, [b, c, a]]
 
 
   - name: "vfma{type[1]}"
@@ -10475,12 +10395,7 @@ intrinsics:
     types:
       - ["f16", "h_f16"]
     compose:
-      - LLVMLink:
-          name: "_vfma_{type[1]}"
-          links:
-            - link: "llvm.fma.{type[0]}"
-              arch: aarch64,arm64ec
-      - FnCall: ["_vfma{type[1]}", [b, c, a], [], true]
+      - FnCall: [fmaf16, [b, c, a], [], true]
 
 
   - name: "vfmah_lane{type[2]}"
