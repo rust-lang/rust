@@ -641,7 +641,8 @@ fn explicit_reg_to_gcc(reg: InlineAsmReg) -> &'static str {
                 },
             }
         }
-
+        InlineAsmReg::Arm(reg) => reg.name(),
+        InlineAsmReg::AArch64(reg) => reg.name(),
         _ => unimplemented!(),
     }
 }
