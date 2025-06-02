@@ -1,5 +1,6 @@
 cfg_if::cfg_if! {
     if #[cfg(target_os = "windows")] {
+        mod prefix;
         mod windows;
         pub use windows::*;
     } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
@@ -13,6 +14,7 @@ cfg_if::cfg_if! {
         pub use uefi::*;
     } else if #[cfg(target_os = "cygwin")] {
         mod cygwin;
+        mod prefix;
         pub use cygwin::*;
     } else {
         mod unix;

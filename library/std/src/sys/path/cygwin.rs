@@ -1,6 +1,6 @@
-use crate::ffi::{OsStr, OsString};
+use crate::ffi::OsString;
 use crate::os::unix::ffi::OsStringExt;
-use crate::path::{Path, PathBuf, Prefix};
+use crate::path::{Path, PathBuf};
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::cvt;
 use crate::{io, ptr};
@@ -15,10 +15,7 @@ pub fn is_verbatim_sep(b: u8) -> bool {
     b == b'/' || b == b'\\'
 }
 
-#[inline]
-pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
-    None
-}
+pub use super::prefix::parse_prefix;
 
 pub const MAIN_SEP_STR: &str = "/";
 pub const MAIN_SEP: char = '/';
