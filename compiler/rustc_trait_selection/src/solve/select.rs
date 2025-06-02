@@ -10,6 +10,7 @@ use rustc_infer::traits::{
 use rustc_macros::extension;
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 
 use crate::solve::inspect::{self, ProofTreeInferCtxtExt};
 
@@ -147,7 +148,7 @@ fn to_selection<'tcx>(
     }
 
     let (nested, impl_args) = cand.instantiate_nested_goals_and_opt_impl_args(span);
-    let nested = nested
+    let mut nested: ThinVec<_> = nested
         .into_iter()
         .map(|nested| {
             Obligation::new(
@@ -158,6 +159,10 @@ fn to_selection<'tcx>(
             )
         })
         .collect();
+
+    if let Ok(Certainty::Yes) = cand.result() {
+        nested.clear();
+    }
 
     Some(match cand.kind() {
         ProbeKind::TraitCandidate { source, result: _ } => match source {
