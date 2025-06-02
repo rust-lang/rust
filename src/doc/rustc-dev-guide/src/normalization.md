@@ -271,7 +271,7 @@ Leaving the alias unnormalized would also be wrong as the old solver expects all
 
 Ultimately this means that it is not always possible to ensure all aliases inside of a value are rigid.
 
-[universes]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html#what-is-a-universe
+[universes]: borrow_check/region_inference/placeholders_and_universes.md#what-is-a-universe
 [deeply_normalize]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/normalize/trait.NormalizeExt.html#tymethod.deeply_normalize
 
 ## Handling uses of diverging aliases
