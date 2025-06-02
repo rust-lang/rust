@@ -1192,7 +1192,7 @@ impl ConfigChange {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LinkedProject {
     ProjectManifest(ProjectManifest),
-    InlineJsonProject(ProjectJson),
+    InlineProjectJson(ProjectJson),
 }
 
 impl From<ProjectManifest> for LinkedProject {
@@ -1203,7 +1203,7 @@ impl From<ProjectManifest> for LinkedProject {
 
 impl From<ProjectJson> for LinkedProject {
     fn from(v: ProjectJson) -> Self {
-        LinkedProject::InlineJsonProject(v)
+        LinkedProject::InlineProjectJson(v)
     }
 }
 
