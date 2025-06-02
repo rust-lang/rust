@@ -10,7 +10,9 @@ As a consequence of the code being somewhat general, this document may flip betw
 
 ## HIR
 
-Async closures (and in the future, other coroutine flavors such as `gen`) are represented in HIR as a `hir::Closure` whose closure-kind is `ClosureKind::CoroutineClosure(_)`[^k1], which wraps an async block, which is also represented in HIR as a `hir::Closure`) and whose closure-kind is `ClosureKind::Closure(CoroutineKind::Desugared(_, CoroutineSource::Closure))`[^k2].
+Async closures (and in the future, other coroutine flavors such as `gen`) are represented in HIR as a `hir::Closure`.
+The closure-kind of the `hir::Closure` is `ClosureKind::CoroutineClosure(_)`[^k1], which wraps an async block, which is also represented in HIR as a `hir::Closure`.
+The closure-kind of the async block is `ClosureKind::Closure(CoroutineKind::Desugared(_, CoroutineSource::Closure))`[^k2].
 
 [^k1]: <https://github.com/rust-lang/rust/blob/5ca0e9fa9b2f92b463a0a2b0b34315e09c0b7236/compiler/rustc_ast_lowering/src/expr.rs#L1147>
 
