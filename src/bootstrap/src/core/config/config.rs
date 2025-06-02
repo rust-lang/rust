@@ -30,7 +30,8 @@ use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::core::download::is_download_ci_available;
 use crate::utils::cache::{INTERNER, Interned};
 use crate::utils::channel::{self, GitInfo};
-use crate::utils::helpers::{self, exe, output, t};
+use crate::utils::execution_context::ExecutionContext;
+use crate::utils::helpers::{self, exe, t};
 
 /// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build
@@ -422,6 +423,8 @@ pub struct Config {
 
     /// Cache for determining path modifications
     pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+
+    pub execution_context: ExecutionContext,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -1449,8 +1452,9 @@ impl Config {
         feature = "tracing",
         instrument(target = "CONFIG_HANDLING", level = "trace", name = "Config::parse", skip_all)
     )]
-    pub fn parse(flags: Flags) -> Config {
-        Self::parse_inner(flags, Self::get_toml)
+    pub fn parse(flags: Flags, execution_context: ExecutionContext) -> Config {
+        let config = Self::parse_inner(flags, Self::get_toml, execution_context);
+        config
     }
 
     #[cfg_attr(
@@ -1465,8 +1469,10 @@ impl Config {
     pub(crate) fn parse_inner(
         mut flags: Flags,
         get_toml: impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
+        execution_context: ExecutionContext,
     ) -> Config {
         let mut config = Config::default_opts();
+        config.execution_context = execution_context;
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);

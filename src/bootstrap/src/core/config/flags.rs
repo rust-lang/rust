@@ -13,7 +13,8 @@ use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::{Config, TargetSelectionList, target_selection_list};
-use crate::{Build, DocTests};
+use crate::utils::execution_context::ExecutionContext;
+use crate::{Build, DocTests, DryRun};
 
 #[derive(Copy, Clone, Default, Debug, ValueEnum)]
 pub enum Color {
@@ -203,7 +204,8 @@ impl Flags {
             HelpVerboseOnly::try_parse_from(normalize_args(args))
         {
             println!("NOTE: updating submodules before printing available paths");
-            let config = Config::parse(Self::parse(&[String::from("build")]));
+            let (flags, execution_context) = Self::parse(&[String::from("build")]);
+            let config = Config::parse(flags, execution_context);
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);
             if let Some(s) = paths {
@@ -221,8 +223,16 @@ impl Flags {
         feature = "tracing",
         instrument(level = "trace", name = "Flags::parse", skip_all, fields(args = ?args))
     )]
-    pub fn parse(args: &[String]) -> Self {
-        Flags::parse_from(normalize_args(args))
+    pub fn parse(args: &[String]) -> (Self, ExecutionContext) {
+        let mut execution_context = ExecutionContext::new();
+        let flags = Flags::parse_from(normalize_args(args));
+        execution_context.set_dry_run(if flags.dry_run {
+            DryRun::UserSelected
+        } else {
+            DryRun::Disabled
+        });
+        execution_context.set_verbose(flags.verbose);
+        (flags, execution_context)
     }
 }
 
