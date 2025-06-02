@@ -1110,7 +1110,7 @@ fn pmulhrsw<'tcx>(
 
         // The result of this operation can overflow a signed 16-bit integer.
         // When `left` and `right` are -0x8000, the result is 0x8000.
-        #[expect(clippy::cast_possible_truncation)]
+        #[expect(clippy::as_conversions)]
         let res = res as i16;
 
         ecx.write_scalar(Scalar::from_i16(res), &dest)?;

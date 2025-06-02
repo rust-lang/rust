@@ -38,10 +38,29 @@ pub(crate) fn create_static_alloc<'tcx>(
     static_def_id: LocalDefId,
     layout: TyAndLayout<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    let alloc = Allocation::try_new(layout.size, layout.align.abi, AllocInit::Uninit)?;
+    let alloc = Allocation::try_new(layout.size, layout.align.abi, AllocInit::Uninit, ())?;
     let alloc_id = ecx.tcx.reserve_and_set_static_alloc(static_def_id.into());
     assert_eq!(ecx.machine.static_root_ids, None);
     ecx.machine.static_root_ids = Some((alloc_id, static_def_id));
     assert!(ecx.memory.alloc_map.insert(alloc_id, (MemoryKind::Stack, alloc)).is_none());
     interp_ok(ecx.ptr_to_mplace(Pointer::from(alloc_id).into(), layout))
+}
+
+/// This struct is needed to enforce `#[must_use]` on [tracing::span::EnteredSpan]
+/// while wrapping them in an `Option`.
+#[must_use]
+pub enum MaybeEnteredSpan {
+    Some(tracing::span::EnteredSpan),
+    None,
+}
+
+#[macro_export]
+macro_rules! enter_trace_span {
+    ($machine:ident, $($tt:tt)*) => {
+        if $machine::TRACING_ENABLED {
+            $crate::interpret::tracing_utils::MaybeEnteredSpan::Some(tracing::info_span!($($tt)*).entered())
+        } else {
+            $crate::interpret::tracing_utils::MaybeEnteredSpan::None
+        }
+    }
 }

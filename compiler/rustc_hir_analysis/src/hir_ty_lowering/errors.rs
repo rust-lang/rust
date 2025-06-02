@@ -3,11 +3,12 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, listify, pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, SuggestionStyle, listify, pluralize,
+    struct_span_code_err,
 };
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, HirId};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
@@ -23,6 +24,7 @@ use rustc_trait_selection::traits::{
     FulfillmentError, dyn_compatibility_violations_for_assoc_item,
 };
 use smallvec::SmallVec;
+use tracing::debug;
 
 use crate::errors::{
     self, AssocItemConstraintsNotAllowedHere, ManualImplementation, MissingTypeParams,
@@ -34,7 +36,7 @@ use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
     /// the type parameter's name as a placeholder.
-    pub(crate) fn complain_about_missing_type_params(
+    pub(crate) fn report_missing_type_params(
         &self,
         missing_type_params: Vec<Symbol>,
         def_id: DefId,
@@ -56,7 +58,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     /// When the code is using the `Fn` traits directly, instead of the `Fn(A) -> B` syntax, emit
     /// an error and attempt to build a reasonable structured suggestion.
-    pub(crate) fn complain_about_internal_fn_trait(
+    pub(crate) fn report_internal_fn_trait(
         &self,
         span: Span,
         trait_def_id: DefId,
@@ -112,7 +114,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    pub(super) fn complain_about_assoc_item_not_found<I>(
+    pub(super) fn report_unresolved_assoc_item<I>(
         &self,
         all_candidates: impl Fn() -> I,
         qself: AssocItemQSelf,
@@ -132,7 +134,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .filter_by_name_unhygienic(assoc_ident.name)
                 .find(|item| tcx.hygienic_eq(assoc_ident, item.ident(tcx), r.def_id()))
         }) {
-            return self.complain_about_assoc_kind_mismatch(
+            return self.report_assoc_kind_mismatch(
                 assoc_item,
                 assoc_tag,
                 assoc_ident,
@@ -331,7 +333,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self.dcx().emit_err(err)
     }
 
-    fn complain_about_assoc_kind_mismatch(
+    fn report_assoc_kind_mismatch(
         &self,
         assoc_item: &ty::AssocItem,
         assoc_tag: ty::AssocTag,
@@ -396,12 +398,177 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         })
     }
 
-    pub(super) fn report_ambiguous_assoc(
+    pub(crate) fn report_missing_self_ty_for_resolved_path(
+        &self,
+        trait_def_id: DefId,
+        span: Span,
+        item_segment: &hir::PathSegment<'tcx>,
+        assoc_tag: ty::AssocTag,
+    ) -> ErrorGuaranteed {
+        let tcx = self.tcx();
+        let path_str = tcx.def_path_str(trait_def_id);
+
+        let def_id = self.item_def_id();
+        debug!(item_def_id = ?def_id);
+
+        // FIXME: document why/how this is different from `tcx.local_parent(def_id)`
+        let parent_def_id = tcx.hir_get_parent_item(tcx.local_def_id_to_hir_id(def_id)).to_def_id();
+        debug!(?parent_def_id);
+
+        // If the trait in segment is the same as the trait defining the item,
+        // use the `<Self as ..>` syntax in the error.
+        let is_part_of_self_trait_constraints = def_id.to_def_id() == trait_def_id;
+        let is_part_of_fn_in_self_trait = parent_def_id == trait_def_id;
+
+        let type_names = if is_part_of_self_trait_constraints || is_part_of_fn_in_self_trait {
+            vec!["Self".to_string()]
+        } else {
+            // Find all the types that have an `impl` for the trait.
+            tcx.all_impls(trait_def_id)
+                .filter_map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
+                .filter(|header| {
+                    // Consider only accessible traits
+                    tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
+                        && header.polarity != ty::ImplPolarity::Negative
+                })
+                .map(|header| header.trait_ref.instantiate_identity().self_ty())
+                // We don't care about blanket impls.
+                .filter(|self_ty| !self_ty.has_non_region_param())
+                .map(|self_ty| tcx.erase_regions(self_ty).to_string())
+                .collect()
+        };
+        // FIXME: also look at `tcx.generics_of(self.item_def_id()).params` any that
+        // references the trait. Relevant for the first case in
+        // `src/test/ui/associated-types/associated-types-in-ambiguous-context.rs`
+        self.report_ambiguous_assoc_item_path(
+            span,
+            &type_names,
+            &[path_str],
+            item_segment.ident,
+            assoc_tag,
+        )
+    }
+
+    pub(super) fn report_unresolved_type_relative_path(
+        &self,
+        self_ty: Ty<'tcx>,
+        hir_self_ty: &hir::Ty<'_>,
+        assoc_tag: ty::AssocTag,
+        ident: Ident,
+        qpath_hir_id: HirId,
+        span: Span,
+        variant_def_id: Option<DefId>,
+    ) -> ErrorGuaranteed {
+        let tcx = self.tcx();
+        let kind_str = assoc_tag_str(assoc_tag);
+        if variant_def_id.is_some() {
+            // Variant in type position
+            let msg = format!("expected {kind_str}, found variant `{ident}`");
+            self.dcx().span_err(span, msg)
+        } else if self_ty.is_enum() {
+            let mut err = self.dcx().create_err(errors::NoVariantNamed {
+                span: ident.span,
+                ident,
+                ty: self_ty,
+            });
+
+            let adt_def = self_ty.ty_adt_def().expect("enum is not an ADT");
+            if let Some(variant_name) = find_best_match_for_name(
+                &adt_def.variants().iter().map(|variant| variant.name).collect::<Vec<Symbol>>(),
+                ident.name,
+                None,
+            ) && let Some(variant) = adt_def.variants().iter().find(|s| s.name == variant_name)
+            {
+                let mut suggestion = vec![(ident.span, variant_name.to_string())];
+                if let hir::Node::Stmt(&hir::Stmt { kind: hir::StmtKind::Semi(expr), .. })
+                | hir::Node::Expr(expr) = tcx.parent_hir_node(qpath_hir_id)
+                    && let hir::ExprKind::Struct(..) = expr.kind
+                {
+                    match variant.ctor {
+                        None => {
+                            // struct
+                            suggestion = vec![(
+                                ident.span.with_hi(expr.span.hi()),
+                                if variant.fields.is_empty() {
+                                    format!("{variant_name} {{}}")
+                                } else {
+                                    format!(
+                                        "{variant_name} {{ {} }}",
+                                        variant
+                                            .fields
+                                            .iter()
+                                            .map(|f| format!("{}: /* value */", f.name))
+                                            .collect::<Vec<_>>()
+                                            .join(", ")
+                                    )
+                                },
+                            )];
+                        }
+                        Some((hir::def::CtorKind::Fn, def_id)) => {
+                            // tuple
+                            let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
+                            let inputs = fn_sig.inputs().skip_binder();
+                            suggestion = vec![(
+                                ident.span.with_hi(expr.span.hi()),
+                                format!(
+                                    "{variant_name}({})",
+                                    inputs
+                                        .iter()
+                                        .map(|i| format!("/* {i} */"))
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                ),
+                            )];
+                        }
+                        Some((hir::def::CtorKind::Const, _)) => {
+                            // unit
+                            suggestion = vec![(
+                                ident.span.with_hi(expr.span.hi()),
+                                variant_name.to_string(),
+                            )];
+                        }
+                    }
+                }
+                err.multipart_suggestion_verbose(
+                    "there is a variant with a similar name",
+                    suggestion,
+                    Applicability::HasPlaceholders,
+                );
+            } else {
+                err.span_label(ident.span, format!("variant not found in `{self_ty}`"));
+            }
+
+            if let Some(sp) = tcx.hir_span_if_local(adt_def.did()) {
+                err.span_label(sp, format!("variant `{ident}` not found here"));
+            }
+
+            err.emit()
+        } else if let Err(reported) = self_ty.error_reported() {
+            reported
+        } else {
+            match self.maybe_report_similar_assoc_fn(span, self_ty, hir_self_ty) {
+                Ok(()) => {}
+                Err(reported) => return reported,
+            }
+
+            let traits: Vec<_> = self.probe_traits_that_match_assoc_ty(self_ty, ident);
+
+            self.report_ambiguous_assoc_item_path(
+                span,
+                &[self_ty.to_string()],
+                &traits,
+                ident,
+                assoc_tag,
+            )
+        }
+    }
+
+    pub(super) fn report_ambiguous_assoc_item_path(
         &self,
         span: Span,
         types: &[String],
         traits: &[String],
-        name: Symbol,
+        ident: Ident,
         assoc_tag: ty::AssocTag,
     ) -> ErrorGuaranteed {
         let kind_str = assoc_tag_str(assoc_tag);
@@ -421,6 +588,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Applicability::MachineApplicable,
             );
         } else {
+            let sugg_sp = span.until(ident.span);
+
             let mut types = types.to_vec();
             types.sort();
             let mut traits = traits.to_vec();
@@ -428,76 +597,79 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             match (&types[..], &traits[..]) {
                 ([], []) => {
                     err.span_suggestion_verbose(
-                        span,
+                        sugg_sp,
                         format!(
                             "if there were a type named `Type` that implements a trait named \
-                             `Trait` with associated {kind_str} `{name}`, you could use the \
+                             `Trait` with associated {kind_str} `{ident}`, you could use the \
                              fully-qualified path",
                         ),
-                        format!("<Type as Trait>::{name}"),
+                        "<Type as Trait>::",
                         Applicability::HasPlaceholders,
                     );
                 }
                 ([], [trait_str]) => {
                     err.span_suggestion_verbose(
-                        span,
+                        sugg_sp,
                         format!(
                             "if there were a type named `Example` that implemented `{trait_str}`, \
                              you could use the fully-qualified path",
                         ),
-                        format!("<Example as {trait_str}>::{name}"),
+                        format!("<Example as {trait_str}>::"),
                         Applicability::HasPlaceholders,
                     );
                 }
                 ([], traits) => {
-                    err.span_suggestions(
-                        span,
+                    err.span_suggestions_with_style(
+                        sugg_sp,
                         format!(
                             "if there were a type named `Example` that implemented one of the \
-                             traits with associated {kind_str} `{name}`, you could use the \
+                             traits with associated {kind_str} `{ident}`, you could use the \
                              fully-qualified path",
                         ),
-                        traits.iter().map(|trait_str| format!("<Example as {trait_str}>::{name}")),
+                        traits.iter().map(|trait_str| format!("<Example as {trait_str}>::")),
                         Applicability::HasPlaceholders,
+                        SuggestionStyle::ShowAlways,
                     );
                 }
                 ([type_str], []) => {
                     err.span_suggestion_verbose(
-                        span,
+                        sugg_sp,
                         format!(
-                            "if there were a trait named `Example` with associated {kind_str} `{name}` \
+                            "if there were a trait named `Example` with associated {kind_str} `{ident}` \
                              implemented for `{type_str}`, you could use the fully-qualified path",
                         ),
-                        format!("<{type_str} as Example>::{name}"),
+                        format!("<{type_str} as Example>::"),
                         Applicability::HasPlaceholders,
                     );
                 }
                 (types, []) => {
-                    err.span_suggestions(
-                        span,
+                    err.span_suggestions_with_style(
+                        sugg_sp,
                         format!(
-                            "if there were a trait named `Example` with associated {kind_str} `{name}` \
+                            "if there were a trait named `Example` with associated {kind_str} `{ident}` \
                              implemented for one of the types, you could use the fully-qualified \
                              path",
                         ),
                         types
                             .into_iter()
-                            .map(|type_str| format!("<{type_str} as Example>::{name}")),
+                            .map(|type_str| format!("<{type_str} as Example>::")),
                         Applicability::HasPlaceholders,
+                        SuggestionStyle::ShowAlways,
                     );
                 }
                 (types, traits) => {
                     let mut suggestions = vec![];
                     for type_str in types {
                         for trait_str in traits {
-                            suggestions.push(format!("<{type_str} as {trait_str}>::{name}"));
+                            suggestions.push(format!("<{type_str} as {trait_str}>::"));
                         }
                     }
-                    err.span_suggestions(
-                        span,
+                    err.span_suggestions_with_style(
+                        sugg_sp,
                         "use fully-qualified syntax",
                         suggestions,
                         Applicability::MachineApplicable,
+                        SuggestionStyle::ShowAlways,
                     );
                 }
             }
@@ -505,7 +677,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         err.emit()
     }
 
-    pub(crate) fn complain_about_ambiguous_inherent_assoc(
+    pub(crate) fn report_ambiguous_inherent_assoc_item(
         &self,
         name: Ident,
         candidates: Vec<DefId>,
@@ -518,12 +690,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             "multiple applicable items in scope"
         );
         err.span_label(name.span, format!("multiple `{name}` found"));
-        self.note_ambiguous_inherent_assoc_ty(&mut err, candidates, span);
+        self.note_ambiguous_inherent_assoc_item(&mut err, candidates, span);
         err.emit()
     }
 
     // FIXME(fmease): Heavily adapted from `rustc_hir_typeck::method::suggest`. Deduplicate.
-    fn note_ambiguous_inherent_assoc_ty(
+    fn note_ambiguous_inherent_assoc_item(
         &self,
         err: &mut Diag<'_>,
         candidates: Vec<DefId>,
@@ -566,7 +738,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     // FIXME(inherent_associated_types): Find similarly named associated types and suggest them.
-    pub(crate) fn complain_about_inherent_assoc_not_found(
+    pub(crate) fn report_unresolved_inherent_assoc_item(
         &self,
         name: Ident,
         self_ty: Ty<'tcx>,
@@ -1046,7 +1218,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    pub fn report_prohibit_generics_error<'a>(
+    pub fn report_prohibited_generic_args<'a>(
         &self,
         segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
         args_visitors: impl Iterator<Item = &'a hir::GenericArg<'a>> + Clone,
@@ -1128,7 +1300,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         err.emit()
     }
 
-    pub fn report_trait_object_addition_traits_error(
+    pub fn report_trait_object_addition_traits(
         &self,
         regular_traits: &Vec<(ty::PolyTraitPredicate<'tcx>, SmallVec<[Span; 1]>)>,
     ) -> ErrorGuaranteed {
@@ -1171,7 +1343,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         err.emit()
     }
 
-    pub fn report_trait_object_with_no_traits_error(
+    pub fn report_trait_object_with_no_traits(
         &self,
         span: Span,
         user_written_clauses: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,

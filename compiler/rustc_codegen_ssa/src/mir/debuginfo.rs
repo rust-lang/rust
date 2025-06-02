@@ -10,7 +10,7 @@ use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{bug, mir, ty};
 use rustc_session::config::DebugInfo;
-use rustc_span::{BytePos, Span, Symbol, hygiene, kw};
+use rustc_span::{BytePos, Span, Symbol, hygiene, sym};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::{PlaceRef, PlaceValue};
@@ -283,7 +283,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // (after #67586 gets fixed).
                 None
             } else {
-                let name = kw::Empty;
+                let name = sym::empty;
                 let decl = &self.mir.local_decls[local];
                 let dbg_var = if full_debug_info {
                     self.adjusted_span_and_dbg_scope(decl.source_info).map(
@@ -318,7 +318,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             None
         } else {
             Some(match whole_local_var.or(fallback_var.clone()) {
-                Some(var) if var.name != kw::Empty => var.name.to_string(),
+                Some(var) if var.name != sym::empty => var.name.to_string(),
                 _ => format!("{local:?}"),
             })
         };

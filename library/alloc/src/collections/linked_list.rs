@@ -1124,20 +1124,20 @@ impl<T, A: Allocator> LinkedList<T, A> {
 
     /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
-    /// If the closure returns true, then the element is removed and yielded.
-    /// If the closure returns false, the element will remain in the list and will not be yielded
-    /// by the iterator.
+    /// If the closure returns `true`, the element is removed from the list and
+    /// yielded. If the closure returns `false`, or panics, the element remains
+    /// in the list and will not be yielded.
     ///
     /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
     /// or the iteration short-circuits, then the remaining elements will be retained.
     /// Use `extract_if().for_each(drop)` if you do not need the returned iterator.
     ///
-    /// Note that `extract_if` lets you mutate every element in the filter closure, regardless of
-    /// whether you choose to keep or remove it.
+    /// The iterator also lets you mutate the value of each element in the
+    /// closure, regardless of whether you choose to keep or remove it.
     ///
     /// # Examples
     ///
-    /// Splitting a list into evens and odds, reusing the original list:
+    /// Splitting a list into even and odd values, reusing the original list:
     ///
     /// ```
     /// use std::collections::LinkedList;

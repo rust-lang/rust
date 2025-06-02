@@ -287,7 +287,7 @@ impl<'db> MatchFinder<'db> {
                 if let Some(expanded) = self.sema.expand_macro_call(&macro_call) {
                     if let Some(tt) = macro_call.token_tree() {
                         self.output_debug_for_nodes_at_range(
-                            &expanded,
+                            &expanded.value,
                             range,
                             &Some(self.sema.original_range(tt.syntax())),
                             out,

@@ -5,7 +5,7 @@
 
 extern void foo(unsigned int *);
 
-void bar(char *ptr) {
+void bar(unsigned int *ptr) {
     if (((uintptr_t)ptr >> 56) != 0x1f) {
         fprintf(stderr, "Top byte corrupted on Rust -> C FFI boundary!\n");
         exit(1);

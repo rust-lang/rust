@@ -117,7 +117,7 @@ impl AttributeParser for BodyStabilityParser {
 pub(crate) struct ConstStabilityIndirectParser;
 // FIXME(jdonszelmann): single word attribute group when we have these
 impl SingleAttributeParser for ConstStabilityIndirectParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::rustc_const_stable_indirect];
+    const PATH: &'static [Symbol] = &[sym::rustc_const_stable_indirect];
 
     // ignore
     fn on_duplicate(_cx: &AcceptContext<'_>, _first_span: Span) {}

@@ -51,7 +51,7 @@ Clippy team directly by mentioning them in the issue or over on [Zulip]. All
 currently active team members can be found
 [here](https://github.com/rust-lang/rust-clippy/blob/master/triagebot.toml#L18)
 
-Some issues are easier than others. The [`good-first-issue`] label can be used to find the easy
+Some issues are easier than others. The [`good first issue`] label can be used to find the easy
 issues. You can use `@rustbot claim` to assign the issue to yourself.
 
 There are also some abandoned PRs, marked with [`S-inactive-closed`].
@@ -70,7 +70,7 @@ To figure out how this syntax structure is encoded in the AST, it is recommended
 Usually the lint will end up to be a nested series of matches and ifs, [like so][deep-nesting].
 But we can make it nest-less by using [let chains], [like this][nest-less].
 
-[`E-medium`] issues are generally pretty easy too, though it's recommended you work on an [`good-first-issue`]
+[`E-medium`] issues are generally pretty easy too, though it's recommended you work on an [`good first issue`]
 first. Sometimes they are only somewhat involved code wise, but not difficult per-se.
 Note that [`E-medium`] issues may require some knowledge of Clippy internals or some
 debugging to find the actual problem behind the issue.
@@ -79,7 +79,7 @@ debugging to find the actual problem behind the issue.
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
 an AST expression).
 
-[`good-first-issue`]: https://github.com/rust-lang/rust-clippy/labels/good-first-issue
+[`good first issue`]: https://github.com/rust-lang/rust-clippy/labels/good%20first%20issue
 [`S-inactive-closed`]: https://github.com/rust-lang/rust-clippy/pulls?q=is%3Aclosed+label%3AS-inactive-closed
 [`T-AST`]: https://github.com/rust-lang/rust-clippy/labels/T-AST
 [`T-middle`]: https://github.com/rust-lang/rust-clippy/labels/T-middle

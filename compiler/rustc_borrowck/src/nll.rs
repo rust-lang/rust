@@ -11,8 +11,6 @@ use rustc_middle::mir::pretty::{PrettyPrintMirOptions, dump_mir_with_options};
 use rustc_middle::mir::{Body, PassWhere, Promoted, create_dump_file, dump_enabled, dump_mir};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_mir_dataflow::ResultsCursor;
-use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_session::config::MirIncludeSpans;
@@ -75,14 +73,13 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
-pub(crate) fn compute_regions<'a, 'tcx>(
+pub(crate) fn compute_regions<'tcx>(
     root_cx: &mut BorrowCheckRootCtxt<'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
     location_table: &PoloniusLocationTable,
-    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     consumer_options: Option<ConsumerOptions>,
@@ -112,7 +109,6 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         location_table,
         borrow_set,
         &mut polonius_facts,
-        flow_inits,
         move_data,
         Rc::clone(&location_map),
     );

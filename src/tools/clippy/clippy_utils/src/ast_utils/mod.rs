@@ -436,11 +436,11 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && over(lb, rb, eq_generic_bound)
                 && both(lt.as_ref(), rt.as_ref(), |l, r| eq_ty(l, r))
         },
-        (Enum(li, le, lg), Enum(ri, re, rg)) => {
-            eq_id(*li, *ri) && over(&le.variants, &re.variants, eq_variant) && eq_generics(lg, rg)
+        (Enum(li, lg, le), Enum(ri, rg, re)) => {
+            eq_id(*li, *ri) && eq_generics(lg, rg) && over(&le.variants, &re.variants, eq_variant) 
         },
-        (Struct(li, lv, lg), Struct(ri, rv, rg)) | (Union(li, lv, lg), Union(ri, rv, rg)) => {
-            eq_id(*li, *ri) && eq_variant_data(lv, rv) && eq_generics(lg, rg)
+        (Struct(li, lg, lv), Struct(ri, rg, rv)) | (Union(li, lg, lv), Union(ri, rg, rv)) => {
+            eq_id(*li, *ri) && eq_generics(lg, rg) && eq_variant_data(lv, rv) 
         },
         (
             Trait(box ast::Trait {

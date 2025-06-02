@@ -11,7 +11,9 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
+use rustc_next_trait_solver::solve::{
+    GenerateProofTree, GoalEvaluation, SolverDelegateEvalExt as _,
+};
 use tracing::{instrument, trace};
 
 use crate::solve::delegate::SolverDelegate;
@@ -93,19 +95,21 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                 root_obligation.as_goal(),
                 GenerateProofTree::No,
                 root_obligation.cause.span,
+                None,
             )
             .0
         {
-            Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {
+            Ok(GoalEvaluation { certainty: Certainty::Maybe(MaybeCause::Ambiguity), .. }) => {
                 (FulfillmentErrorCode::Ambiguity { overflow: None }, true)
             }
-            Ok((
-                _,
-                Certainty::Maybe(MaybeCause::Overflow {
-                    suggest_increasing_limit,
-                    keep_constraints: _,
-                }),
-            )) => (
+            Ok(GoalEvaluation {
+                certainty:
+                    Certainty::Maybe(MaybeCause::Overflow {
+                        suggest_increasing_limit,
+                        keep_constraints: _,
+                    }),
+                ..
+            }) => (
                 FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) },
                 // Don't look into overflows because we treat overflows weirdly anyways.
                 // We discard the inference constraints from overflowing goals, so
@@ -115,7 +119,7 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                 // FIXME: We should probably just look into overflows here.
                 false,
             ),
-            Ok((_, Certainty::Yes)) => {
+            Ok(GoalEvaluation { certainty: Certainty::Yes, .. }) => {
                 bug!(
                     "did not expect successful goal when collecting ambiguity errors for `{:?}`",
                     infcx.resolve_vars_if_possible(root_obligation.predicate),

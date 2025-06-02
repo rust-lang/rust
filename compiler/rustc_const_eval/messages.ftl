@@ -424,8 +424,7 @@ const_eval_unstable_in_stable_exposed =
     .unstable_sugg = if the {$is_function_call2 ->
             [true] caller
             *[false] function
-        } is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
-    .bypass_sugg = otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+        } is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
 
 const_eval_unstable_intrinsic = `{$name}` is not yet stable as a const intrinsic
 const_eval_unstable_intrinsic_suggestion = add `#![feature({$feature})]` to the crate attributes to enable

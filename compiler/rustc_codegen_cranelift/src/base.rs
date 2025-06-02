@@ -15,9 +15,9 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
-use crate::enable_verifier;
 use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
+use crate::{codegen_f16_f128, enable_verifier};
 
 pub(crate) struct CodegenedFunction {
     symbol_name: String,
@@ -193,6 +193,18 @@ pub(crate) fn compile_fn(
                     name = codegened_func.symbol_name
                 ));
             }
+            Err(ModuleError::Compilation(CodegenError::Verifier(err))) => {
+                let early_dcx = rustc_session::EarlyDiagCtxt::new(
+                    rustc_session::config::ErrorOutputType::default(),
+                );
+                let _ = early_dcx.early_err(format!("{:?}", err));
+                let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
+                    &context.func,
+                    Some(Box::new(&clif_comments)),
+                    err,
+                );
+                early_dcx.early_fatal(format!("cranelift verify error:\n{}", pretty_error));
+            }
             Err(err) => {
                 panic!("Error while defining {name}: {err:?}", name = codegened_func.symbol_name);
             }
@@ -303,7 +315,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
             });
             let inst = fx.bcx.func.layout.last_inst(block).unwrap();
-            fx.add_comment(inst, terminator_head);
+            fx.add_post_comment(inst, terminator_head);
         }
 
         let source_info = bb_data.terminator().source_info;
@@ -337,7 +349,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             TerminatorKind::Return => {
                 crate::abi::codegen_return(fx);
             }
-            TerminatorKind::Assert { cond, expected, msg, target, unwind: _ } => {
+            TerminatorKind::Assert { cond, expected, msg, target, unwind } => {
                 if !fx.tcx.sess.overflow_checks() && msg.is_optional_overflow_check() {
                     let target = fx.get_block(*target);
                     fx.bcx.ins().jump(target, &[]);
@@ -367,6 +379,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             fx,
                             rustc_hir::LangItem::PanicBoundsCheck,
                             &[index, len, location],
+                            *unwind,
                             Some(source_info.span),
                         );
                     }
@@ -379,6 +392,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             fx,
                             rustc_hir::LangItem::PanicMisalignedPointerDereference,
                             &[required, found, location],
+                            *unwind,
                             Some(source_info.span),
                         );
                     }
@@ -389,6 +403,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             fx,
                             rustc_hir::LangItem::PanicNullPointerDereference,
                             &[location],
+                            *unwind,
                             Some(source_info.span),
                         )
                     }
@@ -399,6 +414,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             fx,
                             msg.panic_function(),
                             &[location],
+                            *unwind,
                             Some(source_info.span),
                         );
                     }
@@ -457,7 +473,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 destination,
                 target,
                 fn_span,
-                unwind: _,
+                unwind,
                 call_source: _,
             } => {
                 fx.tcx.prof.generic_activity("codegen call").run(|| {
@@ -468,6 +484,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                         args,
                         *destination,
                         *target,
+                        *unwind,
                     )
                 });
             }
@@ -514,7 +531,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 );
             }
             TerminatorKind::UnwindTerminate(reason) => {
-                codegen_unwind_terminate(fx, source_info, *reason);
+                codegen_unwind_terminate(fx, Some(source_info.span), *reason);
             }
             TerminatorKind::UnwindResume => {
                 // FIXME implement unwinding
@@ -530,23 +547,19 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             | TerminatorKind::CoroutineDrop => {
                 bug!("shouldn't exist at codegen {:?}", bb_data.terminator());
             }
-            TerminatorKind::Drop { place, target, unwind: _, replace: _, drop, async_fut } => {
+            TerminatorKind::Drop { place, target, unwind, replace: _, drop, async_fut } => {
                 assert!(
                     async_fut.is_none() && drop.is_none(),
                     "Async Drop must be expanded or reset to sync before codegen"
                 );
                 let drop_place = codegen_place(fx, *place);
-                crate::abi::codegen_drop(fx, source_info, drop_place, *target);
+                crate::abi::codegen_drop(fx, source_info, drop_place, *target, *unwind);
             }
         };
     }
 }
 
-fn codegen_stmt<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
-    #[allow(unused_variables)] cur_block: Block,
-    stmt: &Statement<'tcx>,
-) {
+fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt: &Statement<'tcx>) {
     let _print_guard = crate::PrintOnPanic(|| format!("stmt {:?}", stmt));
 
     fx.set_debug_loc(stmt.source_info);
@@ -557,7 +570,7 @@ fn codegen_stmt<'tcx>(
             if fx.clif_comments.enabled() {
                 let inst = fx.bcx.func.layout.last_inst(cur_block).unwrap();
                 with_no_trimmed_paths!({
-                    fx.add_comment(inst, format!("{:?}", stmt));
+                    fx.add_post_comment(inst, format!("{:?}", stmt));
                 });
             }
         }
@@ -622,6 +635,15 @@ fn codegen_stmt<'tcx>(
                             let val = operand.load_scalar(fx);
                             match layout.ty.kind() {
                                 ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
+                                // FIXME(bytecodealliance/wasmtime#8312): Remove
+                                // once backend lowerings have been added to
+                                // Cranelift.
+                                ty::Float(FloatTy::F16) => {
+                                    CValue::by_val(codegen_f16_f128::neg_f16(fx, val), layout)
+                                }
+                                ty::Float(FloatTy::F128) => {
+                                    CValue::by_val(codegen_f16_f128::neg_f128(fx, val), layout)
+                                }
                                 ty::Float(_) => CValue::by_val(fx.bcx.ins().fneg(val), layout),
                                 _ => unreachable!("un op Neg for {:?}", layout.ty),
                             }
@@ -793,7 +815,7 @@ fn codegen_stmt<'tcx>(
                         let done_block = fx.bcx.create_block();
                         let index = fx.bcx.append_block_param(loop_block, fx.pointer_type);
                         let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
-                        fx.bcx.ins().jump(loop_block, &[zero]);
+                        fx.bcx.ins().jump(loop_block, &[zero.into()]);
 
                         fx.bcx.switch_to_block(loop_block);
                         let done = fx.bcx.ins().icmp_imm(IntCC::Equal, index, times as i64);
@@ -803,7 +825,7 @@ fn codegen_stmt<'tcx>(
                         let to = lval.place_index(fx, index);
                         to.write_cvalue(fx, operand);
                         let index = fx.bcx.ins().iadd_imm(index, 1);
-                        fx.bcx.ins().jump(loop_block, &[index]);
+                        fx.bcx.ins().jump(loop_block, &[index.into()]);
 
                         fx.bcx.switch_to_block(done_block);
                         fx.bcx.ins().nop();
@@ -1058,23 +1080,28 @@ pub(crate) fn codegen_panic_nounwind<'tcx>(
     let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
     let args = [msg_ptr, msg_len];
 
-    codegen_panic_inner(fx, rustc_hir::LangItem::PanicNounwind, &args, span);
+    codegen_panic_inner(
+        fx,
+        rustc_hir::LangItem::PanicNounwind,
+        &args,
+        UnwindAction::Terminate(UnwindTerminateReason::Abi),
+        span,
+    );
 }
 
 pub(crate) fn codegen_unwind_terminate<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    source_info: mir::SourceInfo,
+    span: Option<Span>,
     reason: UnwindTerminateReason,
 ) {
-    let args = [];
-
-    codegen_panic_inner(fx, reason.lang_item(), &args, Some(source_info.span));
+    codegen_panic_inner(fx, reason.lang_item(), &[], UnwindAction::Unreachable, span);
 }
 
 fn codegen_panic_inner<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     lang_item: rustc_hir::LangItem,
     args: &[Value],
+    _unwind: UnwindAction,
     span: Option<Span>,
 ) {
     fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
@@ -1089,6 +1116,8 @@ fn codegen_panic_inner<'tcx>(
     }
 
     let symbol_name = fx.tcx.symbol_name(instance).name;
+
+    // FIXME implement cleanup on exceptions
 
     fx.lib_call(
         symbol_name,

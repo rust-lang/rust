@@ -12,7 +12,6 @@
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(associated_type_defaults)]
-#![feature(box_into_inner)]
 #![feature(box_patterns)]
 #![feature(default_field_values)]
 #![feature(error_reporter)]

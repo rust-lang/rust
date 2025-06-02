@@ -140,7 +140,6 @@ register_builtin! {
     EagerExpander:
     (compile_error, CompileError) => compile_error_expand,
     (concat, Concat) => concat_expand,
-    (concat_idents, ConcatIdents) => concat_idents_expand,
     (concat_bytes, ConcatBytes) => concat_bytes_expand,
     (include, Include) => include_expand,
     (include_bytes, IncludeBytes) => include_bytes_expand,
@@ -452,7 +451,10 @@ fn concat_expand(
         Some(_) => (),
         None => span = Some(s),
     };
-    for (i, mut t) in tt.iter().enumerate() {
+
+    let mut i = 0;
+    let mut iter = tt.iter();
+    while let Some(mut t) = iter.next() {
         // FIXME: hack on top of a hack: `$e:expr` captures get surrounded in parentheses
         // to ensure the right parsing order, so skip the parentheses here. Ideally we'd
         // implement rustc's model. cc https://github.com/rust-lang/rust-analyzer/pull/10623
@@ -504,10 +506,40 @@ fn concat_expand(
                 record_span(id.span);
             }
             TtElement::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
+            // handle negative numbers
+            TtElement::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 0 && punct.char == '-' => {
+                let t = match iter.next() {
+                    Some(t) => t,
+                    None => {
+                        err.get_or_insert(ExpandError::other(
+                            call_site,
+                            "unexpected end of input after '-'",
+                        ));
+                        break;
+                    }
+                };
+
+                match t {
+                    TtElement::Leaf(tt::Leaf::Literal(it))
+                        if matches!(it.kind, tt::LitKind::Integer | tt::LitKind::Float) =>
+                    {
+                        format_to!(text, "-{}", it.symbol.as_str());
+                        record_span(punct.span.cover(it.span));
+                    }
+                    _ => {
+                        err.get_or_insert(ExpandError::other(
+                            call_site,
+                            "expected integer or floating pointer number after '-'",
+                        ));
+                        break;
+                    }
+                }
+            }
             _ => {
                 err.get_or_insert(ExpandError::other(call_site, "unexpected token"));
             }
         }
+        i += 1;
     }
     let span = span.unwrap_or_else(|| tt.top_subtree().delimiter.open);
     ExpandResult { value: quote!(span =>#text), err }
@@ -625,30 +657,6 @@ fn concat_bytes_expand_subtree(
         }
     }
     Ok(())
-}
-
-fn concat_idents_expand(
-    _db: &dyn ExpandDatabase,
-    _arg_id: MacroCallId,
-    tt: &tt::TopSubtree,
-    span: Span,
-) -> ExpandResult<tt::TopSubtree> {
-    let mut err = None;
-    let mut ident = String::new();
-    for (i, t) in tt.iter().enumerate() {
-        match t {
-            TtElement::Leaf(tt::Leaf::Ident(id)) => {
-                ident.push_str(id.sym.as_str());
-            }
-            TtElement::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
-            _ => {
-                err.get_or_insert(ExpandError::other(span, "unexpected token"));
-            }
-        }
-    }
-    // FIXME merge spans
-    let ident = tt::Ident { sym: Symbol::intern(&ident), span, is_raw: tt::IdentIsRaw::No };
-    ExpandResult { value: quote!(span =>#ident), err }
 }
 
 fn relative_file(

@@ -3311,26 +3311,44 @@ impl<'a> Parser<'a> {
                             let sm = this.psess.source_map();
                             if let Ok(expr_lines) = sm.span_to_lines(expr_span)
                                 && let Ok(arm_start_lines) = sm.span_to_lines(arm_start_span)
-                                && arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
                                 && expr_lines.lines.len() == 2
                             {
-                                // We check whether there's any trailing code in the parse span,
-                                // if there isn't, we very likely have the following:
-                                //
-                                // X |     &Y => "y"
-                                //   |        --    - missing comma
-                                //   |        |
-                                //   |        arrow_span
-                                // X |     &X => "x"
-                                //   |      - ^^ self.token.span
-                                //   |      |
-                                //   |      parsed until here as `"y" & X`
-                                err.span_suggestion_short(
-                                    arm_start_span.shrink_to_hi(),
-                                    "missing a comma here to end this `match` arm",
-                                    ",",
-                                    Applicability::MachineApplicable,
-                                );
+                                if arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col {
+                                    // We check whether there's any trailing code in the parse span,
+                                    // if there isn't, we very likely have the following:
+                                    //
+                                    // X |     &Y => "y"
+                                    //   |        --    - missing comma
+                                    //   |        |
+                                    //   |        arrow_span
+                                    // X |     &X => "x"
+                                    //   |      - ^^ self.token.span
+                                    //   |      |
+                                    //   |      parsed until here as `"y" & X`
+                                    err.span_suggestion_short(
+                                        arm_start_span.shrink_to_hi(),
+                                        "missing a comma here to end this `match` arm",
+                                        ",",
+                                        Applicability::MachineApplicable,
+                                    );
+                                } else if arm_start_lines.lines[0].end_col + rustc_span::CharPos(1)
+                                    == expr_lines.lines[0].end_col
+                                {
+                                    // similar to the above, but we may typo a `.` or `/` at the end of the line
+                                    let comma_span = arm_start_span
+                                        .shrink_to_hi()
+                                        .with_hi(arm_start_span.hi() + rustc_span::BytePos(1));
+                                    if let Ok(res) = sm.span_to_snippet(comma_span)
+                                        && (res == "." || res == "/")
+                                    {
+                                        err.span_suggestion_short(
+                                            comma_span,
+                                            "you might have meant to write a `,` to end this `match` arm",
+                                            ",",
+                                            Applicability::MachineApplicable,
+                                        );
+                                    }
+                                }
                             }
                         } else {
                             err.span_label(

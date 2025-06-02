@@ -185,7 +185,8 @@ use rustc_ast::{
     self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
     Generics, Mutability, PatKind, VariantData,
 };
-use rustc_attr_parsing::{AttributeKind, AttributeParser, ReprPacked};
+use rustc_attr_data_structures::{AttributeKind, ReprPacked};
+use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_hir::Attribute;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -487,7 +488,7 @@ impl<'a> TraitDef<'a> {
                 );
 
                 let newitem = match &item.kind {
-                    ast::ItemKind::Struct(ident, struct_def, generics) => self.expand_struct_def(
+                    ast::ItemKind::Struct(ident, generics, struct_def) => self.expand_struct_def(
                         cx,
                         struct_def,
                         *ident,
@@ -495,7 +496,7 @@ impl<'a> TraitDef<'a> {
                         from_scratch,
                         is_packed,
                     ),
-                    ast::ItemKind::Enum(ident, enum_def, generics) => {
+                    ast::ItemKind::Enum(ident, generics, enum_def) => {
                         // We ignore `is_packed` here, because `repr(packed)`
                         // enums cause an error later on.
                         //
@@ -503,7 +504,7 @@ impl<'a> TraitDef<'a> {
                         // downstream in blatantly illegal code, so it is fine.
                         self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
                     }
-                    ast::ItemKind::Union(ident, struct_def, generics) => {
+                    ast::ItemKind::Union(ident, generics, struct_def) => {
                         if self.supports_unions {
                             self.expand_struct_def(
                                 cx,

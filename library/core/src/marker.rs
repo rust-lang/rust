@@ -550,72 +550,72 @@ pub trait BikeshedGuaranteedNoDrop {}
 #[lang = "sync"]
 #[rustc_on_unimplemented(
     on(
-        _Self = "core::cell::once::OnceCell<T>",
+        Self = "core::cell::once::OnceCell<T>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::OnceLock` instead"
     ),
     on(
-        _Self = "core::cell::Cell<u8>",
+        Self = "core::cell::Cell<u8>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU8` instead",
     ),
     on(
-        _Self = "core::cell::Cell<u16>",
+        Self = "core::cell::Cell<u16>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU16` instead",
     ),
     on(
-        _Self = "core::cell::Cell<u32>",
+        Self = "core::cell::Cell<u32>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU32` instead",
     ),
     on(
-        _Self = "core::cell::Cell<u64>",
+        Self = "core::cell::Cell<u64>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicU64` instead",
     ),
     on(
-        _Self = "core::cell::Cell<usize>",
+        Self = "core::cell::Cell<usize>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicUsize` instead",
     ),
     on(
-        _Self = "core::cell::Cell<i8>",
+        Self = "core::cell::Cell<i8>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI8` instead",
     ),
     on(
-        _Self = "core::cell::Cell<i16>",
+        Self = "core::cell::Cell<i16>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI16` instead",
     ),
     on(
-        _Self = "core::cell::Cell<i32>",
+        Self = "core::cell::Cell<i32>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI32` instead",
     ),
     on(
-        _Self = "core::cell::Cell<i64>",
+        Self = "core::cell::Cell<i64>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI64` instead",
     ),
     on(
-        _Self = "core::cell::Cell<isize>",
+        Self = "core::cell::Cell<isize>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicIsize` instead",
     ),
     on(
-        _Self = "core::cell::Cell<bool>",
+        Self = "core::cell::Cell<bool>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicBool` instead",
     ),
     on(
         all(
-            _Self = "core::cell::Cell<T>",
-            not(_Self = "core::cell::Cell<u8>"),
-            not(_Self = "core::cell::Cell<u16>"),
-            not(_Self = "core::cell::Cell<u32>"),
-            not(_Self = "core::cell::Cell<u64>"),
-            not(_Self = "core::cell::Cell<usize>"),
-            not(_Self = "core::cell::Cell<i8>"),
-            not(_Self = "core::cell::Cell<i16>"),
-            not(_Self = "core::cell::Cell<i32>"),
-            not(_Self = "core::cell::Cell<i64>"),
-            not(_Self = "core::cell::Cell<isize>"),
-            not(_Self = "core::cell::Cell<bool>")
+            Self = "core::cell::Cell<T>",
+            not(Self = "core::cell::Cell<u8>"),
+            not(Self = "core::cell::Cell<u16>"),
+            not(Self = "core::cell::Cell<u32>"),
+            not(Self = "core::cell::Cell<u64>"),
+            not(Self = "core::cell::Cell<usize>"),
+            not(Self = "core::cell::Cell<i8>"),
+            not(Self = "core::cell::Cell<i16>"),
+            not(Self = "core::cell::Cell<i32>"),
+            not(Self = "core::cell::Cell<i64>"),
+            not(Self = "core::cell::Cell<isize>"),
+            not(Self = "core::cell::Cell<bool>")
         ),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock`",
     ),
     on(
-        _Self = "core::cell::RefCell<T>",
+        Self = "core::cell::RefCell<T>",
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead",
     ),
     message = "`{Self}` cannot be shared between threads safely",

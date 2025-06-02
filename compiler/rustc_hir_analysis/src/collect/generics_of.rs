@@ -104,19 +104,27 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 }
             }
 
-            if in_param_ty {
-                // We do not allow generic parameters in anon consts if we are inside
-                // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
-                None
-            } else if tcx.features().generic_const_exprs() {
-                let parent_node = tcx.parent_hir_node(hir_id);
-                debug!(?parent_node);
-                if let Node::Variant(Variant { disr_expr: Some(constant), .. }) = parent_node
-                    && constant.hir_id == hir_id
-                {
-                    // enum variant discriminants are not allowed to use any kind of generics
-                    None
-                } else if let Some(param_id) = tcx.hir_opt_const_param_default_param_def_id(hir_id)
+            match tcx.anon_const_kind(def_id) {
+                // Stable: anon consts are not able to use any generic parameters...
+                ty::AnonConstKind::MCG => None,
+                // we provide generics to repeat expr counts as a backwards compatibility hack. #76200
+                ty::AnonConstKind::RepeatExprCount => Some(parent_did),
+
+                // Even GCE anon const should not be allowed to use generic parameters as it would be
+                // trivially forward declared uses once desugared. E.g. `const N: [u8; ANON::<N>]`.
+                //
+                // We could potentially mirror the hack done for defaults of generic parameters but
+                // this case just doesn't come up much compared to `const N: u32 = ...`. Long term the
+                // hack for defaulted parameters should be removed eventually anyway.
+                ty::AnonConstKind::GCE if in_param_ty => None,
+                // GCE anon consts as a default for a generic parameter should have their provided generics
+                // "truncated" up to whatever generic parameter this anon const is within the default of.
+                //
+                // FIXME(generic_const_exprs): This only handles `const N: usize = /*defid*/` but not type
+                // parameter defaults, e.g. `T = Foo</*defid*/>`.
+                ty::AnonConstKind::GCE
+                    if let Some(param_id) =
+                        tcx.hir_opt_const_param_default_param_def_id(hir_id) =>
                 {
                     // If the def_id we are calling generics_of on is an anon ct default i.e:
                     //
@@ -160,36 +168,17 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         has_self: generics.has_self,
                         has_late_bound_regions: generics.has_late_bound_regions,
                     };
-                } else {
-                    // HACK(eddyb) this provides the correct generics when
-                    // `feature(generic_const_expressions)` is enabled, so that const expressions
-                    // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
-                    //
-                    // Note that we do not supply the parent generics when using
-                    // `min_const_generics`.
+                }
+                ty::AnonConstKind::GCE => Some(parent_did),
+
+                // Field defaults are allowed to use generic parameters, e.g. `field: u32 = /*defid: N + 1*/`
+                ty::AnonConstKind::NonTypeSystem
+                    if matches!(tcx.parent_hir_node(hir_id), Node::TyPat(_) | Node::Field(_)) =>
+                {
                     Some(parent_did)
                 }
-            } else {
-                let parent_node = tcx.parent_hir_node(hir_id);
-                let parent_node = match parent_node {
-                    Node::ConstArg(ca) => tcx.parent_hir_node(ca.hir_id),
-                    _ => parent_node,
-                };
-                match parent_node {
-                    // HACK(eddyb) this provides the correct generics for repeat
-                    // expressions' count (i.e. `N` in `[x; N]`), and explicit
-                    // `enum` discriminants (i.e. `D` in `enum Foo { Bar = D }`),
-                    // as they shouldn't be able to cause query cycle errors.
-                    Node::Expr(Expr { kind: ExprKind::Repeat(_, ct), .. })
-                        if ct.anon_const_hir_id() == Some(hir_id) =>
-                    {
-                        Some(parent_did)
-                    }
-                    Node::TyPat(_) => Some(parent_did),
-                    // Field default values inherit the ADT's generics.
-                    Node::Field(_) => Some(parent_did),
-                    _ => None,
-                }
+                // Default to no generic parameters for other kinds of anon consts
+                ty::AnonConstKind::NonTypeSystem => None,
             }
         }
         Node::ConstBlock(_)

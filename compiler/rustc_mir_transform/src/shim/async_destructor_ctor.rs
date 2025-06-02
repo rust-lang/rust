@@ -6,7 +6,7 @@ use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Local, LocalDecl, MirSource, Operand, Place, Rvalue,
     SourceInfo, Statement, StatementKind, Terminator, TerminatorKind,
 };
-use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, TypeVisitableExt};
 
 use super::*;
 use crate::patch::MirPatch;
@@ -121,9 +121,10 @@ pub(super) fn build_async_drop_shim<'tcx>(
         parent_args.as_coroutine().resume_ty(),
     )));
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
-    if !needs_async_drop {
+    if !needs_async_drop || drop_ty.references_error() {
         // Returning noop body for types without `need async drop`
-        // (or sync Drop in case of !`need async drop` && `need drop`)
+        // (or sync Drop in case of !`need async drop` && `need drop`).
+        // And also for error types.
         return body;
     }
 

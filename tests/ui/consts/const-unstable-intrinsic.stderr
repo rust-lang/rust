@@ -46,14 +46,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |         size_of_val(&x);
    |         ^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn const_main() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(local)]
 LL | const fn const_main() {
    |
 
@@ -63,14 +58,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |         min_align_of_val(&x);
    |         ^^^^^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn const_main() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(local)]
 LL | const fn const_main() {
    |
 
@@ -88,14 +78,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |         super::size_of_val(src);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL +     #[rustc_const_unstable(feature = "...", issue = "...")]
-LL |     const unsafe fn copy<T>(src: *const T, _dst: *mut T, _count: usize) {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL +     #[rustc_allow_const_fn_unstable(local)]
 LL |     const unsafe fn copy<T>(src: *const T, _dst: *mut T, _count: usize) {
    |
 

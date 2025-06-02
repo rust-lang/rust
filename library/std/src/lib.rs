@@ -276,12 +276,12 @@
 // tidy-alphabetical-start
 
 // stabilization was reverted after it hit beta
+#![cfg_attr(not(bootstrap), feature(autodiff))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(asm_experimental_arch)]
-#![feature(autodiff)]
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
@@ -325,6 +325,7 @@
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
 #![feature(type_alias_impl_trait)]
+#![feature(unsigned_signed_diff)]
 // tidy-alphabetical-end
 //
 // Library features (core):
@@ -334,6 +335,7 @@
 #![feature(bstr_internals)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
+#![feature(const_float_round_methods)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]
 #![feature(duration_constants)]
@@ -584,11 +586,13 @@ pub use alloc_crate::string;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::vec;
 
-#[unstable(feature = "f128", issue = "116909")]
+#[path = "num/f128.rs"]
 pub mod f128;
-#[unstable(feature = "f16", issue = "116909")]
+#[path = "num/f16.rs"]
 pub mod f16;
+#[path = "num/f32.rs"]
 pub mod f32;
+#[path = "num/f64.rs"]
 pub mod f64;
 
 #[macro_use]
@@ -635,12 +639,15 @@ pub mod simd {
     #[doc(inline)]
     pub use crate::std_float::StdFloat;
 }
+
 #[unstable(feature = "autodiff", issue = "124509")]
+#[cfg(not(bootstrap))]
 /// This module provides support for automatic differentiation.
 pub mod autodiff {
     /// This macro handles automatic differentiation.
-    pub use core::autodiff::autodiff;
+    pub use core::autodiff::{autodiff_forward, autodiff_reverse};
 }
+
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.
@@ -699,8 +706,8 @@ mod panicking;
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts, unsafe_op_in_unsafe_fn)]
 mod backtrace_rs;
 
-#[unstable(feature = "cfg_match", issue = "115585")]
-pub use core::cfg_match;
+#[unstable(feature = "cfg_select", issue = "115585")]
+pub use core::cfg_select;
 #[unstable(
     feature = "concat_bytes",
     issue = "87555",

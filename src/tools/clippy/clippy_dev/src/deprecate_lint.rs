@@ -1,6 +1,4 @@
-use crate::update_lints::{
-    DeprecatedLint, DeprecatedLints, Lint, find_lint_decls, generate_lint_files, read_deprecated_lints,
-};
+use crate::update_lints::{DeprecatedLint, Lint, find_lint_decls, generate_lint_files, read_deprecated_lints};
 use crate::utils::{UpdateMode, Version};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -16,27 +14,33 @@ use std::{fs, io};
 ///
 /// If a file path could not read from or written to
 pub fn deprecate(clippy_version: Version, name: &str, reason: &str) {
-    let prefixed_name = if name.starts_with("clippy::") {
-        name.to_owned()
-    } else {
-        format!("clippy::{name}")
-    };
-    let stripped_name = &prefixed_name[8..];
+    if let Some((prefix, _)) = name.split_once("::") {
+        panic!("`{name}` should not contain the `{prefix}` prefix");
+    }
 
     let mut lints = find_lint_decls();
-    let DeprecatedLints {
-        renamed: renamed_lints,
-        deprecated: mut deprecated_lints,
-        file: mut deprecated_file,
-        contents: mut deprecated_contents,
-        deprecated_end,
-        ..
-    } = read_deprecated_lints();
+    let (mut deprecated_lints, renamed_lints) = read_deprecated_lints();
 
-    let Some(lint) = lints.iter().find(|l| l.name == stripped_name) else {
+    let Some(lint) = lints.iter().find(|l| l.name == name) else {
         eprintln!("error: failed to find lint `{name}`");
         return;
     };
+
+    let prefixed_name = String::from_iter(["clippy::", name]);
+    match deprecated_lints.binary_search_by(|x| x.name.cmp(&prefixed_name)) {
+        Ok(_) => {
+            println!("`{name}` is already deprecated");
+            return;
+        },
+        Err(idx) => deprecated_lints.insert(
+            idx,
+            DeprecatedLint {
+                name: prefixed_name,
+                reason: reason.into(),
+                version: clippy_version.rust_display().to_string(),
+            },
+        ),
+    }
 
     let mod_path = {
         let mut mod_path = PathBuf::from(format!("clippy_lints/src/{}", lint.module));
@@ -48,24 +52,7 @@ pub fn deprecate(clippy_version: Version, name: &str, reason: &str) {
         mod_path
     };
 
-    if remove_lint_declaration(stripped_name, &mod_path, &mut lints).unwrap_or(false) {
-        deprecated_contents.insert_str(
-            deprecated_end as usize,
-            &format!(
-                "    #[clippy::version = \"{}\"]\n    (\"{}\", \"{}\"),\n",
-                clippy_version.rust_display(),
-                prefixed_name,
-                reason,
-            ),
-        );
-        deprecated_file.replace_contents(deprecated_contents.as_bytes());
-        drop(deprecated_file);
-
-        deprecated_lints.push(DeprecatedLint {
-            name: prefixed_name,
-            reason: reason.into(),
-        });
-
+    if remove_lint_declaration(name, &mod_path, &mut lints).unwrap_or(false) {
         generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
         println!("info: `{name}` has successfully been deprecated");
         println!("note: you must run `cargo uitest` to update the test results");

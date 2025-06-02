@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ check-pass
 // Make sure that we don't eagerly recover `async ::Bound` in edition 2015.
 

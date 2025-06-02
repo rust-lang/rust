@@ -39,7 +39,7 @@ LL |     Inner::concat_strs::<"a">::A
 help: if there were a trait named `Example` with associated type `concat_strs` implemented for `Inner<_>`, you could use the fully-qualified path
    |
 LL -     Inner::concat_strs::<"a">::A
-LL +     <Inner<_> as Example>::concat_strs::A
+LL +     <Inner<_> as Example>::concat_strs::<"a">::A
    |
 
 error: aborting due to 3 previous errors

@@ -255,7 +255,7 @@ impl LateLintPass<'_> for MapUnit {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(expr) = stmt.kind
             && !stmt.span.from_expansion()
-            && let Some(arglists) = method_chain_args(expr, &["map"])
+            && let Some(arglists) = method_chain_args(expr, &[sym::map])
         {
             lint_map_unit_fn(cx, stmt, expr, arglists[0]);
         }

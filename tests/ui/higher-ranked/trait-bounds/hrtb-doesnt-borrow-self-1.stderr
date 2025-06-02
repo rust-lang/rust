@@ -1,4 +1,4 @@
-error[E0599]: the method `filterx` exists for struct `Map<Repeat, {closure@hrtb-doesnt-borrow-self-1.rs:113:27}>`, but its trait bounds were not satisfied
+error[E0599]: the method `filterx` exists for struct `Map<Repeat, {closure@$DIR/hrtb-doesnt-borrow-self-1.rs:113:27: 113:34}>`, but its trait bounds were not satisfied
   --> $DIR/hrtb-doesnt-borrow-self-1.rs:114:22
    |
 LL | pub struct Map<S, F> {

@@ -15,6 +15,7 @@
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
+#![feature(macro_metavar_expr)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]

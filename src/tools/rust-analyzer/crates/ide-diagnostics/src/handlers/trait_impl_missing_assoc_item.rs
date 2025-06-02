@@ -29,6 +29,7 @@ pub(crate) fn trait_impl_missing_assoc_item(
             &|impl_| impl_.trait_().map(|t| t.syntax().text_range()),
         ),
     )
+    .stable()
 }
 
 #[cfg(test)]
