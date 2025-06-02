@@ -1,0 +1,8 @@
+error: `unstable_feature_bound` expects a list of feature names
+  --> $DIR/unstable-feature-bound.rs:14:1
+   |
+LL | #[unstable_feature_bound]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

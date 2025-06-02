@@ -1,8 +1,0 @@
-error: `allow_unstable_feature` expects a list of feature names
-  --> $DIR/unstable-feature.rs:3:1
-   |
-LL | #[allow_unstable_feature]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 1 previous error
-
