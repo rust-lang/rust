@@ -46,10 +46,10 @@ pub fn find_recent_config_change_ids(current_id: usize) -> &'static [ChangeInfo]
         // an empty list (it may be due to switching from a recent branch to an
         // older one); otherwise, return the full list (assuming the user provided
         // the incorrect change-id by accident).
-        if let Some(config) = CONFIG_CHANGE_HISTORY.iter().max_by_key(|config| config.change_id) {
-            if current_id > config.change_id {
-                return &[];
-            }
+        if let Some(config) = CONFIG_CHANGE_HISTORY.iter().max_by_key(|config| config.change_id)
+            && current_id > config.change_id
+        {
+            return &[];
         }
 
         CONFIG_CHANGE_HISTORY
@@ -410,5 +410,10 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         change_id: 140732,
         severity: ChangeSeverity::Info,
         summary: "`./x run` now supports running in-tree `rustfmt`, e.g., `./x run rustfmt -- --check /path/to/file.rs`.",
+    },
+    ChangeInfo {
+        change_id: 119899,
+        severity: ChangeSeverity::Warning,
+        summary: "Stage0 library no longer matches the in-tree library, which means stage1 compiler now uses the beta library.",
     },
 ];

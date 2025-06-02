@@ -120,14 +120,12 @@ fn main() {
     };
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-    if let Some(crate_name) = crate_name {
-        if let Some(target) = env::var_os("RUSTC_TIME") {
-            if target == "all"
-                || target.into_string().unwrap().split(',').any(|c| c.trim() == crate_name)
-            {
-                cmd.arg("-Ztime-passes");
-            }
-        }
+    if let Some(crate_name) = crate_name
+        && let Some(target) = env::var_os("RUSTC_TIME")
+        && (target == "all"
+            || target.into_string().unwrap().split(',').any(|c| c.trim() == crate_name))
+    {
+        cmd.arg("-Ztime-passes");
     }
 
     // Print backtrace in case of ICE
@@ -242,10 +240,10 @@ fn main() {
         }
     }
 
-    if env::var_os("RUSTC_BOLT_LINK_FLAGS").is_some() {
-        if let Some("rustc_driver") = crate_name {
-            cmd.arg("-Clink-args=-Wl,-q");
-        }
+    if env::var_os("RUSTC_BOLT_LINK_FLAGS").is_some()
+        && let Some("rustc_driver") = crate_name
+    {
+        cmd.arg("-Clink-args=-Wl,-q");
     }
 
     let is_test = args.iter().any(|a| a == "--test");
@@ -282,25 +280,24 @@ fn main() {
         (child, status)
     };
 
-    if env::var_os("RUSTC_PRINT_STEP_TIMINGS").is_some()
-        || env::var_os("RUSTC_PRINT_STEP_RUSAGE").is_some()
+    if (env::var_os("RUSTC_PRINT_STEP_TIMINGS").is_some()
+        || env::var_os("RUSTC_PRINT_STEP_RUSAGE").is_some())
+        && let Some(crate_name) = crate_name
     {
-        if let Some(crate_name) = crate_name {
-            let dur = start.elapsed();
-            // If the user requested resource usage data, then
-            // include that in addition to the timing output.
-            let rusage_data =
-                env::var_os("RUSTC_PRINT_STEP_RUSAGE").and_then(|_| format_rusage_data(child));
-            eprintln!(
-                "[RUSTC-TIMING] {} test:{} {}.{:03}{}{}",
-                crate_name,
-                is_test,
-                dur.as_secs(),
-                dur.subsec_millis(),
-                if rusage_data.is_some() { " " } else { "" },
-                rusage_data.unwrap_or_default(),
-            );
-        }
+        let dur = start.elapsed();
+        // If the user requested resource usage data, then
+        // include that in addition to the timing output.
+        let rusage_data =
+            env::var_os("RUSTC_PRINT_STEP_RUSAGE").and_then(|_| format_rusage_data(child));
+        eprintln!(
+            "[RUSTC-TIMING] {} test:{} {}.{:03}{}{}",
+            crate_name,
+            is_test,
+            dur.as_secs(),
+            dur.subsec_millis(),
+            if rusage_data.is_some() { " " } else { "" },
+            rusage_data.unwrap_or_default(),
+        );
     }
 
     if status.success() {
