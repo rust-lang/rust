@@ -411,6 +411,7 @@ impl SourceToDefCtx<'_, '_> {
             .map(|&(attr_id, call_id, ref ids)| (attr_id, call_id, &**ids))
     }
 
+    // FIXME: Make this more fine grained! This should be a `adt_has_derives`!
     pub(super) fn file_of_adt_has_derives(&mut self, adt: InFile<&ast::Adt>) -> bool {
         self.dyn_map(adt).as_ref().is_some_and(|map| !map[keys::DERIVE_MACRO_CALL].is_empty())
     }
