@@ -136,5 +136,17 @@ LL +         acc += elem;
 LL +     }
    |
 
-error: aborting due to 8 previous errors
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:135:9
+   |
+LL |         rows.iter().for_each(|x| _ = v.push(x));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in rows.iter() { _ = v.push(x) }`
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_fixable.rs:142:9
+   |
+LL |         rows.iter().for_each(|x| do_something(x, 1u8));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in rows.iter() { do_something(x, 1u8); }`
+
+error: aborting due to 10 previous errors
 

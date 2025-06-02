@@ -162,9 +162,9 @@ pub fn summarize_and_print_changes(
 fn gather_stats(warnings: &[ClippyWarning]) -> (String, HashMap<&String, usize>) {
     // count lint type occurrences
     let mut counter: HashMap<&String, usize> = HashMap::new();
-    warnings
-        .iter()
-        .for_each(|wrn| *counter.entry(&wrn.name).or_insert(0) += 1);
+    for wrn in warnings {
+        *counter.entry(&wrn.name).or_insert(0) += 1;
+    }
 
     // collect into a tupled list for sorting
     let mut stats: Vec<(&&String, &usize)> = counter.iter().collect();

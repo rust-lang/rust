@@ -251,3 +251,25 @@ fn two_bindings(v: Vec<(u8, u8)>) -> Option<u8> {
 }
 
 fn main() {}
+
+mod issue14826 {
+    fn adjust_fixable(needle: &str) -> Option<&'static str> {
+        for candidate in &["foo", "bar"] {
+            //~^ manual_find
+            if candidate.eq_ignore_ascii_case(needle) {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+
+    fn adjust_unfixable(needle: &str) -> Option<*const str> {
+        for &candidate in &["foo", "bar"] {
+            //~^ manual_find
+            if candidate.eq_ignore_ascii_case(needle) {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+}
