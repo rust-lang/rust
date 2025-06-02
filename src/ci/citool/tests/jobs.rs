@@ -51,6 +51,8 @@ fn get_matrix(event_name: &str, commit_msg: &str, branch_ref: &str) -> String {
         .env("GITHUB_EVENT_NAME", event_name)
         .env("COMMIT_MESSAGE", commit_msg)
         .env("GITHUB_REF", branch_ref)
+        .env("GITHUB_RUN_ID", "123")
+        .env("GITHUB_RUN_ATTEMPT", "1")
         .stdout(Stdio::piped())
         .output()
         .expect("Failed to execute command");
