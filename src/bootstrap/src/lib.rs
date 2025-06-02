@@ -56,6 +56,7 @@ pub use utils::change_tracker::{
 pub use utils::helpers::PanicTracker;
 
 use crate::core::build_steps::vendor::VENDOR_DIR;
+use crate::utils::execution_context::ExecutionContext;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
@@ -2005,6 +2006,10 @@ to download LLVM rather than building it.
         let result = f(&mut stream);
         stream.reset().unwrap();
         result
+    }
+
+    pub fn context(&self) -> &ExecutionContext {
+        &self.config.execution_context
     }
 }
 
