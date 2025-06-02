@@ -3,7 +3,6 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
 use xz2::bufread::XzDecoder;
@@ -16,14 +15,7 @@ use crate::{Config, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
-/// `Config::try_run` wrapper for this module to avoid warnings on `try_run`, since we don't have access to a `builder` yet.
-fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
-    #[expect(deprecated)]
-    config.try_run(cmd)
-}
-
-fn extract_curl_version(out: &[u8]) -> semver::Version {
-    let out = String::from_utf8_lossy(out);
+fn extract_curl_version(out: String) -> semver::Version {
     // The output should look like this: "curl <major>.<minor>.<patch> ..."
     out.lines()
         .next()
@@ -32,16 +24,21 @@ fn extract_curl_version(out: &[u8]) -> semver::Version {
         .unwrap_or(semver::Version::new(1, 0, 0))
 }
 
-fn curl_version() -> semver::Version {
-    let mut curl = Command::new("curl");
-    curl.arg("-V");
-    let Ok(out) = curl.output() else { return semver::Version::new(1, 0, 0) };
-    let out = out.stdout;
-    extract_curl_version(&out)
-}
-
+#[allow(warnings)]
 /// Generic helpers that are useful anywhere in bootstrap.
 impl Config {
+    fn curl_version(&self) -> semver::Version {
+        let mut curl = command("curl");
+        curl.arg("-V");
+        let curl = curl.run_capture_stdout(self.context());
+        if curl.is_failure() {
+            return semver::Version::new(1, 0, 0);
+        }
+        let output = curl.stdout();
+        let out = output;
+        extract_curl_version(out)
+    }
+
     pub fn is_verbose(&self) -> bool {
         self.verbose > 0
     }
@@ -85,18 +82,13 @@ impl Config {
     /// on NixOS
     fn should_fix_bins_and_dylibs(&self) -> bool {
         let val = *SHOULD_FIX_BINS_AND_DYLIBS.get_or_init(|| {
-            match Command::new("uname").arg("-s").stderr(Stdio::inherit()).output() {
-                Err(_) => return false,
-                Ok(output) if !output.status.success() => return false,
-                Ok(output) => {
-                    let mut os_name = output.stdout;
-                    if os_name.last() == Some(&b'\n') {
-                        os_name.pop();
-                    }
-                    if os_name != b"Linux" {
-                        return false;
-                    }
-                }
+            let uname = command("uname").arg("-s").run_capture_stdout(self.context());
+            if uname.is_failure() {
+                return false;
+            }
+            let output = uname.stdout();
+            if output.starts_with("Linux") {
+                return false;
             }
 
             // If the user has asked binaries to be patched for Nix, then
@@ -173,27 +165,23 @@ impl Config {
                 ];
             }
             ";
-            nix_build_succeeded = try_run(
-                self,
-                Command::new("nix-build").args([
-                    Path::new("-E"),
-                    Path::new(NIX_EXPR),
-                    Path::new("-o"),
-                    &nix_deps_dir,
-                ]),
-            )
-            .is_ok();
+            nix_build_succeeded = command("nix-build")
+                .allow_failure()
+                .args([Path::new("-E"), Path::new(NIX_EXPR), Path::new("-o"), &nix_deps_dir])
+                .run_capture(self.context())
+                .is_success();
             nix_deps_dir
         });
         if !nix_build_succeeded {
             return;
         }
 
-        let mut patchelf = Command::new(nix_deps_dir.join("bin/patchelf"));
-        patchelf.args(&[
+        let mut patchelf = command(nix_deps_dir.join("bin/patcheld"));
+        let patchelf = patchelf.args(&[
             OsString::from("--add-rpath"),
             OsString::from(t!(fs::canonicalize(nix_deps_dir)).join("lib")),
         ]);
+
         if !path_is_dylib(fname) {
             // Finally, set the correct .interp for binaries
             let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
@@ -201,7 +189,7 @@ impl Config {
             patchelf.args(["--set-interpreter", dynamic_linker.trim_end()]);
         }
 
-        let _ = try_run(self, patchelf.arg(fname));
+        let _ = patchelf.run_capture(&self.context());
     }
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
@@ -267,7 +255,7 @@ impl Config {
             curl.arg("--progress-bar");
         }
         // --retry-all-errors was added in 7.71.0, don't use it if curl is old.
-        if curl_version() >= semver::Version::new(7, 71, 0) {
+        if self.curl_version() >= semver::Version::new(7, 71, 0) {
             curl.arg("--retry-all-errors");
         }
         curl.arg(url);
@@ -275,7 +263,7 @@ impl Config {
             if self.build.contains("windows-msvc") {
                 eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {
-                    if try_run(self, Command::new("PowerShell.exe").args([
+                    let powershell = command("PowerShell.exe").allow_failure().args([
                         "/nologo",
                         "-Command",
                         "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
@@ -283,7 +271,9 @@ impl Config {
                             "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
                             url, tempfile.to_str().expect("invalid UTF-8 not supported with powershell downloads"),
                         ),
-                    ])).is_err() {
+                    ]).run_capture_stdout(&self.context());
+
+                    if powershell.is_failure() {
                         return;
                     }
                     eprintln!("\nspurious failure, trying again");
