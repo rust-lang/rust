@@ -1934,12 +1934,26 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
         if let NameBindingKind::Import { import, binding } = used_binding.kind {
             if let ImportKind::MacroUse { warn_private: true } = import.kind {
-                self.lint_buffer().buffer_lint(
-                    PRIVATE_MACRO_USE,
-                    import.root_id,
-                    ident.span,
-                    BuiltinLintDiag::MacroIsPrivate(ident),
-                );
+                // Do not report the lint if the macro name resolves in stdlib prelude
+                // even without the problematic `macro_use` import.
+                let found_in_stdlib_prelude = self.prelude.is_some_and(|prelude| {
+                    self.maybe_resolve_ident_in_module(
+                        ModuleOrUniformRoot::Module(prelude),
+                        ident,
+                        MacroNS,
+                        &ParentScope::module(self.empty_module, self),
+                        None,
+                    )
+                    .is_ok()
+                });
+                if !found_in_stdlib_prelude {
+                    self.lint_buffer().buffer_lint(
+                        PRIVATE_MACRO_USE,
+                        import.root_id,
+                        ident.span,
+                        BuiltinLintDiag::MacroIsPrivate(ident),
+                    );
+                }
             }
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
