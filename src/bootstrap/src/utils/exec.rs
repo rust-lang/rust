@@ -332,16 +332,19 @@ impl Default for CommandOutput {
 
 /// Helper trait to format both Command and BootstrapCommand as a short execution line,
 /// without all the other details (e.g. environment variables).
+#[cfg(feature = "tracing")]
 pub trait FormatShortCmd {
     fn format_short_cmd(&self) -> String;
 }
 
+#[cfg(feature = "tracing")]
 impl FormatShortCmd for BootstrapCommand {
     fn format_short_cmd(&self) -> String {
         self.command.format_short_cmd()
     }
 }
 
+#[cfg(feature = "tracing")]
 impl FormatShortCmd for Command {
     fn format_short_cmd(&self) -> String {
         let program = Path::new(self.get_program());

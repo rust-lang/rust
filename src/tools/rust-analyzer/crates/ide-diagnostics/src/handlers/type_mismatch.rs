@@ -53,8 +53,8 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
         display_range,
     )
     .with_fixes(fixes(ctx, d));
-    if diag.fixes.is_none() {
-        diag.experimental = true;
+    if diag.fixes.is_some() {
+        diag.experimental = false;
     }
     diag
 }
@@ -1241,6 +1241,20 @@ fn foo(v: &Enum) {
     let <() as Trait>::Assoc::Variant = v;
 }
     "#,
+        );
+    }
+
+    #[test]
+    fn regression_19844() {
+        check_diagnostics(
+            r#"
+fn main() {
+    struct S {}
+    enum E { V() }
+    let E::V() = &S {};
+     // ^^^^^^ error: expected S, found E
+}
+"#,
         );
     }
 }

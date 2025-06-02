@@ -16,6 +16,7 @@ declare_lint_pass! {
     /// that are used by other parts of the compiler.
     HardwiredLints => [
         // tidy-alphabetical-start
+        AARCH64_SOFTFLOAT_NEON,
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         AMBIGUOUS_GLOB_IMPORTS,
@@ -78,7 +79,6 @@ declare_lint_pass! {
         PRIVATE_BOUNDS,
         PRIVATE_INTERFACES,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-        PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_IMPORTS,
         REDUNDANT_LIFETIMES,
@@ -103,6 +103,7 @@ declare_lint_pass! {
         TAIL_EXPR_DROP_ORDER,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
+        TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
         TRIVIAL_CASTS,
         TRIVIAL_NUMERIC_CASTS,
         TYVAR_BEHIND_RAW_POINTER,
@@ -117,7 +118,6 @@ declare_lint_pass! {
         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
         UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
-        UNNECESSARY_TRANSMUTES,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         UNSAFE_ATTR_OUTSIDE_UNSAFE,
@@ -3783,7 +3783,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    #[allow(text_direction_codepoint_in_literal)]
     /// The `text_direction_codepoint_in_comment` lint detects Unicode codepoints in comments that
     /// change the visual representation of text on screen in a way that does not correspond to
     /// their on memory representation.
@@ -3793,7 +3792,7 @@ declare_lint! {
     /// ```rust,compile_fail
     /// #![deny(text_direction_codepoint_in_comment)]
     /// fn main() {
-    ///     println!("{:?}"); // '‮');
+    #[doc = "    println!(\"{:?}\"); // '\u{202E}');"]
     /// }
     /// ```
     ///
@@ -3808,7 +3807,43 @@ declare_lint! {
     /// their use.
     pub TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
     Deny,
-    "invisible directionality-changing codepoints in comment"
+    "invisible directionality-changing codepoints in comment",
+    crate_level_only
+}
+
+declare_lint! {
+    /// The `text_direction_codepoint_in_literal` lint detects Unicode codepoints that change the
+    /// visual representation of text on screen in a way that does not correspond to their on
+    /// memory representation.
+    ///
+    /// ### Explanation
+    ///
+    /// The unicode characters `\u{202A}`, `\u{202B}`, `\u{202D}`, `\u{202E}`, `\u{2066}`,
+    /// `\u{2067}`, `\u{2068}`, `\u{202C}` and `\u{2069}` make the flow of text on screen change
+    /// its direction on software that supports these codepoints. This makes the text "abc" display
+    /// as "cba" on screen. By leveraging software that supports these, people can write specially
+    /// crafted literals that make the surrounding code seem like it's performing one action, when
+    /// in reality it is performing another. Because of this, we proactively lint against their
+    /// presence to avoid surprises.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(text_direction_codepoint_in_literal)]
+    /// fn main() {
+    // ` - convince tidy that backticks match
+    #[doc = "    println!(\"{:?}\", '\u{202E}');"]
+    // `
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    pub TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
+    Deny,
+    "detect special Unicode codepoints that affect the visual representation of text on screen, \
+     changing the direction in which text flows",
+    crate_level_only
 }
 
 declare_lint! {
@@ -4851,64 +4886,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `ptr_to_integer_transmute_in_consts` lint detects pointer to integer
-    /// transmute in const functions and associated constants.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// const fn foo(ptr: *const u8) -> usize {
-    ///    unsafe {
-    ///        std::mem::transmute::<*const u8, usize>(ptr)
-    ///    }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Transmuting pointers to integers in a `const` context is undefined behavior.
-    /// Any attempt to use the resulting integer will abort const-evaluation.
-    ///
-    /// But sometimes the compiler might not emit an error for pointer to integer transmutes
-    /// inside const functions and associated consts because they are evaluated only when referenced.
-    /// Therefore, this lint serves as an extra layer of defense to prevent any undefined behavior
-    /// from compiling without any warnings or errors.
-    ///
-    /// See [std::mem::transmute] in the reference for more details.
-    ///
-    /// [std::mem::transmute]: https://doc.rust-lang.org/std/mem/fn.transmute.html
-    pub PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
-    Warn,
-    "detects pointer to integer transmutes in const functions and associated constants",
-}
-
-declare_lint! {
-    /// The `unnecessary_transmutes` lint detects transmutations that have safer alternatives.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// fn bytes_at_home(x: [u8; 4]) -> u32 {
-    ///   unsafe { std::mem::transmute(x) }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Using an explicit method is preferable over calls to
-    /// [`transmute`](https://doc.rust-lang.org/std/mem/fn.transmute.html) as
-    /// they more clearly communicate the intent, are easier to review, and
-    /// are less likely to accidentally result in unsoundness.
-    pub UNNECESSARY_TRANSMUTES,
-    Warn,
-    "detects transmutes that are shadowed by std methods"
-}
-
-declare_lint! {
     /// The `tail_expr_drop_order` lint looks for those values generated at the tail expression location,
     /// that runs a custom `Drop` destructor.
     /// Some of them may be dropped earlier in Edition 2024 that they used to in Edition 2021 and prior.
@@ -5043,14 +5020,14 @@ declare_lint! {
     ///
     /// ```text
     /// error: this function function definition is affected by the wasm ABI transition: it passes an argument of non-scalar type `MyType`
-    /// --> $DIR/wasm_c_abi_transition.rs:17:1
-    ///  |
-    ///  | pub extern "C" fn my_fun(_x: MyType) {}
-    ///  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ///  |
-    ///  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///  = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
-    ///  = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
+    ///   --> $DIR/wasm_c_abi_transition.rs:17:1
+    ///    |
+    ///    | pub extern "C" fn my_fun(_x: MyType) {}
+    ///    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///    |
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+    ///    = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
     /// ```
     ///
     /// ### Explanation
@@ -5065,5 +5042,46 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #138762 <https://github.com/rust-lang/rust/issues/138762>",
+    };
+}
+
+declare_lint! {
+    /// The `aarch64_softfloat_neon` lint detects usage of `#[target_feature(enable = "neon")]` on
+    /// softfloat aarch64 targets. Enabling this target feature causes LLVM to alter the ABI of
+    /// function calls, making this attribute unsound to use.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs aarch64-unknown-none-softfloat)
+    /// #[target_feature(enable = "neon")]
+    /// fn with_neon() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: enabling the `neon` target feature on the current target is unsound due to ABI issues
+    ///   --> $DIR/abi-incompatible-target-feature-attribute-fcw.rs:11:18
+    ///    |
+    ///    | #[target_feature(enable = "neon")]
+    ///    |                  ^^^^^^^^^^^^^^^
+    ///    |
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #134375 <https://github.com/rust-lang/rust/issues/134375>
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// If a function like `with_neon` above ends up containing calls to LLVM builtins, those will
+    /// not use the correct ABI. This is caused by a lack of support in LLVM for mixing code with
+    /// and without the `neon` target feature. The target feature should never have been stabilized
+    /// on this target due to this issue, but the problem was not known at the time of
+    /// stabilization.
+    pub AARCH64_SOFTFLOAT_NEON,
+    Warn,
+    "detects code that could be affected by ABI issues on aarch64 softfloat targets",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #134375 <https://github.com/rust-lang/rust/issues/134375>",
     };
 }

@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 
@@ -258,4 +258,17 @@ impl<'tcx> Const<'tcx> {
     pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
         TypeWalker::new(self.into())
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable, HashStable)]
+pub enum AnonConstKind {
+    /// `feature(generic_const_exprs)` anon consts are allowed to use arbitrary generic parameters in scope
+    GCE,
+    /// stable `min_const_generics` anon consts are not allowed to use any generic parameters
+    MCG,
+    /// anon consts used as the length of a repeat expr are syntactically allowed to use generic parameters
+    /// but must not depend on the actual instantiation. See #76200 for more information
+    RepeatExprCount,
+    /// anon consts outside of the type system, e.g. enum discriminants
+    NonTypeSystem,
 }

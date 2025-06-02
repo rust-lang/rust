@@ -168,7 +168,7 @@ fn rewrite_as_cstr(cx: &LateContext<'_>, span: Span) -> Option<String> {
 
 fn get_cast_target<'tcx>(e: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match &e.kind {
-        ExprKind::MethodCall(method, receiver, [], _) if method.ident.as_str() == "cast" => Some(receiver),
+        ExprKind::MethodCall(method, receiver, [], _) if method.ident.name == sym::cast => Some(receiver),
         ExprKind::Cast(expr, _) => Some(expr),
         _ => None,
     }

@@ -37,13 +37,6 @@ help: alternatively, consider constraining `dyn_incompatible` so it does not app
 LL |     fn dyn_incompatible() -> Self where Self: Sized;
    |                                   +++++++++++++++++
 
-error[E0599]: no function or associated item named `nonexistent` found for trait object `dyn Trait` in the current scope
-  --> $DIR/issue-58734.rs:20:12
-   |
-LL |     Trait::nonexistent(());
-   |            ^^^^^^^^^^^ function or associated item not found in `dyn Trait`
+error: aborting due to 1 previous error; 1 warning emitted
 
-error: aborting due to 2 previous errors; 1 warning emitted
-
-Some errors have detailed explanations: E0038, E0599.
-For more information about an error, try `rustc --explain E0038`.
+For more information about this error, try `rustc --explain E0038`.

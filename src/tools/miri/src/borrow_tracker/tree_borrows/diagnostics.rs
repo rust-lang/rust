@@ -504,7 +504,7 @@ impl DisplayFmt {
         if let Some(perm) = perm {
             format!(
                 "{ac}{st}",
-                ac = if perm.is_initialized() { self.accessed.yes } else { self.accessed.no },
+                ac = if perm.is_accessed() { self.accessed.yes } else { self.accessed.no },
                 st = perm.permission().short_name(),
             )
         } else {

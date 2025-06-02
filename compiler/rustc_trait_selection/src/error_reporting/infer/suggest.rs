@@ -664,8 +664,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let Some(found) = exp_found.found.args.get(1) else {
             return;
         };
-        let expected = expected.unpack();
-        let found = found.unpack();
+        let expected = expected.kind();
+        let found = found.kind();
         // 3. Extract the tuple type from Fn trait and suggest the change.
         if let GenericArgKind::Type(expected) = expected
             && let GenericArgKind::Type(found) = found

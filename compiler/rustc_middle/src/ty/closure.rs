@@ -117,6 +117,10 @@ impl<'tcx> CapturedPlace<'tcx> {
                     }
                 },
 
+                HirProjectionKind::UnwrapUnsafeBinder => {
+                    write!(&mut symbol, "__unwrap").unwrap();
+                }
+
                 // Ignore derefs for now, as they are likely caused by
                 // autoderefs that don't appear in the original code.
                 HirProjectionKind::Deref => {}

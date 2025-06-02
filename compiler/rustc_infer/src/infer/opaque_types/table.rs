@@ -24,6 +24,12 @@ pub struct OpaqueTypeStorageEntries {
     duplicate_entries: usize,
 }
 
+impl rustc_type_ir::inherent::OpaqueTypeStorageEntries for OpaqueTypeStorageEntries {
+    fn needs_reevaluation(self, canonicalized: usize) -> bool {
+        self.opaque_types != canonicalized
+    }
+}
+
 impl<'tcx> OpaqueTypeStorage<'tcx> {
     #[instrument(level = "debug")]
     pub(crate) fn remove(

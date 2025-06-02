@@ -21,6 +21,7 @@ pub(crate) fn generic_args_prohibited(
         describe_reason(d.reason),
         d.args.map(Into::into),
     )
+    .stable()
     .with_fixes(fixes(ctx, d))
 }
 

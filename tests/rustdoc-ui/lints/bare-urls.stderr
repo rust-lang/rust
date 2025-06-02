@@ -207,5 +207,41 @@ help: use an automatic link instead
 LL | /// hey! <https://somewhere.com/a?hello=12&bye=11#xyz>
    |          +                                           +
 
-error: aborting due to 17 previous errors
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:41:26
+   |
+LL | #[doc = "here's a thing: https://example.com/"]
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | #[doc = "here's a thing: <https://example.com/>"]
+   |                          +                    +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:45:5
+   |
+LL | /// https://example.com/sugar
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// <https://example.com/sugar>
+   |     +                         +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:47:10
+   |
+LL | #[doc = "https://example.com/raw"]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | #[doc = "<https://example.com/raw>"]
+   |          +                       +
+
+error: aborting due to 20 previous errors
 

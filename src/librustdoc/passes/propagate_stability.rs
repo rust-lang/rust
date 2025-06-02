@@ -6,7 +6,7 @@
 //! [`core::error`] module is marked as stable since 1.81.0, so we want to show
 //! [`core::error::Error`] as stable since 1.81.0 as well.
 
-use rustc_attr_parsing::{Stability, StabilityLevel};
+use rustc_attr_data_structures::{Stability, StabilityLevel};
 use rustc_hir::def_id::CRATE_DEF_ID;
 
 use crate::clean::{Crate, Item, ItemId, ItemKind};

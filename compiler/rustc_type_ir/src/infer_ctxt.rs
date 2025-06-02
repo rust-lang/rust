@@ -1,11 +1,10 @@
-use std::fmt::Debug;
-
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::fold::TypeFoldable;
+use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::{self as ty, Interner};
@@ -168,6 +167,8 @@ pub trait InferCtxtLike: Sized {
         vid: ty::RegionVid,
     ) -> <Self::Interner as Interner>::Region;
 
+    fn is_changed_arg(&self, arg: <Self::Interner as Interner>::GenericArg) -> bool;
+
     fn next_region_infer(&self) -> <Self::Interner as Interner>::Region;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
     fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;
@@ -248,7 +249,7 @@ pub trait InferCtxtLike: Sized {
         span: <Self::Interner as Interner>::Span,
     );
 
-    type OpaqueTypeStorageEntries: Debug + Copy + Default;
+    type OpaqueTypeStorageEntries: OpaqueTypeStorageEntries;
     fn opaque_types_storage_num_entries(&self) -> Self::OpaqueTypeStorageEntries;
     fn clone_opaque_types_lookup_table(
         &self,

@@ -1,6 +1,7 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
+use std::cell::Cell;
 use std::ptr;
 
 // Test various aliasing-model-related things.
@@ -22,6 +23,7 @@ fn main() {
     not_unpin_not_protected();
     write_does_not_invalidate_all_aliases();
     box_into_raw_allows_interior_mutable_alias();
+    cell_inside_struct()
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -259,7 +261,7 @@ fn write_does_not_invalidate_all_aliases() {
 
 fn box_into_raw_allows_interior_mutable_alias() {
     unsafe {
-        let b = Box::new(std::cell::Cell::new(42));
+        let b = Box::new(Cell::new(42));
         let raw = Box::into_raw(b);
         let c = &*raw;
         let d = raw.cast::<i32>(); // bypassing `Cell` -- only okay in Miri tests
@@ -268,4 +270,20 @@ fn box_into_raw_allows_interior_mutable_alias() {
         c.set(2);
         drop(Box::from_raw(raw));
     }
+}
+
+fn cell_inside_struct() {
+    struct Foo {
+        field1: u32,
+        field2: Cell<u32>,
+    }
+
+    let mut root = Foo { field1: 42, field2: Cell::new(88) };
+    let a = &mut root;
+
+    // Writing to `field2`, which is interior mutable, should be allowed.
+    (*a).field2.set(10);
+
+    // Writing to `field1`, which is reserved, should also be allowed.
+    (*a).field1 = 88;
 }

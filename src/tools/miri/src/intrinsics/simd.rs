@@ -634,7 +634,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let index_len = index.len();
 
                 assert_eq!(left_len, right_len);
-                assert_eq!(index_len as u64, dest_len);
+                assert_eq!(u64::try_from(index_len).unwrap(), dest_len);
 
                 for i in 0..dest_len {
                     let src_index: u64 =

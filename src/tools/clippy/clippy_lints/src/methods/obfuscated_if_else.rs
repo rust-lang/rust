@@ -1,13 +1,14 @@
 use super::OBFUSCATED_IF_ELSE;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
-use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
+use clippy_utils::{get_parent_expr, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
 use rustc_lint::LateContext;
+use rustc_span::Symbol;
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -15,8 +16,8 @@ pub(super) fn check<'tcx>(
     then_recv: &'tcx hir::Expr<'_>,
     then_arg: &'tcx hir::Expr<'_>,
     unwrap_arg: Option<&'tcx hir::Expr<'_>>,
-    then_method_name: &str,
-    unwrap_method_name: &str,
+    then_method_name: Symbol,
+    unwrap_method_name: Symbol,
 ) {
     let recv_ty = cx.typeck_results().expr_ty(then_recv);
 
@@ -31,25 +32,25 @@ pub(super) fn check<'tcx>(
         };
 
         let if_then = match then_method_name {
-            "then" if let ExprKind::Closure(closure) = then_arg.kind => {
+            sym::then if let ExprKind::Closure(closure) = then_arg.kind => {
                 let body = cx.tcx.hir_body(closure.body);
                 snippet_with_applicability(cx, body.value.span, "..", &mut applicability)
             },
-            "then_some" => snippet_with_applicability(cx, then_arg.span, "..", &mut applicability),
+            sym::then_some => snippet_with_applicability(cx, then_arg.span, "..", &mut applicability),
             _ => return,
         };
 
         // FIXME: Add `unwrap_or_else` and `unwrap_or_default` symbol
         let els = match unwrap_method_name {
-            "unwrap_or" => snippet_with_applicability(cx, unwrap_arg.unwrap().span, "..", &mut applicability),
-            "unwrap_or_else" if let ExprKind::Closure(closure) = unwrap_arg.unwrap().kind => {
+            sym::unwrap_or => snippet_with_applicability(cx, unwrap_arg.unwrap().span, "..", &mut applicability),
+            sym::unwrap_or_else if let ExprKind::Closure(closure) = unwrap_arg.unwrap().kind => {
                 let body = cx.tcx.hir_body(closure.body);
                 snippet_with_applicability(cx, body.value.span, "..", &mut applicability)
             },
-            "unwrap_or_else" if let ExprKind::Path(_) = unwrap_arg.unwrap().kind => {
+            sym::unwrap_or_else if let ExprKind::Path(_) = unwrap_arg.unwrap().kind => {
                 snippet_with_applicability(cx, unwrap_arg.unwrap().span, "_", &mut applicability) + "()"
             },
-            "unwrap_or_default" => "Default::default()".into(),
+            sym::unwrap_or_default => "Default::default()".into(),
             _ => return,
         };
 

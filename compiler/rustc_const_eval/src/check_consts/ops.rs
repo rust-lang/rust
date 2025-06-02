@@ -281,7 +281,7 @@ fn build_error_for_const_call<'tcx>(
                 let mut sugg = None;
 
                 if ccx.tcx.is_lang_item(trait_id, LangItem::PartialEq) {
-                    match (args[0].unpack(), args[1].unpack()) {
+                    match (args[0].kind(), args[1].kind()) {
                         (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
                             if self_ty == rhs_ty
                                 && self_ty.is_ref()

@@ -1,9 +1,9 @@
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty;
 use rustc_span::Span;
-use rustc_target::callconv::FnAbi;
 
 use super::BackendTypes;
 use crate::mir::operand::OperandRef;
+use crate::mir::place::PlaceRef;
 
 pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
     /// Remember to add all intrinsics here, in `compiler/rustc_hir_analysis/src/check/mod.rs`,
@@ -14,9 +14,8 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
     fn codegen_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, Self::Value>],
-        llresult: Self::Value,
+        result: PlaceRef<'tcx, Self::Value>,
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>>;
 

@@ -14,6 +14,7 @@ pub(crate) fn non_exhaustive_let(
         format!("non-exhaustive pattern: {}", d.uncovered_patterns),
         d.pat.map(Into::into),
     )
+    .stable()
 }
 
 #[cfg(test)]
@@ -103,6 +104,31 @@ fn test(x: Result<i32, &'static !>) {
       //^^^^^^ error: non-exhaustive pattern: `Err(_)` not covered
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn empty_patterns_normalize() {
+        check_diagnostics(
+            r#"
+enum Infallible {}
+
+trait Foo {
+    type Assoc;
+}
+enum Enum<T: Foo> {
+    A,
+    B(T::Assoc),
+}
+
+impl Foo for () {
+    type Assoc = Infallible;
+}
+
+fn foo(v: Enum<()>) {
+    let Enum::A = v;
+}
+        "#,
         );
     }
 }

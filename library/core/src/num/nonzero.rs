@@ -388,6 +388,7 @@ where
     #[rustc_const_stable(feature = "nonzero", since = "1.28.0")]
     #[must_use]
     #[inline]
+    #[track_caller]
     pub const unsafe fn new_unchecked(n: T) -> Self {
         match Self::new(n) {
             Some(n) => n,
@@ -428,6 +429,7 @@ where
     #[unstable(feature = "nonzero_from_mut", issue = "106290")]
     #[must_use]
     #[inline]
+    #[track_caller]
     pub unsafe fn from_mut_unchecked(n: &mut T) -> &mut Self {
         match Self::from_mut(n) {
             Some(n) => n,

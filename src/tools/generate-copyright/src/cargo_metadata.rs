@@ -46,11 +46,12 @@ pub struct PackageMetadata {
 /// covered it already.
 pub fn get_metadata_and_notices(
     cargo: &Path,
+    cargo_home_path: &Path,
     vendor_path: &Path,
     root_path: &Path,
     manifest_paths: &[PathBuf],
 ) -> Result<BTreeMap<Package, PackageMetadata>, Error> {
-    let mut output = get_metadata(cargo, root_path, manifest_paths)?;
+    let mut output = get_metadata(cargo, cargo_home_path, root_path, manifest_paths)?;
 
     // Now for each dependency we found, go and grab any important looking files
     for (package, metadata) in output.iter_mut() {
@@ -66,6 +67,7 @@ pub fn get_metadata_and_notices(
 /// assume `reuse` has covered it already.
 pub fn get_metadata(
     cargo: &Path,
+    cargo_home_path: &Path,
     root_path: &Path,
     manifest_paths: &[PathBuf],
 ) -> Result<BTreeMap<Package, PackageMetadata>, Error> {
@@ -81,8 +83,11 @@ pub fn get_metadata(
             .manifest_path(manifest_path)
             .exec()?;
         for package in metadata.packages {
-            let manifest_path = package.manifest_path.as_path();
-            if manifest_path.starts_with(root_path) {
+            let package_manifest_path = package.manifest_path.as_path();
+
+            if package_manifest_path.starts_with(root_path)
+                && !package_manifest_path.starts_with(cargo_home_path)
+            {
                 // it's an in-tree dependency and reuse covers it
                 continue;
             }

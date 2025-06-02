@@ -32,6 +32,7 @@ pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet}
 macro_rules! impl_intern_key {
     ($id:ident, $loc:ident) => {
         #[salsa_macros::interned(no_lifetime)]
+        #[derive(PartialOrd, Ord)]
         pub struct $id {
             pub loc: $loc,
         }
@@ -165,6 +166,7 @@ impl Files {
 }
 
 #[salsa_macros::interned(no_lifetime, debug, constructor=from_span)]
+#[derive(PartialOrd, Ord)]
 pub struct EditionedFileId {
     pub editioned_file_id: span::EditionedFileId,
 }
@@ -356,7 +358,7 @@ fn parse(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Parse<ast::SourceFil
 }
 
 fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<&[SyntaxError]> {
-    #[salsa_macros::tracked(return_ref)]
+    #[salsa_macros::tracked(returns(ref))]
     fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<Box<[SyntaxError]>> {
         let errors = db.parse(file_id).errors();
         match &*errors {

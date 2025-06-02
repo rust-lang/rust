@@ -135,7 +135,7 @@ pub fn iter_exported_symbols<'tcx>(
             let codegen_attrs = tcx.codegen_fn_attrs(def_id);
             codegen_attrs.contains_extern_indicator()
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         };
         if exported {
@@ -470,7 +470,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             caller_fn_abi,
             &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
             /*with_caller_location*/ false,
-            &dest,
+            &dest.into(),
             stack_pop,
         )
     }
@@ -1410,5 +1410,28 @@ pub(crate) fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
         // If the target buffer was not large enough to hold the data, the return value is the buffer size, in characters,
         // required to hold the string and its terminating null character.
         u32::try_from(len).unwrap()
+    }
+}
+
+/// We don't support 16-bit systems, so let's have ergonomic conversion from `u32` to `usize`.
+pub trait ToUsize {
+    fn to_usize(self) -> usize;
+}
+
+impl ToUsize for u32 {
+    fn to_usize(self) -> usize {
+        self.try_into().unwrap()
+    }
+}
+
+/// Similarly, a maximum address size of `u64` is assumed widely here, so let's have ergonomic
+/// converion from `usize` to `u64`.
+pub trait ToU64 {
+    fn to_u64(self) -> u64;
+}
+
+impl ToU64 for usize {
+    fn to_u64(self) -> u64 {
+        self.try_into().unwrap()
     }
 }

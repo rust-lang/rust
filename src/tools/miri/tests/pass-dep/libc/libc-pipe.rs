@@ -15,6 +15,8 @@ fn main() {
     ))]
     // `pipe2` only exists in some specific os.
     test_pipe2();
+    test_pipe_setfl_getfl();
+    test_pipe_fcntl_threaded();
 }
 
 fn test_pipe() {
@@ -126,4 +128,69 @@ fn test_pipe2() {
     let mut fds = [-1, -1];
     let res = unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_NONBLOCK) };
     assert_eq!(res, 0);
+}
+
+/// Basic test for pipe fcntl's F_SETFL and F_GETFL flag.
+fn test_pipe_setfl_getfl() {
+    // Initialise pipe fds.
+    let mut fds = [-1, -1];
+    let res = unsafe { libc::pipe(fds.as_mut_ptr()) };
+    assert_eq!(res, 0);
+
+    // Both sides should either have O_RONLY or O_WRONLY.
+    let res = unsafe { libc::fcntl(fds[0], libc::F_GETFL) };
+    assert_eq!(res, libc::O_RDONLY);
+    let res = unsafe { libc::fcntl(fds[1], libc::F_GETFL) };
+    assert_eq!(res, libc::O_WRONLY);
+
+    // Add the O_NONBLOCK flag with F_SETFL.
+    let res = unsafe { libc::fcntl(fds[0], libc::F_SETFL, libc::O_NONBLOCK) };
+    assert_eq!(res, 0);
+
+    // Test if the O_NONBLOCK flag is successfully added.
+    let res = unsafe { libc::fcntl(fds[0], libc::F_GETFL) };
+    assert_eq!(res, libc::O_RDONLY | libc::O_NONBLOCK);
+
+    // The other side remains unchanged.
+    let res = unsafe { libc::fcntl(fds[1], libc::F_GETFL) };
+    assert_eq!(res, libc::O_WRONLY);
+
+    // Test if O_NONBLOCK flag can be unset.
+    let res = unsafe { libc::fcntl(fds[0], libc::F_SETFL, 0) };
+    assert_eq!(res, 0);
+    let res = unsafe { libc::fcntl(fds[0], libc::F_GETFL) };
+    assert_eq!(res, libc::O_RDONLY);
+}
+
+/// Test the behaviour of F_SETFL/F_GETFL when a fd is blocking.
+/// The expected execution is:
+/// 1. Main thread blocks on fds[0] `read`.
+/// 2. Thread 1 sets O_NONBLOCK flag on fds[0],
+///    checks the value of F_GETFL,
+///    then writes to fds[1] to unblock main thread's `read`.
+fn test_pipe_fcntl_threaded() {
+    let mut fds = [-1, -1];
+    let res = unsafe { libc::pipe(fds.as_mut_ptr()) };
+    assert_eq!(res, 0);
+    let mut buf: [u8; 5] = [0; 5];
+    let thread1 = thread::spawn(move || {
+        // Add O_NONBLOCK flag while pipe is still blocked on read.
+        let res = unsafe { libc::fcntl(fds[0], libc::F_SETFL, libc::O_NONBLOCK) };
+        assert_eq!(res, 0);
+
+        // Check the new flag value while the main thread is still blocked on fds[0].
+        let res = unsafe { libc::fcntl(fds[0], libc::F_GETFL) };
+        assert_eq!(res, libc::O_NONBLOCK);
+
+        // The write below will unblock the `read` in main thread: even though
+        // the socket is now "non-blocking", the shim needs to deal correctly
+        // with threads that were blocked before the socket was made non-blocking.
+        let data = "abcde".as_bytes().as_ptr();
+        let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
+        assert_eq!(res, 5);
+    });
+    // The `read` below will block.
+    let res = unsafe { libc::read(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
+    thread1.join().unwrap();
+    assert_eq!(res, 5);
 }

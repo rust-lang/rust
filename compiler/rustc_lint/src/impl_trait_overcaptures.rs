@@ -461,7 +461,7 @@ fn extract_def_id_from_arg<'tcx>(
     generics: &'tcx ty::Generics,
     arg: ty::GenericArg<'tcx>,
 ) -> DefId {
-    match arg.unpack() {
+    match arg.kind() {
         ty::GenericArgKind::Lifetime(re) => match re.kind() {
             ty::ReEarlyParam(ebr) => generics.region_param(ebr, tcx).def_id,
             ty::ReBound(

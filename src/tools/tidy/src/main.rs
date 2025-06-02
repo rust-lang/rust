@@ -35,6 +35,7 @@ fn main() {
     let library_path = root_path.join("library");
     let compiler_path = root_path.join("compiler");
     let librustdoc_path = src_path.join("librustdoc");
+    let tools_path = src_path.join("tools");
     let crashes_path = tests_path.join("crashes");
 
     let args: Vec<String> = env::args().skip(1).collect();
@@ -108,6 +109,7 @@ fn main() {
         check!(rustdoc_gui_tests, &tests_path);
         check!(rustdoc_css_themes, &librustdoc_path);
         check!(rustdoc_templates, &librustdoc_path);
+        check!(rustdoc_js, &librustdoc_path, &tools_path, &src_path);
         check!(known_bug, &crashes_path);
         check!(unknown_revision, &tests_path);
 

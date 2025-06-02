@@ -351,14 +351,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 hir::Node::Item(hir::Item {
                     kind:
-                        hir::ItemKind::Struct(_, _, generics)
-                        | hir::ItemKind::Enum(_, _, generics)
-                        | hir::ItemKind::Union(_, _, generics)
+                        hir::ItemKind::Struct(_, generics, _)
+                        | hir::ItemKind::Enum(_, generics, _)
+                        | hir::ItemKind::Union(_, generics, _)
                         | hir::ItemKind::Trait(_, _, _, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }
-                        | hir::ItemKind::TyAlias(_, _, generics)
-                        | hir::ItemKind::Const(_, _, generics, _)
+                        | hir::ItemKind::TyAlias(_, generics, _)
+                        | hir::ItemKind::Const(_, generics, _, _)
                         | hir::ItemKind::TraitAlias(_, generics, _),
                     ..
                 })
@@ -411,14 +411,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 hir::Node::Item(hir::Item {
                     kind:
-                        hir::ItemKind::Struct(_, _, generics)
-                        | hir::ItemKind::Enum(_, _, generics)
-                        | hir::ItemKind::Union(_, _, generics)
+                        hir::ItemKind::Struct(_, generics, _)
+                        | hir::ItemKind::Enum(_, generics, _)
+                        | hir::ItemKind::Union(_, generics, _)
                         | hir::ItemKind::Trait(_, _, _, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }
-                        | hir::ItemKind::TyAlias(_, _, generics)
-                        | hir::ItemKind::Const(_, _, generics, _)
+                        | hir::ItemKind::TyAlias(_, generics, _)
+                        | hir::ItemKind::Const(_, generics, _, _)
                         | hir::ItemKind::TraitAlias(_, generics, _),
                     ..
                 }) if !param_ty => {
@@ -2124,16 +2124,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         accessed through a specific `impl`",
                     self.tcx.def_kind_descr(assoc_item.as_def_kind(), item_def_id)
                 ));
-                err.span_suggestion(
-                    span,
-                    "use the fully qualified path to an implementation",
-                    format!(
-                        "<Type as {}>::{}",
-                        self.tcx.def_path_str(trait_ref),
-                        assoc_item.name()
-                    ),
-                    Applicability::HasPlaceholders,
-                );
+
+                if !assoc_item.is_impl_trait_in_trait() {
+                    err.span_suggestion(
+                        span,
+                        "use the fully qualified path to an implementation",
+                        format!(
+                            "<Type as {}>::{}",
+                            self.tcx.def_path_str(trait_ref),
+                            assoc_item.name()
+                        ),
+                        Applicability::HasPlaceholders,
+                    );
+                }
             }
         }
     }

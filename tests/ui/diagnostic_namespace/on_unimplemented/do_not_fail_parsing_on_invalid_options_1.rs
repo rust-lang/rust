@@ -14,10 +14,14 @@ struct Bar {}
 //~|WARN malformed `on_unimplemented` attribute
 trait Baz {}
 
-#[diagnostic::on_unimplemented(message = "Boom", on(_Self = "i32", message = "whatever"))]
+#[diagnostic::on_unimplemented(message = "Boom", on(Self = "i32", message = "whatever"))]
 //~^WARN malformed `on_unimplemented` attribute
 //~|WARN malformed `on_unimplemented` attribute
 trait Boom {}
+
+#[diagnostic::on_unimplemented(message = "Boom", on(_Self = "i32", message = "whatever"))]
+//~^WARN malformed `on_unimplemented` attribute
+trait _Self {}
 
 #[diagnostic::on_unimplemented = "boom"]
 //~^WARN malformed `on_unimplemented` attribute

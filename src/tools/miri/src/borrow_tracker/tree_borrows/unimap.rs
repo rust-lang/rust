@@ -17,6 +17,8 @@ use std::mem;
 
 use rustc_data_structures::fx::FxHashMap;
 
+use crate::helpers::ToUsize;
+
 /// Intermediate key between a UniKeyMap and a UniValMap.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UniIndex {
@@ -158,7 +160,7 @@ where
 impl<V> UniValMap<V> {
     /// Whether this index has an associated value.
     pub fn contains_idx(&self, idx: UniIndex) -> bool {
-        self.data.get(idx.idx as usize).and_then(Option::as_ref).is_some()
+        self.data.get(idx.idx.to_usize()).and_then(Option::as_ref).is_some()
     }
 
     /// Reserve enough space to insert the value at the right index.
@@ -174,29 +176,29 @@ impl<V> UniValMap<V> {
 
     /// Assign a value to the index. Permanently overwrites any previous value.
     pub fn insert(&mut self, idx: UniIndex, val: V) {
-        self.extend_to_length(idx.idx as usize + 1);
-        self.data[idx.idx as usize] = Some(val)
+        self.extend_to_length(idx.idx.to_usize() + 1);
+        self.data[idx.idx.to_usize()] = Some(val)
     }
 
     /// Get the value at this index, if it exists.
     pub fn get(&self, idx: UniIndex) -> Option<&V> {
-        self.data.get(idx.idx as usize).and_then(Option::as_ref)
+        self.data.get(idx.idx.to_usize()).and_then(Option::as_ref)
     }
 
     /// Get the value at this index mutably, if it exists.
     pub fn get_mut(&mut self, idx: UniIndex) -> Option<&mut V> {
-        self.data.get_mut(idx.idx as usize).and_then(Option::as_mut)
+        self.data.get_mut(idx.idx.to_usize()).and_then(Option::as_mut)
     }
 
     /// Delete any value associated with this index.
     /// Returns None if the value was not present, otherwise
     /// returns the previously stored value.
     pub fn remove(&mut self, idx: UniIndex) -> Option<V> {
-        if idx.idx as usize >= self.data.len() {
+        if idx.idx.to_usize() >= self.data.len() {
             return None;
         }
         let mut res = None;
-        mem::swap(&mut res, &mut self.data[idx.idx as usize]);
+        mem::swap(&mut res, &mut self.data[idx.idx.to_usize()]);
         res
     }
 }
@@ -209,8 +211,8 @@ pub struct UniEntry<'a, V> {
 impl<'a, V> UniValMap<V> {
     /// Get a wrapper around a mutable access to the value corresponding to `idx`.
     pub fn entry(&'a mut self, idx: UniIndex) -> UniEntry<'a, V> {
-        self.extend_to_length(idx.idx as usize + 1);
-        UniEntry { inner: &mut self.data[idx.idx as usize] }
+        self.extend_to_length(idx.idx.to_usize() + 1);
+        UniEntry { inner: &mut self.data[idx.idx.to_usize()] }
     }
 }
 

@@ -368,8 +368,8 @@ fn test_extract_if() {
     let mut x = BTreeSet::from([1]);
     let mut y = BTreeSet::from([1]);
 
-    x.extract_if(|_| true).for_each(drop);
-    y.extract_if(|_| false).for_each(drop);
+    x.extract_if(.., |_| true).for_each(drop);
+    y.extract_if(.., |_| false).for_each(drop);
     assert_eq!(x.len(), 0);
     assert_eq!(y.len(), 1);
 }
@@ -385,7 +385,7 @@ fn test_extract_if_drop_panic_leak() {
     set.insert(b.spawn(Panic::InDrop));
     set.insert(c.spawn(Panic::Never));
 
-    catch_unwind(move || set.extract_if(|dummy| dummy.query(true)).for_each(drop)).ok();
+    catch_unwind(move || set.extract_if(.., |dummy| dummy.query(true)).for_each(drop)).ok();
 
     assert_eq!(a.queried(), 1);
     assert_eq!(b.queried(), 1);
@@ -406,7 +406,7 @@ fn test_extract_if_pred_panic_leak() {
     set.insert(b.spawn(Panic::InQuery));
     set.insert(c.spawn(Panic::InQuery));
 
-    catch_unwind(AssertUnwindSafe(|| set.extract_if(|dummy| dummy.query(true)).for_each(drop)))
+    catch_unwind(AssertUnwindSafe(|| set.extract_if(.., |dummy| dummy.query(true)).for_each(drop)))
         .ok();
 
     assert_eq!(a.queried(), 1);
@@ -605,7 +605,7 @@ fn assert_sync() {
     }
 
     fn extract_if<T: Sync + Ord>(v: &mut BTreeSet<T>) -> impl Sync + '_ {
-        v.extract_if(|_| false)
+        v.extract_if(.., |_| false)
     }
 
     fn difference<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
@@ -644,7 +644,7 @@ fn assert_send() {
     }
 
     fn extract_if<T: Send + Ord>(v: &mut BTreeSet<T>) -> impl Send + '_ {
-        v.extract_if(|_| false)
+        v.extract_if(.., |_| false)
     }
 
     fn difference<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {

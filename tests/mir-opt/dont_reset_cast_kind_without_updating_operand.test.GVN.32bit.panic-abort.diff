@@ -59,7 +59,7 @@
                   scope 10 (inlined <std::alloc::Global as Allocator>::allocate) {
                   }
               }
-              scope 9 (inlined Layout::from_size_align_unchecked) {
+              scope 9 (inlined #[track_caller] Layout::from_size_align_unchecked) {
                   let mut _19: bool;
                   let _20: ();
                   let mut _21: std::ptr::Alignment;

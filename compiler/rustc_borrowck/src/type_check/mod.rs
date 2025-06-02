@@ -30,8 +30,6 @@ use rustc_middle::ty::{
     TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_mir_dataflow::ResultsCursor;
-use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
@@ -97,10 +95,9 @@ mod relate_tys;
 /// - `location_table` -- for datalog polonius, the map between `Location`s and `RichLocation`s
 /// - `borrow_set` -- information about borrows occurring in `body`
 /// - `polonius_facts` -- when using Polonius, this is the generated set of Polonius facts
-/// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `location_map` -- map between MIR `Location` and `PointIndex`
-pub(crate) fn type_check<'a, 'tcx>(
+pub(crate) fn type_check<'tcx>(
     root_cx: &mut BorrowCheckRootCtxt<'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -109,7 +106,6 @@ pub(crate) fn type_check<'a, 'tcx>(
     location_table: &PoloniusLocationTable,
     borrow_set: &BorrowSet<'tcx>,
     polonius_facts: &mut Option<PoloniusFacts>,
-    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     location_map: Rc<DenseLocationMap>,
 ) -> MirTypeckResults<'tcx> {
@@ -167,7 +163,7 @@ pub(crate) fn type_check<'a, 'tcx>(
     typeck.equate_inputs_and_outputs(&normalized_inputs_and_output);
     typeck.check_signature_annotation();
 
-    liveness::generate(&mut typeck, &location_map, flow_inits, move_data);
+    liveness::generate(&mut typeck, &location_map, move_data);
 
     let opaque_type_values =
         opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
@@ -474,17 +470,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
                 proj,
-                |this, field, ()| {
-                    let ty = this.field_ty(tcx, field);
-                    self.structurally_resolve(ty, locations)
-                },
-                |_, _| unreachable!(),
+                |ty| self.structurally_resolve(ty, locations),
+                |ty, variant_index, field, ()| PlaceTy::field_ty(tcx, ty, variant_index, field),
+                |_| unreachable!(),
             );
             curr_projected_ty = projected_ty;
         }
         trace!(?curr_projected_ty);
 
-        let ty = curr_projected_ty.ty;
+        // Need to renormalize `a` as typecheck may have failed to normalize
+        // higher-ranked aliases if normalization was ambiguous due to inference.
+        let a = self.normalize(a, locations);
+        let ty = self.normalize(curr_projected_ty.ty, locations);
         self.relate_types(ty, v.xform(ty::Contravariant), a, locations, category)?;
 
         Ok(())
@@ -1852,7 +1849,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | ProjectionElem::Downcast(..) => {}
             ProjectionElem::Field(field, fty) => {
                 let fty = self.normalize(fty, location);
-                let ty = base_ty.field_ty(tcx, field);
+                let ty = PlaceTy::field_ty(tcx, base_ty.ty, base_ty.variant_index, field);
                 let ty = self.normalize(ty, location);
                 debug!(?fty, ?ty);
 

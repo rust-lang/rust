@@ -133,12 +133,12 @@ fn affine_transform<'tcx>(
 // This is a evaluated at compile time. Trait based conversion is not available.
 /// See <https://www.corsix.org/content/galois-field-instructions-2021-cpus> for the
 /// definition of `gf_inv` which was used for the creation of this table.
-#[expect(clippy::cast_possible_truncation)]
 static TABLE: [u8; 256] = {
     let mut array = [0; 256];
 
     let mut i = 1;
     while i < 256 {
+        #[expect(clippy::as_conversions)] // no `try_from` in const...
         let mut x = i as u8;
         let mut y = gf2p8_mul(x, x);
         x = y;
@@ -160,7 +160,7 @@ static TABLE: [u8; 256] = {
 /// polynomial representation with the reduction polynomial x^8 + x^4 + x^3 + x + 1.
 /// See <https://www.corsix.org/content/galois-field-instructions-2021-cpus> for details.
 // This is a const function. Trait based conversion is not available.
-#[expect(clippy::cast_possible_truncation)]
+#[expect(clippy::as_conversions)]
 const fn gf2p8_mul(left: u8, right: u8) -> u8 {
     // This implementation is based on the `gf2p8mul_byte` definition found inside the Intel intrinsics guide.
     // See https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=gf2p8mul

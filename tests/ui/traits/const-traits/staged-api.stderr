@@ -71,14 +71,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(const_trait_impl)]
 LL | const fn const_context() {
    |
 
@@ -88,14 +83,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(unstable)]
 LL | const fn const_context() {
    |
 
@@ -105,14 +95,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Foo::func();
    |     ^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(const_trait_impl)]
 LL | const fn const_context() {
    |
 
@@ -122,14 +107,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Foo::func();
    |     ^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(unstable)]
 LL | const fn const_context() {
    |
 
@@ -139,14 +119,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable2::func();
    |     ^^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(const_trait_impl)]
 LL | const fn const_context() {
    |
 
@@ -156,14 +131,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable2::func();
    |     ^^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(unstable)]
 LL | const fn const_context() {
    |
 
@@ -173,14 +143,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     conditionally_const::<Foo>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(const_trait_impl)]
 LL | const fn const_context() {
    |
 
@@ -190,14 +155,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(const_trait_impl)]
 LL | const fn stable_const_context() {
    |
 
@@ -207,14 +167,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(unstable)]
 LL | const fn stable_const_context() {
    |
 
@@ -224,14 +179,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Foo::func();
    |     ^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(const_trait_impl)]
 LL | const fn stable_const_context() {
    |
 
@@ -241,14 +191,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Foo::func();
    |     ^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(unstable)]
 LL | const fn stable_const_context() {
    |
 
@@ -259,14 +204,9 @@ LL |     const_context_not_const_stable();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
-help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(local_feature)]
 LL | const fn stable_const_context() {
    |
 
@@ -276,14 +216,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     conditionally_const::<Foo>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(const_trait_impl)]
 LL | const fn stable_const_context() {
    |
 
@@ -293,14 +228,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn implicitly_stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(const_trait_impl)]
 LL | const fn implicitly_stable_const_context() {
    |
 
@@ -310,14 +240,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn implicitly_stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(unstable)]
 LL | const fn implicitly_stable_const_context() {
    |
 
@@ -327,14 +252,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Foo::func();
    |     ^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn implicitly_stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(const_trait_impl)]
 LL | const fn implicitly_stable_const_context() {
    |
 
@@ -344,14 +264,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     Foo::func();
    |     ^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn implicitly_stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(unstable)]
 LL | const fn implicitly_stable_const_context() {
    |
 
@@ -362,14 +277,9 @@ LL |     const_context_not_const_stable();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
-help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn implicitly_stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(local_feature)]
 LL | const fn implicitly_stable_const_context() {
    |
 
@@ -379,14 +289,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     conditionally_const::<Foo>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn implicitly_stable_const_context() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(const_trait_impl)]
 LL | const fn implicitly_stable_const_context() {
    |
 

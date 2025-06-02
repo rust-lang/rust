@@ -15,9 +15,9 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_macros::extension;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
-use rustc_middle::ty::{TyCtxt, TypeFoldable, VisitorResult, try_visit};
+use rustc_middle::ty::{TyCtxt, VisitorResult, try_visit};
 use rustc_middle::{bug, ty};
-use rustc_next_trait_solver::resolve::EagerResolver;
+use rustc_next_trait_solver::resolve::eager_resolve_vars;
 use rustc_next_trait_solver::solve::inspect::{self, instantiate_canonical_state};
 use rustc_next_trait_solver::solve::{GenerateProofTree, MaybeCause, SolverDelegateEvalExt as _};
 use rustc_span::{DUMMY_SP, Span};
@@ -187,8 +187,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             let _ = term_hack.constrain(infcx, span, param_env);
         }
 
-        let opt_impl_args =
-            opt_impl_args.map(|impl_args| impl_args.fold_with(&mut EagerResolver::new(infcx)));
+        let opt_impl_args = opt_impl_args.map(|impl_args| eager_resolve_vars(infcx, impl_args));
 
         let goals = instantiated_goals
             .into_iter()
@@ -207,7 +206,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         let infcx = self.goal.infcx;
         match goal.predicate.kind().no_bound_vars() {
             Some(ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })) => {
-                let unconstrained_term = match term.unpack() {
+                let unconstrained_term = match term.kind() {
                     ty::TermKind::Ty(_) => infcx.next_ty_var(span).into(),
                     ty::TermKind::Const(_) => infcx.next_const_var(span).into(),
                 };
@@ -219,8 +218,8 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 // building their proof tree, the expected term was unconstrained, but when
                 // instantiating the candidate it is already constrained to the result of another
                 // candidate.
-                let proof_tree =
-                    infcx.probe(|_| infcx.evaluate_root_goal_raw(goal, GenerateProofTree::Yes).1);
+                let proof_tree = infcx
+                    .probe(|_| infcx.evaluate_root_goal_raw(goal, GenerateProofTree::Yes, None).1);
                 InspectGoal::new(
                     infcx,
                     self.goal.depth + 1,
@@ -236,7 +235,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 // constraints, we get an ICE if we already applied the constraints
                 // from the chosen candidate.
                 let proof_tree = infcx
-                    .probe(|_| infcx.evaluate_root_goal(goal, GenerateProofTree::Yes, span).1)
+                    .probe(|_| infcx.evaluate_root_goal(goal, GenerateProofTree::Yes, span, None).1)
                     .unwrap();
                 InspectGoal::new(infcx, self.goal.depth + 1, proof_tree, None, source)
             }
@@ -392,7 +391,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             infcx,
             depth,
             orig_values,
-            goal: uncanonicalized_goal.fold_with(&mut EagerResolver::new(infcx)),
+            goal: eager_resolve_vars(infcx, uncanonicalized_goal),
             result,
             evaluation_kind: evaluation.kind,
             normalizes_to_term_hack,
@@ -442,6 +441,7 @@ impl<'tcx> InferCtxt<'tcx> {
             goal,
             GenerateProofTree::Yes,
             visitor.span(),
+            None,
         );
         let proof_tree = proof_tree.unwrap();
         visitor.visit_goal(&InspectGoal::new(self, depth, proof_tree, None, GoalSource::Misc))

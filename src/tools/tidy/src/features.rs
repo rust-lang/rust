@@ -54,6 +54,7 @@ pub struct Feature {
     pub tracking_issue: Option<NonZeroU32>,
     pub file: PathBuf,
     pub line: usize,
+    pub description: Option<String>,
 }
 impl Feature {
     fn tracking_issue_display(&self) -> impl fmt::Display {
@@ -296,6 +297,7 @@ fn collect_lang_features_in(features: &mut Features, base: &Path, file: &str, ba
     let mut prev_names = vec![];
 
     let lines = contents.lines().zip(1..);
+    let mut doc_comments: Vec<String> = Vec::new();
     for (line, line_number) in lines {
         let line = line.trim();
 
@@ -330,6 +332,13 @@ fn collect_lang_features_in(features: &mut Features, base: &Path, file: &str, ba
             in_feature_group = false;
             prev_names = vec![];
             continue;
+        }
+
+        if in_feature_group {
+            if let Some(doc_comment) = line.strip_prefix("///") {
+                doc_comments.push(doc_comment.trim().to_string());
+                continue;
+            }
         }
 
         let mut parts = line.split(',');
@@ -438,9 +447,15 @@ fn collect_lang_features_in(features: &mut Features, base: &Path, file: &str, ba
                     tracking_issue,
                     file: path.to_path_buf(),
                     line: line_number,
+                    description: if doc_comments.is_empty() {
+                        None
+                    } else {
+                        Some(doc_comments.join(" "))
+                    },
                 });
             }
         }
+        doc_comments.clear();
     }
 }
 
@@ -564,6 +579,7 @@ fn map_lib_features(
                         tracking_issue: find_attr_val(line, "issue").and_then(handle_issue_none),
                         file: file.to_path_buf(),
                         line: i + 1,
+                        description: None,
                     };
                     mf(Ok((feature_name, feature)), file, i + 1);
                     continue;
@@ -600,6 +616,7 @@ fn map_lib_features(
                     tracking_issue,
                     file: file.to_path_buf(),
                     line: i + 1,
+                    description: None,
                 };
                 if line.contains(']') {
                     mf(Ok((feature_name, feature)), file, i + 1);
