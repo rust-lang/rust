@@ -152,7 +152,6 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
                 expr.span,
                 "`panic_any` should not be present in production code",
             );
-            return;
         }
     }
 }
