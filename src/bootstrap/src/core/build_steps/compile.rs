@@ -520,7 +520,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         let mut cmd = command(builder.rustc(cargo.compiler()));
         cmd.arg("--target").arg(target.rustc_target_arg());
         cmd.arg("--print=deployment-target");
-        let output = cmd.run_capture_stdout(builder).stdout();
+        let output = cmd.run_capture_stdout(builder.context()).stdout();
 
         let (env_var, value) = output.split_once('=').unwrap();
         // Unconditionally set the env var (if it was set in the environment
@@ -853,7 +853,7 @@ fn copy_sanitizers(
 }
 
 fn apple_darwin_update_library_name(builder: &Builder<'_>, library_path: &Path, new_name: &str) {
-    command("install_name_tool").arg("-id").arg(new_name).arg(library_path).run(builder);
+    command("install_name_tool").arg("-id").arg(new_name).arg(library_path).run(builder.context());
 }
 
 fn apple_darwin_sign_file(builder: &Builder<'_>, file_path: &Path) {
@@ -862,7 +862,7 @@ fn apple_darwin_sign_file(builder: &Builder<'_>, file_path: &Path) {
         .arg("-s")
         .arg("-")
         .arg(file_path)
-        .run(builder);
+        .run(builder.context());
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -930,7 +930,7 @@ impl Step for StartupObjects {
                     .arg("-o")
                     .arg(dst_file)
                     .arg(src_file)
-                    .run(builder);
+                    .run(builder.context());
             }
 
             let obj = sysroot_dir.join((*file).to_string() + ".o");
@@ -1725,7 +1725,7 @@ pub fn compiler_file(
     cmd.args(builder.cc_handled_clags(target, c));
     cmd.args(builder.cc_unhandled_cflags(target, GitRepo::Rustc, c));
     cmd.arg(format!("-print-file-name={file}"));
-    let out = cmd.run_capture_stdout(builder).stdout();
+    let out = cmd.run_capture_stdout(builder.context()).stdout();
     PathBuf::from(out.trim())
 }
 
@@ -1968,8 +1968,10 @@ impl Step for Assemble {
             if !builder.config.dry_run() && builder.config.llvm_tools_enabled {
                 trace!("LLVM tools enabled");
 
-                let llvm_bin_dir =
-                    command(llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
+                let llvm_bin_dir = command(llvm_config)
+                    .arg("--bindir")
+                    .run_capture_stdout(builder.context())
+                    .stdout();
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
 
                 // Since we've already built the LLVM tools, install them to the sysroot.
@@ -2540,7 +2542,7 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     }
 
     let previous_mtime = t!(t!(path.metadata()).modified());
-    command("strip").arg("--strip-debug").arg(path).run_capture(builder);
+    command("strip").arg("--strip-debug").arg(path).run_capture(builder.context());
 
     let file = t!(fs::File::open(path));
 

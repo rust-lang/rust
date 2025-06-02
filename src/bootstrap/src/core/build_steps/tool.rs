@@ -267,7 +267,8 @@ pub fn prepare_tool_cargo(
         cargo.env("CFG_VER_DESCRIPTION", description);
     }
 
-    let info = GitInfo::new(builder.config.omit_git_hash, &dir);
+    let info =
+        GitInfo::new(builder.config.omit_git_hash, &dir, &builder.build.config.execution_context);
     if let Some(sha) = info.sha() {
         cargo.env("CFG_COMMIT_HASH", sha);
     }
@@ -1077,14 +1078,14 @@ impl Step for LibcxxVersionTool {
                 .arg(&executable)
                 .arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
 
-            cmd.run(builder);
+            cmd.run(builder.context());
 
             if !executable.exists() {
                 panic!("Something went wrong. {} is not present", executable.display());
             }
         }
 
-        let version_output = command(executable).run_capture_stdout(builder).stdout();
+        let version_output = command(executable).run_capture_stdout(builder.context()).stdout();
 
         let version_str = version_output.split_once("version:").unwrap().1;
         let version = version_str.trim().parse::<usize>().unwrap();

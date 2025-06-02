@@ -107,7 +107,7 @@ impl Step for Vendor {
 
         cmd.current_dir(self.root_dir).arg(&self.output_dir);
 
-        let config = cmd.run_capture_stdout(builder);
+        let config = cmd.run_capture_stdout(builder.context());
         VendorOutput { config: config.stdout() }
     }
 }
