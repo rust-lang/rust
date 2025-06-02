@@ -276,12 +276,12 @@
 // tidy-alphabetical-start
 
 // stabilization was reverted after it hit beta
-#![cfg_attr(not(bootstrap), feature(autodiff))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(asm_experimental_arch)]
+#![feature(autodiff)]
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
@@ -641,7 +641,6 @@ pub mod simd {
 }
 
 #[unstable(feature = "autodiff", issue = "124509")]
-#[cfg(not(bootstrap))]
 /// This module provides support for automatic differentiation.
 pub mod autodiff {
     /// This macro handles automatic differentiation.

@@ -951,7 +951,6 @@ macro_rules! test_float {
                 assert!(<$fty>::NAN.div_euclid(<$fty>::INFINITY).is_nan());
             }
             #[test]
-            #[cfg(not(bootstrap))]
             fn floor() {
                 $fassert!((0.0 as $fty).floor(), 0.0);
                 $fassert!((0.0 as $fty).floor().is_sign_positive());
@@ -969,7 +968,6 @@ macro_rules! test_float {
                 $fassert!(<$fty>::NEG_INFINITY.floor(), <$fty>::NEG_INFINITY);
             }
             #[test]
-            #[cfg(not(bootstrap))]
             fn ceil() {
                 $fassert!((0.0 as $fty).ceil(), 0.0);
                 $fassert!((0.0 as $fty).ceil().is_sign_positive());
@@ -986,7 +984,6 @@ macro_rules! test_float {
                 $fassert!(<$fty>::NEG_INFINITY.ceil(), <$fty>::NEG_INFINITY);
             }
             #[test]
-            #[cfg(not(bootstrap))]
             fn round() {
                 $fassert!((0.0 as $fty).round(), 0.0);
                 $fassert!((0.0 as $fty).round().is_sign_positive());
@@ -1003,7 +1000,6 @@ macro_rules! test_float {
                 $fassert!(<$fty>::NEG_INFINITY.round(), <$fty>::NEG_INFINITY);
             }
             #[test]
-            #[cfg(not(bootstrap))]
             fn round_ties_even() {
                 $fassert!((0.0 as $fty).round_ties_even(), 0.0);
                 $fassert!((0.0 as $fty).round_ties_even().is_sign_positive());
@@ -1022,7 +1018,6 @@ macro_rules! test_float {
                 $fassert!(<$fty>::NEG_INFINITY.round_ties_even(), <$fty>::NEG_INFINITY);
             }
             #[test]
-            #[cfg(not(bootstrap))]
             fn trunc() {
                 $fassert!((0.0 as $fty).trunc(), 0.0);
                 $fassert!((0.0 as $fty).trunc().is_sign_positive());
@@ -1041,7 +1036,6 @@ macro_rules! test_float {
                 $fassert!(<$fty>::NEG_INFINITY.trunc(), <$fty>::NEG_INFINITY);
             }
             #[test]
-            #[cfg(not(bootstrap))]
             fn fract() {
                 $fassert!((0.0 as $fty).fract(), 0.0);
                 $fassert!((0.0 as $fty).fract().is_sign_positive());
