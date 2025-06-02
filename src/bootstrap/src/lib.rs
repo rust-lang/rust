@@ -595,7 +595,7 @@ impl Build {
             .args(["config", "--file"])
             .arg(".gitmodules")
             .args(["--get-regexp", "path"])
-            .run_capture(self)
+            .run_capture(self.context())
             .stdout();
         std::thread::scope(|s| {
             // Look for `submodule.$name.path = $path`
@@ -617,7 +617,9 @@ impl Build {
             return;
         }
 
-        if GitInfo::new(false, Path::new(submodule)).is_managed_git_subrepository() {
+        if GitInfo::new(false, Path::new(submodule), &config.execution_context)
+            .is_managed_git_subrepository()
+        {
             config.update_submodule(submodule);
         }
     }
@@ -870,14 +872,16 @@ impl Build {
         if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
             s.to_path_buf()
         } else if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(self).stdout();
+            let llvm_bindir =
+                command(s).arg("--bindir").run_capture_stdout(self.context()).stdout();
             let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", target));
             if filecheck.exists() {
                 filecheck
             } else {
                 // On Fedora the system LLVM installs FileCheck in the
                 // llvm subdirectory of the libdir.
-                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(self).stdout();
+                let llvm_libdir =
+                    command(s).arg("--libdir").run_capture_stdout(self.context()).stdout();
                 let lib_filecheck =
                     Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", target));
                 if lib_filecheck.exists() {
@@ -1598,7 +1602,7 @@ Executed at: {executed_at}"#,
                     self.config.stage0_metadata.config.nightly_branch
                 ))
                 .run_always()
-                .run_capture(self)
+                .run_capture(self.context())
                 .stdout()
         });
         let n = count.trim().parse().unwrap();
