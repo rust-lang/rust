@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow value as mutable, as it is not declared as mutable
-  --> $DIR/borrowck-error-in-macro.rs:6:1
+  --> $DIR/borrowck-error-in-macro.rs:7:1
    |
 LL | a::ice! {}
    | ^^^^^^^^^^
