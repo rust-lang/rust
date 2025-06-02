@@ -623,7 +623,7 @@ pub fn vaddv_s8(a: int8x8_t) -> i8 {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.saddv.i32.v8i8"
+            link_name = "llvm.aarch64.neon.saddv.i8.v8i8"
         )]
         fn _vaddv_s8(a: int8x8_t) -> i8;
     }
@@ -639,7 +639,7 @@ pub fn vaddvq_s8(a: int8x16_t) -> i8 {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.saddv.i32.v16i8"
+            link_name = "llvm.aarch64.neon.saddv.i8.v16i8"
         )]
         fn _vaddvq_s8(a: int8x16_t) -> i8;
     }
@@ -655,7 +655,7 @@ pub fn vaddv_s16(a: int16x4_t) -> i16 {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.saddv.i32.v4i16"
+            link_name = "llvm.aarch64.neon.saddv.i16.v4i16"
         )]
         fn _vaddv_s16(a: int16x4_t) -> i16;
     }
@@ -671,7 +671,7 @@ pub fn vaddvq_s16(a: int16x8_t) -> i16 {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.saddv.i32.v8i16"
+            link_name = "llvm.aarch64.neon.saddv.i16.v8i16"
         )]
         fn _vaddvq_s16(a: int16x8_t) -> i16;
     }
@@ -719,7 +719,7 @@ pub fn vaddv_u8(a: uint8x8_t) -> u8 {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uaddv.i32.v8i8"
+            link_name = "llvm.aarch64.neon.uaddv.i8.v8i8"
         )]
         fn _vaddv_u8(a: uint8x8_t) -> u8;
     }
@@ -735,7 +735,7 @@ pub fn vaddvq_u8(a: uint8x16_t) -> u8 {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uaddv.i32.v16i8"
+            link_name = "llvm.aarch64.neon.uaddv.i8.v16i8"
         )]
         fn _vaddvq_u8(a: uint8x16_t) -> u8;
     }
@@ -751,7 +751,7 @@ pub fn vaddv_u16(a: uint16x4_t) -> u16 {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uaddv.i32.v4i16"
+            link_name = "llvm.aarch64.neon.uaddv.i16.v4i16"
         )]
         fn _vaddv_u16(a: uint16x4_t) -> u16;
     }
@@ -767,7 +767,7 @@ pub fn vaddvq_u16(a: uint16x8_t) -> u16 {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.uaddv.i32.v8i16"
+            link_name = "llvm.aarch64.neon.uaddv.i16.v8i16"
         )]
         fn _vaddvq_u16(a: uint16x8_t) -> u16;
     }

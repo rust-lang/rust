@@ -13183,16 +13183,16 @@ intrinsics:
     assert_instr: [addv]
     safety: safe
     types:
-      - [int8x8_t, i8, i32]
-      - [int16x4_t, i16, i32]
-      - [int8x16_t, i8, i32]
-      - [int16x8_t, i16, i32]
-      - [int32x4_t, i32, i32]
+      - [int8x8_t, i8]
+      - [int16x4_t, i16]
+      - [int8x16_t, i8]
+      - [int16x8_t, i16]
+      - [int32x4_t, i32]
     compose:
       - LLVMLink:
           name: "vaddv{neon_type[0].no}"
           links:
-            - link: "llvm.aarch64.neon.saddv.{type[2]}.{neon_type[0]}"
+            - link: "llvm.aarch64.neon.saddv.{type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
 
   - name: "vaddv{neon_type[0].no}"
@@ -13238,16 +13238,16 @@ intrinsics:
     assert_instr: [addv]
     safety: safe
     types:
-      - [uint8x8_t,  u8, i32]
-      - [uint16x4_t, u16, i32]
-      - [uint8x16_t, u8, i32]
-      - [uint16x8_t, u16, i32]
-      - [uint32x4_t, u32, i32]
+      - [uint8x8_t,  u8]
+      - [uint16x4_t, u16]
+      - [uint8x16_t, u8]
+      - [uint16x8_t, u16]
+      - [uint32x4_t, u32]
     compose:
       - LLVMLink:
           name: "vaddv{neon_type[0].no}"
           links:
-            - link: "llvm.aarch64.neon.uaddv.{type[2]}.{neon_type[0]}"
+            - link: "llvm.aarch64.neon.uaddv.{type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
 
   - name: "vaddv{neon_type[0].no}"

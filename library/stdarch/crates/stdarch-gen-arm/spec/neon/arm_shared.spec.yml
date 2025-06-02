@@ -6427,9 +6427,9 @@ intrinsics:
       - LLVMLink:
           name: "smull.{neon_type[1]}"
           links:
-            - link: "llvm.aarch64.neon.smull.{neon_type[1]}"
+            - link: "llvm.aarch64.neon.smull.{neon_type[2]}"
               arch: aarch64,arm64ec
-            - link: "llvm.arm.neon.vmulls.{neon_type[1]}"
+            - link: "llvm.arm.neon.vmulls.{neon_type[2]}"
               arch: arm
 
   - name: "vmull{neon_type[1].no}"
@@ -6451,9 +6451,9 @@ intrinsics:
       - LLVMLink:
           name: "smull.{neon_type[1]}"
           links:
-            - link: "llvm.aarch64.neon.umull.{neon_type[1]}"
+            - link: "llvm.aarch64.neon.umull.{neon_type[2]}"
               arch: aarch64,arm64ec
-            - link: "llvm.arm.neon.vmullu.{neon_type[1]}"
+            - link: "llvm.arm.neon.vmullu.{neon_type[2]}"
               arch: arm
 
   - name: "vmull{neon_type[1].no}"
