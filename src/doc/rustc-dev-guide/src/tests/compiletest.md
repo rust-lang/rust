@@ -546,10 +546,10 @@ only running the main `coverage` suite.
 
 [`tests/crashes`] serve as a collection of tests that are expected to cause the
 compiler to ICE, panic or crash in some other way, so that accidental fixes are
-tracked. This was formally done at <https://github.com/rust-lang/glacier> but
+tracked. Formerly, this was done at <https://github.com/rust-lang/glacier> but
 doing it inside the rust-lang/rust testsuite is more convenient.
 
-It is imperative that a test in the suite causes rustc to ICE, panic or crash
+It is imperative that a test in the suite causes rustc to ICE, panic, or
 crash in some other way. A test will "pass" if rustc exits with an exit status
 other than 1 or 0.
 
@@ -560,9 +560,12 @@ If you want to see verbose stdout/stderr, you need to set
 $ COMPILETEST_VERBOSE_CRASHES=1 ./x test tests/crashes/999999.rs --stage 1
 ```
 
-When adding crashes from <https://github.com/rust-lang/rust/issues>, the issue
-number should be noted in the file name (`12345.rs` should suffice) and also
-inside the file include a `//@ known-bug: #4321` directive.
+Anyone can add ["untracked" crashes] from the issue tracker. It's strongly
+recommended to include test cases from several issues in a single PR.
+When you do so, each issue number should be noted in the file name (`12345.rs`
+should suffice) and also inside the file by means of a `//@ known-bug: #12345`
+directive. Please [label][labeling] the relevant issues with `S-bug-has-test`
+afterwards.
 
 If you happen to fix one of the crashes, please move it to a fitting
 subdirectory in `tests/ui` and give it a meaningful name. Please add a doc
@@ -585,6 +588,8 @@ a subset first. The issue numbers can be found in the file name or the `//@
 known-bug` directive inside the test file.
 
 [`tests/crashes`]: https://github.com/rust-lang/rust/tree/master/tests/crashes
+["untracked" crashes]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+state%3Aopen+label%3AI-ICE%2CI-crash+label%3AT-compiler+label%3AS-has-mcve+-label%3AS-bug-has-test
+[labeling]: https://forge.rust-lang.org/release/issue-triaging.html#applying-and-removing-labels
 
 ## Building auxiliary crates
 
@@ -614,7 +619,7 @@ file). The `-L` flag is used to find the extern crates.
 `aux-crate` is very similar to `aux-build`. However, it uses the `--extern` flag
 to link to the extern crate to make the crate be available as an extern prelude.
 That allows you to specify the additional syntax of the `--extern` flag, such as
-renaming a dependency. For example, `// aux-crate:foo=bar.rs` will compile
+renaming a dependency. For example, `//@ aux-crate:foo=bar.rs` will compile
 `auxiliary/bar.rs` and make it available under then name `foo` within the test.
 This is similar to how Cargo does dependency renaming.
 

@@ -46,3 +46,4 @@ These are videos where various experts explain different parts of the compiler:
 
 ## Code Generation
 - [January 2019: Cranelift](https://www.youtube.com/watch?v=9OIA7DTFQWU)
+- [December 2024: LLVM Developers' Meeting - Rust ❤️ LLVM](https://www.youtube.com/watch?v=Kqz-umsAnk8)
