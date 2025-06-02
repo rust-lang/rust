@@ -171,6 +171,7 @@ impl f128 {
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
     /// [`MANTISSA_DIGITS`]: f128::MANTISSA_DIGITS
     #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_diagnostic_item = "f128_epsilon"]
     pub const EPSILON: f128 = 1.92592994438723585305597794258492732e-34_f128;
 
     /// Smallest finite `f128` value.
