@@ -248,11 +248,13 @@ ignoring debuggers.
 | `no-prefer-dynamic` | Don't use `-C prefer-dynamic`, don't build as a dylib via a `--crate-type=dylib` preset flag | `ui`, `crashes`           | N/A                                                                                        |
 
 <div class="warning">
+
 Tests (outside of `run-make`) that want to use incremental tests not in the
 incremental test-suite must not pass `-C incremental` via `compile-flags`, and
 must instead use the `//@ incremental` directive.
 
 Consider writing the test as a proper incremental test instead.
+
 </div>
 
 ### Rustdoc
