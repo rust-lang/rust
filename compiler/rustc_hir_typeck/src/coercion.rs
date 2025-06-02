@@ -35,13 +35,13 @@
 //! // and are then unable to coerce `&7i32` to `&mut i32`.
 //! ```
 
-use std::ops::Deref;
+use std::ops::{ControlFlow, Deref};
 
 use rustc_attr_data_structures::InlineAttr;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, LangItem};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
@@ -57,6 +57,8 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
+use rustc_trait_selection::solve::{Certainty, Goal, NoSolution};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
@@ -593,118 +595,128 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             Adjust::Pointer(PointerCoercion::Unsize),
         )?;
 
-        let mut selcx = traits::SelectionContext::new(self);
-
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
+        let pred = ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target]);
+        let obligation = Obligation::new(self.tcx, cause, self.fcx.param_env, pred);
 
-        // Use a FIFO queue for this custom fulfillment procedure.
-        //
-        // A Vec (or SmallVec) is not a natural choice for a queue. However,
-        // this code path is hot, and this queue usually has a max length of 1
-        // and almost never more than 3. By using a SmallVec we avoid an
-        // allocation, at the (very small) cost of (occasionally) having to
-        // shift subsequent elements down when removing the front element.
-        let mut queue: SmallVec<[PredicateObligation<'tcx>; 4]> = smallvec![Obligation::new(
-            self.tcx,
-            cause,
-            self.fcx.param_env,
-            ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target])
-        )];
+        if self.next_trait_solver() {
+            coercion.obligations.push(obligation);
 
-        // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
-        // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
-        // inference might unify those two inner type variables later.
-        let traits = [coerce_unsized_did, unsize_did];
-        while !queue.is_empty() {
-            let obligation = queue.remove(0);
-            let trait_pred = match obligation.predicate.kind().no_bound_vars() {
-                Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)))
-                    if traits.contains(&trait_pred.def_id()) =>
-                {
-                    self.resolve_vars_if_possible(trait_pred)
-                }
-                // Eagerly process alias-relate obligations in new trait solver,
-                // since these can be emitted in the process of solving trait goals,
-                // but we need to constrain vars before processing goals mentioning
-                // them.
-                Some(ty::PredicateKind::AliasRelate(..)) => {
-                    let ocx = ObligationCtxt::new(self);
-                    ocx.register_obligation(obligation);
-                    if !ocx.select_where_possible().is_empty() {
-                        return Err(TypeError::Mismatch);
+            if self
+                .infcx
+                .visit_proof_tree(
+                    Goal::new(self.tcx, self.param_env, pred),
+                    &mut CoerceVisitor { fcx: self.fcx, span: self.cause.span },
+                )
+                .is_break()
+            {
+                return Err(TypeError::Mismatch);
+            }
+        } else {
+            let mut selcx = traits::SelectionContext::new(self);
+            // Use a FIFO queue for this custom fulfillment procedure.
+            //
+            // A Vec (or SmallVec) is not a natural choice for a queue. However,
+            // this code path is hot, and this queue usually has a max length of 1
+            // and almost never more than 3. By using a SmallVec we avoid an
+            // allocation, at the (very small) cost of (occasionally) having to
+            // shift subsequent elements down when removing the front element.
+            let mut queue: SmallVec<[PredicateObligation<'tcx>; 4]> = smallvec![obligation];
+
+            // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
+            // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
+            // inference might unify those two inner type variables later.
+            let traits = [coerce_unsized_did, unsize_did];
+            while !queue.is_empty() {
+                let obligation = queue.remove(0);
+                let trait_pred = match obligation.predicate.kind().no_bound_vars() {
+                    Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)))
+                        if traits.contains(&trait_pred.def_id()) =>
+                    {
+                        self.resolve_vars_if_possible(trait_pred)
                     }
-                    coercion.obligations.extend(ocx.into_pending_obligations());
-                    continue;
-                }
-                _ => {
-                    coercion.obligations.push(obligation);
-                    continue;
-                }
-            };
-            debug!("coerce_unsized resolve step: {:?}", trait_pred);
-            match selcx.select(&obligation.with(selcx.tcx(), trait_pred)) {
-                // Uncertain or unimplemented.
-                Ok(None) => {
-                    if trait_pred.def_id() == unsize_did {
-                        let self_ty = trait_pred.self_ty();
-                        let unsize_ty = trait_pred.trait_ref.args[1].expect_ty();
-                        debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
-                        match (self_ty.kind(), unsize_ty.kind()) {
-                            (&ty::Infer(ty::TyVar(v)), ty::Dynamic(..))
-                                if self.type_var_is_sized(v) =>
-                            {
-                                debug!("coerce_unsized: have sized infer {:?}", v);
-                                coercion.obligations.push(obligation);
-                                // `$0: Unsize<dyn Trait>` where we know that `$0: Sized`, try going
-                                // for unsizing.
-                            }
-                            _ => {
-                                // Some other case for `$0: Unsize<Something>`. Note that we
-                                // hit this case even if `Something` is a sized type, so just
-                                // don't do the coercion.
-                                debug!("coerce_unsized: ambiguous unsize");
-                                return Err(TypeError::Mismatch);
-                            }
+                    // Eagerly process alias-relate obligations in new trait solver,
+                    // since these can be emitted in the process of solving trait goals,
+                    // but we need to constrain vars before processing goals mentioning
+                    // them.
+                    Some(ty::PredicateKind::AliasRelate(..)) => {
+                        let ocx = ObligationCtxt::new(self);
+                        ocx.register_obligation(obligation);
+                        if !ocx.select_where_possible().is_empty() {
+                            return Err(TypeError::Mismatch);
                         }
-                    } else {
-                        debug!("coerce_unsized: early return - ambiguous");
+                        coercion.obligations.extend(ocx.into_pending_obligations());
+                        continue;
+                    }
+                    _ => {
+                        coercion.obligations.push(obligation);
+                        continue;
+                    }
+                };
+                debug!("coerce_unsized resolve step: {:?}", trait_pred);
+                match selcx.select(&obligation.with(selcx.tcx(), trait_pred)) {
+                    // Uncertain or unimplemented.
+                    Ok(None) => {
+                        if trait_pred.def_id() == unsize_did {
+                            let self_ty = trait_pred.self_ty();
+                            let unsize_ty = trait_pred.trait_ref.args[1].expect_ty();
+                            debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
+                            match (self_ty.kind(), unsize_ty.kind()) {
+                                (&ty::Infer(ty::TyVar(v)), ty::Dynamic(..))
+                                    if self.type_var_is_sized(v) =>
+                                {
+                                    debug!("coerce_unsized: have sized infer {:?}", v);
+                                    coercion.obligations.push(obligation);
+                                    // `$0: Unsize<dyn Trait>` where we know that `$0: Sized`, try going
+                                    // for unsizing.
+                                }
+                                _ => {
+                                    // Some other case for `$0: Unsize<Something>`. Note that we
+                                    // hit this case even if `Something` is a sized type, so just
+                                    // don't do the coercion.
+                                    debug!("coerce_unsized: ambiguous unsize");
+                                    return Err(TypeError::Mismatch);
+                                }
+                            }
+                        } else {
+                            debug!("coerce_unsized: early return - ambiguous");
+                            return Err(TypeError::Mismatch);
+                        }
+                    }
+                    Err(traits::Unimplemented) => {
+                        debug!("coerce_unsized: early return - can't prove obligation");
                         return Err(TypeError::Mismatch);
                     }
-                }
-                Err(traits::Unimplemented) => {
-                    debug!("coerce_unsized: early return - can't prove obligation");
-                    return Err(TypeError::Mismatch);
-                }
 
-                Err(SelectionError::TraitDynIncompatible(_)) => {
-                    // Dyn compatibility errors in coercion will *always* be due to the
-                    // fact that the RHS of the coercion is a non-dyn compatible `dyn Trait`
-                    // writen in source somewhere (otherwise we will never have lowered
-                    // the dyn trait from HIR to middle).
-                    //
-                    // There's no reason to emit yet another dyn compatibility error,
-                    // especially since the span will differ slightly and thus not be
-                    // deduplicated at all!
-                    self.fcx.set_tainted_by_errors(
-                        self.fcx
-                            .dcx()
-                            .span_delayed_bug(self.cause.span, "dyn compatibility during coercion"),
-                    );
-                }
-                Err(err) => {
-                    let guar = self.err_ctxt().report_selection_error(
-                        obligation.clone(),
-                        &obligation,
-                        &err,
-                    );
-                    self.fcx.set_tainted_by_errors(guar);
-                    // Treat this like an obligation and follow through
-                    // with the unsizing - the lack of a coercion should
-                    // be silent, as it causes a type mismatch later.
-                }
+                    Err(SelectionError::TraitDynIncompatible(_)) => {
+                        // Dyn compatibility errors in coercion will *always* be due to the
+                        // fact that the RHS of the coercion is a non-dyn compatible `dyn Trait`
+                        // writen in source somewhere (otherwise we will never have lowered
+                        // the dyn trait from HIR to middle).
+                        //
+                        // There's no reason to emit yet another dyn compatibility error,
+                        // especially since the span will differ slightly and thus not be
+                        // deduplicated at all!
+                        self.fcx.set_tainted_by_errors(self.fcx.dcx().span_delayed_bug(
+                            self.cause.span,
+                            "dyn compatibility during coercion",
+                        ));
+                    }
+                    Err(err) => {
+                        let guar = self.err_ctxt().report_selection_error(
+                            obligation.clone(),
+                            &obligation,
+                            &err,
+                        );
+                        self.fcx.set_tainted_by_errors(guar);
+                        // Treat this like an obligation and follow through
+                        // with the unsizing - the lack of a coercion should
+                        // be silent, as it causes a type mismatch later.
+                    }
 
-                Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
+                    Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
+                }
             }
         }
 
@@ -2020,5 +2032,51 @@ impl AsCoercionSite for ! {
 impl AsCoercionSite for hir::Arm<'_> {
     fn as_coercion_site(&self) -> &hir::Expr<'_> {
         self.body
+    }
+}
+
+struct CoerceVisitor<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
+    span: Span,
+}
+
+impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn visit_goal(&mut self, goal: &inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
+        let Some(pred) = goal.goal().predicate.as_trait_clause() else {
+            return ControlFlow::Continue(());
+        };
+
+        if !self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::Unsize)
+            && !self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::CoerceUnsized)
+        {
+            return ControlFlow::Continue(());
+        }
+
+        match goal.result() {
+            Ok(Certainty::Yes) => ControlFlow::Continue(()),
+            Err(NoSolution) => ControlFlow::Break(()),
+            Ok(Certainty::Maybe(_)) => {
+                // FIXME: structurally normalize?
+                if self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::Unsize)
+                    && let ty::Dynamic(..) = pred.skip_binder().trait_ref.args.type_at(1).kind()
+                    && let ty::Infer(ty::TyVar(vid)) = *pred.self_ty().skip_binder().kind()
+                    && self.fcx.type_var_is_sized(vid)
+                {
+                    ControlFlow::Continue(())
+                } else if let Some(cand) = goal.unique_applicable_candidate()
+                    && cand.shallow_certainty() == Certainty::Yes
+                {
+                    cand.visit_nested_no_probe(self)
+                } else {
+                    ControlFlow::Break(())
+                }
+            }
+        }
     }
 }
