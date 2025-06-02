@@ -381,7 +381,7 @@ fn unop_common<F1: Float, F2: Float>(
         }
 
         // abs and copysign require signaling NaNs to be propagated, so verify bit equality.
-        if actual.to_bits() == expected.to_bits() {
+        if actual.biteq(expected) {
             return CheckAction::Custom(Ok(()));
         } else {
             return CheckAction::Custom(Err(anyhow::anyhow!("NaNs have different bitpatterns")));

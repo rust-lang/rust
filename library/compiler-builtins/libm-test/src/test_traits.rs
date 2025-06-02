@@ -328,10 +328,7 @@ where
         // Check when both are NaNs
         if actual.is_nan() && expected.is_nan() {
             if require_biteq && ctx.basis == CheckBasis::None {
-                ensure!(
-                    actual.to_bits() == expected.to_bits(),
-                    "mismatched NaN bitpatterns"
-                );
+                ensure!(actual.biteq(expected), "mismatched NaN bitpatterns");
             }
             // By default, NaNs have nothing special to check.
             return Ok(());
