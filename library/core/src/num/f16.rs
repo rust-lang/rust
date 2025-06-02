@@ -168,6 +168,7 @@ impl f16 {
     /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
     /// [`MANTISSA_DIGITS`]: f16::MANTISSA_DIGITS
     #[unstable(feature = "f16", issue = "116909")]
+    #[rustc_diagnostic_item = "f16_epsilon"]
     pub const EPSILON: f16 = 9.7656e-4_f16;
 
     /// Smallest finite `f16` value.
