@@ -923,8 +923,8 @@ pub trait Read {
     /// that do not send EOF. In these cases, `read_to_end` will block indefinitely. Standard input
     /// is one such stream which may be finite if piped, but is typically continuous. For example,
     /// `cat <file> | <my_rust_program>` will correctly terminate with an `EOF` upon closure of cat.
-    /// `yes "Data" | pv | <my_rust_program` or `tail -f <file> | <my_rust_program>` may not close
-    /// the stream or insert an `EOF` termination character.
+    /// Reading user input or running programs that remain open indefinitely will never terminate
+    /// the stream with `EOF` (e.g. `yes "Data" | pv | <my_rust_program`).
     ///
     /// Using `.lines()` with a [`BufReader`] or using [`read`] can provide a better solution
     ///
@@ -975,10 +975,10 @@ pub trait Read {
     ///
     /// `read_to_string` attempts to read a source until EOF, but many sources are continuous streams
     /// that do not send EOF. In these cases, `read_to_string` will block indefinitely. Standard input
-    /// is one such stream which may be finite if piped, but is typically continuous. For example,
+    /// is one such stream which may be finite if piped, but is typically continuous. FFor example,
     /// `cat <file> | <my_rust_program>` will correctly terminate with an `EOF` upon closure of cat.
-    /// `yes "Data" | pv | <my_rust_program` or `tail -f <file> | <my_rust_program>` may not close
-    /// the stream or insert an `EOF` termination character.
+    /// Reading user input or running programs that remain open indefinitely will never terminate
+    /// the stream with `EOF` (e.g. `yes "Data" | pv | <my_rust_program`).
     ///
     /// Using `.lines()` with a [`BufReader`] or using [`read`] can provide a better solution
     ///
@@ -1291,8 +1291,8 @@ pub trait Read {
 /// that do not send EOF. In these cases, `read_to_string` will block indefinitely. Standard input
 /// is one such stream which may be finite if piped, but is typically continuous. For example,
 /// `cat <file> | <my_rust_program>` will correctly terminate with an `EOF` upon closure of cat.
-/// `yes "Data" | pv | <my_rust_program` or `tail -f <file> | <my_rust_program>` may not close
-/// the stream or insert an `EOF` termination character.
+/// Reading user input or running programs that remain open indefinitely will never terminate
+/// the stream with `EOF` (e.g. `yes "Data" | pv | <my_rust_program`).
 ///
 /// Using `.lines()` with a [`BufReader`] or using [`read`] can provide a better solution
 #[stable(feature = "io_read_to_string", since = "1.65.0")]
