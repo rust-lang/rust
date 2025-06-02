@@ -6,6 +6,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{self as ty, Interner, elaborate};
+use smallvec::{SmallVec, smallvec};
 use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
@@ -81,12 +82,12 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         alias_ty: ty::AliasTy<I>,
-    ) -> Vec<Candidate<I>> {
+    ) -> SmallVec<[Candidate<I>; 1]> {
         let cx = ecx.cx();
-        let mut candidates = vec![];
+        let mut candidates = smallvec![];
 
         if !ecx.cx().alias_has_const_conditions(alias_ty.def_id) {
-            return vec![];
+            return smallvec![];
         }
 
         for clause in elaborate::elaborate(
@@ -377,7 +378,7 @@ where
     fn consider_structural_builtin_unsize_candidates(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
-    ) -> Vec<Candidate<I>> {
+    ) -> SmallVec<[Candidate<I>; 1]> {
         unreachable!("Unsize is not const")
     }
 }

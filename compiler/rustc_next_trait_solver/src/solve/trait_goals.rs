@@ -9,6 +9,7 @@ use rustc_type_ir::{
     self as ty, Interner, Movability, TraitPredicate, TypeVisitableExt as _, TypingMode,
     Upcast as _, elaborate,
 };
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument, trace};
 
 use crate::delegate::SolverDelegate;
@@ -45,8 +46,8 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
         _alias_ty: ty::AliasTy<I>,
-    ) -> Vec<Candidate<I>> {
-        vec![]
+    ) -> SmallVec<[Candidate<I>; 1]> {
+        smallvec![]
     }
 
     fn consider_impl_candidate(
@@ -746,14 +747,14 @@ where
     fn consider_structural_builtin_unsize_candidates(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-    ) -> Vec<Candidate<I>> {
+    ) -> SmallVec<[Candidate<I>; 1]> {
         if goal.predicate.polarity != ty::PredicatePolarity::Positive {
-            return vec![];
+            return smallvec![];
         }
 
         let result_to_single = |result| match result {
-            Ok(resp) => vec![resp],
-            Err(NoSolution) => vec![],
+            Ok(resp) => smallvec![resp],
+            Err(NoSolution) => smallvec![],
         };
 
         ecx.probe(|_| ProbeKind::UnsizeAssembly).enter(|ecx| {
@@ -764,7 +765,7 @@ where
                 goal.param_env,
                 goal.predicate.trait_ref.args.type_at(1),
             ) else {
-                return vec![];
+                return smallvec![];
             };
 
             let goal = goal.with(ecx.cx(), (a_ty, b_ty));
@@ -802,7 +803,7 @@ where
                     )
                 }
 
-                _ => vec![],
+                _ => smallvec![],
             }
         })
     }
@@ -829,11 +830,11 @@ where
         a_region: I::Region,
         b_data: I::BoundExistentialPredicates,
         b_region: I::Region,
-    ) -> Vec<Candidate<I>> {
+    ) -> SmallVec<[Candidate<I>; 1]> {
         let cx = self.cx();
         let Goal { predicate: (a_ty, _b_ty), .. } = goal;
 
-        let mut responses = vec![];
+        let mut responses = smallvec![];
         // If the principal def ids match (or are both none), then we're not doing
         // trait upcasting. We're just removing auto traits (or shortening the lifetime).
         let b_principal_def_id = b_data.principal_def_id();
@@ -1265,7 +1266,10 @@ where
     /// Importantly, we also only prefer the builtin impls for trait goals, and not during
     /// normalization. This means the only case where this special-case results in exploitable
     /// unsoundness should be lifetime dependent user-written impls.
-    pub(super) fn unsound_prefer_builtin_dyn_impl(&mut self, candidates: &mut Vec<Candidate<I>>) {
+    pub(super) fn unsound_prefer_builtin_dyn_impl(
+        &mut self,
+        candidates: &mut SmallVec<[Candidate<I>; 1]>,
+    ) {
         match self.typing_mode() {
             TypingMode::Coherence => return,
             TypingMode::Analysis { .. }
@@ -1295,7 +1299,7 @@ where
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_trait_candidates(
         &mut self,
-        mut candidates: Vec<Candidate<I>>,
+        mut candidates: SmallVec<[Candidate<I>; 1]>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         if let TypingMode::Coherence = self.typing_mode() {
             let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();

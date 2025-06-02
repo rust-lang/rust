@@ -7,6 +7,7 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::{self as ty, Interner, NormalizesTo, PredicateKind, Upcast as _};
+use smallvec::{SmallVec, smallvec};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
@@ -186,8 +187,8 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
         _alias_ty: ty::AliasTy<I>,
-    ) -> Vec<Candidate<I>> {
-        vec![]
+    ) -> SmallVec<[Candidate<I>; 1]> {
+        smallvec![]
     }
 
     fn consider_impl_candidate(
@@ -884,7 +885,7 @@ where
     fn consider_structural_builtin_unsize_candidates(
         _ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-    ) -> Vec<Candidate<I>> {
+    ) -> SmallVec<[Candidate<I>; 1]> {
         panic!("`Unsize` does not have an associated type: {:?}", goal);
     }
 

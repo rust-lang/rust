@@ -12,6 +12,7 @@ use rustc_type_ir::{
     self as ty, Interner, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _,
     TypeVisitor, TypingMode, Upcast as _, elaborate,
 };
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::trait_goals::TraitGoalProvenVia;
@@ -109,7 +110,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         alias_ty: ty::AliasTy<I>,
-    ) -> Vec<Candidate<I>>;
+    ) -> SmallVec<[Candidate<I>; 1]>;
 
     fn probe_and_consider_param_env_candidate(
         ecx: &mut EvalCtxt<'_, D>,
@@ -333,7 +334,7 @@ where
     fn consider_structural_builtin_unsize_candidates(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-    ) -> Vec<Candidate<I>>;
+    ) -> SmallVec<[Candidate<I>; 1]>;
 }
 
 /// Allows callers of `assemble_and_evaluate_candidates` to choose whether to limit
@@ -360,11 +361,11 @@ where
         &mut self,
         goal: Goal<I, G>,
         assemble_from: AssembleCandidatesFrom,
-    ) -> Vec<Candidate<I>> {
+    ) -> SmallVec<[Candidate<I>; 1]> {
         let Ok(normalized_self_ty) =
             self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
-            return vec![];
+            return smallvec![];
         };
 
         if normalized_self_ty.is_ty_var() {
@@ -378,11 +379,11 @@ where
         // normalizing the self type as well, since type variables are not uniquified.
         let goal = self.resolve_vars_if_possible(goal);
 
-        let mut candidates = vec![];
+        let mut candidates = smallvec![];
 
         if let TypingMode::Coherence = self.typing_mode() {
             if let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal) {
-                return vec![candidate];
+                return smallvec![candidate];
             }
         }
 
@@ -420,7 +421,7 @@ where
     fn assemble_impl_candidates<G: GoalKind<D>>(
         &mut self,
         goal: Goal<I, G>,
-        candidates: &mut Vec<Candidate<I>>,
+        candidates: &mut SmallVec<[Candidate<I>; 1]>,
     ) {
         let cx = self.cx();
         cx.for_each_relevant_impl(
@@ -446,7 +447,7 @@ where
     fn assemble_builtin_impl_candidates<G: GoalKind<D>>(
         &mut self,
         goal: Goal<I, G>,
-        candidates: &mut Vec<Candidate<I>>,
+        candidates: &mut SmallVec<[Candidate<I>; 1]>,
     ) {
         let cx = self.cx();
         let trait_def_id = goal.predicate.trait_def_id(cx);
@@ -550,7 +551,7 @@ where
     fn assemble_param_env_candidates<G: GoalKind<D>>(
         &mut self,
         goal: Goal<I, G>,
-        candidates: &mut Vec<Candidate<I>>,
+        candidates: &mut SmallVec<[Candidate<I>; 1]>,
     ) {
         for assumption in goal.param_env.caller_bounds().iter() {
             candidates.extend(G::probe_and_consider_param_env_candidate(self, goal, assumption));
@@ -561,7 +562,7 @@ where
     fn assemble_alias_bound_candidates<G: GoalKind<D>>(
         &mut self,
         goal: Goal<I, G>,
-        candidates: &mut Vec<Candidate<I>>,
+        candidates: &mut SmallVec<[Candidate<I>; 1]>,
     ) {
         let () = self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
             ecx.assemble_alias_bound_candidates_recur(
@@ -586,7 +587,7 @@ where
         &mut self,
         self_ty: I::Ty,
         goal: Goal<I, G>,
-        candidates: &mut Vec<Candidate<I>>,
+        candidates: &mut SmallVec<[Candidate<I>; 1]>,
         consider_self_bounds: AliasBoundKind,
     ) {
         let (kind, alias_ty) = match self_ty.kind() {
@@ -695,7 +696,7 @@ where
     fn assemble_object_bound_candidates<G: GoalKind<D>>(
         &mut self,
         goal: Goal<I, G>,
-        candidates: &mut Vec<Candidate<I>>,
+        candidates: &mut SmallVec<[Candidate<I>; 1]>,
     ) {
         let cx = self.cx();
         if !cx.trait_may_be_implemented_via_object(goal.predicate.trait_def_id(cx)) {
@@ -828,7 +829,7 @@ where
     pub(super) fn filter_specialized_impls(
         &mut self,
         allow_inference_constraints: AllowInferenceConstraints,
-        candidates: &mut Vec<Candidate<I>>,
+        candidates: &mut SmallVec<[Candidate<I>; 1]>,
     ) {
         match self.typing_mode() {
             TypingMode::Coherence => return,
@@ -926,12 +927,12 @@ where
                 // Even when a trait bound has been proven using a where-bound, we
                 // still need to consider alias-bounds for normalization, see
                 // `tests/ui/next-solver/alias-bound-shadowed-by-env.rs`.
-                let candidates_from_env_and_bounds: Vec<_> = self
+                let candidates_from_env_and_bounds: SmallVec<_> = self
                     .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds);
 
                 // We still need to prefer where-bounds over alias-bounds however.
                 // See `tests/ui/winnowing/norm-where-bound-gt-alias-bound.rs`.
-                let mut considered_candidates: Vec<_> = if candidates_from_env_and_bounds
+                let mut considered_candidates: SmallVec<[_; 1]> = if candidates_from_env_and_bounds
                     .iter()
                     .any(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 {
