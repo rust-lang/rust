@@ -66,7 +66,6 @@
 )]
 #![doc(cfg_hide(
     not(test),
-    not(any(test, bootstrap)),
     no_global_oom_handling,
     not(no_global_oom_handling),
     not(no_rc),

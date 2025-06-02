@@ -235,12 +235,7 @@
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
 #![doc(rust_logo)]
-#![doc(cfg_hide(
-    not(test),
-    not(any(test, bootstrap)),
-    no_global_oom_handling,
-    not(no_global_oom_handling)
-))]
+#![doc(cfg_hide(not(test), no_global_oom_handling, not(no_global_oom_handling)))]
 // Don't link to std. We are std.
 #![no_std]
 // Tell the compiler to link to either panic_abort or panic_unwind
