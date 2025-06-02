@@ -192,3 +192,13 @@ mod issue_9256 {
         print_substring("Hello, world!");
     }
 }
+
+mod issue14952 {
+    use std::path::Path;
+    struct Foo(Path);
+    impl std::fmt::Debug for Foo {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{:?}", &self.0)
+        }
+    }
+}
