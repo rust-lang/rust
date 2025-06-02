@@ -3,6 +3,7 @@ use std::iter;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
@@ -168,7 +169,12 @@ pub fn lower_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let tcx = cx.tcx();
     let llfn = cx.get_fn(instance);
 
-    let mut mir = tcx.codegen_mir(instance);
+    let mut mir = match MonoItem::Fn(instance).instantiation_mode(tcx) {
+        InstantiationMode::LocalCopy => tcx.build_codegen_mir(instance),
+        InstantiationMode::GloballyShared { .. } => {
+            rustc_mir_transform::build_codegen_mir(tcx, instance)
+        }
+    };
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
