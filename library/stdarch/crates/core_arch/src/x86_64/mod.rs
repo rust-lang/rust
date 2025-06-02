@@ -47,11 +47,11 @@ mod tbm;
 pub use self::tbm::*;
 
 mod avx512f;
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub use self::avx512f::*;
 
 mod avx512bw;
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub use self::avx512bw::*;
 
 mod bswap;

@@ -11,7 +11,7 @@ use stdarch_test::assert_instr;
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsd_i64&expand=1792)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsd2si))]
 pub fn _mm_cvtsd_i64(a: __m128d) -> i64 {
     _mm_cvtsd_si64(a)
@@ -22,7 +22,7 @@ pub fn _mm_cvtsd_i64(a: __m128d) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtss_i64&expand=1894)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtss2si))]
 pub fn _mm_cvtss_i64(a: __m128) -> i64 {
     _mm_cvtss_si64(a)
@@ -33,7 +33,7 @@ pub fn _mm_cvtss_i64(a: __m128) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtss_u64&expand=1902)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtss2usi))]
 pub fn _mm_cvtss_u64(a: __m128) -> u64 {
     unsafe { vcvtss2usi64(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION) }
@@ -44,7 +44,7 @@ pub fn _mm_cvtss_u64(a: __m128) -> u64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsd_u64&expand=1800)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsd2usi))]
 pub fn _mm_cvtsd_u64(a: __m128d) -> u64 {
     unsafe { vcvtsd2usi64(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION) }
@@ -55,7 +55,7 @@ pub fn _mm_cvtsd_u64(a: __m128d) -> u64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=mm_cvti64_ss&expand=1643)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2ss))]
 pub fn _mm_cvti64_ss(a: __m128, b: i64) -> __m128 {
     unsafe {
@@ -69,7 +69,7 @@ pub fn _mm_cvti64_ss(a: __m128, b: i64) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvti64_sd&expand=1644)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2sd))]
 pub fn _mm_cvti64_sd(a: __m128d, b: i64) -> __m128d {
     unsafe {
@@ -83,7 +83,7 @@ pub fn _mm_cvti64_sd(a: __m128d, b: i64) -> __m128d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtu64_ss&expand=2035)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtusi2ss))]
 pub fn _mm_cvtu64_ss(a: __m128, b: u64) -> __m128 {
     unsafe {
@@ -97,7 +97,7 @@ pub fn _mm_cvtu64_ss(a: __m128, b: u64) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtu64_sd&expand=2034)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtusi2sd))]
 pub fn _mm_cvtu64_sd(a: __m128d, b: u64) -> __m128d {
     unsafe {
@@ -111,7 +111,7 @@ pub fn _mm_cvtu64_sd(a: __m128d, b: u64) -> __m128d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvttsd_i64&expand=2016)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttsd2si))]
 pub fn _mm_cvttsd_i64(a: __m128d) -> i64 {
     unsafe { vcvttsd2si64(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION) }
@@ -122,7 +122,7 @@ pub fn _mm_cvttsd_i64(a: __m128d) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvttsd_u64&expand=2021)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttsd2usi))]
 pub fn _mm_cvttsd_u64(a: __m128d) -> u64 {
     unsafe { vcvttsd2usi64(a.as_f64x2(), _MM_FROUND_CUR_DIRECTION) }
@@ -133,7 +133,7 @@ pub fn _mm_cvttsd_u64(a: __m128d) -> u64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=#text=_mm_cvttss_i64&expand=2023)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttss2si))]
 pub fn _mm_cvttss_i64(a: __m128) -> i64 {
     unsafe { vcvttss2si64(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION) }
@@ -144,7 +144,7 @@ pub fn _mm_cvttss_i64(a: __m128) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvttss_u64&expand=2027)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttss2usi))]
 pub fn _mm_cvttss_u64(a: __m128) -> u64 {
     unsafe { vcvttss2usi64(a.as_f32x4(), _MM_FROUND_CUR_DIRECTION) }
@@ -161,7 +161,7 @@ pub fn _mm_cvttss_u64(a: __m128) -> u64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundi64_sd&expand=1313)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2sd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_cvt_roundi64_sd<const ROUNDING: i32>(a: __m128d, b: i64) -> __m128d {
@@ -184,7 +184,7 @@ pub fn _mm_cvt_roundi64_sd<const ROUNDING: i32>(a: __m128d, b: i64) -> __m128d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundsi64_sd&expand=1367)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2sd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_cvt_roundsi64_sd<const ROUNDING: i32>(a: __m128d, b: i64) -> __m128d {
@@ -207,7 +207,7 @@ pub fn _mm_cvt_roundsi64_sd<const ROUNDING: i32>(a: __m128d, b: i64) -> __m128d 
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundi64_ss&expand=1314)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2ss, ROUNDING = 8))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_cvt_roundi64_ss<const ROUNDING: i32>(a: __m128, b: i64) -> __m128 {
@@ -230,7 +230,7 @@ pub fn _mm_cvt_roundi64_ss<const ROUNDING: i32>(a: __m128, b: i64) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundu64_sd&expand=1379)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtusi2sd, ROUNDING = 8))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_cvt_roundu64_sd<const ROUNDING: i32>(a: __m128d, b: u64) -> __m128d {
@@ -253,7 +253,7 @@ pub fn _mm_cvt_roundu64_sd<const ROUNDING: i32>(a: __m128d, b: u64) -> __m128d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundsi64_ss&expand=1368)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsi2ss, ROUNDING = 8))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_cvt_roundsi64_ss<const ROUNDING: i32>(a: __m128, b: i64) -> __m128 {
@@ -276,7 +276,7 @@ pub fn _mm_cvt_roundsi64_ss<const ROUNDING: i32>(a: __m128, b: i64) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundu64_ss&expand=1380)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtusi2ss, ROUNDING = 8))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_cvt_roundu64_ss<const ROUNDING: i32>(a: __m128, b: u64) -> __m128 {
@@ -299,7 +299,7 @@ pub fn _mm_cvt_roundu64_ss<const ROUNDING: i32>(a: __m128, b: u64) -> __m128 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundsd_si64&expand=1360)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsd2si, ROUNDING = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvt_roundsd_si64<const ROUNDING: i32>(a: __m128d) -> i64 {
@@ -321,7 +321,7 @@ pub fn _mm_cvt_roundsd_si64<const ROUNDING: i32>(a: __m128d) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundsd_i64&expand=1358)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsd2si, ROUNDING = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvt_roundsd_i64<const ROUNDING: i32>(a: __m128d) -> i64 {
@@ -343,7 +343,7 @@ pub fn _mm_cvt_roundsd_i64<const ROUNDING: i32>(a: __m128d) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundsd_u64&expand=1365)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtsd2usi, ROUNDING = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvt_roundsd_u64<const ROUNDING: i32>(a: __m128d) -> u64 {
@@ -365,7 +365,7 @@ pub fn _mm_cvt_roundsd_u64<const ROUNDING: i32>(a: __m128d) -> u64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundss_si64&expand=1375)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtss2si, ROUNDING = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvt_roundss_si64<const ROUNDING: i32>(a: __m128) -> i64 {
@@ -387,7 +387,7 @@ pub fn _mm_cvt_roundss_si64<const ROUNDING: i32>(a: __m128) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundss_i64&expand=1370)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtss2si, ROUNDING = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvt_roundss_i64<const ROUNDING: i32>(a: __m128) -> i64 {
@@ -409,7 +409,7 @@ pub fn _mm_cvt_roundss_i64<const ROUNDING: i32>(a: __m128) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvt_roundss_u64&expand=1377)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtss2usi, ROUNDING = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvt_roundss_u64<const ROUNDING: i32>(a: __m128) -> u64 {
@@ -426,7 +426,7 @@ pub fn _mm_cvt_roundss_u64<const ROUNDING: i32>(a: __m128) -> u64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtt_roundsd_si64&expand=1931)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttsd2si, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundsd_si64<const SAE: i32>(a: __m128d) -> i64 {
@@ -443,7 +443,7 @@ pub fn _mm_cvtt_roundsd_si64<const SAE: i32>(a: __m128d) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtt_roundsd_i64&expand=1929)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttsd2si, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundsd_i64<const SAE: i32>(a: __m128d) -> i64 {
@@ -460,7 +460,7 @@ pub fn _mm_cvtt_roundsd_i64<const SAE: i32>(a: __m128d) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtt_roundsd_u64&expand=1933)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttsd2usi, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundsd_u64<const SAE: i32>(a: __m128d) -> u64 {
@@ -477,7 +477,7 @@ pub fn _mm_cvtt_roundsd_u64<const SAE: i32>(a: __m128d) -> u64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtt_roundss_i64&expand=1935)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttss2si, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundss_i64<const SAE: i32>(a: __m128) -> i64 {
@@ -494,7 +494,7 @@ pub fn _mm_cvtt_roundss_i64<const SAE: i32>(a: __m128) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtt_roundss_si64&expand=1937)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttss2si, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundss_si64<const SAE: i32>(a: __m128) -> i64 {
@@ -511,7 +511,7 @@ pub fn _mm_cvtt_roundss_si64<const SAE: i32>(a: __m128) -> i64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtt_roundss_u64&expand=1939)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvttss2usi, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_cvtt_roundss_u64<const SAE: i32>(a: __m128) -> u64 {

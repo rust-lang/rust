@@ -41,7 +41,7 @@ unsafe extern "C" {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_popcnt_epi16)
 #[inline]
 #[target_feature(enable = "avx512bitalg")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub fn _mm512_popcnt_epi16(a: __m512i) -> __m512i {
     unsafe { transmute(simd_ctpop(a.as_i16x32())) }
@@ -55,7 +55,7 @@ pub fn _mm512_popcnt_epi16(a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_popcnt_epi16)
 #[inline]
 #[target_feature(enable = "avx512bitalg")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub fn _mm512_maskz_popcnt_epi16(k: __mmask32, a: __m512i) -> __m512i {
     unsafe {
@@ -75,7 +75,7 @@ pub fn _mm512_maskz_popcnt_epi16(k: __mmask32, a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_popcnt_epi16)
 #[inline]
 #[target_feature(enable = "avx512bitalg")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub fn _mm512_mask_popcnt_epi16(src: __m512i, k: __mmask32, a: __m512i) -> __m512i {
     unsafe {
@@ -92,7 +92,7 @@ pub fn _mm512_mask_popcnt_epi16(src: __m512i, k: __mmask32, a: __m512i) -> __m51
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_popcnt_epi16)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub fn _mm256_popcnt_epi16(a: __m256i) -> __m256i {
     unsafe { transmute(simd_ctpop(a.as_i16x16())) }
@@ -106,7 +106,7 @@ pub fn _mm256_popcnt_epi16(a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_popcnt_epi16)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub fn _mm256_maskz_popcnt_epi16(k: __mmask16, a: __m256i) -> __m256i {
     unsafe {
@@ -126,7 +126,7 @@ pub fn _mm256_maskz_popcnt_epi16(k: __mmask16, a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_popcnt_epi16)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub fn _mm256_mask_popcnt_epi16(src: __m256i, k: __mmask16, a: __m256i) -> __m256i {
     unsafe {
@@ -143,7 +143,7 @@ pub fn _mm256_mask_popcnt_epi16(src: __m256i, k: __mmask16, a: __m256i) -> __m25
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_popcnt_epi16)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub fn _mm_popcnt_epi16(a: __m128i) -> __m128i {
     unsafe { transmute(simd_ctpop(a.as_i16x8())) }
@@ -157,7 +157,7 @@ pub fn _mm_popcnt_epi16(a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_popcnt_epi16)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub fn _mm_maskz_popcnt_epi16(k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
@@ -177,7 +177,7 @@ pub fn _mm_maskz_popcnt_epi16(k: __mmask8, a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_popcnt_epi16)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub fn _mm_mask_popcnt_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
@@ -194,7 +194,7 @@ pub fn _mm_mask_popcnt_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_popcnt_epi8)
 #[inline]
 #[target_feature(enable = "avx512bitalg")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub fn _mm512_popcnt_epi8(a: __m512i) -> __m512i {
     unsafe { transmute(simd_ctpop(a.as_i8x64())) }
@@ -208,7 +208,7 @@ pub fn _mm512_popcnt_epi8(a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_popcnt_epi8)
 #[inline]
 #[target_feature(enable = "avx512bitalg")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub fn _mm512_maskz_popcnt_epi8(k: __mmask64, a: __m512i) -> __m512i {
     unsafe {
@@ -228,7 +228,7 @@ pub fn _mm512_maskz_popcnt_epi8(k: __mmask64, a: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_popcnt_epi8)
 #[inline]
 #[target_feature(enable = "avx512bitalg")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub fn _mm512_mask_popcnt_epi8(src: __m512i, k: __mmask64, a: __m512i) -> __m512i {
     unsafe {
@@ -245,7 +245,7 @@ pub fn _mm512_mask_popcnt_epi8(src: __m512i, k: __mmask64, a: __m512i) -> __m512
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_popcnt_epi8)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub fn _mm256_popcnt_epi8(a: __m256i) -> __m256i {
     unsafe { transmute(simd_ctpop(a.as_i8x32())) }
@@ -259,7 +259,7 @@ pub fn _mm256_popcnt_epi8(a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_popcnt_epi8)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub fn _mm256_maskz_popcnt_epi8(k: __mmask32, a: __m256i) -> __m256i {
     unsafe {
@@ -279,7 +279,7 @@ pub fn _mm256_maskz_popcnt_epi8(k: __mmask32, a: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_popcnt_epi8)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub fn _mm256_mask_popcnt_epi8(src: __m256i, k: __mmask32, a: __m256i) -> __m256i {
     unsafe {
@@ -296,7 +296,7 @@ pub fn _mm256_mask_popcnt_epi8(src: __m256i, k: __mmask32, a: __m256i) -> __m256
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_popcnt_epi8)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub fn _mm_popcnt_epi8(a: __m128i) -> __m128i {
     unsafe { transmute(simd_ctpop(a.as_i8x16())) }
@@ -310,7 +310,7 @@ pub fn _mm_popcnt_epi8(a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_popcnt_epi8)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub fn _mm_maskz_popcnt_epi8(k: __mmask16, a: __m128i) -> __m128i {
     unsafe {
@@ -330,7 +330,7 @@ pub fn _mm_maskz_popcnt_epi8(k: __mmask16, a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_popcnt_epi8)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub fn _mm_mask_popcnt_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __m128i {
     unsafe {
@@ -349,7 +349,7 @@ pub fn _mm_mask_popcnt_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __m128i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_bitshuffle_epi64_mask)
 #[inline]
 #[target_feature(enable = "avx512bitalg")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm512_bitshuffle_epi64_mask(b: __m512i, c: __m512i) -> __mmask64 {
     unsafe { bitshuffle_512(b.as_i8x64(), c.as_i8x64(), !0) }
@@ -365,7 +365,7 @@ pub fn _mm512_bitshuffle_epi64_mask(b: __m512i, c: __m512i) -> __mmask64 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_bitshuffle_epi64_mask)
 #[inline]
 #[target_feature(enable = "avx512bitalg")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm512_mask_bitshuffle_epi64_mask(k: __mmask64, b: __m512i, c: __m512i) -> __mmask64 {
     unsafe { bitshuffle_512(b.as_i8x64(), c.as_i8x64(), k) }
@@ -378,7 +378,7 @@ pub fn _mm512_mask_bitshuffle_epi64_mask(k: __mmask64, b: __m512i, c: __m512i) -
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_bitshuffle_epi64_mask)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm256_bitshuffle_epi64_mask(b: __m256i, c: __m256i) -> __mmask32 {
     unsafe { bitshuffle_256(b.as_i8x32(), c.as_i8x32(), !0) }
@@ -394,7 +394,7 @@ pub fn _mm256_bitshuffle_epi64_mask(b: __m256i, c: __m256i) -> __mmask32 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_bitshuffle_epi64_mask)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm256_mask_bitshuffle_epi64_mask(k: __mmask32, b: __m256i, c: __m256i) -> __mmask32 {
     unsafe { bitshuffle_256(b.as_i8x32(), c.as_i8x32(), k) }
@@ -407,7 +407,7 @@ pub fn _mm256_mask_bitshuffle_epi64_mask(k: __mmask32, b: __m256i, c: __m256i) -
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_bitshuffle_epi64_mask)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm_bitshuffle_epi64_mask(b: __m128i, c: __m128i) -> __mmask16 {
     unsafe { bitshuffle_128(b.as_i8x16(), c.as_i8x16(), !0) }
@@ -423,7 +423,7 @@ pub fn _mm_bitshuffle_epi64_mask(b: __m128i, c: __m128i) -> __mmask16 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_bitshuffle_epi64_mask)
 #[inline]
 #[target_feature(enable = "avx512bitalg,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm_mask_bitshuffle_epi64_mask(k: __mmask16, b: __m128i, c: __m128i) -> __mmask16 {
     unsafe { bitshuffle_128(b.as_i8x16(), c.as_i8x16(), k) }

@@ -63,7 +63,7 @@ pub unsafe fn _mm256_bcstnesh_ps(a: *const f16) -> __m256 {
 #[inline]
 #[target_feature(enable = "avxneconvert")]
 #[cfg_attr(test, assert_instr(vcvtneebf162ps))]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_cvtneebf16_ps(a: *const __m128bh) -> __m128 {
     transmute(cvtneebf162ps_128(a))
 }
@@ -75,7 +75,7 @@ pub unsafe fn _mm_cvtneebf16_ps(a: *const __m128bh) -> __m128 {
 #[inline]
 #[target_feature(enable = "avxneconvert")]
 #[cfg_attr(test, assert_instr(vcvtneebf162ps))]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_cvtneebf16_ps(a: *const __m256bh) -> __m256 {
     transmute(cvtneebf162ps_256(a))
 }
@@ -111,7 +111,7 @@ pub unsafe fn _mm256_cvtneeph_ps(a: *const __m256h) -> __m256 {
 #[inline]
 #[target_feature(enable = "avxneconvert")]
 #[cfg_attr(test, assert_instr(vcvtneobf162ps))]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_cvtneobf16_ps(a: *const __m128bh) -> __m128 {
     transmute(cvtneobf162ps_128(a))
 }
@@ -123,7 +123,7 @@ pub unsafe fn _mm_cvtneobf16_ps(a: *const __m128bh) -> __m128 {
 #[inline]
 #[target_feature(enable = "avxneconvert")]
 #[cfg_attr(test, assert_instr(vcvtneobf162ps))]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_cvtneobf16_ps(a: *const __m256bh) -> __m256 {
     transmute(cvtneobf162ps_256(a))
 }
@@ -159,7 +159,7 @@ pub unsafe fn _mm256_cvtneoph_ps(a: *const __m256h) -> __m256 {
 #[inline]
 #[target_feature(enable = "avxneconvert")]
 #[cfg_attr(test, assert_instr(vcvtneps2bf16))]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
     unsafe {
         let mut dst: __m128bh;
@@ -180,7 +180,7 @@ pub fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
 #[inline]
 #[target_feature(enable = "avxneconvert")]
 #[cfg_attr(test, assert_instr(vcvtneps2bf16))]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_cvtneps_avx_pbh(a: __m256) -> __m128bh {
     unsafe {
         let mut dst: __m128bh;

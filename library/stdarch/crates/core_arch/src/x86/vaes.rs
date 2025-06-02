@@ -39,7 +39,7 @@ unsafe extern "C" {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_aesenc_epi128)
 #[inline]
 #[target_feature(enable = "vaes")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vaesenc))]
 pub fn _mm256_aesenc_epi128(a: __m256i, round_key: __m256i) -> __m256i {
     unsafe { aesenc_256(a, round_key) }
@@ -51,7 +51,7 @@ pub fn _mm256_aesenc_epi128(a: __m256i, round_key: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_aesenclast_epi128)
 #[inline]
 #[target_feature(enable = "vaes")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vaesenclast))]
 pub fn _mm256_aesenclast_epi128(a: __m256i, round_key: __m256i) -> __m256i {
     unsafe { aesenclast_256(a, round_key) }
@@ -63,7 +63,7 @@ pub fn _mm256_aesenclast_epi128(a: __m256i, round_key: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_aesdec_epi128)
 #[inline]
 #[target_feature(enable = "vaes")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vaesdec))]
 pub fn _mm256_aesdec_epi128(a: __m256i, round_key: __m256i) -> __m256i {
     unsafe { aesdec_256(a, round_key) }
@@ -75,7 +75,7 @@ pub fn _mm256_aesdec_epi128(a: __m256i, round_key: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_aesdeclast_epi128)
 #[inline]
 #[target_feature(enable = "vaes")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vaesdeclast))]
 pub fn _mm256_aesdeclast_epi128(a: __m256i, round_key: __m256i) -> __m256i {
     unsafe { aesdeclast_256(a, round_key) }
@@ -87,7 +87,7 @@ pub fn _mm256_aesdeclast_epi128(a: __m256i, round_key: __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_aesenc_epi128)
 #[inline]
 #[target_feature(enable = "vaes,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vaesenc))]
 pub fn _mm512_aesenc_epi128(a: __m512i, round_key: __m512i) -> __m512i {
     unsafe { aesenc_512(a, round_key) }
@@ -99,7 +99,7 @@ pub fn _mm512_aesenc_epi128(a: __m512i, round_key: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_aesenclast_epi128)
 #[inline]
 #[target_feature(enable = "vaes,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vaesenclast))]
 pub fn _mm512_aesenclast_epi128(a: __m512i, round_key: __m512i) -> __m512i {
     unsafe { aesenclast_512(a, round_key) }
@@ -111,7 +111,7 @@ pub fn _mm512_aesenclast_epi128(a: __m512i, round_key: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_aesdec_epi128)
 #[inline]
 #[target_feature(enable = "vaes,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vaesdec))]
 pub fn _mm512_aesdec_epi128(a: __m512i, round_key: __m512i) -> __m512i {
     unsafe { aesdec_512(a, round_key) }
@@ -123,7 +123,7 @@ pub fn _mm512_aesdec_epi128(a: __m512i, round_key: __m512i) -> __m512i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_aesdeclast_epi128)
 #[inline]
 #[target_feature(enable = "vaes,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vaesdeclast))]
 pub fn _mm512_aesdeclast_epi128(a: __m512i, round_key: __m512i) -> __m512i {
     unsafe { aesdeclast_512(a, round_key) }

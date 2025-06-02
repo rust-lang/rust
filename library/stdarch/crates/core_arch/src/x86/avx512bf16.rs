@@ -35,7 +35,7 @@ unsafe extern "C" {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651&avx512techs=AVX512_BF16&text=_mm_cvtne2ps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtne2ps2bf16"))]
 pub fn _mm_cvtne2ps_pbh(a: __m128, b: __m128) -> __m128bh {
     unsafe { transmute(cvtne2ps2bf16(a.as_f32x4(), b.as_f32x4())) }
@@ -48,7 +48,7 @@ pub fn _mm_cvtne2ps_pbh(a: __m128, b: __m128) -> __m128bh {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651&avx512techs=AVX512_BF16&text=_mm_mask_cvtne2ps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtne2ps2bf16"))]
 pub fn _mm_mask_cvtne2ps_pbh(src: __m128bh, k: __mmask8, a: __m128, b: __m128) -> __m128bh {
     unsafe {
@@ -64,7 +64,7 @@ pub fn _mm_mask_cvtne2ps_pbh(src: __m128bh, k: __mmask8, a: __m128, b: __m128) -
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651&avx512techs=AVX512_BF16&text=_mm_maskz_cvtne2ps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtne2ps2bf16"))]
 pub fn _mm_maskz_cvtne2ps_pbh(k: __mmask8, a: __m128, b: __m128) -> __m128bh {
     unsafe {
@@ -79,7 +79,7 @@ pub fn _mm_maskz_cvtne2ps_pbh(k: __mmask8, a: __m128, b: __m128) -> __m128bh {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654&avx512techs=AVX512_BF16&text=_mm256_cvtne2ps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtne2ps2bf16"))]
 pub fn _mm256_cvtne2ps_pbh(a: __m256, b: __m256) -> __m256bh {
     unsafe { transmute(cvtne2ps2bf16_256(a.as_f32x8(), b.as_f32x8())) }
@@ -91,7 +91,7 @@ pub fn _mm256_cvtne2ps_pbh(a: __m256, b: __m256) -> __m256bh {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654&avx512techs=AVX512_BF16&text=_mm256_mask_cvtne2ps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtne2ps2bf16"))]
 pub fn _mm256_mask_cvtne2ps_pbh(src: __m256bh, k: __mmask16, a: __m256, b: __m256) -> __m256bh {
     unsafe {
@@ -106,7 +106,7 @@ pub fn _mm256_mask_cvtne2ps_pbh(src: __m256bh, k: __mmask16, a: __m256, b: __m25
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654&avx512techs=AVX512_BF16&text=_mm256_maskz_cvtne2ps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtne2ps2bf16"))]
 pub fn _mm256_maskz_cvtne2ps_pbh(k: __mmask16, a: __m256, b: __m256) -> __m256bh {
     unsafe {
@@ -121,7 +121,7 @@ pub fn _mm256_maskz_cvtne2ps_pbh(k: __mmask16, a: __m256, b: __m256) -> __m256bh
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657&avx512techs=AVX512_BF16&text=_mm512_cvtne2ps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtne2ps2bf16"))]
 pub fn _mm512_cvtne2ps_pbh(a: __m512, b: __m512) -> __m512bh {
     unsafe { transmute(cvtne2ps2bf16_512(a.as_f32x16(), b.as_f32x16())) }
@@ -134,7 +134,7 @@ pub fn _mm512_cvtne2ps_pbh(a: __m512, b: __m512) -> __m512bh {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657&avx512techs=AVX512_BF16&text=_mm512_mask_cvtne2ps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtne2ps2bf16"))]
 pub fn _mm512_mask_cvtne2ps_pbh(src: __m512bh, k: __mmask32, a: __m512, b: __m512) -> __m512bh {
     unsafe {
@@ -150,7 +150,7 @@ pub fn _mm512_mask_cvtne2ps_pbh(src: __m512bh, k: __mmask32, a: __m512, b: __m51
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657&avx512techs=AVX512_BF16&text=_mm512_maskz_cvtne2ps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtne2ps2bf16"))]
 pub fn _mm512_maskz_cvtne2ps_pbh(k: __mmask32, a: __m512, b: __m512) -> __m512bh {
     unsafe {
@@ -164,7 +164,7 @@ pub fn _mm512_maskz_cvtne2ps_pbh(k: __mmask32, a: __m512, b: __m512) -> __m512bh
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm256_cvtneps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
 pub fn _mm256_cvtneps_pbh(a: __m256) -> __m128bh {
     unsafe { transmute(cvtneps2bf16_256(a.as_f32x8())) }
@@ -176,7 +176,7 @@ pub fn _mm256_cvtneps_pbh(a: __m256) -> __m128bh {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm256_mask_cvtneps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
 pub fn _mm256_mask_cvtneps_pbh(src: __m128bh, k: __mmask8, a: __m256) -> __m128bh {
     unsafe {
@@ -191,7 +191,7 @@ pub fn _mm256_mask_cvtneps_pbh(src: __m128bh, k: __mmask8, a: __m256) -> __m128b
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm256_maskz_cvtneps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
 pub fn _mm256_maskz_cvtneps_pbh(k: __mmask8, a: __m256) -> __m128bh {
     unsafe {
@@ -205,7 +205,7 @@ pub fn _mm256_maskz_cvtneps_pbh(k: __mmask8, a: __m256) -> __m128bh {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm512_cvtneps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
 pub fn _mm512_cvtneps_pbh(a: __m512) -> __m256bh {
     unsafe { transmute(cvtneps2bf16_512(a.as_f32x16())) }
@@ -217,7 +217,7 @@ pub fn _mm512_cvtneps_pbh(a: __m512) -> __m256bh {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm512_mask_cvtneps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
 pub fn _mm512_mask_cvtneps_pbh(src: __m256bh, k: __mmask16, a: __m512) -> __m256bh {
     unsafe {
@@ -232,7 +232,7 @@ pub fn _mm512_mask_cvtneps_pbh(src: __m256bh, k: __mmask16, a: __m512) -> __m256
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm512_maskz_cvtneps_pbh)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
 pub fn _mm512_maskz_cvtneps_pbh(k: __mmask16, a: __m512) -> __m256bh {
     unsafe {
@@ -247,7 +247,7 @@ pub fn _mm512_maskz_cvtneps_pbh(k: __mmask16, a: __m512) -> __m256bh {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm_dpbf16_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm_dpbf16_ps(src: __m128, a: __m128bh, b: __m128bh) -> __m128 {
     unsafe { transmute(dpbf16ps(src.as_f32x4(), a.as_i16x8(), b.as_i16x8())) }
@@ -260,7 +260,7 @@ pub fn _mm_dpbf16_ps(src: __m128, a: __m128bh, b: __m128bh) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm_mask_dpbf16_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm_mask_dpbf16_ps(src: __m128, k: __mmask8, a: __m128bh, b: __m128bh) -> __m128 {
     unsafe {
@@ -276,7 +276,7 @@ pub fn _mm_mask_dpbf16_ps(src: __m128, k: __mmask8, a: __m128bh, b: __m128bh) ->
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm_maskz_dpbf16_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm_maskz_dpbf16_ps(k: __mmask8, src: __m128, a: __m128bh, b: __m128bh) -> __m128 {
     unsafe {
@@ -292,7 +292,7 @@ pub fn _mm_maskz_dpbf16_ps(k: __mmask8, src: __m128, a: __m128bh, b: __m128bh) -
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm256_dpbf16_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm256_dpbf16_ps(src: __m256, a: __m256bh, b: __m256bh) -> __m256 {
     unsafe { transmute(dpbf16ps_256(src.as_f32x8(), a.as_i16x16(), b.as_i16x16())) }
@@ -305,7 +305,7 @@ pub fn _mm256_dpbf16_ps(src: __m256, a: __m256bh, b: __m256bh) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm256_mask_dpbf16_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm256_mask_dpbf16_ps(src: __m256, k: __mmask8, a: __m256bh, b: __m256bh) -> __m256 {
     unsafe {
@@ -321,7 +321,7 @@ pub fn _mm256_mask_dpbf16_ps(src: __m256, k: __mmask8, a: __m256bh, b: __m256bh)
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm256_maskz_dpbf16_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm256_maskz_dpbf16_ps(k: __mmask8, src: __m256, a: __m256bh, b: __m256bh) -> __m256 {
     unsafe {
@@ -338,7 +338,7 @@ pub fn _mm256_maskz_dpbf16_ps(k: __mmask8, src: __m256, a: __m256bh, b: __m256bh
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm512_dpbf16_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm512_dpbf16_ps(src: __m512, a: __m512bh, b: __m512bh) -> __m512 {
     unsafe { transmute(dpbf16ps_512(src.as_f32x16(), a.as_i16x32(), b.as_i16x32())) }
@@ -351,7 +351,7 @@ pub fn _mm512_dpbf16_ps(src: __m512, a: __m512bh, b: __m512bh) -> __m512 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm512_mask_dpbf16_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm512_mask_dpbf16_ps(src: __m512, k: __mmask16, a: __m512bh, b: __m512bh) -> __m512 {
     unsafe {
@@ -367,7 +367,7 @@ pub fn _mm512_mask_dpbf16_ps(src: __m512, k: __mmask16, a: __m512bh, b: __m512bh
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654,1657,1660&avx512techs=AVX512_BF16&text=_mm512_maskz_dpbf16_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr("vdpbf16ps"))]
 pub fn _mm512_maskz_dpbf16_ps(k: __mmask16, src: __m512, a: __m512bh, b: __m512bh) -> __m512 {
     unsafe {
@@ -382,7 +382,7 @@ pub fn _mm512_maskz_dpbf16_ps(k: __mmask16, src: __m512, a: __m512bh, b: __m512b
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvtpbh_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_cvtpbh_ps(a: __m256bh) -> __m512 {
     unsafe { _mm512_castsi512_ps(_mm512_slli_epi32::<16>(_mm512_cvtepi16_epi32(transmute(a)))) }
 }
@@ -394,7 +394,7 @@ pub fn _mm512_cvtpbh_ps(a: __m256bh) -> __m512 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvtpbh_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_mask_cvtpbh_ps(src: __m512, k: __mmask16, a: __m256bh) -> __m512 {
     unsafe {
         let cvt = _mm512_cvtpbh_ps(a);
@@ -409,7 +409,7 @@ pub fn _mm512_mask_cvtpbh_ps(src: __m512, k: __mmask16, a: __m256bh) -> __m512 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvtpbh_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_maskz_cvtpbh_ps(k: __mmask16, a: __m256bh) -> __m512 {
     unsafe {
         let cvt = _mm512_cvtpbh_ps(a);
@@ -423,7 +423,7 @@ pub fn _mm512_maskz_cvtpbh_ps(k: __mmask16, a: __m256bh) -> __m512 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtpbh_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_cvtpbh_ps(a: __m128bh) -> __m256 {
     unsafe { _mm256_castsi256_ps(_mm256_slli_epi32::<16>(_mm256_cvtepi16_epi32(transmute(a)))) }
 }
@@ -435,7 +435,7 @@ pub fn _mm256_cvtpbh_ps(a: __m128bh) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_cvtpbh_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_mask_cvtpbh_ps(src: __m256, k: __mmask8, a: __m128bh) -> __m256 {
     unsafe {
         let cvt = _mm256_cvtpbh_ps(a);
@@ -450,7 +450,7 @@ pub fn _mm256_mask_cvtpbh_ps(src: __m256, k: __mmask8, a: __m128bh) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_cvtpbh_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_maskz_cvtpbh_ps(k: __mmask8, a: __m128bh) -> __m256 {
     unsafe {
         let cvt = _mm256_cvtpbh_ps(a);
@@ -464,7 +464,7 @@ pub fn _mm256_maskz_cvtpbh_ps(k: __mmask8, a: __m128bh) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtpbh_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_cvtpbh_ps(a: __m128bh) -> __m128 {
     unsafe { _mm_castsi128_ps(_mm_slli_epi32::<16>(_mm_cvtepi16_epi32(transmute(a)))) }
 }
@@ -476,7 +476,7 @@ pub fn _mm_cvtpbh_ps(a: __m128bh) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_cvtpbh_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_mask_cvtpbh_ps(src: __m128, k: __mmask8, a: __m128bh) -> __m128 {
     unsafe {
         let cvt = _mm_cvtpbh_ps(a);
@@ -491,7 +491,7 @@ pub fn _mm_mask_cvtpbh_ps(src: __m128, k: __mmask8, a: __m128bh) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_cvtpbh_ps)
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_maskz_cvtpbh_ps(k: __mmask8, a: __m128bh) -> __m128 {
     unsafe {
         let cvt = _mm_cvtpbh_ps(a);
@@ -517,7 +517,7 @@ pub fn _mm_cvtsbh_ss(a: bf16) -> f32 {
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_cvtneps_pbh(a: __m128) -> __m128bh {
     unsafe {
         let mut dst: __m128bh;
@@ -539,7 +539,7 @@ pub fn _mm_cvtneps_pbh(a: __m128) -> __m128bh {
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_mask_cvtneps_pbh(src: __m128bh, k: __mmask8, a: __m128) -> __m128bh {
     unsafe {
         let mut dst = src;
@@ -562,7 +562,7 @@ pub fn _mm_mask_cvtneps_pbh(src: __m128bh, k: __mmask8, a: __m128) -> __m128bh {
 #[inline]
 #[target_feature(enable = "avx512bf16,avx512vl")]
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_maskz_cvtneps_pbh(k: __mmask8, a: __m128) -> __m128bh {
     unsafe {
         let mut dst: __m128bh;

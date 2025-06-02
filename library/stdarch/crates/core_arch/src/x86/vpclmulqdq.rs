@@ -33,7 +33,7 @@ unsafe extern "C" {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_clmulepi64_epi128)
 #[inline]
 #[target_feature(enable = "vpclmulqdq,avx512f")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 // technically according to Intel's documentation we don't need avx512f here, however LLVM gets confused otherwise
 #[cfg_attr(test, assert_instr(vpclmul, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
@@ -52,7 +52,7 @@ pub fn _mm512_clmulepi64_epi128<const IMM8: i32>(a: __m512i, b: __m512i) -> __m5
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_clmulepi64_epi128)
 #[inline]
 #[target_feature(enable = "vpclmulqdq")]
-#[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
+#[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpclmul, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm256_clmulepi64_epi128<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {

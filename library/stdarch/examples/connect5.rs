@@ -29,8 +29,8 @@
 //! each move.
 
 #![allow(internal_features)]
-#![cfg_attr(target_arch = "x86", feature(stdarch_x86_avx512, stdarch_internal))]
-#![cfg_attr(target_arch = "x86_64", feature(stdarch_x86_avx512, stdarch_internal))]
+#![cfg_attr(target_arch = "x86", feature(stdarch_internal))]
+#![cfg_attr(target_arch = "x86_64", feature(stdarch_internal))]
 #![feature(stmt_expr_attributes)]
 
 use rand::seq::SliceRandom;
