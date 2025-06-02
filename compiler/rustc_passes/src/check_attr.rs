@@ -2312,7 +2312,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_macro_use(&self, hir_id: HirId, attr: &Attribute, target: Target) {
-        let name = attr.name().unwrap();
+        let Some(name) = attr.name() else {
+            return;
+        };
         match target {
             Target::ExternCrate | Target::Mod => {}
             _ => {
