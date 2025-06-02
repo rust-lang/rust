@@ -191,12 +191,7 @@ fn typeck_with_inspect<'tcx>(
             tcx.type_of(def_id).instantiate_identity()
         };
 
-        // TODO: anon consts are currently loop checked with their containing body, even though
-        // they are typecked on their own.
-        if let DefKind::AssocConst | DefKind::Const | DefKind::Static { .. } = tcx.def_kind(def_id)
-        {
-            loops::check(tcx, def_id, body);
-        }
+        loops::check(tcx, def_id, body);
 
         let expected_type = fcx.normalize(body.value.span, expected_type);
 

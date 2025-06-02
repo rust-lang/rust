@@ -3,6 +3,7 @@ use std::fmt;
 
 use Context::*;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Destination, Node};
@@ -72,10 +73,14 @@ struct CheckLoopVisitor<'tcx> {
     block_breaks: BTreeMap<Span, BlockInfo>,
 }
 
-pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, _def_id: LocalDefId, body: &'tcx hir::Body<'tcx>) {
+pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'tcx hir::Body<'tcx>) {
     let mut check =
         CheckLoopVisitor { tcx, cx_stack: vec![Normal], block_breaks: Default::default() };
-    check.with_context(Fn, |v| v.visit_body(body));
+    let cx = match tcx.def_kind(def_id) {
+        DefKind::AnonConst => AnonConst,
+        _ => Fn,
+    };
+    check.with_context(cx, |v| v.visit_body(body));
     check.report_outside_loop_error();
 }
 
@@ -86,8 +91,8 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
         self.tcx
     }
 
-    fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) {
-        self.with_context(AnonConst, |v| intravisit::walk_anon_const(v, c));
+    fn visit_anon_const(&mut self, _: &'hir hir::AnonConst) {
+        // Typecked on its own.
     }
 
     fn visit_inline_const(&mut self, c: &'hir hir::ConstBlock) {
