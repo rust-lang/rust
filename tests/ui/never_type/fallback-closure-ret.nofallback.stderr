@@ -20,3 +20,24 @@ LL |     foo::<()>(|| panic!());
 
 warning: 1 warning emitted
 
+Future incompatibility report: Future breakage diagnostic:
+warning: this function depends on never type fallback being `()`
+  --> $DIR/fallback-closure-ret.rs:21:1
+   |
+LL | fn main() {
+   | ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `!: Bar` will fail
+  --> $DIR/fallback-closure-ret.rs:24:5
+   |
+LL |     foo(|| panic!());
+   |     ^^^^^^^^^^^^^^^^
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     foo::<()>(|| panic!());
+   |        ++++++
+
