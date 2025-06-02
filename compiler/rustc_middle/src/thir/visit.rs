@@ -41,7 +41,8 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     expr: &'thir Expr<'tcx>,
 ) {
     use ExprKind::*;
-    match expr.kind {
+    let Expr { kind, ty: _, temp_lifetime: _, span: _ } = expr;
+    match *kind {
         Scope { value, region_scope: _, lint_level: _ } => {
             visitor.visit_expr(&visitor.thir()[value])
         }
@@ -191,7 +192,8 @@ pub fn walk_stmt<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     visitor: &mut V,
     stmt: &'thir Stmt<'tcx>,
 ) {
-    match &stmt.kind {
+    let Stmt { kind } = stmt;
+    match kind {
         StmtKind::Expr { expr, scope: _ } => visitor.visit_expr(&visitor.thir()[*expr]),
         StmtKind::Let {
             initializer,
@@ -217,11 +219,13 @@ pub fn walk_block<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     visitor: &mut V,
     block: &'thir Block,
 ) {
-    for &stmt in &*block.stmts {
+    let Block { stmts, expr, targeted_by_break: _, region_scope: _, span: _, safety_mode: _ } =
+        block;
+    for &stmt in &*stmts {
         visitor.visit_stmt(&visitor.thir()[stmt]);
     }
-    if let Some(expr) = block.expr {
-        visitor.visit_expr(&visitor.thir()[expr]);
+    if let Some(expr) = expr {
+        visitor.visit_expr(&visitor.thir()[*expr]);
     }
 }
 
@@ -229,11 +233,12 @@ pub fn walk_arm<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     visitor: &mut V,
     arm: &'thir Arm<'tcx>,
 ) {
-    if let Some(expr) = arm.guard {
-        visitor.visit_expr(&visitor.thir()[expr])
+    let Arm { guard, pattern, body, lint_level: _, span: _, scope: _ } = arm;
+    if let Some(expr) = guard {
+        visitor.visit_expr(&visitor.thir()[*expr])
     }
-    visitor.visit_pat(&arm.pattern);
-    visitor.visit_expr(&visitor.thir()[arm.body]);
+    visitor.visit_pat(pattern);
+    visitor.visit_expr(&visitor.thir()[*body]);
 }
 
 pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
@@ -249,7 +254,8 @@ pub(crate) fn for_each_immediate_subpat<'a, 'tcx>(
     pat: &'a Pat<'tcx>,
     mut callback: impl FnMut(&'a Pat<'tcx>),
 ) {
-    match &pat.kind {
+    let Pat { kind, ty: _, span: _ } = pat;
+    match kind {
         PatKind::Missing
         | PatKind::Wild
         | PatKind::Binding { subpattern: None, .. }
