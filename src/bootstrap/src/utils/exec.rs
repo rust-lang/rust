@@ -1,3 +1,4 @@
+#![allow(warnings)]
 //! Command Execution Module
 //!
 //! This module provides a structured way to execute and manage commands efficiently,
@@ -11,7 +12,7 @@ use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio}
 use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
 
-use crate::Build;
+use super::execution_context::ExecutionContext;
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]
@@ -143,20 +144,20 @@ impl BootstrapCommand {
     /// Run the command, while printing stdout and stderr.
     /// Returns true if the command has succeeded.
     #[track_caller]
-    pub fn run(&mut self, builder: &Build) -> bool {
-        builder.run(self, OutputMode::Print, OutputMode::Print).is_success()
+    pub fn run(&mut self, execution_context: &ExecutionContext) -> bool {
+        execution_context.run(self, OutputMode::Print, OutputMode::Print).is_success()
     }
 
     /// Run the command, while capturing and returning all its output.
     #[track_caller]
-    pub fn run_capture(&mut self, builder: &Build) -> CommandOutput {
-        builder.run(self, OutputMode::Capture, OutputMode::Capture)
+    pub fn run_capture(&mut self, execution_context: &ExecutionContext) -> CommandOutput {
+        execution_context.run(self, OutputMode::Capture, OutputMode::Capture)
     }
 
     /// Run the command, while capturing and returning stdout, and printing stderr.
     #[track_caller]
-    pub fn run_capture_stdout(&mut self, builder: &Build) -> CommandOutput {
-        builder.run(self, OutputMode::Capture, OutputMode::Print)
+    pub fn run_capture_stdout(&mut self, execution_context: &ExecutionContext) -> CommandOutput {
+        execution_context.run(self, OutputMode::Capture, OutputMode::Print)
     }
 
     /// Provides access to the stdlib Command inside.

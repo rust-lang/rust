@@ -2,9 +2,9 @@
 use std::sync::{Arc, Mutex};
 
 use crate::core::config::DryRun;
-use crate::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, RefCell, exit};
+use crate::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, exit};
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ExecutionContext {
     dry_run: DryRun,
     verbose: u8,
