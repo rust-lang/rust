@@ -193,6 +193,16 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                 continue;
             }
 
+            let module = self
+                .r
+                .get_nearest_non_block_module(self.r.local_def_id(extern_crate.id).to_def_id());
+            if module.no_implicit_prelude {
+                // If the module has `no_implicit_prelude`, then we don't suggest
+                // replacing the extern crate with a use, as it would not be
+                // inserted into the prelude. User writes `extern` style deliberately.
+                continue;
+            }
+
             let vis_span = extern_crate
                 .vis_span
                 .find_ancestor_inside(extern_crate.span)
