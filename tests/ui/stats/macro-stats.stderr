@@ -1,0 +1,26 @@
+macro-stats ===================================================================================
+macro-stats MACRO EXPANSION STATS: macro_stats
+macro-stats Macro Name                         Uses      Lines  Avg Lines      Bytes  Avg Bytes
+macro-stats -----------------------------------------------------------------------------------
+macro-stats #[derive(Clone)]                      8         56        7.0      1_660      207.5
+macro-stats #[derive(PartialOrd)]                 1         16       16.0        654      654.0
+macro-stats #[derive(Hash)]                       2         15        7.5        547      273.5
+macro-stats #[derive(Ord)]                        1         14       14.0        489      489.0
+macro-stats q!                                    1         24       24.0        435      435.0
+macro-stats #[derive(Default)]                    2         14        7.0        367      183.5
+macro-stats #[derive(Eq)]                         1         10       10.0        312      312.0
+macro-stats #[derive(Debug)]                      1          7        7.0        261      261.0
+macro-stats #[derive(PartialEq)]                  1          8        8.0        247      247.0
+macro-stats #[derive(Copy)]                       1          1        1.0         46       46.0
+macro-stats p!                                    1          2        2.0         28       28.0
+macro-stats trait_impl_tys!                       1          1        1.0         11       11.0
+macro-stats foreign_item!                         1          0        0.0          6        6.0
+macro-stats impl_const!                           1          0        0.0          4        4.0
+macro-stats trait_tys!                            1          1        1.0          3        3.0
+macro-stats u32!                                  1          0        0.0         -3       -3.0
+macro-stats none!                                 1          0        0.0         -3       -3.0
+macro-stats n99!                                  2          0        0.0         -8       -4.0
+macro-stats this_is_a_really_really_long_macro_name!
+macro-stats                                       1          0        0.0        -30      -30.0
+macro-stats #[test]                               1         -6       -6.0       -158     -158.0
+macro-stats ===================================================================================
