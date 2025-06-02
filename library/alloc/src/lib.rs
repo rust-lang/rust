@@ -77,12 +77,7 @@
 )]
 #![cfg_attr(
     not(bootstrap),
-    doc(auto_cfg(hide(
-        no_global_oom_handling,
-        no_rc,
-        no_sync,
-        target_has_atomic = "ptr"
-    )))
+    doc(auto_cfg(hide(no_global_oom_handling, no_rc, no_sync, target_has_atomic = "ptr")))
 )]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
