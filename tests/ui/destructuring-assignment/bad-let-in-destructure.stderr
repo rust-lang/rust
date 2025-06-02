@@ -1,0 +1,19 @@
+error: expected expression, found `let` statement
+  --> $DIR/bad-let-in-destructure.rs:10:4
+   |
+LL |   (let x = 1,) = x;
+   |    ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/bad-let-in-destructure.rs:10:16
+   |
+LL |   (let x = 1,) = x;
+   |    ---------   ^
+   |    |
+   |    cannot assign to this expression
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0070`.
