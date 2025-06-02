@@ -1038,13 +1038,18 @@ impl Step for Lld {
         // when doing PGO on CI, cmake or clang-cl don't automatically link clang's
         // profiler runtime in. In that case, we need to manually ask cmake to do it, to avoid
         // linking errors, much like LLVM's cmake setup does in that situation.
-        if builder.config.llvm_profile_generate && target.is_msvc() {
-            if let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref() {
-                // Find clang's runtime library directory and push that as a search path to the
-                // cmake linker flags.
-                let clang_rt_dir = get_clang_cl_resource_dir(builder, clang_cl_path);
-                ldflags.push_all(format!("/libpath:{}", clang_rt_dir.display()));
+        if builder.config.llvm_profile_generate  {
+            if target.is_msvc()  {
+                if let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref() {
+                    // Find clang's runtime library directory and push that as a search path to the
+                    // cmake linker flags.
+                    let clang_rt_dir = get_clang_cl_resource_dir(builder, clang_cl_path);
+                    ldflags.push_all(format!("/libpath:{}", clang_rt_dir.display()));
+                }
+            } else {
+                ldflags.push_all("-L/opt/homebrew/Cellar/llvm/20.1.2/lib/clang/20/lib/darwin -lclang_rt.profile_osx");
             }
+
         }
 
         // LLD is built as an LLVM tool, but is distributed outside of the `llvm-tools` component,
