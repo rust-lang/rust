@@ -31,6 +31,8 @@ pub struct Std {
 }
 
 impl Std {
+    const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests"];
+
     pub fn new(target: TargetSelection) -> Self {
         Self { target, crates: vec![], override_build_kind: None }
     }
@@ -47,11 +49,13 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let stage = run.builder.top_stage;
-        run.crate_or_deps("sysroot")
-            .crate_or_deps("coretests")
-            .crate_or_deps("alloctests")
-            .path("library")
-            .default_condition(stage != 0)
+
+        let mut run = run;
+        for c in Std::CRATE_OR_DEPS {
+            run = run.crate_or_deps(c);
+        }
+
+        run.path("library").default_condition(stage != 0)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -66,6 +70,19 @@ impl Step for Std {
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
 
         if builder.top_stage == 0 {
+            let mut is_explicitly_called =
+                builder.paths.iter().any(|p| p.starts_with("library") || p.starts_with("std"));
+
+            if !is_explicitly_called {
+                for c in Std::CRATE_OR_DEPS {
+                    is_explicitly_called = builder.paths.iter().any(|p| p.starts_with(c));
+                }
+            }
+
+            if is_explicitly_called {
+                eprintln!("WARNING: stage 0 std is precompiled and does nothing during `x check`.");
+            }
+
             // Reuse the stage0 libstd
             builder.ensure(compile::Std::new(compiler, target));
             return;
