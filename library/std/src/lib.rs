@@ -237,11 +237,7 @@
 #![doc(rust_logo)]
 #![cfg_attr(
     bootstrap,
-    doc(cfg_hide(
-        not(test),
-        no_global_oom_handling,
-        not(no_global_oom_handling)
-    ))
+    doc(cfg_hide(not(test), no_global_oom_handling, not(no_global_oom_handling)))
 )]
 #![cfg_attr(not(bootstrap), doc(auto_cfg(hide(no_global_oom_handling))))]
 // Don't link to std. We are std.
