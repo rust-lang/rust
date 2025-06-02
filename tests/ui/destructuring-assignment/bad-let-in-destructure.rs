@@ -10,5 +10,4 @@ fn main() {
   // in the AST, the `let` expression was visited first.
   (let x = 1,) = x;
   //~^ ERROR expected expression, found `let` statement
-  //~| ERROR invalid left-hand side of assignment
 }
