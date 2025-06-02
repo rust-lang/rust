@@ -16458,11 +16458,11 @@ unsafe extern "C" {
     fn vcvtw2ph_256(a: i16x16, rounding: i32) -> __m256h;
     #[link_name = "llvm.x86.avx512.sitofp.round.v32f16.v32i16"]
     fn vcvtw2ph_512(a: i16x32, rounding: i32) -> __m512h;
-    #[link_name = "llvm.x86.avx512.uitofp.round.v8f16.v8u16"]
+    #[link_name = "llvm.x86.avx512.uitofp.round.v8f16.v8i16"]
     fn vcvtuw2ph_128(a: u16x8, rounding: i32) -> __m128h;
-    #[link_name = "llvm.x86.avx512.uitofp.round.v16f16.v16u16"]
+    #[link_name = "llvm.x86.avx512.uitofp.round.v16f16.v16i16"]
     fn vcvtuw2ph_256(a: u16x16, rounding: i32) -> __m256h;
-    #[link_name = "llvm.x86.avx512.uitofp.round.v32f16.v32u16"]
+    #[link_name = "llvm.x86.avx512.uitofp.round.v32f16.v32i16"]
     fn vcvtuw2ph_512(a: u16x32, rounding: i32) -> __m512h;
 
     #[link_name = "llvm.x86.avx512fp16.mask.vcvtdq2ph.128"]
@@ -16475,9 +16475,9 @@ unsafe extern "C" {
     fn vcvtsi2sh(a: __m128h, b: i32, rounding: i32) -> __m128h;
     #[link_name = "llvm.x86.avx512fp16.mask.vcvtudq2ph.128"]
     fn vcvtudq2ph_128(a: u32x4, src: __m128h, k: __mmask8) -> __m128h;
-    #[link_name = "llvm.x86.avx512.uitofp.round.v8f16.v8u32"]
+    #[link_name = "llvm.x86.avx512.uitofp.round.v8f16.v8i32"]
     fn vcvtudq2ph_256(a: u32x8, rounding: i32) -> __m128h;
-    #[link_name = "llvm.x86.avx512.uitofp.round.v16f16.v16u32"]
+    #[link_name = "llvm.x86.avx512.uitofp.round.v16f16.v16i32"]
     fn vcvtudq2ph_512(a: u32x16, rounding: i32) -> __m256h;
     #[link_name = "llvm.x86.avx512fp16.vcvtusi2sh"]
     fn vcvtusi2sh(a: __m128h, b: u32, rounding: i32) -> __m128h;
@@ -16492,7 +16492,7 @@ unsafe extern "C" {
     fn vcvtuqq2ph_128(a: u64x2, src: __m128h, k: __mmask8) -> __m128h;
     #[link_name = "llvm.x86.avx512fp16.mask.vcvtuqq2ph.256"]
     fn vcvtuqq2ph_256(a: u64x4, src: __m128h, k: __mmask8) -> __m128h;
-    #[link_name = "llvm.x86.avx512.uitofp.round.v8f16.v8u64"]
+    #[link_name = "llvm.x86.avx512.uitofp.round.v8f16.v8i64"]
     fn vcvtuqq2ph_512(a: u64x8, rounding: i32) -> __m128h;
 
     #[link_name = "llvm.x86.avx512fp16.mask.vcvtps2phx.128"]

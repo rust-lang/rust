@@ -7071,18 +7071,18 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.avx512.sitofp.round.v8f32.v8i64"]
     fn vcvtqq2ps_512(a: i64x8, rounding: i32) -> f32x8;
 
-    #[link_name = "llvm.x86.avx512.uitofp.round.v2f64.v2u64"]
+    #[link_name = "llvm.x86.avx512.uitofp.round.v2f64.v2i64"]
     fn vcvtuqq2pd_128(a: u64x2, rounding: i32) -> f64x2;
-    #[link_name = "llvm.x86.avx512.uitofp.round.v4f64.v4u64"]
+    #[link_name = "llvm.x86.avx512.uitofp.round.v4f64.v4i64"]
     fn vcvtuqq2pd_256(a: u64x4, rounding: i32) -> f64x4;
-    #[link_name = "llvm.x86.avx512.uitofp.round.v8f64.v8u64"]
+    #[link_name = "llvm.x86.avx512.uitofp.round.v8f64.v8i64"]
     fn vcvtuqq2pd_512(a: u64x8, rounding: i32) -> f64x8;
 
     #[link_name = "llvm.x86.avx512.mask.cvtuqq2ps.128"]
     fn vcvtuqq2ps_128(a: u64x2, src: f32x4, k: __mmask8) -> f32x4;
-    #[link_name = "llvm.x86.avx512.uitofp.round.v4f32.v4u64"]
+    #[link_name = "llvm.x86.avx512.uitofp.round.v4f32.v4i64"]
     fn vcvtuqq2ps_256(a: u64x4, rounding: i32) -> f32x4;
-    #[link_name = "llvm.x86.avx512.uitofp.round.v8f32.v8u64"]
+    #[link_name = "llvm.x86.avx512.uitofp.round.v8f32.v8i64"]
     fn vcvtuqq2ps_512(a: u64x8, rounding: i32) -> f32x8;
 
     #[link_name = "llvm.x86.avx512.mask.cvtpd2qq.128"]
