@@ -535,7 +535,8 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Fetch the THIR for a given body.
+    /// Fetch the THIR for a given body. The THIR body gets stolen by unsafety checking unless
+    /// `-Zno-steal-thir` is on.
     query thir_body(key: LocalDefId) -> Result<(&'tcx Steal<thir::Thir<'tcx>>, thir::ExprId), ErrorGuaranteed> {
         // Perf tests revealed that hashing THIR is inefficient (see #85729).
         no_hash
