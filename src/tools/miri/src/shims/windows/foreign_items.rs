@@ -307,6 +307,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let res = this.GetFileInformationByHandle(handle, info)?;
                 this.write_scalar(res, dest)?;
             }
+            "SetFileInformationByHandle" => {
+                let [handle, class, info, size] =
+                    this.check_shim_sig_lenient(abi, sys_conv, link_name, args)?;
+                let res = this.SetFileInformationByHandle(handle, class, info, size)?;
+                this.write_scalar(res, dest)?;
+            }
             "DeleteFileW" => {
                 let [file_name] = this.check_shim_sig_lenient(abi, sys_conv, link_name, args)?;
                 let res = this.DeleteFileW(file_name)?;
