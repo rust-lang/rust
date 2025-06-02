@@ -9,7 +9,7 @@ use rustc_middle::ty::{
     self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span, sym};
+use rustc_span::{DUMMY_SP, Ident, Span};
 use tracing::{debug, instrument, trace};
 
 use super::item_bounds::explicit_item_bounds_with_filter;
@@ -17,6 +17,9 @@ use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_predicates_for_delegation_item;
 use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter, RegionInferReason};
+
+
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `explicit_predicates_of`, plus
@@ -318,18 +321,18 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         predicates.extend(const_evaluatable_predicates_of(tcx, def_id, &predicates));
     }
 
-    for attr in tcx.get_attrs(def_id, sym::unstable_feature_bound) {
-        if let Some(list) = attr.meta_item_list() {
-            for item in list.iter() {
-                if let Some(feature_name) = item.name() {
-                    predicates.insert((
-                        ty::ClauseKind::UnstableFeature(feature_name).upcast(tcx),
-                        tcx.def_span(def_id),
-                    ));
-                }
-            }
-        }
-    }
+    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
+    let allow_unstable_feature_attr =
+        find_attr!(attrs, AttributeKind::AllowUnstableFeature(i) => i)
+            .map(|i| i.as_slice())
+            .unwrap_or_default();
+
+    for (feat_name, span) in allow_unstable_feature_attr {
+        predicates.insert((
+            ty::ClauseKind::UnstableFeature(*feat_name).upcast(tcx),
+            *span
+        ));
+    } 
 
     let mut predicates: Vec<_> = predicates.into_iter().collect();
 
