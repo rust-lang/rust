@@ -1,8 +1,9 @@
-error: `unstable_feature_bound` expects a list of feature names
-  --> $DIR/unstable-feature-bound.rs:14:1
+error[E0646]: `main` function is not allowed to have a `where` clause
+  --> $DIR/unstable-feature-bound.rs:10:10
    |
-LL | #[unstable_feature_bound]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn main() {
+   |          ^ `main` cannot have a `where` clause
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0646`.
