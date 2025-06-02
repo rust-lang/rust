@@ -110,9 +110,9 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.wasm.avgr.unsigned.v8i16"]
     fn llvm_avgr_u_i16x8(a: simd::i16x8, b: simd::i16x8) -> simd::i16x8;
 
-    #[link_name = "llvm.wasm.extadd.pairwise.signed.v16i8"]
+    #[link_name = "llvm.wasm.extadd.pairwise.signed.v4i32"]
     fn llvm_i32x4_extadd_pairwise_i16x8_s(x: simd::i16x8) -> simd::i32x4;
-    #[link_name = "llvm.wasm.extadd.pairwise.unsigned.v16i8"]
+    #[link_name = "llvm.wasm.extadd.pairwise.unsigned.v4i32"]
     fn llvm_i32x4_extadd_pairwise_i16x8_u(x: simd::i16x8) -> simd::i32x4;
     #[link_name = "llvm.wasm.alltrue.v4i32"]
     fn llvm_i32x4_all_true(x: simd::i32x4) -> i32;
