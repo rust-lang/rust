@@ -25,6 +25,7 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
 use rustc_type_ir::{self as ty, Interner, TypingMode};
+use smallvec::SmallVec;
 use tracing::instrument;
 
 pub use self::eval_ctxt::{EvalCtxt, GenerateProofTree, SolverDelegateEvalExt};
@@ -384,7 +385,7 @@ pub struct GoalEvaluation<I: Interner> {
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct GoalStalledOn<I: Interner> {
     pub num_opaques: usize,
-    pub stalled_vars: Vec<I::GenericArg>,
+    pub stalled_vars: SmallVec<[I::GenericArg; 8]>,
     /// The cause that will be returned on subsequent evaluations if this goal remains stalled.
     pub stalled_cause: MaybeCause,
 }

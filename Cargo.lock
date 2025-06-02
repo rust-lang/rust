@@ -4197,6 +4197,7 @@ dependencies = [
  "rustc_macros",
  "rustc_type_ir",
  "rustc_type_ir_macros",
+ "smallvec",
  "tracing",
 ]
 

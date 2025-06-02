@@ -7,6 +7,7 @@ use rustc_type_ir::{
     self as ty, Canonical, CanonicalTyVarKind, CanonicalVarKind, Flags, InferCtxtLike, Interner,
     TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
+use smallvec::SmallVec;
 
 use crate::delegate::SolverDelegate;
 
@@ -59,8 +60,8 @@ pub struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner> {
     canonicalize_mode: CanonicalizeMode,
 
     // Mutable fields.
-    variables: &'a mut Vec<I::GenericArg>,
-    var_kinds: Vec<CanonicalVarKind<I>>,
+    variables: &'a mut SmallVec<[I::GenericArg; 8]>,
+    var_kinds: SmallVec<[CanonicalVarKind<I>; 8]>,
     variable_lookup_table: HashMap<I::GenericArg, usize>,
     binder_index: ty::DebruijnIndex,
 
@@ -74,7 +75,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     pub fn canonicalize_response<T: TypeFoldable<I>>(
         delegate: &'a D,
         max_input_universe: ty::UniverseIndex,
-        variables: &'a mut Vec<I::GenericArg>,
+        variables: &'a mut SmallVec<[I::GenericArg; 8]>,
         value: T,
     ) -> ty::Canonical<I, T> {
         let mut canonicalizer = Canonicalizer {
@@ -83,7 +84,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
             variables,
             variable_lookup_table: Default::default(),
-            var_kinds: Vec::new(),
+            var_kinds: Default::default(),
             binder_index: ty::INNERMOST,
 
             cache: Default::default(),
@@ -110,7 +111,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     /// variable in the future by changing the way we detect global where-bounds.
     pub fn canonicalize_input<P: TypeFoldable<I>>(
         delegate: &'a D,
-        variables: &'a mut Vec<I::GenericArg>,
+        variables: &'a mut SmallVec<[I::GenericArg; 8]>,
         input: QueryInput<I, P>,
     ) -> ty::Canonical<I, QueryInput<I, P>> {
         // First canonicalize the `param_env` while keeping `'static`
@@ -120,7 +121,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
             variables,
             variable_lookup_table: Default::default(),
-            var_kinds: Vec::new(),
+            var_kinds: Default::default(),
             binder_index: ty::INNERMOST,
 
             cache: Default::default(),

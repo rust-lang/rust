@@ -18,6 +18,7 @@ use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable,
 };
+use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
 use crate::canonicalizer::Canonicalizer;
@@ -56,7 +57,7 @@ where
     pub(super) fn canonicalize_goal(
         &self,
         goal: Goal<I, I::Predicate>,
-    ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>) {
+    ) -> (SmallVec<[I::GenericArg; 8]>, CanonicalInput<I, I::Predicate>) {
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
@@ -474,7 +475,12 @@ where
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
     let state = eager_resolve_vars(delegate, state);
-    Canonicalizer::canonicalize_response(delegate, max_input_universe, &mut vec![], state)
+    Canonicalizer::canonicalize_response(
+        delegate,
+        max_input_universe,
+        &mut Default::default(),
+        state,
+    )
 }
 
 // FIXME: needs to be pub to be accessed by downstream
