@@ -91,7 +91,7 @@ for two reasons:
   additional rebuilds in some cases.
 
 To avoid these problems:
-- Add `--build-dir=build-rust-analyzer` to all of the custom `x` commands in
+- Add `--build-dir=build/rust-analyzer` to all of the custom `x` commands in
   your editor's rust-analyzer configuration.
   (Feel free to choose a different directory name if desired.)
 - Modify the `rust-analyzer.rustfmt.overrideCommand` setting so that it points
@@ -100,10 +100,7 @@ To avoid these problems:
   copy of `rust-analyzer-proc-macro-srv` in that other build directory.
 
 Using separate build directories for command-line builds and rust-analyzer
-requires extra disk space, and also means that running `./x clean` on the
-command-line will not clean out the separate build directory. To clean the
-separate build directory, run `./x clean --build-dir=build-rust-analyzer`
-instead.
+requires extra disk space.
 
 ### Visual Studio Code
 
@@ -137,7 +134,7 @@ Task] instead:
 
 ### Neovim
 
-For Neovim users there are several options for configuring for rustc. The
+For Neovim users, there are a few options. The
 easiest way is by using [neoconf.nvim](https://github.com/folke/neoconf.nvim/),
 which allows for project-local configuration files with the native LSP. The
 steps for how to use it are below. Note that they require rust-analyzer to

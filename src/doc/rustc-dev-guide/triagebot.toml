@@ -1,18 +1,82 @@
-[assign]
+# This file's format is documented at
+# https://forge.rust-lang.org/triagebot/pr-assignment.html#configuration
+
+[autolabel."needs-triage"]
+new_issue = true
+exclude_labels = [
+    "A-diagnostics",
+    "C-tracking-issue",
+]
+
+[review-submitted]
+# This label is added when a "request changes" review is submitted.
+reviewed_label = "S-waiting-on-author"
+# These labels are removed when a "request changes" review is submitted.
+review_labels = ["S-waiting-on-review"]
+
+[review-requested]
+# Those labels are removed when PR author requests a review from an assignee
+remove_labels = ["S-waiting-on-author"]
+# Those labels are added when PR author requests a review from an assignee
+add_labels = ["S-waiting-on-review"]
+
+# Enable shortcuts like `@rustbot ready`
+# Documentation at: https://forge.rust-lang.org/triagebot/shortcuts.html
+[shortcut]
+
+[autolabel."S-waiting-on-review"]
+new_pr = true
+
+# Enable issue transfers within the org
+# Documentation at: https://forge.rust-lang.org/triagebot/transfer.html
+[transfer]
 
 [relabel]
 allow-unauthenticated = [
-    "waiting-on-review",
-    "waiting-on-author",
-    "blocked",
+    "-Z*",
+    "A-*",
+    "C-*",
+    "D-*",
+    "E-*",
+    "F-*",
+    "I-*",
+    "L-*",
+    "O-*",
+    "PG-*",
+    "S-*",
+    "T-*",
+    "WG-*",
+    "needs-triage",
 ]
 
+# Enable `@rustbot note` functionality
+# Documentation at: https://forge.rust-lang.org/triagebot/note.html
+[note]
+
+# Prevents mentions in commits to avoid users being spammed
+# Documentation at: https://forge.rust-lang.org/triagebot/no-mentions.html
 [no-mentions]
 
-[canonicalize-issue-links]
+# Canonicalize issue numbers to avoid closing the wrong issue
+# when commits are included in subtrees, as well as warning links in commits.
+# Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
+[issue-links]
 
 # Automatically close and reopen PRs made by bots to run CI on them
 [bot-pull-requests]
 
 [behind-upstream]
 days-threshold = 7
+
+# Enable triagebot (PR) assignment.
+# Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html
+[assign]
+
+# Keep members alphanumerically sorted.
+[assign.adhoc_groups]
+rustc-dev-guide = [
+    "@BoxyUwU",
+    "@jieyouxu",
+    "@jyn514",
+    "@tshepang",
+]

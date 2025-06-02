@@ -32,7 +32,7 @@ where
     <T as Trait>::Assoc: Clone,
 {}
 ```
-If we were conceptually inside of `foo` (for example, type-checking or linting it) we would use this `ParamEnv` everywhere that we interact with the type system. This would allow things such as normalization (TODO: write a chapter about normalization and link it), evaluating generic constants, and proving where clauses/goals, to rely on `T` being sized, implementing `Trait`, etc.
+If we were conceptually inside of `foo` (for example, type-checking or linting it) we would use this `ParamEnv` everywhere that we interact with the type system. This would allow things such as [normalization], evaluating generic constants, and proving where clauses/goals, to rely on `T` being sized, implementing `Trait`, etc.
 
 A more concrete example:
 ```rust
@@ -70,6 +70,7 @@ fn foo2<T>(a: T) {
 [predicates_of]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/collect/predicates_of/fn.predicates_of.html
 [method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
 [query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.param_env
+[normalization]: normalization.md
 
 ### Acquiring a `ParamEnv`
 
@@ -199,8 +200,8 @@ In the next-gen trait solver the requirement for all where clauses in the `Param
 
 Depending on what context we are performing type system operations in, different behaviour may be required. For example during coherence there are stronger requirements about when we can consider goals to not hold or when we can consider types to be unequal.
 
-Tracking which "phase" of the compiler type system operations are being performed in is done by the [`TypingMode`][tenv] enum. The documentation on the `TypingMode` enum is quite good so instead of repeating it here verbatim we would recommend reading the API documentation directly.
+Tracking which "phase" of the compiler type system operations are being performed in is done by the [`TypingMode`][tmode] enum. The documentation on the `TypingMode` enum is quite good so instead of repeating it here verbatim we would recommend reading the API documentation directly.
 
 [penv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
-[tenv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/infer_ctxt/enum.TypingMode.html
+[tenv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypingEnv.html
 [tmode]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.TypingMode.html

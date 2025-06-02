@@ -59,7 +59,7 @@ not be exhaustive. Directives can generally be found by browsing the
 | `aux-crate`           | Like `aux-build` but makes available as extern prelude                                                | All except `run-make` | `<extern_prelude_name>=<path/to/aux/file.rs>` |
 | `aux-codegen-backend` | Similar to `aux-build` but pass the compiled dylib to `-Zcodegen-backend` when building the main file | `ui-fulldeps`         | Path to codegen backend file                  |
 | `proc-macro`          | Similar to `aux-build`, but for aux forces host and don't use `-Cprefer-dynamic`[^pm].                | All except `run-make` | Path to auxiliary proc-macro `.rs` file       |
-| `build_aux_docs`      | Build docs for auxiliaries as well                                                                    | All except `run-make` | N/A                                           |
+| `build-aux-docs`      | Build docs for auxiliaries as well                                                                    | All except `run-make` | N/A                                           |
 
 [^pm]: please see the Auxiliary proc-macro section in the
     [compiletest](./compiletest.md) chapter for specifics.

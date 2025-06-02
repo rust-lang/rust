@@ -166,7 +166,10 @@ In this example:
 
 When interfacing with the type system it will often be the case that it's necessary to request a type be normalized. There are a number of different entry points to the underlying normalization logic and each entry point should only be used in specific parts of the compiler.
 
-An additional complication is that the compiler is currently undergoing a transition from the old trait solver to the new trait solver. As part of this transition our approach to normalization in the compiler has changed somewhat significantly, resulting in some normalization entry points being "old solver only" slated for removal in the long-term once the new solver has stabilized.
+<!-- date-check: May 2025 -->
+An additional complication is that the compiler is currently undergoing a transition from the old trait solver to the new trait solver.
+As part of this transition our approach to normalization in the compiler has changed somewhat significantly, resulting in some normalization entry points being "old solver only" slated for removal in the long-term once the new solver has stabilized.
+The transition can be tracked via the [WG-trait-system-refactor](https://github.com/rust-lang/rust/labels/WG-trait-system-refactor) label in Github.
 
 Here is a rough overview of the different entry points to normalization in the compiler:
 - `infcx.at.structurally_normalize`
