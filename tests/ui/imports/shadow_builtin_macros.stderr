@@ -9,8 +9,8 @@ LL |     fn f() { panic!(); }
 note: `panic` could also refer to the macro imported here
   --> $DIR/shadow_builtin_macros.rs:14:9
    |
-LL |     use foo::*;
-   |         ^^^^^^
+LL |     use crate::foo::*;
+   |         ^^^^^^^^^^^^^
    = help: consider adding an explicit import of `panic` to disambiguate
    = help: or use `self::panic` to refer to this macro unambiguously
 
@@ -42,8 +42,8 @@ LL |     n!();
 note: `n` could refer to the macro imported here
   --> $DIR/shadow_builtin_macros.rs:48:9
    |
-LL |     use bar::*;
-   |         ^^^^^^
+LL |     use crate::bar::*;
+   |         ^^^^^^^^^^^^^
    = help: consider adding an explicit import of `n` to disambiguate
    = help: or use `self::n` to refer to this macro unambiguously
 note: `n` could also refer to the macro imported here
@@ -63,8 +63,8 @@ LL |     fn f() { panic!(); }
 note: `panic` could also refer to the macro imported here
   --> $DIR/shadow_builtin_macros.rs:19:26
    |
-LL |     ::two_macros::m!(use foo::panic;);
-   |                          ^^^^^^^^^^
+LL |     ::two_macros::m!(use crate::foo::panic;);
+   |                          ^^^^^^^^^^^^^^^^^
    = help: use `self::panic` to refer to this macro unambiguously
 
 error: aborting due to 4 previous errors
