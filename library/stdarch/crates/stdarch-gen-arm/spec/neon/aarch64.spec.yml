@@ -3428,7 +3428,7 @@ intrinsics:
       - LLVMLink:
           name: "vld1{neon_type[1].no}"
           links:
-            - link: "llvm.aarch64.neon.ld1x{neon_type[1].tuple}.v{neon_type[1].lane}f{neon_type[1].base}.p0f64"
+            - link: "llvm.aarch64.neon.ld1x{neon_type[1].tuple}.v{neon_type[1].lane}f{neon_type[1].base}.p0"
               arch: aarch64,arm64ec
 
   - name: "vld2{neon_type[1].lane_nox}"
@@ -3460,7 +3460,7 @@ intrinsics:
             - "n: i64"
             - "ptr: *const i8"
           links:
-            - link: "llvm.aarch64.neon.ld2lane.v{neon_type[1].lane}{type[2]}.p0i8"
+            - link: "llvm.aarch64.neon.ld2lane.v{neon_type[1].lane}{type[2]}.p0"
               arch: aarch64,arm64ec
       - FnCall: ["_vld2{neon_type[1].lane_nox}", ["b.0", "b.1", "LANE as i64", "a as _"]]
 
@@ -3489,7 +3489,7 @@ intrinsics:
             - "n: i64"
             - "ptr: *const i8"
           links:
-            - link: "llvm.aarch64.neon.ld2lane.v{neon_type[1].lane}{type[2]}.p0i8"
+            - link: "llvm.aarch64.neon.ld2lane.v{neon_type[1].lane}{type[2]}.p0"
               arch: aarch64,arm64ec
       - FnCall: ["_vld2{neon_type[1].lane_nox}", ["b.0", "b.1", "LANE as i64", "a as _"]]
 
@@ -3613,7 +3613,7 @@ intrinsics:
           arguments:
             - "ptr: *const {neon_type[3]}"
           links:
-            - link: "llvm.aarch64.neon.ld2.v{neon_type[1].lane}{type[2]}.p0v{neon_type[1].lane}{type[2]}"
+            - link: "llvm.aarch64.neon.ld2.v{neon_type[1].lane}{type[2]}.p0"
               arch: aarch64,arm64ec
       - FnCall:
           - "_vld2{neon_type[1].nox}"
@@ -3635,7 +3635,7 @@ intrinsics:
           arguments:
             - "ptr: *const {neon_type[3]}"
           links:
-            - link: "llvm.aarch64.neon.ld2.v{neon_type[1].lane}{type[2]}.p0v{neon_type[1].lane}{type[2]}"
+            - link: "llvm.aarch64.neon.ld2.v{neon_type[1].lane}{type[2]}.p0"
               arch: aarch64,arm64ec
       - FnCall:
           - "_vld2{neon_type[1].nox}"
@@ -3696,7 +3696,7 @@ intrinsics:
           arguments:
             - "ptr: {type[0]}"
           links:
-            - link: "llvm.aarch64.neon.ld2r.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+            - link: "llvm.aarch64.neon.ld2r.v{neon_type[1].lane}{type[2]}.p0"
               arch: aarch64,arm64ec
       - FnCall:
           - "_vld2{neon_type[1].dup_nox}"
@@ -3769,7 +3769,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *const i8'
           links:
-            - link: 'llvm.aarch64.neon.ld3lane.v{neon_type[1].lane}{type[3]}.p0i8'
+            - link: 'llvm.aarch64.neon.ld3lane.v{neon_type[1].lane}{type[3]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vld3{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'LANE as i64', 'a as _']]
 
@@ -3798,7 +3798,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *const i8'
           links:
-            - link: 'llvm.aarch64.neon.ld3lane.v{neon_type[1].lane}{type[3]}.p0i8'
+            - link: 'llvm.aarch64.neon.ld3lane.v{neon_type[1].lane}{type[3]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vld3{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'LANE as i64', 'a as _']]
 
@@ -3827,7 +3827,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *const i8'
           links:
-            - link: 'llvm.aarch64.neon.ld3lane.v{neon_type[1].lane}{type[3]}.p0i8'
+            - link: 'llvm.aarch64.neon.ld3lane.v{neon_type[1].lane}{type[3]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vld3{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'LANE as i64', 'a as _']]
 
@@ -3856,7 +3856,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *const i8'
           links:
-            - link: 'llvm.aarch64.neon.ld3lane.v{neon_type[1].lane}{type[3]}.p0i8'
+            - link: 'llvm.aarch64.neon.ld3lane.v{neon_type[1].lane}{type[3]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vld3{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'LANE as i64', 'a as _']]
 
@@ -3973,7 +3973,7 @@ intrinsics:
           arguments:
             - 'ptr: {type[2]}'
           links:
-            - link: 'llvm.aarch64.neon.ld3.v{neon_type[1].lane}{type[3]}.p0v{neon_type[1].lane}{type[3]}'
+            - link: 'llvm.aarch64.neon.ld3.v{neon_type[1].lane}{type[3]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vld3{neon_type[1].nox}', ['a as _']]
 
@@ -3993,7 +3993,7 @@ intrinsics:
           arguments:
             - 'ptr: {type[2]}'
           links:
-            - link: 'llvm.aarch64.neon.ld3.v{neon_type[1].lane}{type[3]}.p0v{neon_type[1].lane}{type[3]}'
+            - link: 'llvm.aarch64.neon.ld3.v{neon_type[1].lane}{type[3]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vld3{neon_type[1].nox}', ['a as _']]
 
@@ -4055,7 +4055,7 @@ intrinsics:
           arguments:
             - 'ptr: {type[0]}'
           links:
-            - link: 'llvm.aarch64.neon.ld3r.v{neon_type[1].lane}{type[2]}.p0{type[2]}'
+            - link: 'llvm.aarch64.neon.ld3r.v{neon_type[1].lane}{type[2]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vld3{neon_type[1].dup_nox}', ['a as _']]
 
@@ -4117,7 +4117,7 @@ intrinsics:
           arguments:
             - 'ptr: {type[3]}'
           links:
-            - link: 'llvm.aarch64.neon.ld4.v{neon_type[1].lane}{type[2]}.p0v{neon_type[1].lane}{type[2]}'
+            - link: 'llvm.aarch64.neon.ld4.v{neon_type[1].lane}{type[2]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vld4{neon_type[1].nox}', ['a as _']]
 
@@ -4138,7 +4138,7 @@ intrinsics:
           arguments:
             - 'ptr: {type[3]}'
           links:
-            - link: 'llvm.aarch64.neon.ld4.v{neon_type[1].lane}{type[2]}.p0v{neon_type[1].lane}{type[2]}'
+            - link: 'llvm.aarch64.neon.ld4.v{neon_type[1].lane}{type[2]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vld4{neon_type[1].nox}', ['a as _']]
 
@@ -4210,7 +4210,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *const i8'
           links:
-            - link: 'llvm.aarch64.neon.ld4lane.v{neon_type[1].lane}{type[3]}.p0i8'
+            - link: 'llvm.aarch64.neon.ld4lane.v{neon_type[1].lane}{type[3]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vld4{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'LANE as i64', 'a as _']]
 
@@ -4241,7 +4241,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *const i8'
           links:
-            - link: 'llvm.aarch64.neon.ld4lane.v{neon_type[1].lane}{type[3]}.p0i8'
+            - link: 'llvm.aarch64.neon.ld4lane.v{neon_type[1].lane}{type[3]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vld4{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'LANE as i64', 'a as _']]
 
@@ -4398,7 +4398,7 @@ intrinsics:
             - 'b: {type[2]}'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st2.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st2.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst2{neon_type[1].nox}', ['b.0', 'b.1', 'a as _']]
 
@@ -4421,7 +4421,7 @@ intrinsics:
             - 'b: {type[2]}'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st2.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st2.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst2{neon_type[1].nox}', ['b.0', 'b.1', 'a as _']]
 
@@ -4448,7 +4448,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st2lane.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st2lane.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst2{neon_type[1].lane_nox}', ['b.0', 'b.1', 'LANE as i64', 'a as _']]
 
@@ -4476,7 +4476,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st2lane.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st2lane.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst2{neon_type[1].lane_nox}', ['b.0', 'b.1', 'LANE as i64', 'a as _']]
 
@@ -4611,7 +4611,7 @@ intrinsics:
             - 'c: {type[2]}'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st3.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st3.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst3{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'a as _']]
 
@@ -4691,7 +4691,7 @@ intrinsics:
             - 'c: {type[2]}'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st3.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st3.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst3{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'a as _']]
 
@@ -4775,7 +4775,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st3lane.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st3lane.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst3{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'LANE as i64', 'a as _']]
 
@@ -4803,7 +4803,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st3lane.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st3lane.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst3{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'LANE as i64', 'a as _']]
 
@@ -4826,7 +4826,7 @@ intrinsics:
             - 'd: {type[2]}'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st4.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st4.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst4{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'a as _']]
 
@@ -4907,7 +4907,7 @@ intrinsics:
             - 'd: {type[2]}'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st4.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st4.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst4{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'a as _']]
 
@@ -4992,7 +4992,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st4lane.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st4lane.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst4{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'LANE as i64', 'a as _']]
 
@@ -5021,7 +5021,7 @@ intrinsics:
             - 'n: i64'
             - 'ptr: *mut i8'
           links:
-            - link: 'llvm.aarch64.neon.st4lane.v{neon_type[1].lane}{type[0]}.p0i8'
+            - link: 'llvm.aarch64.neon.st4lane.v{neon_type[1].lane}{type[0]}.p0'
               arch: aarch64,arm64ec
       - FnCall: ['_vst4{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'LANE as i64', 'a as _']]
 
@@ -10142,7 +10142,7 @@ intrinsics:
             - "b: {neon_type[2]}"
             - "ptr: {type[0]}"
           links:
-            - link: "llvm.aarch64.neon.st1x{neon_type[1].tuple}.{neon_type[2]}.p0f64"
+            - link: "llvm.aarch64.neon.st1x{neon_type[1].tuple}.{neon_type[2]}.p0"
               arch: aarch64,arm64ec
       - FnCall: ["_vst1{neon_type[1].no}", ['b.0', 'b.1', 'a']]
 
@@ -10166,7 +10166,7 @@ intrinsics:
             - "c: {neon_type[2]}"
             - "ptr: {type[0]}"
           links:
-            - link: "llvm.aarch64.neon.st1x{neon_type[1].tuple}.{neon_type[2]}.p0f64"
+            - link: "llvm.aarch64.neon.st1x{neon_type[1].tuple}.{neon_type[2]}.p0"
               arch: aarch64,arm64ec
       - FnCall: ["_vst1{neon_type[1].no}", ['b.0', 'b.1', 'b.2', 'a']]
 
@@ -10191,7 +10191,7 @@ intrinsics:
             - "d: {neon_type[2]}"
             - "ptr: {type[0]}"
           links:
-            - link: "llvm.aarch64.neon.st1x{neon_type[1].tuple}.{neon_type[2]}.p0f64"
+            - link: "llvm.aarch64.neon.st1x{neon_type[1].tuple}.{neon_type[2]}.p0"
               arch: aarch64,arm64ec
       - FnCall: ["_vst1{neon_type[1].no}", ['b.0', 'b.1', 'b.2', 'b.3', 'a']]
 
@@ -11998,16 +11998,16 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - ["*const i64", int64x2x4_t, "v2i64", "p0i64"]
-      - ["*const f64", float64x1x4_t, "v1f64", "p0f64"]
-      - ["*const f64", float64x2x4_t, "v2f64", "p0f64"]
+      - ["*const i64", int64x2x4_t, "v2i64"]
+      - ["*const f64", float64x1x4_t, "v1f64"]
+      - ["*const f64", float64x2x4_t, "v2f64"]
     compose:
       - LLVMLink:
           name: "vld4{neon_type[1].dup_nox}"
           arguments:
             - "ptr: {type[0]}"
           links:
-            - link: "llvm.aarch64.neon.ld4r.{type[2]}.{type[3]}"
+            - link: "llvm.aarch64.neon.ld4r.{type[2]}.p0"
               arch: aarch64,arm64ec
       - FnCall: ["_vld4{neon_type[1].dup_nox}", ['a as _']]
 
