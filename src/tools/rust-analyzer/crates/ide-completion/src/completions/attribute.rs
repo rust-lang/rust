@@ -25,6 +25,7 @@ use crate::{
 
 mod cfg;
 mod derive;
+mod diagnostic;
 mod lint;
 mod macro_use;
 mod repr;
@@ -40,14 +41,23 @@ pub(crate) fn complete_known_attribute_input(
     extern_crate: Option<&ast::ExternCrate>,
 ) -> Option<()> {
     let attribute = fake_attribute_under_caret;
-    let name_ref = match attribute.path() {
-        Some(p) => Some(p.as_single_name_ref()?),
-        None => None,
-    };
-    let (path, tt) = name_ref.zip(attribute.token_tree())?;
+    let path = attribute.path()?;
+    let name_ref = path.segment()?.name_ref();
+    let (name_ref, tt) = name_ref.zip(attribute.token_tree())?;
     tt.l_paren_token()?;
 
-    match path.text().as_str() {
+    if let Some(qualifier) = path.qualifier() {
+        let qualifier_name_ref = qualifier.as_single_name_ref()?;
+        match (qualifier_name_ref.text().as_str(), name_ref.text().as_str()) {
+            ("diagnostic", "on_unimplemented") => {
+                diagnostic::complete_on_unimplemented(acc, ctx, tt)
+            }
+            _ => (),
+        }
+        return Some(());
+    }
+
+    match name_ref.text().as_str() {
         "repr" => repr::complete_repr(acc, ctx, tt),
         "feature" => lint::complete_lint(
             acc,
@@ -139,6 +149,8 @@ pub(crate) fn complete_attribute_path(
         }
         Qualified::TypeAnchor { .. } | Qualified::With { .. } => {}
     }
+    let qualifier_path =
+        if let Qualified::With { path, .. } = qualified { Some(path) } else { None };
 
     let attributes = annotated_item_kind.and_then(|kind| {
         if ast::Expr::can_cast(kind) {
@@ -149,18 +161,28 @@ pub(crate) fn complete_attribute_path(
     });
 
     let add_completion = |attr_completion: &AttrCompletion| {
-        let mut item = CompletionItem::new(
-            SymbolKind::Attribute,
-            ctx.source_range(),
-            attr_completion.label,
-            ctx.edition,
-        );
+        // if we already have the qualifier of the completion, then trim it from the label and the snippet
+        let mut label = attr_completion.label;
+        let mut snippet = attr_completion.snippet;
+        if let Some(name_ref) = qualifier_path.and_then(|q| q.as_single_name_ref()) {
+            if let Some((label_qual, label_seg)) = attr_completion.label.split_once("::") {
+                if name_ref.text() == label_qual {
+                    label = label_seg;
+                    snippet = snippet.map(|snippet| {
+                        snippet.trim_start_matches(label_qual).trim_start_matches("::")
+                    });
+                }
+            }
+        }
+
+        let mut item =
+            CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label, ctx.edition);
 
         if let Some(lookup) = attr_completion.lookup {
             item.lookup_by(lookup);
         }
 
-        if let Some((snippet, cap)) = attr_completion.snippet.zip(ctx.config.snippet_cap) {
+        if let Some((snippet, cap)) = snippet.zip(ctx.config.snippet_cap) {
             item.insert_snippet(cap, snippet);
         }
 
@@ -270,8 +292,8 @@ static KIND_TO_ATTRIBUTES: LazyLock<FxHashMap<SyntaxKind, &[&str]>> = LazyLock::
             ),
         ),
         (STATIC, attrs!(item, linkable, "global_allocator", "used")),
-        (TRAIT, attrs!(item)),
-        (IMPL, attrs!(item, "automatically_derived")),
+        (TRAIT, attrs!(item, "diagnostic::on_unimplemented")),
+        (IMPL, attrs!(item, "automatically_derived", "diagnostic::do_not_recommend")),
         (ASSOC_ITEM_LIST, attrs!(item)),
         (EXTERN_BLOCK, attrs!(item, "link")),
         (EXTERN_ITEM_LIST, attrs!(item, "link")),
@@ -311,6 +333,8 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("deny(…)", Some("deny"), Some("deny(${0:lint})")),
     attr(r#"deprecated"#, Some("deprecated"), Some(r#"deprecated"#)),
     attr("derive(…)", Some("derive"), Some(r#"derive(${0:Debug})"#)),
+    attr("diagnostic::do_not_recommend", None, None),
+    attr("diagnostic::on_unimplemented", None, Some(r#"diagnostic::on_unimplemented(${0:keys})"#)),
     attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
     attr(r#"doc(alias = "…")"#, Some("docalias"), Some(r#"doc(alias = "${0:docs}")"#)),
     attr(r#"doc(hidden)"#, Some("dochidden"), Some(r#"doc(hidden)"#)),
