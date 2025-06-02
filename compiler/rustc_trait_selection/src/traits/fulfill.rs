@@ -773,13 +773,21 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             }
                         }
                     }
-                    // Check if feature is enabled at crate level with #[feature(..)] or if we are currently in codegen.
-                    if self.selcx.tcx().features().enabled(symbol)
-                        || (self.selcx.infcx.typing_mode() == TypingMode::PostAnalysis)
-                    {
-                        return ProcessResult::Changed(Default::default());
-                    } else {
+
+                    if self.selcx.tcx().features().impl_stability() {
+                        // If we are in std/core, and the feature is not enabled through #[unstable_feature_bound(..)].
                         return ProcessResult::Unchanged;
+                    } else {
+                        // Outside of std/core, check if feature is enabled at crate level with #[feature(..)] 
+                        // or if we are currently in codegen.
+                        if self.selcx.tcx().features().enabled(symbol)
+                            || (self.selcx.infcx.typing_mode() == TypingMode::PostAnalysis)
+                        {
+                            return ProcessResult::Changed(Default::default());
+                        } else {
+                            return ProcessResult::Unchanged;
+                        }
+
                     }
                 }
             },

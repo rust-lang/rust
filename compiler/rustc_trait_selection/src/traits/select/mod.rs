@@ -846,13 +846,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             }
                         }
                     }
-                    // Check if feature is enabled at crate level with #[feature(..)] or if we are currently in codegen.
-                    if self.tcx().features().enabled(symbol)
-                        || (self.infcx.typing_mode() == TypingMode::PostAnalysis)
-                    {
-                        return Ok(EvaluatedToOk);
-                    } else {
+
+                    if self.tcx().features().impl_stability() {
+                        // If we are in std/core, and the feature is not enabled through #[unstable_feature_bound(..)].
                         return Ok(EvaluatedToAmbig);
+                    } else {
+                        // Outside of std/core, check if feature is enabled at crate level with #[feature(..)] 
+                        // or if we are currently in codegen.
+                        if self.tcx().features().enabled(symbol)
+                            || (self.infcx.typing_mode() == TypingMode::PostAnalysis)
+                        {
+                            return Ok(EvaluatedToOk);
+                        } else {
+                            return Ok(EvaluatedToAmbig);
+                        }
                     }
                 }
 

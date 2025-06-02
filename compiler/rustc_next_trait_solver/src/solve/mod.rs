@@ -163,6 +163,7 @@ where
         }
 
         if self.cx().features().impl_stability() {
+            // If we are in std, and the feature is not enabled through #[unstable_feature_bound(..)]
             return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
                 MaybeCause::Ambiguity,
             ));
