@@ -382,12 +382,34 @@ pub(super) fn expand_async_drops<'tcx>(
             dropline_call_bb = Some(drop_call_bb);
         }
 
-        // value needed only for return-yields or gen-coroutines, so just const here
-        let value = Operand::Constant(Box::new(ConstOperand {
-            span: body.span,
-            user_ty: None,
-            const_: Const::from_bool(tcx, false),
-        }));
+        let value =
+            if matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _))
+            {
+                // For AsyncGen we need `yield Poll<OptRet>::Pending`
+                let full_yield_ty = body.yield_ty().unwrap();
+                let ty::Adt(_poll_adt, args) = *full_yield_ty.kind() else { bug!() };
+                let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
+                let yield_ty = args.type_at(0);
+                Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
+                    const_: Const::Unevaluated(
+                        UnevaluatedConst::new(
+                            tcx.require_lang_item(LangItem::AsyncGenPending, None),
+                            tcx.mk_args(&[yield_ty.into()]),
+                        ),
+                        full_yield_ty,
+                    ),
+                    user_ty: None,
+                }))
+            } else {
+                // value needed only for return-yields or gen-coroutines, so just const here
+                Operand::Constant(Box::new(ConstOperand {
+                    span: body.span,
+                    user_ty: None,
+                    const_: Const::from_bool(tcx, false),
+                }))
+            };
+
         use rustc_middle::mir::AssertKind::ResumedAfterDrop;
         let panic_bb = insert_panic_block(tcx, body, ResumedAfterDrop(coroutine_kind));
 
