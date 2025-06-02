@@ -127,7 +127,7 @@ pr:
     env:
       IMAGE: aarch64-gnu-llvm-19
       DOCKER_SCRIPT: stage_2_test_set1.sh
-    <<: *job-aarch64-linux-8c
+    <<: *job-aarch64-linux
   - name: aarch64-gnu-llvm-19-2
     env:
       IMAGE: aarch64-gnu-llvm-19
