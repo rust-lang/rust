@@ -7,10 +7,7 @@ use syntax::{
     match_ast, ted,
 };
 
-use crate::{
-    AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder,
-    utils::get_struct_definition_from_context,
-};
+use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
 
 // Assist: convert_named_struct_to_tuple_struct
 //
@@ -59,13 +56,22 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
     // XXX: We don't currently provide this assist for struct definitions inside macros, but if we
     // are to lift this limitation, don't forget to make `edit_struct_def()` consider macro files
     // too.
-    let strukt = get_struct_definition_from_context(ctx)?;
-    let field_list = strukt.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
+    let strukt_or_variant = ctx
+        .find_node_at_offset::<ast::Struct>()
+        .map(Either::Left)
+        .or_else(|| ctx.find_node_at_offset::<ast::Variant>().map(Either::Right))?;
+    let field_list = strukt_or_variant.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
+
+    if ctx.offset() > field_list.syntax().text_range().start() {
+        // Assist could be distracting after the braces
+        return None;
+    }
+
     let record_fields = match field_list {
         ast::FieldList::RecordFieldList(it) => it,
         ast::FieldList::TupleFieldList(_) => return None,
     };
-    let strukt_def = match &strukt {
+    let strukt_def = match &strukt_or_variant {
         Either::Left(s) => Either::Left(ctx.sema.to_def(s)?),
         Either::Right(v) => Either::Right(ctx.sema.to_def(v)?),
     };
@@ -73,11 +79,11 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
     acc.add(
         AssistId::refactor_rewrite("convert_named_struct_to_tuple_struct"),
         "Convert to tuple struct",
-        strukt.syntax().text_range(),
+        strukt_or_variant.syntax().text_range(),
         |edit| {
             edit_field_references(ctx, edit, record_fields.fields());
             edit_struct_references(ctx, edit, strukt_def);
-            edit_struct_def(ctx, edit, &strukt, record_fields);
+            edit_struct_def(ctx, edit, &strukt_or_variant, record_fields);
         },
     )
 }

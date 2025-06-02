@@ -6,10 +6,7 @@ use syntax::{
     match_ast, ted,
 };
 
-use crate::{
-    AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder,
-    utils::get_struct_definition_from_context,
-};
+use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
 
 // Assist: convert_tuple_struct_to_named_struct
 //
@@ -54,17 +51,26 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
-    let strukt = get_struct_definition_from_context(ctx)?;
-    let field_list = strukt.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
+    let strukt_or_variant = ctx
+        .find_node_at_offset::<ast::Struct>()
+        .map(Either::Left)
+        .or_else(|| ctx.find_node_at_offset::<ast::Variant>().map(Either::Right))?;
+    let field_list = strukt_or_variant.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
+
+    if ctx.offset() > field_list.syntax().text_range().start() {
+        // Assist could be distracting after the braces
+        return None;
+    }
+
     let tuple_fields = match field_list {
         ast::FieldList::TupleFieldList(it) => it,
         ast::FieldList::RecordFieldList(_) => return None,
     };
-    let strukt_def = match &strukt {
+    let strukt_def = match &strukt_or_variant {
         Either::Left(s) => Either::Left(ctx.sema.to_def(s)?),
         Either::Right(v) => Either::Right(ctx.sema.to_def(v)?),
     };
-    let target = strukt.as_ref().either(|s| s.syntax(), |v| v.syntax()).text_range();
+    let target = strukt_or_variant.as_ref().either(|s| s.syntax(), |v| v.syntax()).text_range();
 
     acc.add(
         AssistId::refactor_rewrite("convert_tuple_struct_to_named_struct"),
@@ -74,7 +80,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
             let names = generate_names(tuple_fields.fields());
             edit_field_references(ctx, edit, tuple_fields.fields(), &names);
             edit_struct_references(ctx, edit, strukt_def, &names);
-            edit_struct_def(ctx, edit, &strukt, tuple_fields, names);
+            edit_struct_def(ctx, edit, &strukt_or_variant, tuple_fields, names);
         },
     )
 }
