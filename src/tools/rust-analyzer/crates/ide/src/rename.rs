@@ -203,7 +203,7 @@ fn find_definitions(
 ) -> RenameResult<impl Iterator<Item = (FileRange, SyntaxKind, Definition)>> {
     let token = syntax.token_at_offset(offset).find(|t| matches!(t.kind(), SyntaxKind::STRING));
 
-    if let Some((range, Some(resolution))) =
+    if let Some((range, _, _, Some(resolution))) =
         token.and_then(|token| sema.check_for_format_args_template(token, offset))
     {
         return Ok(vec![(

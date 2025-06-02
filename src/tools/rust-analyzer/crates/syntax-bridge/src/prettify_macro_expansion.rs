@@ -7,6 +7,13 @@ use syntax::{
     ted::{self, Position},
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PrettifyWsKind {
+    Space,
+    Indent(usize),
+    Newline,
+}
+
 /// Renders a [`SyntaxNode`] with whitespace inserted between tokens that require them.
 ///
 /// This is an internal API that is only exported because `mbe` needs it for tests and cannot depend
@@ -15,7 +22,8 @@ use syntax::{
 #[deprecated = "use `hir_expand::prettify_macro_expansion()` instead"]
 pub fn prettify_macro_expansion(
     syn: SyntaxNode,
-    dollar_crate_replacement: &mut dyn FnMut(&SyntaxToken) -> SyntaxToken,
+    dollar_crate_replacement: &mut dyn FnMut(&SyntaxToken) -> Option<SyntaxToken>,
+    inspect_mods: impl FnOnce(&[(Position, PrettifyWsKind)]),
 ) -> SyntaxNode {
     let mut indent = 0;
     let mut last: Option<SyntaxKind> = None;
@@ -27,14 +35,12 @@ pub fn prettify_macro_expansion(
     let after = Position::after;
 
     let do_indent = |pos: fn(_) -> Position, token: &SyntaxToken, indent| {
-        (pos(token.clone()), make::tokens::whitespace(&" ".repeat(4 * indent)))
+        (pos(token.clone()), PrettifyWsKind::Indent(indent))
     };
-    let do_ws = |pos: fn(_) -> Position, token: &SyntaxToken| {
-        (pos(token.clone()), make::tokens::single_space())
-    };
-    let do_nl = |pos: fn(_) -> Position, token: &SyntaxToken| {
-        (pos(token.clone()), make::tokens::single_newline())
-    };
+    let do_ws =
+        |pos: fn(_) -> Position, token: &SyntaxToken| (pos(token.clone()), PrettifyWsKind::Space);
+    let do_nl =
+        |pos: fn(_) -> Position, token: &SyntaxToken| (pos(token.clone()), PrettifyWsKind::Newline);
 
     for event in syn.preorder_with_tokens() {
         let token = match event {
@@ -46,20 +52,19 @@ pub fn prettify_macro_expansion(
                 ) =>
             {
                 if indent > 0 {
-                    mods.push((
-                        Position::after(node.clone()),
-                        make::tokens::whitespace(&" ".repeat(4 * indent)),
-                    ));
+                    mods.push((Position::after(node.clone()), PrettifyWsKind::Indent(indent)));
                 }
                 if node.parent().is_some() {
-                    mods.push((Position::after(node), make::tokens::single_newline()));
+                    mods.push((Position::after(node), PrettifyWsKind::Newline));
                 }
                 continue;
             }
             _ => continue,
         };
         if token.kind() == SyntaxKind::IDENT && token.text() == "$crate" {
-            dollar_crate_replacements.push((token.clone(), dollar_crate_replacement(&token)));
+            if let Some(replacement) = dollar_crate_replacement(&token) {
+                dollar_crate_replacements.push((token.clone(), replacement));
+            }
         }
         let tok = &token;
 
@@ -129,8 +134,16 @@ pub fn prettify_macro_expansion(
         last = Some(tok.kind());
     }
 
+    inspect_mods(&mods);
     for (pos, insert) in mods {
-        ted::insert(pos, insert);
+        ted::insert_raw(
+            pos,
+            match insert {
+                PrettifyWsKind::Space => make::tokens::single_space(),
+                PrettifyWsKind::Indent(indent) => make::tokens::whitespace(&" ".repeat(4 * indent)),
+                PrettifyWsKind::Newline => make::tokens::single_newline(),
+            },
+        );
     }
     for (old, new) in dollar_crate_replacements {
         ted::replace(old, new);
