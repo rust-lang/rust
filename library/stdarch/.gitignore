@@ -1,0 +1,10 @@
+Cargo.lock
+.*.swp
+target
+tags
+crates/stdarch-gen-arm/aarch64.rs
+crates/stdarch-gen-arm/arm.rs
+crates/stdarch-gen-loongarch/lasx.c
+crates/stdarch-gen-loongarch/lsx.c
+c_programs/*
+rust_programs/*
