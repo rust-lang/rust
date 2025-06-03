@@ -6,6 +6,7 @@ impl<const BITS: usize> Bar<BITS> {
     const ASSERT: bool = {
         let b = std::convert::identity(1);
         ["oops"][b]; //~ ERROR evaluation of `Bar::<0>::ASSERT` failed
+        //~^ ERROR evaluation of `Bar::<BITS>::ASSERT` failed
         true
     };
 
