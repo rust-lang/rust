@@ -178,7 +178,7 @@ LL | |         }
    | |_________^
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
-  --> tests/ui/manual_flatten.rs:132:5
+  --> tests/ui/manual_flatten.rs:139:5
    |
 LL | /     for n in vec![
 LL | |
@@ -189,7 +189,7 @@ LL | |     }
    | |_____^
    |
 help: remove the `if let` statement in the for loop and then...
-  --> tests/ui/manual_flatten.rs:139:9
+  --> tests/ui/manual_flatten.rs:146:9
    |
 LL | /         if let Some(n) = n {
 LL | |             println!("{:?}", n);

@@ -81,12 +81,10 @@ fn main() {
     let b: String = concat(just_return(a));
     //~^ explicit_deref_methods
 
-    let b: &str = &**a;
-    //~^ explicit_deref_methods
+    let b: &str = a.deref().deref();
 
     let opt_a = Some(a.clone());
-    let b = &*opt_a.unwrap();
-    //~^ explicit_deref_methods
+    let b = opt_a.unwrap().deref();
 
     Aaa::deref(&Aaa);
     Aaa::deref_mut(&mut Aaa);

@@ -54,13 +54,15 @@ check-aux:
 		src/etc/test-float-parse \
 		$(BOOTSTRAP_ARGS)
 	# Run standard library tests in Miri.
-	$(Q)$(BOOTSTRAP) miri --stage 2 \
+	$(Q)MIRIFLAGS="-Zmiri-strict-provenance" \
+		$(BOOTSTRAP) miri --stage 2 \
 		library/coretests \
 		library/alloctests \
 		library/alloc \
 		$(BOOTSTRAP_ARGS) \
 		--no-doc
-	# Some doctests use file system operations to demonstrate dealing with `Result`.
+	# Some doctests use file system operations to demonstrate dealing with `Result`,
+	# so we have to run them with isolation disabled.
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 \
 		library/coretests \
@@ -70,22 +72,19 @@ check-aux:
 		--doc
 	# In `std` we cannot test everything, so we skip some modules.
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
-		$(BOOTSTRAP) miri --stage 2 library/std \
+		$(BOOTSTRAP) miri --stage 2 \
+		library/std \
 		$(BOOTSTRAP_ARGS) \
-		--no-doc -- \
-		--skip fs:: --skip net:: --skip process:: --skip sys::fd:: --skip sys::pal::
-	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
-		$(BOOTSTRAP) miri --stage 2 library/std \
-		$(BOOTSTRAP_ARGS) \
-		--doc -- \
+		-- \
 		--skip fs:: --skip net:: --skip process:: --skip sys::fd:: --skip sys::pal::
 	# Also test some very target-specific modules on other targets
 	# (making sure to cover an i686 target as well).
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" BOOTSTRAP_SKIP_TARGET_SANITY=1 \
-		$(BOOTSTRAP) miri --stage 2 library/std \
-		$(BOOTSTRAP_ARGS) \
+		$(BOOTSTRAP) miri --stage 2 \
+		library/std \
 		--target aarch64-apple-darwin,i686-pc-windows-msvc \
-		--no-doc -- \
+		$(BOOTSTRAP_ARGS) \
+		-- \
 		time:: sync:: thread:: env::
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)

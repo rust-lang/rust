@@ -988,15 +988,15 @@ impl Builder<'_> {
         // requirement, but the `-L` library path is not propagated across
         // separate Cargo projects. We can add LLVM's library path to the
         // rustc args as a workaround.
-        if mode == Mode::ToolRustc || mode == Mode::Codegen {
-            if let Some(llvm_config) = self.llvm_config(target) {
-                let llvm_libdir =
-                    command(llvm_config).arg("--libdir").run_capture_stdout(self).stdout();
-                if target.is_msvc() {
-                    rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
-                } else {
-                    rustflags.arg(&format!("-Clink-arg=-L{llvm_libdir}"));
-                }
+        if (mode == Mode::ToolRustc || mode == Mode::Codegen)
+            && let Some(llvm_config) = self.llvm_config(target)
+        {
+            let llvm_libdir =
+                command(llvm_config).arg("--libdir").run_capture_stdout(self).stdout();
+            if target.is_msvc() {
+                rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
+            } else {
+                rustflags.arg(&format!("-Clink-arg=-L{llvm_libdir}"));
             }
         }
 
@@ -1231,12 +1231,11 @@ impl Builder<'_> {
                 _ => None,
             };
 
-            if let Some(limit) = limit {
-                if stage == 0
-                    || self.config.default_codegen_backend(target).unwrap_or_default() == "llvm"
-                {
-                    rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={limit}"));
-                }
+            if let Some(limit) = limit
+                && (stage == 0
+                    || self.config.default_codegen_backend(target).unwrap_or_default() == "llvm")
+            {
+                rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={limit}"));
             }
         }
 

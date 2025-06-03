@@ -118,9 +118,10 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
             ast::UseTreeKind::Simple(Some(ident)) => {
                 if ident.name == kw::Underscore
                     && !self.r.import_res_map.get(&id).is_some_and(|per_ns| {
-                        per_ns.iter().filter_map(|res| res.as_ref()).any(|res| {
-                            matches!(res, Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
-                        })
+                        matches!(
+                            per_ns.type_ns,
+                            Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
+                        )
                     })
                 {
                     self.unused_import(self.base_id).add(id);
@@ -190,6 +191,16 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                 .get(&extern_crate.ident)
                 .is_none_or(|entry| entry.introduced_by_item)
             {
+                continue;
+            }
+
+            let module = self
+                .r
+                .get_nearest_non_block_module(self.r.local_def_id(extern_crate.id).to_def_id());
+            if module.no_implicit_prelude {
+                // If the module has `no_implicit_prelude`, then we don't suggest
+                // replacing the extern crate with a use, as it would not be
+                // inserted into the prelude. User writes `extern` style deliberately.
                 continue;
             }
 

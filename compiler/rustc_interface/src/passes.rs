@@ -1012,10 +1012,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             {
                 tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
             }
-        });
-    });
-    sess.time("coroutine_obligations", || {
-        tcx.par_hir_body_owners(|def_id| {
             if tcx.is_coroutine(def_id.to_def_id()) {
                 tcx.ensure_ok().mir_coroutine_witnesses(def_id);
                 let _ = tcx.ensure_ok().check_coroutine_obligations(
