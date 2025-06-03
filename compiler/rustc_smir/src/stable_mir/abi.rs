@@ -455,3 +455,47 @@ pub enum CallConvention {
 
     RiscvInterrupt,
 }
+
+pub type ReprFlags = u8;
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize)]
+pub enum IntegerType {
+    /// Pointer-sized integer type, i.e. `isize` and `usize`. The field shows signedness, e.g.
+    /// `Pointer(true)` means `isize`.
+    Pointer(bool),
+    /// Fixed-sized integer type, e.g. `i8`, `u32`, `i128`. The bool field shows signedness, e.g.
+    /// `Fixed(I8, false)` means `u8`.
+    Fixed(IntegerLength, bool),
+}
+
+/// Represntation options provided by the user
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize)]
+pub struct ReprOptions {
+    pub(crate) int: Option<IntegerType>,
+    pub(crate) align: Option<Align>,
+    pub(crate) pack: Option<Align>,
+    pub(crate) flags: ReprFlags,
+}
+
+impl ReprOptions {
+    #[inline]
+    fn contains_flags(&self, flags: rustc_abi::ReprFlags) -> bool {
+        let self_flags = rustc_abi::ReprFlags::from_bits_retain(self.flags);
+        self_flags.intersects(flags)
+    }
+
+    #[inline]
+    pub fn is_c(&self) -> bool {
+        self.contains_flags(rustc_abi::ReprFlags::IS_C)
+    }
+
+    #[inline]
+    pub fn is_simd(&self) -> bool {
+        self.contains_flags(rustc_abi::ReprFlags::IS_SIMD)
+    }
+
+    #[inline]
+    pub fn is_transparent(&self) -> bool {
+        self.contains_flags(rustc_abi::ReprFlags::IS_TRANSPARENT)
+    }
+}
