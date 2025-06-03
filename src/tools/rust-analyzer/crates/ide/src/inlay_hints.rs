@@ -6,7 +6,7 @@ use std::{
 use either::Either;
 use hir::{
     ClosureStyle, DisplayTarget, EditionedFileId, HasVisibility, HirDisplay, HirDisplayError,
-    HirWrite, ModuleDef, ModuleDefId, Semantics, sym,
+    HirWrite, InRealFile, ModuleDef, ModuleDefId, Semantics, sym,
 };
 use ide_db::{FileRange, RootDatabase, famous_defs::FamousDefs, text_edit::TextEditBuilder};
 use ide_db::{FxHashSet, text_edit::TextEdit};
@@ -95,16 +95,16 @@ pub(crate) fn inlay_hints(
         return acc;
     };
     let famous_defs = FamousDefs(&sema, scope.krate());
+    let display_target = famous_defs.1.to_display_target(sema.db);
 
     let ctx = &mut InlayHintCtx::default();
     let mut hints = |event| {
         if let Some(node) = handle_event(ctx, event) {
-            hints(&mut acc, ctx, &famous_defs, config, file_id, node);
+            hints(&mut acc, ctx, &famous_defs, config, file_id, display_target, node);
         }
     };
     let mut preorder = file.preorder();
     while let Some(event) = preorder.next() {
-        // FIXME: This can miss some hints that require the parent of the range to calculate
         if matches!((&event, range_limit), (WalkEvent::Enter(node), Some(range)) if range.intersect(node.text_range()).is_none())
         {
             preorder.skip_subtree();
@@ -144,10 +144,12 @@ pub(crate) fn inlay_hints_resolve(
     let famous_defs = FamousDefs(&sema, scope.krate());
     let mut acc = Vec::new();
 
+    let display_target = famous_defs.1.to_display_target(sema.db);
+
     let ctx = &mut InlayHintCtx::default();
     let mut hints = |event| {
         if let Some(node) = handle_event(ctx, event) {
-            hints(&mut acc, ctx, &famous_defs, config, file_id, node);
+            hints(&mut acc, ctx, &famous_defs, config, file_id, display_target, node);
         }
     };
 
@@ -202,17 +204,19 @@ fn handle_event(ctx: &mut InlayHintCtx, node: WalkEvent<SyntaxNode>) -> Option<S
 fn hints(
     hints: &mut Vec<InlayHint>,
     ctx: &mut InlayHintCtx,
-    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
+    famous_defs @ FamousDefs(sema, _krate): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
+    display_target: DisplayTarget,
     node: SyntaxNode,
 ) {
-    let file_id = file_id.editioned_file_id(sema.db);
-    let Some(krate) = sema.first_crate(file_id.file_id()) else {
-        return;
-    };
-    let display_target = krate.to_display_target(sema.db);
-    closing_brace::hints(hints, sema, config, file_id, display_target, node.clone());
+    closing_brace::hints(
+        hints,
+        sema,
+        config,
+        display_target,
+        InRealFile { file_id, value: node.clone() },
+    );
     if let Some(any_has_generic_args) = ast::AnyHasGenericArgs::cast(node.clone()) {
         generic_param::hints(hints, famous_defs, config, any_has_generic_args);
     }
@@ -231,18 +235,18 @@ fn hints(
                         closure_captures::hints(hints, famous_defs, config, it.clone());
                         closure_ret::hints(hints, famous_defs, config, display_target, it)
                     },
-                    ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, famous_defs, config, file_id,  it),
+                    ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, famous_defs, config, it),
                     _ => Some(()),
                 }
             },
             ast::Pat(it) => {
-                binding_mode::hints(hints, famous_defs, config, file_id,  &it);
+                binding_mode::hints(hints, famous_defs, config, &it);
                 match it {
                     ast::Pat::IdentPat(it) => {
                         bind_pat::hints(hints, famous_defs, config, display_target, &it);
                     }
                     ast::Pat::RangePat(it) => {
-                        range_exclusive::hints(hints, famous_defs, config, file_id, it);
+                        range_exclusive::hints(hints, famous_defs, config, it);
                     }
                     _ => {}
                 }
@@ -250,30 +254,33 @@ fn hints(
             },
             ast::Item(it) => match it {
                 ast::Item::Fn(it) => {
-                    implicit_drop::hints(hints, famous_defs, config, file_id, &it);
+                    implicit_drop::hints(hints, famous_defs, config, display_target, &it);
                     if let Some(extern_block) = &ctx.extern_block_parent {
-                        extern_block::fn_hints(hints, famous_defs, config, file_id, &it, extern_block);
+                        extern_block::fn_hints(hints, famous_defs, config, &it, extern_block);
                     }
-                    lifetime::fn_hints(hints, ctx, famous_defs, config, file_id, it)
+                    lifetime::fn_hints(hints, ctx, famous_defs, config,  it)
                 },
                 ast::Item::Static(it) => {
                     if let Some(extern_block) = &ctx.extern_block_parent {
-                        extern_block::static_hints(hints, famous_defs, config, file_id, &it, extern_block);
+                        extern_block::static_hints(hints, famous_defs, config, &it, extern_block);
                     }
-                    implicit_static::hints(hints, famous_defs, config, file_id, Either::Left(it))
+                    implicit_static::hints(hints, famous_defs, config,  Either::Left(it))
                 },
-                ast::Item::Const(it) => implicit_static::hints(hints, famous_defs, config, file_id, Either::Right(it)),
-                ast::Item::Enum(it) => discriminant::enum_hints(hints, famous_defs, config, file_id, it),
-                ast::Item::ExternBlock(it) => extern_block::extern_block_hints(hints, famous_defs, config, file_id, it),
+                ast::Item::Const(it) => implicit_static::hints(hints, famous_defs, config, Either::Right(it)),
+                ast::Item::Enum(it) => discriminant::enum_hints(hints, famous_defs, config, it),
+                ast::Item::ExternBlock(it) => extern_block::extern_block_hints(hints, famous_defs, config, it),
                 _ => None,
             },
             // FIXME: trait object type elisions
             ast::Type(ty) => match ty {
-                ast::Type::FnPtrType(ptr) => lifetime::fn_ptr_hints(hints, ctx, famous_defs, config, file_id, ptr),
-                ast::Type::PathType(path) => lifetime::fn_path_hints(hints, ctx, famous_defs, config, file_id, path),
+                ast::Type::FnPtrType(ptr) => lifetime::fn_ptr_hints(hints, ctx, famous_defs, config,  ptr),
+                ast::Type::PathType(path) => {
+                    lifetime::fn_path_hints(hints, ctx, famous_defs, config,  path);
+                    Some(())
+                },
                 _ => Some(()),
             },
-            ast::GenericParamList(it) => bounds::hints(hints, famous_defs, config, file_id, it),
+            ast::GenericParamList(it) => bounds::hints(hints, famous_defs, config,  it),
             _ => Some(()),
         }
     };

@@ -1,6 +1,5 @@
 //! Extern block hints
 use ide_db::{famous_defs::FamousDefs, text_edit::TextEdit};
-use span::EditionedFileId;
 use syntax::{AstNode, SyntaxToken, ast};
 
 use crate::{InlayHint, InlayHintsConfig};
@@ -9,7 +8,6 @@ pub(super) fn extern_block_hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
     extern_block: ast::ExternBlock,
 ) -> Option<()> {
     if extern_block.unsafe_token().is_some() {
@@ -36,7 +34,6 @@ pub(super) fn fn_hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
     fn_: &ast::Fn,
     extern_block: &ast::ExternBlock,
 ) -> Option<()> {
@@ -55,7 +52,6 @@ pub(super) fn static_hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
     static_: &ast::Static,
     extern_block: &ast::ExternBlock,
 ) -> Option<()> {
