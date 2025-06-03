@@ -4,12 +4,9 @@
 #![allow(dead_code)]
 #![unstable(feature = "feat_foo", issue = "none" )]
 
-#[stable(feature = "a", since = "1.1.1" )]
 pub trait Foo {
-    #[stable(feature = "a", since = "1.1.1" )]
     fn foo();
 }
-#[stable(feature = "a", since = "1.1.1" )]
 pub struct Bar;
 
 // Annotate the impl as unstable.
