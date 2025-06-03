@@ -1,20 +1,20 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: memory access failed: attempting to access 4 bytes, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
   --> $DIR/out_of_bounds_read.rs:8:33
    |
 LL |     const _READ: u32 = unsafe { ptr::read(PAST_END_PTR) };
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: attempting to access 4 bytes, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: memory access failed: attempting to access 4 bytes, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
   --> $DIR/out_of_bounds_read.rs:10:39
    |
 LL |     const _CONST_READ: u32 = unsafe { PAST_END_PTR.read() };
-   |                                       ^^^^^^^^^^^^^^^^^^^ memory access failed: attempting to access 4 bytes, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
+   |                                       ^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: memory access failed: attempting to access 4 bytes, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
   --> $DIR/out_of_bounds_read.rs:12:37
    |
 LL |     const _MUT_READ: u32 = unsafe { (PAST_END_PTR as *mut u32).read() };
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: attempting to access 4 bytes, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 3 previous errors
 

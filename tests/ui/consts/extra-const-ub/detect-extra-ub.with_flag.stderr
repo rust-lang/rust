@@ -1,62 +1,62 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: constructing invalid value: encountered 0x03, but expected a boolean
   --> $DIR/detect-extra-ub.rs:30:20
    |
 LL |     let _x: bool = transmute(3u8);
-   |                    ^^^^^^^^^^^^^^ constructing invalid value: encountered 0x03, but expected a boolean
+   |                    ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:36:21
+error[E0080]: constructing invalid value: encountered a pointer, but expected an integer
+  --> $DIR/detect-extra-ub.rs:35:21
    |
 LL |     let _x: usize = transmute(&3u8);
-   |                     ^^^^^^^^^^^^^^^ constructing invalid value: encountered a pointer, but expected an integer
+   |                     ^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:42:28
+error[E0080]: constructing invalid value at .<enum-tag>: encountered a pointer, but expected an integer
+  --> $DIR/detect-extra-ub.rs:40:28
    |
 LL |     let _x: PtrSizedEnum = transmute(&3u8);
-   |                            ^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered a pointer, but expected an integer
+   |                            ^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:49:30
+error[E0080]: constructing invalid value at .0: encountered a pointer, but expected an integer
+  --> $DIR/detect-extra-ub.rs:46:30
    |
 LL |     let _x: (usize, usize) = transmute(x);
-   |                              ^^^^^^^^^^^^ constructing invalid value at .0: encountered a pointer, but expected an integer
+   |                              ^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:55:20
+error[E0080]: constructing invalid value: encountered an unaligned reference (required 4 byte alignment but found 1)
+  --> $DIR/detect-extra-ub.rs:51:20
    |
 LL |     let _x: &u32 = transmute(&[0u8; 4]);
-   |                    ^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered an unaligned reference (required 4 byte alignment but found 1)
+   |                    ^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:63:13
+error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+  --> $DIR/detect-extra-ub.rs:58:13
    |
 LL |     let v = *addr_of!(data).cast::<UninhDiscriminant>();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:83:16
+error[E0080]: constructing invalid value at [0]: encountered a partial pointer or a mix of pointers
+  --> $DIR/detect-extra-ub.rs:77:16
    |
 LL |     let _val = *(&mem as *const Align as *const [*const u8; 2]);
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at [0]: encountered a partial pointer or a mix of pointers
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:98:16
+error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
+  --> $DIR/detect-extra-ub.rs:91:16
    |
 LL |     let _val = &*slice;
-   |                ^^^^^^^ constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
+   |                ^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 8 previous errors
 

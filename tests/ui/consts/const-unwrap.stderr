@@ -1,14 +1,14 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: called `Option::unwrap()` on a `None` value
   --> $DIR/const-unwrap.rs:6:18
    |
 LL | const BAR: i32 = Option::<i32>::None.unwrap();
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: called `Option::unwrap()` on a `None` value
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/const-unwrap.rs:10:18
+error[E0080]: evaluation panicked: absolutely not!
+  --> $DIR/const-unwrap.rs:9:18
    |
 LL | const BAZ: i32 = Option::<i32>::None.expect("absolutely not!");
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: absolutely not!
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 2 previous errors
 

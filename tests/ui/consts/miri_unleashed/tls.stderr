@@ -1,14 +1,14 @@
-error[E0080]: could not evaluate static initializer
+error[E0080]: cannot access thread local static `A`
   --> $DIR/tls.rs:11:25
    |
 LL |     unsafe { let _val = A; }
-   |                         ^ cannot access thread local static `A`
+   |                         ^ evaluation of static initializer failed here
 
-error[E0080]: could not evaluate static initializer
-  --> $DIR/tls.rs:20:26
+error[E0080]: cannot access thread local static `A`
+  --> $DIR/tls.rs:19:26
    |
 LL |     unsafe { let _val = &A; }
-   |                          ^ cannot access thread local static `A`
+   |                          ^ evaluation of static initializer failed here
 
 warning: skipping const checks
    |
@@ -18,7 +18,7 @@ help: skipping check that does not even have a feature gate
 LL |     unsafe { let _val = A; }
    |                         ^
 help: skipping check that does not even have a feature gate
-  --> $DIR/tls.rs:20:26
+  --> $DIR/tls.rs:19:26
    |
 LL |     unsafe { let _val = &A; }
    |                          ^

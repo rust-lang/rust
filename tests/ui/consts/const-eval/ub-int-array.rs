@@ -18,8 +18,7 @@ impl<T: Copy> MaybeUninit<T> {
 }
 
 const UNINIT_INT_0: [u32; 3] = unsafe {
-    //~^ ERROR it is undefined behavior to use this value
-    //~| NOTE invalid value at [0]
+    //~^ ERROR invalid value at [0]
     mem::transmute([
         MaybeUninit { uninit: () },
         // Constants chosen to achieve endianness-independent hex dump.
@@ -28,8 +27,7 @@ const UNINIT_INT_0: [u32; 3] = unsafe {
     ])
 };
 const UNINIT_INT_1: [u32; 3] = unsafe {
-    //~^ ERROR it is undefined behavior to use this value
-    //~| NOTE invalid value at [1]
+    //~^ ERROR invalid value at [1]
     mem::transmute([
         MaybeUninit::new(0u8),
         MaybeUninit::new(0u8),
@@ -46,8 +44,7 @@ const UNINIT_INT_1: [u32; 3] = unsafe {
     ])
 };
 const UNINIT_INT_2: [u32; 3] = unsafe {
-    //~^ ERROR it is undefined behavior to use this value
-    //~| NOTE invalid value at [2]
+    //~^ ERROR invalid value at [2]
     mem::transmute([
         MaybeUninit::new(0u8),
         MaybeUninit::new(0u8),

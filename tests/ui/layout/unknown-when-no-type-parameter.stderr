@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/unknown-when-no-type-parameter.rs:8:10
+error[E0080]: the type `<() as Project>::Assoc` has an unknown layout
+  --> $DIR/unknown-when-no-type-parameter.rs:11:10
    |
 LL |     [(); size_of::<<() as Project>::Assoc>()];
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `<() as Project>::Assoc` has an unknown layout
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `std::mem::size_of::<<() as Project>::Assoc>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL

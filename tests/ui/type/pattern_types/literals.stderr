@@ -1,32 +1,32 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: exclusive range end at minimum value of type
   --> $DIR/literals.rs:86:62
    |
 LL | fn empty_range_at_base_type_min() -> pattern_type!(u32 is 0..0) {
-   |                                                              ^ evaluation panicked: exclusive range end at minimum value of type
+   |                                                              ^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: exclusive range end at minimum value of type
   --> $DIR/literals.rs:91:63
    |
 LL | fn empty_range_at_base_type_min2() -> pattern_type!(u32 is 0..0) {
-   |                                                               ^ evaluation panicked: exclusive range end at minimum value of type
+   |                                                               ^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: exclusive range end at minimum value of type
   --> $DIR/literals.rs:106:65
    |
 LL | fn wraparound_range_at_base_ty_end() -> pattern_type!(u32 is 1..0) {
-   |                                                                 ^ evaluation panicked: exclusive range end at minimum value of type
+   |                                                                 ^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: exclusive range end at minimum value of type
   --> $DIR/literals.rs:111:66
    |
 LL | fn wraparound_range_at_base_ty_end2() -> pattern_type!(u32 is 1..0) {
-   |                                                                  ^ evaluation panicked: exclusive range end at minimum value of type
+   |                                                                  ^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: exclusive range end at minimum value of type
   --> $DIR/literals.rs:116:66
    |
 LL | fn wraparound_range_at_base_ty_end3() -> pattern_type!(u32 is 1..0) {
-   |                                                                  ^ evaluation panicked: exclusive range end at minimum value of type
+   |                                                                  ^ evaluation of constant value failed here
 
 error[E0308]: mismatched types
   --> $DIR/literals.rs:9:5

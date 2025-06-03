@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, Diagnostic, IntoDiagArg};
+use rustc_errors::{Diag, DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::interpret::{Provenance, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
@@ -131,10 +131,10 @@ pub fn get_span_and_frames<'tcx>(
 
 /// Create a diagnostic for a const eval error.
 ///
-/// This will use the `mk` function for creating the error which will get passed labels according to
-/// the `InterpError` and the span and a stacktrace of current execution according to
-/// `get_span_and_frames`.
-pub(super) fn report<'tcx, C, F, E>(
+/// This will use the `mk` function for adding more information to the error.
+/// You can use it to add a stacktrace of current execution according to
+/// `get_span_and_frames` or just give context on where the const eval error happened.
+pub(super) fn report<'tcx, C, F>(
     tcx: TyCtxt<'tcx>,
     error: InterpErrorKind<'tcx>,
     span: Span,
@@ -143,8 +143,7 @@ pub(super) fn report<'tcx, C, F, E>(
 ) -> ErrorHandled
 where
     C: FnOnce() -> (Span, Vec<FrameNote>),
-    F: FnOnce(Span, Vec<FrameNote>) -> E,
-    E: Diagnostic<'tcx>,
+    F: FnOnce(&mut Diag<'_>, Span, Vec<FrameNote>),
 {
     // Special handling for certain errors
     match error {
@@ -163,8 +162,7 @@ where
         _ => {
             let (our_span, frames) = get_span_and_frames();
             let span = span.substitute_dummy(our_span);
-            let err = mk(span, frames);
-            let mut err = tcx.dcx().create_err(err);
+            let mut err = tcx.dcx().struct_span_err(our_span, error.diagnostic_message());
             // We allow invalid programs in infallible promoteds since invalid layouts can occur
             // anyway (e.g. due to size overflow). And we allow OOM as that can happen any time.
             let allowed_in_infallible = matches!(
@@ -172,11 +170,9 @@ where
                 InterpErrorKind::ResourceExhaustion(_) | InterpErrorKind::InvalidProgram(_)
             );
 
-            let msg = error.diagnostic_message();
             error.add_args(&mut err);
 
-            // Use *our* span to label the interp error
-            err.span_label(our_span, msg);
+            mk(&mut err, span, frames);
             let g = err.emit();
             let reported = if allowed_in_infallible {
                 ReportedErrorInfo::allowed_in_infallible(g)
