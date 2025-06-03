@@ -1555,4 +1555,5 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
     cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
     func
 }
+
 include!("archs.rs");
