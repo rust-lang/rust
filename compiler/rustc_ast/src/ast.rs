@@ -99,8 +99,15 @@ pub struct Path {
 
 impl PartialEq<Symbol> for Path {
     #[inline]
-    fn eq(&self, symbol: &Symbol) -> bool {
-        matches!(&self.segments[..], [segment] if segment.ident.name == *symbol)
+    fn eq(&self, name: &Symbol) -> bool {
+        if let [segment] = self.segments.as_ref()
+            && segment.args.is_none()
+            && segment.ident.name == *name
+        {
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -118,17 +125,6 @@ impl Path {
     /// one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
         Path { segments: thin_vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
-    }
-
-    pub fn is_ident(&self, name: Symbol) -> bool {
-        if let [segment] = self.segments.as_ref()
-            && segment.args.is_none()
-            && segment.ident.name == name
-        {
-            true
-        } else {
-            false
-        }
     }
 
     pub fn is_global(&self) -> bool {
