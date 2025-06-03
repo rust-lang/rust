@@ -1,4 +1,9 @@
-#![allow(warnings)]
+//! Shared execution context for running bootstrap commands.
+//!
+//! This module provides the [`ExecutionContext`] type, which holds global configuration
+//! relevant during the execution of commands in bootstrap. This includes dry-run
+//! mode, verbosity level, and behavior on failure.
+
 use std::sync::{Arc, Mutex};
 
 use crate::core::config::DryRun;
