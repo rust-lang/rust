@@ -182,7 +182,7 @@ pub struct Flags {
     /// Make bootstrap to behave as it's running on the CI environment or not.
     #[arg(global = true, long, value_name = "bool")]
     pub ci: Option<bool>,
-    /// Skip checking std if `rust.download-rustc` isn't available.
+    /// Skip checking std if `rust.download-rustc` isn't available, mostly for RA
     #[arg(global = true, long)]
     pub skip_std_check_if_no_download_rustc: bool,
 }
