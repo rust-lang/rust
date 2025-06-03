@@ -3544,7 +3544,7 @@ impl Step for CodegenGCC {
 }
 
 /// Test step that does two things:
-/// - Runs `cargo test` for the `src/etc/test-float-parse` tool.
+/// - Runs `cargo test` for the `src/tools/test-float-parse` tool.
 /// - Invokes the `test-float-parse` tool to test the standard library's
 ///   float parsing routines.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3559,7 +3559,7 @@ impl Step for TestFloatParse {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/etc/test-float-parse")
+        run.path("src/tools/test-float-parse")
     }
 
     fn make_run(run: RunConfig<'_>) {

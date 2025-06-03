@@ -528,7 +528,7 @@ tool_check_step!(Miri { path: "src/tools/miri" });
 tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri" });
 tool_check_step!(Rustfmt { path: "src/tools/rustfmt" });
 tool_check_step!(MiroptTestTools { path: "src/tools/miropt-test-tools" });
-tool_check_step!(TestFloatParse { path: "src/etc/test-float-parse" });
+tool_check_step!(TestFloatParse { path: "src/tools/test-float-parse" });
 tool_check_step!(FeaturesStatusDump { path: "src/tools/features-status-dump" });
 
 tool_check_step!(Bootstrap { path: "src/bootstrap", default: false });
