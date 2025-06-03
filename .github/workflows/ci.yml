@@ -235,6 +235,8 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CACHES_AWS_SECRET_ACCESS_KEY }}
+          # Allow reading (but not writing) sccache on PR builds
+          SCCACHE_S3_NO_CREDENTIALS: ${{ (needs.calculate_matrix.outputs.run_type == 'pr' && '1') || '0' }}
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
