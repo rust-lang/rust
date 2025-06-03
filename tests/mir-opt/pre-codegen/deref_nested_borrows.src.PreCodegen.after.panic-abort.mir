@@ -13,6 +13,7 @@ fn src(_1: &&u8) -> bool {
     }
 
     bb0: {
+        StorageLive(_3);
         _2 = copy (*_1);
         _3 = copy (*_2);
         _4 = unknown() -> [return: bb1, unwind unreachable];
@@ -24,6 +25,7 @@ fn src(_1: &&u8) -> bool {
         _6 = copy (*_5);
         _0 = Eq(move _6, copy _3);
         StorageDead(_6);
+        StorageDead(_3);
         return;
     }
 }

@@ -16,8 +16,7 @@
       let mut _11: bool;
   
       bb0: {
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           StorageLive(_4);
           _4 = copy _1;
           StorageLive(_5);
@@ -77,8 +76,7 @@
       }
   
       bb6: {
--         StorageDead(_3);
-+         nop;
+          StorageDead(_3);
           return;
       }
   }

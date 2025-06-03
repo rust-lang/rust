@@ -430,7 +430,6 @@
           StorageLive(_41);
           _39 = copy _29 as &[u8] (Transmute);
           _41 = copy _28 as &[u8] (Transmute);
-          StorageLive(_45);
           StorageLive(_50);
           StorageLive(_51);
           StorageLive(_42);
@@ -445,7 +444,6 @@
       bb22: {
           StorageDead(_51);
           StorageDead(_50);
-          StorageDead(_45);
           StorageDead(_41);
           StorageDead(_39);
           StorageDead(_35);
@@ -468,6 +466,7 @@
           StorageDead(_44);
           StorageDead(_43);
           StorageDead(_42);
+          StorageLive(_45);
           StorageLive(_49);
           _49 = &raw const (*_39);
           _45 = std::intrinsics::size_of_val::<[u8]>(move _49) -> [return: bb26, unwind unreachable];
@@ -478,6 +477,7 @@
           StorageDead(_47);
           _7 = Eq(move _46, const 0_i32);
           StorageDead(_46);
+          StorageDead(_45);
           goto -> bb22;
       }
   
@@ -518,7 +518,6 @@
           StorageLive(_66);
           _64 = copy _54 as &[u8] (Transmute);
           _66 = copy _53 as &[u8] (Transmute);
-          StorageLive(_70);
           StorageLive(_75);
           StorageLive(_76);
           StorageLive(_67);
@@ -533,7 +532,6 @@
       bb30: {
           StorageDead(_76);
           StorageDead(_75);
-          StorageDead(_70);
           StorageDead(_66);
           StorageDead(_64);
           StorageDead(_60);
@@ -556,6 +554,7 @@
           StorageDead(_69);
           StorageDead(_68);
           StorageDead(_67);
+          StorageLive(_70);
           StorageLive(_74);
           _74 = &raw const (*_64);
           _70 = std::intrinsics::size_of_val::<[u8]>(move _74) -> [return: bb34, unwind unreachable];
@@ -566,6 +565,7 @@
           StorageDead(_72);
           _14 = Eq(move _71, const 0_i32);
           StorageDead(_71);
+          StorageDead(_70);
           goto -> bb30;
       }
   
@@ -584,7 +584,6 @@
 +     bb35: {
 +         StorageDead(_51);
 +         StorageDead(_50);
-+         StorageDead(_45);
 +         StorageDead(_41);
 +         StorageDead(_39);
 +         StorageDead(_35);
@@ -597,7 +596,6 @@
 +     bb36: {
 +         StorageDead(_76);
 +         StorageDead(_75);
-+         StorageDead(_70);
 +         StorageDead(_66);
 +         StorageDead(_64);
 +         StorageDead(_60);

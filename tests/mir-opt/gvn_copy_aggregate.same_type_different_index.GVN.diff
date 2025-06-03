@@ -16,11 +16,9 @@
       }
   
       bb0: {
--         StorageLive(_2);
-+         nop;
+          StorageLive(_2);
           _2 = copy ((*_1).1: i32);
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           _3 = copy ((*_1).0: i32);
           StorageLive(_4);
           _4 = copy _2;
@@ -30,10 +28,8 @@
 +         _0 = SameType { a: copy _2, b: copy _3 };
           StorageDead(_5);
           StorageDead(_4);
--         StorageDead(_3);
--         StorageDead(_2);
-+         nop;
-+         nop;
+          StorageDead(_3);
+          StorageDead(_2);
           return;
       }
   }

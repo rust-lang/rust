@@ -17,8 +17,7 @@
       }
   
       bb0: {
--         StorageLive(_4);
-+         nop;
+          StorageLive(_4);
           _4 = const 0_usize;
 -         _5 = Lt(copy _4, const 1_usize);
 -         assert(move _5, "index out of bounds: the length is {} but the index is {}", const 1_usize, copy _4) -> [success: bb1, unwind unreachable];
@@ -50,8 +49,7 @@
           StorageDead(_10);
           StorageDead(_9);
           StorageDead(_7);
--         StorageDead(_4);
-+         nop;
+          StorageDead(_4);
           return;
       }
   }

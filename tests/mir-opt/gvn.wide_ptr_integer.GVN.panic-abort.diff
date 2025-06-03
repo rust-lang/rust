@@ -39,16 +39,14 @@
       }
   
       bb0: {
--         StorageLive(_1);
-+         nop;
+          StorageLive(_1);
           StorageLive(_2);
 -         _2 = (const 1_usize, const 1_usize);
 -         _1 = move _2 as *const [u8] (Transmute);
 +         _2 = const (1_usize, 1_usize);
 +         _1 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8];
           StorageDead(_2);
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           StorageLive(_4);
 -         _4 = (const 1_usize, const 2_usize);
 -         _3 = move _4 as *const [u8] (Transmute);
@@ -170,10 +168,8 @@
           StorageDead(_26);
           StorageDead(_25);
           _0 = const ();
--         StorageDead(_3);
--         StorageDead(_1);
-+         nop;
-+         nop;
+          StorageDead(_3);
+          StorageDead(_1);
           return;
       }
   }

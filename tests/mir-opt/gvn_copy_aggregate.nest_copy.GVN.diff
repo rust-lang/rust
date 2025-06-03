@@ -31,17 +31,13 @@
       }
   
       bb0: {
--         StorageLive(_2);
-+         nop;
+          StorageLive(_2);
           _2 = copy (((*_1).1: AllCopy).0: i32);
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           _3 = copy (((*_1).1: AllCopy).1: u64);
--         StorageLive(_4);
-+         nop;
+          StorageLive(_4);
           _4 = copy (((*_1).1: AllCopy).2: [i8; 3]);
--         StorageLive(_5);
-+         nop;
+          StorageLive(_5);
           StorageLive(_6);
           _6 = copy _2;
           StorageLive(_7);
@@ -53,8 +49,7 @@
           StorageDead(_8);
           StorageDead(_7);
           StorageDead(_6);
--         StorageLive(_9);
-+         nop;
+          StorageLive(_9);
           _9 = copy ((*_1).0: i32);
           StorageLive(_10);
           _10 = copy _9;
@@ -65,16 +60,11 @@
 +         _0 = copy (*_1);
           StorageDead(_11);
           StorageDead(_10);
--         StorageDead(_9);
--         StorageDead(_5);
--         StorageDead(_4);
--         StorageDead(_3);
--         StorageDead(_2);
-+         nop;
-+         nop;
-+         nop;
-+         nop;
-+         nop;
+          StorageDead(_9);
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
           return;
       }
   }

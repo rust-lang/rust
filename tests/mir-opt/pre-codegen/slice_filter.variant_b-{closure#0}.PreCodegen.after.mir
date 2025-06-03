@@ -18,10 +18,14 @@ fn variant_b::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:11:25: 11:41}, 
     }
 
     bb0: {
+        StorageLive(_4);
         _3 = copy (*_2);
         _4 = copy ((*_3).0: usize);
+        StorageLive(_5);
         _5 = copy ((*_3).1: usize);
+        StorageLive(_6);
         _6 = copy ((*_3).2: usize);
+        StorageLive(_7);
         _7 = copy ((*_3).3: usize);
         StorageLive(_8);
         _8 = Le(copy _4, copy _6);
@@ -63,6 +67,10 @@ fn variant_b::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:11:25: 11:41}, 
     bb7: {
         StorageDead(_9);
         StorageDead(_8);
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageDead(_4);
         return;
     }
 }

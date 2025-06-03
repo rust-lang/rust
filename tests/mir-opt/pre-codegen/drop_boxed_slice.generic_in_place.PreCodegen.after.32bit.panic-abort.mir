@@ -67,8 +67,11 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     }
 
     bb0: {
+        StorageLive(_3);
+        StorageLive(_5);
         StorageLive(_2);
         _2 = copy (((*_1).0: std::ptr::Unique<[T]>).0: std::ptr::NonNull<[T]>);
+        StorageLive(_8);
         StorageLive(_4);
         _3 = copy _2 as *mut [T] (Transmute);
         _4 = copy _2 as *const [T] (Transmute);
@@ -102,7 +105,10 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     }
 
     bb4: {
+        StorageDead(_8);
         StorageDead(_2);
+        StorageDead(_5);
+        StorageDead(_3);
         return;
     }
 }

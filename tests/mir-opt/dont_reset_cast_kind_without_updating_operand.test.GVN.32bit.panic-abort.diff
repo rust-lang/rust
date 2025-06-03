@@ -91,11 +91,10 @@
           StorageLive(_17);
 -         _17 = const <() as std::mem::SizedTypeProperties>::ALIGN;
 +         _17 = const 1_usize;
-          StorageLive(_18);
           StorageLive(_20);
-          StorageLive(_21);
           StorageLive(_22);
           StorageLive(_23);
+          StorageLive(_18);
           switchInt(UbChecks) -> [0: bb6, otherwise: bb5];
       }
   
@@ -115,6 +114,7 @@
       }
   
       bb4: {
+          StorageLive(_21);
           _21 = copy ((_19 as Ok).0: std::ptr::NonNull<[u8]>);
 -         StorageLive(_25);
 +         nop;
@@ -122,12 +122,12 @@
           _12 = copy _25 as *mut u8 (PtrToPtr);
 -         StorageDead(_25);
 +         nop;
+          StorageDead(_21);
           StorageDead(_19);
+          StorageDead(_18);
           StorageDead(_23);
           StorageDead(_22);
-          StorageDead(_21);
           StorageDead(_20);
-          StorageDead(_18);
           StorageDead(_17);
           StorageDead(_16);
 -         _13 = copy _12 as *const () (PtrToPtr);
@@ -145,15 +145,13 @@
           _2 = &_3;
           _1 = &(*_2);
 -         StorageDead(_2);
--         StorageLive(_5);
++         nop;
+          StorageLive(_5);
 -         _10 = copy (*_1);
-+         nop;
-+         nop;
 +         _10 = copy (*_2);
           _11 = copy ((_10.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
           _5 = &raw const (*_11);
--         StorageLive(_6);
-+         nop;
+          StorageLive(_6);
           StorageLive(_7);
           _7 = copy _5;
           StorageLive(_26);
@@ -174,10 +172,8 @@
           StorageDead(_9);
           _0 = const ();
           StorageDead(_8);
--         StorageDead(_6);
--         StorageDead(_5);
-+         nop;
-+         nop;
+          StorageDead(_6);
+          StorageDead(_5);
           drop(_3) -> [return: bb1, unwind unreachable];
       }
   
