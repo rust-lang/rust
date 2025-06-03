@@ -72,9 +72,9 @@ fn is_min_or_max(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<MinMax> {
     if let hir::ExprKind::Call(func, []) = &expr.kind
         && let hir::ExprKind::Path(hir::QPath::TypeRelative(_, segment)) = &func.kind
     {
-        match segment.ident.as_str() {
-            "max_value" => return Some(MinMax::Max),
-            "min_value" => return Some(MinMax::Min),
+        match segment.ident.name {
+            sym::max_value => return Some(MinMax::Max),
+            sym::min_value => return Some(MinMax::Min),
             _ => {},
         }
     }

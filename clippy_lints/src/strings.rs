@@ -560,7 +560,7 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
             && let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id)
             && cx.tcx.is_diagnostic_item(sym::str_split_whitespace, split_ws_def_id)
             && let ExprKind::MethodCall(path, _trim_recv, [], trim_span) = split_recv.kind
-            && let trim_fn_name @ ("trim" | "trim_start" | "trim_end") = path.ident.name.as_str()
+            && let trim_fn_name @ (sym::trim | sym::trim_start | sym::trim_end) = path.ident.name
             && let Some(trim_def_id) = tyckres.type_dependent_def_id(split_recv.hir_id)
             && is_one_of_trim_diagnostic_items(cx, trim_def_id)
         {

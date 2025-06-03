@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lin
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::contains_unsafe_block;
-use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core};
+use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core, sym};
 use hir::LifetimeKind;
 use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, MultiSpan};
@@ -18,8 +18,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty};
 use rustc_session::declare_lint_pass;
+use rustc_span::Span;
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::{fmt, iter};
@@ -299,7 +299,7 @@ struct PtrArg<'tcx> {
     emission_id: HirId,
     span: Span,
     ty_name: Symbol,
-    method_renames: &'static [(&'static str, &'static str)],
+    method_renames: &'static [(Symbol, &'static str)],
     ref_prefix: RefPrefix,
     deref_ty: DerefTy<'tcx>,
 }
@@ -385,6 +385,7 @@ impl<'tcx> DerefTy<'tcx> {
     }
 }
 
+#[expect(clippy::too_many_lines)]
 fn check_fn_args<'cx, 'tcx: 'cx>(
     cx: &'cx LateContext<'tcx>,
     fn_sig: ty::FnSig<'tcx>,
@@ -409,7 +410,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                 let emission_id = params.get(i).map_or(hir_ty.hir_id, |param| param.hir_id);
                 let (method_renames, deref_ty) = match cx.tcx.get_diagnostic_name(adt.did()) {
                     Some(sym::Vec) => (
-                        [("clone", ".to_owned()")].as_slice(),
+                        [(sym::clone, ".to_owned()")].as_slice(),
                         DerefTy::Slice(
                             name.args.and_then(|args| args.args.first()).and_then(|arg| {
                                 if let GenericArg::Type(ty) = arg {
@@ -421,10 +422,14 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                             args.type_at(0),
                         ),
                     ),
-                    _ if Some(adt.did()) == cx.tcx.lang_items().string() => {
-                        ([("clone", ".to_owned()"), ("as_str", "")].as_slice(), DerefTy::Str)
-                    },
-                    Some(sym::PathBuf) => ([("clone", ".to_path_buf()"), ("as_path", "")].as_slice(), DerefTy::Path),
+                    _ if Some(adt.did()) == cx.tcx.lang_items().string() => (
+                        [(sym::clone, ".to_owned()"), (sym::as_str, "")].as_slice(),
+                        DerefTy::Str,
+                    ),
+                    Some(sym::PathBuf) => (
+                        [(sym::clone, ".to_path_buf()"), (sym::as_path, "")].as_slice(),
+                        DerefTy::Path,
+                    ),
                     Some(sym::Cow) if mutability == Mutability::Not => {
                         if let Some((lifetime, ty)) = name.args.and_then(|args| {
                             if let [GenericArg::Lifetime(lifetime), ty] = args.args {
@@ -595,7 +600,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
                     if let ExprKind::MethodCall(name, receiver, ..) = use_expr.kind
                         && receiver.hir_id == child_id
                     {
-                        let name = name.ident.as_str();
+                        let name = name.ident.name;
 
                         // Check if the method can be renamed.
                         if let Some((_, replacement)) = args.method_renames.iter().find(|&&(x, _)| x == name) {
