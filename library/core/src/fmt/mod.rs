@@ -934,8 +934,13 @@ pub use macros::Debug;
 /// It may omit internal state, precision, or other information the type does not consider important
 /// for user-facing output, as determined by the type. As such, the output of `Display` might not be
 /// possible to parse, and even if it is, the result of parsing might not exactly match the original
-/// value. Calling `.parse()` on the output from `Display` is usually a mistake, unless the type has
-/// provided and documented additional guarantees about its `Display` and `FromStr` implementations.
+/// value.
+///
+/// However, if a type has a lossless `Display` implementation whose output is meant to be
+/// conveniently machine-parseable and not just meant for human consumption, then the type may wish
+/// to accept the same format in `FromStr`, and document that usage. Having both `Display` and
+/// `FromStr` implementations where the result of `Display` cannot be parsed with `FromStr` may
+/// surprise users.
 ///
 /// # Internationalization
 ///
