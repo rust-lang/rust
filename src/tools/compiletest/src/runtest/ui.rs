@@ -3,7 +3,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 
 use rustfix::{Filter, apply_suggestions, get_suggestions_from_json};
-use tracing::{debug, error};
+use tracing::debug;
 
 use super::{
     AllowUnused, Emit, FailMode, LinkToAux, PassMode, TargetLocation, TestCx, TestOutput,
