@@ -1,5 +1,5 @@
 error[E0658]: allow unstable impl
-  --> $DIR/unstable-feature-bound-gated.rs:7:1
+  --> $DIR/feature-gate-impl-stability.rs:7:1
    |
 LL | #[unstable_feature_bound(feat_foo)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
