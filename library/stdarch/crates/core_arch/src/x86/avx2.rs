@@ -2964,7 +2964,7 @@ pub fn _mm256_bsrli_epi128<const IMM8: i32>(a: __m256i) -> __m256i {
     unsafe {
         let a = a.as_i8x32();
         let zero = i8x32::ZERO;
-        let r: i8x32 = match IMM8 % 16 {
+        let r: i8x32 = match IMM8 {
             0 => simd_shuffle!(
                 a,
                 zero,
