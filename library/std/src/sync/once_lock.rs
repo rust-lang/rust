@@ -159,8 +159,11 @@ impl<T> OnceLock<T> {
 
     /// Gets the mutable reference to the underlying value.
     ///
-    /// Returns `None` if the cell is uninitialized, or being initialized.
-    /// This method never blocks.
+    /// Returns `None` if the cell is uninitialized.
+    ///
+    /// This method never blocks. Since it borrows the `OnceLock` mutably,
+    /// it is statically guaranteed that no active borrows to the `OnceLock`
+    /// exist, including from other threads.
     #[inline]
     #[stable(feature = "once_cell", since = "1.70.0")]
     pub fn get_mut(&mut self) -> Option<&mut T> {
@@ -315,7 +318,9 @@ impl<T> OnceLock<T> {
     /// Gets the mutable reference of the contents of the cell, initializing
     /// it to `f()` if the cell was uninitialized.
     ///
-    /// This method never blocks.
+    /// This method never blocks. Since it borrows the `OnceLock` mutably,
+    /// it is statically guaranteed that no active borrows to the `OnceLock`
+    /// exist, including from other threads.
     ///
     /// # Panics
     ///
@@ -405,7 +410,9 @@ impl<T> OnceLock<T> {
     /// it to `f()` if the cell was uninitialized. If the cell was uninitialized
     /// and `f()` failed, an error is returned.
     ///
-    /// This method never blocks.
+    /// This method never blocks. Since it borrows the `OnceLock` mutably,
+    /// it is statically guaranteed that no active borrows to the `OnceLock`
+    /// exist, including from other threads.
     ///
     /// # Panics
     ///
@@ -469,7 +476,8 @@ impl<T> OnceLock<T> {
     ///
     /// Has no effect and returns `None` if the `OnceLock` was uninitialized.
     ///
-    /// Safety is guaranteed by requiring a mutable reference.
+    /// Since this method borrows the `OnceLock` mutably, it is statically guaranteed that
+    /// no active borrows to the `OnceLock` exist, including from other threads.
     ///
     /// # Examples
     ///
