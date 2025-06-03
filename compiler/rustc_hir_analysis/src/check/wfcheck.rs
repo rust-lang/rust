@@ -197,10 +197,8 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
         _ => unreachable!("{node:?}"),
     };
 
-    if let Some(generics) = node.generics() {
-        for param in generics.params {
-            res = res.and(check_param_wf(tcx, param));
-        }
+    for param in &tcx.generics_of(def_id).own_params {
+        res = res.and(check_param_wf(tcx, param));
     }
 
     res
@@ -944,52 +942,54 @@ fn check_impl_item<'tcx>(
     check_associated_item(tcx, impl_item.owner_id.def_id, span, method_sig)
 }
 
-fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), ErrorGuaranteed> {
+fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), ErrorGuaranteed> {
     match param.kind {
         // We currently only check wf of const params here.
-        hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. } => Ok(()),
+        ty::GenericParamDefKind::Lifetime | ty::GenericParamDefKind::Type { .. } => Ok(()),
 
         // Const parameters are well formed if their type is structural match.
-        hir::GenericParamKind::Const { ty: hir_ty, default: _, synthetic: _ } => {
+        ty::GenericParamDefKind::Const { .. } => {
             let ty = tcx.type_of(param.def_id).instantiate_identity();
+            let span = tcx.def_span(param.def_id);
+            let def_id = param.def_id.expect_local();
 
             if tcx.features().unsized_const_params() {
-                enter_wf_checking_ctxt(tcx, tcx.local_parent(param.def_id), |wfcx| {
+                enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
                     wfcx.register_bound(
-                        ObligationCause::new(
-                            hir_ty.span,
-                            param.def_id,
-                            ObligationCauseCode::ConstParam(ty),
-                        ),
+                        ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(ty)),
                         wfcx.param_env,
                         ty,
-                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, Some(hir_ty.span)),
+                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, Some(span)),
                     );
                     Ok(())
                 })
             } else if tcx.features().adt_const_params() {
-                enter_wf_checking_ctxt(tcx, tcx.local_parent(param.def_id), |wfcx| {
+                enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
                     wfcx.register_bound(
-                        ObligationCause::new(
-                            hir_ty.span,
-                            param.def_id,
-                            ObligationCauseCode::ConstParam(ty),
-                        ),
+                        ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(ty)),
                         wfcx.param_env,
                         ty,
-                        tcx.require_lang_item(LangItem::ConstParamTy, Some(hir_ty.span)),
+                        tcx.require_lang_item(LangItem::ConstParamTy, Some(span)),
                     );
                     Ok(())
                 })
             } else {
+                let span = || {
+                    let hir::GenericParamKind::Const { ty: &hir::Ty { span, .. }, .. } =
+                        tcx.hir_node_by_def_id(def_id).expect_generic_param().kind
+                    else {
+                        bug!()
+                    };
+                    span
+                };
                 let mut diag = match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => return Ok(()),
                     ty::FnPtr(..) => tcx.dcx().struct_span_err(
-                        hir_ty.span,
+                        span(),
                         "using function pointers as const generic parameters is forbidden",
                     ),
                     ty::RawPtr(_, _) => tcx.dcx().struct_span_err(
-                        hir_ty.span,
+                        span(),
                         "using raw pointers as const generic parameters is forbidden",
                     ),
                     _ => {
@@ -997,7 +997,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                         ty.error_reported()?;
 
                         tcx.dcx().struct_span_err(
-                            hir_ty.span,
+                            span(),
                             format!(
                                 "`{ty}` is forbidden as the type of a const generic parameter",
                             ),
@@ -1007,7 +1007,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
 
                 diag.note("the only supported types are integers, `bool`, and `char`");
 
-                let cause = ObligationCause::misc(hir_ty.span, param.def_id);
+                let cause = ObligationCause::misc(span(), def_id);
                 let adt_const_params_feature_string =
                     " more complex and user defined types".to_string();
                 let may_suggest_feature = match type_allowed_to_implement_const_param_ty(
@@ -1058,7 +1058,11 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                     Ok(..) => Some(vec![(adt_const_params_feature_string, sym::adt_const_params)]),
                 };
                 if let Some(features) = may_suggest_feature {
-                    tcx.disabled_nightly_features(&mut diag, Some(param.hir_id), features);
+                    tcx.disabled_nightly_features(
+                        &mut diag,
+                        Some(tcx.local_def_id_to_hir_id(def_id)),
+                        features,
+                    );
                 }
 
                 Err(diag.emit())
