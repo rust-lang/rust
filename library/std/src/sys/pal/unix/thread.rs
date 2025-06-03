@@ -310,11 +310,17 @@ impl Thread {
         target_os = "vxworks",
     ))]
     pub fn sleep_until(deadline: Instant) {
-        let mut ts = deadline
-            .into_inner()
-            .into_timespec()
-            .to_timespec()
-            .expect("Timespec is narrower then libc::timespec thus conversion can't fail");
+        let Some(mut ts) = deadline.into_inner().into_timespec().to_timespec() else {
+            // The deadline is further in the future then can be passed to
+            // clock_nanosleep. We have to use Self::sleep intead. This might
+            // happen on 32 bit platforms, especially closer to 2038.
+            let now = Instant::now();
+            if let Some(delay) = deadline.checked_duration_since(now) {
+                Self::sleep(delay);
+            }
+            return;
+        };
+
         let ts_ptr = &mut ts as *mut _;
 
         // If we're awoken with a signal and the return value is -1
@@ -347,7 +353,6 @@ impl Thread {
     )))]
     pub fn sleep_until(deadline: Instant) {
         let now = Instant::now();
-
         if let Some(delay) = deadline.checked_duration_since(now) {
             Self::sleep(delay);
         }
