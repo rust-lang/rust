@@ -10,10 +10,10 @@ LL | #[unstable(feature = "feat_moo", issue = "none" )]
 error: module has missing stability attribute
   --> $DIR/unstable-feature-bound-no-effect.rs:1:1
    |
-LL | / #![allow(internal_features)] // Enabled to use #![feature(staged_api)] and #![feature(impl_stability)]
+LL | / #![allow(internal_features)]
 LL | |
-LL | | #![feature(staged_api)] // Enabled to use  #![unstable(feature = "feat_foo", issue = "none")]
-LL | | #![feature(impl_stability)] // Enabled to use #[unstable_feature_bound(feat_foo)] 
+LL | | #![feature(staged_api)]
+LL | | #![feature(impl_stability)]
 ...  |
 LL | | fn main() {}
    | |____________^
