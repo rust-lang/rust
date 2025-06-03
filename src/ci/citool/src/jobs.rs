@@ -13,7 +13,7 @@ use crate::utils::load_env_var;
 #[derive(serde::Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Job {
-    /// Name of the job, e.g. mingw-check
+    /// Name of the job, e.g. mingw-check-1
     pub name: String,
     /// GitHub runner on which the job should be executed
     pub os: String,

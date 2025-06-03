@@ -1,14 +1,16 @@
 use core::fmt::{self, Display};
+use core::num::NonZero;
 use core::ops::Range;
 use core::slice;
 use core::str::FromStr;
 use rustc_lexer::{self as lexer, FrontmatterAllowed};
-use std::env;
 use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, ExitStatus, Stdio};
+use std::{env, thread};
+use walkdir::WalkDir;
 
 #[cfg(not(windows))]
 static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
@@ -45,6 +47,14 @@ pub fn panic_action(err: &impl Display, action: ErrAction, path: &Path) -> ! {
     panic!("error {} `{}`: {}", action.as_str(), path.display(), *err)
 }
 
+#[track_caller]
+pub fn expect_action<T>(res: Result<T, impl Display>, action: ErrAction, path: impl AsRef<Path>) -> T {
+    match res {
+        Ok(x) => x,
+        Err(ref e) => panic_action(e, action, path.as_ref()),
+    }
+}
+
 /// Wrapper around `std::fs::File` which panics with a path on failure.
 pub struct File<'a> {
     pub inner: fs::File,
@@ -55,9 +65,9 @@ impl<'a> File<'a> {
     #[track_caller]
     pub fn open(path: &'a (impl AsRef<Path> + ?Sized), options: &mut OpenOptions) -> Self {
         let path = path.as_ref();
-        match options.open(path) {
-            Ok(inner) => Self { inner, path },
-            Err(e) => panic_action(&e, ErrAction::Open, path),
+        Self {
+            inner: expect_action(options.open(path), ErrAction::Open, path),
+            path,
         }
     }
 
@@ -84,10 +94,7 @@ impl<'a> File<'a> {
     /// Read the entire contents of a file to the given buffer.
     #[track_caller]
     pub fn read_append_to_string<'dst>(&mut self, dst: &'dst mut String) -> &'dst mut String {
-        match self.inner.read_to_string(dst) {
-            Ok(_) => {},
-            Err(e) => panic_action(&e, ErrAction::Read, self.path),
-        }
+        expect_action(self.inner.read_to_string(dst), ErrAction::Read, self.path);
         dst
     }
 
@@ -107,9 +114,7 @@ impl<'a> File<'a> {
             },
             Err(e) => Err(e),
         };
-        if let Err(e) = res {
-            panic_action(&e, ErrAction::Write, self.path);
-        }
+        expect_action(res, ErrAction::Write, self.path);
     }
 }
 
@@ -660,47 +665,91 @@ pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
 }
 
 pub fn write_file(path: &Path, contents: &str) {
-    fs::write(path, contents).unwrap_or_else(|e| panic_action(&e, ErrAction::Write, path));
+    expect_action(fs::write(path, contents), ErrAction::Write, path);
 }
 
 #[must_use]
 pub fn run_with_output(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) -> Vec<u8> {
     fn f(path: &Path, cmd: &mut Command) -> Vec<u8> {
-        match cmd
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .output()
-        {
-            Ok(x) => match x.status.exit_ok() {
-                Ok(()) => x.stdout,
-                Err(ref e) => panic_action(e, ErrAction::Run, path),
-            },
-            Err(ref e) => panic_action(e, ErrAction::Run, path),
-        }
+        let output = expect_action(
+            cmd.stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .output(),
+            ErrAction::Run,
+            path,
+        );
+        expect_action(output.status.exit_ok(), ErrAction::Run, path);
+        output.stdout
     }
     f(path.as_ref(), cmd)
 }
 
-pub fn run_with_args_split(
-    mut make_cmd: impl FnMut() -> Command,
-    mut run_cmd: impl FnMut(&mut Command),
-    args: impl Iterator<Item: AsRef<OsStr>>,
-) {
-    let mut cmd = make_cmd();
-    let mut len = 0;
-    for arg in args {
-        len += arg.as_ref().len();
-        cmd.arg(arg);
-        // Very conservative limit
-        if len > 10000 {
-            run_cmd(&mut cmd);
-            cmd = make_cmd();
-            len = 0;
+/// Splits an argument list across multiple `Command` invocations.
+///
+/// The argument list will be split into a number of batches based on
+/// `thread::available_parallelism`, with `min_batch_size` setting a lower bound on the size of each
+/// batch.
+///
+/// If the size of the arguments would exceed the system limit additional batches will be created.
+pub fn split_args_for_threads(
+    min_batch_size: usize,
+    make_cmd: impl FnMut() -> Command,
+    args: impl ExactSizeIterator<Item: AsRef<OsStr>>,
+) -> impl Iterator<Item = Command> {
+    struct Iter<F, I> {
+        make_cmd: F,
+        args: I,
+        min_batch_size: usize,
+        batch_size: usize,
+        thread_count: usize,
+    }
+    impl<F, I> Iterator for Iter<F, I>
+    where
+        F: FnMut() -> Command,
+        I: ExactSizeIterator<Item: AsRef<OsStr>>,
+    {
+        type Item = Command;
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.thread_count > 1 {
+                self.thread_count -= 1;
+            }
+            let mut cmd = (self.make_cmd)();
+            let mut cmd_len = 0usize;
+            for arg in self.args.by_ref().take(self.batch_size) {
+                cmd.arg(arg.as_ref());
+                // `+ 8` to account for the `argv` pointer on unix.
+                // Windows is complicated since the arguments are first converted to UTF-16ish,
+                // but this needs to account for the space between arguments and whatever additional
+                // is needed to escape within an argument.
+                cmd_len += arg.as_ref().len() + 8;
+                cmd_len += 8;
+
+                // Windows has a command length limit of 32767. For unix systems this is more
+                // complicated since the limit includes environment variables and room needs to be
+                // left to edit them once the program starts, but the total size comes from
+                // `getconf ARG_MAX`.
+                //
+                // For simplicity we use 30000 here under a few assumptions.
+                // * Individual arguments aren't super long (the final argument is still added)
+                // * `ARG_MAX` is set to a reasonable amount. Basically every system will be configured way above
+                //   what windows supports, but POSIX only requires `4096`.
+                if cmd_len > 30000 {
+                    self.batch_size = self.args.len().div_ceil(self.thread_count).max(self.min_batch_size);
+                    break;
+                }
+            }
+            (cmd_len != 0).then_some(cmd)
         }
     }
-    if len != 0 {
-        run_cmd(&mut cmd);
+    let thread_count = thread::available_parallelism().map_or(1, NonZero::get);
+    let batch_size = args.len().div_ceil(thread_count).max(min_batch_size);
+    Iter {
+        make_cmd,
+        args,
+        min_batch_size,
+        batch_size,
+        thread_count,
     }
 }
 
@@ -719,4 +768,13 @@ pub fn delete_dir_if_exists(path: &Path) {
         Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {},
         Err(ref e) => panic_action(e, ErrAction::Delete, path),
     }
+}
+
+/// Walks all items excluding top-level dot files/directories and any target directories.
+pub fn walk_dir_no_dot_or_target() -> impl Iterator<Item = ::walkdir::Result<::walkdir::DirEntry>> {
+    WalkDir::new(".").into_iter().filter_entry(|e| {
+        e.path()
+            .file_name()
+            .is_none_or(|x| x != "target" && x.as_encoded_bytes().first().copied() != Some(b'.'))
+    })
 }

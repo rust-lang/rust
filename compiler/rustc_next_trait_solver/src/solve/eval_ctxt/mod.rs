@@ -671,10 +671,13 @@ where
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
         for (source, goal, stalled_on) in mem::take(&mut self.nested_goals) {
-            if let Some(has_changed) = self.delegate.compute_goal_fast_path(goal, self.origin_span)
-            {
-                if matches!(has_changed, HasChanged::Yes) {
-                    unchanged_certainty = None;
+            if let Some(certainty) = self.delegate.compute_goal_fast_path(goal, self.origin_span) {
+                match certainty {
+                    Certainty::Yes => {}
+                    Certainty::Maybe(_) => {
+                        self.nested_goals.push((source, goal, None));
+                        unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
+                    }
                 }
                 continue;
             }

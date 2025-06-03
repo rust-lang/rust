@@ -1,5 +1,5 @@
 error: expected one of `!`, `(`, `+`, `,`, `::`, `<`, or `>`, found `)`
-  --> tests/ui/skip_rustfmt/non_expressive_names_error_recovery.rs:6:19
+  --> tests/ui/non_expressive_names_error_recovery.rs:6:19
    |
 LL | fn aa(a: Aa<String) {
    |                   ^ expected one of 7 possible tokens

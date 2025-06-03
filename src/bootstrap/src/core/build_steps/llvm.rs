@@ -107,18 +107,18 @@ pub fn prebuilt_llvm_config(
 
     // If we're using a custom LLVM bail out here, but we can only use a
     // custom LLVM for the build triple.
-    if let Some(config) = builder.config.target_config.get(&target) {
-        if let Some(ref s) = config.llvm_config {
-            check_llvm_version(builder, s);
-            let llvm_config = s.to_path_buf();
-            let mut llvm_cmake_dir = llvm_config.clone();
-            llvm_cmake_dir.pop();
-            llvm_cmake_dir.pop();
-            llvm_cmake_dir.push("lib");
-            llvm_cmake_dir.push("cmake");
-            llvm_cmake_dir.push("llvm");
-            return LlvmBuildStatus::AlreadyBuilt(LlvmResult { llvm_config, llvm_cmake_dir });
-        }
+    if let Some(config) = builder.config.target_config.get(&target)
+        && let Some(ref s) = config.llvm_config
+    {
+        check_llvm_version(builder, s);
+        let llvm_config = s.to_path_buf();
+        let mut llvm_cmake_dir = llvm_config.clone();
+        llvm_cmake_dir.pop();
+        llvm_cmake_dir.pop();
+        llvm_cmake_dir.push("lib");
+        llvm_cmake_dir.push("cmake");
+        llvm_cmake_dir.push("llvm");
+        return LlvmBuildStatus::AlreadyBuilt(LlvmResult { llvm_config, llvm_cmake_dir });
     }
 
     if handle_submodule_when_needed {
@@ -468,10 +468,10 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_RUNTIMES", enabled_llvm_runtimes.join(";"));
         }
 
-        if let Some(num_linkers) = builder.config.llvm_link_jobs {
-            if num_linkers > 0 {
-                cfg.define("LLVM_PARALLEL_LINK_JOBS", num_linkers.to_string());
-            }
+        if let Some(num_linkers) = builder.config.llvm_link_jobs
+            && num_linkers > 0
+        {
+            cfg.define("LLVM_PARALLEL_LINK_JOBS", num_linkers.to_string());
         }
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
@@ -597,10 +597,10 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
 
     let version = get_llvm_version(builder, llvm_config);
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
-    if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 19 {
-            return;
-        }
+    if let (Some(major), Some(_minor)) = (parts.next(), parts.next())
+        && major >= 19
+    {
+        return;
     }
     panic!("\n\nbad LLVM version: {version}, need >=19\n\n")
 }
@@ -730,11 +730,9 @@ fn configure_cmake(
 
     // If ccache is configured we inform the build a little differently how
     // to invoke ccache while also invoking our compilers.
-    if use_compiler_launcher {
-        if let Some(ref ccache) = builder.config.ccache {
-            cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
-                .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
-        }
+    if use_compiler_launcher && let Some(ref ccache) = builder.config.ccache {
+        cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
+            .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
     }
     cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
         .define("CMAKE_CXX_COMPILER", sanitize_cc(&cxx))
@@ -792,20 +790,20 @@ fn configure_cmake(
         cxxflags.push(format!(" --target={target}"));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
-    if let Some(ar) = builder.ar(target) {
-        if ar.is_absolute() {
-            // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
-            // tries to resolve this path in the LLVM build directory.
-            cfg.define("CMAKE_AR", sanitize_cc(&ar));
-        }
+    if let Some(ar) = builder.ar(target)
+        && ar.is_absolute()
+    {
+        // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
+        // tries to resolve this path in the LLVM build directory.
+        cfg.define("CMAKE_AR", sanitize_cc(&ar));
     }
 
-    if let Some(ranlib) = builder.ranlib(target) {
-        if ranlib.is_absolute() {
-            // LLVM build breaks if `CMAKE_RANLIB` is a relative path, for some reason it
-            // tries to resolve this path in the LLVM build directory.
-            cfg.define("CMAKE_RANLIB", sanitize_cc(&ranlib));
-        }
+    if let Some(ranlib) = builder.ranlib(target)
+        && ranlib.is_absolute()
+    {
+        // LLVM build breaks if `CMAKE_RANLIB` is a relative path, for some reason it
+        // tries to resolve this path in the LLVM build directory.
+        cfg.define("CMAKE_RANLIB", sanitize_cc(&ranlib));
     }
 
     if let Some(ref flags) = builder.config.llvm_ldflags {
@@ -1038,13 +1036,14 @@ impl Step for Lld {
         // when doing PGO on CI, cmake or clang-cl don't automatically link clang's
         // profiler runtime in. In that case, we need to manually ask cmake to do it, to avoid
         // linking errors, much like LLVM's cmake setup does in that situation.
-        if builder.config.llvm_profile_generate && target.is_msvc() {
-            if let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref() {
-                // Find clang's runtime library directory and push that as a search path to the
-                // cmake linker flags.
-                let clang_rt_dir = get_clang_cl_resource_dir(builder, clang_cl_path);
-                ldflags.push_all(format!("/libpath:{}", clang_rt_dir.display()));
-            }
+        if builder.config.llvm_profile_generate
+            && target.is_msvc()
+            && let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref()
+        {
+            // Find clang's runtime library directory and push that as a search path to the
+            // cmake linker flags.
+            let clang_rt_dir = get_clang_cl_resource_dir(builder, clang_cl_path);
+            ldflags.push_all(format!("/libpath:{}", clang_rt_dir.display()));
         }
 
         // LLD is built as an LLVM tool, but is distributed outside of the `llvm-tools` component,

@@ -1,7 +1,9 @@
 # Opaque types in the new solver
 
-The way opaque types are handled in the new solver differs from the old implementation.
+The way [opaque types] are handled in the new solver differs from the old implementation.
 This should be a self-contained explanation of the behavior in the new solver.
+
+[opaque types]: ../opaque-types-type-alias-impl-trait.md
 
 ## opaques are alias types
 

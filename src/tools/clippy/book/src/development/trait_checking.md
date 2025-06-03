@@ -17,7 +17,7 @@ providing the `LateContext` (`cx`), our expression at hand, and
 the symbol of the trait in question:
 
 ```rust
-use clippy_utils::is_trait_method;
+use clippy_utils::ty::implements_trait;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_span::symbol::sym;
@@ -25,7 +25,7 @@ use rustc_span::symbol::sym;
 impl LateLintPass<'_> for CheckIteratorTraitLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
 		let implements_iterator = cx.tcx.get_diagnostic_item(sym::Iterator).map_or(false, |id| {
-    		implements_trait(cx, cx.typeck_results().expr_ty(arg), id, &[])
+    		implements_trait(cx, cx.typeck_results().expr_ty(expr), id, &[])
 		});
 		if implements_iterator {
 			// [...]
