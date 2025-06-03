@@ -8,7 +8,7 @@ use std::intrinsics::{self, AtomicOrdering};
 
 #[derive(Copy, Clone)]
 pub struct Foo(i64);
-pub type Bar = &'static Fn();
+pub type Bar = &'static dyn Fn();
 pub type Quux = [u8; 100];
 
 pub unsafe fn test_bool_load(p: &mut bool, v: bool) {
