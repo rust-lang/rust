@@ -10,7 +10,7 @@ use super::{DocFragment, DocFragmentKind, source_span_for_markdown_range_inner};
 fn single_backtick() {
     let sm = SourceMap::new(FilePathMapping::empty());
     sm.new_source_file(PathBuf::from("foo.rs").into(), r#"#[doc = "`"] fn foo() {}"#.to_string());
-    let span = source_span_for_markdown_range_inner(
+    let (span, _) = source_span_for_markdown_range_inner(
         &sm,
         "`",
         &(0..1),
@@ -20,6 +20,7 @@ fn single_backtick() {
             kind: DocFragmentKind::RawDoc,
             doc: sym::empty, // unused placeholder
             indent: 0,
+            from_expansion: false,
         }],
     )
     .unwrap();
@@ -32,7 +33,7 @@ fn utf8() {
     // regression test for https://github.com/rust-lang/rust/issues/141665
     let sm = SourceMap::new(FilePathMapping::empty());
     sm.new_source_file(PathBuf::from("foo.rs").into(), r#"#[doc = "⚠"] fn foo() {}"#.to_string());
-    let span = source_span_for_markdown_range_inner(
+    let (span, _) = source_span_for_markdown_range_inner(
         &sm,
         "⚠",
         &(0..3),
@@ -42,6 +43,7 @@ fn utf8() {
             kind: DocFragmentKind::RawDoc,
             doc: sym::empty, // unused placeholder
             indent: 0,
+            from_expansion: false,
         }],
     )
     .unwrap();
