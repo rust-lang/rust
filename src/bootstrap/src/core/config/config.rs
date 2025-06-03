@@ -2531,7 +2531,10 @@ impl Config {
             || bench_stage.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {
-            Subcommand::Check { .. } | Subcommand::Clippy { .. } | Subcommand::Fix => {
+            Subcommand::Check { .. } => {
+                flags.stage.or(check_stage).unwrap_or(0)
+            }
+            Subcommand::Clippy { .. } | Subcommand::Fix => {
                 flags.stage.or(check_stage).unwrap_or(1)
             }
             // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
