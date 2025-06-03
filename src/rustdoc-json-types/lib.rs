@@ -388,7 +388,7 @@ pub enum AssocItemConstraintKind {
 /// Rustdoc makes no guarantees about the inner value of Id's. Applications
 /// should treat them as opaque keys to lookup items, and avoid attempting
 /// to parse them, or otherwise depend on any implementation details.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 // FIXME(aDotInTheVoid): Consider making this non-public in rustdoc-types.
 pub struct Id(pub u32);
 
