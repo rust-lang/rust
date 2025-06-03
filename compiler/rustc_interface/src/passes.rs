@@ -60,10 +60,6 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
             guar.raise_fatal();
         });
 
-    if sess.opts.unstable_opts.input_stats {
-        input_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
-    }
-
     rustc_builtin_macros::cmdline_attrs::inject(
         &mut krate,
         &sess.psess,
@@ -298,7 +294,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
-        input_stats::print_ast_stats(krate, "POST EXPANSION AST STATS", "ast-stats-2");
+        input_stats::print_ast_stats(krate, "POST EXPANSION AST STATS", "ast-stats");
     }
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
