@@ -191,7 +191,7 @@ pub fn _mm256_alignr_epi8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
             return transmute(a);
         }
 
-        let r: i8x32 = match IMM8 {
+        let r: i8x32 = match IMM8 % 16 {
             0 => simd_shuffle!(
                 b,
                 a,
