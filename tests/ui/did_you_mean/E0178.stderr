@@ -1,5 +1,5 @@
 error[E0178]: expected a path on the left-hand side of `+`
-  --> $DIR/E0178.rs:6:8
+  --> $DIR/E0178.rs:7:8
    |
 LL |     w: &'a Foo + Copy,
    |        ^^^^^^^
@@ -10,7 +10,7 @@ LL |     w: &'a (Foo + Copy),
    |            +          +
 
 error[E0178]: expected a path on the left-hand side of `+`
-  --> $DIR/E0178.rs:7:8
+  --> $DIR/E0178.rs:8:8
    |
 LL |     x: &'a Foo + 'a,
    |        ^^^^^^^
@@ -21,7 +21,7 @@ LL |     x: &'a (Foo + 'a),
    |            +        +
 
 error[E0178]: expected a path on the left-hand side of `+`
-  --> $DIR/E0178.rs:8:8
+  --> $DIR/E0178.rs:9:8
    |
 LL |     y: &'a mut Foo + 'a,
    |        ^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     y: &'a mut (Foo + 'a),
    |                +        +
 
 error[E0178]: expected a path on the left-hand side of `+`
-  --> $DIR/E0178.rs:9:8
+  --> $DIR/E0178.rs:10:8
    |
 LL |     z: fn() -> Foo + 'a,
    |        ^^^^^^^^^^^-----

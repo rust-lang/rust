@@ -3,10 +3,11 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, HirId, LifetimeSource, PredicateOrigin};
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
@@ -527,7 +528,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             UseTreeKind::Glob => {
                 let res = self.expect_full_res(id);
-                let res = smallvec![self.lower_res(res)];
+                let res = self.lower_res(res);
+                // Put the result in the appropriate namespace.
+                let res = match res {
+                    Res::Def(DefKind::Mod | DefKind::Trait, _) => {
+                        PerNS { type_ns: Some(res), value_ns: None, macro_ns: None }
+                    }
+                    Res::Def(DefKind::Enum, _) => {
+                        PerNS { type_ns: None, value_ns: Some(res), macro_ns: None }
+                    }
+                    Res::Err => {
+                        // Propagate the error to all namespaces, just to be sure.
+                        let err = Some(Res::Err);
+                        PerNS { type_ns: err, value_ns: err, macro_ns: err }
+                    }
+                    _ => span_bug!(path.span, "bad glob res {:?}", res),
+                };
                 let path = Path { segments, span: path.span, tokens: None };
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
@@ -601,7 +617,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 } else {
                     // For non-empty lists we can just drop all the data, the prefix is already
                     // present in HIR as a part of nested imports.
-                    self.arena.alloc(hir::UsePath { res: smallvec![], segments: &[], span })
+                    self.arena.alloc(hir::UsePath { res: PerNS::default(), segments: &[], span })
                 };
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
