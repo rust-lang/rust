@@ -308,10 +308,23 @@ pub(crate) struct ExternItemAscii {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_bad_c_variadic)]
+#[diag(ast_passes_c_variadic_bad_calling_convention)]
 pub(crate) struct BadCVariadic {
     #[primary_span]
     pub span: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_c_variadic_safe_foreign_function)]
+pub(crate) struct CVariadicSafeForeignFunction {
+    #[primary_span]
+    #[suggestion(
+        ast_passes_suggestion,
+        applicability = "machine-applicable",
+        code = "",
+        style = "verbose"
+    )]
+    pub safe_span: Span,
 }
 
 #[derive(Diagnostic)]

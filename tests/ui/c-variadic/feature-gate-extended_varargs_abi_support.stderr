@@ -28,6 +28,36 @@ LL | fn win(f: extern "win64" fn(usize, ...)) {
    = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 3 previous errors
+error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+  --> $DIR/feature-gate-extended_varargs_abi_support.rs:17:5
+   |
+LL |     fn extern_efiapi(...);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #100189 <https://github.com/rust-lang/rust/issues/100189> for more information
+   = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+  --> $DIR/feature-gate-extended_varargs_abi_support.rs:22:5
+   |
+LL |     fn extern_sysv64(...);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #100189 <https://github.com/rust-lang/rust/issues/100189> for more information
+   = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+  --> $DIR/feature-gate-extended_varargs_abi_support.rs:27:5
+   |
+LL |     fn extern_win64(...);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #100189 <https://github.com/rust-lang/rust/issues/100189> for more information
+   = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

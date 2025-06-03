@@ -201,6 +201,42 @@ error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` function
 LL |     fn t_f6(..., x: isize);
    |             ^^^
 
+error: foreign functions with a C-variadic argument cannot be safe
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:88:5
+   |
+LL |     safe fn s_f1(...);
+   |     ^^^^^
+   |
+help: remove the `safe` keyword from this definition
+   |
+LL -     safe fn s_f1(...);
+LL +     fn s_f1(...);
+   |
+
+error: foreign functions with a C-variadic argument cannot be safe
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:90:5
+   |
+LL |     safe fn printf(format: *const u8, ...);
+   |     ^^^^^
+   |
+help: remove the `safe` keyword from this definition
+   |
+LL -     safe fn printf(format: *const u8, ...);
+LL +     fn printf(format: *const u8, ...);
+   |
+
+error: foreign functions with a C-variadic argument cannot be safe
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:92:5
+   |
+LL |     safe fn snprintf(s: *mut u8, n: usize, format: *const u8, ...);
+   |     ^^^^^
+   |
+help: remove the `safe` keyword from this definition
+   |
+LL -     safe fn snprintf(s: *mut u8, n: usize, format: *const u8, ...);
+LL +     fn snprintf(s: *mut u8, n: usize, format: *const u8, ...);
+   |
+
 error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:32:43
    |
@@ -225,6 +261,6 @@ LL |     const fn i_f5(x: isize, ...) {}
    |                             |
    |                             the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 36 previous errors
+error: aborting due to 39 previous errors
 
 For more information about this error, try `rustc --explain E0493`.
