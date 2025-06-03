@@ -1278,6 +1278,17 @@ pub fn rustc_cargo(
         ));
     }
 
+    // The stage0 compiler changes infrequently and does not directly depend on code
+    // in the current working directory. Therefore, caching it with sccache should be
+    // useful.
+    // This is only performed for non-incremental builds, as ccache cannot deal with these.
+    if let Some(ref ccache) = builder.config.ccache
+        && compiler.stage == 0
+        && !builder.config.incremental
+    {
+        cargo.env("RUSTC_WRAPPER", ccache);
+    }
+
     rustc_cargo_env(builder, cargo, target, compiler.stage);
 }
 
