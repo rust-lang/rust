@@ -8,6 +8,9 @@
 //@ normalize-stderr: "(valid_range): [1-9]\.\.=(429496729[0-9]|1844674407370955161[0-9])" -> "$1: $$NON_NULL"
 // Some attributes are only computed for release builds:
 //@ compile-flags: -O
+//@ revisions: generic riscv64
+//@ [riscv64] only-riscv64
+//@ [generic] ignore-riscv64
 #![feature(rustc_attrs)]
 #![crate_type = "lib"]
 #![feature(no_core)]
