@@ -292,9 +292,7 @@ impl Instant {
         Some(Instant { t: self.t.checked_sub_duration(other)? })
     }
 
-    // reason for allow(unused): this is needed by the `sleep_until` implementation
-    // for some unix platforms not all.
-    #[allow(unused)]
+    #[allow(unused, reason = "needed by the `sleep_until` on some unix platforms")]
     pub(crate) fn into_timespec(self) -> Timespec {
         self.t
     }
