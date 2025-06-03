@@ -38,9 +38,7 @@ error[E0423]: expected function, found associated type `Trait::Type`
   --> $DIR/glob-non-fn.rs:30:11
    |
 LL |     reuse Trait::* { &self.0 }
-   |           ^^^^^
-   |
-   = note: can't use a type alias as a constructor
+   |           ^^^^^ not a function
 
 error[E0046]: not all trait items implemented, missing: `CONST`, `Type`, `method`
   --> $DIR/glob-non-fn.rs:29:1

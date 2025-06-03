@@ -200,7 +200,7 @@ pub trait Unsize<T: ?Sized> {
 ///
 /// Constants are only allowed as patterns if (a) their type implements
 /// `PartialEq`, and (b) interpreting the value of the constant as a pattern
-/// is equialent to calling `PartialEq`. This ensures that constants used as
+/// is equivalent to calling `PartialEq`. This ensures that constants used as
 /// patterns cannot expose implementation details in an unexpected way or
 /// cause semver hazards.
 ///

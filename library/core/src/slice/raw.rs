@@ -14,8 +14,8 @@ use crate::{array, ptr, ub_checks};
 /// * `data` must be non-null, [valid] for reads for `len * size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
-///     * The entire memory range of this slice must be contained within a single allocated object!
-///       Slices can never span across multiple allocated objects. See [below](#incorrect-usage)
+///     * The entire memory range of this slice must be contained within a single allocation!
+///       Slices can never span across multiple allocations. See [below](#incorrect-usage)
 ///       for an example incorrectly not taking this into account.
 ///     * `data` must be non-null and aligned even for zero-length slices or slices of ZSTs. One
 ///       reason for this is that enum layout optimizations may rely on references
@@ -65,14 +65,14 @@ use crate::{array, ptr, ub_checks};
 ///     assert_eq!(fst_end, snd_start, "Slices must be contiguous!");
 ///     unsafe {
 ///         // The assertion above ensures `fst` and `snd` are contiguous, but they might
-///         // still be contained within _different allocated objects_, in which case
+///         // still be contained within _different allocations_, in which case
 ///         // creating this slice is undefined behavior.
 ///         slice::from_raw_parts(fst.as_ptr(), fst.len() + snd.len())
 ///     }
 /// }
 ///
 /// fn main() {
-///     // `a` and `b` are different allocated objects...
+///     // `a` and `b` are different allocations...
 ///     let a = 42;
 ///     let b = 27;
 ///     // ... which may nevertheless be laid out contiguously in memory: | a | b |
@@ -150,8 +150,8 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 /// * `data` must be non-null, [valid] for both reads and writes for `len * size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
-///     * The entire memory range of this slice must be contained within a single allocated object!
-///       Slices can never span across multiple allocated objects.
+///     * The entire memory range of this slice must be contained within a single allocation!
+///       Slices can never span across multiple allocations.
 ///     * `data` must be non-null and aligned even for zero-length slices or slices of ZSTs. One
 ///       reason for this is that enum layout optimizations may rely on references
 ///       (including slices of any length) being aligned and non-null to distinguish
@@ -228,8 +228,8 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 ///   the last element, such that the offset from the end to the start pointer is
 ///   the length of the slice.
 ///
-/// * The entire memory range of this slice must be contained within a single allocated object!
-///   Slices can never span across multiple allocated objects.
+/// * The entire memory range of this slice must be contained within a single allocation!
+///   Slices can never span across multiple allocations.
 ///
 /// * The range must contain `N` consecutive properly initialized values of type `T`.
 ///
@@ -298,8 +298,8 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///   the last element, such that the offset from the end to the start pointer is
 ///   the length of the slice.
 ///
-/// * The entire memory range of this slice must be contained within a single allocated object!
-///   Slices can never span across multiple allocated objects.
+/// * The entire memory range of this slice must be contained within a single allocation!
+///   Slices can never span across multiple allocations.
 ///
 /// * The range must contain `N` consecutive properly initialized values of type `T`.
 ///

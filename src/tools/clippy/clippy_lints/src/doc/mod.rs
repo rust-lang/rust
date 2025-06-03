@@ -3,7 +3,6 @@
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
-use clippy_utils::source::snippet_opt;
 use clippy_utils::{is_entrypoint_fn, is_trait_impl_item};
 use pulldown_cmark::Event::{
     Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
@@ -730,7 +729,10 @@ struct Fragments<'a> {
 }
 
 impl Fragments<'_> {
-    fn span(self, cx: &LateContext<'_>, range: Range<usize>) -> Option<Span> {
+    /// get the span for the markdown range. Note that this function is not cheap, use it with
+    /// caution.
+    #[must_use]
+    fn span(&self, cx: &LateContext<'_>, range: Range<usize>) -> Option<Span> {
         source_span_for_markdown_range(cx.tcx, self.doc, &range, self.fragments)
     }
 }
@@ -1068,9 +1070,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     );
                 } else {
                     for (text, range, assoc_code_level) in text_to_check {
-                        if let Some(span) = fragments.span(cx, range) {
-                            markdown::check(cx, valid_idents, &text, span, assoc_code_level, blockquote_level);
-                        }
+                        markdown::check(cx, valid_idents, &text, &fragments, range, assoc_code_level, blockquote_level);
                     }
                 }
                 text_to_check = Vec::new();
@@ -1081,26 +1081,27 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             | TaskListMarker(_) | Code(_) | Rule | InlineMath(..) | DisplayMath(..) => (),
             SoftBreak | HardBreak => {
                 if !containers.is_empty()
-                    && let Some((next_event, next_range)) = events.peek()
-                    && let Some(next_span) = fragments.span(cx, next_range.clone())
-                    && let Some(span) = fragments.span(cx, range.clone())
                     && !in_footnote_definition
+                    // Tabs aren't handled correctly vvvv
+                    && !doc[range.clone()].contains('\t')
+                    && let Some((next_event, next_range)) = events.peek()
                     && !matches!(next_event, End(_))
                 {
                     lazy_continuation::check(
                         cx,
                         doc,
                         range.end..next_range.start,
-                        Span::new(span.hi(), next_span.lo(), span.ctxt(), span.parent()),
+                        &fragments,
                         &containers[..],
                     );
                 }
 
-                if let Some(span) = fragments.span(cx, range.clone())
+
+                if event == HardBreak
+                    && !doc[range.clone()].trim().starts_with('\\')
+                    && let Some(span) = fragments.span(cx, range.clone())
                     && !span.from_expansion()
-                    && let Some(snippet) = snippet_opt(cx, span)
-                    && !snippet.trim().starts_with('\\')
-                    && event == HardBreak {
+                    {
                     collected_breaks.push(span);
                 }
             },

@@ -40,7 +40,7 @@ try-job: dist-i686-msvc"#,
 fn pr_jobs() {
     let stdout = get_matrix("pull_request", "commit", "refs/heads/pr/1234");
     insta::assert_snapshot!(stdout, @r#"
-    jobs=[{"name":"mingw-check","full_name":"PR - mingw-check","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"free_disk":true},{"name":"mingw-check-tidy","full_name":"PR - mingw-check-tidy","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"continue_on_error":true,"free_disk":true,"doc_url":"https://foo.bar"}]
+    jobs=[{"name":"mingw-check-1","full_name":"PR - mingw-check-1","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"free_disk":true},{"name":"mingw-check-2","full_name":"PR - mingw-check-2","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"free_disk":true},{"name":"mingw-check-tidy","full_name":"PR - mingw-check-tidy","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"continue_on_error":true,"free_disk":true,"doc_url":"https://foo.bar"}]
     run_type=pr
     "#);
 }
@@ -51,6 +51,8 @@ fn get_matrix(event_name: &str, commit_msg: &str, branch_ref: &str) -> String {
         .env("GITHUB_EVENT_NAME", event_name)
         .env("COMMIT_MESSAGE", commit_msg)
         .env("GITHUB_REF", branch_ref)
+        .env("GITHUB_RUN_ID", "123")
+        .env("GITHUB_RUN_ATTEMPT", "1")
         .stdout(Stdio::piped())
         .output()
         .expect("Failed to execute command");

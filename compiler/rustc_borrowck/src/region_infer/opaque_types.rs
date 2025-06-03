@@ -215,9 +215,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // FIXME: We could probably compute the LUB if there is one.
                 let scc = self.constraint_sccs.scc(vid);
                 let upper_bounds: Vec<_> = self
-                    .rev_scc_graph
-                    .as_ref()
-                    .unwrap()
+                    .reverse_scc_graph()
                     .upper_bounds(scc)
                     .filter_map(|vid| self.definitions[vid].external_name)
                     .filter(|r| !r.is_static())
