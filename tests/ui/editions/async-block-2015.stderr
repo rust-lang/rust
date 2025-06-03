@@ -1,5 +1,5 @@
 error[E0670]: `async fn` is not permitted in Rust 2015
-  --> $DIR/async-block-2015.rs:1:1
+  --> $DIR/async-block-2015.rs:2:1
    |
 LL | async fn foo() {
    | ^^^^^ to use `async fn`, switch to Rust 2018 or later
@@ -8,7 +8,7 @@ LL | async fn foo() {
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: expected identifier, found keyword `let`
-  --> $DIR/async-block-2015.rs:11:9
+  --> $DIR/async-block-2015.rs:12:9
    |
 LL |     let y = async {
    |             ----- `async` blocks are only allowed in Rust 2018 or later
@@ -19,7 +19,7 @@ LL |         let x = 42;
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: expected identifier, found `42`
-  --> $DIR/async-block-2015.rs:19:9
+  --> $DIR/async-block-2015.rs:20:9
    |
 LL |     let z = async {
    |             ----- `async` blocks are only allowed in Rust 2018 or later
@@ -30,7 +30,7 @@ LL |         42
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0422]: cannot find struct, variant or union type `async` in this scope
-  --> $DIR/async-block-2015.rs:7:13
+  --> $DIR/async-block-2015.rs:8:13
    |
 LL |     let x = async {};
    |             ^^^^^ `async` blocks are only allowed in Rust 2018 or later
