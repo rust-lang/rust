@@ -60,6 +60,13 @@ impl Step for Std {
     }
 
     fn run(self, builder: &Builder<'_>) {
+        if !builder.download_rustc() && builder.config.skip_std_check_if_no_download_rustc {
+            eprintln!(
+                "WARNING: `--skip-std-check-if-no-download-rustc` flag was passed and `rust.download-rustc` is not available. Skipping."
+            );
+            return;
+        }
+
         builder.require_submodule("library/stdarch", None);
 
         let target = self.target;
