@@ -9,11 +9,11 @@ LL | const REF: &i32 = &ARR[idx()]; // This should be linted, since `suppress-re
    = note: `-D clippy::indexing-slicing` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::indexing_slicing)]`
 
-error[E0080]: evaluation of `main::{constant#3}` failed
+error[E0080]: index out of bounds: the length is 2 but the index is 4
   --> tests/ui/indexing_slicing_index.rs:69:14
    |
 LL |     const { &ARR[idx4()] };
-   |              ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
+   |              ^^^^^^^^^^^ evaluation of `main::{constant#3}` failed here
 
 note: erroneous constant encountered
   --> tests/ui/indexing_slicing_index.rs:69:5

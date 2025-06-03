@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `Late::<i32>::FAIL` failed
+error[E0080]: evaluation panicked: explicit panic
   --> $DIR/collect-in-dead-fnptr-in-const.rs:9:22
    |
 LL |     const FAIL: () = panic!();
-   |                      ^^^^^^^^ evaluation panicked: explicit panic
+   |                      ^^^^^^^^ evaluation of `Late::<i32>::FAIL` failed here
 
 note: erroneous constant encountered
   --> $DIR/collect-in-dead-fnptr-in-const.rs:10:28

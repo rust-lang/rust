@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry::*;
 
+use rustc_abi::{CanonAbi, X86Call};
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::DefKind;
@@ -14,7 +15,6 @@ use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolNam
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::callconv::Conv;
 use rustc_target::spec::{SanitizerSet, TlsModel};
 use tracing::debug;
 
@@ -652,7 +652,7 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
 fn calling_convention_for_symbol<'tcx>(
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
-) -> (Conv, &'tcx [rustc_target::callconv::ArgAbi<'tcx, Ty<'tcx>>]) {
+) -> (CanonAbi, &'tcx [rustc_target::callconv::ArgAbi<'tcx, Ty<'tcx>>]) {
     let instance = match symbol {
         ExportedSymbol::NonGeneric(def_id) | ExportedSymbol::Generic(def_id, _)
             if tcx.is_static(def_id) =>
@@ -683,7 +683,7 @@ fn calling_convention_for_symbol<'tcx>(
         })
         .map(|fnabi| (fnabi.conv, &fnabi.args[..]))
         // FIXME(workingjubilee): why don't we know the convention here?
-        .unwrap_or((Conv::Rust, &[]))
+        .unwrap_or((CanonAbi::Rust, &[]))
 }
 
 /// This is the symbol name of the given instance as seen by the linker.
@@ -717,14 +717,14 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
         _ => return undecorated,
     };
 
-    let (conv, args) = calling_convention_for_symbol(tcx, symbol);
+    let (callconv, args) = calling_convention_for_symbol(tcx, symbol);
 
     // Decorate symbols with prefixes, suffixes and total number of bytes of arguments.
     // Reference: https://docs.microsoft.com/en-us/cpp/build/reference/decorated-names?view=msvc-170
-    let (prefix, suffix) = match conv {
-        Conv::X86Fastcall => ("@", "@"),
-        Conv::X86Stdcall => ("_", "@"),
-        Conv::X86VectorCall => ("", "@@"),
+    let (prefix, suffix) = match callconv {
+        CanonAbi::X86(X86Call::Fastcall) => ("@", "@"),
+        CanonAbi::X86(X86Call::Stdcall) => ("_", "@"),
+        CanonAbi::X86(X86Call::Vectorcall) => ("", "@@"),
         _ => {
             if let Some(prefix) = prefix {
                 undecorated.insert(0, prefix);
@@ -758,9 +758,9 @@ pub(crate) fn extend_exported_symbols<'tcx>(
     symbol: ExportedSymbol<'tcx>,
     instantiating_crate: CrateNum,
 ) {
-    let (conv, _) = calling_convention_for_symbol(tcx, symbol);
+    let (callconv, _) = calling_convention_for_symbol(tcx, symbol);
 
-    if conv != Conv::GpuKernel || tcx.sess.target.os != "amdhsa" {
+    if callconv != CanonAbi::GpuKernel || tcx.sess.target.os != "amdhsa" {
         return;
     }
 

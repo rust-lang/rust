@@ -1,31 +1,31 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-uninhabit.rs:21:35
+error[E0080]: constructing invalid value: encountered a value of uninhabited type `Bar`
+  --> $DIR/ub-uninhabit.rs:20:35
    |
 LL | const BAD_BAD_BAD: Bar = unsafe { MaybeUninit { uninit: () }.init };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of uninhabited type `Bar`
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-uninhabit.rs:25:1
+error[E0080]: constructing invalid value: encountered a reference pointing to uninhabited type Bar
+  --> $DIR/ub-uninhabit.rs:23:1
    |
 LL | const BAD_BAD_REF: &Bar = unsafe { mem::transmute(1usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a reference pointing to uninhabited type Bar
+   | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-uninhabit.rs:29:42
+error[E0080]: constructing invalid value at [0]: encountered a value of uninhabited type `Bar`
+  --> $DIR/ub-uninhabit.rs:26:42
    |
 LL | const BAD_BAD_ARRAY: [Bar; 1] = unsafe { MaybeUninit { uninit: () }.init };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at [0]: encountered a value of uninhabited type `Bar`
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-uninhabit.rs:37:16
+error[E0080]: constructing invalid value: encountered a value of the never type `!`
+  --> $DIR/ub-uninhabit.rs:32:16
    |
 LL |     let _val = intrinsics::read_via_copy(ptr);
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of the never type `!`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 4 previous errors
 

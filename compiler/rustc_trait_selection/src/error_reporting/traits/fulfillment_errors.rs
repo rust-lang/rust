@@ -42,9 +42,7 @@ use super::{
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
 use crate::error_reporting::traits::report_dyn_incompatibility;
-use crate::errors::{
-    AsyncClosureNotFn, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
-};
+use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{
@@ -886,9 +884,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // is unimplemented is because async closures don't implement `Fn`/`FnMut`
         // if they have captures.
         if has_self_borrows && expected_kind != ty::ClosureKind::FnOnce {
-            let mut err = self.dcx().create_err(AsyncClosureNotFn {
+            let coro_kind = match self
+                .tcx
+                .coroutine_kind(self.tcx.coroutine_for_closure(closure_def_id))
+                .unwrap()
+            {
+                rustc_hir::CoroutineKind::Desugared(desugaring, _) => desugaring.to_string(),
+                coro => coro.to_string(),
+            };
+            let mut err = self.dcx().create_err(CoroClosureNotFn {
                 span: self.tcx.def_span(closure_def_id),
                 kind: expected_kind.as_str(),
+                coro_kind,
             });
             self.note_obligation_cause(&mut err, &obligation);
             return Some(err.emit());

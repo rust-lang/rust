@@ -6,6 +6,6 @@ const fn a() -> usize {
 const fn b() -> usize {
     a()
 }
-const ARR: [i32; a()] = [5; 6]; //~ ERROR evaluation of constant value failed [E0080]
+const ARR: [i32; a()] = [5; 6]; //~ ERROR reached the configured maximum number of stack frames
 
 fn main() {}
