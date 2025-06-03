@@ -49,79 +49,6 @@
 // We only define stack probing for these architectures today.
 #![cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 
-// SAFETY: defined in this module.
-// FIXME(extern_custom): the ABI is not correct.
-unsafe extern "C" {
-    pub fn __rust_probestack();
-}
-
-// A wrapper for our implementation of __rust_probestack, which allows us to
-// keep the assembly inline while controlling all CFI directives in the assembly
-// emitted for the function.
-//
-// This is the ELF version.
-#[cfg(not(any(target_vendor = "apple", target_os = "uefi")))]
-macro_rules! define_rust_probestack {
-    ($body: expr) => {
-        concat!(
-            "
-            .pushsection .text.__rust_probestack
-            .globl __rust_probestack
-            .type  __rust_probestack, @function
-            .hidden __rust_probestack
-        __rust_probestack:
-            ",
-            $body,
-            "
-            .size __rust_probestack, . - __rust_probestack
-            .popsection
-            "
-        )
-    };
-}
-
-#[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
-macro_rules! define_rust_probestack {
-    ($body: expr) => {
-        concat!(
-            "
-            .globl __rust_probestack
-        __rust_probestack:
-            ",
-            $body
-        )
-    };
-}
-
-// Same as above, but for Mach-O. Note that the triple underscore
-// is deliberate
-#[cfg(target_vendor = "apple")]
-macro_rules! define_rust_probestack {
-    ($body: expr) => {
-        concat!(
-            "
-            .globl ___rust_probestack
-        ___rust_probestack:
-            ",
-            $body
-        )
-    };
-}
-
-// In UEFI x86 arch, triple underscore is deliberate.
-#[cfg(all(target_os = "uefi", target_arch = "x86"))]
-macro_rules! define_rust_probestack {
-    ($body: expr) => {
-        concat!(
-            "
-            .globl ___rust_probestack
-        ___rust_probestack:
-            ",
-            $body
-        )
-    };
-}
-
 // Our goal here is to touch each page between %rsp+8 and %rsp+8-%rax,
 // ensuring that if any pages are unmapped we'll make a page fault.
 //
@@ -136,8 +63,10 @@ macro_rules! define_rust_probestack {
     target_arch = "x86_64",
     not(all(target_env = "sgx", target_vendor = "fortanix"))
 ))]
-core::arch::global_asm!(
-    define_rust_probestack!(
+#[unsafe(naked)]
+#[rustc_std_internal_symbol]
+pub unsafe extern "C" fn __rust_probestack() {
+    core::arch::naked_asm!(
         "
     .cfi_startproc
     pushq  %rbp
@@ -187,10 +116,10 @@ core::arch::global_asm!(
     .cfi_adjust_cfa_offset -8
     ret
     .cfi_endproc
-    "
-    ),
-    options(att_syntax)
-);
+    ",
+        options(att_syntax)
+    )
+}
 
 // This function is the same as above, except that some instructions are
 // [manually patched for LVI].
@@ -200,8 +129,10 @@ core::arch::global_asm!(
     target_arch = "x86_64",
     all(target_env = "sgx", target_vendor = "fortanix")
 ))]
-core::arch::global_asm!(
-    define_rust_probestack!(
+#[unsafe(naked)]
+#[no_mangle]
+pub unsafe extern "C" fn __rust_probestack() {
+    core::arch::naked_asm!(
         "
     .cfi_startproc
     pushq  %rbp
@@ -253,10 +184,10 @@ core::arch::global_asm!(
     lfence
     jmp *%r11
     .cfi_endproc
-    "
-    ),
-    options(att_syntax)
-);
+    ",
+        options(att_syntax)
+    )
+}
 
 #[cfg(all(target_arch = "x86", not(target_os = "uefi")))]
 // This is the same as x86_64 above, only translated for 32-bit sizes. Note
@@ -267,8 +198,10 @@ core::arch::global_asm!(
 // it does not actually match `extern "C"`.
 //
 // The ABI here is the same as x86_64, except everything is 32-bits large.
-core::arch::global_asm!(
-    define_rust_probestack!(
+#[unsafe(naked)]
+#[rustc_std_internal_symbol]
+pub unsafe extern "C" fn __rust_probestack() {
+    core::arch::naked_asm!(
         "
     .cfi_startproc
     push   %ebp
@@ -299,10 +232,10 @@ core::arch::global_asm!(
     .cfi_adjust_cfa_offset -4
     ret
     .cfi_endproc
-    "
-    ),
-    options(att_syntax)
-);
+    ",
+        options(att_syntax)
+    )
+}
 
 #[cfg(all(target_arch = "x86", target_os = "uefi"))]
 // UEFI target is windows like target. LLVM will do _chkstk things like windows.
@@ -318,8 +251,10 @@ core::arch::global_asm!(
 //   MSVC x32's _chkstk and cygwin/mingw's _alloca adjust %esp themselves.
 //   MSVC x64's __chkstk and cygwin/mingw's ___chkstk_ms do not adjust %rsp
 //   themselves.
-core::arch::global_asm!(
-    define_rust_probestack!(
+#[unsafe(naked)]
+#[rustc_std_internal_symbol]
+pub unsafe extern "C" fn __rust_probestack() {
+    core::arch::naked_asm!(
         "
     .cfi_startproc
     push   %ebp
@@ -355,7 +290,7 @@ core::arch::global_asm!(
     .cfi_adjust_cfa_offset -4
     ret
     .cfi_endproc
-    "
-    ),
-    options(att_syntax)
-);
+    ",
+        options(att_syntax)
+    )
+}
