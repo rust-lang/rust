@@ -224,7 +224,7 @@ pub struct MalformedDerive {
 #[derive(Debug)]
 pub struct NoSuchField {
     pub field: InFile<AstPtr<Either<ast::RecordExprField, ast::RecordPatField>>>,
-    pub private: bool,
+    pub private: Option<Field>,
     pub variant: VariantId,
 }
 
@@ -648,6 +648,7 @@ impl AnyDiagnostic {
                     }
                     ExprOrPatId::PatId(pat) => source_map.pat_field_syntax(pat),
                 };
+                let private = private.map(|id| Field { id, parent: variant.into() });
                 NoSuchField { field: expr_or_pat, private, variant }.into()
             }
             &InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {

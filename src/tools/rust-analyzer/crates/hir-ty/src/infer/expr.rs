@@ -554,7 +554,7 @@ impl InferenceContext<'_> {
                                             self.push_diagnostic(
                                                 InferenceDiagnostic::NoSuchField {
                                                     field: field.expr.into(),
-                                                    private: true,
+                                                    private: Some(local_id),
                                                     variant: def,
                                                 },
                                             );
@@ -564,7 +564,7 @@ impl InferenceContext<'_> {
                                     None => {
                                         self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                             field: field.expr.into(),
-                                            private: false,
+                                            private: None,
                                             variant: def,
                                         });
                                         None
