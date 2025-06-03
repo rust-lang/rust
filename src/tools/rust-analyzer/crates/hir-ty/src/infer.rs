@@ -135,6 +135,10 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
     Arc::new(ctx.resolve_all())
 }
 
+pub(crate) fn infer_cycle_result(_: &dyn HirDatabase, _: DefWithBodyId) -> Arc<InferenceResult> {
+    Arc::new(InferenceResult { has_errors: true, ..Default::default() })
+}
+
 /// Fully normalize all the types found within `ty` in context of `owner` body definition.
 ///
 /// This is appropriate to use only after type-check: it assumes
@@ -557,6 +561,9 @@ impl InferenceResult {
             ExprOrPatId::ExprId(id) => self.type_of_expr.get(id),
             ExprOrPatId::PatId(id) => self.type_of_pat.get(id),
         }
+    }
+    pub fn is_erroneous(&self) -> bool {
+        self.has_errors && self.type_of_expr.iter().count() == 0
     }
 }
 
