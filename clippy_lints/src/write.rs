@@ -5,8 +5,8 @@ use clippy_utils::source::{SpanRangeExt, expand_past_previous_comma};
 use clippy_utils::{is_in_test, sym};
 use rustc_ast::token::LitKind;
 use rustc_ast::{
-    FormatArgPosition, FormatArgPositionKind, FormatArgs, FormatArgsPiece, FormatOptions, FormatPlaceholder,
-    FormatTrait,
+    FormatArgPosition, FormatArgPositionKind, FormatArgs, FormatArgsPiece, FormatCount, FormatOptions,
+    FormatPlaceholder, FormatTrait,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Impl, Item, ItemKind};
@@ -556,12 +556,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
     // Decrement the index of the remaining by the number of replaced positional arguments
     if !suggestion.is_empty() {
         for piece in &format_args.template {
-            if let Some((span, index)) = positional_arg_piece_span(piece)
-                && suggestion.iter().all(|(s, _)| *s != span)
-            {
-                let decrement = replaced_position.iter().filter(|i| **i < index).count();
-                suggestion.push((span, format!("{{{}}}", index.saturating_sub(decrement))));
-            }
+            relocalize_format_args_indexes(piece, &mut suggestion, &replaced_position);
         }
     }
 
@@ -574,7 +569,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
     }
 }
 
-/// Extract Span and its index from the given `piece`, iff it's positional argument.
+/// Extract Span and its index from the given `piece`, if it's positional argument.
 fn positional_arg_piece_span(piece: &FormatArgsPiece) -> Option<(Span, usize)> {
     match piece {
         FormatArgsPiece::Placeholder(FormatPlaceholder {
@@ -588,6 +583,57 @@ fn positional_arg_piece_span(piece: &FormatArgsPiece) -> Option<(Span, usize)> {
             ..
         }) => Some((*span, *index)),
         _ => None,
+    }
+}
+
+/// Relocalizes the indexes of positional arguments in the format string
+fn relocalize_format_args_indexes(
+    piece: &FormatArgsPiece,
+    suggestion: &mut Vec<(Span, String)>,
+    replaced_position: &[usize],
+) {
+    if let FormatArgsPiece::Placeholder(FormatPlaceholder {
+        argument:
+            FormatArgPosition {
+                index: Ok(index),
+                // Only consider positional arguments
+                kind: FormatArgPositionKind::Number,
+                span: Some(span),
+            },
+        format_options,
+        ..
+    }) = piece
+    {
+        if suggestion.iter().any(|(s, _)| s.overlaps(*span)) {
+            // If the span is already in the suggestion, we don't need to process it again
+            return;
+        }
+
+        // lambda to get the decremented index based on the replaced positions
+        let decremented_index = |index: usize| -> usize {
+            let decrement = replaced_position.iter().filter(|&&i| i < index).count();
+            index - decrement
+        };
+
+        suggestion.push((*span, decremented_index(*index).to_string()));
+
+        // If there are format options, we need to handle them as well
+        if *format_options != FormatOptions::default() {
+            // lambda to process width and precision format counts and add them to the suggestion
+            let mut process_format_count = |count: &Option<FormatCount>, formatter: &dyn Fn(usize) -> String| {
+                if let Some(FormatCount::Argument(FormatArgPosition {
+                    index: Ok(format_arg_index),
+                    kind: FormatArgPositionKind::Number,
+                    span: Some(format_arg_span),
+                })) = count
+                {
+                    suggestion.push((*format_arg_span, formatter(decremented_index(*format_arg_index))));
+                }
+            };
+
+            process_format_count(&format_options.width, &|index: usize| format!("{index}$"));
+            process_format_count(&format_options.precision, &|index: usize| format!(".{index}$"));
+        }
     }
 }
 

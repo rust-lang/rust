@@ -94,3 +94,14 @@ fn issue_13959() {
 "
     );
 }
+
+fn issue_14930() {
+    println!("Hello x is {0:2$.1$}", 0.01, 2, 3);
+    //~^ print_literal
+    println!("Hello x is {0:2$.1$}", 0.01, 2, 3);
+    //~^ print_literal
+    println!("Hello x is {0:2$.1$}", 0.01, 2, 3);
+    //~^ print_literal
+    println!("Hello x is {0:2$.1$}", 0.01, 2, 3);
+    //~^ print_literal
+}
