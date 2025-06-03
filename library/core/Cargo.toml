@@ -29,7 +29,6 @@ debug_typeid = []
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = [
-    'cfg(bootstrap)',
     'cfg(no_fp_fmt_parse)',
     # core use #[path] imports to portable-simd `core_simd` crate
     # and to stdarch `core_arch` crate which messes-up with Cargo list
