@@ -15,7 +15,7 @@ pub fn is_verbatim_sep(b: u8) -> bool {
     b == b'/' || b == b'\\'
 }
 
-pub use super::prefix::parse_prefix;
+pub use super::windows_prefix::parse_prefix;
 
 pub const MAIN_SEP_STR: &str = "/";
 pub const MAIN_SEP: char = '/';

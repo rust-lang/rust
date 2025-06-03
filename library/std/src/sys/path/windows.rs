@@ -7,7 +7,7 @@ use crate::{io, ptr};
 #[cfg(test)]
 mod tests;
 
-pub use super::prefix::parse_prefix;
+pub use super::windows_prefix::parse_prefix;
 
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
