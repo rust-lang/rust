@@ -1,0 +1,22 @@
+[package]
+name = "libm-macros"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+heck = "0.5.0"
+proc-macro2 = "1.0.94"
+quote = "1.0.40"
+syn = { version = "2.0.100", features = ["full", "extra-traits", "visit-mut"] }
+
+[lints.rust]
+# Values used during testing
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(f16_enabled)',
+  'cfg(f128_enabled)',
+] }

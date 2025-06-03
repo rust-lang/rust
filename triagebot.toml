@@ -252,6 +252,11 @@ trigger_files = [
     "compiler/rustc_attr_data_structures",
 ]
 
+[autolabel."A-compiler-builtins"]
+trigger_files = [
+    "library/compiler-builtins",
+]
+
 [autolabel."F-autodiff"]
 trigger_files = [
     "src/tools/enzyme",
@@ -855,6 +860,15 @@ cc = ["@Urgau"]
 [mentions."compiler/rustc_lint/src/early/diagnostics/check_cfg.rs"]
 message = "Some changes occurred in check-cfg diagnostics"
 cc = ["@Urgau"]
+
+[mentions."library/compiler-builtins"]
+message = """
+`compiler-builtins` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/compiler-builtins](https://github.com/rust-lang/compiler-builtins) \
+instead.
+"""
+cc = ["@tgross35"]
 
 [mentions."library/core/src/intrinsics/simd.rs"]
 message = """
