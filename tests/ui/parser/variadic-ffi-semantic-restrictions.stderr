@@ -201,7 +201,7 @@ error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` function
 LL |     fn t_f6(..., x: isize);
    |             ^^^
 
-error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:32:43
    |
 LL | const unsafe extern "C" fn f4_1(x: isize, ...) {}
@@ -209,7 +209,7 @@ LL | const unsafe extern "C" fn f4_1(x: isize, ...) {}
    |                                           |
    |                                           the destructor for this type cannot be evaluated in constant functions
 
-error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:36:36
    |
 LL | const extern "C" fn f4_2(x: isize, ...) {}
@@ -217,7 +217,7 @@ LL | const extern "C" fn f4_2(x: isize, ...) {}
    |                                    |
    |                                    the destructor for this type cannot be evaluated in constant functions
 
-error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+error[E0493]: destructor of `VaList<'_>` cannot be evaluated at compile-time
   --> $DIR/variadic-ffi-semantic-restrictions.rs:64:29
    |
 LL |     const fn i_f5(x: isize, ...) {}
