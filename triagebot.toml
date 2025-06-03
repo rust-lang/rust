@@ -1441,3 +1441,8 @@ days-threshold = 14
 # Prevents mentions in commits to avoid users being spammed
 # Documentation at: https://forge.rust-lang.org/triagebot/no-mentions.html
 [no-mentions]
+
+# Allow members to formally register concerns (`@rustbot concern my concern`)
+# Documentation at: https://forge.rust-lang.org/triagebot/concern.html
+[concern]
+labels = ["S-waiting-on-concerns"]
