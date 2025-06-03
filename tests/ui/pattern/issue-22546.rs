@@ -7,7 +7,7 @@ use std::default::Default;
 #[derive(Default)]
 pub struct Foo<T>(T, T);
 
-impl<T: ::std::fmt::Display> Foo<T> {
+impl<T: std::fmt::Display> Foo<T> {
     fn foo(&self) {
         match *self {
             Foo::<T>(ref x, ref y) => println!("Goodbye, World! {} {}", x, y)
@@ -36,7 +36,7 @@ fn main() {
     let w = Wrapper { value: Foo(10u8, 11u8) };
     match w {
         Wrapper::<Foo<u8>> { value: Foo(10, 11) } => {},
-        ::Wrapper::<<Foo<_> as Tr>::U> { value: Foo::<u8>(11, 16) } => { panic!() },
+        crate::Wrapper::<<Foo<_> as Tr>::U> { value: Foo::<u8>(11, 16) } => { panic!() },
         _ => { panic!() }
     }
 

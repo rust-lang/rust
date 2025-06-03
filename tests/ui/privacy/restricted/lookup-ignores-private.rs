@@ -2,14 +2,14 @@
 #![allow(warnings)]
 
 mod foo {
-    pub use foo::bar::S;
+    pub use crate::foo::bar::S;
     mod bar {
         #[derive(Default)]
         pub struct S {
-            pub(in foo) x: i32,
+            pub(in crate::foo) x: i32,
         }
         impl S {
-            pub(in foo) fn f(&self) -> i32 { 0 }
+            pub(in crate::foo) fn f(&self) -> i32 { 0 }
         }
 
         pub struct S2 {
@@ -19,7 +19,7 @@ mod foo {
             pub(crate) fn f(&self) -> bool { false }
         }
 
-        impl ::std::ops::Deref for S {
+        impl std::ops::Deref for S {
             type Target = S2;
             fn deref(&self) -> &S2 { unimplemented!() }
         }
