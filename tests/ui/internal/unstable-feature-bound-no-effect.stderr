@@ -1,0 +1,22 @@
+error: an `#[unstable]` annotation here has no effect
+  --> $DIR/unstable-feature-bound-no-effect.rs:17:1
+   |
+LL | #[unstable(feature = "feat_moo", issue = "none" )]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information
+   = note: `#[deny(ineffective_unstable_trait_impl)]` on by default
+
+error: module has missing stability attribute
+  --> $DIR/unstable-feature-bound-no-effect.rs:1:1
+   |
+LL | / #![allow(internal_features)] // Enabled to use #![feature(staged_api)] and #![feature(impl_stability)]
+LL | |
+LL | | #![feature(staged_api)] // Enabled to use  #![unstable(feature = "feat_foo", issue = "none")]
+LL | | #![feature(impl_stability)] // Enabled to use #[unstable_feature_bound(feat_foo)] 
+...  |
+LL | | fn main() {}
+   | |____________^
+
+error: aborting due to 2 previous errors
+
