@@ -62,6 +62,14 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
             });
         }
 
+        _ if intrinsic.starts_with("llvm.roundeven.v") => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            simd_for_each_lane(fx, v, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
+                fx.bcx.ins().nearest(lane)
+            });
+        }
+
         _ => {
             fx.tcx
                 .dcx()
