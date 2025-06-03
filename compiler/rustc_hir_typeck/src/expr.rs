@@ -809,9 +809,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
             }
-            // Here we want to prevent struct constructors from returning unsized types.
-            // There were two cases this happened: fn pointer coercion in stable
-            // and usual function call in presence of unsized_locals.
+            // Here we want to prevent struct constructors from returning unsized types,
+            // which can happen with fn pointer coercion on stable.
             // Also, as we just want to check sizedness, instead of introducing
             // placeholder lifetimes with probing, we just replace higher lifetimes
             // with fresh vars.

@@ -1,14 +1,5 @@
-error: the `foo` method cannot be invoked on a trait object
-  --> $DIR/by-value-trait-dyn-compatibility.rs:17:7
-   |
-LL |         Self: Sized;
-   |               ----- this has a `Sized` requirement
-...
-LL |     x.foo();
-   |       ^^^
-
 error[E0277]: the size for values of type `dyn Foo` cannot be known at compilation time
-  --> $DIR/by-value-trait-dyn-compatibility.rs:16:9
+  --> $DIR/by-value-trait-dyn-compatibility-rpass.rs:14:9
    |
 LL |     let x = *(Box::new(A) as Box<dyn Foo>);
    |         ^ doesn't have a size known at compile-time
@@ -21,6 +12,6 @@ LL -     let x = *(Box::new(A) as Box<dyn Foo>);
 LL +     let x = (Box::new(A) as Box<dyn Foo>);
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

@@ -1,85 +1,31 @@
-warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/borrow-after-move.rs:1:12
-   |
-LL | #![feature(unsized_locals, unsized_fn_params)]
-   |            ^^^^^^^^^^^^^^
-   |
-   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
-error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrow-after-move.rs:21:24
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/borrow-after-move.rs:18:13
    |
 LL |         let y = *x;
-   |                 -- value moved here
-LL |         drop_unsized(y);
-LL |         println!("{}", &x);
-   |                        ^^ value borrowed here after move
+   |             ^ doesn't have a size known at compile-time
    |
-   = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -         let y = *x;
+LL +         let y = x;
+   |
 
-error[E0382]: borrow of moved value: `y`
-  --> $DIR/borrow-after-move.rs:23:24
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/borrow-after-move.rs:26:13
    |
 LL |         let y = *x;
-   |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
-LL |         drop_unsized(y);
-   |                      - value moved here
-...
-LL |         println!("{}", &y);
-   |                        ^^ value borrowed here after move
+   |             ^ doesn't have a size known at compile-time
    |
-note: consider changing this parameter type in function `drop_unsized` to borrow instead if owning the value isn't necessary
-  --> $DIR/borrow-after-move.rs:14:31
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
    |
-LL | fn drop_unsized<T: ?Sized>(_: T) {}
-   |    ------------               ^ this parameter takes ownership of the value
-   |    |
-   |    in this function
+LL -         let y = *x;
+LL +         let y = x;
+   |
 
-error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrow-after-move.rs:31:24
-   |
-LL |         let y = *x;
-   |                 -- value moved here
-LL |         y.foo();
-LL |         println!("{}", &x);
-   |                        ^^ value borrowed here after move
-   |
-   = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
+error: aborting due to 2 previous errors
 
-error[E0382]: borrow of moved value: `y`
-  --> $DIR/borrow-after-move.rs:33:24
-   |
-LL |         let y = *x;
-   |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
-LL |         y.foo();
-   |           ----- `y` moved due to this method call
-...
-LL |         println!("{}", &y);
-   |                        ^^ value borrowed here after move
-   |
-note: `Foo::foo` takes ownership of the receiver `self`, which moves `y`
-  --> $DIR/borrow-after-move.rs:5:12
-   |
-LL |     fn foo(self) -> String;
-   |            ^^^^
-
-error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrow-after-move.rs:40:24
-   |
-LL |         let x = "hello".to_owned().into_boxed_str();
-   |             - move occurs because `x` has type `Box<str>`, which does not implement the `Copy` trait
-LL |         x.foo();
-   |         - value moved here
-LL |         println!("{}", &x);
-   |                        ^^ value borrowed here after move
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |         x.clone().foo();
-   |          ++++++++
-
-error: aborting due to 5 previous errors; 1 warning emitted
-
-For more information about this error, try `rustc --explain E0382`.
+For more information about this error, try `rustc --explain E0277`.

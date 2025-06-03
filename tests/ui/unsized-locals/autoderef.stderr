@@ -1,0 +1,45 @@
+error[E0277]: the size for values of type `[char]` cannot be known at compilation time
+  --> $DIR/autoderef.rs:26:9
+   |
+LL |     let x = *(Box::new(['h', 'e', 'l', 'l', 'o']) as Box<[char]>);
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[char]`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     let x = *(Box::new(['h', 'e', 'l', 'l', 'o']) as Box<[char]>);
+LL +     let x = (Box::new(['h', 'e', 'l', 'l', 'o']) as Box<[char]>);
+   |
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/autoderef.rs:35:9
+   |
+LL |     let x = *("hello".to_owned().into_boxed_str());
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     let x = *("hello".to_owned().into_boxed_str());
+LL +     let x = ("hello".to_owned().into_boxed_str());
+   |
+
+error[E0277]: the size for values of type `dyn FnMut() -> String` cannot be known at compilation time
+  --> $DIR/autoderef.rs:41:9
+   |
+LL |     let x = *(Box::new(|| "hello".to_owned()) as Box<dyn FnMut() -> String>);
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn FnMut() -> String`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     let x = *(Box::new(|| "hello".to_owned()) as Box<dyn FnMut() -> String>);
+LL +     let x = (Box::new(|| "hello".to_owned()) as Box<dyn FnMut() -> String>);
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
