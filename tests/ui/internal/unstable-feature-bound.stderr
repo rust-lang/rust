@@ -1,67 +1,11 @@
-error[E0658]: use of unstable library feature `feat_foo`
-  --> $DIR/unstable-feature-bound.rs:3:1
-   |
-LL | extern crate unstable_feature;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(feat_foo)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable library feature `feat_foo`
-  --> $DIR/unstable-feature-bound.rs:4:24
-   |
-LL | use unstable_feature::{Foo, Bar};
-   |                        ^^^
-   |
-   = help: add `#![feature(feat_foo)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable library feature `feat_foo`
-  --> $DIR/unstable-feature-bound.rs:4:29
-   |
-LL | use unstable_feature::{Foo, Bar};
-   |                             ^^^
-   |
-   = help: add `#![feature(feat_foo)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable library feature `feat_foo`
-  --> $DIR/unstable-feature-bound.rs:4:29
-   |
-LL | use unstable_feature::{Foo, Bar};
-   |                             ^^^
-   |
-   = help: add `#![feature(feat_foo)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0658]: use of unstable library feature `feat_foo`
-  --> $DIR/unstable-feature-bound.rs:9:5
-   |
-LL |     Bar::foo();
-   |     ^^^
-   |
-   = help: add `#![feature(feat_foo)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable library feature `feat_foo`
-  --> $DIR/unstable-feature-bound.rs:9:5
-   |
-LL |     Bar::foo();
-   |     ^^^^^^^^
-   |
-   = help: add `#![feature(feat_foo)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_foo``
-  --> $DIR/unstable-feature-bound.rs:9:5
+  --> $DIR/unstable-feature-bound.rs:7:5
    |
 LL |     Bar::foo();
    |     ^^^ cannot satisfy `unstable feature: `feat_foo``
    |
    = note: required for `Bar` to implement `Foo`
 
-error: aborting due to 7 previous errors
+error: aborting due to 1 previous error
 
-Some errors have detailed explanations: E0284, E0658.
-For more information about an error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0284`.
