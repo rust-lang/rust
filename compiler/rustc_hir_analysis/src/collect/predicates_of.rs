@@ -1,6 +1,7 @@
 use std::assert_matches::assert_matches;
 
 use hir::Node;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -17,9 +18,6 @@ use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_predicates_for_delegation_item;
 use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter, RegionInferReason};
-
-
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `explicit_predicates_of`, plus
@@ -328,11 +326,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             .unwrap_or_default();
 
     for (feat_name, span) in allow_unstable_feature_attr {
-        predicates.insert((
-            ty::ClauseKind::UnstableFeature(*feat_name).upcast(tcx),
-            *span
-        ));
-    } 
+        predicates.insert((ty::ClauseKind::UnstableFeature(*feat_name).upcast(tcx), *span));
+    }
 
     let mut predicates: Vec<_> = predicates.into_iter().collect();
 

@@ -2370,10 +2370,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             // We lower empty bounds like `Vec<dyn Copy>:` as
             // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
             // regular WF checking
-            
+
             match pred.kind().skip_binder() {
                 ty::ClauseKind::WellFormed(..) | ty::ClauseKind::UnstableFeature(..) => continue,
-                _ => {},
+                _ => {}
             }
 
             // Match the existing behavior.
