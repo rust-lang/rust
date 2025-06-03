@@ -1,0 +1,100 @@
+- // MIR for `main` before CopyProp
++ // MIR for `main` after CopyProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: ();
+      let _2: main::S;
+      let _3: ();
+      let mut _4: main::S;
+      let _5: ();
+      let _6: main::S;
+      let _7: ();
+      let mut _8: main::S;
+      let _9: ();
+      let _10: main::C;
+      let _11: ();
+      let mut _12: main::C;
+      let _13: main::C;
+      let _14: ();
+      let mut _15: main::C;
+      scope 1 {
+          debug s1 => _2;
+      }
+      scope 2 {
+          debug s2 => _6;
+      }
+      scope 3 {
+          debug c1 => _10;
+      }
+      scope 4 {
+          debug c2 => _13;
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+-         StorageLive(_2);
+          _2 = S(const 1_usize, const 2_usize);
+          StorageLive(_3);
+-         StorageLive(_4);
+-         _4 = move _2;
+-         _3 = std::mem::drop::<S>(move _4) -> [return: bb1, unwind continue];
++         _3 = std::mem::drop::<S>(move _2) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         StorageDead(_4);
+          StorageDead(_3);
+-         _1 = const ();
+-         StorageDead(_2);
+-         StorageDead(_1);
+-         StorageLive(_5);
+-         StorageLive(_6);
+          _6 = S(const 3_usize, const 4_usize);
+          StorageLive(_7);
+-         StorageLive(_8);
+-         _8 = move _6;
+-         _7 = std::mem::drop::<S>(move _8) -> [return: bb2, unwind continue];
++         _7 = std::mem::drop::<S>(move _6) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+-         StorageDead(_8);
+          StorageDead(_7);
+-         _5 = const ();
+-         StorageDead(_6);
+-         StorageDead(_5);
+-         StorageLive(_9);
+-         StorageLive(_10);
+          _10 = C(const 1_usize, const 2_usize);
+          StorageLive(_11);
+-         StorageLive(_12);
+-         _12 = copy _10;
+-         _11 = std::mem::drop::<C>(move _12) -> [return: bb3, unwind continue];
++         _11 = std::mem::drop::<C>(copy _10) -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
+-         StorageDead(_12);
+          StorageDead(_11);
+-         _9 = const ();
+-         StorageDead(_10);
+-         StorageDead(_9);
+-         StorageLive(_13);
+          _13 = C(const 3_usize, const 4_usize);
+          StorageLive(_14);
+-         StorageLive(_15);
+-         _15 = copy _13;
+-         _14 = std::mem::drop::<C>(move _15) -> [return: bb4, unwind continue];
++         _14 = std::mem::drop::<C>(copy _13) -> [return: bb4, unwind continue];
+      }
+  
+      bb4: {
+-         StorageDead(_15);
+          StorageDead(_14);
+          _0 = const ();
+-         StorageDead(_13);
+          return;
+      }
+  }
+  

@@ -3,6 +3,8 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_dataflow::impls::MaybeUninitializedLocals;
+use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use tracing::{debug, instrument};
 
 use crate::ssa::SsaLocals;
@@ -16,7 +18,7 @@ use crate::ssa::SsaLocals;
 ///   _d = move? _c
 /// where each of the locals is only assigned once.
 ///
-/// We want to replace all those locals by `_a`, either copied or moved.
+/// We want to replace all those locals by `_a` (the "head"), either copied or moved.
 pub(super) struct CopyProp;
 
 impl<'tcx> crate::MirPass<'tcx> for CopyProp {
@@ -36,14 +38,45 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         let fully_moved = fully_moved_locals(&ssa, body);
         debug!(?fully_moved);
 
-        let mut storage_to_remove = DenseBitSet::new_empty(fully_moved.domain_size());
+        let mut head_storage_to_check = DenseBitSet::new_empty(fully_moved.domain_size());
+
         for (local, &head) in ssa.copy_classes().iter_enumerated() {
             if local != head {
-                storage_to_remove.insert(head);
+                // We need to determine if we can keep the head's storage statements (which enables better optimizations).
+                // For every local's usage location, if the head is maybe-uninitialized, we'll need to remove it's storage statements.
+                head_storage_to_check.insert(head);
             }
         }
 
         let any_replacement = ssa.copy_classes().iter_enumerated().any(|(l, &h)| l != h);
+
+        // Debug builds have no use for the storage statements, so avoid extra work.
+        let storage_to_remove = if any_replacement && tcx.sess.emit_lifetime_markers() {
+            let maybe_uninit = MaybeUninitializedLocals::new()
+                .iterate_to_fixpoint(tcx, body, Some("mir_opt::copy_prop"))
+                .into_results_cursor(body);
+
+            // To keep the storage of a head, we require that none of the locals in it's copy class are borrowed,
+            // since otherwise we cannot easily identify when it is used.
+            let mut storage_to_remove = ssa.borrowed_locals().clone();
+            storage_to_remove.intersect(&head_storage_to_check);
+
+            let mut storage_checker = StorageChecker {
+                maybe_uninit,
+                copy_classes: ssa.copy_classes(),
+                head_storage_to_check,
+                storage_to_remove,
+            };
+
+            storage_checker.visit_body(body);
+
+            storage_checker.storage_to_remove
+        } else {
+            // Conservatively remove all storage statements for the head locals.
+            head_storage_to_check
+        };
+
+        debug!(?storage_to_remove);
 
         Replacer { tcx, copy_classes: ssa.copy_classes(), fully_moved, storage_to_remove }
             .visit_body_preserves_cfg(body);
@@ -149,6 +182,53 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             && lhs == rhs
         {
             stmt.make_nop();
+        }
+    }
+}
+
+// Marks heads of copy classes that are maybe uninitialized at the location of a local
+// as needing storage statement removal.
+struct StorageChecker<'a, 'tcx> {
+    maybe_uninit: ResultsCursor<'a, 'tcx, MaybeUninitializedLocals>,
+    copy_classes: &'a IndexSlice<Local, Local>,
+    head_storage_to_check: DenseBitSet<Local>,
+    storage_to_remove: DenseBitSet<Local>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, loc: Location) {
+        // We don't need to check storage statements and statements for which the local doesn't need to be initialized.
+        match context {
+            PlaceContext::MutatingUse(
+                MutatingUseContext::Store
+                | MutatingUseContext::Call
+                | MutatingUseContext::AsmOutput,
+            )
+            | PlaceContext::NonUse(_) => {
+                return;
+            }
+            _ => {}
+        };
+
+        let head = self.copy_classes[local];
+
+        // The head must be initialized at the location of the local, otherwise we must remove it's storage statements.
+        if self.head_storage_to_check.contains(head) {
+            self.maybe_uninit.seek_before_primary_effect(loc);
+
+            if self.maybe_uninit.get().contains(head) {
+                debug!(
+                    ?loc,
+                    ?context,
+                    ?local,
+                    ?head,
+                    "found a head at a location in which it is maybe uninit, marking head for storage statement removal"
+                );
+                self.storage_to_remove.insert(head);
+
+                // Once we found a use of the head that is maybe uninit, we do not need to check it again.
+                self.head_storage_to_check.remove(head);
+            }
         }
     }
 }
