@@ -413,38 +413,7 @@ pub unsafe fn atomic_cxchgweak_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: 
 /// [`atomic`] types via the `load` method. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const T) -> T;
-/// Loads the current value of the pointer.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `load` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::load`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-#[cfg(bootstrap)]
-pub unsafe fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
-/// Loads the current value of the pointer.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `load` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::load`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-#[cfg(bootstrap)]
-pub unsafe fn atomic_load_acquire<T: Copy>(src: *const T) -> T;
-/// Loads the current value of the pointer.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `load` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::load`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-#[cfg(bootstrap)]
-pub unsafe fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
 
 /// Stores the value at the specified memory location.
 /// `T` must be an integer or pointer type.
@@ -1767,7 +1736,6 @@ pub const unsafe fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 /// - `index < PtrMetadata(slice_ptr)`, so the indexing is in-bounds for the slice
 /// - the resulting offsetting is in-bounds of the allocated object, which is
 ///   always the case for references, but needs to be upheld manually for pointers
-#[cfg(not(bootstrap))]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const unsafe fn slice_get_unchecked<
@@ -3710,7 +3678,7 @@ pub const fn minnumf128(x: f128, y: f128) -> f128;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn minimumf16(x: f16, y: f16) -> f16 {
     if x < y {
         x
@@ -3731,7 +3699,7 @@ pub const fn minimumf16(x: f16, y: f16) -> f16 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn minimumf32(x: f32, y: f32) -> f32 {
     if x < y {
         x
@@ -3752,7 +3720,7 @@ pub const fn minimumf32(x: f32, y: f32) -> f32 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn minimumf64(x: f64, y: f64) -> f64 {
     if x < y {
         x
@@ -3773,7 +3741,7 @@ pub const fn minimumf64(x: f64, y: f64) -> f64 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn minimumf128(x: f128, y: f128) -> f128 {
     if x < y {
         x
@@ -3848,7 +3816,7 @@ pub const fn maxnumf128(x: f128, y: f128) -> f128;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn maximumf16(x: f16, y: f16) -> f16 {
     if x > y {
         x
@@ -3868,7 +3836,7 @@ pub const fn maximumf16(x: f16, y: f16) -> f16 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn maximumf32(x: f32, y: f32) -> f32 {
     if x > y {
         x
@@ -3888,7 +3856,7 @@ pub const fn maximumf32(x: f32, y: f32) -> f32 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn maximumf64(x: f64, y: f64) -> f64 {
     if x > y {
         x
@@ -3908,7 +3876,7 @@ pub const fn maximumf64(x: f64, y: f64) -> f64 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn maximumf128(x: f128, y: f128) -> f128 {
     if x > y {
         x
