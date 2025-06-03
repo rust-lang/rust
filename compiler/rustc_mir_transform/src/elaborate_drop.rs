@@ -1,6 +1,7 @@
 use std::{fmt, iter, mem};
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::Idx;
 use rustc_middle::mir::*;
@@ -254,8 +255,19 @@ where
             // impl_item_refs may be empty if drop fn is not implemented in 'impl AsyncDrop for ...'
             // (#140974).
             // Such code will report error, so just generate sync drop here and return
-            let Some(drop_fn_def_id) =
-                tcx.associated_item_def_ids(drop_trait).into_iter().nth(0).copied()
+            let Some(drop_fn_def_id) = tcx
+                .associated_item_def_ids(drop_trait)
+                .first()
+                .and_then(|def_id| {
+                    if tcx.def_kind(def_id) == DefKind::AssocFn
+                        && tcx.check_args_compatible(*def_id, trait_args)
+                    {
+                        Some(def_id)
+                    } else {
+                        None
+                    }
+                })
+                .copied()
             else {
                 tcx.dcx().span_delayed_bug(
                     self.elaborator.body().span,
