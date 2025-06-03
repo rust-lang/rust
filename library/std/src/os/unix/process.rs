@@ -378,6 +378,18 @@ impl ExitStatusExt for process::ExitStatusError {
     }
 }
 
+#[unstable(feature = "unix_send_signal", issue = "141975")]
+pub trait ChildExt: Sealed {
+    fn send_signal(&mut self, signal: i32) -> io::Result<()>;
+}
+
+#[unstable(feature = "unix_send_signal", issue = "141975")]
+impl ChildExt for process::Child {
+    fn send_signal(&mut self, signal: i32) -> io::Result<()> {
+        self.handle.send_signal(signal)
+    }
+}
+
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawFd for process::Stdio {
     #[inline]

@@ -13,11 +13,15 @@ pub(crate) struct PidFd(FileDesc);
 
 impl PidFd {
     pub fn kill(&self) -> io::Result<()> {
+        self.send_signal(libc::SIGKILL)
+    }
+
+    pub(crate) fn send_signal(&self, signal: i32) -> io::Result<()> {
         cvt(unsafe {
             libc::syscall(
                 libc::SYS_pidfd_send_signal,
                 self.0.as_raw_fd(),
-                libc::SIGKILL,
+                signal,
                 crate::ptr::null::<()>(),
                 0,
             )
