@@ -432,13 +432,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     #[inline(always)]
     fn next_match(&mut self) -> Option<(usize, usize)> {
         if self.utf8_size == 1 {
-            let find = |haystack: &[u8]| {
-                if haystack.len() < 32 {
-                    haystack.iter().position(|&x| x == self.utf8_encoded[0])
-                } else {
-                    memchr::memchr(self.utf8_encoded[0], haystack)
-                }
-            };
+            let find = |haystack: &[u8]| memchr::memchr(self.utf8_encoded[0], haystack);
             return match find(self.haystack.as_bytes().get(self.finger..self.finger_back)?) {
                 Some(x) => {
                     self.finger += x + 1;
@@ -515,13 +509,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next_match_back(&mut self) -> Option<(usize, usize)> {
         if self.utf8_size == 1 {
-            let find = |haystack: &[u8]| {
-                if haystack.len() < 32 {
-                    haystack.iter().rposition(|&x| x == self.utf8_encoded[0])
-                } else {
-                    memchr::memrchr(self.utf8_encoded[0], haystack)
-                }
-            };
+            let find = |haystack: &[u8]| memchr::memrchr(self.utf8_encoded[0], haystack);
             return match find(self.haystack.as_bytes().get(self.finger..self.finger_back)?) {
                 Some(x) => {
                     self.finger_back = self.finger + x;
