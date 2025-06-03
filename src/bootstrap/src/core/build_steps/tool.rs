@@ -1269,7 +1269,7 @@ impl Step for TestFloatParse {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/etc/test-float-parse")
+        run.path("src/tools/test-float-parse")
     }
 
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
@@ -1281,7 +1281,7 @@ impl Step for TestFloatParse {
             target: bootstrap_host,
             tool: "test-float-parse",
             mode: Mode::ToolStd,
-            path: "src/etc/test-float-parse",
+            path: "src/tools/test-float-parse",
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: Self::ALLOW_FEATURES,

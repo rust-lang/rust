@@ -51,7 +51,7 @@ check-aux:
 	$(Q)$(BOOTSTRAP) test --stage 2 \
 		src/tools/cargo \
 		src/tools/cargotest \
-		src/etc/test-float-parse \
+		src/tools/test-float-parse \
 		$(BOOTSTRAP_ARGS)
 	# Run standard library tests in Miri.
 	$(Q)MIRIFLAGS="-Zmiri-strict-provenance" \
