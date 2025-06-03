@@ -558,6 +558,80 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 }
 
+/// A dataflow analysis that tracks locals that are maybe uninitialized.
+///
+/// This is a simpler analysis than `MaybeUninitializedPlaces`, because it does not track
+/// individual fields.
+pub struct MaybeUninitializedLocals;
+
+impl MaybeUninitializedLocals {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl<'tcx> Analysis<'tcx> for MaybeUninitializedLocals {
+    type Domain = DenseBitSet<mir::Local>;
+
+    const NAME: &'static str = "maybe_uninit_locals";
+
+    fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
+        // bottom = all locals are initialized.
+        DenseBitSet::new_empty(body.local_decls.len())
+    }
+
+    fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
+        // All locals start as uninitialized...
+        state.insert_all();
+        // ...except for arguments, which are definitely initialized.
+        for arg in body.args_iter() {
+            state.remove(arg);
+        }
+    }
+
+    fn apply_primary_statement_effect(
+        &mut self,
+        state: &mut Self::Domain,
+        statement: &mir::Statement<'tcx>,
+        _location: Location,
+    ) {
+        match statement.kind {
+            // An assignment makes a local initialized.
+            mir::StatementKind::Assign(box (place, _)) => {
+                if let Some(local) = place.as_local() {
+                    state.remove(local);
+                }
+            }
+            // Deinit makes the local uninitialized.
+            mir::StatementKind::Deinit(box place) => {
+                // A deinit makes a local uninitialized.
+                if let Some(local) = place.as_local() {
+                    state.insert(local);
+                }
+            }
+            // Storage{Live,Dead} makes a local uninitialized.
+            mir::StatementKind::StorageLive(local) | mir::StatementKind::StorageDead(local) => {
+                state.insert(local);
+            }
+            _ => {}
+        }
+    }
+
+    fn apply_call_return_effect(
+        &mut self,
+        state: &mut Self::Domain,
+        _block: mir::BasicBlock,
+        return_places: CallReturnPlaces<'_, 'tcx>,
+    ) {
+        // The return place of a call is initialized.
+        return_places.for_each(|place| {
+            if let Some(local) = place.as_local() {
+                state.remove(local);
+            }
+        });
+    }
+}
+
 /// There can be many more `InitIndex` than there are locals in a MIR body.
 /// We use a mixed bitset to avoid paying too high a memory footprint.
 pub type EverInitializedPlacesDomain = MixedBitSet<InitIndex>;
