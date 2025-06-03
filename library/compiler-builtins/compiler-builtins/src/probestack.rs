@@ -49,6 +49,7 @@
 // We only define stack probing for these architectures today.
 #![cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 
+<<<<<<< HEAD
 // SAFETY: defined in this module.
 // FIXME(extern_custom): the ABI is not correct.
 unsafe extern "C" {
@@ -122,8 +123,12 @@ macro_rules! define_rust_probestack {
     };
 }
 
+=======
+>>>>>>> d6dd2696443 (use `#[naked]` for `__rust_probestack`)
 // Our goal here is to touch each page between %rsp+8 and %rsp+8-%rax,
 // ensuring that if any pages are unmapped we'll make a page fault.
+//
+// This function is unsafe because it uses a custom ABI, it does not actually match `extern "C"`.
 //
 // The ABI here is that the stack frame size is located in `%rax`. Upon
 // return we're not supposed to modify `%rsp` or `%rax`.
@@ -133,8 +138,10 @@ macro_rules! define_rust_probestack {
     target_arch = "x86_64",
     not(all(target_env = "sgx", target_vendor = "fortanix"))
 ))]
-core::arch::global_asm!(
-    define_rust_probestack!(
+#[unsafe(naked)]
+#[rustc_std_internal_symbol]
+pub unsafe extern "C" fn __rust_probestack() {
+    core::arch::naked_asm!(
         "
     .cfi_startproc
     pushq  %rbp
@@ -184,10 +191,10 @@ core::arch::global_asm!(
     .cfi_adjust_cfa_offset -8
     ret
     .cfi_endproc
-    "
-    ),
-    options(att_syntax)
-);
+    ",
+        options(att_syntax)
+    )
+}
 
 // This function is the same as above, except that some instructions are
 // [manually patched for LVI].
@@ -197,8 +204,10 @@ core::arch::global_asm!(
     target_arch = "x86_64",
     all(target_env = "sgx", target_vendor = "fortanix")
 ))]
-core::arch::global_asm!(
-    define_rust_probestack!(
+#[unsafe(naked)]
+#[no_mangle]
+pub unsafe extern "C" fn __rust_probestack() {
+    core::arch::naked_asm!(
         "
     .cfi_startproc
     pushq  %rbp
@@ -250,19 +259,23 @@ core::arch::global_asm!(
     lfence
     jmp *%r11
     .cfi_endproc
-    "
-    ),
-    options(att_syntax)
-);
+    ",
+        options(att_syntax)
+    )
+}
 
 #[cfg(all(target_arch = "x86", not(target_os = "uefi")))]
 // This is the same as x86_64 above, only translated for 32-bit sizes. Note
 // that on Unix we're expected to restore everything as it was, this
 // function basically can't tamper with anything.
 //
+// This function is unsafe because it uses a custom ABI, it does not actually match `extern "C"`.
+//
 // The ABI here is the same as x86_64, except everything is 32-bits large.
-core::arch::global_asm!(
-    define_rust_probestack!(
+#[unsafe(naked)]
+#[rustc_std_internal_symbol]
+pub unsafe extern "C" fn __rust_probestack() {
+    core::arch::naked_asm!(
         "
     .cfi_startproc
     push   %ebp
@@ -293,15 +306,17 @@ core::arch::global_asm!(
     .cfi_adjust_cfa_offset -4
     ret
     .cfi_endproc
-    "
-    ),
-    options(att_syntax)
-);
+    ",
+        options(att_syntax)
+    )
+}
 
 #[cfg(all(target_arch = "x86", target_os = "uefi"))]
 // UEFI target is windows like target. LLVM will do _chkstk things like windows.
 // probestack function will also do things like _chkstk in MSVC.
 // So we need to sub %ax %sp in probestack when arch is x86.
+//
+// This function is unsafe because it uses a custom ABI, it does not actually match `extern "C"`.
 //
 // REF: Rust commit(74e80468347)
 // rust\src\llvm-project\llvm\lib\Target\X86\X86FrameLowering.cpp: 805
@@ -309,8 +324,10 @@ core::arch::global_asm!(
 //   MSVC x32's _chkstk and cygwin/mingw's _alloca adjust %esp themselves.
 //   MSVC x64's __chkstk and cygwin/mingw's ___chkstk_ms do not adjust %rsp
 //   themselves.
-core::arch::global_asm!(
-    define_rust_probestack!(
+#[unsafe(naked)]
+#[rustc_std_internal_symbol]
+pub unsafe extern "C" fn __rust_probestack() {
+    core::arch::naked_asm!(
         "
     .cfi_startproc
     push   %ebp
@@ -346,7 +363,7 @@ core::arch::global_asm!(
     .cfi_adjust_cfa_offset -4
     ret
     .cfi_endproc
-    "
-    ),
-    options(att_syntax)
-);
+    ",
+        options(att_syntax)
+    )
+}
