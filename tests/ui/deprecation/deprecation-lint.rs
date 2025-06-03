@@ -71,7 +71,7 @@ mod cross_crate {
         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated method `deprecation_lint::Trait::trait_deprecated_text`: text
     }
 
-    fn test_method_object(foo: &Trait) {
+    fn test_method_object(foo: &dyn Trait) {
         foo.trait_deprecated(); //~ ERROR use of deprecated method `deprecation_lint::Trait::trait_deprecated`
         foo.trait_deprecated_text(); //~ ERROR use of deprecated method `deprecation_lint::Trait::trait_deprecated_text`: text
     }
@@ -299,7 +299,7 @@ mod this_crate {
         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
     }
 
-    fn test_method_object(foo: &Trait) {
+    fn test_method_object(foo: &dyn Trait) {
         foo.trait_deprecated(); //~ ERROR use of deprecated method `this_crate::Trait::trait_deprecated`
         foo.trait_deprecated_text(); //~ ERROR use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
     }
