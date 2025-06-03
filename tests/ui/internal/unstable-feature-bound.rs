@@ -7,6 +7,4 @@ use unstable_feature::{Foo, Bar}; //~ ERROR: use of unstable library feature `fe
 
 fn main() { 
     Bar::foo(); //~ ERROR: type annotations needed: cannot satisfy `unstable feature: `feat_foo``
-    //~^ ERROR: use of unstable library feature `feat_foo`
-    //~^^ ERROR: use of unstable library feature `feat_foo`
 }
