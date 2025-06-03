@@ -1,23 +1,23 @@
 error: bounds cannot be used in this context
-  --> $DIR/bounds-lifetime.rs:1:22
+  --> $DIR/higher-ranked-invalid-bounds.rs:3:22
    |
 LL | type A = for<'b, 'a: 'b> fn();
    |                      ^^
 
 error: bounds cannot be used in this context
-  --> $DIR/bounds-lifetime.rs:2:22
+  --> $DIR/higher-ranked-invalid-bounds.rs:4:22
    |
 LL | type B = for<'b, 'a: 'b,> fn();
    |                      ^^
 
 error: bounds cannot be used in this context
-  --> $DIR/bounds-lifetime.rs:3:22
+  --> $DIR/higher-ranked-invalid-bounds.rs:5:22
    |
 LL | type C = for<'b, 'a: 'b +> fn();
    |                      ^^
 
 error[E0658]: only lifetime parameters can be used in this context
-  --> $DIR/bounds-lifetime.rs:4:18
+  --> $DIR/higher-ranked-invalid-bounds.rs:6:18
    |
 LL | type D = for<'a, T> fn();
    |                  ^
@@ -27,7 +27,7 @@ LL | type D = for<'a, T> fn();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: only lifetime parameters can be used in this context
-  --> $DIR/bounds-lifetime.rs:5:18
+  --> $DIR/higher-ranked-invalid-bounds.rs:7:18
    |
 LL | type E = dyn for<T, U> Fn();
    |                  ^  ^

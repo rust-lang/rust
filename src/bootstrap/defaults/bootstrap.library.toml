@@ -1,8 +1,9 @@
 # These defaults are meant for contributors to the standard library and documentation.
 [build]
-build-stage = 1
-test-stage = 1
 bench-stage = 1
+build-stage = 1
+check-stage = 1
+test-stage = 1
 
 [rust]
 # This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.

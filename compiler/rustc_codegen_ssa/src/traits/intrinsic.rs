@@ -22,8 +22,6 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
     fn abort(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;
-    /// Trait method used to test whether a given pointer is associated with a type identifier.
-    fn type_test(&mut self, pointer: Self::Value, typeid: Self::Metadata) -> Self::Value;
     /// Trait method used to load a function while testing if it is associated with a type
     /// identifier.
     fn type_checked_load(

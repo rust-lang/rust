@@ -636,13 +636,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
     }
 
-    fn type_test(&mut self, pointer: Self::Value, typeid: Self::Metadata) -> Self::Value {
-        // Test the called operand using llvm.type.test intrinsic. The LowerTypeTests link-time
-        // optimization pass replaces calls to this intrinsic with code to test type membership.
-        let typeid = self.get_metadata_value(typeid);
-        self.call_intrinsic("llvm.type.test", &[pointer, typeid])
-    }
-
     fn type_checked_load(
         &mut self,
         llvtable: &'ll Value,
