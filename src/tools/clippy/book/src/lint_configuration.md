@@ -1026,7 +1026,7 @@ The order of associated items in traits.
 The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by
 reference.
 
-**Default Value:** `target_pointer_width * 2`
+**Default Value:** `target_pointer_width`
 
 ---
 **Affected lints:**

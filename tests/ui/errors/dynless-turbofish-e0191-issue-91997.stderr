@@ -1,5 +1,5 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/dynless-turbofish-e0191-issue-91997.rs:4:13
+  --> $DIR/dynless-turbofish-e0191-issue-91997.rs:5:13
    |
 LL |     let _ = MyIterator::next;
    |             ^^^^^^^^^^
@@ -13,7 +13,7 @@ LL |     let _ = <dyn MyIterator>::next;
    |             ++++           +
 
 error[E0191]: the value of the associated type `Item` in `Iterator` must be specified
-  --> $DIR/dynless-turbofish-e0191-issue-91997.rs:4:13
+  --> $DIR/dynless-turbofish-e0191-issue-91997.rs:5:13
    |
 LL |     let _ = MyIterator::next;
    |             ^^^^^^^^^^ help: specify the associated type: `MyIterator::<Item = Type>`

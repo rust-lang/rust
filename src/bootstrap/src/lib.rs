@@ -1451,23 +1451,23 @@ Executed at: {executed_at}"#,
         // Look for Wasmtime, and for its default options be sure to disable
         // its caching system since we're executing quite a lot of tests and
         // ideally shouldn't pollute the cache too much.
-        if let Some(path) = finder.maybe_have("wasmtime") {
-            if let Ok(mut path) = path.into_os_string().into_string() {
-                path.push_str(" run -C cache=n --dir .");
-                // Make sure that tests have access to RUSTC_BOOTSTRAP. This (for example) is
-                // required for libtest to work on beta/stable channels.
-                //
-                // NB: with Wasmtime 20 this can change to `-S inherit-env` to
-                // inherit the entire environment rather than just this single
-                // environment variable.
-                path.push_str(" --env RUSTC_BOOTSTRAP");
+        if let Some(path) = finder.maybe_have("wasmtime")
+            && let Ok(mut path) = path.into_os_string().into_string()
+        {
+            path.push_str(" run -C cache=n --dir .");
+            // Make sure that tests have access to RUSTC_BOOTSTRAP. This (for example) is
+            // required for libtest to work on beta/stable channels.
+            //
+            // NB: with Wasmtime 20 this can change to `-S inherit-env` to
+            // inherit the entire environment rather than just this single
+            // environment variable.
+            path.push_str(" --env RUSTC_BOOTSTRAP");
 
-                if target.contains("wasip2") {
-                    path.push_str(" --wasi inherit-network --wasi allow-ip-name-lookup");
-                }
-
-                return Some(path);
+            if target.contains("wasip2") {
+                path.push_str(" --wasi inherit-network --wasi allow-ip-name-lookup");
             }
+
+            return Some(path);
         }
 
         None
@@ -1637,12 +1637,12 @@ Executed at: {executed_at}"#,
     /// sha, version, etc.
     fn rust_version(&self) -> String {
         let mut version = self.rust_info().version(self, &self.version);
-        if let Some(ref s) = self.config.description {
-            if !s.is_empty() {
-                version.push_str(" (");
-                version.push_str(s);
-                version.push(')');
-            }
+        if let Some(ref s) = self.config.description
+            && !s.is_empty()
+        {
+            version.push_str(" (");
+            version.push_str(s);
+            version.push(')');
         }
         version
     }
@@ -1760,14 +1760,14 @@ Executed at: {executed_at}"#,
     pub fn copy_link(&self, src: &Path, dst: &Path, file_type: FileType) {
         self.copy_link_internal(src, dst, false);
 
-        if file_type.could_have_split_debuginfo() {
-            if let Some(dbg_file) = split_debuginfo(src) {
-                self.copy_link_internal(
-                    &dbg_file,
-                    &dst.with_extension(dbg_file.extension().unwrap()),
-                    false,
-                );
-            }
+        if file_type.could_have_split_debuginfo()
+            && let Some(dbg_file) = split_debuginfo(src)
+        {
+            self.copy_link_internal(
+                &dbg_file,
+                &dst.with_extension(dbg_file.extension().unwrap()),
+                false,
+            );
         }
     }
 
@@ -1779,13 +1779,14 @@ Executed at: {executed_at}"#,
         if src == dst {
             return;
         }
-        if let Err(e) = fs::remove_file(dst) {
-            if cfg!(windows) && e.kind() != io::ErrorKind::NotFound {
-                // workaround for https://github.com/rust-lang/rust/issues/127126
-                // if removing the file fails, attempt to rename it instead.
-                let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
-                let _ = fs::rename(dst, format!("{}-{}", dst.display(), now.as_nanos()));
-            }
+        if let Err(e) = fs::remove_file(dst)
+            && cfg!(windows)
+            && e.kind() != io::ErrorKind::NotFound
+        {
+            // workaround for https://github.com/rust-lang/rust/issues/127126
+            // if removing the file fails, attempt to rename it instead.
+            let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
+            let _ = fs::rename(dst, format!("{}-{}", dst.display(), now.as_nanos()));
         }
         let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
         let mut src = src.to_path_buf();
@@ -1894,10 +1895,10 @@ Executed at: {executed_at}"#,
         chmod(&dst, file_type.perms());
 
         // If this file can have debuginfo, look for split debuginfo and install it too.
-        if file_type.could_have_split_debuginfo() {
-            if let Some(dbg_file) = split_debuginfo(src) {
-                self.install(&dbg_file, dstdir, FileType::Regular);
-            }
+        if file_type.could_have_split_debuginfo()
+            && let Some(dbg_file) = split_debuginfo(src)
+        {
+            self.install(&dbg_file, dstdir, FileType::Regular);
         }
     }
 

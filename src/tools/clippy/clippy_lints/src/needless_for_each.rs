@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
             && let body = cx.tcx.hir_body(body)
             // Skip the lint if the body is not safe, so as not to suggest `for … in … unsafe {}`
             // and suggesting `for … in … { unsafe { } }` is a little ugly.
-            && let ExprKind::Block(Block { rules: BlockCheckMode::DefaultBlock, .. }, ..) = body.value.kind
+            && !matches!(body.value.kind, ExprKind::Block(Block { rules: BlockCheckMode::UnsafeBlock(_), .. }, ..))
         {
             let mut ret_collector = RetCollector::default();
             ret_collector.visit_expr(body.value);
@@ -99,11 +99,21 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
                 )
             };
 
+            let body_param_sugg = snippet_with_applicability(cx, body.params[0].pat.span, "..", &mut applicability);
+            let for_each_rev_sugg = snippet_with_applicability(cx, for_each_recv.span, "..", &mut applicability);
+            let body_value_sugg = snippet_with_applicability(cx, body.value.span, "..", &mut applicability);
+
             let sugg = format!(
                 "for {} in {} {}",
-                snippet_with_applicability(cx, body.params[0].pat.span, "..", &mut applicability),
-                snippet_with_applicability(cx, for_each_recv.span, "..", &mut applicability),
-                snippet_with_applicability(cx, body.value.span, "..", &mut applicability),
+                body_param_sugg,
+                for_each_rev_sugg,
+                match body.value.kind {
+                    ExprKind::Block(block, _) if is_let_desugar(block) => {
+                        format!("{{ {body_value_sugg} }}")
+                    },
+                    ExprKind::Block(_, _) => body_value_sugg.to_string(),
+                    _ => format!("{{ {body_value_sugg}; }}"),
+                }
             );
 
             span_lint_and_then(cx, NEEDLESS_FOR_EACH, stmt.span, "needless use of `for_each`", |diag| {
@@ -114,6 +124,20 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
             });
         }
     }
+}
+
+/// Check if the block is a desugared `_ = expr` statement.
+fn is_let_desugar(block: &Block<'_>) -> bool {
+    matches!(
+        block,
+        Block {
+            stmts: [Stmt {
+                kind: StmtKind::Let(_),
+                ..
+            },],
+            ..
+        }
+    )
 }
 
 /// This type plays two roles.
