@@ -3,7 +3,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 
 use rustfix::{Filter, apply_suggestions, get_suggestions_from_json};
-use tracing::debug;
+use tracing::{debug, error};
 
 use super::{
     AllowUnused, Emit, FailMode, LinkToAux, PassMode, TargetLocation, TestCx, TestOutput,
@@ -135,7 +135,6 @@ impl TestCx<'_> {
                 0
             };
             if run_output_errors > 0 {
-                debug!("proc_res: {}", proc_res.stdout);
                 self.fatal_proc_rec(
                     &format!("{} errors occurred comparing run output.", run_output_errors),
                     &proc_res,
