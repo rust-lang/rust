@@ -144,20 +144,20 @@ impl BootstrapCommand {
     /// Run the command, while printing stdout and stderr.
     /// Returns true if the command has succeeded.
     #[track_caller]
-    pub fn run(&mut self, execution_context: &ExecutionContext) -> bool {
-        execution_context.run(self, OutputMode::Print, OutputMode::Print).is_success()
+    pub fn run(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> bool {
+        exec_ctx.as_ref().run(self, OutputMode::Print, OutputMode::Print).is_success()
     }
 
     /// Run the command, while capturing and returning all its output.
     #[track_caller]
-    pub fn run_capture(&mut self, execution_context: &ExecutionContext) -> CommandOutput {
-        execution_context.run(self, OutputMode::Capture, OutputMode::Capture)
+    pub fn run_capture(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
+        exec_ctx.as_ref().run(self, OutputMode::Capture, OutputMode::Capture)
     }
 
     /// Run the command, while capturing and returning stdout, and printing stderr.
     #[track_caller]
-    pub fn run_capture_stdout(&mut self, execution_context: &ExecutionContext) -> CommandOutput {
-        execution_context.run(self, OutputMode::Capture, OutputMode::Print)
+    pub fn run_capture_stdout(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
+        exec_ctx.as_ref().run(self, OutputMode::Capture, OutputMode::Print)
     }
 
     /// Provides access to the stdlib Command inside.

@@ -1628,7 +1628,13 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub fn context(&self) -> &ExecutionContext {
-        &self.config.execution_context
+    pub fn exec_ctx(&self) -> &ExecutionContext {
+        &self.config.exec_ctx
+    }
+}
+
+impl<'a> AsRef<ExecutionContext> for Builder<'a> {
+    fn as_ref(&self) -> &ExecutionContext {
+        self.exec_ctx()
     }
 }

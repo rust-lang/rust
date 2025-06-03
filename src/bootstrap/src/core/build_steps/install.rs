@@ -115,7 +115,7 @@ fn install_sh(
         .arg(format!("--libdir={}", prepare_dir(&destdir_env, libdir, is_cygwin)))
         .arg(format!("--mandir={}", prepare_dir(&destdir_env, mandir, is_cygwin)))
         .arg("--disable-ldconfig");
-    cmd.run(builder.context());
+    cmd.run(builder);
     t!(fs::remove_dir_all(&empty_dir));
 }
 

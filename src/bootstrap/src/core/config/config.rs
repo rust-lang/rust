@@ -424,7 +424,7 @@ pub struct Config {
     /// Cache for determining path modifications
     pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
 
-    pub execution_context: ExecutionContext,
+    pub exec_ctx: ExecutionContext,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -1452,8 +1452,8 @@ impl Config {
         feature = "tracing",
         instrument(target = "CONFIG_HANDLING", level = "trace", name = "Config::parse", skip_all)
     )]
-    pub fn parse(flags: Flags, execution_context: ExecutionContext) -> Config {
-        let config = Self::parse_inner(flags, Self::get_toml, execution_context);
+    pub fn parse(flags: Flags, exec_ctx: ExecutionContext) -> Config {
+        let config = Self::parse_inner(flags, Self::get_toml, exec_ctx);
         config
     }
 
@@ -1469,10 +1469,10 @@ impl Config {
     pub(crate) fn parse_inner(
         mut flags: Flags,
         get_toml: impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
-        execution_context: ExecutionContext,
+        exec_ctx: ExecutionContext,
     ) -> Config {
         let mut config = Config::default_opts();
-        config.execution_context = execution_context;
+        config.exec_ctx = exec_ctx;
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
@@ -1530,7 +1530,7 @@ impl Config {
             // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
             cmd.arg("rev-parse").arg("--show-cdup");
             // Discard stderr because we expect this to fail when building from a tarball.
-            let output = cmd.run_capture_stdout(&config.context());
+            let output = cmd.allow_failure().run_capture_stdout(&config);
 
             if output.is_success() {
                 let git_root_relative = output.stdout();
@@ -1628,9 +1628,7 @@ impl Config {
             build.cargo = build.cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
         }
 
-        if GitInfo::new(false, &config.src, config.context()).is_from_tarball()
-            && toml.profile.is_none()
-        {
+        if config.git_info(false, &config.src).is_from_tarball() && toml.profile.is_none() {
             toml.profile = Some("dist".into());
         }
 
@@ -1839,7 +1837,7 @@ impl Config {
         config.initial_sysroot = t!(PathBuf::from_str(
             command(&config.initial_rustc)
                 .args(["--print", "sysroot"])
-                .run_capture_stdout(&config.context())
+                .run_capture_stdout(&config)
                 .stdout()
                 .trim()
         ));
@@ -1968,41 +1966,21 @@ impl Config {
         let default = config.channel == "dev";
         config.omit_git_hash = toml.rust.as_ref().and_then(|r| r.omit_git_hash).unwrap_or(default);
 
-        config.rust_info = GitInfo::new(config.omit_git_hash, &config.src, &config.context());
-        config.cargo_info = GitInfo::new(
-            config.omit_git_hash,
-            &config.src.join("src/tools/cargo"),
-            config.context(),
-        );
-        config.rust_analyzer_info = GitInfo::new(
-            config.omit_git_hash,
-            &config.src.join("src/tools/rust-analyzer"),
-            config.context(),
-        );
-        config.clippy_info = GitInfo::new(
-            config.omit_git_hash,
-            &config.src.join("src/tools/clippy"),
-            config.context(),
-        );
-        config.miri_info = GitInfo::new(
-            config.omit_git_hash,
-            &config.src.join("src/tools/miri"),
-            config.context(),
-        );
-        config.rustfmt_info = GitInfo::new(
-            config.omit_git_hash,
-            &config.src.join("src/tools/rustfmt"),
-            config.context(),
-        );
-        config.enzyme_info = GitInfo::new(
-            config.omit_git_hash,
-            &config.src.join("src/tools/enzyme"),
-            config.context(),
-        );
-        config.in_tree_llvm_info =
-            GitInfo::new(false, &config.src.join("src/llvm-project"), config.context());
-        config.in_tree_gcc_info =
-            GitInfo::new(false, &config.src.join("src/gcc"), config.context());
+        config.rust_info = config.git_info(config.omit_git_hash, &config.src);
+        config.cargo_info =
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/cargo"));
+        config.rust_analyzer_info =
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/rust-analyzer"));
+        config.clippy_info =
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/clippy"));
+        config.miri_info =
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/miri"));
+        config.rustfmt_info =
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
+        config.enzyme_info =
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
+        config.in_tree_llvm_info = config.git_info(false, &config.src.join("src/llvm-project"));
+        config.in_tree_gcc_info = config.git_info(false, &config.src.join("src/gcc"));
 
         config.vendor = vendor.unwrap_or(
             config.rust_info.is_from_tarball()
@@ -2667,7 +2645,7 @@ impl Config {
 
         let mut git = helpers::git(Some(&self.src));
         git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
-        git.run_capture_stdout(self.context()).stdout()
+        git.allow_failure().run_capture_stdout(self).stdout()
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -2992,7 +2970,7 @@ impl Config {
 
         // NOTE: The check for the empty directory is here because when running x.py the first time,
         // the submodule won't be checked out. Check it out now so we can build it.
-        if !GitInfo::new(false, &absolute_path, &self.context()).is_managed_git_subrepository()
+        if !self.git_info(false, &absolute_path).is_managed_git_subrepository()
             && !helpers::dir_is_empty(&absolute_path)
         {
             return;
@@ -3011,19 +2989,20 @@ impl Config {
         };
 
         // Determine commit checked out in submodule.
-        // let checked_out_hash = output(submodule_git().args(["rev-parse", "HEAD"]).as_command_mut());
         let checked_out_hash = submodule_git()
+            .allow_failure()
             .args(["rev-parse", "HEAD"])
-            .run_capture_stdout(&self.context())
+            .run_capture_stdout(&self)
             .stdout();
         let checked_out_hash = checked_out_hash.trim_end();
-        // Determine commit that the submodule *should* have.
 
+        // Determine commit that the submodule *should* have.
         let recorded = helpers::git(Some(&self.src))
+            .allow_failure()
             .run_always()
             .args(["ls-tree", "HEAD"])
             .arg(relative_path)
-            .run_capture_stdout(&self.context())
+            .run_capture_stdout(&self)
             .stdout();
 
         let actual_hash = recorded
@@ -3052,7 +3031,7 @@ impl Config {
                 .allow_failure()
                 .run_always()
                 .args(["symbolic-ref", "--short", "HEAD"])
-                .run_capture_stdout(&self.context());
+                .run_capture(&self);
             let mut git = helpers::git(Some(&self.src)).allow_failure();
             git.run_always();
             if current_branch.is_success() {
@@ -3105,7 +3084,7 @@ impl Config {
         }
 
         let stage0_output =
-            command(program_path).arg("--version").run_capture_stdout(self.context()).stdout();
+            command(program_path).arg("--version").run_capture_stdout(self).stdout();
         let mut stage0_output = stage0_output.lines().next().unwrap().split(' ');
 
         let stage0_name = stage0_output.next().unwrap();
@@ -3353,8 +3332,18 @@ impl Config {
         if self.is_running_on_ci { CiEnv::GitHubActions } else { CiEnv::None }
     }
 
-    pub fn context(&self) -> &ExecutionContext {
-        &self.execution_context
+    pub fn exec_ctx(&self) -> &ExecutionContext {
+        &self.exec_ctx
+    }
+
+    pub fn git_info(&self, omit_git_hash: bool, dir: &Path) -> GitInfo {
+        GitInfo::new(omit_git_hash, dir, self)
+    }
+}
+
+impl AsRef<ExecutionContext> for Config {
+    fn as_ref(&self) -> &ExecutionContext {
+        &self.exec_ctx
     }
 }
 

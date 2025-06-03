@@ -24,21 +24,21 @@ fn extract_curl_version(out: String) -> semver::Version {
         .unwrap_or(semver::Version::new(1, 0, 0))
 }
 
+fn curl_version(config: &Config) -> semver::Version {
+    let mut curl = command("curl");
+    curl.arg("-V");
+    let curl = curl.allow_failure().run_capture_stdout(config);
+    if curl.is_failure() {
+        return semver::Version::new(1, 0, 0);
+    }
+    let output = curl.stdout();
+    let out = output;
+    extract_curl_version(out)
+}
+
 #[allow(warnings)]
 /// Generic helpers that are useful anywhere in bootstrap.
 impl Config {
-    fn curl_version(&self) -> semver::Version {
-        let mut curl = command("curl");
-        curl.arg("-V");
-        let curl = curl.run_capture_stdout(self.context());
-        if curl.is_failure() {
-            return semver::Version::new(1, 0, 0);
-        }
-        let output = curl.stdout();
-        let out = output;
-        extract_curl_version(out)
-    }
-
     pub fn is_verbose(&self) -> bool {
         self.verbose > 0
     }
@@ -82,12 +82,12 @@ impl Config {
     /// on NixOS
     fn should_fix_bins_and_dylibs(&self) -> bool {
         let val = *SHOULD_FIX_BINS_AND_DYLIBS.get_or_init(|| {
-            let uname = command("uname").arg("-s").run_capture_stdout(self.context());
+            let uname = command("uname").allow_failure().arg("-s").run_capture_stdout(self);
             if uname.is_failure() {
                 return false;
             }
             let output = uname.stdout();
-            if output.starts_with("Linux") {
+            if !output.starts_with("Linux") {
                 return false;
             }
 
@@ -168,7 +168,7 @@ impl Config {
             nix_build_succeeded = command("nix-build")
                 .allow_failure()
                 .args([Path::new("-E"), Path::new(NIX_EXPR), Path::new("-o"), &nix_deps_dir])
-                .run_capture(self.context())
+                .run_capture_stdout(self)
                 .is_success();
             nix_deps_dir
         });
@@ -189,7 +189,7 @@ impl Config {
             patchelf.args(["--set-interpreter", dynamic_linker.trim_end()]);
         }
 
-        let _ = patchelf.run_capture(&self.context());
+        let _ = patchelf.run_capture_stdout(self);
     }
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
@@ -255,7 +255,7 @@ impl Config {
             curl.arg("--progress-bar");
         }
         // --retry-all-errors was added in 7.71.0, don't use it if curl is old.
-        if self.curl_version() >= semver::Version::new(7, 71, 0) {
+        if curl_version(self) >= semver::Version::new(7, 71, 0) {
             curl.arg("--retry-all-errors");
         }
         curl.arg(url);
@@ -271,7 +271,7 @@ impl Config {
                             "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
                             url, tempfile.to_str().expect("invalid UTF-8 not supported with powershell downloads"),
                         ),
-                    ]).run_capture_stdout(&self.context());
+                    ]).run_capture_stdout(self);
 
                     if powershell.is_failure() {
                         return;

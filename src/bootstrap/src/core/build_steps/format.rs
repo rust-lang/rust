@@ -61,7 +61,7 @@ fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, BuildStamp)> {
     let mut cmd = command(build.config.initial_rustfmt.as_ref()?);
     cmd.arg("--version");
 
-    let output = cmd.allow_failure().run_capture(build.context());
+    let output = cmd.allow_failure().run_capture(build);
     if output.is_failure() {
         return None;
     }
@@ -171,11 +171,8 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
             override_builder.add(&format!("!{ignore}")).expect(&ignore);
         }
     }
-    let git_available = helpers::git(None)
-        .allow_failure()
-        .arg("--version")
-        .run_capture(build.context())
-        .is_success();
+    let git_available =
+        helpers::git(None).allow_failure().arg("--version").run_capture(build).is_success();
 
     let mut adjective = None;
     if git_available {
@@ -183,7 +180,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
             .allow_failure()
             .arg("rev-parse")
             .arg("--is-inside-work-tree")
-            .run_capture(build.context())
+            .run_capture(build)
             .is_success();
         if in_working_tree {
             let untracked_paths_output = helpers::git(Some(&build.src))
@@ -191,7 +188,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                 .arg("--porcelain")
                 .arg("-z")
                 .arg("--untracked-files=normal")
-                .run_capture_stdout(build.context())
+                .run_capture_stdout(build)
                 .stdout();
             let untracked_paths: Vec<_> = untracked_paths_output
                 .split_terminator('\0')

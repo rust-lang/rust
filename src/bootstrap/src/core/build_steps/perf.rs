@@ -194,7 +194,7 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             cmd.arg(rustc);
 
             apply_shared_opts(&mut cmd, opts);
-            cmd.run(builder.context());
+            cmd.run(builder);
 
             println!("You can find the results at `{}`", &results_dir.display());
         }
@@ -205,14 +205,14 @@ Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
             cmd.arg(rustc);
 
             apply_shared_opts(&mut cmd, opts);
-            cmd.run(builder.context());
+            cmd.run(builder);
         }
         PerfCommand::Compare { base, modified } => {
             cmd.arg("bench_cmp");
             cmd.arg("--db").arg(&db_path);
             cmd.arg(base).arg(modified);
 
-            cmd.run(builder.context());
+            cmd.run(builder);
         }
     }
 }

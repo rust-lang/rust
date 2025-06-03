@@ -102,7 +102,7 @@ fn check_changed_files(builder: &Builder<'_>, toolstates: &HashMap<Box<str>, Too
         .arg("--name-status")
         .arg("HEAD")
         .arg("HEAD^")
-        .run_capture(builder.context())
+        .run_capture(builder)
         .stdout();
 
     for (tool, submodule) in STABLE_TOOLS.iter().chain(NIGHTLY_TOOLS.iter()) {
@@ -316,13 +316,13 @@ fn checkout_toolstate_repo(builder: &Builder<'_>) {
         .arg("--depth=1")
         .arg(toolstate_repo())
         .arg(TOOLSTATE_DIR)
-        .run(builder.context());
+        .run(builder);
 }
 
 /// Sets up config and authentication for modifying the toolstate repo.
 fn prepare_toolstate_config(builder: &Builder<'_>, token: &str) {
     fn git_config(builder: &Builder<'_>, key: &str, value: &str) {
-        helpers::git(None).arg("config").arg("--global").arg(key).arg(value).run(builder.context());
+        helpers::git(None).arg("config").arg("--global").arg(key).arg(value).run(builder);
     }
 
     // If changing anything here, then please check that `src/ci/publish_toolstate.sh` is up to date
@@ -385,7 +385,7 @@ fn commit_toolstate_change(builder: &Builder<'_>, current_toolstate: &ToolstateD
             .arg("-a")
             .arg("-m")
             .arg(&message)
-            .run(builder.context());
+            .run(builder);
         if !status {
             success = true;
             break;
@@ -396,7 +396,7 @@ fn commit_toolstate_change(builder: &Builder<'_>, current_toolstate: &ToolstateD
             .arg("push")
             .arg("origin")
             .arg("master")
-            .run(builder.context());
+            .run(builder);
         // If we successfully push, exit.
         if status {
             success = true;
@@ -408,12 +408,12 @@ fn commit_toolstate_change(builder: &Builder<'_>, current_toolstate: &ToolstateD
             .arg("fetch")
             .arg("origin")
             .arg("master")
-            .run(builder.context());
+            .run(builder);
         helpers::git(Some(Path::new(TOOLSTATE_DIR)))
             .arg("reset")
             .arg("--hard")
             .arg("origin/master")
-            .run(builder.context());
+            .run(builder);
     }
 
     if !success {
@@ -427,8 +427,7 @@ fn commit_toolstate_change(builder: &Builder<'_>, current_toolstate: &ToolstateD
 /// `publish_toolstate.py` script if the PR passes all tests and is merged to
 /// master.
 fn publish_test_results(builder: &Builder<'_>, current_toolstate: &ToolstateData) {
-    let commit =
-        helpers::git(None).arg("rev-parse").arg("HEAD").run_capture(builder.context()).stdout();
+    let commit = helpers::git(None).arg("rev-parse").arg("HEAD").run_capture(builder).stdout();
 
     let toolstate_serialized = t!(serde_json::to_string(&current_toolstate));
 

@@ -595,7 +595,7 @@ impl Build {
             .args(["config", "--file"])
             .arg(".gitmodules")
             .args(["--get-regexp", "path"])
-            .run_capture(self.context())
+            .run_capture(self)
             .stdout();
         std::thread::scope(|s| {
             // Look for `submodule.$name.path = $path`
@@ -617,9 +617,7 @@ impl Build {
             return;
         }
 
-        if GitInfo::new(false, Path::new(submodule), &config.execution_context)
-            .is_managed_git_subrepository()
-        {
+        if config.git_info(false, Path::new(submodule)).is_managed_git_subrepository() {
             config.update_submodule(submodule);
         }
     }
@@ -872,16 +870,14 @@ impl Build {
         if let Some(s) = target_config.and_then(|c| c.llvm_filecheck.as_ref()) {
             s.to_path_buf()
         } else if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            let llvm_bindir =
-                command(s).arg("--bindir").run_capture_stdout(self.context()).stdout();
+            let llvm_bindir = command(s).arg("--bindir").run_capture_stdout(self).stdout();
             let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", target));
             if filecheck.exists() {
                 filecheck
             } else {
                 // On Fedora the system LLVM installs FileCheck in the
                 // llvm subdirectory of the libdir.
-                let llvm_libdir =
-                    command(s).arg("--libdir").run_capture_stdout(self.context()).stdout();
+                let llvm_libdir = command(s).arg("--libdir").run_capture_stdout(self).stdout();
                 let lib_filecheck =
                     Path::new(llvm_libdir.trim()).join("llvm").join(exe("FileCheck", target));
                 if lib_filecheck.exists() {
@@ -1475,7 +1471,7 @@ impl Build {
                     self.config.stage0_metadata.config.nightly_branch
                 ))
                 .run_always()
-                .run_capture(self.context())
+                .run_capture(self)
                 .stdout()
         });
         let n = count.trim().parse().unwrap();
@@ -1885,8 +1881,14 @@ to download LLVM rather than building it.
         result
     }
 
-    pub fn context(&self) -> &ExecutionContext {
-        &self.config.execution_context
+    pub fn exec_ctx(&self) -> &ExecutionContext {
+        &self.config.exec_ctx
+    }
+}
+
+impl AsRef<ExecutionContext> for Build {
+    fn as_ref(&self) -> &ExecutionContext {
+        &self.config.exec_ctx
     }
 }
 

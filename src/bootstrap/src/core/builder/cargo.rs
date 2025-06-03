@@ -683,7 +683,7 @@ impl Builder<'_> {
                         .arg("--print=file-names")
                         .arg("--crate-type=proc-macro")
                         .arg("-")
-                        .run_capture(self.context())
+                        .run_capture(self)
                         .stderr();
 
                     let not_supported = error
@@ -990,10 +990,8 @@ impl Builder<'_> {
         // rustc args as a workaround.
         if mode == Mode::ToolRustc || mode == Mode::Codegen {
             if let Some(llvm_config) = self.llvm_config(target) {
-                let llvm_libdir = command(llvm_config)
-                    .arg("--libdir")
-                    .run_capture_stdout(self.context())
-                    .stdout();
+                let llvm_libdir =
+                    command(llvm_config).arg("--libdir").run_capture_stdout(self).stdout();
                 if target.is_msvc() {
                     rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
                 } else {

@@ -14,12 +14,7 @@ pub struct ExecutionContext {
 
 impl ExecutionContext {
     pub fn new() -> Self {
-        ExecutionContext {
-            dry_run: DryRun::Disabled,
-            verbose: 0,
-            fail_fast: false,
-            delayed_failures: Arc::new(Mutex::new(Vec::new())),
-        }
+        ExecutionContext::default()
     }
 
     pub fn dry_run(&self) -> bool {

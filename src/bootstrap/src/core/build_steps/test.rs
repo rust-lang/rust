@@ -157,7 +157,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         let _guard =
             builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
         let _time = helpers::timeit(builder);
-        linkchecker.delay_failure().arg(builder.out.join(host).join("doc")).run(builder.context());
+        linkchecker.delay_failure().arg(builder.out.join(host).join("doc")).run(builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -172,11 +172,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
 }
 
 fn check_if_tidy_is_installed(builder: &Builder<'_>) -> bool {
-    command("tidy")
-        .allow_failure()
-        .arg("--version")
-        .run_capture_stdout(builder.context())
-        .is_success()
+    command("tidy").allow_failure().arg("--version").run_capture_stdout(builder).is_success()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -219,7 +215,7 @@ impl Step for HtmlCheck {
             .tool_cmd(Tool::HtmlChecker)
             .delay_failure()
             .arg(builder.doc_out(self.target))
-            .run(builder.context());
+            .run(builder);
     }
 }
 
@@ -267,7 +263,7 @@ impl Step for Cargotest {
             .env("RUSTC", builder.rustc(compiler))
             .env("RUSTDOC", builder.rustdoc(compiler));
         add_rustdoc_cargo_linker_args(&mut cmd, builder, compiler.host, LldThreads::No);
-        cmd.delay_failure().run(builder.context());
+        cmd.delay_failure().run(builder);
     }
 }
 
@@ -497,7 +493,7 @@ impl Miri {
         let mut cargo = BootstrapCommand::from(cargo);
         let _guard =
             builder.msg(Kind::Build, compiler.stage, "miri sysroot", compiler.host, target);
-        cargo.run(builder.context());
+        cargo.run(builder);
 
         // # Determine where Miri put its sysroot.
         // To this end, we run `cargo miri setup --print-sysroot` and capture the output.
@@ -507,7 +503,7 @@ impl Miri {
         cargo.arg("--print-sysroot");
 
         builder.verbose(|| println!("running: {cargo:?}"));
-        let stdout = cargo.run_capture_stdout(builder.context()).stdout();
+        let stdout = cargo.run_capture_stdout(builder).stdout();
         // Output is "<sysroot>\n".
         let sysroot = stdout.trim_end();
         builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
@@ -592,7 +588,7 @@ impl Step for Miri {
         {
             let _guard = builder.msg_sysroot_tool(Kind::Test, stage, "miri", host, target);
             let _time = helpers::timeit(builder);
-            cargo.run(builder.context());
+            cargo.run(builder);
         }
 
         // Run it again for mir-opt-level 4 to catch some miscompilations.
@@ -614,7 +610,7 @@ impl Step for Miri {
                     target,
                 );
                 let _time = helpers::timeit(builder);
-                cargo.run(builder.context());
+                cargo.run(builder);
             }
         }
     }
@@ -685,7 +681,7 @@ impl Step for CargoMiri {
         {
             let _guard = builder.msg_sysroot_tool(Kind::Test, stage, "cargo-miri", host, target);
             let _time = helpers::timeit(builder);
-            cargo.run(builder.context());
+            cargo.run(builder);
         }
     }
 }
@@ -810,7 +806,7 @@ impl Step for Clippy {
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
         // Clippy reports errors if it blessed the outputs
-        if cargo.allow_failure().run(builder.context()) {
+        if cargo.allow_failure().run(builder) {
             // The tests succeeded; nothing to do.
             return;
         }
@@ -863,7 +859,7 @@ impl Step for RustdocTheme {
             .env("RUSTC_BOOTSTRAP", "1");
         cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
 
-        cmd.delay_failure().run(builder.context());
+        cmd.delay_failure().run(builder);
     }
 }
 
@@ -922,7 +918,7 @@ impl Step for RustdocJSStd {
             builder.config.build,
             self.target,
         );
-        command.run(builder.context());
+        command.run(builder);
     }
 }
 
@@ -969,7 +965,7 @@ fn get_browser_ui_test_version_inner(
     if global {
         command.arg("--global");
     }
-    let lines = command.allow_failure().run_capture(builder.context()).stdout();
+    let lines = command.allow_failure().run_capture(builder).stdout();
     lines
         .lines()
         .find_map(|l| l.split(':').nth(1)?.strip_prefix("browser-ui-test@"))
@@ -1151,7 +1147,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         }
 
         builder.info("tidy check");
-        cmd.delay_failure().run(builder.context());
+        cmd.delay_failure().run(builder);
 
         builder.info("x.py completions check");
         let [bash, zsh, fish, powershell] = ["x.py.sh", "x.py.zsh", "x.py.fish", "x.py.ps1"]
@@ -1836,7 +1832,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let lldb_version = command(&lldb_exe)
             .allow_failure()
             .arg("--version")
-            .run_capture(builder.context())
+            .run_capture(builder)
             .stdout_if_ok()
             .and_then(|v| if v.trim().is_empty() { None } else { Some(v) });
         if let Some(ref vers) = lldb_version {
@@ -1844,7 +1840,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let lldb_python_dir = command(&lldb_exe)
                 .allow_failure()
                 .arg("-P")
-                .run_capture_stdout(builder.context())
+                .run_capture_stdout(builder)
                 .stdout_if_ok()
                 .map(|p| p.lines().next().expect("lldb Python dir not found").to_string());
             if let Some(ref dir) = lldb_python_dir {
@@ -1907,10 +1903,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 builder.ensure(llvm::Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
                 let llvm_version = get_llvm_version(builder, &llvm_config);
-                let llvm_components = command(&llvm_config)
-                    .arg("--components")
-                    .run_capture_stdout(builder.context())
-                    .stdout();
+                let llvm_components =
+                    command(&llvm_config).arg("--components").run_capture_stdout(builder).stdout();
                 // Remove trailing newline from llvm-config output.
                 cmd.arg("--llvm-version")
                     .arg(llvm_version.trim())
@@ -1927,10 +1921,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // separate compilations. We can add LLVM's library path to the
             // rustc args as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
-                let llvm_libdir = command(&llvm_config)
-                    .arg("--libdir")
-                    .run_capture_stdout(builder.context())
-                    .stdout();
+                let llvm_libdir =
+                    command(&llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
                 let link_llvm = if target.is_msvc() {
                     format!("-Clink-arg=-LIBPATH:{llvm_libdir}")
                 } else {
@@ -2259,7 +2251,7 @@ impl BookTest {
             compiler.host,
         );
         let _time = helpers::timeit(builder);
-        let toolstate = if rustbook_cmd.delay_failure().run(builder.context()) {
+        let toolstate = if rustbook_cmd.delay_failure().run(builder) {
             ToolState::TestPass
         } else {
             ToolState::TestFail
@@ -2415,7 +2407,7 @@ impl Step for ErrorIndex {
         let guard =
             builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
         let _time = helpers::timeit(builder);
-        tool.run_capture(builder.context());
+        tool.run_capture(builder);
         drop(guard);
         // The tests themselves need to link to std, so make sure it is
         // available.
@@ -2446,9 +2438,9 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
 
     cmd = cmd.delay_failure();
     if !builder.config.verbose_tests {
-        cmd.run_capture(builder.context()).is_success()
+        cmd.run_capture(builder).is_success()
     } else {
-        cmd.run(builder.context())
+        cmd.run(builder)
     }
 }
 
@@ -2946,13 +2938,13 @@ impl Step for RemoteCopyLibs {
         if let Some(rootfs) = builder.qemu_rootfs(target) {
             cmd.arg(rootfs);
         }
-        cmd.run(builder.context());
+        cmd.run(builder);
 
         // Push all our dylibs to the emulator
         for f in t!(builder.sysroot_target_libdir(compiler, target).read_dir()) {
             let f = t!(f);
             if helpers::is_dylib(&f.path()) {
-                command(&tool).arg("push").arg(f.path()).run(builder.context());
+                command(&tool).arg("push").arg(f.path()).run(builder);
             }
         }
     }
@@ -2995,16 +2987,16 @@ impl Step for Distcheck {
             .arg(builder.ensure(dist::PlainSourceTarball).tarball())
             .arg("--strip-components=1")
             .current_dir(&dir)
-            .run(builder.context());
+            .run(builder);
         command("./configure")
             .args(&builder.config.configure_args)
             .arg("--enable-vendor")
             .current_dir(&dir)
-            .run(builder.context());
+            .run(builder);
         command(helpers::make(&builder.config.build.triple))
             .arg("check")
             .current_dir(&dir)
-            .run(builder.context());
+            .run(builder);
 
         // Now make sure that rust-src has all of libstd's dependencies
         builder.info("Distcheck rust-src");
@@ -3017,7 +3009,7 @@ impl Step for Distcheck {
             .arg(builder.ensure(dist::Src).tarball())
             .arg("--strip-components=1")
             .current_dir(&dir)
-            .run(builder.context());
+            .run(builder);
 
         let toml = dir.join("rust-src/lib/rustlib/src/rust/library/std/Cargo.toml");
         command(&builder.initial_cargo)
@@ -3028,7 +3020,7 @@ impl Step for Distcheck {
             .arg("--manifest-path")
             .arg(&toml)
             .current_dir(&dir)
-            .run(builder.context());
+            .run(builder);
     }
 }
 
@@ -3059,7 +3051,7 @@ impl Step for Bootstrap {
             .current_dir(builder.src.join("src/bootstrap/"));
         // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo test are mutually incompatible.
         // Use `python -m unittest` manually if you want to pass arguments.
-        check_bootstrap.delay_failure().run(builder.context());
+        check_bootstrap.delay_failure().run(builder);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -3139,7 +3131,7 @@ impl Step for TierCheck {
             self.compiler.host,
             self.compiler.host,
         );
-        BootstrapCommand::from(cargo).delay_failure().run(builder.context());
+        BootstrapCommand::from(cargo).delay_failure().run(builder);
     }
 }
 
@@ -3224,7 +3216,7 @@ impl Step for RustInstaller {
         cmd.env("CARGO", &builder.initial_cargo);
         cmd.env("RUSTC", &builder.initial_rustc);
         cmd.env("TMP_DIR", &tmpdir);
-        cmd.delay_failure().run(builder.context());
+        cmd.delay_failure().run(builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -3417,7 +3409,7 @@ impl Step for CodegenCranelift {
             .arg("--skip-test")
             .arg("testsuite.extended_sysroot");
 
-        cargo.into_cmd().run(builder.context());
+        cargo.into_cmd().run(builder);
     }
 }
 
@@ -3547,7 +3539,7 @@ impl Step for CodegenGCC {
             .arg("--std-tests");
         cargo.args(builder.config.test_args());
 
-        cargo.into_cmd().run(builder.context());
+        cargo.into_cmd().run(builder);
     }
 }
 
@@ -3617,7 +3609,7 @@ impl Step for TestFloatParse {
             cargo_run.args(["--", "--skip-huge"]);
         }
 
-        cargo_run.into_cmd().run(builder.context());
+        cargo_run.into_cmd().run(builder);
     }
 }
 
@@ -3650,7 +3642,7 @@ impl Step for CollectLicenseMetadata {
         cmd.env("REUSE_EXE", reuse);
         cmd.env("DEST", &dest);
         cmd.env("ONLY_CHECK", "1");
-        cmd.run(builder.context());
+        cmd.run(builder);
 
         dest
     }

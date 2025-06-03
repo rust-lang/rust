@@ -41,7 +41,7 @@ impl Step for BuildManifest {
             panic!("\n\nfailed to specify `dist.upload-addr` in `bootstrap.toml`\n\n")
         });
 
-        let today = command("date").arg("+%Y-%m-%d").run_capture_stdout(builder.context()).stdout();
+        let today = command("date").arg("+%Y-%m-%d").run_capture_stdout(builder).stdout();
 
         cmd.arg(sign);
         cmd.arg(distdir(builder));
@@ -50,7 +50,7 @@ impl Step for BuildManifest {
         cmd.arg(&builder.config.channel);
 
         builder.create_dir(&distdir(builder));
-        cmd.run(builder.context());
+        cmd.run(builder);
     }
 }
 
@@ -72,7 +72,7 @@ impl Step for BumpStage0 {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let mut cmd = builder.tool_cmd(Tool::BumpStage0);
         cmd.args(builder.config.args());
-        cmd.run(builder.context());
+        cmd.run(builder);
     }
 }
 
@@ -94,7 +94,7 @@ impl Step for ReplaceVersionPlaceholder {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let mut cmd = builder.tool_cmd(Tool::ReplaceVersionPlaceholder);
         cmd.arg(&builder.src);
-        cmd.run(builder.context());
+        cmd.run(builder);
     }
 }
 
@@ -164,7 +164,7 @@ impl Step for Miri {
         // after another --, so this must be at the end.
         miri.args(builder.config.args());
 
-        miri.into_cmd().run(builder.context());
+        miri.into_cmd().run(builder);
     }
 }
 
@@ -193,7 +193,7 @@ impl Step for CollectLicenseMetadata {
         let mut cmd = builder.tool_cmd(Tool::CollectLicenseMetadata);
         cmd.env("REUSE_EXE", reuse);
         cmd.env("DEST", &dest);
-        cmd.run(builder.context());
+        cmd.run(builder);
 
         dest
     }
@@ -256,7 +256,7 @@ impl Step for GenerateCopyright {
         // it is important that generate-copyright runs from the root of the
         // source tree, because it uses relative paths
         cmd.current_dir(&builder.src);
-        cmd.run(builder.context());
+        cmd.run(builder);
 
         vec![dest, dest_libstd]
     }
@@ -280,7 +280,7 @@ impl Step for GenerateWindowsSys {
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::GenerateWindowsSys);
         cmd.arg(&builder.src);
-        cmd.run(builder.context());
+        cmd.run(builder);
     }
 }
 
@@ -343,7 +343,7 @@ impl Step for UnicodeTableGenerator {
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::UnicodeTableGenerator);
         cmd.arg(builder.src.join("library/core/src/unicode/unicode_data.rs"));
-        cmd.run(builder.context());
+        cmd.run(builder);
     }
 }
 
@@ -374,7 +374,7 @@ impl Step for FeaturesStatusDump {
         cmd.arg("--output-path");
         cmd.arg(builder.out.join("features-status-dump.json"));
 
-        cmd.run(builder.context());
+        cmd.run(builder);
     }
 }
 
@@ -427,7 +427,7 @@ impl Step for CoverageDump {
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::CoverageDump);
         cmd.args(&builder.config.free_args);
-        cmd.run(builder.context());
+        cmd.run(builder);
     }
 }
 
@@ -480,6 +480,6 @@ impl Step for Rustfmt {
         rustfmt.args(["--bin", "rustfmt", "--"]);
         rustfmt.args(builder.config.args());
 
-        rustfmt.into_cmd().run(builder.context());
+        rustfmt.into_cmd().run(builder);
     }
 }

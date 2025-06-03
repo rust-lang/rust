@@ -23,7 +23,6 @@ use crate::core::builder::{
     Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, cargo_profile_var,
 };
 use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
-use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::{Compiler, FileType, Kind, Mode, gha};
@@ -267,8 +266,7 @@ pub fn prepare_tool_cargo(
         cargo.env("CFG_VER_DESCRIPTION", description);
     }
 
-    let info =
-        GitInfo::new(builder.config.omit_git_hash, &dir, &builder.build.config.execution_context);
+    let info = builder.config.git_info(builder.config.omit_git_hash, &dir);
     if let Some(sha) = info.sha() {
         cargo.env("CFG_COMMIT_HASH", sha);
     }
@@ -1078,14 +1076,14 @@ impl Step for LibcxxVersionTool {
                 .arg(&executable)
                 .arg(builder.src.join("src/tools/libcxx-version/main.cpp"));
 
-            cmd.run(builder.context());
+            cmd.run(builder);
 
             if !executable.exists() {
                 panic!("Something went wrong. {} is not present", executable.display());
             }
         }
 
-        let version_output = command(executable).run_capture_stdout(builder.context()).stdout();
+        let version_output = command(executable).run_capture_stdout(builder).stdout();
 
         let version_str = version_output.split_once("version:").unwrap().1;
         let version = version_str.trim().parse::<usize>().unwrap();

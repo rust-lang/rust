@@ -204,8 +204,8 @@ impl Flags {
             HelpVerboseOnly::try_parse_from(normalize_args(args))
         {
             println!("NOTE: updating submodules before printing available paths");
-            let (flags, execution_context) = Self::parse(&[String::from("build")]);
-            let config = Config::parse(flags, execution_context);
+            let (flags, exec_ctx) = Self::parse(&[String::from("build")]);
+            let config = Config::parse(flags, exec_ctx);
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);
             if let Some(s) = paths {
@@ -224,15 +224,11 @@ impl Flags {
         instrument(level = "trace", name = "Flags::parse", skip_all, fields(args = ?args))
     )]
     pub fn parse(args: &[String]) -> (Self, ExecutionContext) {
-        let mut execution_context = ExecutionContext::new();
+        let mut exec_ctx = ExecutionContext::new();
         let flags = Flags::parse_from(normalize_args(args));
-        execution_context.set_dry_run(if flags.dry_run {
-            DryRun::UserSelected
-        } else {
-            DryRun::Disabled
-        });
-        execution_context.set_verbose(flags.verbose);
-        (flags, execution_context)
+        exec_ctx.set_dry_run(if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled });
+        exec_ctx.set_verbose(flags.verbose);
+        (flags, exec_ctx)
     }
 }
 

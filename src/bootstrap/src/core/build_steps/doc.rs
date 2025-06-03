@@ -166,7 +166,7 @@ impl<P: Step> Step for RustbookSrc<P> {
                 .arg(&out)
                 .arg("--rust-root")
                 .arg(&builder.src)
-                .run(builder.context());
+                .run(builder);
 
             for lang in &self.languages {
                 let out = out.join(lang);
@@ -182,7 +182,7 @@ impl<P: Step> Step for RustbookSrc<P> {
                     .arg(&out)
                     .arg("-l")
                     .arg(lang)
-                    .run(builder.context());
+                    .run(builder);
             }
         }
 
@@ -309,7 +309,7 @@ fn invoke_rustdoc(
         cmd.arg("--disable-minification");
     }
 
-    cmd.run(builder.context());
+    cmd.run(builder);
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -402,7 +402,7 @@ impl Step for Standalone {
             } else {
                 cmd.arg("--markdown-css").arg("rust.css");
             }
-            cmd.run(builder.context());
+            cmd.run(builder);
         }
 
         // We open doc/index.html as the default if invoked as `x.py doc --open`
@@ -499,7 +499,7 @@ impl Step for Releases {
                 cmd.arg("--disable-minification");
             }
 
-            cmd.run(builder.context());
+            cmd.run(builder);
         }
 
         // We open doc/RELEASES.html as the default if invoked as `x.py doc --open RELEASES.md`
@@ -745,7 +745,7 @@ fn doc_std(
         format!("library{} in {} format", crate_description(requested_crates), format.as_str());
     let _guard = builder.msg_doc(compiler, description, target);
 
-    cargo.into_cmd().run(builder.context());
+    cargo.into_cmd().run(builder);
     builder.cp_link_r(&out_dir, out);
 }
 
@@ -875,7 +875,7 @@ impl Step for Rustc {
         let proc_macro_out_dir = builder.stage_out(compiler, Mode::Rustc).join("doc");
         symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
-        cargo.into_cmd().run(builder.context());
+        cargo.into_cmd().run(builder);
 
         if !builder.config.dry_run() {
             // Sanity check on linked compiler crates
@@ -1002,7 +1002,7 @@ macro_rules! tool_doc {
                 symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
                 let _guard = builder.msg_doc(compiler, stringify!($tool).to_lowercase(), target);
-                cargo.into_cmd().run(builder.context());
+                cargo.into_cmd().run(builder);
 
                 if !builder.config.dry_run() {
                     // Sanity check on linked doc directories
@@ -1095,11 +1095,7 @@ impl Step for ErrorIndex {
         builder.info(&format!("Documenting error index ({})", self.target));
         let out = builder.doc_out(self.target);
         t!(fs::create_dir_all(&out));
-        tool::ErrorIndex::command(builder)
-            .arg("html")
-            .arg(out)
-            .arg(&builder.version)
-            .run(builder.context());
+        tool::ErrorIndex::command(builder).arg("html").arg(out).arg(&builder.version).run(builder);
     }
 }
 
@@ -1135,7 +1131,7 @@ impl Step for UnstableBookGen {
         cmd.arg(builder.src.join("src"));
         cmd.arg(out);
 
-        cmd.run(builder.context());
+        cmd.run(builder);
     }
 }
 
@@ -1233,7 +1229,7 @@ impl Step for RustcBook {
             self.compiler.host,
             self.target,
         );
-        cmd.run(builder.context());
+        cmd.run(builder);
         drop(doc_generator_guard);
 
         // Run rustbook/mdbook to generate the HTML pages.

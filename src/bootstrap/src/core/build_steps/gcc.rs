@@ -236,9 +236,7 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
         root.clone()
     };
 
-    command(src_dir.join("contrib/download_prerequisites"))
-        .current_dir(&src_dir)
-        .run(builder.context());
+    command(src_dir.join("contrib/download_prerequisites")).current_dir(&src_dir).run(builder);
     let mut configure_cmd = command(src_dir.join("configure"));
     configure_cmd
         .current_dir(out_dir)
@@ -268,18 +266,14 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
             .map_or_else(|| cxx.clone(), |ccache| format!("{ccache} {cxx}"));
         configure_cmd.env("CXX", cxx);
     }
-    configure_cmd.run(builder.context());
+    configure_cmd.run(builder);
 
     command("make")
         .current_dir(out_dir)
         .arg("--silent")
         .arg(format!("-j{}", builder.jobs()))
-        .run_capture_stdout(builder.context());
-    command("make")
-        .current_dir(out_dir)
-        .arg("--silent")
-        .arg("install")
-        .run_capture_stdout(builder.context());
+        .run_capture_stdout(builder);
+    command("make").current_dir(out_dir).arg("--silent").arg("install").run_capture_stdout(builder);
 }
 
 /// Configures a Cargo invocation so that it can build the GCC codegen backend.

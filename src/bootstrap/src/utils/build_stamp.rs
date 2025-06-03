@@ -179,7 +179,7 @@ pub fn generate_smart_stamp_hash(
         .allow_failure()
         .arg("diff")
         .arg(".")
-        .run_capture_stdout(builder.context())
+        .run_capture_stdout(builder)
         .stdout_if_ok()
         .unwrap_or_default();
 
@@ -190,7 +190,7 @@ pub fn generate_smart_stamp_hash(
         .arg("--porcelain")
         .arg("-z")
         .arg("--untracked-files=normal")
-        .run_capture_stdout(builder.context())
+        .run_capture_stdout(builder)
         .stdout_if_ok()
         .unwrap_or_default();
 

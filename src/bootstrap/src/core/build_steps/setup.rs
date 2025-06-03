@@ -272,7 +272,7 @@ fn rustup_installed(builder: &Builder<'_>) -> bool {
     let mut rustup = command("rustup");
     rustup.arg("--version");
 
-    rustup.allow_failure().run_always().run_capture_stdout(builder.context()).is_success()
+    rustup.allow_failure().run_always().run_capture_stdout(builder).is_success()
 }
 
 fn stage_dir_exists(stage_path: &str) -> bool {
@@ -312,7 +312,7 @@ fn toolchain_is_linked(builder: &Builder<'_>) -> bool {
     match command("rustup")
         .allow_failure()
         .args(["toolchain", "list"])
-        .run_capture_stdout(builder.context())
+        .run_capture_stdout(builder)
         .stdout_if_ok()
     {
         Some(toolchain_list) => {
@@ -338,7 +338,7 @@ fn toolchain_is_linked(builder: &Builder<'_>) -> bool {
 fn try_link_toolchain(builder: &Builder<'_>, stage_path: &str) -> bool {
     command("rustup")
         .args(["toolchain", "link", "stage1", stage_path])
-        .run_capture_stdout(builder.context())
+        .run_capture_stdout(builder)
         .is_success()
 }
 
@@ -479,7 +479,7 @@ impl Step for Hook {
 fn install_git_hook_maybe(builder: &Builder<'_>, config: &Config) -> io::Result<()> {
     let git = helpers::git(Some(&config.src))
         .args(["rev-parse", "--git-common-dir"])
-        .run_capture(builder.context())
+        .run_capture(builder)
         .stdout();
     let git = PathBuf::from(git.trim());
     let hooks_dir = git.join("hooks");

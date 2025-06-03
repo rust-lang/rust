@@ -182,14 +182,14 @@ fn default_compiler(
             }
 
             let mut cmd = BootstrapCommand::from(c.to_command());
-            let output = cmd.arg("--version").run_capture_stdout(build.context()).stdout();
+            let output = cmd.arg("--version").run_capture_stdout(build).stdout();
             let i = output.find(" 4.")?;
             match output[i + 3..].chars().next().unwrap() {
                 '0'..='6' => {}
                 _ => return None,
             }
             let alternative = format!("e{gnu_compiler}");
-            if command(&alternative).run_capture(build.context()).is_success() {
+            if command(&alternative).run_capture(build).is_success() {
                 Some(PathBuf::from(alternative))
             } else {
                 None

@@ -35,7 +35,7 @@ pub struct Info {
 }
 
 impl GitInfo {
-    pub fn new(omit_git_hash: bool, dir: &Path, execution_context: &ExecutionContext) -> GitInfo {
+    pub fn new(omit_git_hash: bool, dir: &Path, exec_ctx: impl AsRef<ExecutionContext>) -> GitInfo {
         // See if this even begins to look like a git dir
         if !dir.join(".git").exists() {
             match read_commit_info_file(dir) {
@@ -46,7 +46,7 @@ impl GitInfo {
 
         let mut git_command = helpers::git(Some(dir));
         git_command.arg("rev-parse");
-        let output = git_command.run_capture(&execution_context);
+        let output = git_command.allow_failure().run_capture_stdout(exec_ctx);
         // Make sure git commands work
         if output.is_failure() {
             return GitInfo::Absent;
