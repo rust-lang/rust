@@ -347,7 +347,7 @@ impl std::str::FromStr for SplitDebuginfo {
     }
 }
 
-/// Describes how to handle conflicts in merging two [`TomlConfig`]
+/// Describes how to handle conflicts in merging two `TomlConfig`
 #[derive(Copy, Clone, Debug)]
 pub enum ReplaceOpt {
     /// Silently ignore a duplicated value
