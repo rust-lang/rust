@@ -109,6 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
             && let AssocItemConstraintKind::Equality { term: Term::Ty(hir_ty) } = constraints[0].kind
             && args.span_ext.hi() != poly.span.hi()
             && !hir_ty.span.from_expansion()
+            && args.span_ext.hi() != hir_ty.span.hi()
             && is_unit_ty(hir_ty)
         {
             lint_unneeded_unit_return(cx, hir_ty.span, poly.span);
