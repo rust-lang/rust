@@ -18,7 +18,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, GenericArgKind, TraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgKind, Instance, TraitRef, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::symbol::sym;
 use rustc_trait_selection::traits::{ObligationCtxt, SelectionContext};
@@ -349,7 +349,15 @@ fn check_terminator<'tcx>(
         }
         | TerminatorKind::TailCall { func, args, fn_span: _ } => {
             let fn_ty = func.ty(body, cx.tcx);
-            if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
+            if let ty::FnDef(fn_def_id, fn_substs) = fn_ty.kind() {
+                // FIXME: when analyzing a function with generic parameters, we may not have enough information to
+                // resolve to an instance. However, we could check if a host effect predicate can guarantee that
+                // this can be made a `const` call.
+                let fn_def_id = match Instance::try_resolve(cx.tcx, cx.typing_env(), *fn_def_id, fn_substs) {
+                    Ok(Some(fn_inst)) => fn_inst.def_id(),
+                    Ok(None) => return Err((span, format!("cannot resolve instance for {func:?}").into())),
+                    Err(_) => return Err((span, format!("error during instance resolution of {func:?}").into())),
+                };
                 if !is_stable_const_fn(cx, fn_def_id, msrv) {
                     return Err((
                         span,
