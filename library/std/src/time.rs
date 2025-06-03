@@ -409,8 +409,7 @@ impl Instant {
     }
 
     // used by platform specific `sleep_until` implementations.
-    // reason for #[allow(unused)]: not every platform has a specific `sleep_until`.
-    #[allow(unused)]
+    #[allow(unused, reason = "not every platform has a specific `sleep_until`")]
     pub(crate) fn into_inner(self) -> time::Instant {
         self.0
     }
