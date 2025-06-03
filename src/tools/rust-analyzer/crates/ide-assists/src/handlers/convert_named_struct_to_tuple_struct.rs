@@ -996,7 +996,8 @@ pub struct $0Foo {
 }
 "#,
             r#"
-pub struct Foo(#[my_custom_attr] u32);
+pub struct Foo(#[my_custom_attr]
+u32);
 "#,
         );
     }
