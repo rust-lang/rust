@@ -20,8 +20,8 @@ use rustc_span::hygiene::{
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{
-    BytePos, CachingSourceMapView, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span,
-    SpanDecoder, SpanEncoder, StableSourceFileId, Symbol,
+    BytePos, ByteSymbol, CachingSourceMapView, ExpnData, ExpnHash, Pos, RelativeBytePos,
+    SourceFile, Span, SpanDecoder, SpanEncoder, StableSourceFileId, Symbol,
 };
 
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
@@ -42,7 +42,7 @@ const TAG_RELATIVE_SPAN: u8 = 2;
 const TAG_SYNTAX_CONTEXT: u8 = 0;
 const TAG_EXPN_DATA: u8 = 1;
 
-// Tags for encoding Symbol's
+// Tags for encoding Symbols and ByteSymbols
 const SYMBOL_STR: u8 = 0;
 const SYMBOL_OFFSET: u8 = 1;
 const SYMBOL_PREDEFINED: u8 = 2;
@@ -254,6 +254,7 @@ impl OnDiskCache {
                 file_to_file_index,
                 hygiene_context: &hygiene_encode_context,
                 symbol_table: Default::default(),
+                byte_symbol_table: Default::default(),
             };
 
             // Encode query results.
@@ -653,6 +654,7 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
         Span::new(lo, hi, ctxt, parent)
     }
 
+    // njn: gross
     // copy&paste impl from rustc_metadata
     #[inline]
     fn decode_symbol(&mut self) -> Symbol {
@@ -676,6 +678,35 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
             SYMBOL_PREDEFINED => {
                 let symbol_index = self.read_u32();
                 Symbol::new(symbol_index)
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    // njn: gross
+    // copy&paste impl from rustc_metadata
+    #[inline]
+    fn decode_byte_symbol(&mut self) -> ByteSymbol {
+        let tag = self.read_u8();
+
+        match tag {
+            SYMBOL_STR => {
+                let s = self.read_byte_str();
+                ByteSymbol::intern(s)
+            }
+            SYMBOL_OFFSET => {
+                // read str offset
+                let pos = self.read_usize();
+
+                // move to str offset and read
+                self.opaque.with_position(pos, |d| {
+                    let s = d.read_byte_str();
+                    ByteSymbol::intern(s)
+                })
+            }
+            SYMBOL_PREDEFINED => {
+                let symbol_index = self.read_u32();
+                ByteSymbol::new(symbol_index)
             }
             _ => unreachable!(),
         }
@@ -808,6 +839,7 @@ pub struct CacheEncoder<'a, 'tcx> {
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
     hygiene_context: &'a HygieneEncodeContext,
     symbol_table: FxHashMap<Symbol, usize>,
+    byte_symbol_table: FxHashMap<ByteSymbol, usize>,
 }
 
 impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
@@ -903,6 +935,30 @@ impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
                     let pos = self.encoder.position();
                     o.insert(pos);
                     self.emit_str(symbol.as_str());
+                }
+                Entry::Occupied(o) => {
+                    let x = *o.get();
+                    self.emit_u8(SYMBOL_OFFSET);
+                    self.emit_usize(x);
+                }
+            }
+        }
+    }
+
+    // copy&paste impl from rustc_metadata
+    fn encode_byte_symbol(&mut self, symbol: ByteSymbol) {
+        // if byte symbol predefined, emit tag and symbol index
+        if symbol.is_predefined() {
+            self.encoder.emit_u8(SYMBOL_PREDEFINED);
+            self.encoder.emit_u32(symbol.as_u32());
+        } else {
+            // otherwise write it as byte string or as offset to it
+            match self.byte_symbol_table.entry(symbol) {
+                Entry::Vacant(o) => {
+                    self.encoder.emit_u8(SYMBOL_STR);
+                    let pos = self.encoder.position();
+                    o.insert(pos);
+                    self.emit_byte_str(symbol.as_byte_str());
                 }
                 Entry::Occupied(o) => {
                     let x = *o.get();

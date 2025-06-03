@@ -7,7 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::span_bug;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{DesugaringKind, Ident, Span};
+use rustc_span::{ByteSymbol, DesugaringKind, Ident, Span};
 
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
@@ -390,19 +390,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         allow_paths: bool,
     ) -> &'hir hir::PatExpr<'hir> {
         let span = self.lower_span(expr.span);
-        let err = |guar| hir::PatExprKind::Lit {
-            lit: self.arena.alloc(respan(span, LitKind::Err(guar))),
-            negated: false,
-        };
+        let err =
+            |guar| hir::PatExprKind::Lit { lit: respan(span, LitKind::Err(guar)), negated: false };
         let kind = match &expr.kind {
             ExprKind::Lit(lit) => {
                 hir::PatExprKind::Lit { lit: self.lower_lit(lit, span), negated: false }
             }
             ExprKind::ConstBlock(c) => hir::PatExprKind::ConstBlock(self.lower_const_block(c)),
             ExprKind::IncludedBytes(bytes) => hir::PatExprKind::Lit {
-                lit: self
-                    .arena
-                    .alloc(respan(span, LitKind::ByteStr(Arc::clone(bytes), StrStyle::Cooked))),
+                lit: respan(span, LitKind::ByteStr(ByteSymbol::intern(bytes), StrStyle::Cooked)),
                 negated: false,
             },
             ExprKind::Err(guar) => err(*guar),

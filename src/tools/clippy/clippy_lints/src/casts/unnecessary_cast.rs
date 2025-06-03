@@ -243,7 +243,7 @@ fn lint_unnecessary_cast(
     );
 }
 
-fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<&'e Lit> {
+fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<Lit> {
     match expr.kind {
         ExprKind::Lit(lit) => Some(lit),
         ExprKind::Unary(UnOp::Neg, e) => {

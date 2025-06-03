@@ -158,7 +158,7 @@ pub(crate) fn expand_concat_bytes(
                     accumulator.push(val);
                 }
                 Ok(LitKind::ByteStr(ref bytes, _)) => {
-                    accumulator.extend_from_slice(bytes);
+                    accumulator.extend_from_slice(bytes.as_byte_str());
                 }
                 _ => {
                     guar.get_or_insert_with(|| invalid_type_err(cx, token_lit, e.span, false));
