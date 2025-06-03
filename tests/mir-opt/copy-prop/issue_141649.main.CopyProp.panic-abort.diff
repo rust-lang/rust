@@ -51,8 +51,8 @@
           StorageLive(_3);
 -         StorageLive(_4);
 -         _4 = move _2;
--         _3 = std::mem::drop::<S>(move _4) -> [return: bb1, unwind continue];
-+         _3 = std::mem::drop::<S>(move _2) -> [return: bb1, unwind continue];
+-         _3 = std::mem::drop::<S>(move _4) -> [return: bb1, unwind unreachable];
++         _3 = std::mem::drop::<S>(move _2) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
@@ -67,8 +67,8 @@
           StorageLive(_7);
 -         StorageLive(_8);
 -         _8 = move _6;
--         _7 = std::mem::drop::<S>(move _8) -> [return: bb2, unwind continue];
-+         _7 = std::mem::drop::<S>(move _6) -> [return: bb2, unwind continue];
+-         _7 = std::mem::drop::<S>(move _8) -> [return: bb2, unwind unreachable];
++         _7 = std::mem::drop::<S>(move _6) -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
@@ -85,8 +85,8 @@
           StorageLive(_12);
 -         StorageLive(_13);
 -         _13 = copy _11;
--         _12 = opaque::<&S>(move _13) -> [return: bb3, unwind continue];
-+         _12 = opaque::<&S>(copy _11) -> [return: bb3, unwind continue];
+-         _12 = opaque::<&S>(move _13) -> [return: bb3, unwind unreachable];
++         _12 = opaque::<&S>(copy _11) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {
@@ -95,8 +95,8 @@
           StorageLive(_14);
 -         StorageLive(_15);
 -         _15 = move _10;
--         _14 = std::mem::drop::<S>(move _15) -> [return: bb4, unwind continue];
-+         _14 = std::mem::drop::<S>(move _10) -> [return: bb4, unwind continue];
+-         _14 = std::mem::drop::<S>(move _15) -> [return: bb4, unwind unreachable];
++         _14 = std::mem::drop::<S>(move _10) -> [return: bb4, unwind unreachable];
       }
   
       bb4: {
@@ -112,8 +112,8 @@
           StorageLive(_18);
 -         StorageLive(_19);
 -         _19 = copy _17;
--         _18 = std::mem::drop::<C>(move _19) -> [return: bb5, unwind continue];
-+         _18 = std::mem::drop::<C>(copy _17) -> [return: bb5, unwind continue];
+-         _18 = std::mem::drop::<C>(move _19) -> [return: bb5, unwind unreachable];
++         _18 = std::mem::drop::<C>(copy _17) -> [return: bb5, unwind unreachable];
       }
   
       bb5: {
@@ -127,8 +127,8 @@
           StorageLive(_21);
 -         StorageLive(_22);
 -         _22 = copy _20;
--         _21 = std::mem::drop::<C>(move _22) -> [return: bb6, unwind continue];
-+         _21 = std::mem::drop::<C>(copy _20) -> [return: bb6, unwind continue];
+-         _21 = std::mem::drop::<C>(move _22) -> [return: bb6, unwind unreachable];
++         _21 = std::mem::drop::<C>(copy _20) -> [return: bb6, unwind unreachable];
       }
   
       bb6: {
