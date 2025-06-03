@@ -137,11 +137,7 @@ pub(crate) fn json_in_items(
                     )
                     .with_fixes(Some(vec![{
                         let mut scb = SourceChangeBuilder::new(vfs_file_id);
-                        let scope = match import_scope {
-                            ImportScope::File(it) => ImportScope::File(scb.make_mut(it)),
-                            ImportScope::Module(it) => ImportScope::Module(scb.make_mut(it)),
-                            ImportScope::Block(it) => ImportScope::Block(scb.make_mut(it)),
-                        };
+                        let scope = scb.make_import_scope_mut(import_scope);
                         let current_module = semantics_scope.module();
 
                         let cfg = ImportPathConfig {

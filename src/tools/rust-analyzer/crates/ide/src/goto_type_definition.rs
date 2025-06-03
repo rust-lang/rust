@@ -53,7 +53,9 @@ pub(crate) fn goto_type_definition(
             }
         });
     };
-    if let Some((range, resolution)) = sema.check_for_format_args_template(token.clone(), offset) {
+    if let Some((range, _, _, resolution)) =
+        sema.check_for_format_args_template(token.clone(), offset)
+    {
         if let Some(ty) = resolution.and_then(|res| match Definition::from(res) {
             Definition::Const(it) => Some(it.ty(db)),
             Definition::Static(it) => Some(it.ty(db)),
