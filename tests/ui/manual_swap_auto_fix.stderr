@@ -92,5 +92,14 @@ LL | |     v[i1 + i2] = v[i2];
 LL | |     v[i2] = tmp;
    | |________________^ help: try: `v.swap(i1 + i2, i2);`
 
-error: aborting due to 8 previous errors
+error: this looks like you are swapping elements of `v` manually
+  --> tests/ui/manual_swap_auto_fix.rs:87:9
+   |
+LL | /         let tmp = v[i1];
+LL | |
+LL | |         v[i1] = v[i2];
+LL | |         v[i2] = tmp;
+   | |____________________^ help: try: `v.swap(i1, i2);`
+
+error: aborting due to 9 previous errors
 

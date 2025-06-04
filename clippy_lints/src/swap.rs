@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 
 use rustc_errors::Applicability;
-use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, Path, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
@@ -350,12 +350,24 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
                 format!("{lhs_snippet}{rhs_snippet}")
             },
             ExprKind::Path(QPath::Resolved(_, path)) => {
-                let init = self.cx.expr_or_init(expr);
-
                 let Some(first_segment) = path.segments.first() else {
                     return String::new();
                 };
-                if !self.suggest_span.contains(init.span) || !self.is_used_other_than_swapping(first_segment.ident) {
+
+                let init = self.cx.expr_or_init(expr);
+
+                // We skip suggesting a variable binding in any of these cases:
+                // 1. Variable initialization is outside the suggestion span
+                // 2. Variable initialization is inside the suggestion span but the variable is not used as an index
+                //    or elsewhere later
+                // 3. Variable initialization is inside the suggestion span and the variable is used as an
+                //    index/elsewhere later, but its declaration is outside the suggestion span
+                if !self.suggest_span.contains(init.span)
+                    || !self.is_used_other_than_swapping(first_segment.ident)
+                    || self
+                        .get_res_span(expr)
+                        .is_some_and(|span| !self.suggest_span.contains(span))
+                {
                     return String::new();
                 }
 
@@ -368,6 +380,21 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
                 format!("let {} = {init_str};\n{indent_str}", first_segment.ident)
             },
             _ => String::new(),
+        }
+    }
+
+    fn get_res_span(&self, expr: &'tcx Expr<'tcx>) -> Option<Span> {
+        if let ExprKind::Path(QPath::Resolved(
+            _,
+            Path {
+                res: rustc_hir::def::Res::Local(hir_id),
+                ..
+            },
+        )) = expr.kind
+        {
+            Some(self.cx.tcx.hir_span(*hir_id))
+        } else {
+            None
         }
     }
 
