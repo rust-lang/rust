@@ -2,7 +2,6 @@ use std::iter;
 use std::ops::ControlFlow;
 
 use bitflags::bitflags;
-use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::def::CtorKind;
@@ -10,17 +9,15 @@ use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, Adt, AdtDef, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt,
+    self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
-use rustc_target::spec::Os;
 use tracing::debug;
 
 use super::repr_nullable_ptr;
-use crate::lints::{ImproperCTypes, UsesPowerAlignment};
+use crate::lints::ImproperCTypes;
 use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
 
 declare_lint! {
@@ -77,65 +74,9 @@ declare_lint! {
     "proper use of libc types in foreign item definitions"
 }
 
-declare_lint! {
-    /// The `uses_power_alignment` lint detects specific `repr(C)`
-    /// aggregates on AIX.
-    /// In its platform C ABI, AIX uses the "power" (as in PowerPC) alignment
-    /// rule (detailed in https://www.ibm.com/docs/en/xl-c-and-cpp-aix/16.1?topic=data-using-alignment-modes#alignment),
-    /// which can also be set for XLC by `#pragma align(power)` or
-    /// `-qalign=power`. Aggregates with a floating-point type as the
-    /// recursively first field (as in "at offset 0") modify the layout of
-    /// *subsequent* fields of the associated structs to use an alignment value
-    /// where the floating-point type is aligned on a 4-byte boundary.
-    ///
-    /// Effectively, subsequent floating-point fields act as-if they are `repr(packed(4))`. This
-    /// would be unsound to do in a `repr(C)` type without all the restrictions that come with
-    /// `repr(packed)`. Rust instead chooses a layout that maintains soundness of Rust code, at the
-    /// expense of incompatibility with C code.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (fails on non-powerpc64-ibm-aix)
-    /// #[repr(C)]
-    /// pub struct Floats {
-    ///     a: f64,
-    ///     b: u8,
-    ///     c: f64,
-    /// }
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// warning: repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
-    ///  --> <source>:5:3
-    ///   |
-    /// 5 |   c: f64,
-    ///   |   ^^^^^^
-    ///   |
-    ///   = note: `#[warn(uses_power_alignment)]` on by default
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// The power alignment rule specifies that the above struct has the
-    /// following alignment:
-    ///  - offset_of!(Floats, a) == 0
-    ///  - offset_of!(Floats, b) == 8
-    ///  - offset_of!(Floats, c) == 12
-    ///
-    /// However, Rust currently aligns `c` at `offset_of!(Floats, c) == 16`.
-    /// Using offset 12 would be unsound since `f64` generally must be 8-aligned on this target.
-    /// Thus, a warning is produced for the above struct.
-    USES_POWER_ALIGNMENT,
-    Warn,
-    "Structs do not follow the power alignment rule under repr(C)"
-}
-
 declare_lint_pass!(ImproperCTypesLint => [
     IMPROPER_CTYPES,
     IMPROPER_CTYPES_DEFINITIONS,
-    USES_POWER_ALIGNMENT
 ]);
 
 /// Check a variant of a non-exhaustive enum for improper ctypes
@@ -172,75 +113,6 @@ pub(crate) fn check_non_exhaustive_variant(
 fn variant_has_complex_ctor(variant: &ty::VariantDef) -> bool {
     // CtorKind::Const means a "unit" ctor
     !matches!(variant.ctor_kind(), Some(CtorKind::Const))
-}
-
-/// Per-struct-field function that checks if a struct definition follows
-/// the Power alignment Rule (see the `check_struct_for_power_alignment` function).
-fn check_arg_for_power_alignment<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    let tcx = cx.tcx;
-    assert!(tcx.sess.target.os == Os::Aix);
-    // Structs (under repr(C)) follow the power alignment rule if:
-    //   - the first field of the struct is a floating-point type that
-    //     is greater than 4-bytes, or
-    //   - the first field of the struct is an aggregate whose
-    //     recursively first field is a floating-point type greater than
-    //     4 bytes.
-    if ty.is_floating_point() && ty.primitive_size(tcx).bytes() > 4 {
-        return true;
-    } else if let Adt(adt_def, _) = ty.kind()
-        && adt_def.is_struct()
-        && adt_def.repr().c()
-        && !adt_def.repr().packed()
-        && adt_def.repr().align.is_none()
-    {
-        let struct_variant = adt_def.variant(VariantIdx::ZERO);
-        // Within a nested struct, all fields are examined to correctly
-        // report if any fields after the nested struct within the
-        // original struct are misaligned.
-        for struct_field in &struct_variant.fields {
-            let field_ty = tcx.type_of(struct_field.did).instantiate_identity();
-            if check_arg_for_power_alignment(cx, field_ty) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-/// Check a struct definition for respect of the Power alignment Rule (as in PowerPC),
-/// which should be respected in the "aix" target OS.
-/// To do so, we must follow one of the two following conditions:
-/// - The first field of the struct must be floating-point type that
-///    is greater than 4-bytes.
-///  - The first field of the struct must be an aggregate whose
-///    recursively first field is a floating-point type greater than
-///    4 bytes.
-fn check_struct_for_power_alignment<'tcx>(
-    cx: &LateContext<'tcx>,
-    item: &'tcx hir::Item<'tcx>,
-    adt_def: AdtDef<'tcx>,
-) {
-    let tcx = cx.tcx;
-
-    // Only consider structs (not enums or unions) on AIX.
-    if tcx.sess.target.os != Os::Aix || !adt_def.is_struct() {
-        return;
-    }
-
-    // The struct must be repr(C), but ignore it if it explicitly specifies its alignment with
-    // either `align(N)` or `packed(N)`.
-    if adt_def.repr().c() && !adt_def.repr().packed() && adt_def.repr().align.is_none() {
-        let struct_variant_data = item.expect_struct().2;
-        for field_def in struct_variant_data.fields().iter().skip(1) {
-            // Struct fields (after the first field) are checked for the
-            // power alignment rule, as fields after the first are likely
-            // to be the fields that are misaligned.
-            let ty = tcx.type_of(field_def.def_id).instantiate_identity();
-            if check_arg_for_power_alignment(cx, ty) {
-                cx.emit_span_lint(USES_POWER_ALIGNMENT, field_def.span, UsesPowerAlignment);
-            }
-        }
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -844,23 +716,6 @@ impl<'tcx> ImproperCTypesLint {
         }
     }
 
-    /// For a local definition of a #[repr(C)] struct/enum/union, check that it is indeed FFI-safe.
-    fn check_reprc_adt(
-        &mut self,
-        cx: &LateContext<'tcx>,
-        item: &'tcx hir::Item<'tcx>,
-        adt_def: AdtDef<'tcx>,
-    ) {
-        debug_assert!(
-            adt_def.repr().c() && !adt_def.repr().packed() && adt_def.repr().align.is_none()
-        );
-
-        // FIXME(ctypes): this following call is awkward.
-        // is there a way to perform its logic in MIR space rather than HIR space?
-        // (so that its logic can be absorbed into visitor.visit_struct_or_union)
-        check_struct_for_power_alignment(cx, item, adt_def);
-    }
-
     fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
         let mut visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::Declaration);
@@ -996,15 +851,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             }
             // See `check_fn` for declarations, `check_foreign_items` for definitions in extern blocks
             hir::ItemKind::Fn { .. } => {}
-            hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) | hir::ItemKind::Enum(..) => {
-                // looking for extern FnPtr:s is delegated to `check_field_def`.
-                let adt_def: AdtDef<'tcx> = cx.tcx.adt_def(item.owner_id.to_def_id());
-
-                if adt_def.repr().c() && !adt_def.repr().packed() && adt_def.repr().align.is_none()
-                {
-                    self.check_reprc_adt(cx, item, adt_def);
-                }
-            }
+            hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) | hir::ItemKind::Enum(..) => {}
 
             // Doesn't define something that can contain a external type to be checked.
             hir::ItemKind::Impl(..)
