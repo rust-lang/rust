@@ -2707,16 +2707,6 @@ impl Step for Crate {
                         .arg(builder.src.join("library/sysroot/Cargo.toml"));
                 } else {
                     compile::std_cargo(builder, target, compiler.stage, &mut cargo);
-                    // `std_cargo` actually does the wrong thing: it passes `--sysroot build/host/stage2`,
-                    // but we want to use the force-recompile std we just built in `build/host/stage2-test-sysroot`.
-                    // Override it.
-                    if builder.download_rustc() && compiler.stage > 0 {
-                        let sysroot = builder
-                            .out
-                            .join(compiler.host)
-                            .join(format!("stage{}-test-sysroot", compiler.stage));
-                        cargo.env("RUSTC_SYSROOT", sysroot);
-                    }
                 }
             }
             Mode::Rustc => {
