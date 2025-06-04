@@ -1,6 +1,6 @@
 //! Functions for reading and writing discriminants of multi-variant layouts (enums and coroutines).
 
-use rustc_abi::{self as abi, TagEncoding, VariantIdx, Variants};
+use rustc_abi::{self as abi, FieldIdx, TagEncoding, VariantIdx, Variants};
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::{self, CoroutineArgsExt, ScalarInt, Ty};
 use rustc_middle::{mir, span_bug};
@@ -26,7 +26,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // No need to validate that the discriminant here because the
                 // `TyAndLayout::for_variant()` call earlier already checks the
                 // variant is valid.
-                let tag_dest = self.project_field(dest, tag_field)?;
+                let tag_dest = self.project_field(dest, tag_field.as_usize())?;
                 self.write_scalar(tag, &tag_dest)
             }
             None => {
@@ -96,7 +96,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let tag_layout = self.layout_of(tag_scalar_layout.primitive().to_int_ty(*self.tcx))?;
 
         // Read tag and sanity-check `tag_layout`.
-        let tag_val = self.read_immediate(&self.project_field(op, tag_field)?)?;
+        let tag_val = self.read_immediate(&self.project_field(op, tag_field.as_usize())?)?;
         assert_eq!(tag_layout.size, tag_val.layout.size);
         assert_eq!(tag_layout.backend_repr.is_signed(), tag_val.layout.backend_repr.is_signed());
         trace!("tag value: {}", tag_val);
@@ -231,7 +231,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         layout: TyAndLayout<'tcx>,
         variant_index: VariantIdx,
-    ) -> InterpResult<'tcx, Option<(ScalarInt, usize)>> {
+    ) -> InterpResult<'tcx, Option<(ScalarInt, FieldIdx)>> {
         // Layout computation excludes uninhabited variants from consideration.
         // Therefore, there's no way to represent those variants in the given layout.
         // Essentially, uninhabited variants do not have a tag that corresponds to their
