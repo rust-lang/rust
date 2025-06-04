@@ -2,6 +2,7 @@ use std::sync::atomic::Ordering::Relaxed;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, BackendRepr};
+use rustc_errors::E0080;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo, ReportedErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
@@ -290,12 +291,18 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
             |error| {
                 let span = tcx.def_span(def_id);
 
+                // FIXME(oli-obk): why don't we have any tests for this code path?
                 super::report(
                     tcx,
                     error.into_kind(),
                     span,
                     || (span, vec![]),
-                    |span, _| errors::NullaryIntrinsicError { span },
+                    |diag, span, _| {
+                        diag.span_label(
+                            span,
+                            crate::fluent_generated::const_eval_nullary_intrinsic_fail,
+                        );
+                    },
                 )
             },
         );
@@ -443,11 +450,15 @@ fn report_eval_error<'tcx>(
         error,
         DUMMY_SP,
         || super::get_span_and_frames(ecx.tcx, ecx.stack()),
-        |span, frames| errors::ConstEvalError {
-            span,
-            error_kind: kind,
-            instance,
-            frame_notes: frames,
+        |diag, span, frames| {
+            // FIXME(oli-obk): figure out how to use structured diagnostics again.
+            diag.code(E0080);
+            diag.span_label(span, crate::fluent_generated::const_eval_error);
+            diag.arg("instance", instance);
+            diag.arg("error_kind", kind);
+            for frame in frames {
+                diag.subdiagnostic(frame);
+            }
         },
     )
 }
@@ -477,6 +488,15 @@ fn report_validation_error<'tcx>(
         error,
         DUMMY_SP,
         || crate::const_eval::get_span_and_frames(ecx.tcx, ecx.stack()),
-        move |span, frames| errors::ValidationFailure { span, ub_note: (), frames, raw_bytes },
+        move |diag, span, frames| {
+            // FIXME(oli-obk): figure out how to use structured diagnostics again.
+            diag.code(E0080);
+            diag.span_label(span, crate::fluent_generated::const_eval_validation_failure);
+            diag.note(crate::fluent_generated::const_eval_validation_failure_note);
+            for frame in frames {
+                diag.subdiagnostic(frame);
+            }
+            diag.subdiagnostic(raw_bytes);
+        },
     )
 }

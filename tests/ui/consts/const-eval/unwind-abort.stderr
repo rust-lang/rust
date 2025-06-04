@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: explicit panic
   --> $DIR/unwind-abort.rs:7:15
    |
 LL | const _: () = foo();
-   |               ^^^^^ evaluation panicked: explicit panic
+   |               ^^^^^ evaluation of constant value failed here
    |
 note: inside `foo`
   --> $DIR/unwind-abort.rs:4:5

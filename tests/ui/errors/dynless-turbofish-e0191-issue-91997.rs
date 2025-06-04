@@ -1,3 +1,4 @@
+//@ edition:2015
 trait MyIterator : Iterator {}
 
 fn main() {

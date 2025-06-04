@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `5_u32 - 6_u32`, which would overflow
   --> tests/fail/erroneous_const2.rs:LL:CC
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
-   |                   ^^^^^ attempt to compute `5_u32 - 6_u32`, which would overflow
+   |                   ^^^^^ evaluation of constant value failed here
 
 note: erroneous constant encountered
   --> tests/fail/erroneous_const2.rs:LL:CC

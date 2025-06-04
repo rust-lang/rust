@@ -1,66 +1,66 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: blåhaj
   --> $DIR/const_panic_2021.rs:6:15
    |
 LL | const A: () = std::panic!("blåhaj");
-   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: blåhaj
+   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: explicit panic
   --> $DIR/const_panic_2021.rs:9:15
    |
 LL | const B: () = std::panic!();
-   |               ^^^^^^^^^^^^^ evaluation panicked: explicit panic
+   |               ^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: internal error: entered unreachable code
   --> $DIR/const_panic_2021.rs:12:15
    |
 LL | const C: () = std::unreachable!();
-   |               ^^^^^^^^^^^^^^^^^^^ evaluation panicked: internal error: entered unreachable code
+   |               ^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: not implemented
   --> $DIR/const_panic_2021.rs:15:15
    |
 LL | const D: () = std::unimplemented!();
-   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: not implemented
+   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = note: this error originates in the macro `std::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: hello
   --> $DIR/const_panic_2021.rs:18:15
    |
 LL | const E: () = std::panic!("{}", MSG);
-   |               ^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: hello
+   |               ^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: shark
   --> $DIR/const_panic_2021.rs:21:20
    |
 LL | const A_CORE: () = core::panic!("shark");
-   |                    ^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: shark
+   |                    ^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: explicit panic
   --> $DIR/const_panic_2021.rs:24:20
    |
 LL | const B_CORE: () = core::panic!();
-   |                    ^^^^^^^^^^^^^^ evaluation panicked: explicit panic
+   |                    ^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: internal error: entered unreachable code
   --> $DIR/const_panic_2021.rs:27:20
    |
 LL | const C_CORE: () = core::unreachable!();
-   |                    ^^^^^^^^^^^^^^^^^^^^ evaluation panicked: internal error: entered unreachable code
+   |                    ^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: not implemented
   --> $DIR/const_panic_2021.rs:30:20
    |
 LL | const D_CORE: () = core::unimplemented!();
-   |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: not implemented
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = note: this error originates in the macro `core::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: hello
   --> $DIR/const_panic_2021.rs:33:20
    |
 LL | const E_CORE: () = core::panic!("{}", MSG);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: hello
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 10 previous errors
 

@@ -148,6 +148,17 @@ impl Step for ToolBuild {
             &self.extra_features,
         );
 
+        // The stage0 compiler changes infrequently and does not directly depend on code
+        // in the current working directory. Therefore, caching it with sccache should be
+        // useful.
+        // This is only performed for non-incremental builds, as ccache cannot deal with these.
+        if let Some(ref ccache) = builder.config.ccache
+            && matches!(self.mode, Mode::ToolBootstrap)
+            && !builder.config.incremental
+        {
+            cargo.env("RUSTC_WRAPPER", ccache);
+        }
+
         // Rustc tools (miri, clippy, cargo, rustfmt, rust-analyzer)
         // could use the additional optimizations.
         if self.mode == Mode::ToolRustc && is_lto_stage(&self.compiler) {
@@ -1269,7 +1280,7 @@ impl Step for TestFloatParse {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/etc/test-float-parse")
+        run.path("src/tools/test-float-parse")
     }
 
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
@@ -1281,7 +1292,7 @@ impl Step for TestFloatParse {
             target: bootstrap_host,
             tool: "test-float-parse",
             mode: Mode::ToolStd,
-            path: "src/etc/test-float-parse",
+            path: "src/tools/test-float-parse",
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: Self::ALLOW_FEATURES,

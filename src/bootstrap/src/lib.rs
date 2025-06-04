@@ -1104,8 +1104,15 @@ Executed at: {executed_at}"#,
         &self,
         what: impl Display,
         target: impl Into<Option<TargetSelection>>,
+        custom_stage: Option<u32>,
     ) -> Option<gha::Group> {
-        self.msg(Kind::Check, self.config.stage, what, self.config.build, target)
+        self.msg(
+            Kind::Check,
+            custom_stage.unwrap_or(self.config.stage),
+            what,
+            self.config.build,
+            target,
+        )
     }
 
     #[must_use = "Groups should not be dropped until the Step finishes running"]

@@ -1,126 +1,126 @@
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value at .<enum-tag>: encountered 0x01, but expected a valid enum tag
   --> $DIR/ub-enum.rs:29:1
    |
 LL | const BAD_ENUM: Enum = unsafe { mem::transmute(1usize) };
-   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered 0x01, but expected a valid enum tag
+   | ^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-enum.rs:32:1
    |
 LL | const BAD_ENUM_PTR: Enum = unsafe { mem::transmute(&1) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-enum.rs:35:1
    |
 LL | const BAD_ENUM_WRAPPED: Wrap<Enum> = unsafe { mem::transmute(&1) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value at .<enum-tag>: encountered 0x0, but expected a valid enum tag
   --> $DIR/ub-enum.rs:47:1
    |
 LL | const BAD_ENUM2: Enum2 = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered 0x0, but expected a valid enum tag
+   | ^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-enum.rs:49:1
    |
 LL | const BAD_ENUM2_PTR: Enum2 = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-enum.rs:52:1
    |
 LL | const BAD_ENUM2_WRAPPED: Wrap<Enum2> = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-enum.rs:61:42
+error[E0080]: using uninitialized data, but this operation requires initialized memory
+  --> $DIR/ub-enum.rs:61:41
    |
-LL | const BAD_ENUM2_UNDEF : Enum2 = unsafe { MaybeUninit { uninit: () }.init };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+LL | const BAD_ENUM2_UNDEF: Enum2 = unsafe { MaybeUninit { uninit: () }.init };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-enum.rs:66:1
+error[E0080]: unable to turn pointer into integer
+  --> $DIR/ub-enum.rs:65:1
    |
 LL | const BAD_ENUM2_OPTION_PTR: Option<Enum2> = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:83:1
+error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+  --> $DIR/ub-enum.rs:82:1
    |
 LL | const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute(1u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:85:1
+error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+  --> $DIR/ub-enum.rs:84:1
    |
 LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:93:1
+error[E0080]: constructing invalid value at .<enum-variant(Some)>.0.1: encountered 0xffffffff, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
+  --> $DIR/ub-enum.rs:92:1
    |
 LL | const BAD_OPTION_CHAR: Option<(char, char)> = Some(('x', unsafe { mem::transmute(!0u32) }));
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(Some)>.0.1: encountered 0xffffffff, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-enum.rs:98:77
+error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+  --> $DIR/ub-enum.rs:97:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA1: Result<(i32, Never), (i32, !)> = unsafe { mem::transmute(0u64) };
-   |                                                                             ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+   |                                                                             ^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-enum.rs:100:77
+error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+  --> $DIR/ub-enum.rs:99:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem::transmute(0u64) };
-   |                                                                             ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+   |                                                                             ^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-enum.rs:105:14
+error[E0080]: read discriminant of an uninhabited enum variant
+  --> $DIR/ub-enum.rs:105:9
    |
-LL |     unsafe { std::mem::discriminant(&*(&() as *const () as *const Never)); };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ read discriminant of an uninhabited enum variant
+LL |         std::mem::discriminant(&*(&() as *const () as *const Never));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `discriminant::<Never>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL

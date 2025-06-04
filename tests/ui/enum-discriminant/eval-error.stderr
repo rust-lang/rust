@@ -45,11 +45,11 @@ help: wrap the field type in `ManuallyDrop<...>`
 LL |     a: std::mem::ManuallyDrop<str>,
    |        +++++++++++++++++++++++   +
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: the type `Foo` has an unknown layout
   --> $DIR/eval-error.rs:9:30
    |
 LL |         let _: Option<Foo> = None;
-   |                              ^^^^ the type `Foo` has an unknown layout
+   |                              ^^^^ evaluation of constant value failed here
 
 error: aborting due to 5 previous errors
 

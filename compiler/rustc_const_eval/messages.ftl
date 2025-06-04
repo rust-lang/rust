@@ -89,9 +89,9 @@ const_eval_dyn_call_not_a_method =
     `dyn` call trying to call something that is not a method
 
 const_eval_error = {$error_kind ->
-    [static] could not evaluate static initializer
-    [const] evaluation of constant value failed
-    [const_with_path] evaluation of `{$instance}` failed
+    [static] evaluation of static initializer failed here
+    [const] evaluation of constant value failed here
+    [const_with_path] evaluation of `{$instance}` failed here
     *[other] {""}
 }
 
@@ -118,7 +118,7 @@ const_eval_frame_note_inner = inside {$where_ ->
 const_eval_frame_note_last = the failure occurred here
 
 const_eval_incompatible_calling_conventions =
-    calling a function with calling convention {$callee_conv} using calling convention {$caller_conv}
+    calling a function with calling convention "{$callee_conv}" using calling convention "{$caller_conv}"
 
 const_eval_incompatible_return_types =
     calling a function with return type {$callee_ty} passing return place of type {$caller_ty}

@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedTraitNames {
             // Ignore imports that already use Underscore
             && ident.name != kw::Underscore
             // Only check traits
-            && let Some(Res::Def(DefKind::Trait, _)) = path.res.first()
+            && let Some(Res::Def(DefKind::Trait, _)) = path.res.type_ns
             && cx.tcx.maybe_unused_trait_imports(()).contains(&item.owner_id.def_id)
             // Only check this import if it is visible to its module only (no pub, pub(crate), ...)
             && let module = cx.tcx.parent_module_from_def_id(item.owner_id.def_id)

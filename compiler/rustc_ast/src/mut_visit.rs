@@ -12,7 +12,6 @@ use std::panic;
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span};
 use smallvec::{Array, SmallVec, smallvec};
 use thin_vec::ThinVec;
@@ -499,58 +498,6 @@ fn walk_assoc_item_constraint<T: MutVisitor>(
     vis.visit_span(span);
 }
 
-pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut Ty) {
-    let Ty { id, kind, span, tokens: _ } = ty;
-    vis.visit_id(id);
-    match kind {
-        TyKind::Err(_guar) => {}
-        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Dummy | TyKind::Never | TyKind::CVarArgs => {
-        }
-        TyKind::Slice(ty) => vis.visit_ty(ty),
-        TyKind::Ptr(MutTy { ty, mutbl: _ }) => vis.visit_ty(ty),
-        TyKind::Ref(lt, MutTy { ty, mutbl: _ }) | TyKind::PinnedRef(lt, MutTy { ty, mutbl: _ }) => {
-            visit_opt(lt, |lt| vis.visit_lifetime(lt));
-            vis.visit_ty(ty);
-        }
-        TyKind::BareFn(bft) => {
-            let BareFnTy { safety, ext: _, generic_params, decl, decl_span } = bft.deref_mut();
-            visit_safety(vis, safety);
-            generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
-            vis.visit_fn_decl(decl);
-            vis.visit_span(decl_span);
-        }
-        TyKind::UnsafeBinder(binder) => {
-            let UnsafeBinderTy { generic_params, inner_ty } = binder.deref_mut();
-            generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
-            vis.visit_ty(inner_ty);
-        }
-        TyKind::Tup(tys) => visit_thin_vec(tys, |ty| vis.visit_ty(ty)),
-        TyKind::Paren(ty) => vis.visit_ty(ty),
-        TyKind::Pat(ty, pat) => {
-            vis.visit_ty(ty);
-            vis.visit_ty_pat(pat);
-        }
-        TyKind::Path(qself, path) => {
-            vis.visit_qself(qself);
-            vis.visit_path(path);
-        }
-        TyKind::Array(ty, length) => {
-            vis.visit_ty(ty);
-            vis.visit_anon_const(length);
-        }
-        TyKind::Typeof(expr) => vis.visit_anon_const(expr),
-        TyKind::TraitObject(bounds, _syntax) => {
-            visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::TraitObject))
-        }
-        TyKind::ImplTrait(id, bounds) => {
-            vis.visit_id(id);
-            visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Impl));
-        }
-        TyKind::MacCall(mac) => vis.visit_mac_call(mac),
-    }
-    vis.visit_span(span);
-}
-
 pub fn walk_ty_pat<T: MutVisitor>(vis: &mut T, ty: &mut TyPat) {
     let TyPat { id, kind, span, tokens: _ } = ty;
     vis.visit_id(id);
@@ -586,13 +533,6 @@ pub fn walk_flat_map_variant<T: MutVisitor>(
 
 fn walk_ident<T: MutVisitor>(vis: &mut T, Ident { name: _, span }: &mut Ident) {
     vis.visit_span(span);
-}
-
-fn walk_path_segment<T: MutVisitor>(vis: &mut T, segment: &mut PathSegment) {
-    let PathSegment { ident, id, args } = segment;
-    vis.visit_id(id);
-    vis.visit_ident(ident);
-    visit_opt(args, |args| vis.visit_generic_args(args));
 }
 
 fn walk_path<T: MutVisitor>(vis: &mut T, Path { segments, span, tokens: _ }: &mut Path) {
@@ -725,18 +665,6 @@ fn walk_closure_binder<T: MutVisitor>(vis: &mut T, binder: &mut ClosureBinder) {
         ClosureBinder::NotPresent => {}
         ClosureBinder::For { span: _, generic_params } => {
             generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
-        }
-    }
-}
-
-fn walk_coroutine_kind<T: MutVisitor>(vis: &mut T, coroutine_kind: &mut CoroutineKind) {
-    match coroutine_kind {
-        CoroutineKind::Async { span, closure_id, return_impl_trait_id }
-        | CoroutineKind::Gen { span, closure_id, return_impl_trait_id }
-        | CoroutineKind::AsyncGen { span, closure_id, return_impl_trait_id } => {
-            vis.visit_id(closure_id);
-            vis.visit_id(return_impl_trait_id);
-            vis.visit_span(span);
         }
     }
 }
@@ -991,13 +919,6 @@ pub fn walk_flat_map_expr_field<T: MutVisitor>(
     smallvec![f]
 }
 
-pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut Block) {
-    let Block { id, stmts, rules: _, span, tokens: _ } = block;
-    vis.visit_id(id);
-    stmts.flat_map_in_place(|stmt| vis.flat_map_stmt(stmt));
-    vis.visit_span(span);
-}
-
 pub fn walk_item_kind<K: WalkItemKind>(
     kind: &mut K,
     span: Span,
@@ -1039,57 +960,6 @@ pub fn walk_flat_map_assoc_item(
 ) -> SmallVec<[P<AssocItem>; 1]> {
     vis.visit_assoc_item(&mut item, ctxt);
     smallvec![item]
-}
-
-pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut Pat) {
-    let Pat { id, kind, span, tokens: _ } = pat;
-    vis.visit_id(id);
-    match kind {
-        PatKind::Err(_guar) => {}
-        PatKind::Missing | PatKind::Wild | PatKind::Rest | PatKind::Never => {}
-        PatKind::Ident(_binding_mode, ident, sub) => {
-            vis.visit_ident(ident);
-            visit_opt(sub, |sub| vis.visit_pat(sub));
-        }
-        PatKind::Expr(e) => vis.visit_expr(e),
-        PatKind::TupleStruct(qself, path, elems) => {
-            vis.visit_qself(qself);
-            vis.visit_path(path);
-            visit_thin_vec(elems, |elem| vis.visit_pat(elem));
-        }
-        PatKind::Path(qself, path) => {
-            vis.visit_qself(qself);
-            vis.visit_path(path);
-        }
-        PatKind::Struct(qself, path, fields, _etc) => {
-            vis.visit_qself(qself);
-            vis.visit_path(path);
-            fields.flat_map_in_place(|field| vis.flat_map_pat_field(field));
-        }
-        PatKind::Box(inner) => vis.visit_pat(inner),
-        PatKind::Deref(inner) => vis.visit_pat(inner),
-        PatKind::Ref(inner, _mutbl) => vis.visit_pat(inner),
-        PatKind::Range(e1, e2, Spanned { span: _, node: _ }) => {
-            visit_opt(e1, |e| vis.visit_expr(e));
-            visit_opt(e2, |e| vis.visit_expr(e));
-            vis.visit_span(span);
-        }
-        PatKind::Guard(p, e) => {
-            vis.visit_pat(p);
-            vis.visit_expr(e);
-        }
-        PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
-            visit_thin_vec(elems, |elem| vis.visit_pat(elem))
-        }
-        PatKind::Paren(inner) => vis.visit_pat(inner),
-        PatKind::MacCall(mac) => vis.visit_mac_call(mac),
-    }
-    vis.visit_span(span);
-}
-
-fn walk_anon_const<T: MutVisitor>(vis: &mut T, AnonConst { id, value }: &mut AnonConst) {
-    vis.visit_id(id);
-    vis.visit_expr(value);
 }
 
 fn walk_inline_asm<T: MutVisitor>(vis: &mut T, asm: &mut InlineAsm) {

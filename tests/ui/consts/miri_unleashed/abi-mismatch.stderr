@@ -1,8 +1,8 @@
-error[E0080]: could not evaluate static initializer
+error[E0080]: calling a function with calling convention "C" using calling convention "Rust"
   --> $DIR/abi-mismatch.rs:11:18
    |
 LL | static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling a function with calling convention "C" using calling convention "Rust"
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
    |
 note: inside `call_rust_fn`
   --> $DIR/abi-mismatch.rs:7:5

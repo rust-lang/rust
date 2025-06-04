@@ -1,7 +1,7 @@
-use rustc_abi::Size;
+use rustc_abi::{CanonAbi, Size};
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
 use crate::helpers::check_min_vararg_count;
 use crate::shims::unix::thread::{EvalContextExt as _, ThreadNameResult};
@@ -16,7 +16,7 @@ pub fn prctl<'tcx>(
     args: &[OpTy<'tcx>],
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
-    let ([op], varargs) = ecx.check_shim_variadic(abi, Conv::C, link_name, args)?;
+    let ([op], varargs) = ecx.check_shim_variadic(abi, CanonAbi::C, link_name, args)?;
 
     // FIXME: Use constants once https://github.com/rust-lang/libc/pull/3941 backported to the 0.2 branch.
     let pr_set_name = 15;

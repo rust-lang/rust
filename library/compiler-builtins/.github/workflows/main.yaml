@@ -1,0 +1,344 @@
+name: CI
+on:
+  push: { branches: [master] }
+  pull_request:
+
+concurrency:
+  # Make sure that new pushes cancel running jobs
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTDOCFLAGS: -Dwarnings
+  RUSTFLAGS: -Dwarnings
+  RUST_BACKTRACE: full
+  BENCHMARK_RUSTC: nightly-2025-01-16 # Pin the toolchain for reproducable results
+
+jobs:
+  # Determine which tests should be run based on changed files.
+  calculate_vars:
+    name: Calculate workflow variables
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    outputs:
+      extensive_matrix: ${{ steps.script.outputs.extensive_matrix }}
+      may_skip_libm_ci: ${{ steps.script.outputs.may_skip_libm_ci }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 500
+      - name: Fetch pull request ref
+        run: git fetch origin "$GITHUB_REF:$GITHUB_REF"
+        if: github.event_name == 'pull_request'
+      - run: python3 ci/ci-util.py generate-matrix >> "$GITHUB_OUTPUT"
+        id: script
+
+  test:
+    name: Build and test
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - target: aarch64-apple-darwin
+          os: macos-15
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-24.04-arm
+        - target: aarch64-pc-windows-msvc
+          os: windows-2025
+          test_verbatim: 1
+          build_only: 1
+        - target: arm-unknown-linux-gnueabi
+          os: ubuntu-24.04
+        - target: arm-unknown-linux-gnueabihf
+          os: ubuntu-24.04
+        - target: armv7-unknown-linux-gnueabihf
+          os: ubuntu-24.04
+        - target: i586-unknown-linux-gnu
+          os: ubuntu-24.04
+        - target: i686-unknown-linux-gnu
+          os: ubuntu-24.04
+        - target: loongarch64-unknown-linux-gnu
+          os: ubuntu-24.04
+        - target: powerpc-unknown-linux-gnu
+          os: ubuntu-24.04
+        - target: powerpc64-unknown-linux-gnu
+          os: ubuntu-24.04
+        - target: powerpc64le-unknown-linux-gnu
+          os: ubuntu-24.04
+        - target: riscv64gc-unknown-linux-gnu
+          os: ubuntu-24.04
+        - target: thumbv6m-none-eabi
+          os: ubuntu-24.04
+        - target: thumbv7em-none-eabi
+          os: ubuntu-24.04
+        - target: thumbv7em-none-eabihf
+          os: ubuntu-24.04
+        - target: thumbv7m-none-eabi
+          os: ubuntu-24.04
+        - target: wasm32-unknown-unknown
+          os: ubuntu-24.04
+        - target: x86_64-unknown-linux-gnu
+          os: ubuntu-24.04
+        - target: x86_64-apple-darwin
+          os: macos-13
+        - target: i686-pc-windows-msvc
+          os: windows-2025
+          test_verbatim: 1
+        - target: x86_64-pc-windows-msvc
+          os: windows-2025
+          test_verbatim: 1
+        - target: i686-pc-windows-gnu
+          os: windows-2025
+          channel: nightly-i686-gnu
+        - target: x86_64-pc-windows-gnu
+          os: windows-2025
+          channel: nightly-x86_64-gnu
+    runs-on: ${{ matrix.os }}
+    needs: [calculate_vars]
+    env:
+      BUILD_ONLY: ${{ matrix.build_only }}
+      TEST_VERBATIM: ${{ matrix.test_verbatim }}
+      MAY_SKIP_LIBM_CI: ${{ needs.calculate_vars.outputs.may_skip_libm_ci }}
+    steps:
+    - name: Print runner information
+      run: uname -a
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Install Rust (rustup)
+      shell: bash
+      run: |
+        channel="nightly"
+        # Account for channels that have required components (MinGW)
+        [ -n "${{ matrix.channel }}" ] && channel="${{ matrix.channel }}"
+        rustup update "$channel" --no-self-update
+        rustup default "$channel"
+        rustup target add "${{ matrix.target }}"
+        rustup component add llvm-tools-preview
+    - uses: taiki-e/install-action@nextest
+    - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.target }}
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      if: matrix.os == 'ubuntu-24.04'
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ matrix.target }}-buildx-${{ github.sha }}
+        restore-keys: ${{ matrix.target }}-buildx-
+    # Configure buildx to use Docker layer caching
+    - uses: docker/setup-buildx-action@v3
+      if: matrix.os == 'ubuntu-24.04'
+
+    - name: Cache compiler-rt
+      id: cache-compiler-rt
+      uses: actions/cache@v4
+      with:
+        path: compiler-rt
+        key: ${{ runner.os }}-compiler-rt-${{ hashFiles('ci/download-compiler-rt.sh') }}
+    - name: Download compiler-rt reference sources
+      if: steps.cache-compiler-rt.outputs.cache-hit != 'true'
+      run: ./ci/download-compiler-rt.sh
+      shell: bash
+    - run: echo "RUST_COMPILER_RT_ROOT=$(realpath ./compiler-rt)" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Verify API list
+      if: matrix.os == 'ubuntu-24.04'
+      run: python3 etc/update-api-list.py --check
+
+    # Non-linux tests just use our raw script
+    - name: Run locally
+      if: matrix.os != 'ubuntu-24.04'
+      shell: bash
+      run: ./ci/run.sh ${{ matrix.target }}
+
+    # Otherwise we use our docker containers to run builds
+    - name: Run in Docker
+      if: matrix.os == 'ubuntu-24.04'
+      run: ./ci/run-docker.sh ${{ matrix.target }}
+
+    - name: Print test logs if available
+      if: always()
+      run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
+      shell: bash
+
+    # Workaround to keep Docker cache smaller
+    # https://github.com/docker/build-push-action/issues/252
+    # https://github.com/moby/buildkit/issues/1896
+    - name: Move Docker cache
+      if: matrix.os == 'ubuntu-24.04'
+      run: |
+        rm -rf /tmp/.buildx-cache
+        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    # Unlike rustfmt, stable clippy does not work on code with nightly features.
+    - name: Install nightly `clippy`
+      run: |
+        rustup set profile minimal
+        rustup default nightly
+        rustup component add clippy
+    - uses: Swatinem/rust-cache@v2
+    - run: cargo clippy --workspace --all-targets
+
+  benchmarks:
+    name: Benchmarks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@master
+      with:
+        submodules: true
+    - uses: taiki-e/install-action@cargo-binstall
+
+    - name: Set up dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y valgrind gdb libc6-dbg # Needed for iai-callgrind
+        rustup update "$BENCHMARK_RUSTC" --no-self-update
+        rustup default "$BENCHMARK_RUSTC"
+        # Install the version of iai-callgrind-runner that is specified in Cargo.toml
+        iai_version="$(cargo metadata --format-version=1 --features icount |
+           jq -r '.packages[] | select(.name == "iai-callgrind").version')"
+        cargo binstall -y iai-callgrind-runner --version "$iai_version"
+        sudo apt-get install valgrind
+    - uses: Swatinem/rust-cache@v2
+
+    - name: Run icount benchmarks
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: ./ci/bench-icount.sh
+
+    - name: Upload the benchmark baseline
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.BASELINE_NAME }}
+        path: ${{ env.BASELINE_NAME }}.tar.xz
+    
+    - name: Run wall time benchmarks
+      run: |
+        # Always use the same seed for benchmarks. Ideally we should switch to a
+        # non-random generator.
+        export LIBM_SEED=benchesbenchesbenchesbencheswoo!
+        cargo bench --package libm-test \
+          --no-default-features \
+          --features short-benchmarks,build-musl,libm/force-soft-floats
+
+    - name: Print test logs if available
+      if: always()
+      run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
+      shell: bash
+
+  miri:
+    name: Miri
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Install Rust (rustup)
+      run: rustup update nightly --no-self-update && rustup default nightly
+      shell: bash
+    - run: rustup component add miri
+    - run: cargo miri setup
+    - uses: Swatinem/rust-cache@v2
+    - run: ./ci/miri.sh
+
+  msrv:
+    name: Check libm MSRV
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: |
+        msrv="$(perl -ne 'print if s/rust-version\s*=\s*"(.*)"/\1/g' libm/Cargo.toml)"
+        echo "MSRV: $msrv"
+        rustup update "$msrv" --no-self-update && rustup default "$msrv"
+    - uses: Swatinem/rust-cache@v2
+    - run: |
+        # FIXME(msrv): Remove the workspace Cargo.toml so 1.63 cargo doesn't see
+        # `edition = "2024"` and get spooked.
+        rm Cargo.toml
+        cargo build --manifest-path libm/Cargo.toml
+
+  rustfmt:
+    name: Rustfmt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Install stable `rustfmt`
+      run: rustup set profile minimal && rustup default stable && rustup component add rustfmt
+    - run: cargo fmt -- --check
+
+  extensive:
+    name: Extensive tests for ${{ matrix.ty }}
+    needs:
+      # Wait on `clippy` so we have some confidence that the crate will build
+      - clippy
+      - calculate_vars
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240 # 4 hours
+    strategy:
+      matrix:
+        # Use the output from `calculate_vars` to create the matrix
+        # FIXME: it would be better to run all jobs (i.e. all types) but mark those that
+        # didn't change as skipped, rather than completely excluding the job. However,
+        # this is not currently possible https://github.com/actions/runner/issues/1985.
+        include: ${{ fromJSON(needs.calculate_vars.outputs.extensive_matrix).extensive_matrix }}
+    env:
+      TO_TEST: ${{ matrix.to_test }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Install Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Run extensive tests
+        run: ./ci/run-extensive.sh
+      - name: Print test logs if available
+        run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
+        shell: bash
+
+  success:
+    needs:
+      - benchmarks
+      - clippy
+      - extensive
+      - miri
+      - msrv
+      - rustfmt
+      - test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # GitHub branch protection is exceedingly silly and treats "jobs skipped because a dependency
+    # failed" as success. So we have to do some contortions to ensure the job fails if any of its
+    # dependencies fails.
+    if: always() # make sure this is never "skipped"
+    steps:
+      # Manually check the status of all dependencies. `if: failure()` does not work.
+      - name: check if any dependency failed
+        run: jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'

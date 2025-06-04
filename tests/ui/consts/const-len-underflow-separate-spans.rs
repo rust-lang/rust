@@ -8,10 +8,10 @@
 const ONE: usize = 1;
 const TWO: usize = 2;
 const LEN: usize = ONE - TWO;
-//~^ ERROR constant
-//~| NOTE attempt to compute `1_usize - 2_usize`, which would overflow
+//~^ NOTE constant
+//~| ERROR attempt to compute `1_usize - 2_usize`, which would overflow
 
 fn main() {
     let a: [i8; LEN] = unimplemented!();
-//~^ NOTE constant
+    //~^ NOTE constant
 }

@@ -834,7 +834,7 @@ impl<'a> Parser<'a> {
         // guides recovery in case we write `&raw expr`.
         if borrow_kind == ast::BorrowKind::Ref
             && mutbl == ast::Mutability::Not
-            && matches!(&expr.kind, ExprKind::Path(None, p) if p.is_ident(kw::Raw))
+            && matches!(&expr.kind, ExprKind::Path(None, p) if *p == kw::Raw)
         {
             self.expected_token_types.insert(TokenType::KwMut);
             self.expected_token_types.insert(TokenType::KwConst);
