@@ -361,6 +361,18 @@ pub struct FutureIncompatibleInfo {
     /// Set to false for lints that already include a more detailed
     /// explanation.
     pub explain_reason: bool,
+    /// If set to `true`, this will make future incompatibility warnings show up in cargo's
+    /// reports.
+    ///
+    /// When a future incompatibility warning is first inroduced, set this to `false`
+    /// (or, rather, don't override the default). This allows crate developers an opportunity
+    /// to fix the warning before blasting all dependents with a warning they can't fix
+    /// (dependents have to wait for a new release of the affected crate to be published).
+    ///
+    /// After a lint has been in this state for a while, consider setting this to true, so it
+    /// warns for everyone. It is a good signal that it is ready if you can determine that all
+    /// or most affected crates on crates.io have been updated.
+    pub report_in_deps: bool,
 }
 
 /// The reason for future incompatibility
@@ -380,46 +392,24 @@ pub struct FutureIncompatibleInfo {
 pub enum FutureIncompatibilityReason {
     /// This will be an error in a future release for all editions
     ///
-    /// This will *not* show up in cargo's future breakage report.
-    /// The warning will hence only be seen in local crates, not in dependencies.
-    ///
     /// Choose this variant when you are first introducing a "future
     /// incompatible" warning that is intended to eventually be fixed in the
-    /// future. This allows crate developers an opportunity to fix the warning
-    /// before blasting all dependents with a warning they can't fix
-    /// (dependents have to wait for a new release of the affected crate to be
-    /// published).
+    /// future.
     ///
-    /// After a lint has been in this state for a while, consider graduating
-    /// it to [`FutureIncompatibilityReason::FutureReleaseErrorReportInDeps`].
-    FutureReleaseErrorDontReportInDeps,
-    /// This will be an error in a future release, and
-    /// Cargo should create a report even for dependencies
-    ///
-    /// This is the *only* reason that will make future incompatibility warnings show up in cargo's
-    /// reports. All other future incompatibility warnings are not visible when they occur in a
-    /// dependency.
-    ///
-    /// Choose this variant after the lint has been sitting in the
-    /// [`FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps`]
-    /// state for a while, and you feel like it is ready to graduate to
-    /// warning everyone. It is a good signal that it is ready if you can
-    /// determine that all or most affected crates on crates.io have been
-    /// updated.
+    /// After a lint has been in this state for a while and you feel like it is ready to graduate
+    /// to warning everyone, consider setting [`FutureIncompatibleInfo::report_in_deps`] to true.
+    /// (see it's documentation for more guidance)
     ///
     /// After some period of time, lints with this variant can be turned into
     /// hard errors (and the lint removed). Preferably when there is some
     /// confidence that the number of impacted projects is very small (few
     /// should have a broken dependency in their dependency tree).
-    ///
-    /// [`EditionAndFutureReleaseError`]: FutureIncompatibilityReason::EditionAndFutureReleaseError
-    FutureReleaseErrorReportInDeps,
+    FutureReleaseError,
     /// Code that changes meaning in some way in a
     /// future release.
     ///
     /// Choose this variant when the semantics of existing code is changing,
-    /// (as opposed to
-    /// [`FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps`],
+    /// (as opposed to [`FutureIncompatibilityReason::FutureReleaseError`],
     /// which is for when code is going to be rejected in the future).
     FutureReleaseSemanticsChange,
     /// Previously accepted code that will become an
@@ -454,13 +444,12 @@ pub enum FutureIncompatibilityReason {
     /// This will be an error in the provided edition *and* in a future
     /// release.
     ///
-    /// This variant a combination of [`FutureReleaseErrorDontReportInDeps`]
-    /// and [`EditionError`]. This is useful in rare cases when we
-    /// want to have "preview" of a breaking change in an edition, but do a
-    /// breaking change later on all editions anyway.
+    /// This variant a combination of [`FutureReleaseError`] and [`EditionError`].
+    /// This is useful in rare cases when we want to have "preview" of a breaking
+    /// change in an edition, but do a breaking change later on all editions anyway.
     ///
     /// [`EditionError`]: FutureIncompatibilityReason::EditionError
-    /// [`FutureReleaseErrorDontReportInDeps`]: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
+    /// [`FutureReleaseError`]: FutureIncompatibilityReason::FutureReleaseError
     EditionAndFutureReleaseError(Edition),
     /// This will change meaning in the provided edition *and* in a future
     /// release.
@@ -478,7 +467,7 @@ pub enum FutureIncompatibilityReason {
     /// Choose this variant if the built-in text of the diagnostic of the
     /// other variants doesn't match your situation. This is behaviorally
     /// equivalent to
-    /// [`FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps`].
+    /// [`FutureIncompatibilityReason::FutureReleaseError`].
     Custom(&'static str),
 }
 
@@ -490,24 +479,9 @@ impl FutureIncompatibilityReason {
             | Self::EditionAndFutureReleaseError(e)
             | Self::EditionAndFutureReleaseSemanticsChange(e) => Some(e),
 
-            FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
-            | FutureIncompatibilityReason::FutureReleaseErrorReportInDeps
+            FutureIncompatibilityReason::FutureReleaseError
             | FutureIncompatibilityReason::FutureReleaseSemanticsChange
             | FutureIncompatibilityReason::Custom(_) => None,
-        }
-    }
-
-    pub fn has_future_breakage(self) -> bool {
-        match self {
-            FutureIncompatibilityReason::FutureReleaseErrorReportInDeps => true,
-
-            FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
-            | FutureIncompatibilityReason::FutureReleaseSemanticsChange
-            | FutureIncompatibilityReason::EditionError(_)
-            | FutureIncompatibilityReason::EditionSemanticsChange(_)
-            | FutureIncompatibilityReason::EditionAndFutureReleaseError(_)
-            | FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(_)
-            | FutureIncompatibilityReason::Custom(_) => false,
         }
     }
 }
@@ -516,8 +490,9 @@ impl FutureIncompatibleInfo {
     pub const fn default_fields_for_macro() -> Self {
         FutureIncompatibleInfo {
             reference: "",
-            reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+            reason: FutureIncompatibilityReason::FutureReleaseError,
             explain_reason: true,
+            report_in_deps: false,
         }
     }
 }

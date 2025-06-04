@@ -11,7 +11,6 @@ use ide_db::{
         preorder_expr_with_ctx_checker,
     },
 };
-use span::FileId;
 use syntax::{
     AstNode,
     SyntaxKind::{self, IDENT, INT_NUMBER},
@@ -61,13 +60,12 @@ pub(crate) fn highlight_related(
     let file_id = sema
         .attach_first_edition(file_id)
         .unwrap_or_else(|| EditionedFileId::current_edition(sema.db, file_id));
-    let span_file_id = file_id.editioned_file_id(sema.db);
     let syntax = sema.parse(file_id).syntax().clone();
 
     let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
         T![?] => 4, // prefer `?` when the cursor is sandwiched like in `await$0?`
         T![->] => 4,
-        kind if kind.is_keyword(span_file_id.edition()) => 3,
+        kind if kind.is_keyword(file_id.edition(sema.db)) => 3,
         IDENT | INT_NUMBER => 2,
         T![|] => 1,
         _ => 0,
@@ -92,18 +90,11 @@ pub(crate) fn highlight_related(
         T![unsafe] if token.parent().and_then(ast::BlockExpr::cast).is_some() => {
             highlight_unsafe_points(sema, token).remove(&file_id)
         }
-        T![|] if config.closure_captures => {
-            highlight_closure_captures(sema, token, file_id, span_file_id.file_id())
+        T![|] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
+        T![move] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
+        _ if config.references => {
+            highlight_references(sema, token, FilePosition { file_id, offset })
         }
-        T![move] if config.closure_captures => {
-            highlight_closure_captures(sema, token, file_id, span_file_id.file_id())
-        }
-        _ if config.references => highlight_references(
-            sema,
-            token,
-            FilePosition { file_id, offset },
-            span_file_id.file_id(),
-        ),
         _ => None,
     }
 }
@@ -112,7 +103,6 @@ fn highlight_closure_captures(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
     file_id: EditionedFileId,
-    vfs_file_id: FileId,
 ) -> Option<Vec<HighlightedRange>> {
     let closure = token.parent_ancestors().take(2).find_map(ast::ClosureExpr::cast)?;
     let search_range = closure.body()?.syntax().text_range();
@@ -145,7 +135,7 @@ fn highlight_closure_captures(
                     .sources(sema.db)
                     .into_iter()
                     .flat_map(|x| x.to_nav(sema.db))
-                    .filter(|decl| decl.file_id == vfs_file_id)
+                    .filter(|decl| decl.file_id == file_id.file_id(sema.db))
                     .filter_map(|decl| decl.focus_range)
                     .map(move |range| HighlightedRange { range, category })
                     .chain(usages)
@@ -158,9 +148,8 @@ fn highlight_references(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
     FilePosition { file_id, offset }: FilePosition,
-    vfs_file_id: FileId,
 ) -> Option<Vec<HighlightedRange>> {
-    let defs = if let Some((range, resolution)) =
+    let defs = if let Some((range, _, _, resolution)) =
         sema.check_for_format_args_template(token.clone(), offset)
     {
         match resolution.map(Definition::from) {
@@ -270,7 +259,7 @@ fn highlight_references(
                     .sources(sema.db)
                     .into_iter()
                     .flat_map(|x| x.to_nav(sema.db))
-                    .filter(|decl| decl.file_id == vfs_file_id)
+                    .filter(|decl| decl.file_id == file_id.file_id(sema.db))
                     .filter_map(|decl| decl.focus_range)
                     .map(|range| HighlightedRange { range, category })
                     .for_each(|x| {
@@ -288,7 +277,7 @@ fn highlight_references(
                     },
                 };
                 for nav in navs {
-                    if nav.file_id != vfs_file_id {
+                    if nav.file_id != file_id.file_id(sema.db) {
                         continue;
                     }
                     let hl_range = nav.focus_range.map(|range| {

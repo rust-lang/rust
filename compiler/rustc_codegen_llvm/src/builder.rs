@@ -1815,8 +1815,11 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             let typeid_metadata = self.cx.typeid_metadata(typeid).unwrap();
             let dbg_loc = self.get_dbg_loc();
 
-            // Test whether the function pointer is associated with the type identifier.
-            let cond = self.type_test(llfn, typeid_metadata);
+            // Test whether the function pointer is associated with the type identifier using the
+            // llvm.type.test intrinsic. The LowerTypeTests link-time optimization pass replaces
+            // calls to this intrinsic with code to test type membership.
+            let typeid = self.get_metadata_value(typeid_metadata);
+            let cond = self.call_intrinsic("llvm.type.test", &[llfn, typeid]);
             let bb_pass = self.append_sibling_block("type_test.pass");
             let bb_fail = self.append_sibling_block("type_test.fail");
             self.cond_br(cond, bb_pass, bb_fail);

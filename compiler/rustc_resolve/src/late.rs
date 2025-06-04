@@ -874,7 +874,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                             kind: LifetimeBinderKind::PolyTrait,
                             span,
                         },
-                        |this| this.visit_path(path, ty.id),
+                        |this| this.visit_path(path),
                     );
                 } else {
                     visit::walk_ty(self, ty)
@@ -1265,7 +1265,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                             AnonConstKind::ConstArg(IsRepeatExpr::No),
                             |this| {
                                 this.smart_resolve_path(ty.id, &None, path, PathSource::Expr(None));
-                                this.visit_path(path, ty.id);
+                                this.visit_path(path);
                             },
                         );
 
@@ -3640,7 +3640,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         if let Some(qself) = &delegation.qself {
             self.visit_ty(&qself.ty);
         }
-        self.visit_path(&delegation.path, delegation.id);
+        self.visit_path(&delegation.path);
         let Some(body) = &delegation.body else { return };
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
             let span = delegation.path.segments.last().unwrap().ident.span;
@@ -4867,7 +4867,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 if let Some(qself) = &se.qself {
                     self.visit_ty(&qself.ty);
                 }
-                self.visit_path(&se.path, expr.id);
+                self.visit_path(&se.path);
                 walk_list!(self, resolve_expr_field, &se.fields, expr);
                 match &se.rest {
                     StructRest::Base(expr) => self.visit_expr(expr),
@@ -4898,9 +4898,26 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.resolve_expr(e, Some(expr));
             }
 
-            ExprKind::Let(ref pat, ref scrutinee, _, _) => {
+            ExprKind::Let(ref pat, ref scrutinee, _, Recovered::No) => {
                 self.visit_expr(scrutinee);
                 self.resolve_pattern_top(pat, PatternSource::Let);
+            }
+
+            ExprKind::Let(ref pat, ref scrutinee, _, Recovered::Yes(_)) => {
+                self.visit_expr(scrutinee);
+                // This is basically a tweaked, inlined `resolve_pattern_top`.
+                let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
+                self.resolve_pattern(pat, PatternSource::Let, &mut bindings);
+                // We still collect the bindings in this `let` expression which is in
+                // an invalid position (and therefore shouldn't declare variables into
+                // its parent scope). To avoid unnecessary errors though, we do just
+                // reassign the resolutions to `Res::Err`.
+                for (_, bindings) in &mut bindings {
+                    for (_, binding) in bindings {
+                        *binding = Res::Err;
+                    }
+                }
+                self.apply_pattern_bindings(bindings);
             }
 
             ExprKind::If(ref cond, ref then, ref opt_else) => {

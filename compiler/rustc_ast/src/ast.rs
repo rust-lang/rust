@@ -2465,6 +2465,39 @@ impl TyKind {
             None
         }
     }
+
+    /// Returns `true` if this type is considered a scalar primitive (e.g.,
+    /// `i32`, `u8`, `bool`, etc).
+    ///
+    /// This check is based on **symbol equality** and does **not** remove any
+    /// path prefixes or references. If a type alias or shadowing is present
+    /// (e.g., `type i32 = CustomType;`), this method will still return `true`
+    /// for `i32`, even though it may not refer to the primitive type.
+    pub fn maybe_scalar(&self) -> bool {
+        let Some(ty_sym) = self.is_simple_path() else {
+            // unit type
+            return self.is_unit();
+        };
+        matches!(
+            ty_sym,
+            sym::i8
+                | sym::i16
+                | sym::i32
+                | sym::i64
+                | sym::i128
+                | sym::u8
+                | sym::u16
+                | sym::u32
+                | sym::u64
+                | sym::u128
+                | sym::f16
+                | sym::f32
+                | sym::f64
+                | sym::f128
+                | sym::char
+                | sym::bool
+        )
+    }
 }
 
 /// A pattern type pattern.

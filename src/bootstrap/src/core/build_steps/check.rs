@@ -31,6 +31,8 @@ pub struct Std {
 }
 
 impl Std {
+    const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests"];
+
     pub fn new(target: TargetSelection) -> Self {
         Self { target, crates: vec![], override_build_kind: None }
     }
@@ -46,12 +48,19 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let stage = run.builder.top_stage;
-        run.crate_or_deps("sysroot")
-            .crate_or_deps("coretests")
-            .crate_or_deps("alloctests")
-            .path("library")
-            .default_condition(stage != 0)
+        let builder = run.builder;
+        let stage = if builder.config.is_explicit_stage() || builder.top_stage >= 1 {
+            builder.top_stage
+        } else {
+            1
+        };
+
+        let mut run = run;
+        for c in Std::CRATE_OR_DEPS {
+            run = run.crate_or_deps(c);
+        }
+
+        run.path("library").default_condition(stage != 0)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -62,10 +71,29 @@ impl Step for Std {
     fn run(self, builder: &Builder<'_>) {
         builder.require_submodule("library/stdarch", None);
 
-        let target = self.target;
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let stage = if builder.config.is_explicit_stage() || builder.top_stage >= 1 {
+            builder.top_stage
+        } else {
+            1
+        };
 
-        if builder.top_stage == 0 {
+        let target = self.target;
+        let compiler = builder.compiler(stage, builder.config.build);
+
+        if stage == 0 {
+            let mut is_explicitly_called =
+                builder.paths.iter().any(|p| p.starts_with("library") || p.starts_with("std"));
+
+            if !is_explicitly_called {
+                for c in Std::CRATE_OR_DEPS {
+                    is_explicitly_called = builder.paths.iter().any(|p| p.starts_with(c));
+                }
+            }
+
+            if is_explicitly_called {
+                eprintln!("WARNING: stage 0 std is precompiled and does nothing during `x check`.");
+            }
+
             // Reuse the stage0 libstd
             builder.ensure(compile::Std::new(compiler, target));
             return;
@@ -93,6 +121,7 @@ impl Step for Std {
         let _guard = builder.msg_check(
             format_args!("library artifacts{}", crate_description(&self.crates)),
             target,
+            Some(stage),
         );
 
         let stamp = build_stamp::libstd_stamp(builder, compiler, target).with_prefix("check");
@@ -145,7 +174,7 @@ impl Step for Std {
         }
 
         let stamp = build_stamp::libstd_stamp(builder, compiler, target).with_prefix("check-test");
-        let _guard = builder.msg_check("library test/bench/example targets", target);
+        let _guard = builder.msg_check("library test/bench/example targets", target, Some(stage));
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 }
@@ -246,6 +275,7 @@ impl Step for Rustc {
         let _guard = builder.msg_check(
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
             target,
+            None,
         );
 
         let stamp = build_stamp::librustc_stamp(builder, compiler, target).with_prefix("check");
@@ -306,7 +336,7 @@ impl Step for CodegenBackend {
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
         rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
 
-        let _guard = builder.msg_check(backend, target);
+        let _guard = builder.msg_check(backend, target, None);
 
         let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, backend)
             .with_prefix("check");
@@ -373,7 +403,7 @@ impl Step for RustAnalyzer {
         let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
             .with_prefix("rust-analyzer-check");
 
-        let _guard = builder.msg_check("rust-analyzer artifacts", target);
+        let _guard = builder.msg_check("rust-analyzer artifacts", target, None);
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 }
@@ -436,7 +466,7 @@ impl Step for Compiletest {
         let stamp = BuildStamp::new(&builder.cargo_out(compiler, mode, self.target))
             .with_prefix("compiletest-check");
 
-        let _guard = builder.msg_check("compiletest artifacts", self.target);
+        let _guard = builder.msg_check("compiletest artifacts", self.target, None);
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 }
@@ -514,7 +544,7 @@ fn run_tool_check_step(
     let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
         .with_prefix(&format!("{}-check", step_type_name.to_lowercase()));
 
-    let _guard = builder.msg_check(format!("{display_name} artifacts"), target);
+    let _guard = builder.msg_check(format!("{display_name} artifacts"), target, None);
     run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 }
 
@@ -528,7 +558,7 @@ tool_check_step!(Miri { path: "src/tools/miri" });
 tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri" });
 tool_check_step!(Rustfmt { path: "src/tools/rustfmt" });
 tool_check_step!(MiroptTestTools { path: "src/tools/miropt-test-tools" });
-tool_check_step!(TestFloatParse { path: "src/etc/test-float-parse" });
+tool_check_step!(TestFloatParse { path: "src/tools/test-float-parse" });
 tool_check_step!(FeaturesStatusDump { path: "src/tools/features-status-dump" });
 
 tool_check_step!(Bootstrap { path: "src/bootstrap", default: false });
