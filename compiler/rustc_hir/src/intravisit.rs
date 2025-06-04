@@ -200,6 +200,10 @@ use nested_filter::NestedFilter;
 /// explicitly, you need to override each method. (And you also need
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
+///
+/// Every `walk_*` method uses deconstruction to access fields of structs and
+/// enums. This will result in a compile error if a field is added, which makes
+/// it more likely the appropriate visit call will be added for it.
 pub trait Visitor<'v>: Sized {
     // This type should not be overridden, it exists for convenient usage as `Self::MaybeTyCtxt`.
     type MaybeTyCtxt: HirTyCtxt<'v> = <Self::NestedFilter as NestedFilter<'v>>::MaybeTyCtxt;
@@ -1201,7 +1205,6 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
     visitor: &mut V,
     trait_item: &'v TraitItem<'v>,
 ) -> V::Result {
-    // N.B., deliberately force a compilation error if/when new fields are added.
     let TraitItem { ident, generics, ref defaultness, ref kind, span, owner_id: _ } = *trait_item;
     let hir_id = trait_item.hir_id();
     try_visit!(visitor.visit_ident(ident));
@@ -1240,7 +1243,6 @@ pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(
     visitor: &mut V,
     trait_item_ref: &'v TraitItemRef,
 ) -> V::Result {
-    // N.B., deliberately force a compilation error if/when new fields are added.
     let TraitItemRef { id, ident, ref kind, span: _ } = *trait_item_ref;
     try_visit!(visitor.visit_nested_trait_item(id));
     try_visit!(visitor.visit_ident(ident));
@@ -1251,7 +1253,6 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
     visitor: &mut V,
     impl_item: &'v ImplItem<'v>,
 ) -> V::Result {
-    // N.B., deliberately force a compilation error if/when new fields are added.
     let ImplItem {
         owner_id: _,
         ident,
@@ -1286,7 +1287,6 @@ pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(
     visitor: &mut V,
     foreign_item_ref: &'v ForeignItemRef,
 ) -> V::Result {
-    // N.B., deliberately force a compilation error if/when new fields are added.
     let ForeignItemRef { id, ident, span: _ } = *foreign_item_ref;
     try_visit!(visitor.visit_nested_foreign_item(id));
     visitor.visit_ident(ident)
@@ -1296,7 +1296,6 @@ pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(
     visitor: &mut V,
     impl_item_ref: &'v ImplItemRef,
 ) -> V::Result {
-    // N.B., deliberately force a compilation error if/when new fields are added.
     let ImplItemRef { id, ident, ref kind, span: _, trait_item_def_id: _ } = *impl_item_ref;
     try_visit!(visitor.visit_nested_impl_item(id));
     try_visit!(visitor.visit_ident(ident));
