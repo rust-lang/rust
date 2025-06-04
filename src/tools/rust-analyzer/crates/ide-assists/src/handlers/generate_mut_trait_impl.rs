@@ -48,36 +48,42 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?.clone_for_update();
     let indent = impl_def.indent_level();
 
+    let (apply_trait, new_apply_trait) = impl_def
+        .syntax()
+        .descendants()
+        .filter_map(ast::NameRef::cast)
+        .find_map(process_trait_name)?;
+
     let trait_ = impl_def.trait_()?;
     if let ast::Type::PathType(trait_path) = trait_ {
         let trait_type = ctx.sema.resolve_trait(&trait_path.path()?)?;
         let scope = ctx.sema.scope(trait_path.syntax())?;
-        if trait_type != FamousDefs(&ctx.sema, scope.krate()).core_convert_Index()? {
+        let famous_defs = FamousDefs(&ctx.sema, scope.krate());
+        if trait_type != get_famous(&apply_trait.text(), famous_defs)? {
             return None;
         }
     }
 
     // Index -> IndexMut
-    let index_trait = impl_def
-        .syntax()
-        .descendants()
-        .filter_map(ast::NameRef::cast)
-        .find(|it| it.text() == "Index")?;
     ted::replace(
-        index_trait.syntax(),
-        make::path_segment(make::name_ref("IndexMut")).clone_for_update().syntax(),
+        apply_trait.syntax(),
+        make::path_segment(make::name_ref(new_apply_trait)).clone_for_update().syntax(),
     );
 
     // index -> index_mut
-    let trait_method_name = impl_def
+    let (trait_method_name, new_trait_method_name) = impl_def
         .syntax()
         .descendants()
         .filter_map(ast::Name::cast)
-        .find(|it| it.text() == "index")?;
-    ted::replace(trait_method_name.syntax(), make::name("index_mut").clone_for_update().syntax());
+        .find_map(process_method_name)?;
+    ted::replace(
+        trait_method_name.syntax(),
+        make::name(new_trait_method_name).clone_for_update().syntax(),
+    );
 
-    let type_alias = impl_def.syntax().descendants().find_map(ast::TypeAlias::cast)?;
-    ted::remove(type_alias.syntax());
+    if let Some(type_alias) = impl_def.syntax().descendants().find_map(ast::TypeAlias::cast) {
+        ted::remove(type_alias.syntax());
+    }
 
     // &self -> &mut self
     let mut_self_param = make::mut_self_param();
@@ -87,10 +93,8 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
 
     // &Self::Output -> &mut Self::Output
     let ret_type = impl_def.syntax().descendants().find_map(ast::RetType::cast)?;
-    ted::replace(
-        ret_type.syntax(),
-        make::ret_type(make::ty("&mut Self::Output")).clone_for_update().syntax(),
-    );
+    let new_ret_type = process_ret_type(&ret_type)?;
+    ted::replace(ret_type.syntax(), make::ret_type(new_ret_type).clone_for_update().syntax());
 
     let fn_ = impl_def.assoc_item_list()?.assoc_items().find_map(|it| match it {
         ast::AssocItem::Fn(f) => Some(f),
@@ -104,12 +108,49 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
     let target = impl_def.syntax().text_range();
     acc.add(
         AssistId::generate("generate_mut_trait_impl"),
-        "Generate `IndexMut` impl from this `Index` trait",
+        format!("Generate `{new_apply_trait}` impl from this `{apply_trait}` trait"),
         target,
         |edit| {
             edit.insert(target.start(), format!("$0{impl_def}\n\n{indent}"));
         },
     )
+}
+
+fn get_famous(apply_trait: &str, famous: FamousDefs<'_, '_>) -> Option<hir::Trait> {
+    match apply_trait {
+        "Index" => famous.core_convert_Index(),
+        "AsRef" => famous.core_convert_AsRef(),
+        "Borrow" => famous.core_borrow_Borrow(),
+        _ => None,
+    }
+}
+
+fn process_trait_name(name: ast::NameRef) -> Option<(ast::NameRef, &'static str)> {
+    let new_name = match &*name.text() {
+        "Index" => "IndexMut",
+        "AsRef" => "AsMut",
+        "Borrow" => "BorrowMut",
+        _ => return None,
+    };
+    Some((name, new_name))
+}
+
+fn process_method_name(name: ast::Name) -> Option<(ast::Name, &'static str)> {
+    let new_name = match &*name.text() {
+        "index" => "index_mut",
+        "as_ref" => "as_mut",
+        "borrow" => "borrow_mut",
+        _ => return None,
+    };
+    Some((name, new_name))
+}
+
+fn process_ret_type(ref_ty: &ast::RetType) -> Option<ast::Type> {
+    let ty = ref_ty.ty()?;
+    let ast::Type::RefType(ref_type) = ty else {
+        return None;
+    };
+    Some(make::ty_ref(ref_type.ty()?, true))
 }
 
 #[cfg(test)]
@@ -184,6 +225,35 @@ impl<T> core::ops::Index<Axis> for [T; 3] where T: Copy {
     fn index(&self, index: Axis) -> &Self::Output {
         let var_name = &self[index as usize];
         var_name
+    }
+}
+"#,
+        );
+
+        check_assist(
+            generate_mut_trait_impl,
+            r#"
+//- minicore: as_ref
+struct Foo(i32);
+
+impl<T> core::convert::AsRef$0<i32> for Foo {
+    fn as_ref(&self) -> &i32 {
+        &self.0
+    }
+}
+"#,
+            r#"
+struct Foo(i32);
+
+$0impl<T> core::convert::AsMut<i32> for Foo {
+    fn as_mut(&mut self) -> &mut i32 {
+        &self.0
+    }
+}
+
+impl<T> core::convert::AsRef<i32> for Foo {
+    fn as_ref(&self) -> &i32 {
+        &self.0
     }
 }
 "#,
@@ -285,6 +355,14 @@ mod foo {
 pub trait Index<Idx: ?Sized> {}
 
 impl<T> Index$0<i32> for [T; 3] {}
+"#,
+        );
+        check_assist_not_applicable(
+            generate_mut_trait_impl,
+            r#"
+pub trait AsRef<T: ?Sized> {}
+
+impl<T> AsRef$0<i32> for [T; 3] {}
 "#,
         );
     }
