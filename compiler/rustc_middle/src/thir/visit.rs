@@ -3,6 +3,9 @@ use super::{
     Pat, PatKind, Stmt, StmtKind, Thir,
 };
 
+/// Every `walk_*` method uses deconstruction to access fields of structs and
+/// enums. This will result in a compile error if a field is added, which makes
+/// it more likely the appropriate visit call will be added for it.
 pub trait Visitor<'thir, 'tcx: 'thir>: Sized {
     fn thir(&self) -> &'thir Thir<'tcx>;
 
