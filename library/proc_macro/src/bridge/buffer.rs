@@ -10,8 +10,8 @@ pub struct Buffer {
     data: *mut u8,
     len: usize,
     capacity: usize,
-    reserve: Option<extern "C" fn(Buffer, usize) -> Buffer>,
-    drop: Option<extern "C" fn(Buffer)>,
+    reserve: extern "C" fn(Buffer, usize) -> Buffer,
+    drop: extern "C" fn(Buffer),
 }
 
 unsafe impl Sync for Buffer {}
@@ -63,7 +63,7 @@ impl Buffer {
     pub(super) fn extend_from_array<const N: usize>(&mut self, xs: &[u8; N]) {
         if xs.len() > (self.capacity - self.len) {
             let b = self.take();
-            *self = (b.reserve.unwrap())(b, xs.len());
+            *self = (b.reserve)(b, xs.len());
         }
         unsafe {
             xs.as_ptr().copy_to_nonoverlapping(self.data.add(self.len), xs.len());
@@ -75,7 +75,7 @@ impl Buffer {
     pub(super) fn extend_from_slice(&mut self, xs: &[u8]) {
         if xs.len() > (self.capacity - self.len) {
             let b = self.take();
-            *self = (b.reserve.unwrap())(b, xs.len());
+            *self = (b.reserve)(b, xs.len());
         }
         unsafe {
             xs.as_ptr().copy_to_nonoverlapping(self.data.add(self.len), xs.len());
@@ -90,7 +90,7 @@ impl Buffer {
         // to check for overflow.
         if self.len == self.capacity {
             let b = self.take();
-            *self = (b.reserve.unwrap())(b, 1);
+            *self = (b.reserve)(b, 1);
         }
         unsafe {
             *self.data.add(self.len) = v;
@@ -122,7 +122,7 @@ impl Drop for Buffer {
     #[inline]
     fn drop(&mut self) {
         let b = self.take();
-        (b.drop.unwrap())(b);
+        (b.drop)(b);
     }
 }
 
@@ -150,6 +150,6 @@ impl From<Vec<u8>> for Buffer {
             mem::drop(to_vec(b));
         }
 
-        Buffer { data, len, capacity, reserve: Some(reserve), drop: Some(drop) }
+        Buffer { data, len, capacity, reserve, drop }
     }
 }

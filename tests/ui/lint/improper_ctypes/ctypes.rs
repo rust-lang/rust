@@ -76,7 +76,7 @@ extern "C" {
     pub fn box_type(p: Box<u32>);
     pub fn opt_box_type(p: Option<Box<u32>>);
     pub fn char_type(p: char); //~ ERROR uses type `char`
-    pub fn pat_type1() -> pattern_type!(u32 is 1..); //~ ERROR uses type `(u32) is 1..`
+    pub fn pat_type1() -> pattern_type!(u32 is 1..);
     pub fn pat_type2(p: pattern_type!(u32 is 1..)); // no error!
     pub fn trait_type(p: &dyn Bar); //~ ERROR uses type `&dyn Bar`
     pub fn tuple_type(p: (i32, i32)); //~ ERROR uses type `(i32, i32)`
@@ -146,7 +146,6 @@ static EXPORTED_STATIC_BAD: &'static str = "is this reaching you, plugin?";
 //~^ ERROR: uses type `&str`
 #[export_name="EXPORTED_STATIC_MUT_BUT_RENAMED"]
 static mut EXPORTED_STATIC_MUT: &u32 = &DEFAULT_U32;
-//~^ ERROR: uses type `&u32`
 
 #[cfg(not(target_arch = "wasm32"))]
 extern "C" {

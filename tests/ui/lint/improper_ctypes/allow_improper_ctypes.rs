@@ -74,7 +74,7 @@ static INT: u32 = 42;
 extern "C" fn fn1a(e: &String) -> &str {&*e}
 extern "C" fn fn1u(e: &String) -> &str {&*e}
 //~^ ERROR: `extern` fn uses type `&str`
-//~^^ ERROR: `extern` fn uses type `&String`
+// | FIXME: not warning about the &String feels wrong, but it's behind a FFI-safe reference so...
 
 #[allow(improper_c_fn_definitions)]
 extern "C" fn fn2a(e: UnsafeStruct) {}
@@ -99,11 +99,10 @@ extern "C" fn fn3ou(e: outer::AllowedUnsafeStruct) {}
 #[allow(improper_c_fn_definitions)]
 extern "C" fn fn4a(e: UnsafeFromForeignStruct) {}
 extern "C" fn fn4u(e: UnsafeFromForeignStruct) {}
-//~^ ERROR: `extern` fn uses type `UnsafeFromForeignStruct<'_>`
 #[allow(improper_c_fn_definitions)]
 extern "C" fn fn4oa(e: outer::UnsafeFromForeignStruct) {}
 extern "C" fn fn4ou(e: outer::UnsafeFromForeignStruct) {}
-//~^ ERROR: `extern` fn uses type `outer::UnsafeFromForeignStruct<'_>`
+// the block above might become unsafe if/once we lint on the value assumptions of types
 
 #[allow(improper_c_fn_definitions)]
 extern "C" fn fn5a() -> UnsafeFromForeignStruct<'static> { UnsafeFromForeignStruct(&INT)}

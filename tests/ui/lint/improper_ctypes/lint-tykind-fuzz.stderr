@@ -7,41 +7,6 @@ LL | #![feature(inherent_associated_types)]
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: `extern` fn uses type `&SomeStruct`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:35:7
-   |
-LL |       &self
-   |       ^^^^^ not FFI-safe
-   |
-   = help: consider using a raw pointer, or wrapping `&SomeStruct` in an `Option<_>`
-   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
-           which cannot be garanteed if their values are produced by non-rust code
-note: the lint level is defined here
-  --> $DIR/lint-tykind-fuzz.rs:5:26
-   |
-LL | #![deny(improper_ctypes, improper_c_fn_definitions)]
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: `extern` fn uses type `Box<Self>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:91:14
-   |
-LL |        self: Box<Self>,
-   |              ^^^^^^^^^ not FFI-safe
-   |
-   = help: consider using a raw pointer, or wrapping `Box<Self>` in an `Option<_>`
-   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
-           which cannot be garanteed if their values are produced by non-rust code
-
-error: `extern` fn uses type `&Self`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:98:8
-   |
-LL |        &self
-   |        ^^^^^ not FFI-safe
-   |
-   = help: consider using a raw pointer, or wrapping `&Self` in an `Option<_>`
-   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
-           which cannot be garanteed if their values are produced by non-rust code
-
 error: `extern` fn uses type `String`, which is not FFI-safe
   --> $DIR/lint-tykind-fuzz.rs:120:5
    |
@@ -50,6 +15,11 @@ LL |   s:String,
    |
    = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `String`
    = note: `String` has unspecified layout
+note: the lint level is defined here
+  --> $DIR/lint-tykind-fuzz.rs:5:26
+   |
+LL | #![deny(improper_ctypes, improper_c_fn_definitions)]
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `extern` fn uses type `&str`, which is not FFI-safe
   --> $DIR/lint-tykind-fuzz.rs:122:6
@@ -104,15 +74,6 @@ LL |   (p2, p3):(u8, u8),
    |
    = help: consider using a struct instead
    = note: tuples have unspecified layout
-
-error: `extern` fn uses type `(u32) is 1..`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:134:7
-   |
-LL |   nz: pattern_type!(u32 is 1..),
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider using the base type instead, or wrapping `(u32) is 1..` in an `Option<_>`
-   = note: integer-pattern types with one disallowed value and no `Option` wrapping cannot have their value be provided by non-rust code
 
 error: `extern` fn uses type `&StructWithDyn`, which is not FFI-safe
   --> $DIR/lint-tykind-fuzz.rs:148:7
@@ -189,16 +150,6 @@ LL |   (p2, p3):(*const u8, *const u8),
    |
    = help: consider using a struct instead
    = note: tuples have unspecified layout
-
-error: `extern` fn uses type `&SomeStruct`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:185:29
-   |
-LL |   SomeStruct{b: ref p4,..}: & SomeStruct,
-   |                             ^^^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider using a raw pointer, or wrapping `&SomeStruct` in an `Option<_>`
-   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
-           which cannot be garanteed if their values are produced by non-rust code
 
 error: `extern` fn uses type `*const StructWithDyn`, which is not FFI-safe
   --> $DIR/lint-tykind-fuzz.rs:197:7
@@ -296,16 +247,6 @@ LL |   s2: Box<str>,
    = help: consider using `*const u8` and a length instead
    = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
-error: `extern` fn uses type `Box<char>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:271:6
-   |
-LL |   c: Box<char>,
-   |      ^^^^^^^^^ not FFI-safe
-   |
-   = help: consider using a raw pointer, or wrapping `Box<char>` in an `Option<_>`
-   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
-           which cannot be garanteed if their values are produced by non-rust code
-
 error: `extern` fn uses type `Box<[u8]>`, which is not FFI-safe
   --> $DIR/lint-tykind-fuzz.rs:273:7
    |
@@ -324,16 +265,6 @@ LL |   (p2,p3):(Box<u8>, Box<u8>),
    = help: consider using a struct instead
    = note: tuples have unspecified layout
 
-error: `extern` fn uses type `&SomeStruct`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:283:29
-   |
-LL |   SomeStruct{b: ref p4,..}: &SomeStruct,
-   |                             ^^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider using a raw pointer, or wrapping `&SomeStruct` in an `Option<_>`
-   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
-           which cannot be garanteed if their values are produced by non-rust code
-
 error: `extern` fn uses type `Box<StructWithDyn>`, which is not FFI-safe
   --> $DIR/lint-tykind-fuzz.rs:295:7
    |
@@ -342,28 +273,8 @@ LL |   e3: Box<StructWithDyn>,
    |
    = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
-error: `extern` fn uses type `Box<!>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:298:6
-   |
-LL |   x: Box<!>,
-   |      ^^^^^^ not FFI-safe
-   |
-   = help: consider using a raw pointer, or wrapping `Box<!>` in an `Option<_>`
-   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
-           which cannot be garanteed if their values are produced by non-rust code
-
-error: `extern` fn uses type `Box<fn(u8) -> u8>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:301:7
-   |
-LL |   f2: Box<fn(u8)->u8>,
-   |       ^^^^^^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider using a raw pointer, or wrapping `Box<fn(u8) -> u8>` in an `Option<_>`
-   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
-           which cannot be garanteed if their values are produced by non-rust code
-
 error: `extern` fn uses type `Box<dyn Fn(u8) -> u8>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:303:7
+  --> $DIR/lint-tykind-fuzz.rs:302:7
    |
 LL |   f3: Box<dyn Fn(u8)->u8>,
    |       ^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -371,7 +282,7 @@ LL |   f3: Box<dyn Fn(u8)->u8>,
    = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<dyn PartialOrd<u8>>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:305:7
+  --> $DIR/lint-tykind-fuzz.rs:304:7
    |
 LL |   d2: Box<dyn std::cmp::PartialOrd<u8>>,
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -379,12 +290,12 @@ LL |   d2: Box<dyn std::cmp::PartialOrd<u8>>,
    = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<dyn Debug>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:309:6
+  --> $DIR/lint-tykind-fuzz.rs:308:6
    |
 LL | ) -> Box<dyn std::fmt::Debug> {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
    = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
-error: aborting due to 42 previous errors; 1 warning emitted
+error: aborting due to 33 previous errors; 1 warning emitted
 

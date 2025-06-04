@@ -18,8 +18,6 @@
 #![no_std]
 #![allow(unused_features)]
 #![allow(internal_features)]
-// a lot of references without a wrapping Option<_> to deal with the nonzero assumption
-#![allow(improper_c_fn_definitions)]
 // `mem::swap` cannot be used because it may generate references to memcpy in unoptimized code.
 #![allow(clippy::manual_swap)]
 // Support compiling on both stage0 and stage1 which may differ in supported stable features.

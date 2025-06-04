@@ -10,7 +10,6 @@
 pub trait Foo {
     extern "C" fn foo_(&self, _: ()) -> i64 {
         //~^ WARN `extern` fn uses type `()`, which is not FFI-safe
-        //~^^ WARN `extern` fn uses type `&Self`
         0
     }
 }

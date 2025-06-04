@@ -17,47 +17,14 @@ LL |             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZero<usiz
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
-warning: `extern` block uses type `(usize) is 1..`, which is not FFI-safe
-  --> $DIR/clashing-extern-fn.rs:500:39
-   |
-LL |             fn pt_non_zero_usize() -> pattern_type!(usize is 1..);
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider using the base type instead, or wrapping `(usize) is 1..` in an `Option<_>`
-   = note: integer-pattern types with one disallowed value and no `Option` wrapping cannot have their value be provided by non-rust code
-
 warning: `extern` block uses type `Option<(usize) is 0..>`, which is not FFI-safe
-  --> $DIR/clashing-extern-fn.rs:503:54
+  --> $DIR/clashing-extern-fn.rs:502:54
    |
 LL |             fn pt_non_zero_usize_opt_full_range() -> Option<pattern_type!(usize is 0..)>;
    |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
-
-warning: `extern` block uses type `(usize) is 1..`, which is not FFI-safe
-  --> $DIR/clashing-extern-fn.rs:505:37
-   |
-LL |             fn pt_non_null_ptr() -> pattern_type!(usize is 1..);
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider using the base type instead, or wrapping `(usize) is 1..` in an `Option<_>`
-   = note: integer-pattern types with one disallowed value and no `Option` wrapping cannot have their value be provided by non-rust code
-
-warning: `extern` block uses type `NonZeroUsize`, which is not FFI-safe
-  --> $DIR/clashing-extern-fn.rs:507:47
-   |
-LL |             fn pt_non_zero_usize_wrapper() -> NonZeroUsize;
-   |                                               ^^^^^^^^^^^^ not FFI-safe
-   |
-   = note: this struct/enum/union (`NonZeroUsize`) is FFI-unsafe due to a `(usize) is 1..` field
-note: the type is defined here
-  --> $DIR/clashing-extern-fn.rs:498:9
-   |
-LL |         struct NonZeroUsize(pattern_type!(usize is 1..));
-   |         ^^^^^^^^^^^^^^^^^^^
-   = help: consider using the base type instead, or wrapping `(usize) is 1..` in an `Option<_>`
-   = note: integer-pattern types with one disallowed value and no `Option` wrapping cannot have their value be provided by non-rust code
 
 warning: `clash` redeclared with a different signature
   --> $DIR/clashing-extern-fn.rs:13:13
@@ -301,7 +268,7 @@ LL |             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZero<usiz
               found `unsafe extern "C" fn() -> Option<UnsafeCell<NonZero<usize>>>`
 
 warning: `pt_non_null_ptr` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:519:13
+  --> $DIR/clashing-extern-fn.rs:516:13
    |
 LL |             fn pt_non_null_ptr() -> pattern_type!(usize is 1..);
    |             ---------------------------------------------------- `pt_non_null_ptr` previously declared here
@@ -312,5 +279,5 @@ LL |             fn pt_non_null_ptr() -> *const ();
    = note: expected `unsafe extern "C" fn() -> (usize) is 1..=`
               found `unsafe extern "C" fn() -> *const ()`
 
-warning: 27 warnings emitted
+warning: 24 warnings emitted
 

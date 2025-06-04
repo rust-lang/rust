@@ -317,7 +317,6 @@ mod issue_9218 {
     }
 }
 
-#[allow(improper_c_fn_definitions)]
 mod issue_11181 {
     extern "C" fn allowed(_v: &Vec<u32>) {}
 
