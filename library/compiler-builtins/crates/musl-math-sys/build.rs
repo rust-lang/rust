@@ -120,7 +120,7 @@ fn build_musl_math(cfg: &Config) {
     let arch_dir = musl_dir.join("arch").join(&cfg.musl_arch);
     assert!(
         math.exists(),
-        "musl source not found. Is the submodule up to date?"
+        "musl source not found. You may need to run `./ci/update-musl.sh`."
     );
 
     let source_map = find_math_source(&math, cfg);

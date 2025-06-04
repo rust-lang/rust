@@ -6,7 +6,7 @@ publish = false
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["build-mpfr", "build-musl", "unstable-float"]
+default = ["build-mpfr", "unstable-float"]
 
 # Propagated from libm because this affects which functions we test.
 unstable-float = ["libm/unstable-float", "rug?/nightly-float"]
