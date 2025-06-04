@@ -545,11 +545,12 @@ impl Cursor<'_> {
 
         let mut s = self.as_str();
         let mut found = false;
+        let mut size = 0;
         while let Some(closing) = s.find(&"-".repeat(length_opening as usize)) {
             let preceding_chars_start = s[..closing].rfind("\n").map_or(0, |i| i + 1);
             if s[preceding_chars_start..closing].chars().all(is_whitespace) {
                 // candidate found
-                self.bump_bytes(closing);
+                self.bump_bytes(size + closing);
                 // in case like
                 // ---cargo
                 // --- blahblah
@@ -562,6 +563,7 @@ impl Cursor<'_> {
                 break;
             } else {
                 s = &s[closing + length_opening as usize..];
+                size += closing + length_opening as usize;
             }
         }
 
