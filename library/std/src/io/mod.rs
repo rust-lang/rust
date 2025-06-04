@@ -917,12 +917,16 @@ pub trait Read {
     /// # }
     /// ```
     ///
-    /// # Notes
+    /// # Usage Notes
     ///
-    /// Be careful using this trait method with streams that are expected to be continuous. For example, using 
-    /// `read_to_end` with streams like `stdin` will simply lock the application into waiting on the 
-    /// transmission of data to conclude. It is recommended you use this method if you know the stream will be closed
-    /// at the other end. The problem is that EOF or End of File is never reached for streams that never close or are finite.
+    /// `read_to_end` attempts to read a source until EOF, but many sources are continuous streams
+    /// that do not send EOF. In these cases, `read_to_end` will block indefinitely. Standard input
+    /// is one such stream which may be finite if piped, but is typically continuous. For example,
+    /// `cat <file> | <my_rust_program>` will correctly terminate with an `EOF` upon closure of cat.
+    /// `yes "Data" | pv | <my_rust_program` or `tail -f <file> | <my_rust_program>` may not close
+    /// the stream or insert an `EOF` termination character.
+    ///
+    /// Using `.lines()` with a [`BufReader`] or using [`read`] can provide a better solution
     ///
     /// [`Vec::try_reserve`]: crate::vec::Vec::try_reserve
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -964,15 +968,19 @@ pub trait Read {
     /// }
     /// ```
     ///
-    /// # Notes
-    ///
-    /// Be careful using this trait method with streams that are expected to be continuous. For example, using 
-    /// `read_to_string` with streams like `stdin` will simply lock the application into waiting on the 
-    /// transmission of data to conclude. It is recommended you use this method if you know the stream will be closed
-    /// at the other end. The problem is that EOF or End of File is never reached for streams that never close or are finite.
-    ///
     /// (See also the [`std::fs::read_to_string`] convenience function for
     /// reading from a file.)
+    ///
+    /// # Usage Notes
+    ///
+    /// `read_to_string` attempts to read a source until EOF, but many sources are continuous streams
+    /// that do not send EOF. In these cases, `read_to_string` will block indefinitely. Standard input
+    /// is one such stream which may be finite if piped, but is typically continuous. For example,
+    /// `cat <file> | <my_rust_program>` will correctly terminate with an `EOF` upon closure of cat.
+    /// `yes "Data" | pv | <my_rust_program` or `tail -f <file> | <my_rust_program>` may not close
+    /// the stream or insert an `EOF` termination character.
+    ///
+    /// Using `.lines()` with a [`BufReader`] or using [`read`] can provide a better solution
     ///
     /// [`std::fs::read_to_string`]: crate::fs::read_to_string
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1276,6 +1284,17 @@ pub trait Read {
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Usage Notes
+///
+/// `read_to_string` attempts to read a source until EOF, but many sources are continuous streams
+/// that do not send EOF. In these cases, `read_to_string` will block indefinitely. Standard input
+/// is one such stream which may be finite if piped, but is typically continuous. For example,
+/// `cat <file> | <my_rust_program>` will correctly terminate with an `EOF` upon closure of cat.
+/// `yes "Data" | pv | <my_rust_program` or `tail -f <file> | <my_rust_program>` may not close
+/// the stream or insert an `EOF` termination character.
+///
+/// Using `.lines()` with a [`BufReader`] or using [`read`] can provide a better solution
 #[stable(feature = "io_read_to_string", since = "1.65.0")]
 pub fn read_to_string<R: Read>(mut reader: R) -> Result<String> {
     let mut buf = String::new();
