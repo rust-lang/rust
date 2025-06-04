@@ -656,7 +656,7 @@ impl<'a, P: Pattern> SplitInternal<'a, P> {
         None
     }
 
-    #[inline(always)]
+    #[inline]
     fn next(&mut self) -> Option<&'a str> {
         if self.finished {
             return None;
