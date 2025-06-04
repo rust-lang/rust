@@ -166,10 +166,10 @@ impl TestDB {
         self.events.lock().unwrap().take().unwrap()
     }
 
-    pub(crate) fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {
+    pub(crate) fn log_executed(&self, f: impl FnOnce()) -> (Vec<String>, Vec<salsa::Event>) {
         let events = self.log(f);
-        events
-            .into_iter()
+        let executed = events
+            .iter()
             .filter_map(|e| match e.kind {
                 // This is pretty horrible, but `Debug` is the only way to inspect
                 // QueryDescriptor at the moment.
@@ -181,6 +181,7 @@ impl TestDB {
                 }
                 _ => None,
             })
-            .collect()
+            .collect();
+        (executed, events)
     }
 }

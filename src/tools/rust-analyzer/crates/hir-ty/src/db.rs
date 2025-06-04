@@ -237,15 +237,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
-    fn intern_type_or_const_param_id(
-        &self,
-        param_id: TypeOrConstParamId,
-    ) -> InternedTypeOrConstParamId;
-
-    #[salsa::interned]
-    fn intern_lifetime_param_id(&self, param_id: LifetimeParamId) -> InternedLifetimeParamId;
-
-    #[salsa::interned]
     fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
 
     #[salsa::interned]
@@ -329,9 +320,31 @@ fn hir_database_is_dyn_compatible() {
     fn _assert_dyn_compatible(_: &dyn HirDatabase) {}
 }
 
-impl_intern_key!(InternedTypeOrConstParamId, TypeOrConstParamId);
+#[salsa_macros::interned(no_lifetime, revisions = usize::MAX)]
+#[derive(PartialOrd, Ord)]
+pub struct InternedTypeOrConstParamId {
+    pub loc: TypeOrConstParamId,
+}
+impl ::std::fmt::Debug for InternedTypeOrConstParamId {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        f.debug_tuple(stringify!(InternedTypeOrConstParamId))
+            .field(&format_args!("{:04x}", self.0.index()))
+            .finish()
+    }
+}
 
-impl_intern_key!(InternedLifetimeParamId, LifetimeParamId);
+#[salsa_macros::interned(no_lifetime, revisions = usize::MAX)]
+#[derive(PartialOrd, Ord)]
+pub struct InternedLifetimeParamId {
+    pub loc: LifetimeParamId,
+}
+impl ::std::fmt::Debug for InternedLifetimeParamId {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        f.debug_tuple(stringify!(InternedLifetimeParamId))
+            .field(&format_args!("{:04x}", self.0.index()))
+            .finish()
+    }
+}
 
 impl_intern_key!(InternedConstParamId, ConstParamId);
 

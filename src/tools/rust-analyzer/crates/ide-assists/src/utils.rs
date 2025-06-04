@@ -1,5 +1,7 @@
 //! Assorted functions shared by several assists.
 
+use std::slice;
+
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
     DisplayTarget, HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution,
@@ -912,7 +914,7 @@ fn handle_as_ref_str(
 ) -> Option<(ReferenceConversionType, bool)> {
     let str_type = hir::BuiltinType::str().ty(db);
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, std::slice::from_ref(&str_type))
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&str_type))
         .then_some((ReferenceConversionType::AsRefStr, could_deref_to_target(ty, &str_type, db)))
 }
 
@@ -924,11 +926,10 @@ fn handle_as_ref_slice(
     let type_argument = ty.type_arguments().next()?;
     let slice_type = hir::Type::new_slice(type_argument);
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, std::slice::from_ref(&slice_type))
-        .then_some((
-            ReferenceConversionType::AsRefSlice,
-            could_deref_to_target(ty, &slice_type, db),
-        ))
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&slice_type)).then_some((
+        ReferenceConversionType::AsRefSlice,
+        could_deref_to_target(ty, &slice_type, db),
+    ))
 }
 
 fn handle_dereferenced(
@@ -938,7 +939,7 @@ fn handle_dereferenced(
 ) -> Option<(ReferenceConversionType, bool)> {
     let type_argument = ty.type_arguments().next()?;
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, std::slice::from_ref(&type_argument))
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&type_argument))
         .then_some((
             ReferenceConversionType::Dereferenced,
             could_deref_to_target(ty, &type_argument, db),
