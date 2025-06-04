@@ -1878,23 +1878,27 @@ impl Step for Sysroot {
         // so that any tools relying on `rust-src` also work for local builds,
         // and also for translating the virtual `/rustc/$hash` back to the real
         // directory (for running tests with `rust.remap-debuginfo = true`).
-        let sysroot_lib_rustlib_src = sysroot.join("lib/rustlib/src");
-        t!(fs::create_dir_all(&sysroot_lib_rustlib_src));
-        let sysroot_lib_rustlib_src_rust = sysroot_lib_rustlib_src.join("rust");
-        if let Err(e) = symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_src_rust) {
-            eprintln!(
-                "ERROR: creating symbolic link `{}` to `{}` failed with {}",
-                sysroot_lib_rustlib_src_rust.display(),
-                builder.src.display(),
-                e,
-            );
-            if builder.config.rust_remap_debuginfo {
+        if compiler.stage != 0 {
+            let sysroot_lib_rustlib_src = sysroot.join("lib/rustlib/src");
+            t!(fs::create_dir_all(&sysroot_lib_rustlib_src));
+            let sysroot_lib_rustlib_src_rust = sysroot_lib_rustlib_src.join("rust");
+            if let Err(e) =
+                symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_src_rust)
+            {
                 eprintln!(
-                    "ERROR: some `tests/ui` tests will fail when lacking `{}`",
+                    "ERROR: creating symbolic link `{}` to `{}` failed with {}",
                     sysroot_lib_rustlib_src_rust.display(),
+                    builder.src.display(),
+                    e,
                 );
+                if builder.config.rust_remap_debuginfo {
+                    eprintln!(
+                        "ERROR: some `tests/ui` tests will fail when lacking `{}`",
+                        sysroot_lib_rustlib_src_rust.display(),
+                    );
+                }
+                build_helper::exit!(1);
             }
-            build_helper::exit!(1);
         }
 
         // rustc-src component is already part of CI rustc's sysroot
