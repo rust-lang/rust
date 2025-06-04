@@ -25,7 +25,6 @@ cfg-if = "1.0.0"
 
 # When built as part of libstd
 core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
-compiler_builtins = { version = "0.1.2", optional = true }
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
 [target.'cfg(not(windows))'.dependencies]
@@ -38,6 +37,5 @@ std_detect_dlsym_getauxval = [ "libc" ]
 std_detect_env_override = [ "libc" ]
 rustc-dep-of-std = [
     "core",
-    "compiler_builtins",
     "alloc",
 ]
