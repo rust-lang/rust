@@ -158,33 +158,6 @@ pub(crate) struct MustNotSuspendReason {
     pub reason: String,
 }
 
-pub(crate) struct UnnecessaryTransmute {
-    pub span: Span,
-    pub sugg: String,
-    pub help: Option<&'static str>,
-}
-
-// Needed for def_path_str
-impl<'a> LintDiagnostic<'a, ()> for UnnecessaryTransmute {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::Diag<'a, ()>) {
-        diag.primary_message(fluent::mir_transform_unnecessary_transmute);
-        diag.span_suggestion(
-            self.span,
-            "replace this with",
-            self.sugg,
-            lint::Applicability::MachineApplicable,
-        );
-        self.help.map(|help| diag.help(help));
-    }
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_transform_undefined_transmute)]
-#[note]
-#[note(mir_transform_note2)]
-#[help]
-pub(crate) struct UndefinedTransmute;
-
 #[derive(Diagnostic)]
 #[diag(mir_transform_force_inline)]
 #[note]

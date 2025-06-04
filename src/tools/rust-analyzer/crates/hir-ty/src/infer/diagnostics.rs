@@ -61,7 +61,7 @@ impl<'a> InferenceTyLoweringContext<'a> {
     #[inline]
     pub(super) fn new(
         db: &'a dyn HirDatabase,
-        resolver: &'a Resolver,
+        resolver: &'a Resolver<'_>,
         store: &'a ExpressionStore,
         diagnostics: &'a Diagnostics,
         source: InferenceTyDiagnosticSource,

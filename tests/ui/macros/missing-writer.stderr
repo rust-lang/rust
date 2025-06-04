@@ -24,7 +24,7 @@ error[E0599]: cannot write into `&'static str`
   --> $DIR/missing-writer.rs:5:12
    |
 LL |     write!("{}_{}", x, y);
-   |     -------^^^^^^^------- method not found in `&str`
+   |     -------^^^^^^^------- method not found in `&'static str`
    |
 note: must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method
   --> $DIR/missing-writer.rs:5:12
@@ -41,7 +41,7 @@ error[E0599]: cannot write into `&'static str`
   --> $DIR/missing-writer.rs:11:14
    |
 LL |     writeln!("{}_{}", x, y);
-   |     ---------^^^^^^^------- method not found in `&str`
+   |     ---------^^^^^^^------- method not found in `&'static str`
    |
 note: must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method
   --> $DIR/missing-writer.rs:11:14

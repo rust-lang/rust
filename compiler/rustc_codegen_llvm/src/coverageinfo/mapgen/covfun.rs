@@ -8,9 +8,7 @@ use std::ffi::CString;
 use std::sync::Arc;
 
 use rustc_abi::Align;
-use rustc_codegen_ssa::traits::{
-    BaseTypeCodegenMethods as _, ConstCodegenMethods, StaticCodegenMethods,
-};
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods as _, ConstCodegenMethods};
 use rustc_middle::mir::coverage::{
     BasicCoverageBlock, CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping,
     MappingKind, Op,
@@ -181,7 +179,7 @@ fn fill_region_tables<'tcx>(
 /// contains the function's coverage mapping data. The record is then stored
 /// as a global variable in the `__llvm_covfun` section.
 pub(crate) fn generate_covfun_record<'tcx>(
-    cx: &CodegenCx<'_, 'tcx>,
+    cx: &mut CodegenCx<'_, 'tcx>,
     global_file_table: &GlobalFileTable,
     covfun: &CovfunRecord<'tcx>,
 ) {

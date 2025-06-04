@@ -60,15 +60,6 @@ pub enum AtomicRmwBinOp {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum AtomicOrdering {
-    Relaxed,
-    Acquire,
-    Release,
-    AcquireRelease,
-    SequentiallyConsistent,
-}
-
-#[derive(Copy, Clone, Debug)]
 pub enum SynchronizationScope {
     SingleThread,
     CrossThread,

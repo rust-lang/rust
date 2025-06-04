@@ -86,7 +86,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         thread: Scalar,
         name: Scalar,
-        name_max_len: usize,
+        name_max_len: u64,
         truncate: bool,
     ) -> InterpResult<'tcx, ThreadNameResult> {
         let this = self.eval_context_mut();
@@ -99,9 +99,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut name = this.read_c_str(name)?.to_owned();
 
         // Comparing with `>=` to account for null terminator.
-        if name.len() >= name_max_len {
+        if name.len().to_u64() >= name_max_len {
             if truncate {
-                name.truncate(name_max_len.saturating_sub(1));
+                name.truncate(name_max_len.saturating_sub(1).try_into().unwrap());
             } else {
                 return interp_ok(ThreadNameResult::NameTooLong);
             }

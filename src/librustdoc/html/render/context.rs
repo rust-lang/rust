@@ -14,7 +14,7 @@ use rustc_span::edition::Edition;
 use rustc_span::{FileName, Symbol, sym};
 use tracing::info;
 
-use super::print_item::{full_path, item_path, print_item};
+use super::print_item::{full_path, print_item, print_item_path};
 use super::sidebar::{ModuleLike, Sidebar, print_sidebar, sidebar_module_like};
 use super::{AllTypes, LinkFromSrc, StylePath, collect_spans_and_sources, scrape_examples_help};
 use crate::clean::types::ExternalLocation;
@@ -28,11 +28,10 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::join_with_double_colon;
-use crate::html::layout::{self, BufDisplay};
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
 use crate::html::render::write_shared::write_shared;
 use crate::html::url_parts_builder::UrlPartsBuilder;
-use crate::html::{sources, static_files};
+use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;
 use crate::{DOC_RUST_LANG_ORG_VERSION, try_err};
 
@@ -250,9 +249,7 @@ impl<'tcx> Context<'tcx> {
             layout::render(
                 &self.shared.layout,
                 &page,
-                BufDisplay(|buf: &mut String| {
-                    print_sidebar(self, it, buf);
-                }),
+                fmt::from_fn(|f| print_sidebar(self, it, f)),
                 content,
                 &self.shared.style_files,
             )
@@ -269,7 +266,7 @@ impl<'tcx> Context<'tcx> {
                         for name in &names[..names.len() - 1] {
                             write!(f, "{name}/")?;
                         }
-                        write!(f, "{}", item_path(ty, names.last().unwrap().as_str()))
+                        write!(f, "{}", print_item_path(ty, names.last().unwrap().as_str()))
                     });
                     match self.shared.redirections {
                         Some(ref redirections) => {
@@ -281,7 +278,7 @@ impl<'tcx> Context<'tcx> {
                             let _ = write!(
                                 current_path,
                                 "{}",
-                                item_path(ty, names.last().unwrap().as_str())
+                                print_item_path(ty, names.last().unwrap().as_str())
                             );
                             redirections.borrow_mut().insert(current_path, path.to_string());
                         }
@@ -850,7 +847,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !buf.is_empty() {
             let name = item.name.as_ref().unwrap();
             let item_type = item.type_();
-            let file_name = item_path(item_type, name.as_str()).to_string();
+            let file_name = print_item_path(item_type, name.as_str()).to_string();
             self.shared.ensure_dir(&self.dst)?;
             let joint_dst = self.dst.join(&file_name);
             self.shared.fs.write(joint_dst, buf)?;

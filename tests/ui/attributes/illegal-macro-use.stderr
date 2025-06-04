@@ -1,0 +1,27 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `macro_escape`
+  --> $DIR/illegal-macro-use.rs:12:3
+   |
+LL | #[macro_escape::a::b]
+   |   ^^^^^^^^^^^^ use of unresolved module or unlinked crate `macro_escape`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `macro_escape`
+  --> $DIR/illegal-macro-use.rs:9:3
+   |
+LL | #[macro_escape::a]
+   |   ^^^^^^^^^^^^ use of unresolved module or unlinked crate `macro_escape`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `macro_use`
+  --> $DIR/illegal-macro-use.rs:6:3
+   |
+LL | #[macro_use::a::b]
+   |   ^^^^^^^^^ use of unresolved module or unlinked crate `macro_use`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `macro_use`
+  --> $DIR/illegal-macro-use.rs:3:3
+   |
+LL | #[macro_use::a]
+   |   ^^^^^^^^^ use of unresolved module or unlinked crate `macro_use`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

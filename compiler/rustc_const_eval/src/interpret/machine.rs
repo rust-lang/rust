@@ -147,6 +147,12 @@ pub trait Machine<'tcx>: Sized {
     /// already been checked before.
     const ALL_CONSTS_ARE_PRECHECKED: bool = true;
 
+    /// Determines whether rustc_const_eval functions that make use of the [Machine] should make
+    /// tracing calls (to the `tracing` library). By default this is `false`, meaning the tracing
+    /// calls will supposedly be optimized out. This flag is set to `true` inside Miri, to allow
+    /// tracing the interpretation steps, among other things.
+    const TRACING_ENABLED: bool = false;
+
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'tcx, Self>) -> bool;
 
@@ -202,7 +208,7 @@ pub trait Machine<'tcx>: Sized {
         instance: ty::Instance<'tcx>,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Self::Provenance>],
-        destination: &MPlaceTy<'tcx, Self::Provenance>,
+        destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>>;
@@ -214,7 +220,7 @@ pub trait Machine<'tcx>: Sized {
         fn_val: Self::ExtraFnVal,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Self::Provenance>],
-        destination: &MPlaceTy<'tcx, Self::Provenance>,
+        destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
@@ -228,7 +234,7 @@ pub trait Machine<'tcx>: Sized {
         ecx: &mut InterpCx<'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::Provenance>],
-        destination: &MPlaceTy<'tcx, Self::Provenance>,
+        destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>>;
@@ -530,11 +536,9 @@ pub trait Machine<'tcx>: Sized {
         interp_ok(())
     }
 
-    /// Called just before the return value is copied to the caller-provided return place.
-    fn before_stack_pop(
-        _ecx: &InterpCx<'tcx, Self>,
-        _frame: &Frame<'tcx, Self::Provenance, Self::FrameExtra>,
-    ) -> InterpResult<'tcx> {
+    /// Called just before the frame is removed from the stack (followed by return value copy and
+    /// local cleanup).
+    fn before_stack_pop(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
         interp_ok(())
     }
 
@@ -622,6 +626,10 @@ pub trait Machine<'tcx>: Sized {
         // Default to no caching.
         Cow::Owned(compute_range())
     }
+
+    /// Compute the value passed to the constructors of the `AllocBytes` type for
+    /// abstract machine allocations.
+    fn get_default_alloc_params(&self) -> <Self::Bytes as AllocBytes>::AllocParams;
 }
 
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
@@ -669,7 +677,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         fn_val: !,
         _abi: &FnAbi<$tcx, Ty<$tcx>>,
         _args: &[FnArg<$tcx>],
-        _destination: &MPlaceTy<$tcx, Self::Provenance>,
+        _destination: &PlaceTy<$tcx, Self::Provenance>,
         _target: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,
     ) -> InterpResult<$tcx> {

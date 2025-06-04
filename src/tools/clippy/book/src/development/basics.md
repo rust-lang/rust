@@ -151,7 +151,7 @@ toolchain called `clippy` by default, see `cargo dev setup toolchain --help`
 for other options.
 
 ```terminal
-cargo dev setup toolcahin
+cargo dev setup toolchain
 ```
 
 Now you may run `cargo +clippy clippy` in any project using the new toolchain.

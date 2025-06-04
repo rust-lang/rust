@@ -62,7 +62,7 @@ use std::panic::{AssertUnwindSafe, UnwindSafe};
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
-use hir::{ChangeWithProcMacros, EditionedFileId, sym};
+use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, sym};
 use ide_db::{
     FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
@@ -514,7 +514,6 @@ impl Analysis {
         self.with_db(|db| goto_type_definition::goto_type_definition(db, position))
     }
 
-    /// Finds all usages of the reference at point.
     pub fn find_all_refs(
         &self,
         position: FilePosition,
@@ -627,7 +626,7 @@ impl Analysis {
 
     /// Returns true if this crate has `no_std` or `no_core` specified.
     pub fn is_crate_no_std(&self, crate_id: Crate) -> Cancellable<bool> {
-        self.with_db(|db| hir::db::DefDatabase::crate_def_map(db, crate_id).is_no_std())
+        self.with_db(|db| crate_def_map(db, crate_id).is_no_std())
     }
 
     /// Returns the root file of the given crate.

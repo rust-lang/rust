@@ -1,5 +1,5 @@
 
-thread 'main' panicked at RUSTLIB/core/src/panicking.rs:LL:CC:
+thread 'main' panicked at tests/fail/ptr_swap_nonoverlapping.rs:LL:CC:
 unsafe precondition(s) violated: ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null and the specified memory ranges do not overlap
 
 This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
@@ -18,9 +18,6 @@ LL | ABORT()
    = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::begin_panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
    = note: inside `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `core::panicking::panic_nounwind` at RUSTLIB/core/src/panicking.rs:LL:CC
-   = note: inside `std::ptr::swap_nonoverlapping::precondition_check` at RUSTLIB/core/src/ub_checks.rs:LL:CC
-   = note: inside `std::ptr::swap_nonoverlapping::<usize>` at RUSTLIB/core/src/ub_checks.rs:LL:CC
 note: inside `main`
   --> tests/fail/ptr_swap_nonoverlapping.rs:LL:CC
    |

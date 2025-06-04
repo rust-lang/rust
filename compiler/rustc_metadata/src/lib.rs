@@ -16,8 +16,6 @@
 #![feature(trusted_len)]
 // tidy-alphabetical-end
 
-extern crate proc_macro;
-
 pub use rmeta::provide;
 
 mod dependency_format;

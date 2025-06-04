@@ -1,8 +1,8 @@
-error: internal compiler error[E0080]: evaluation of constant value failed
+error: internal compiler error[E0080]: attempt to divide `1_i32` by zero
   --> $DIR/const-eval-query-stack.rs:16:16
    |
 LL | const X: i32 = 1 / 0;
-   |                ^^^^^ attempt to divide `1_i32` by zero
+   |                ^^^^^ evaluation of constant value failed here
 
 
 note: please make sure that you have updated to the latest nightly

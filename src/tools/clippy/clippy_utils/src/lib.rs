@@ -25,8 +25,10 @@
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
+extern crate indexmap;
 extern crate rustc_abi;
 extern crate rustc_ast;
+extern crate rustc_attr_data_structures;
 extern crate rustc_attr_parsing;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
@@ -81,17 +83,16 @@ pub use self::hir_utils::{
 use core::mem;
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
-use std::hash::BuildHasherDefault;
 use std::iter::{once, repeat_n};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use itertools::Itertools;
 use rustc_abi::Integer;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
-use rustc_attr_parsing::{AttributeKind, find_attr};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::packed::Pu128;
-use rustc_data_structures::unhash::UnhashMap;
+use rustc_data_structures::unhash::UnindexMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
@@ -523,12 +524,8 @@ pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>
 ///     }
 /// }
 /// ```
-pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> Option<&'tcx TraitRef<'tcx>> {
-    // Get the implemented trait for the current function
-    let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
-    let parent_impl = cx.tcx.hir_get_parent_item(hir_id);
-    if parent_impl != hir::CRATE_OWNER_ID
-        && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent_impl.def_id)
+pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, owner: OwnerId) -> Option<&'tcx TraitRef<'tcx>> {
+    if let Node::Item(item) = cx.tcx.hir_node(cx.tcx.hir_owner_parent(owner))
         && let ItemKind::Impl(impl_) = &item.kind
     {
         return impl_.of_trait.as_ref();
@@ -1101,13 +1098,13 @@ pub fn method_calls<'tcx>(expr: &'tcx Expr<'tcx>, max_depth: usize) -> (Vec<Symb
 /// `method_chain_args(expr, &["bar", "baz"])` will return a `Vec`
 /// containing the `Expr`s for
 /// `.bar()` and `.baz()`
-pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec<(&'a Expr<'a>, &'a [Expr<'a>])>> {
+pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[Symbol]) -> Option<Vec<(&'a Expr<'a>, &'a [Expr<'a>])>> {
     let mut current = expr;
     let mut matched = Vec::with_capacity(methods.len());
     for method_name in methods.iter().rev() {
         // method chains are stored last -> first
         if let ExprKind::MethodCall(path, receiver, args, _) = current.kind {
-            if path.ident.name.as_str() == *method_name {
+            if path.ident.name == *method_name {
                 if receiver.span.from_expansion() || args.iter().any(|e| e.span.from_expansion()) {
                     return None;
                 }
@@ -1493,14 +1490,14 @@ pub fn is_adjusted(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 /// macro `name`.
 /// See also [`is_direct_expn_of`].
 #[must_use]
-pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
+pub fn is_expn_of(mut span: Span, name: Symbol) -> Option<Span> {
     loop {
         if span.from_expansion() {
             let data = span.ctxt().outer_expn_data();
             let new_span = data.call_site;
 
             if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind
-                && mac_name.as_str() == name
+                && mac_name == name
             {
                 return Some(new_span);
             }
@@ -1523,13 +1520,13 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// `42` is considered expanded from `foo!` and `bar!` by `is_expn_of` but only
 /// from `bar!` by `is_direct_expn_of`.
 #[must_use]
-pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
+pub fn is_direct_expn_of(span: Span, name: Symbol) -> Option<Span> {
     if span.from_expansion() {
         let data = span.ctxt().outer_expn_data();
         let new_span = data.call_site;
 
         if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind
-            && mac_name.as_str() == name
+            && mac_name == name
         {
             return Some(new_span);
         }
@@ -1568,10 +1565,10 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_
 /// Returns `true` if a pattern is refutable.
 // TODO: should be implemented using rustc/mir_build/thir machinery
 pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
-    fn is_enum_variant(cx: &LateContext<'_>, qpath: &QPath<'_>, id: HirId) -> bool {
-        matches!(
+    fn is_qpath_refutable(cx: &LateContext<'_>, qpath: &QPath<'_>, id: HirId) -> bool {
+        !matches!(
             cx.qpath_res(qpath, id),
-            Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), _)
+            Res::Def(DefKind::Struct, ..) | Res::Def(DefKind::Ctor(def::CtorOf::Struct, _), _)
         )
     }
 
@@ -1588,16 +1585,18 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
             kind: PatExprKind::Path(qpath),
             hir_id,
             ..
-        }) => is_enum_variant(cx, qpath, *hir_id),
+        }) => is_qpath_refutable(cx, qpath, *hir_id),
         PatKind::Or(pats) => {
             // TODO: should be the honest check, that pats is exhaustive set
             are_refutable(cx, pats)
         },
         PatKind::Tuple(pats, _) => are_refutable(cx, pats),
         PatKind::Struct(ref qpath, fields, _) => {
-            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| field.pat))
+            is_qpath_refutable(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| field.pat))
         },
-        PatKind::TupleStruct(ref qpath, pats, _) => is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats),
+        PatKind::TupleStruct(ref qpath, pats, _) => {
+            is_qpath_refutable(cx, qpath, pat.hir_id) || are_refutable(cx, pats)
+        },
         PatKind::Slice(head, middle, tail) => {
             match &cx.typeck_results().node_type(pat.hir_id).kind() {
                 rustc_ty::Slice(..) => {
@@ -1793,11 +1792,11 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
 }
 
 /// Checks if the given `DefId` matches the `libc` item.
-pub fn match_libc_symbol(cx: &LateContext<'_>, did: DefId, name: &str) -> bool {
+pub fn match_libc_symbol(cx: &LateContext<'_>, did: DefId, name: Symbol) -> bool {
     let path = cx.get_def_path(did);
     // libc is meant to be used as a flat list of names, but they're all actually defined in different
     // modules based on the target platform. Ignore everything but crate name and the item name.
-    path.first().is_some_and(|s| *s == sym::libc) && path.last().is_some_and(|s| s.as_str() == name)
+    path.first().is_some_and(|s| *s == sym::libc) && path.last().copied() == Some(name)
 }
 
 /// Returns the list of condition expressions and the list of blocks in a
@@ -2196,45 +2195,46 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
     None
 }
 
-/// Returns list of all pairs `(a, b)` where `eq(a, b) == true`
-/// and `a` is before `b` in `exprs` for all `a` and `b` in
-/// `exprs`
+/// Returns a list of groups where elements in each group are equal according to `eq`
+///
+/// - Within each group the elements are sorted by the order they appear in `exprs`
+/// - The groups themselves are sorted by their first element's appearence in `exprs`
 ///
 /// Given functions `eq` and `hash` such that `eq(a, b) == true`
 /// implies `hash(a) == hash(b)`
-pub fn search_same<T, Hash, Eq>(exprs: &[T], mut hash: Hash, mut eq: Eq) -> Vec<(&T, &T)>
+pub fn search_same<T, Hash, Eq>(exprs: &[T], mut hash: Hash, mut eq: Eq) -> Vec<Vec<&T>>
 where
     Hash: FnMut(&T) -> u64,
     Eq: FnMut(&T, &T) -> bool,
 {
     match exprs {
-        [a, b] if eq(a, b) => return vec![(a, b)],
+        [a, b] if eq(a, b) => return vec![vec![a, b]],
         _ if exprs.len() <= 2 => return vec![],
         _ => {},
     }
 
-    let mut match_expr_list: Vec<(&T, &T)> = Vec::new();
-
-    let mut map: UnhashMap<u64, Vec<&_>> =
-        UnhashMap::with_capacity_and_hasher(exprs.len(), BuildHasherDefault::default());
+    let mut buckets: UnindexMap<u64, Vec<Vec<&T>>> = UnindexMap::default();
 
     for expr in exprs {
-        match map.entry(hash(expr)) {
-            Entry::Occupied(mut o) => {
-                for o in o.get() {
-                    if eq(o, expr) {
-                        match_expr_list.push((o, expr));
-                    }
+        match buckets.entry(hash(expr)) {
+            indexmap::map::Entry::Occupied(mut o) => {
+                let bucket = o.get_mut();
+                match bucket.iter_mut().find(|group| eq(expr, group[0])) {
+                    Some(group) => group.push(expr),
+                    None => bucket.push(vec![expr]),
                 }
-                o.get_mut().push(expr);
             },
-            Entry::Vacant(v) => {
-                v.insert(vec![expr]);
+            indexmap::map::Entry::Vacant(v) => {
+                v.insert(vec![vec![expr]]);
             },
         }
     }
 
-    match_expr_list
+    buckets
+        .into_values()
+        .flatten()
+        .filter(|group| group.len() > 1)
+        .collect()
 }
 
 /// Peels off all references on the pattern. Returns the underlying pattern and the number of
@@ -2364,7 +2364,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&
             for id in tcx.hir_module_free_items(module) {
                 if matches!(tcx.def_kind(id.owner_id), DefKind::Const)
                     && let item = tcx.hir_item(id)
-                    && let ItemKind::Const(ident, ty, _generics, _body) = item.kind
+                    && let ItemKind::Const(ident, _generics, ty, _body) = item.kind
                     && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
                         // We could also check for the type name `test::TestDescAndFn`
                         && let Res::Def(DefKind::Struct, _) = path.res
@@ -3318,7 +3318,7 @@ pub fn leaks_droppable_temporary_with_limited_lifetime<'tcx>(cx: &LateContext<'t
         if temporary_ty.has_significant_drop(cx.tcx, cx.typing_env())
             && temporary_ty
                 .walk()
-                .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))
+                .any(|arg| matches!(arg.kind(), GenericArgKind::Lifetime(re) if !re.is_static()))
         {
             ControlFlow::Break(())
         } else {

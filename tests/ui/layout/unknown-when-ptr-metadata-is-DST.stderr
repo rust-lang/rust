@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: the type `str` has an unknown layout
   --> $DIR/unknown-when-ptr-metadata-is-DST.rs:8:16
    |
 LL |     [(); { let _a: Option<&str> = None; 0 }];
-   |                ^^ the type `str` has an unknown layout
+   |                ^^ evaluation of constant value failed here
 
 error: aborting due to 1 previous error
 

@@ -930,6 +930,47 @@ comment"]
 }
 
 #[test]
+fn doctest_desugar_try_expr_let_else() {
+    check_doc_test(
+        "desugar_try_expr_let_else",
+        r#####"
+//- minicore: try, option
+fn handle() {
+    let pat = Some(true)$0?;
+}
+"#####,
+        r#####"
+fn handle() {
+    let Some(pat) = Some(true) else {
+        return None;
+    };
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_desugar_try_expr_match() {
+    check_doc_test(
+        "desugar_try_expr_match",
+        r#####"
+//- minicore: try, option
+fn handle() {
+    let pat = Some(true)$0?;
+}
+"#####,
+        r#####"
+fn handle() {
+    let pat = match Some(true) {
+        Some(it) => it,
+        None => return None,
+    };
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_expand_glob_import() {
     check_doc_test(
         "expand_glob_import",
@@ -3097,27 +3138,6 @@ fn main() {
 }
 
 #[test]
-fn doctest_replace_try_expr_with_match() {
-    check_doc_test(
-        "replace_try_expr_with_match",
-        r#####"
-//- minicore: try, option
-fn handle() {
-    let pat = Some(true)$0?;
-}
-"#####,
-        r#####"
-fn handle() {
-    let pat = match Some(true) {
-        Some(it) => it,
-        None => return None,
-    };
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_replace_turbofish_with_explicit_type() {
     check_doc_test(
         "replace_turbofish_with_explicit_type",
@@ -3476,6 +3496,23 @@ fn main() {
 fn main() {
     let foo = "Foo";
     let bar = "Bar";
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_unwrap_type_to_generic_arg() {
+    check_doc_test(
+        "unwrap_type_to_generic_arg",
+        r#####"
+fn foo() -> $0Option<i32> {
+    todo!()
+}
+"#####,
+        r#####"
+fn foo() -> i32 {
+    todo!()
 }
 "#####,
     )

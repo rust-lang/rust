@@ -1,7 +1,8 @@
 use crate::sym;
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
-use rustc_attr_parsing::{RustcVersion, parse_version};
+use rustc_attr_data_structures::RustcVersion;
+use rustc_attr_parsing::parse_version;
 use rustc_lint::LateContext;
 use rustc_session::Session;
 use rustc_span::Symbol;
@@ -24,7 +25,7 @@ macro_rules! msrv_aliases {
 msrv_aliases! {
     1,88,0 { LET_CHAINS }
     1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT, CONST_CHAR_IS_DIGIT }
-    1,85,0 { UINT_FLOAT_MIDPOINT }
+    1,85,0 { UINT_FLOAT_MIDPOINT, CONST_SIZE_OF_VAL }
     1,84,0 { CONST_OPTION_AS_SLICE, MANUAL_DANGLING_PTR }
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY, CONST_MUT_REFS, CONST_UNWRAP }
     1,82,0 { IS_NONE_OR, REPEAT_N, RAW_REF_OP }

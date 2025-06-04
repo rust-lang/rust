@@ -89,9 +89,9 @@ const_eval_dyn_call_not_a_method =
     `dyn` call trying to call something that is not a method
 
 const_eval_error = {$error_kind ->
-    [static] could not evaluate static initializer
-    [const] evaluation of constant value failed
-    [const_with_path] evaluation of `{$instance}` failed
+    [static] evaluation of static initializer failed here
+    [const] evaluation of constant value failed here
+    [const_with_path] evaluation of `{$instance}` failed here
     *[other] {""}
 }
 
@@ -118,7 +118,7 @@ const_eval_frame_note_inner = inside {$where_ ->
 const_eval_frame_note_last = the failure occurred here
 
 const_eval_incompatible_calling_conventions =
-    calling a function with calling convention {$callee_conv} using calling convention {$caller_conv}
+    calling a function with calling convention "{$callee_conv}" using calling convention "{$caller_conv}"
 
 const_eval_incompatible_return_types =
     calling a function with return type {$callee_ty} passing return place of type {$caller_ty}
@@ -424,8 +424,7 @@ const_eval_unstable_in_stable_exposed =
     .unstable_sugg = if the {$is_function_call2 ->
             [true] caller
             *[false] function
-        } is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
-    .bypass_sugg = otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+        } is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
 
 const_eval_unstable_intrinsic = `{$name}` is not yet stable as a const intrinsic
 const_eval_unstable_intrinsic_suggestion = add `#![feature({$feature})]` to the crate attributes to enable

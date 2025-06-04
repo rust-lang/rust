@@ -1,4 +1,4 @@
-use clippy_utils::{MaybePath, get_attr, higher, path_def_id};
+use clippy_utils::{MaybePath, get_attr, higher, path_def_id, sym};
 use itertools::Itertools;
 use rustc_ast::LitIntType;
 use rustc_ast::ast::{LitFloatType, LitKind};
@@ -826,5 +826,5 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
 fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     let attrs = cx.tcx.hir_attrs(hir_id);
-    get_attr(cx.sess(), attrs, "author").count() > 0
+    get_attr(cx.sess(), attrs, sym::author).count() > 0
 }

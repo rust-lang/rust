@@ -5,8 +5,6 @@ use rustc_middle::mir::{Body, Local, Location, SourceInfo};
 use rustc_middle::span_bug;
 use rustc_middle::ty::relate::Relate;
 use rustc_middle::ty::{GenericArgsRef, Region, RegionVid, Ty, TyCtxt, TypeVisitable};
-use rustc_mir_dataflow::ResultsCursor;
-use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use tracing::debug;
@@ -28,10 +26,9 @@ mod trace;
 ///
 /// N.B., this computation requires normalization; therefore, it must be
 /// performed before
-pub(super) fn generate<'a, 'tcx>(
+pub(super) fn generate<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     location_map: &DenseLocationMap,
-    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
     debug!("liveness::generate");
@@ -58,7 +55,7 @@ pub(super) fn generate<'a, 'tcx>(
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
 
-    trace::trace(typeck, location_map, flow_inits, move_data, relevant_live_locals, boring_locals);
+    trace::trace(typeck, location_map, move_data, relevant_live_locals, boring_locals);
 
     // Mark regions that should be live where they appear within rvalues or within a call: like
     // args, regions, and types.

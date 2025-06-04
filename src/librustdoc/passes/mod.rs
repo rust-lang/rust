@@ -32,6 +32,9 @@ pub(crate) use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 mod check_doc_test_visibility;
 pub(crate) use self::check_doc_test_visibility::CHECK_DOC_TEST_VISIBILITY;
 
+mod check_doc_cfg;
+pub(crate) use self::check_doc_cfg::CHECK_DOC_CFG;
+
 mod collect_trait_impls;
 pub(crate) use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
 
@@ -72,6 +75,7 @@ pub(crate) enum Condition {
 
 /// The full list of passes.
 pub(crate) const PASSES: &[Pass] = &[
+    CHECK_DOC_CFG,
     CHECK_DOC_TEST_VISIBILITY,
     STRIP_ALIASED_NON_LOCAL,
     STRIP_HIDDEN,
@@ -89,6 +93,7 @@ pub(crate) const PASSES: &[Pass] = &[
 pub(crate) const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(COLLECT_TRAIT_IMPLS),
     ConditionalPass::always(CHECK_DOC_TEST_VISIBILITY),
+    ConditionalPass::always(CHECK_DOC_CFG),
     ConditionalPass::always(STRIP_ALIASED_NON_LOCAL),
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),

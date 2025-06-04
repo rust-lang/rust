@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: transmuting from 4-byte type to 2-byte type: `i32` -> `u16`
   --> $DIR/transmute-size-mismatch.rs:22:35
    |
 LL | const FROM_BIGGER: u16 = unsafe { mir_transmute(123_i32) };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^ transmuting from 4-byte type to 2-byte type: `i32` -> `u16`
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `mir_transmute::<i32, u16>`
   --> $DIR/transmute-size-mismatch.rs:12:13
@@ -10,11 +10,11 @@ note: inside `mir_transmute::<i32, u16>`
 LL |             RET = CastTransmute(x);
    |             ^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: transmuting from 2-byte type to 4-byte type: `i16` -> `u32`
   --> $DIR/transmute-size-mismatch.rs:25:36
    |
 LL | const FROM_SMALLER: u32 = unsafe { mir_transmute(123_i16) };
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^ transmuting from 2-byte type to 4-byte type: `i16` -> `u32`
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
    |
 note: inside `mir_transmute::<i16, u32>`
   --> $DIR/transmute-size-mismatch.rs:12:13

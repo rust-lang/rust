@@ -1,19 +1,19 @@
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value: encountered a dangling reference (use-after-free)
   --> $DIR/dealloc_intrinsic_dangling.rs:11:1
    |
 LL | const _X: &'static u8 = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a dangling reference (use-after-free)
+   | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: memory access failed: ALLOC1 has been freed, so this pointer is dangling
   --> $DIR/dealloc_intrinsic_dangling.rs:22:5
    |
 LL |     *reference
-   |     ^^^^^^^^^^ memory access failed: ALLOC1 has been freed, so this pointer is dangling
+   |     ^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 2 previous errors
 

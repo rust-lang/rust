@@ -82,25 +82,7 @@ LL |     type A<'a>;
    = help: consider moving `A` to another trait
    = help: only type `()` implements `Provider`; consider using it directly instead.
 
-error[E0038]: the trait `Provider` is not dyn compatible
-  --> $DIR/issue-71176.rs:19:16
-   |
-LL |         inner: Box::new(()),
-   |                ^^^^^^^^^^^^ `Provider` is not dyn compatible
-   |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/issue-71176.rs:2:10
-   |
-LL | trait Provider {
-   |       -------- this trait is not dyn compatible...
-LL |     type A<'a>;
-   |          ^ ...because it contains the generic associated type `A`
-   = help: consider moving `A` to another trait
-   = help: only type `()` implements `Provider`; consider using it directly instead.
-   = note: required for the cast from `Box<()>` to `Box<(dyn Provider<A<'_> = _> + 'static), {type error}>`
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0038, E0107.
 For more information about an error, try `rustc --explain E0038`.

@@ -16,7 +16,6 @@ pub(crate) fn unresolved_macro_call(
         format!("unresolved macro `{}{bang}`", d.path.display(ctx.sema.db, ctx.edition)),
         display_range,
     )
-    .experimental()
 }
 
 #[cfg(test)]

@@ -100,10 +100,7 @@ impl LateLintPass<'_> for MacroUseImports {
             && let hir_id = item.hir_id()
             && let attrs = cx.tcx.hir_attrs(hir_id)
             && let Some(mac_attr) = attrs.iter().find(|attr| attr.has_name(sym::macro_use))
-            && let Some(id) = path.res.iter().find_map(|res| match res {
-                Res::Def(DefKind::Mod, id) => Some(id),
-                _ => None,
-            })
+            && let Some(Res::Def(DefKind::Mod, id)) = path.res.type_ns
             && !id.is_local()
         {
             for kid in cx.tcx.module_children(id) {

@@ -20,11 +20,11 @@ LL |     let fp = BufWriter::new(fp);
 note: required by a bound in `BufWriter`
   --> $SRC_DIR/std/src/io/buffered/bufwriter.rs:LL:COL
 
-error[E0599]: the method `write_fmt` exists for struct `BufWriter<&dyn Write>`, but its trait bounds were not satisfied
+error[E0599]: the method `write_fmt` exists for struct `BufWriter<&dyn std::io::Write>`, but its trait bounds were not satisfied
   --> $DIR/mut-borrow-needed-by-trait.rs:21:14
    |
 LL |     writeln!(fp, "hello world").unwrap();
-   |     ---------^^---------------- method cannot be called on `BufWriter<&dyn Write>` due to unsatisfied trait bounds
+   |     ---------^^---------------- method cannot be called on `BufWriter<&dyn std::io::Write>` due to unsatisfied trait bounds
    |
 note: must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method
   --> $DIR/mut-borrow-needed-by-trait.rs:21:14

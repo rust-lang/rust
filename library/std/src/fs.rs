@@ -285,8 +285,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     fn inner(path: &Path) -> io::Result<Vec<u8>> {
         let mut file = File::open(path)?;
         let size = file.metadata().map(|m| m.len() as usize).ok();
-        let mut bytes = Vec::new();
-        bytes.try_reserve_exact(size.unwrap_or(0))?;
+        let mut bytes = Vec::try_with_capacity(size.unwrap_or(0))?;
         io::default_read_to_end(&mut file, &mut bytes, size)?;
         Ok(bytes)
     }
@@ -389,6 +388,16 @@ impl fmt::Display for TryLockError {
             TryLockError::WouldBlock => "lock acquisition failed because the operation would block",
         }
         .fmt(f)
+    }
+}
+
+#[unstable(feature = "file_lock", issue = "130994")]
+impl From<TryLockError> for io::Error {
+    fn from(err: TryLockError) -> io::Error {
+        match err {
+            TryLockError::Error(err) => err,
+            TryLockError::WouldBlock => io::ErrorKind::WouldBlock.into(),
+        }
     }
 }
 
@@ -821,11 +830,14 @@ impl File {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let f = File::create("foo.txt")?;
+    ///     // Explicit handling of the WouldBlock error
     ///     match f.try_lock() {
     ///         Ok(_) => (),
     ///         Err(TryLockError::WouldBlock) => (), // Lock not acquired
     ///         Err(TryLockError::Error(err)) => return Err(err),
     ///     }
+    ///     // Alternately, propagate the error as an io::Error
+    ///     f.try_lock()?;
     ///     Ok(())
     /// }
     /// ```
@@ -882,11 +894,14 @@ impl File {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let f = File::open("foo.txt")?;
+    ///     // Explicit handling of the WouldBlock error
     ///     match f.try_lock_shared() {
     ///         Ok(_) => (),
     ///         Err(TryLockError::WouldBlock) => (), // Lock not acquired
     ///         Err(TryLockError::Error(err)) => return Err(err),
     ///     }
+    ///     // Alternately, propagate the error as an io::Error
+    ///     f.try_lock_shared()?;
     ///
     ///     Ok(())
     /// }
@@ -2804,8 +2819,8 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Recursively create a directory and all of its parent components if they
 /// are missing.
 ///
-/// If this function returns an error, some of the parent components might have
-/// been created already.
+/// This function is not atomic. If it returns an error, any parent components it was able to create
+/// will remain.
 ///
 /// If the empty path is passed to this function, it always succeeds without
 /// creating any directories.
@@ -2900,16 +2915,27 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to `openat`, `fdopendir`, `unlinkat` and `lstat` functions
-/// on Unix (except for REDOX) and the `CreateFileW`, `GetFileInformationByHandleEx`,
-/// `SetFileInformationByHandle`, and `NtCreateFile` functions on Windows. Note that, this
-/// [may change in the future][changes].
+/// These implementation details [may change in the future][changes].
+///
+/// - "Unix-like": By default, this function currently corresponds to
+/// `openat`, `fdopendir`, `unlinkat` and `lstat`
+/// on Unix-family platforms, except where noted otherwise.
+/// - "Windows": This function currently corresponds to `CreateFileW`,
+/// `GetFileInformationByHandleEx`, `SetFileInformationByHandle`, and `NtCreateFile`.
+///
+/// ## Time-of-check to time-of-use (TOCTOU) race conditions
+/// On a few platforms there is no way to remove a directory's contents without following symlinks
+/// unless you perform a check and then operate on paths based on that directory.
+/// This allows concurrently-running code to replace the directory with a symlink after the check,
+/// causing a removal to instead operate on a path based on the symlink. This is a TOCTOU race.
+/// By default, `fs::remove_dir_all` protects against a symlink TOCTOU race on all platforms
+/// except the following. It should not be used in security-sensitive contexts on these platforms:
+/// - Miri: Even when emulating targets where the underlying implementation will protect against
+/// TOCTOU races, Miri will not do so.
+/// - Redox OS: This function does not protect against TOCTOU races, as Redox does not implement
+/// the required platform support to do so.
 ///
 /// [changes]: io#platform-specific-behavior
-///
-/// On REDOX, as well as when running in Miri for any target, this function is not protected against
-/// time-of-check to time-of-use (TOCTOU) race conditions, and should not be used in
-/// security-sensitive code on those platforms. All other platforms are protected.
 ///
 /// # Errors
 ///

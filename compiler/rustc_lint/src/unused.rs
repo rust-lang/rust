@@ -1,8 +1,7 @@
 use std::iter;
 
-use rustc_ast as ast;
 use rustc_ast::util::{classify, parser};
-use rustc_ast::{ExprKind, StmtKind};
+use rustc_ast::{self as ast, ExprKind, HasAttrs as _, StmtKind};
 use rustc_errors::{MultiSpan, pluralize};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -780,26 +779,30 @@ trait UnusedDelimLint {
         right_pos: Option<BytePos>,
         is_kw: bool,
     ) {
-        let spans = match value.kind {
-            ast::ExprKind::Block(ref block, None) if let [stmt] = block.stmts.as_slice() => stmt
-                .span
-                .find_ancestor_inside(value.span)
-                .map(|span| (value.span.with_hi(span.lo()), value.span.with_lo(span.hi()))),
+        let span_with_attrs = match value.kind {
+            ast::ExprKind::Block(ref block, None) if let [stmt] = block.stmts.as_slice() => {
+                // For the statements with attributes, like `{ #[allow()] println!("Hello!") }`,
+                // the span should contains the attributes, or the suggestion will remove them.
+                if let Some(attr_lo) = stmt.attrs().iter().map(|attr| attr.span.lo()).min() {
+                    stmt.span.with_lo(attr_lo)
+                } else {
+                    stmt.span
+                }
+            }
             ast::ExprKind::Paren(ref expr) => {
                 // For the expr with attributes, like `let _ = (#[inline] || println!("Hello!"));`,
                 // the span should contains the attributes, or the suggestion will remove them.
-                let expr_span_with_attrs =
-                    if let Some(attr_lo) = expr.attrs.iter().map(|attr| attr.span.lo()).min() {
-                        expr.span.with_lo(attr_lo)
-                    } else {
-                        expr.span
-                    };
-                expr_span_with_attrs.find_ancestor_inside(value.span).map(|expr_span| {
-                    (value.span.with_hi(expr_span.lo()), value.span.with_lo(expr_span.hi()))
-                })
+                if let Some(attr_lo) = expr.attrs.iter().map(|attr| attr.span.lo()).min() {
+                    expr.span.with_lo(attr_lo)
+                } else {
+                    expr.span
+                }
             }
             _ => return,
         };
+        let spans = span_with_attrs
+            .find_ancestor_inside(value.span)
+            .map(|span| (value.span.with_hi(span.lo()), value.span.with_lo(span.hi())));
         let keep_space = (
             left_pos.is_some_and(|s| s >= value.span.lo()),
             right_pos.is_some_and(|s| s <= value.span.hi()),

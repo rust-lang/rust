@@ -78,10 +78,14 @@ fn current_dll_path() -> Result<PathBuf, String> {
                 if libc::dladdr(addr, &mut info) == 0 {
                     return Err("dladdr failed".into());
                 }
-                if info.dli_fname.is_null() {
-                    return Err("dladdr returned null pointer".into());
-                }
-                let bytes = CStr::from_ptr(info.dli_fname).to_bytes();
+                #[cfg(target_os = "cygwin")]
+                let fname_ptr = info.dli_fname.as_ptr();
+                #[cfg(not(target_os = "cygwin"))]
+                let fname_ptr = {
+                    assert!(!info.dli_fname.is_null(), "dli_fname cannot be null");
+                    info.dli_fname
+                };
+                let bytes = CStr::from_ptr(fname_ptr).to_bytes();
                 let os = OsStr::from_bytes(bytes);
                 Ok(PathBuf::from(os))
             }
@@ -166,6 +170,11 @@ fn current_dll_path() -> Result<PathBuf, String> {
     filename.truncate(n);
 
     Ok(OsString::from_wide(&filename).into())
+}
+
+#[cfg(target_os = "wasi")]
+fn current_dll_path() -> Result<PathBuf, String> {
+    Err("current_dll_path is not supported on WASI".to_string())
 }
 
 pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {

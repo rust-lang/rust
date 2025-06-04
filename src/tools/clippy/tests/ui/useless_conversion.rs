@@ -427,3 +427,18 @@ mod issue11819 {
         }
     }
 }
+
+fn issue14739() {
+    use std::ops::Range;
+
+    const R: Range<u32> = 2..7;
+
+    R.into_iter().all(|_x| true); // no lint
+
+    R.into_iter().any(|_x| true); // no lint
+
+    R.into_iter().for_each(|_x| {});
+    //~^ useless_conversion
+    let _ = R.into_iter().map(|_x| 0);
+    //~^ useless_conversion
+}

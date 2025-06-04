@@ -195,7 +195,7 @@ fn slugify(c: char) -> Option<char> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Playground {
     pub crate_name: Option<Symbol>,
     pub url: String,
@@ -303,7 +303,11 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 attrs: vec![],
                 args_file: PathBuf::new(),
             };
-            let doctest = doctest::DocTestBuilder::new(&test, krate, edition, false, None, None);
+            let mut builder = doctest::BuildDocTestBuilder::new(&test).edition(edition);
+            if let Some(krate) = krate {
+                builder = builder.crate_name(krate);
+            }
+            let doctest = builder.build(None);
             let (test, _) = doctest.generate_unique_doctest(&test, false, &opts, krate);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
@@ -316,8 +320,10 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             ))
         });
 
-        let tooltip = if ignore != Ignore::None {
-            highlight::Tooltip::Ignore
+        let tooltip = if ignore == Ignore::All {
+            highlight::Tooltip::IgnoreAll
+        } else if let Ignore::Some(platforms) = ignore {
+            highlight::Tooltip::IgnoreSome(platforms)
         } else if compile_fail {
             highlight::Tooltip::CompileFail
         } else if should_panic {

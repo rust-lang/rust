@@ -3,8 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use regex::Regex;
 use rustc_hir::{Attribute, Item, ItemKind, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_lint_defs::declare_tool_lint;
-use rustc_session::impl_lint_pass;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_tool_lint! {
     /// ### What it does

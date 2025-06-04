@@ -1,5 +1,5 @@
 error: `async` trait bounds are only allowed in Rust 2018 or later
-  --> $DIR/edition-2015.rs:1:16
+  --> $DIR/edition-2015.rs:2:16
    |
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    |                ^^^^^
@@ -8,7 +8,7 @@ LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: `async` trait bounds are only allowed in Rust 2018 or later
-  --> $DIR/edition-2015.rs:1:36
+  --> $DIR/edition-2015.rs:2:36
    |
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    |                                    ^^^^^
@@ -17,7 +17,7 @@ LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0658]: `async` trait bounds are unstable
-  --> $DIR/edition-2015.rs:1:16
+  --> $DIR/edition-2015.rs:2:16
    |
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    |                ^^^^^
@@ -28,7 +28,7 @@ LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    = help: use the desugared name of the async trait, such as `AsyncFn`
 
 error[E0658]: `async` trait bounds are unstable
-  --> $DIR/edition-2015.rs:1:36
+  --> $DIR/edition-2015.rs:2:36
    |
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    |                                    ^^^^^

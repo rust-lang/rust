@@ -59,7 +59,9 @@ error: fn_abi_of(pass_zst) = FnAbi {
            },
            c_variadic: false,
            fixed_count: 1,
-           conv: X86_64SysV,
+           conv: X86(
+               SysV64,
+           ),
            can_unwind: false,
        }
   --> $DIR/sysv64-zst.rs:8:1

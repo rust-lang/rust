@@ -66,9 +66,9 @@ kinds of builds (sets of jobs).
 ### Pull Request builds
 
 After each push to a pull request, a set of `pr` jobs are executed. Currently,
-these execute the `x86_64-gnu-llvm-X`, `x86_64-gnu-tools`, `mingw-check` and
-`mingw-check-tidy` jobs, all running on Linux. These execute a relatively short
-(~30 minutes) and lightweight test suite that should catch common issues. More
+these execute the `x86_64-gnu-llvm-X`, `x86_64-gnu-tools`, `mingw-check-1`, `mingw-check-2`
+and `mingw-check-tidy` jobs, all running on Linux. These execute a relatively short
+(~40 minutes) and lightweight test suite that should catch common issues. More
 specifically, they run a set of lints, they try to perform a cross-compile check
 build to Windows mingw (without producing any artifacts) and they test the
 compiler using a *system* version of LLVM. Unfortunately, it would take too many
@@ -100,8 +100,8 @@ Most platforms only run the build steps, some run a restricted set of tests,
 only a subset run the full suite of tests (see Rust's [platform tiers]).
 
 Auto jobs are defined in the `auto` section of [`jobs.yml`]. They are executed
-on the `auto` branch under the `rust-lang-ci/rust` repository[^rust-lang-ci] and
-their results can be seen [here](https://github.com/rust-lang-ci/rust/actions),
+on the `auto` branch under the `rust-lang/rust` repository and
+their results can be seen [here](https://github.com/rust-lang/rust/actions),
 although usually you will be notified of the result by a comment made by bors on
 the corresponding PR.
 
@@ -109,9 +109,6 @@ At any given time, at most a single `auto` build is being executed. Find out
 more [here](#merging-prs-serially-with-bors).
 
 [platform tiers]: https://forge.rust-lang.org/release/platform-support.html#rust-platform-support
-
-[^rust-lang-ci]: The `auto` and `try` jobs run under the `rust-lang-ci` fork for
-    historical reasons. This may change in the future.
 
 ### Try builds
 
@@ -179,8 +176,8 @@ the pattern as Markdown.
 > that are exercised this way.
 
 Try jobs are defined in the `try` section of [`jobs.yml`]. They are executed on
-the `try` branch under the `rust-lang-ci/rust` repository[^rust-lang-ci] and
-their results can be seen [here](https://github.com/rust-lang-ci/rust/actions),
+the `try` branch under the `rust-lang/rust` repository and
+their results can be seen [here](https://github.com/rust-lang/rust/actions),
 although usually you will be notified of the result by a comment made by bors on
 the corresponding PR.
 
@@ -355,7 +352,7 @@ invalidated if one of the following changes:
 - Files copied into the Docker image in the Dockerfile
 - The architecture of the GitHub runner (x86 or ARM)
 
-[ghcr.io]: https://github.com/rust-lang-ci/rust/pkgs/container/rust-ci
+[ghcr.io]: https://github.com/rust-lang/rust/pkgs/container/rust-ci
 [Docker registry caching]: https://docs.docker.com/build/cache/backends/registry/
 
 ### LLVM caching with sccache
@@ -446,7 +443,7 @@ particular job, it is probably easiest to just look at the build log. To do
 this:
 
 1. Go to
-   <https://github.com/rust-lang-ci/rust/actions?query=branch%3Aauto+is%3Asuccess>
+   <https://github.com/rust-lang/rust/actions?query=branch%3Aauto+is%3Asuccess>
    to find the most recently successful build, and click on it.
 2. Choose the job you are interested in on the left-hand side.
 3. Click on the gear icon and choose "View raw logs"
@@ -458,7 +455,6 @@ this:
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
 [`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml
 [`src/ci/citool`]: https://github.com/rust-lang/rust/blob/master/src/ci/citool
-[rust-lang-ci]: https://github.com/rust-lang-ci/rust/actions
 [bors]: https://github.com/bors
 [homu]: https://github.com/rust-lang/homu
 [merge queue]: https://bors.rust-lang.org/queue/rust

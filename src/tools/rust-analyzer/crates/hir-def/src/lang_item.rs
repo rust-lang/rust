@@ -10,6 +10,7 @@ use triomphe::Arc;
 use crate::{
     AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
     StaticId, StructId, TraitId, TypeAliasId, UnionId, db::DefDatabase, expr_store::path::Path,
+    nameres::crate_def_map,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -84,13 +85,13 @@ impl LangItemTarget {
 }
 
 /// Salsa query. This will look for lang items in a specific crate.
-#[salsa_macros::tracked(return_ref)]
+#[salsa_macros::tracked(returns(ref))]
 pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangItems>> {
     let _p = tracing::info_span!("crate_lang_items_query").entered();
 
     let mut lang_items = LangItems::default();
 
-    let crate_def_map = db.crate_def_map(krate);
+    let crate_def_map = crate_def_map(db, krate);
 
     for (_, module_data) in crate_def_map.modules() {
         for impl_def in module_data.scope.impls() {
@@ -209,7 +210,7 @@ pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option
 
     let mut traits = Vec::new();
 
-    let crate_def_map = db.crate_def_map(krate);
+    let crate_def_map = crate_def_map(db, krate);
 
     for (_, module_data) in crate_def_map.modules() {
         for def in module_data.scope.declarations() {

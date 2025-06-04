@@ -9,8 +9,19 @@ help: try adding a `where` bound
 LL | fn foo<T>() where [(); size_of::<*mut T>()]: {
    |             ++++++++++++++++++++++++++++++++
 
+error: unconstrained generic constant
+  --> $DIR/dependence_lint.rs:10:5
+   |
+LL |     [0; size_of::<*mut T>()]; // lint on stable, error with `generic_const_exprs`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn foo<T>() where [(); size_of::<*mut T>()]: {
+   |             ++++++++++++++++++++++++++++++++
+
 error: overly complex generic constant
-  --> $DIR/dependence_lint.rs:17:9
+  --> $DIR/dependence_lint.rs:18:9
    |
 LL |     [0; if false { size_of::<T>() } else { 3 }]; // lint on stable, error with gce
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ control flow is not supported in generic constants
@@ -18,7 +29,7 @@ LL |     [0; if false { size_of::<T>() } else { 3 }]; // lint on stable, error w
    = help: consider moving this anonymous constant into a `const` function
 
 error: unconstrained generic constant
-  --> $DIR/dependence_lint.rs:14:12
+  --> $DIR/dependence_lint.rs:15:12
    |
 LL |     let _: [u8; size_of::<*mut T>()]; // error on stable, error with gce
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,12 +40,12 @@ LL | fn foo<T>() where [(); size_of::<*mut T>()]: {
    |             ++++++++++++++++++++++++++++++++
 
 error: overly complex generic constant
-  --> $DIR/dependence_lint.rs:21:17
+  --> $DIR/dependence_lint.rs:22:17
    |
 LL |     let _: [u8; if true { size_of::<T>() } else { 3 }]; // error on stable, error with gce
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ control flow is not supported in generic constants
    |
    = help: consider moving this anonymous constant into a `const` function
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

@@ -1,12 +1,11 @@
 use crate::internal_paths;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{is_lint_allowed, method_calls};
+use clippy_utils::{is_lint_allowed, method_calls, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_lint_defs::declare_tool_lint;
 use rustc_session::declare_lint_pass;
-use rustc_span::symbol::Symbol;
 
 declare_tool_lint! {
     /// ### What it does
@@ -40,8 +39,7 @@ impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
         }
 
         let (method_names, arg_lists, spans) = method_calls(expr, 2);
-        let method_names: Vec<&str> = method_names.iter().map(Symbol::as_str).collect();
-        if let ["expn_data", "outer_expn"] = method_names.as_slice()
+        if let [sym::expn_data, sym::outer_expn] = method_names.as_slice()
             && let (self_arg, args) = arg_lists[1]
             && args.is_empty()
             && let self_ty = cx.typeck_results().expr_ty(self_arg).peel_refs()

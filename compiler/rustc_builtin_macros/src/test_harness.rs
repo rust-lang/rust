@@ -128,9 +128,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         c.items.push(mk_main(&mut self.cx));
     }
 
-    fn visit_item(&mut self, item: &mut P<ast::Item>) {
-        let item = &mut **item;
-
+    fn visit_item(&mut self, item: &mut ast::Item) {
         if let Some(name) = get_test_name(&item) {
             debug!("this is a test item");
 
@@ -193,7 +191,7 @@ struct EntryPointCleaner<'a> {
 }
 
 impl<'a> MutVisitor for EntryPointCleaner<'a> {
-    fn visit_item(&mut self, item: &mut P<ast::Item>) {
+    fn visit_item(&mut self, item: &mut ast::Item) {
         self.depth += 1;
         ast::mut_visit::walk_item(self, item);
         self.depth -= 1;

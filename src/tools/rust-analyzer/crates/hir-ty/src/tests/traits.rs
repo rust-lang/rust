@@ -4884,3 +4884,49 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
         "#]],
     );
 }
+
+#[test]
+fn import_trait_items() {
+    check_infer(
+        r#"
+//- minicore: default
+use core::default::Default::default;
+fn main() {
+    let a: i32 = default();
+}
+    "#,
+        expect![[r#"
+            47..78 '{     ...t(); }': ()
+            57..58 'a': i32
+            66..73 'default': {unknown}
+            66..75 'default()': i32
+        "#]],
+    );
+}
+
+#[test]
+fn async_fn_return_type() {
+    check_infer(
+        r#"
+//- minicore: async_fn
+fn foo<F: AsyncFn() -> R, R>(_: F) -> R {
+    loop {}
+}
+
+fn main() {
+    foo(async move || ());
+}
+    "#,
+        expect![[r#"
+            29..30 '_': F
+            40..55 '{     loop {} }': R
+            46..53 'loop {}': !
+            51..53 '{}': ()
+            67..97 '{     ...()); }': ()
+            73..76 'foo': fn foo<impl AsyncFn() -> impl Future<Output = ()>, ()>(impl AsyncFn() -> impl Future<Output = ()>)
+            73..94 'foo(as...|| ())': ()
+            77..93 'async ... || ()': impl AsyncFn() -> impl Future<Output = ()>
+            91..93 '()': ()
+        "#]],
+    );
+}

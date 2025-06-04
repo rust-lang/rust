@@ -1,5 +1,5 @@
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry_unfixable.rs:28:13
+  --> tests/ui/entry_unfixable.rs:27:13
    |
 LL | /             if !self.values.contains_key(&name) {
 LL | |
@@ -14,7 +14,7 @@ LL | |             }
    = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry_unfixable.rs:43:5
+  --> tests/ui/entry_unfixable.rs:42:5
    |
 LL | /     if hm.contains_key(&key) {
 LL | |
@@ -26,7 +26,7 @@ LL | |     }
    | |_____^
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry_unfixable.rs:81:13
+  --> tests/ui/entry_unfixable.rs:80:13
    |
 LL | /             if self.globals.contains_key(&name) {
 LL | |

@@ -88,26 +88,31 @@ impl<'tcx> PlaceTy<'tcx> {
     ///
     /// Note that the resulting type has not been normalized.
     #[instrument(level = "debug", skip(tcx), ret)]
-    pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: FieldIdx) -> Ty<'tcx> {
-        if let Some(variant_index) = self.variant_index {
-            match *self.ty.kind() {
+    pub fn field_ty(
+        tcx: TyCtxt<'tcx>,
+        self_ty: Ty<'tcx>,
+        variant_idx: Option<VariantIdx>,
+        f: FieldIdx,
+    ) -> Ty<'tcx> {
+        if let Some(variant_index) = variant_idx {
+            match *self_ty.kind() {
                 ty::Adt(adt_def, args) if adt_def.is_enum() => {
                     adt_def.variant(variant_index).fields[f].ty(tcx, args)
                 }
                 ty::Coroutine(def_id, args) => {
                     let mut variants = args.as_coroutine().state_tys(def_id, tcx);
                     let Some(mut variant) = variants.nth(variant_index.into()) else {
-                        bug!("variant {variant_index:?} of coroutine out of range: {self:?}");
+                        bug!("variant {variant_index:?} of coroutine out of range: {self_ty:?}");
                     };
 
-                    variant
-                        .nth(f.index())
-                        .unwrap_or_else(|| bug!("field {f:?} out of range: {self:?}"))
+                    variant.nth(f.index()).unwrap_or_else(|| {
+                        bug!("field {f:?} out of range of variant: {self_ty:?} {variant_idx:?}")
+                    })
                 }
-                _ => bug!("can't downcast non-adt non-coroutine type: {self:?}"),
+                _ => bug!("can't downcast non-adt non-coroutine type: {self_ty:?}"),
             }
         } else {
-            match self.ty.kind() {
+            match self_ty.kind() {
                 ty::Adt(adt_def, args) if !adt_def.is_enum() => {
                     adt_def.non_enum_variant().fields[f].ty(tcx, args)
                 }
@@ -116,26 +121,25 @@ impl<'tcx> PlaceTy<'tcx> {
                     .upvar_tys()
                     .get(f.index())
                     .copied()
-                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self:?}")),
+                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
                 ty::CoroutineClosure(_, args) => args
                     .as_coroutine_closure()
                     .upvar_tys()
                     .get(f.index())
                     .copied()
-                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self:?}")),
+                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
                 // Only prefix fields (upvars and current state) are
                 // accessible without a variant index.
-                ty::Coroutine(_, args) => args
-                    .as_coroutine()
-                    .prefix_tys()
-                    .get(f.index())
-                    .copied()
-                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self:?}")),
+                ty::Coroutine(_, args) => {
+                    args.as_coroutine().prefix_tys().get(f.index()).copied().unwrap_or_else(|| {
+                        bug!("field {f:?} out of range of prefixes for {self_ty}")
+                    })
+                }
                 ty::Tuple(tys) => tys
                     .get(f.index())
                     .copied()
-                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self:?}")),
-                _ => bug!("can't project out of {self:?}"),
+                    .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
+                _ => bug!("can't project out of {self_ty:?}"),
             }
         }
     }
@@ -148,11 +152,11 @@ impl<'tcx> PlaceTy<'tcx> {
         elems.iter().fold(self, |place_ty, &elem| place_ty.projection_ty(tcx, elem))
     }
 
-    /// Convenience wrapper around `projection_ty_core` for
-    /// `PlaceElem`, where we can just use the `Ty` that is already
-    /// stored inline on field projection elems.
+    /// Convenience wrapper around `projection_ty_core` for `PlaceElem`,
+    /// where we can just use the `Ty` that is already stored inline on
+    /// field projection elems.
     pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, &elem, |_, _, ty| ty, |_, ty| ty)
+        self.projection_ty_core(tcx, &elem, |ty| ty, |_, _, _, ty| ty, |ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
@@ -164,8 +168,9 @@ impl<'tcx> PlaceTy<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         elem: &ProjectionElem<V, T>,
-        mut handle_field: impl FnMut(&Self, FieldIdx, T) -> Ty<'tcx>,
-        mut handle_opaque_cast_and_subtype: impl FnMut(&Self, T) -> Ty<'tcx>,
+        mut structurally_normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+        mut handle_field: impl FnMut(Ty<'tcx>, Option<VariantIdx>, FieldIdx, T) -> Ty<'tcx>,
+        mut handle_opaque_cast_and_subtype: impl FnMut(T) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where
         V: ::std::fmt::Debug,
@@ -176,16 +181,16 @@ impl<'tcx> PlaceTy<'tcx> {
         }
         let answer = match *elem {
             ProjectionElem::Deref => {
-                let ty = self.ty.builtin_deref(true).unwrap_or_else(|| {
+                let ty = structurally_normalize(self.ty).builtin_deref(true).unwrap_or_else(|| {
                     bug!("deref projection of non-dereferenceable ty {:?}", self)
                 });
                 PlaceTy::from_ty(ty)
             }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
-                PlaceTy::from_ty(self.ty.builtin_index().unwrap())
+                PlaceTy::from_ty(structurally_normalize(self.ty).builtin_index().unwrap())
             }
             ProjectionElem::Subslice { from, to, from_end } => {
-                PlaceTy::from_ty(match self.ty.kind() {
+                PlaceTy::from_ty(match structurally_normalize(self.ty).kind() {
                     ty::Slice(..) => self.ty,
                     ty::Array(inner, _) if !from_end => Ty::new_array(tcx, *inner, to - from),
                     ty::Array(inner, size) if from_end => {
@@ -201,17 +206,18 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Downcast(_name, index) => {
                 PlaceTy { ty: self.ty, variant_index: Some(index) }
             }
-            ProjectionElem::Field(f, fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
-            ProjectionElem::OpaqueCast(ty) => {
-                PlaceTy::from_ty(handle_opaque_cast_and_subtype(&self, ty))
-            }
-            ProjectionElem::Subtype(ty) => {
-                PlaceTy::from_ty(handle_opaque_cast_and_subtype(&self, ty))
-            }
+            ProjectionElem::Field(f, fty) => PlaceTy::from_ty(handle_field(
+                structurally_normalize(self.ty),
+                self.variant_index,
+                f,
+                fty,
+            )),
+            ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty)),
+            ProjectionElem::Subtype(ty) => PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty)),
 
             // FIXME(unsafe_binders): Rename `handle_opaque_cast_and_subtype` to be more general.
             ProjectionElem::UnwrapUnsafeBinder(ty) => {
-                PlaceTy::from_ty(handle_opaque_cast_and_subtype(&self, ty))
+                PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty))
             }
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);

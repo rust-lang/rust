@@ -12,7 +12,7 @@ pub fn foo() -> impl Coroutine<(), Yield = (), Return = ()> {
     }
 }
 
-pub fn bar<T: 'static>(t: T) -> Box<Coroutine<(), Yield = T, Return = ()> + Unpin> {
+pub fn bar<T: 'static>(t: T) -> Box<dyn Coroutine<(), Yield = T, Return = ()> + Unpin> {
     Box::new(
         #[coroutine]
         || {

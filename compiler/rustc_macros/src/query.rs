@@ -51,6 +51,7 @@ impl Parse for Query {
         let key = Pat::parse_single(&arg_content)?;
         arg_content.parse::<Token![:]>()?;
         let arg = arg_content.parse()?;
+        let _ = arg_content.parse::<Option<Token![,]>>()?;
         let result = input.parse()?;
 
         // Parse the query modifiers

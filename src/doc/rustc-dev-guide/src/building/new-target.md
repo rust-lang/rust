@@ -85,7 +85,7 @@ Look for existing targets to use as examples.
 After adding your target to the `rustc_target` crate you may want to add
 `core`, `std`, ... with support for your new target. In that case you will
 probably need access to some `target_*` cfg. Unfortunately when building with
-stage0 (the beta compiler), you'll get an error that the target cfg is
+stage0 (a precompiled compiler), you'll get an error that the target cfg is
 unexpected because stage0 doesn't know about the new target specification and
 we pass `--check-cfg` in order to tell it to check.
 

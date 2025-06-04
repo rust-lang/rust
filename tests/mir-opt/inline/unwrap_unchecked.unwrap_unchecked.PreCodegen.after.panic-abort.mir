@@ -7,7 +7,7 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
         let mut _2: isize;
         scope 2 {
         }
-        scope 3 (inlined unreachable_unchecked) {
+        scope 3 (inlined #[track_caller] unreachable_unchecked) {
             scope 4 (inlined core::ub_checks::check_language_ub) {
                 scope 5 (inlined core::ub_checks::check_language_ub::runtime) {
                 }

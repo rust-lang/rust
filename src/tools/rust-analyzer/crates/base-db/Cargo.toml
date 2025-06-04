@@ -21,6 +21,7 @@ rustc-hash.workspace = true
 triomphe.workspace = true
 semver.workspace = true
 tracing.workspace = true
+indexmap.workspace = true
 
 # local deps
 cfg.workspace = true

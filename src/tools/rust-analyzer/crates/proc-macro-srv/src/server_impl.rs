@@ -16,9 +16,8 @@ mod token_stream;
 pub use token_stream::TokenStream;
 
 pub mod rust_analyzer_span;
-// mod symbol;
 pub mod token_id;
-// pub use symbol::*;
+
 use tt::Spacing;
 
 #[derive(Clone)]

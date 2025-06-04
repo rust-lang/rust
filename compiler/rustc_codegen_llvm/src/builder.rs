@@ -612,7 +612,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         ty: &'ll Type,
         ptr: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
+        order: rustc_middle::ty::AtomicOrdering,
         size: Size,
     ) -> &'ll Value {
         unsafe {
@@ -851,7 +851,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         val: &'ll Value,
         ptr: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
+        order: rustc_middle::ty::AtomicOrdering,
         size: Size,
     ) {
         debug!("Store {:?} -> {:?}", val, ptr);
@@ -1307,8 +1307,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         dst: &'ll Value,
         cmp: &'ll Value,
         src: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
-        failure_order: rustc_codegen_ssa::common::AtomicOrdering,
+        order: rustc_middle::ty::AtomicOrdering,
+        failure_order: rustc_middle::ty::AtomicOrdering,
         weak: bool,
     ) -> (&'ll Value, &'ll Value) {
         let weak = if weak { llvm::True } else { llvm::False };
@@ -1334,7 +1334,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         op: rustc_codegen_ssa::common::AtomicRmwBinOp,
         dst: &'ll Value,
         mut src: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
+        order: rustc_middle::ty::AtomicOrdering,
     ) -> &'ll Value {
         // The only RMW operation that LLVM supports on pointers is compare-exchange.
         let requires_cast_to_int = self.val_ty(src) == self.type_ptr()
@@ -1360,7 +1360,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn atomic_fence(
         &mut self,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
+        order: rustc_middle::ty::AtomicOrdering,
         scope: SynchronizationScope,
     ) {
         let single_threaded = match scope {
@@ -1452,9 +1452,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {
     fn get_static(&mut self, def_id: DefId) -> &'ll Value {
         // Forward to the `get_static` method of `CodegenCx`
-        let s = self.cx().get_static(def_id);
-        // Cast to default address space if globals are in a different addrspace
-        self.cx().const_pointercast(s, self.type_ptr())
+        let global = self.cx().get_static(def_id);
+        if self.cx().tcx.is_thread_local_static(def_id) {
+            let pointer = self.call_intrinsic("llvm.threadlocal.address", &[global]);
+            // Cast to default address space if globals are in a different addrspace
+            self.pointercast(pointer, self.type_ptr())
+        } else {
+            // Cast to default address space if globals are in a different addrspace
+            self.cx().const_pointercast(global, self.type_ptr())
+        }
     }
 }
 
@@ -1809,8 +1815,11 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             let typeid_metadata = self.cx.typeid_metadata(typeid).unwrap();
             let dbg_loc = self.get_dbg_loc();
 
-            // Test whether the function pointer is associated with the type identifier.
-            let cond = self.type_test(llfn, typeid_metadata);
+            // Test whether the function pointer is associated with the type identifier using the
+            // llvm.type.test intrinsic. The LowerTypeTests link-time optimization pass replaces
+            // calls to this intrinsic with code to test type membership.
+            let typeid = self.get_metadata_value(typeid_metadata);
+            let cond = self.call_intrinsic("llvm.type.test", &[llfn, typeid]);
             let bb_pass = self.append_sibling_block("type_test.pass");
             let bb_fail = self.append_sibling_block("type_test.fail");
             self.cond_br(cond, bb_pass, bb_fail);

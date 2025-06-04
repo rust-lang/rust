@@ -2112,6 +2112,56 @@ fn foo() {
 }
 
 #[test]
+fn cfg_attr_attr_macro() {
+    check(
+        r#"
+//- proc_macros: identity
+#[cfg_attr(test, proc_macros::identity)]
+fn foo() {
+    $0
+}
+    "#,
+        expect![[r#"
+            fn foo()  fn()
+            md proc_macros
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
 fn escaped_label() {
     check(
         r#"
@@ -2124,5 +2174,72 @@ fn main() {
         expect![[r#"
             lb 'r#break
         "#]],
+    );
+}
+
+#[test]
+fn call_parens_with_newline() {
+    check_edit(
+        "foo",
+        r#"
+fn foo(v: i32) {}
+
+fn bar() {
+    foo$0
+    ()
+}
+    "#,
+        r#"
+fn foo(v: i32) {}
+
+fn bar() {
+    foo(${1:v});$0
+    ()
+}
+    "#,
+    );
+    check_edit(
+        "foo",
+        r#"
+struct Foo;
+impl Foo {
+    fn foo(&self, v: i32) {}
+}
+
+fn bar() {
+    Foo.foo$0
+    ()
+}
+    "#,
+        r#"
+struct Foo;
+impl Foo {
+    fn foo(&self, v: i32) {}
+}
+
+fn bar() {
+    Foo.foo(${1:v});$0
+    ()
+}
+    "#,
+    );
+}
+
+#[test]
+fn dbg_too_many_asterisks() {
+    check_edit(
+        "dbg",
+        r#"
+fn main() {
+    let x = &42;
+    let y = *x.$0;
+}
+    "#,
+        r#"
+fn main() {
+    let x = &42;
+    let y = dbg!(*x);
+}
+    "#,
     );
 }

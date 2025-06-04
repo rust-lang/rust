@@ -3,8 +3,8 @@ fn bar() -> impl Fn() {
 }
 
 fn foo() -> impl Fn() {
-    //~^ WARNING 5:1: 5:22: function cannot return without recursing [unconditional_recursion]
-    //~| ERROR 5:13: 5:22: cannot resolve opaque type [E0720]
+    //~^ WARN function cannot return without recursing
+    //~| ERROR cannot resolve opaque type
     wrap(wrap(wrap(wrap(wrap(wrap(wrap(foo())))))))
 }
 

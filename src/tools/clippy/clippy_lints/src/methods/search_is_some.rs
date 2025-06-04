@@ -2,14 +2,13 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::deref_closure_args;
 use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::{is_receiver_of_method_call, is_trait_method, strip_pat_refs};
+use clippy_utils::{is_receiver_of_method_call, is_trait_method, strip_pat_refs, sym};
 use hir::ExprKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::PatKind;
 use rustc_lint::LateContext;
-use rustc_span::Span;
-use rustc_span::symbol::sym;
+use rustc_span::{Span, Symbol};
 
 use super::SEARCH_IS_SOME;
 
@@ -19,7 +18,7 @@ use super::SEARCH_IS_SOME;
 pub(super) fn check<'tcx>(
     cx: &LateContext<'_>,
     expr: &'tcx hir::Expr<'_>,
-    search_method: &str,
+    search_method: Symbol,
     is_some: bool,
     search_recv: &hir::Expr<'_>,
     search_arg: &'tcx hir::Expr<'_>,
@@ -35,7 +34,7 @@ pub(super) fn check<'tcx>(
             // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
             // suggest `any(|..| *..)` instead of `any(|..| **..)` for `find(|..| **..).is_some()`
             let mut applicability = Applicability::MachineApplicable;
-            let any_search_snippet = if search_method == "find"
+            let any_search_snippet = if search_method == sym::find
                 && let ExprKind::Closure(&hir::Closure { body, .. }) = search_arg.kind
                 && let closure_body = cx.tcx.hir_body(body)
                 && let Some(closure_arg) = closure_body.params.first()
@@ -107,7 +106,7 @@ pub(super) fn check<'tcx>(
         }
     }
     // lint if `find()` is called by `String` or `&str`
-    else if search_method == "find" {
+    else if search_method == sym::find {
         let is_string_or_str_slice = |e| {
             let self_ty = cx.typeck_results().expr_ty(e).peel_refs();
             if is_type_lang_item(cx, self_ty, hir::LangItem::String) {

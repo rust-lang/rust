@@ -95,8 +95,8 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                 kind:
                     hir::ItemKind::Struct(
                         _,
-                        hir::VariantData::Struct { fields, recovered: _ },
                         _generics,
+                        hir::VariantData::Struct { fields, recovered: _ },
                     ),
                 ..
             })) => fields.iter().map(|f| (f.ident.name, f)).collect::<FxHashMap<_, _>>(),

@@ -764,6 +764,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::unwrap_in_result::UNWRAP_IN_RESULT_INFO,
     crate::upper_case_acronyms::UPPER_CASE_ACRONYMS_INFO,
     crate::use_self::USE_SELF_INFO,
+    crate::useless_concat::USELESS_CONCAT_INFO,
     crate::useless_conversion::USELESS_CONVERSION_INFO,
     crate::vec::USELESS_VEC_INFO,
     crate::vec_init_then_push::VEC_INIT_THEN_PUSH_INFO,

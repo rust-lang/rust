@@ -96,49 +96,46 @@ bitflags::bitflags! {
         /// `#[cold]`: a hint to LLVM that this function, when called, is never on
         /// the hot path.
         const COLD                      = 1 << 0;
-        /// `#[rustc_allocator]`: a hint to LLVM that the pointer returned from this
-        /// function is never null and the function has no side effects other than allocating.
-        const ALLOCATOR                 = 1 << 1;
-        /// An indicator that function will never unwind. Will become obsolete
-        /// once C-unwind is fully stabilized.
-        const NEVER_UNWIND              = 1 << 3;
+        /// `#[rustc_nounwind]`: An indicator that function will never unwind.
+        const NEVER_UNWIND              = 1 << 1;
         /// `#[naked]`: an indicator to LLVM that no function prologue/epilogue
         /// should be generated.
-        const NAKED                     = 1 << 4;
+        const NAKED                     = 1 << 2;
         /// `#[no_mangle]`: an indicator that the function's name should be the same
         /// as its symbol.
-        const NO_MANGLE                 = 1 << 5;
+        const NO_MANGLE                 = 1 << 3;
         /// `#[rustc_std_internal_symbol]`: an indicator that this symbol is a
         /// "weird symbol" for the standard library in that it has slightly
         /// different linkage, visibility, and reachability rules.
-        const RUSTC_STD_INTERNAL_SYMBOL = 1 << 6;
+        const RUSTC_STD_INTERNAL_SYMBOL = 1 << 4;
         /// `#[thread_local]`: indicates a static is actually a thread local
         /// piece of memory
-        const THREAD_LOCAL              = 1 << 8;
-        /// `#[used]`: indicates that LLVM can't eliminate this function (but the
+        const THREAD_LOCAL              = 1 << 5;
+        /// `#[used(compiler)]`: indicates that LLVM can't eliminate this function (but the
         /// linker can!).
-        const USED                      = 1 << 9;
-        /// `#[track_caller]`: allow access to the caller location
-        const TRACK_CALLER              = 1 << 10;
-        /// #[ffi_pure]: applies clang's `pure` attribute to a foreign function
-        /// declaration.
-        const FFI_PURE                  = 1 << 11;
-        /// #[ffi_const]: applies clang's `const` attribute to a foreign function
-        /// declaration.
-        const FFI_CONST                 = 1 << 12;
-        // (Bit 13 was used for `#[cmse_nonsecure_entry]`, but is now unused.)
-        // (Bit 14 was used for `#[coverage(off)]`, but is now unused.)
+        const USED_COMPILER             = 1 << 6;
         /// `#[used(linker)]`:
         /// indicates that neither LLVM nor the linker will eliminate this function.
-        const USED_LINKER               = 1 << 15;
+        const USED_LINKER               = 1 << 7;
+        /// `#[track_caller]`: allow access to the caller location
+        const TRACK_CALLER              = 1 << 8;
+        /// #[ffi_pure]: applies clang's `pure` attribute to a foreign function
+        /// declaration.
+        const FFI_PURE                  = 1 << 9;
+        /// #[ffi_const]: applies clang's `const` attribute to a foreign function
+        /// declaration.
+        const FFI_CONST                 = 1 << 10;
+        /// `#[rustc_allocator]`: a hint to LLVM that the pointer returned from this
+        /// function is never null and the function has no side effects other than allocating.
+        const ALLOCATOR                 = 1 << 11;
         /// `#[rustc_deallocator]`: a hint to LLVM that the function only deallocates memory.
-        const DEALLOCATOR               = 1 << 16;
+        const DEALLOCATOR               = 1 << 12;
         /// `#[rustc_reallocator]`: a hint to LLVM that the function only reallocates memory.
-        const REALLOCATOR               = 1 << 17;
+        const REALLOCATOR               = 1 << 13;
         /// `#[rustc_allocator_zeroed]`: a hint to LLVM that the function only allocates zeroed memory.
-        const ALLOCATOR_ZEROED          = 1 << 18;
+        const ALLOCATOR_ZEROED          = 1 << 14;
         /// `#[no_builtins]`: indicates that disable implicit builtin knowledge of functions for the function.
-        const NO_BUILTINS               = 1 << 19;
+        const NO_BUILTINS               = 1 << 15;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }

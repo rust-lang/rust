@@ -1,6 +1,6 @@
 // tidy-alphabetical-start
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
-#![cfg_attr(test, feature(cfg_match))]
+#![cfg_attr(test, feature(cfg_select))]
 #![feature(alloc_layout_extra)]
 #![feature(array_chunks)]
 #![feature(array_ptr_get)]
@@ -16,6 +16,7 @@
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(const_eval_select)]
+#![feature(const_float_round_methods)]
 #![feature(const_trait_impl)]
 #![feature(core_float_math)]
 #![feature(core_intrinsics)]
@@ -23,6 +24,7 @@
 #![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
+#![feature(cstr_display)]
 #![feature(dec2flt)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]

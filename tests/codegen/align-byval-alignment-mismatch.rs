@@ -2,9 +2,10 @@
 //@ add-core-stubs
 //@ revisions:i686-linux x86_64-linux
 
-//@[i686-linux] compile-flags: --target i686-unknown-linux-gnu -C panic=abort
+//@ compile-flags: -Cno-prepopulate-passes -Copt-level=1 -Cpanic=abort
+//@[i686-linux] compile-flags: --target i686-unknown-linux-gnu
 //@[i686-linux] needs-llvm-components: x86
-//@[x86_64-linux] compile-flags: --target x86_64-unknown-linux-gnu -C panic=abort
+//@[x86_64-linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[x86_64-linux] needs-llvm-components: x86
 
 // Tests that we correctly copy arguments into allocas when the alignment of the byval argument
@@ -54,8 +55,10 @@ extern "C" {
 pub unsafe fn rust_to_c_increases_alignment(x: Align1) {
     // i686-linux: start:
     // i686-linux-NEXT: [[ALLOCA:%[0-9a-z]+]] = alloca [48 x i8], align 4
+    // i686-linux-NEXT: call void @llvm.lifetime.start.p0(i64 48, ptr {{.*}}[[ALLOCA]])
     // i686-linux-NEXT: call void @llvm.memcpy.{{.+}}(ptr {{.*}}align 4 {{.*}}[[ALLOCA]], ptr {{.*}}align 1 {{.*}}%x
     // i686-linux-NEXT: call void @extern_c_align1({{.+}} [[ALLOCA]])
+    // i686-linux-NEXT: call void @llvm.lifetime.end.p0(i64 48, ptr {{.*}}[[ALLOCA]])
 
     // x86_64-linux: start:
     // x86_64-linux-NEXT: call void @extern_c_align1

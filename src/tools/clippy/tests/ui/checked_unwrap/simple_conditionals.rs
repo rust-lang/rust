@@ -1,4 +1,4 @@
-//@no-rustfix: overlapping suggestions
+//@no-rustfix: has placeholders
 #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
 #![allow(
     clippy::if_same_then_else,
