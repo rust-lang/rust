@@ -1,11 +1,12 @@
 use std::cell::Cell;
 use std::io::{self, Write};
 
-use termcolor::{Buffer, Color, ColorSpec, WriteColor};
+use anstyle::{Ansi256Color, AnsiColor, Effects, Style};
 
 use crate::markdown::{MdStream, MdTree};
 
 const DEFAULT_COLUMN_WIDTH: usize = 140;
+const RESET: anstyle::Reset = anstyle::Reset;
 
 thread_local! {
     /// Track the position of viewable characters in our buffer
@@ -15,7 +16,7 @@ thread_local! {
 }
 
 /// Print to terminal output to a buffer
-pub(crate) fn entrypoint(stream: &MdStream<'_>, buf: &mut Buffer) -> io::Result<()> {
+pub(crate) fn entrypoint(stream: &MdStream<'_>, buf: &mut Vec<u8>) -> io::Result<()> {
     #[cfg(not(test))]
     if let Some((w, _)) = termize::dimensions() {
         WIDTH.set(std::cmp::min(w, DEFAULT_COLUMN_WIDTH));
@@ -23,57 +24,66 @@ pub(crate) fn entrypoint(stream: &MdStream<'_>, buf: &mut Buffer) -> io::Result<
     write_stream(stream, buf, None, 0)?;
     buf.write_all(b"\n")
 }
-
 /// Write the buffer, reset to the default style after each
 fn write_stream(
     MdStream(stream): &MdStream<'_>,
-    buf: &mut Buffer,
-    default: Option<&ColorSpec>,
+    buf: &mut Vec<u8>,
+    default: Option<Style>,
     indent: usize,
 ) -> io::Result<()> {
     match default {
-        Some(c) => buf.set_color(c)?,
-        None => buf.reset()?,
+        Some(c) => write!(buf, "{c:#}{c}")?,
+        None => write!(buf, "{RESET}")?,
     }
 
     for tt in stream {
-        write_tt(tt, buf, indent)?;
+        write_tt(tt, buf, default, indent)?;
         if let Some(c) = default {
-            buf.set_color(c)?;
+            write!(buf, "{c:#}{c}")?;
         }
     }
 
-    buf.reset()?;
+    write!(buf, "{RESET}")?;
     Ok(())
 }
 
-fn write_tt(tt: &MdTree<'_>, buf: &mut Buffer, indent: usize) -> io::Result<()> {
+fn write_tt(
+    tt: &MdTree<'_>,
+    buf: &mut Vec<u8>,
+    _default: Option<Style>,
+    indent: usize,
+) -> io::Result<()> {
     match tt {
         MdTree::CodeBlock { txt, lang: _ } => {
-            buf.set_color(ColorSpec::new().set_dimmed(true))?;
-            buf.write_all(txt.as_bytes())?;
+            write!(buf, "{RESET}")?;
+            let style = Style::new().effects(Effects::DIMMED);
+            write!(buf, "{style}{txt}")?;
         }
         MdTree::CodeInline(txt) => {
-            buf.set_color(ColorSpec::new().set_dimmed(true))?;
-            write_wrapping(buf, txt, indent, None)?;
+            write!(buf, "{RESET}")?;
+            let style = Style::new().effects(Effects::DIMMED);
+            write_wrapping(buf, txt, indent, None, Some(style))?;
         }
         MdTree::Strong(txt) => {
-            buf.set_color(ColorSpec::new().set_bold(true))?;
-            write_wrapping(buf, txt, indent, None)?;
+            write!(buf, "{RESET}")?;
+            let style = Style::new().effects(Effects::BOLD);
+            write_wrapping(buf, txt, indent, None, Some(style))?;
         }
         MdTree::Emphasis(txt) => {
-            buf.set_color(ColorSpec::new().set_italic(true))?;
-            write_wrapping(buf, txt, indent, None)?;
+            write!(buf, "{RESET}")?;
+            let style = Style::new().effects(Effects::ITALIC);
+            write_wrapping(buf, txt, indent, None, Some(style))?;
         }
         MdTree::Strikethrough(txt) => {
-            buf.set_color(ColorSpec::new().set_strikethrough(true))?;
-            write_wrapping(buf, txt, indent, None)?;
+            write!(buf, "{RESET}")?;
+            let style = Style::new().effects(Effects::STRIKETHROUGH);
+            write_wrapping(buf, txt, indent, None, Some(style))?;
         }
         MdTree::PlainText(txt) => {
-            write_wrapping(buf, txt, indent, None)?;
+            write_wrapping(buf, txt, indent, None, None)?;
         }
         MdTree::Link { disp, link } => {
-            write_wrapping(buf, disp, indent, Some(link))?;
+            write_wrapping(buf, disp, indent, Some(link), None)?;
         }
         MdTree::ParagraphBreak => {
             buf.write_all(b"\n\n")?;
@@ -88,33 +98,37 @@ fn write_tt(tt: &MdTree<'_>, buf: &mut Buffer, indent: usize) -> io::Result<()> 
             reset_cursor();
         }
         MdTree::Heading(n, stream) => {
-            let mut cs = ColorSpec::new();
-            cs.set_fg(Some(Color::Cyan));
-            match n {
-                1 => cs.set_intense(true).set_bold(true).set_underline(true),
-                2 => cs.set_intense(true).set_underline(true),
-                3 => cs.set_intense(true).set_italic(true),
-                4.. => cs.set_underline(true).set_italic(true),
+            let cs = match n {
+                1 => Ansi256Color::from_ansi(AnsiColor::BrightCyan)
+                    .on_default()
+                    .effects(Effects::BOLD | Effects::UNDERLINE),
+                2 => Ansi256Color::from_ansi(AnsiColor::BrightCyan)
+                    .on_default()
+                    .effects(Effects::UNDERLINE),
+                3 => Ansi256Color::from_ansi(AnsiColor::BrightCyan)
+                    .on_default()
+                    .effects(Effects::ITALIC),
+                4.. => AnsiColor::Cyan.on_default().effects(Effects::UNDERLINE | Effects::ITALIC),
                 0 => unreachable!(),
             };
-            write_stream(stream, buf, Some(&cs), 0)?;
+            write_stream(stream, buf, Some(cs), 0)?;
             buf.write_all(b"\n")?;
         }
         MdTree::OrderedListItem(n, stream) => {
             let base = format!("{n}. ");
-            write_wrapping(buf, &format!("{base:<4}"), indent, None)?;
+            write_wrapping(buf, &format!("{base:<4}"), indent, None, None)?;
             write_stream(stream, buf, None, indent + 4)?;
         }
         MdTree::UnorderedListItem(stream) => {
             let base = "* ";
-            write_wrapping(buf, &format!("{base:<4}"), indent, None)?;
+            write_wrapping(buf, &format!("{base:<4}"), indent, None, None)?;
             write_stream(stream, buf, None, indent + 4)?;
         }
         // Patterns popped in previous step
         MdTree::Comment(_) | MdTree::LinkDef { .. } | MdTree::RefLink { .. } => unreachable!(),
     }
 
-    buf.reset()?;
+    write!(buf, "{RESET}")?;
 
     Ok(())
 }
@@ -126,12 +140,16 @@ fn reset_cursor() {
 
 /// Change to be generic on Write for testing. If we have a link URL, we don't
 /// count the extra tokens to make it clickable.
-fn write_wrapping<B: io::Write>(
-    buf: &mut B,
+fn write_wrapping(
+    buf: &mut Vec<u8>,
     text: &str,
     indent: usize,
     link_url: Option<&str>,
+    style: Option<Style>,
 ) -> io::Result<()> {
+    if let Some(style) = &style {
+        write!(buf, "{style}")?;
+    }
     let ind_ws = &b"          "[..indent];
     let mut to_write = text;
     if let Some(url) = link_url {
@@ -179,7 +197,6 @@ fn write_wrapping<B: io::Write>(
         if link_url.is_some() {
             buf.write_all(b"\x1b]8;;\x1b\\")?;
         }
-
         Ok(())
     })
 }
