@@ -225,7 +225,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     // redundant errors for `DispatchFromDyn`. This is best effort, though.
     let mut res = Ok(());
     tcx.for_each_relevant_impl(
-        tcx.require_lang_item(LangItem::CoerceUnsized, Some(span)),
+        tcx.require_lang_item(LangItem::CoerceUnsized, span),
         source,
         |impl_def_id| {
             res = res.and(tcx.ensure_ok().coerce_unsized_info(impl_def_id));
@@ -379,8 +379,8 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     let span = tcx.def_span(impl_did);
     let trait_name = "CoerceUnsized";
 
-    let coerce_unsized_trait = tcx.require_lang_item(LangItem::CoerceUnsized, Some(span));
-    let unsize_trait = tcx.require_lang_item(LangItem::Unsize, Some(span));
+    let coerce_unsized_trait = tcx.require_lang_item(LangItem::CoerceUnsized, span);
+    let unsize_trait = tcx.require_lang_item(LangItem::Unsize, span);
 
     let source = tcx.type_of(impl_did).instantiate_identity();
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
@@ -591,7 +591,7 @@ fn infringing_fields_error<'tcx>(
     impl_did: LocalDefId,
     impl_span: Span,
 ) -> ErrorGuaranteed {
-    let trait_did = tcx.require_lang_item(lang_item, Some(impl_span));
+    let trait_did = tcx.require_lang_item(lang_item, impl_span);
 
     let trait_name = tcx.def_path_str(trait_did);
 
@@ -748,7 +748,7 @@ fn visit_implementation_of_pointer_like(checker: &Checker<'_>) -> Result<(), Err
                         ObligationCause::misc(impl_span, checker.impl_def_id),
                         param_env,
                         nontrivial_field_ty,
-                        tcx.require_lang_item(LangItem::PointerLike, Some(impl_span)),
+                        tcx.require_lang_item(LangItem::PointerLike, impl_span),
                     );
                     // FIXME(dyn-star): We should regionck this implementation.
                     if ocx.select_all_or_error().is_empty() {

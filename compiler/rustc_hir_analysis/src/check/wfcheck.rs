@@ -969,7 +969,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                         ),
                         wfcx.param_env,
                         ty,
-                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, Some(hir_ty.span)),
+                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, hir_ty.span),
                     );
                     Ok(())
                 })
@@ -983,7 +983,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                         ),
                         wfcx.param_env,
                         ty,
-                        tcx.require_lang_item(LangItem::ConstParamTy, Some(hir_ty.span)),
+                        tcx.require_lang_item(LangItem::ConstParamTy, hir_ty.span),
                     );
                     Ok(())
                 })
@@ -1232,7 +1232,7 @@ fn check_type_defn<'tcx>(
                     ),
                     wfcx.param_env,
                     ty,
-                    tcx.require_lang_item(LangItem::Sized, Some(hir_ty.span)),
+                    tcx.require_lang_item(LangItem::Sized, hir_ty.span),
                 );
             }
 
@@ -1356,7 +1356,7 @@ fn check_static_item(
                 ),
                 wfcx.param_env,
                 item_ty,
-                tcx.require_lang_item(LangItem::Sized, Some(ty_span)),
+                tcx.require_lang_item(LangItem::Sized, ty_span),
             );
         }
 
@@ -1375,7 +1375,7 @@ fn check_static_item(
                 ),
                 wfcx.param_env,
                 item_ty,
-                tcx.require_lang_item(LangItem::Sync, Some(ty_span)),
+                tcx.require_lang_item(LangItem::Sync, ty_span),
             );
         }
         Ok(())
@@ -1401,7 +1401,7 @@ fn check_const_item(
             ),
             wfcx.param_env,
             ty,
-            tcx.require_lang_item(LangItem::Sized, None),
+            tcx.require_lang_item(LangItem::Sized, ty_span),
         );
 
         check_where_clauses(wfcx, item_span, def_id);
@@ -1725,13 +1725,13 @@ fn check_fn_or_method<'tcx>(
                 ObligationCause::new(span, wfcx.body_def_id, ObligationCauseCode::RustCall),
                 wfcx.param_env,
                 *ty,
-                tcx.require_lang_item(hir::LangItem::Tuple, Some(span)),
+                tcx.require_lang_item(hir::LangItem::Tuple, span),
             );
             wfcx.register_bound(
                 ObligationCause::new(span, wfcx.body_def_id, ObligationCauseCode::RustCall),
                 wfcx.param_env,
                 *ty,
-                tcx.require_lang_item(hir::LangItem::Sized, Some(span)),
+                tcx.require_lang_item(hir::LangItem::Sized, span),
             );
         } else {
             tcx.dcx().span_err(
@@ -1776,7 +1776,7 @@ fn check_sized_if_body<'tcx>(
             ObligationCause::new(span, def_id, code),
             wfcx.param_env,
             ty,
-            tcx.require_lang_item(LangItem::Sized, Some(span)),
+            tcx.require_lang_item(LangItem::Sized, span),
         );
     }
 }
@@ -2013,7 +2013,7 @@ fn receiver_is_valid<'tcx>(
         // deref chain implement `LegacyReceiver`.
         if arbitrary_self_types_enabled.is_none() {
             let legacy_receiver_trait_def_id =
-                tcx.require_lang_item(LangItem::LegacyReceiver, Some(span));
+                tcx.require_lang_item(LangItem::LegacyReceiver, span);
             if !legacy_receiver_is_implemented(
                 wfcx,
                 legacy_receiver_trait_def_id,

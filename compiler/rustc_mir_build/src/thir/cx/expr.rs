@@ -220,7 +220,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 });
 
                 // kind = Pin { __pointer: pointer }
-                let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, Some(span));
+                let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, span);
                 let args = self.tcx.mk_args(&[new_pin_target.into()]);
                 let kind = ExprKind::Adt(Box::new(AdtExpr {
                     adt_def: self.tcx.adt_def(pin_did),

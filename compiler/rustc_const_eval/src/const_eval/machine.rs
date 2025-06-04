@@ -249,7 +249,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
             return Err(ConstEvalErrKind::Panic { msg, file, line, col }).into();
         } else if self.tcx.is_lang_item(def_id, LangItem::PanicFmt) {
             // For panic_fmt, call const_panic_fmt instead.
-            let const_def_id = self.tcx.require_lang_item(LangItem::ConstPanicFmt, None);
+            let const_def_id = self.tcx.require_lang_item(LangItem::ConstPanicFmt, self.tcx.span);
             let new_instance = ty::Instance::expect_resolve(
                 *self.tcx,
                 self.typing_env(),
