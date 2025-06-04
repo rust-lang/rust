@@ -1,15 +1,4 @@
 error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/deep-norm-pending.rs:15:5
-   |
-LL |     fn method() {}
-   |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
-   |
-help: consider further restricting type parameter `T` with trait `Foo`
-   |
-LL |     <T as Foo>::Assoc: Sized, T: Foo
-   |                               ++++++
-
-error[E0277]: the trait bound `T: Foo` is not satisfied
   --> $DIR/deep-norm-pending.rs:9:1
    |
 LL | / impl<T> Bar for T
@@ -25,15 +14,10 @@ LL |     <T as Foo>::Assoc: Sized, T: Foo
    |                               ++++++
 
 error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/deep-norm-pending.rs:9:1
+  --> $DIR/deep-norm-pending.rs:15:5
    |
-LL | / impl<T> Bar for T
-LL | |
-LL | |
-LL | | where
-...  |
-LL | | }
-   | |_^ the trait `Foo` is not implemented for `T`
+LL |     fn method() {}
+   |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
    |
 help: consider further restricting type parameter `T` with trait `Foo`
    |
@@ -97,6 +81,22 @@ LL | impl<T> Bar for T
 ...
 LL |     <T as Foo>::Assoc: Sized,
    |                        ----- unsatisfied trait bound introduced here
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     <T as Foo>::Assoc: Sized, T: Foo
+   |                               ++++++
+
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/deep-norm-pending.rs:9:1
+   |
+LL | / impl<T> Bar for T
+LL | |
+LL | |
+LL | | where
+...  |
+LL | | }
+   | |_^ the trait `Foo` is not implemented for `T`
+   |
 help: consider further restricting type parameter `T` with trait `Foo`
    |
 LL |     <T as Foo>::Assoc: Sized, T: Foo

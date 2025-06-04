@@ -49,6 +49,20 @@ LL | struct ConstChunksExact<'rem, T: 'a, const N: usize> {}
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
+error[E0308]: mismatched types
+  --> $DIR/ice-unexpected-inference-var-122549.rs:15:66
+   |
+LL | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
+   |                                                                  ^^ expected `usize`, found `()`
+
+error[E0046]: not all trait items implemented, missing: `next`
+  --> $DIR/ice-unexpected-inference-var-122549.rs:15:1
+   |
+LL | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `next` in implementation
+   |
+   = help: implement the missing item: `fn next(&mut self) -> Option<<Self as Iterator>::Item> { todo!() }`
+
 error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
   --> $DIR/ice-unexpected-inference-var-122549.rs:15:13
    |
@@ -58,13 +72,7 @@ LL | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
-error[E0308]: mismatched types
-  --> $DIR/ice-unexpected-inference-var-122549.rs:15:66
-   |
-LL | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
-   |                                                                  ^^ expected `usize`, found `()`
-
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0046, E0207, E0261, E0308, E0392.
 For more information about an error, try `rustc --explain E0046`.
