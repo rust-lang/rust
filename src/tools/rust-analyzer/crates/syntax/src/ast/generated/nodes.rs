@@ -1232,21 +1232,13 @@ impl PathSegment {
         support::child(&self.syntax)
     }
     #[inline]
-    pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
-    #[inline]
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     #[inline]
     pub fn return_type_syntax(&self) -> Option<ReturnTypeSyntax> { support::child(&self.syntax) }
     #[inline]
-    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+    pub fn type_anchor(&self) -> Option<TypeAnchor> { support::child(&self.syntax) }
     #[inline]
     pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
-    #[inline]
-    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
-    #[inline]
-    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
-    #[inline]
-    pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
 }
 pub struct PathType {
     pub(crate) syntax: SyntaxNode,
@@ -1738,6 +1730,21 @@ impl TypeAlias {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     #[inline]
     pub fn type_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![type]) }
+}
+pub struct TypeAnchor {
+    pub(crate) syntax: SyntaxNode,
+}
+impl TypeAnchor {
+    #[inline]
+    pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
+    #[inline]
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+    #[inline]
+    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
+    #[inline]
+    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
+    #[inline]
+    pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
 }
 pub struct TypeArg {
     pub(crate) syntax: SyntaxNode,
@@ -7108,6 +7115,42 @@ impl fmt::Debug for TypeAlias {
         f.debug_struct("TypeAlias").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for TypeAnchor {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        TYPE_ANCHOR
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ANCHOR }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for TypeAnchor {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for TypeAnchor {}
+impl PartialEq for TypeAnchor {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for TypeAnchor {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for TypeAnchor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TypeAnchor").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for TypeArg {
     #[inline]
     fn kind() -> SyntaxKind
@@ -10620,6 +10663,11 @@ impl std::fmt::Display for TupleType {
     }
 }
 impl std::fmt::Display for TypeAlias {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeAnchor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
