@@ -57,7 +57,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('build', 'build', [CompletionResultType]::ParameterValue, 'Compile either the compiler or libraries')
@@ -116,7 +116,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -159,7 +159,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -208,7 +208,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -250,7 +250,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -294,7 +294,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -338,7 +338,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -394,7 +394,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -440,7 +440,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -483,7 +483,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -526,7 +526,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -568,7 +568,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -610,7 +610,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -653,7 +653,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -695,7 +695,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -738,7 +738,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -782,7 +782,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -824,7 +824,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('eprintln', 'eprintln', [CompletionResultType]::ParameterValue, 'Run `profile_local eprintln`. This executes the compiler on the given benchmarks and stores its stderr output')
@@ -874,7 +874,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -919,7 +919,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -964,7 +964,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -1009,7 +1009,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -1051,7 +1051,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
-            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking std if `rust.download-rustc` isn''t available, mostly for RA')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
