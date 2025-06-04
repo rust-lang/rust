@@ -73,7 +73,7 @@ fn generic_arg_mismatch_err(
                     let param_name = tcx.hir_ty_param_name(param_local_id);
                     let param_type = tcx.type_of(param.def_id).instantiate_identity();
                     if param_type.is_suggestable(tcx, false) {
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             tcx.def_span(src_def_id),
                             "consider changing this type parameter to a const parameter",
                             format!("const {param_name}: {param_type}"),
