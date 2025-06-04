@@ -51,3 +51,7 @@
 	path = src/gcc
 	url = https://github.com/rust-lang/gcc.git
 	shallow = true
+[submodule "library/compiler-builtins/crates/musl-math-sys/musl"]
+	path = library/compiler-builtins/crates/musl-math-sys/musl
+	url = https://git.musl-libc.org/git/musl
+	shallow = true
