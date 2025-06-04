@@ -330,4 +330,74 @@ $
 
 This feature is used heavily by Cargo; it will pass `--cap-lints allow` when
 compiling your dependencies, so that if they have any warnings, they do not
-pollute the output of your build.
+pollute the output of your build. However, note that `--cap-lints allow` does **not** override lints marked as `force-warn`.
+
+## Priority of Lint Level Sources
+
+Rust allows setting lint levels (`allow`, `warn`, `deny`, etc.) through various sources:
+
+- Attributes (`#[allow(...)]`, `#![deny(...)]`, etc.)
+- Command-line options (e.g., `--cap-lints`, `-A unused_variables`)
+
+When multiple lint levels apply to the same lint, the compiler resolves conflicts based on the **source’s scope and strength**.
+
+### Priority of sources (`allow`, `warn`, and `deny`)
+
+For standard lint levels, **the most specific scope** takes precedence.
+
+For example, the following allows the `unused-variables` lint, because it has a more specific scope:
+
+```rust
+#![deny(unused_variables)]
+
+#[allow(unused_variables)]
+fn main() {
+    let x = 42; // Allow wins
+}
+```
+
+### Priority of sources (`force-warn`and `forbid`)
+
+Special lint levels take precedence over standard lint levels, and with eachother, **the least specific scope wins** — the further the attribute is to the code, the higher its precedence:
+
+Special lint levels take precedence over standard levels. When multiple special levels are in effect, **the least specific (outermost) scope** takes precedence.
+
+For example, consider the following code:
+
+```rust,compile_fail
+#[forbid(unused_variables)]
+fn main() {
+    let x = 42; // Allow wins
+}
+```
+
+If we compile it with `--force-warn unused_variables` as:
+
+```bash
+$ rustc --force-warn unused_variables lib.rs
+warning: unused variable: `x`
+  --> lib.rs:3:9
+   |
+40 |     let x = 42;
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+   = note: requested on the command line with `--force-warn unused-variables`
+
+warning: 1 warning emitted
+```
+
+`force-warn`/`forbid` take precedence over other lint levels regardless.
+
+General rule of thumb for allow deny and warn in the AST-hierarchy whoever has the most-specific scope takes precedence.
+
+General rule of thumb for force-warn forbid in the AST-hierarchy whoever has the least-specific scope takes precedence.
+
+--cap-lint=allow can not revert --force-warn but it can revert forbid regardless of position.
+
+force-warn / forbid take precedence over deny, allow, and warn regardless.
+
+### Special case priorities
+
+- `forbid` takes precendece over other lint configurations in case of multiple, except for --cap-lint
+
+The special levels `forbid` and `force_warn` take precedence over  **regardless of where they are set**.
