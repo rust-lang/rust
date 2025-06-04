@@ -17,9 +17,7 @@ doctest = false
 test = false
 
 [dependencies]
-# For more information on this dependency see
-# https://github.com/rust-lang/rust/tree/master/library/rustc-std-workspace-core
-core = { version = "1.0.1", optional = true, package = "rustc-std-workspace-core" }
+core = { path = "../../core", optional = true }
 
 [build-dependencies]
 cc = { optional = true, version = "1.2" }

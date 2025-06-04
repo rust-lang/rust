@@ -18,7 +18,7 @@ directories = "6"
 rustc_version = "0.4"
 serde_json = "1.0.40"
 cargo_metadata = "0.19"
-rustc-build-sysroot = "0.5.7"
+rustc-build-sysroot = "0.5.8"
 
 # Enable some feature flags that dev-dependencies need but dependencies
 # do not.  This makes `./miri install` after `./miri build` faster.
