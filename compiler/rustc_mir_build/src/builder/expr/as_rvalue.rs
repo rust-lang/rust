@@ -145,7 +145,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // malloc some memory of suitable size and align:
                 let exchange_malloc = Operand::function_handle(
                     tcx,
-                    tcx.require_lang_item(LangItem::ExchangeMalloc, Some(expr_span)),
+                    tcx.require_lang_item(LangItem::ExchangeMalloc, expr_span),
                     [],
                     expr_span,
                 );

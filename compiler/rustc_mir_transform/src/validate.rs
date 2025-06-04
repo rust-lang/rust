@@ -1253,7 +1253,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.tcx,
                             self.tcx.require_lang_item(
                                 LangItem::CoerceUnsized,
-                                Some(self.body.source_info(location).span),
+                                self.body.source_info(location).span,
                             ),
                             [op_ty, *target_type],
                         )) {
