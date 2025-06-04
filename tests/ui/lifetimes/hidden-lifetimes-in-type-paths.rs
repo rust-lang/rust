@@ -1,9 +1,4 @@
-#![deny(elided_lifetimes_in_paths)]
-
-// Most of the time, we focus on elided lifetimes in function
-// signatures, but they can also appear in other places! The original
-// version of this lint handled all these cases in one location, but
-// it's desired that the one lint actually be multiple.
+#![deny(hidden_lifetimes_in_type_paths)]
 
 struct ContainsLifetime<'a>(&'a u8);
 

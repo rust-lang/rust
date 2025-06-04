@@ -24,7 +24,7 @@ static RENAMES: &[(Level, &[(&str, &str)])] = &[
         Level::Allow,
         &[
             ("single-use-lifetime", "single-use-lifetimes"),
-            ("elided-lifetime-in-path", "elided-lifetimes-in-paths"),
+            ("elided-lifetime-in-path", "hidden-lifetimes-in-paths"),
             ("async-idents", "keyword-idents"),
             ("disjoint-capture-migration", "rust-2021-incompatible-closure-captures"),
             ("keyword-idents", "keyword-idents-2018"),

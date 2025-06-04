@@ -5,8 +5,8 @@ use std::num::NonZero;
 use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
+    Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, EmissionGuarantee,
+    LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
@@ -2713,13 +2713,6 @@ pub(crate) struct ProcMacroDeriveResolutionFallback {
 pub(crate) struct MacroExpandedMacroExportsAccessedByAbsolutePaths {
     #[note]
     pub definition: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_hidden_lifetime_parameters)]
-pub(crate) struct ElidedLifetimesInPaths {
-    #[subdiagnostic]
-    pub subdiag: ElidedLifetimeInPathSubdiag,
 }
 
 #[derive(LintDiagnostic)]
