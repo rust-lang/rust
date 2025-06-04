@@ -489,7 +489,7 @@ fn expand_format_args<'hir>(
                 let placeholder_span =
                     placeholder_span.unwrap_or(arg.expr.span).with_ctxt(macsp.ctxt());
                 let arg = ctx.lower_expr(&arg.expr);
-                let ref_arg = ctx.arena.alloc(ctx.expr_ref(arg.span, arg));
+                let ref_arg = ctx.arena.alloc(ctx.expr_ref(arg.span.with_ctxt(macsp.ctxt()), arg));
                 make_argument(ctx, placeholder_span, ref_arg, ty)
             },
         ));
