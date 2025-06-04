@@ -17,7 +17,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anstream::{AutoStream, ColorChoice};
-use anstyle::{Ansi256Color, AnsiColor, Effects};
+use anstyle::{AnsiColor, Effects};
 use derive_setters::Setters;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
@@ -3492,21 +3492,21 @@ pub fn stderr_destination(color: ColorConfig) -> Destination {
 ///
 /// See #36178.
 const BRIGHT_BLUE: anstyle::Style = if cfg!(windows) {
-    Ansi256Color::from_ansi(AnsiColor::BrightCyan).on_default()
+    AnsiColor::BrightCyan.on_default()
 } else {
-    Ansi256Color::from_ansi(AnsiColor::BrightBlue).on_default()
+    AnsiColor::BrightBlue.on_default()
 };
 
 impl Style {
     pub(crate) fn anstyle(&self, lvl: Level) -> anstyle::Style {
         match self {
-            Style::Addition => Ansi256Color::from_ansi(AnsiColor::BrightGreen).on_default(),
-            Style::Removal => Ansi256Color::from_ansi(AnsiColor::BrightRed).on_default(),
+            Style::Addition => AnsiColor::BrightGreen.on_default(),
+            Style::Removal => AnsiColor::BrightRed.on_default(),
             Style::LineAndColumn => anstyle::Style::new(),
             Style::LineNumber => BRIGHT_BLUE.effects(Effects::BOLD),
             Style::Quotation => anstyle::Style::new(),
             Style::MainHeaderMsg => if cfg!(windows) {
-                Ansi256Color::from_ansi(AnsiColor::BrightWhite).on_default()
+                AnsiColor::BrightWhite.on_default()
             } else {
                 anstyle::Style::new()
             }

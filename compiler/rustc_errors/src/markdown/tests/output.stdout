@@ -1,10 +1,10 @@
-[0m[0m[1m[4m[38;5;14mH1 Heading [0m[0m[1m[4m[38;5;14m]8;;http://docs.rs\with a link]8;;\[0m[0m[1m[4m[38;5;14m[0m
+[0m[0m[1m[4m[96mH1 Heading [0m[0m[1m[4m[96m]8;;http://docs.rs\with a link]8;;\[0m[0m[1m[4m[96m[0m
 [0mH1 content: [0m[0m[1msome words in bold[0m and [0m[0m[2mso does inline code[0m
 
-[0m[0m[4m[38;5;14mH2 Heading[0m[0m[4m[38;5;14m[0m
+[0m[0m[4m[96mH2 Heading[0m[0m[4m[96m[0m
 [0mH2 content: [0m[0m[3msome words in italic[0m
 
-[0m[0m[3m[38;5;14mH3 Heading[0m[0m[3m[38;5;14m[0m
+[0m[0m[3m[96mH3 Heading[0m[0m[3m[96m[0m
 [0mH3 content: [0m[0m[9mstrikethrough[0m text[0m
 
 [0m[0m[3m[4m[36mH4 Heading[0m[0m[3m[4m[36m[0m
@@ -24,7 +24,7 @@
     elit quam,[0m pulvinar ac risus in, dictum vehicula turpis. Vestibulum neque est, accumsan[0m in cursus sit amet, dictum a nunc. Suspendisse
     aliquet, lorem eu eleifend[0m accumsan, magna neque sodales nisi, a aliquet lectus leo eu sem.[0m[0m[0m
 [0m--------------------------------------------------------------------------------------------------------------------------------------------[0m
-[0m[0m[4m[38;5;14mCode[0m[0m[4m[38;5;14m[0m
+[0m[0m[4m[96mCode[0m[0m[4m[96m[0m
 [0mBoth [0m[0m[2minline code[0m and code blocks are supported:[0m
 
 [0m[0m[2m/// A rust enum

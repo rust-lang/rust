@@ -1966,18 +1966,16 @@ impl fmt::Display for Level {
 impl Level {
     fn color(self) -> anstyle::Style {
         match self {
-            Bug | Fatal | Error | DelayedBug => {
-                Ansi256Color::from_ansi(AnsiColor::BrightRed).on_default()
-            }
+            Bug | Fatal | Error | DelayedBug => AnsiColor::BrightRed.on_default(),
             ForceWarning | Warning => {
                 if cfg!(windows) {
-                    Ansi256Color::from_ansi(AnsiColor::BrightYellow).on_default()
+                    AnsiColor::BrightYellow.on_default()
                 } else {
                     AnsiColor::Yellow.on_default()
                 }
             }
-            Note | OnceNote => Ansi256Color::from_ansi(AnsiColor::BrightGreen).on_default(),
-            Help | OnceHelp => Ansi256Color::from_ansi(AnsiColor::BrightCyan).on_default(),
+            Note | OnceNote => AnsiColor::BrightGreen.on_default(),
+            Help | OnceHelp => AnsiColor::BrightCyan.on_default(),
             FailureNote => anstyle::Style::new(),
             Allow | Expect => unreachable!(),
         }

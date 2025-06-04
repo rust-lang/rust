@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::io::{self, Write};
 
-use anstyle::{Ansi256Color, AnsiColor, Effects, Style};
+use anstyle::{AnsiColor, Effects, Style};
 
 use crate::markdown::{MdStream, MdTree};
 
@@ -99,15 +99,9 @@ fn write_tt(
         }
         MdTree::Heading(n, stream) => {
             let cs = match n {
-                1 => Ansi256Color::from_ansi(AnsiColor::BrightCyan)
-                    .on_default()
-                    .effects(Effects::BOLD | Effects::UNDERLINE),
-                2 => Ansi256Color::from_ansi(AnsiColor::BrightCyan)
-                    .on_default()
-                    .effects(Effects::UNDERLINE),
-                3 => Ansi256Color::from_ansi(AnsiColor::BrightCyan)
-                    .on_default()
-                    .effects(Effects::ITALIC),
+                1 => AnsiColor::BrightCyan.on_default().effects(Effects::BOLD | Effects::UNDERLINE),
+                2 => AnsiColor::BrightCyan.on_default().effects(Effects::UNDERLINE),
+                3 => AnsiColor::BrightCyan.on_default().effects(Effects::ITALIC),
                 4.. => AnsiColor::Cyan.on_default().effects(Effects::UNDERLINE | Effects::ITALIC),
                 0 => unreachable!(),
             };
