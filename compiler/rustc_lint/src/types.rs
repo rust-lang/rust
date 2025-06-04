@@ -1,9 +1,7 @@
 use std::iter;
 use std::ops::ControlFlow;
 
-use rustc_abi::{
-    BackendRepr, Integer, IntegerType, TagEncoding, VariantIdx, Variants, WrappingRange,
-};
+use rustc_abi::{BackendRepr, TagEncoding, VariantIdx, Variants, WrappingRange};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::intravisit::VisitorExt;
@@ -1284,14 +1282,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        if let Some(IntegerType::Fixed(Integer::I128, _)) = def.repr().int {
-                            return FfiUnsafe {
-                                ty,
-                                reason: fluent::lint_improper_ctypes_128bit,
-                                help: None,
-                            };
-                        }
-
                         use improper_ctypes::check_non_exhaustive_variant;
 
                         let non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
@@ -1323,10 +1313,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // It's just extra invariants on the type that you need to uphold,
             // but only the base type is relevant for being representable in FFI.
             ty::Pat(base, ..) => self.check_type_for_ffi(acc, base),
-
-            ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
-                FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_128bit, help: None }
-            }
 
             // Primitive types with a stable representation.
             ty::Bool | ty::Int(..) | ty::Uint(..) | ty::Float(..) | ty::Never => FfiSafe,
