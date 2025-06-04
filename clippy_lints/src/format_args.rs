@@ -11,7 +11,7 @@ use clippy_utils::macros::{
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
-use clippy_utils::{is_diag_trait_item, is_from_proc_macro, is_in_test};
+use clippy_utils::{is_diag_trait_item, is_from_proc_macro, is_in_test, trait_ref_of_method};
 use itertools::Itertools;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
@@ -542,6 +542,16 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
             && let ty = cx.typeck_results().expr_ty(value)
             && self.can_display_format(ty)
         {
+            // If the parent function is a method of `Debug`, we don't want to lint
+            // because it is likely that the user wants to use `Debug` formatting.
+            let parent_fn = cx.tcx.hir_get_parent_item(value.hir_id);
+            if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn)
+                && let Some(trait_def_id) = trait_ref.trait_def_id()
+                && cx.tcx.is_diagnostic_item(sym::Debug, trait_def_id)
+            {
+                return;
+            }
+
             let snippet = snippet(cx.sess(), value.span, "..");
             span_lint_and_then(
                 cx,
