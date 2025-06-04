@@ -83,7 +83,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     /// signature types for implied bounds when checking regions.
     // FIXME(-Znext-solver): This should be removed when we compute implied outlives
     // bounds using the unnormalized signature of the function we're checking.
-    fn deeply_normalize<T>(&self, span: Span, loc: Option<WellFormedLoc>, value: T) -> T
+    pub(super) fn deeply_normalize<T>(&self, span: Span, loc: Option<WellFormedLoc>, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -104,7 +104,12 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         }
     }
 
-    fn register_wf_obligation(&self, span: Span, loc: Option<WellFormedLoc>, term: ty::Term<'tcx>) {
+    pub(super) fn register_wf_obligation(
+        &self,
+        span: Span,
+        loc: Option<WellFormedLoc>,
+        term: ty::Term<'tcx>,
+    ) {
         let cause = traits::ObligationCause::new(
             span,
             self.body_def_id,
@@ -297,20 +302,6 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::Enum(..) => check_type_defn(tcx, item, true),
         hir::ItemKind::Trait(..) => check_trait(tcx, item),
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
-        hir::ItemKind::TyAlias(.., hir_ty) if tcx.type_alias_is_lazy(item.owner_id) => {
-            enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
-                let ty = tcx.type_of(def_id).instantiate_identity();
-                let item_ty =
-                    wfcx.deeply_normalize(hir_ty.span, Some(WellFormedLoc::Ty(def_id)), ty);
-                wfcx.register_wf_obligation(
-                    hir_ty.span,
-                    Some(WellFormedLoc::Ty(def_id)),
-                    item_ty.into(),
-                );
-                check_where_clauses(wfcx, def_id);
-                Ok(())
-            })
-        }
         _ => Ok(()),
     }
 }
