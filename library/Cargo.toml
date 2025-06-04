@@ -50,3 +50,4 @@ rustc-demangle.opt-level = "s"
 rustc-std-workspace-core = { path = 'rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'rustc-std-workspace-std' }
+hashbrown = { git = "https://github.com/tgross35/hashbrown.git", branch = "no-compiler-builtins"}
