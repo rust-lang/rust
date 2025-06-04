@@ -43,7 +43,7 @@ use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
-use std::ops::{Add, AddAssign, Mul, RangeInclusive, Sub};
+use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
@@ -881,6 +881,14 @@ impl AbiAlign {
     #[inline]
     pub fn max(self, other: AbiAlign) -> AbiAlign {
         AbiAlign { abi: self.abi.max(other.abi) }
+    }
+}
+
+impl Deref for AbiAlign {
+    type Target = Align;
+
+    fn deref(&self) -> &Self::Target {
+        &self.abi
     }
 }
 
