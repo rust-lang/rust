@@ -1391,6 +1391,7 @@ impl Expr {
                 path.clone(),
                 TraitBoundModifiers::NONE,
                 self.span,
+                Parens::No,
             ))),
             _ => None,
         }
@@ -3360,6 +3361,13 @@ pub struct TraitRef {
     pub ref_id: NodeId,
 }
 
+/// Whether enclosing parentheses are present or not.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum Parens {
+    Yes,
+    No,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct PolyTraitRef {
     /// The `'a` in `for<'a> Foo<&'a T>`.
@@ -3372,6 +3380,10 @@ pub struct PolyTraitRef {
     pub trait_ref: TraitRef,
 
     pub span: Span,
+
+    /// When `Yes`, the first and last character of `span` are an opening
+    /// and a closing paren respectively.
+    pub parens: Parens,
 }
 
 impl PolyTraitRef {
@@ -3380,12 +3392,14 @@ impl PolyTraitRef {
         path: Path,
         modifiers: TraitBoundModifiers,
         span: Span,
+        parens: Parens,
     ) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
             modifiers,
             trait_ref: TraitRef { path, ref_id: DUMMY_NODE_ID },
             span,
+            parens,
         }
     }
 }
