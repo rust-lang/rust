@@ -14,7 +14,7 @@ pub struct ExecutionContext {
     dry_run: DryRun,
     verbose: u8,
     pub fail_fast: bool,
-    pub delayed_failures: Arc<Mutex<Vec<String>>>,
+    delayed_failures: Arc<Mutex<Vec<String>>>,
 }
 
 impl ExecutionContext {
@@ -53,6 +53,22 @@ impl ExecutionContext {
 
     pub fn set_fail_fast(&mut self, value: bool) {
         self.fail_fast = value;
+    }
+
+    pub fn add_to_delay_failure(&self, message: String) {
+        self.delayed_failures.lock().unwrap().push(message);
+    }
+
+    pub fn report_failures_and_exit(&self) {
+        let failures = self.delayed_failures.lock().unwrap();
+        if failures.is_empty() {
+            return;
+        }
+        eprintln!("\n{} command(s) did not execute successfully:\n", failures.len());
+        for failure in &*failures {
+            eprintln!("  - {failure}");
+        }
+        exit!(1);
     }
 
     /// Execute a command and return its output.
@@ -166,8 +182,7 @@ Executed at: {executed_at}"#,
                         fail(&message, output);
                     }
 
-                    let mut failures = self.delayed_failures.lock().unwrap();
-                    failures.push(message);
+                    self.add_to_delay_failure(message);
                 }
                 BehaviorOnFailure::Exit => {
                     fail(&message, output);

@@ -196,7 +196,6 @@ pub struct Build {
     crates: HashMap<String, Crate>,
     crate_paths: HashMap<PathBuf, String>,
     is_sudo: bool,
-    delayed_failures: RefCell<Vec<String>>,
     prerelease_version: Cell<Option<u32>>,
 
     #[cfg(feature = "build-metrics")]
@@ -457,9 +456,7 @@ impl Build {
             crates: HashMap::new(),
             crate_paths: HashMap::new(),
             is_sudo,
-            delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
-
             #[cfg(feature = "build-metrics")]
             metrics: crate::utils::metrics::BuildMetrics::init(),
         };
@@ -698,14 +695,7 @@ impl Build {
         debug!("checking for postponed test failures from `test  --no-fail-fast`");
 
         // Check for postponed failures from `test --no-fail-fast`.
-        let failures = self.delayed_failures.borrow();
-        if !failures.is_empty() {
-            eprintln!("\n{} command(s) did not execute successfully:\n", failures.len());
-            for failure in failures.iter() {
-                eprintln!("  - {failure}\n");
-            }
-            exit!(1);
-        }
+        self.config.exec_ctx().report_failures_and_exit();
 
         #[cfg(feature = "build-metrics")]
         self.metrics.persist(self);
