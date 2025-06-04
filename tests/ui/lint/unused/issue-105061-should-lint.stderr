@@ -17,15 +17,15 @@ LL +     for<'b> for<'a> fn(Inv<'a>): Trait<'b>,
    |
 
 error: unnecessary parentheses around type
-  --> $DIR/issue-105061-should-lint.rs:17:16
+  --> $DIR/issue-105061-should-lint.rs:17:15
    |
-LL |     (dyn Hello<(for<'b> fn(&'b ()))>): Hello<T>
-   |                ^                  ^
+LL |     dyn Hello<(for<'b> fn(&'b ()))>: Hello<T>
+   |               ^                  ^
    |
 help: remove these parentheses
    |
-LL -     (dyn Hello<(for<'b> fn(&'b ()))>): Hello<T>
-LL +     (dyn Hello<for<'b> fn(&'b ())>): Hello<T>
+LL -     dyn Hello<(for<'b> fn(&'b ()))>: Hello<T>
+LL +     dyn Hello<for<'b> fn(&'b ())>: Hello<T>
    |
 
 error: aborting due to 2 previous errors
