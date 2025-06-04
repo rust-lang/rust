@@ -273,11 +273,18 @@ fn test_double_ended_zip() {
 
 #[test]
 #[cfg(panic = "unwind")]
+/// Regresion test for #137255
+/// A previous implementation of Zip TrustedRandomAccess specializations tried to do a lot of work
+/// to preserve side-effects of equalizing the iterator lengths during backwards iteration.
+/// This lead to several cases of unsoundness, twice due to being left in an inconsistent state
+/// after panics.
+/// The new implementation does not try as hard, but we still need panic-safety.
 fn test_nested_zip_panic_safety() {
     use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     let mut panic = true;
+    // keeps track of how often element get visited, must be at most once each
     let witness = [8, 9, 10, 11, 12].map(|i| (i, AtomicUsize::new(0)));
     let a = witness.as_slice().iter().map(|e| {
         e.1.fetch_add(1, Ordering::Relaxed);
@@ -287,22 +294,37 @@ fn test_nested_zip_panic_safety() {
         }
         e.0
     });
+    // shorter than `a`, so `a` will get trimmed
     let b = [1, 2, 3, 4].as_slice().iter().copied();
+    // shorter still, so `ab` will get trimmed.`
     let c = [5, 6, 7].as_slice().iter().copied();
-    let ab = zip(a, b);
 
+    // This will panic during backwards trimming.
+    let ab = zip(a, b);
+    // This being Zip + TrustedRandomAccess means it will only call `next_back``
+    // during trimming and otherwise do calls `__iterator_get_unchecked` on `ab`.
     let mut abc = zip(ab, c);
 
     assert_eq!(abc.len(), 3);
+    // This will first trigger backwards trimming before it would normally obtain the
+    // actual element if it weren't for the panic.
+    // This used to corrupt the internal state of `abc`, which then lead to
+    // TrustedRandomAccess safety contract violations in calls to  `ab`,
+    // which ultimately lead to UB.
     catch_unwind(AssertUnwindSafe(|| abc.next_back())).ok();
+    // check for sane outward behavior after the panic, which indicates a sane internal state.
+    // Technically these outcomes are not required because a panic frees us from correctness obligations.
     assert_eq!(abc.len(), 2);
     assert_eq!(abc.next(), Some(((8, 1), 5)));
     assert_eq!(abc.next_back(), Some(((9, 2), 6)));
     for (i, (_, w)) in witness.iter().enumerate() {
         let v = w.load(Ordering::Relaxed);
+        // required by TRA contract
         assert!(v <= 1, "expected idx {i} to be visited at most once, actual: {v}");
     }
-    // backwards trimming panicked and should only run once, so this one won't be visited.
+    // Trimming panicked and should only run once, so this one won't be visited.
+    // Implementation detail, but not trying to run it again is what keeps
+    // things simple.
     assert_eq!(witness[3].1.load(Ordering::Relaxed), 0);
 }
 
