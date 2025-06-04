@@ -1,5 +1,3 @@
-#![feature(generic_arg_infer)]
-
 struct Foo<const N: usize>;
 
 impl Clone for Foo<1> {
