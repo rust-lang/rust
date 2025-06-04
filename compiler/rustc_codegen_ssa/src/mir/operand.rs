@@ -45,9 +45,15 @@ pub enum OperandValue<V> {
     Immediate(V),
     /// A pair of immediate LLVM values. Used by wide pointers too.
     ///
-    /// An `OperandValue` *must* be this variant for any type for which
+    /// # Invariants
+    /// - For `Pair(a, b)`, `a` is always at offset 0, but may have `FieldIdx(1..)`
+    /// - `b` is not at offset 0, because `V` is not a 1ZST type.
+    /// - `a` and `b` will have a different FieldIdx, but otherwise `b`'s may be lower
+    ///   or they may not be adjacent, due to arbitrary numbers of 1ZST fields that
+    ///   will not affect the shape of the data which determines if `Pair` will be used.
+    /// - An `OperandValue` *must* be this variant for any type for which
     /// [`LayoutTypeCodegenMethods::is_backend_scalar_pair`] returns `true`.
-    /// The backend values in this variant must be the *immediate* backend types,
+    /// - The backend values in this variant must be the *immediate* backend types,
     /// as returned by [`LayoutTypeCodegenMethods::scalar_pair_element_backend_type`]
     /// with `immediate: true`.
     Pair(V, V),
