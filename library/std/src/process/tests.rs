@@ -2,10 +2,10 @@ use super::{Command, Output, Stdio};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind};
 use crate::mem::MaybeUninit;
-use crate::str;
+use crate::{fs, str};
 
 fn known_command() -> Command {
-    if cfg!(windows) { Command::new("help") } else { Command::new("echo") }
+    if cfg!(windows) { Command::new("help.exe") } else { Command::new("echo") }
 }
 
 #[cfg(target_os = "android")]
@@ -602,4 +602,43 @@ fn terminate_exited_process() {
     p.wait().unwrap();
     assert!(p.kill().is_ok());
     assert!(p.kill().is_ok());
+}
+
+#[test]
+fn resolve_in_parent_path() {
+    let tempdir = crate::test_helpers::tmpdir();
+    let mut cmd = if cfg!(windows) {
+        // On Windows std prepends the system paths when searching for executables
+        // but not if PATH is set on the command. Therefore adding a broken exe
+        // using PATH will cause spawn to fail if it's invoked.
+        let mut cmd = known_command();
+        fs::write(tempdir.join(cmd.get_program().to_str().unwrap()), "").unwrap();
+        cmd.env("PATH", tempdir.path());
+        cmd
+    } else {
+        let mut cmd = known_command();
+        cmd.env("PATH", "/a/b/c");
+        cmd
+    };
+
+    assert!(cmd.spawn().is_err());
+    cmd.resolve_in_parent_path(true);
+    cmd.spawn().unwrap();
+    cmd.resolve_in_parent_path(false);
+    assert!(cmd.spawn().is_err());
+
+    // If the platform is a unix and has posix_spawn then that will be used in the test above.
+    // So we also test the fork/exec path by setting a pre_exec function.
+    #[cfg(unix)]
+    {
+        use crate::os::unix::process::CommandExt;
+        unsafe {
+            cmd.pre_exec(|| Ok(()));
+        }
+        assert!(cmd.spawn().is_err());
+        cmd.resolve_in_parent_path(true);
+        assert!(cmd.status().unwrap().success());
+        cmd.resolve_in_parent_path(false);
+        assert!(cmd.spawn().is_err());
+    }
 }

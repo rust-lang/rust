@@ -158,6 +158,7 @@ pub struct Command {
     startupinfo_fullscreen: bool,
     startupinfo_untrusted_source: bool,
     startupinfo_force_feedback: Option<bool>,
+    force_parent_path: bool,
 }
 
 pub enum Stdio {
@@ -192,6 +193,7 @@ impl Command {
             startupinfo_fullscreen: false,
             startupinfo_untrusted_source: false,
             startupinfo_force_feedback: None,
+            force_parent_path: false,
         }
     }
 
@@ -222,6 +224,10 @@ impl Command {
 
     pub fn force_quotes(&mut self, enabled: bool) {
         self.force_quotes_enabled = enabled;
+    }
+
+    pub fn resolve_in_parent_path(&mut self, use_parent: bool) {
+        self.force_parent_path = use_parent;
     }
 
     pub fn raw_arg(&mut self, command_str_to_append: &OsStr) {
@@ -274,7 +280,10 @@ impl Command {
         let env_saw_path = self.env.have_changed_path();
         let maybe_env = self.env.capture_if_changed();
 
-        let child_paths = if env_saw_path && let Some(env) = maybe_env.as_ref() {
+        let child_paths = if env_saw_path
+            && !self.force_parent_path
+            && let Some(env) = maybe_env.as_ref()
+        {
             env.get(&EnvKey::new("PATH")).map(|s| s.as_os_str())
         } else {
             None
