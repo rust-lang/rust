@@ -10,8 +10,8 @@ pub trait Service {
 
 pub trait ThriftService<Bug: NotFoo>:
 //~^ ERROR the trait bound `Bug: Foo` is not satisfied
-//~| ERROR the trait bound `Bug: Foo` is not satisfied
     Service<AssocType = <Bug as Foo>::OnlyFoo>
+//~^ ERROR the trait bound `Bug: Foo` is not satisfied
 {
     fn get_service(
     //~^ ERROR the trait bound `Bug: Foo` is not satisfied

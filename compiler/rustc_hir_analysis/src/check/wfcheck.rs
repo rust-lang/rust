@@ -25,7 +25,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
-use rustc_span::{DUMMY_SP, Ident, Span, sym};
+use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::{InferCtxtRegionExt, OutlivesEnvironmentBuildExt};
 use rustc_trait_selection::traits::misc::{
@@ -291,8 +291,8 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             }
             res
         }
-        hir::ItemKind::Fn { ident, sig, .. } => check_item_fn(tcx, def_id, ident, sig.decl),
-        hir::ItemKind::Const(_, _, ty, _) => check_const_item(tcx, def_id, ty.span, item.span),
+        hir::ItemKind::Fn { sig, .. } => check_item_fn(tcx, def_id, sig.decl),
+        hir::ItemKind::Const(_, _, ty, _) => check_const_item(tcx, def_id, ty.span),
         hir::ItemKind::Struct(..) => check_type_defn(tcx, item, false),
         hir::ItemKind::Union(..) => check_type_defn(tcx, item, true),
         hir::ItemKind::Enum(..) => check_type_defn(tcx, item, true),
@@ -308,7 +308,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                     Some(WellFormedLoc::Ty(def_id)),
                     item_ty.into(),
                 );
-                check_where_clauses(wfcx, item.span, def_id);
+                check_where_clauses(wfcx, def_id);
                 Ok(())
             })
         }
@@ -330,7 +330,7 @@ fn check_foreign_item<'tcx>(
     );
 
     match item.kind {
-        hir::ForeignItemKind::Fn(sig, ..) => check_item_fn(tcx, def_id, item.ident, sig.decl),
+        hir::ForeignItemKind::Fn(sig, ..) => check_item_fn(tcx, def_id, sig.decl),
         hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => Ok(()),
     }
 }
@@ -1086,13 +1086,7 @@ fn check_associated_item(
             ty::AssocKind::Fn { .. } => {
                 let sig = tcx.fn_sig(item.def_id).instantiate_identity();
                 let hir_sig = sig_if_method.expect("bad signature for method");
-                check_fn_or_method(
-                    wfcx,
-                    item.ident(tcx).span,
-                    sig,
-                    hir_sig.decl,
-                    item.def_id.expect_local(),
-                );
+                check_fn_or_method(wfcx, sig, hir_sig.decl, item.def_id.expect_local());
                 check_method_receiver(wfcx, hir_sig, item, self_ty)
             }
             ty::AssocKind::Type { .. } => {
@@ -1221,7 +1215,7 @@ fn check_type_defn<'tcx>(
             }
         }
 
-        check_where_clauses(wfcx, item.span, item.owner_id.def_id);
+        check_where_clauses(wfcx, item.owner_id.def_id);
         Ok(())
     })
 }
@@ -1247,7 +1241,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuarant
     }
 
     let res = enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
-        check_where_clauses(wfcx, item.span, def_id);
+        check_where_clauses(wfcx, def_id);
         Ok(())
     });
 
@@ -1283,12 +1277,11 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
 fn check_item_fn(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-    ident: Ident,
     decl: &hir::FnDecl<'_>,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
         let sig = tcx.fn_sig(def_id).instantiate_identity();
-        check_fn_or_method(wfcx, ident.span, sig, decl, def_id);
+        check_fn_or_method(wfcx, sig, decl, def_id);
         Ok(())
     })
 }
@@ -1349,7 +1342,6 @@ fn check_const_item(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
     ty_span: Span,
-    item_span: Span,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
         let ty = tcx.type_of(def_id).instantiate_identity();
@@ -1367,7 +1359,7 @@ fn check_const_item(
             tcx.require_lang_item(LangItem::Sized, None),
         );
 
-        check_where_clauses(wfcx, item_span, def_id);
+        check_where_clauses(wfcx, def_id);
 
         Ok(())
     })
@@ -1464,14 +1456,14 @@ fn check_impl<'tcx>(
             }
         }
 
-        check_where_clauses(wfcx, item.span, item.owner_id.def_id);
+        check_where_clauses(wfcx, item.owner_id.def_id);
         Ok(())
     })
 }
 
 /// Checks where-clauses and inline bounds that are declared on `def_id`.
 #[instrument(level = "debug", skip(wfcx))]
-fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id: LocalDefId) {
+pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id: LocalDefId) {
     let infcx = wfcx.infcx;
     let tcx = wfcx.tcx();
 
@@ -1624,21 +1616,18 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     let predicates = predicates.instantiate_identity(tcx);
 
-    let predicates = wfcx.normalize(span, None, predicates);
-
-    debug!(?predicates.predicates);
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
+        let p = wfcx.normalize(sp, None, p);
         traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.body_def_id, p, sp)
     });
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
     wfcx.register_obligations(obligations);
 }
 
-#[instrument(level = "debug", skip(wfcx, span, hir_decl))]
+#[instrument(level = "debug", skip(wfcx, hir_decl))]
 fn check_fn_or_method<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
-    span: Span,
     sig: ty::PolyFnSig<'tcx>,
     hir_decl: &hir::FnDecl<'_>,
     def_id: LocalDefId,
@@ -1676,7 +1665,7 @@ fn check_fn_or_method<'tcx>(
         );
     }
 
-    check_where_clauses(wfcx, span, def_id);
+    check_where_clauses(wfcx, def_id);
 
     if sig.abi == ExternAbi::RustCall {
         let span = tcx.def_span(def_id);
