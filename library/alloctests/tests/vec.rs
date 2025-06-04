@@ -2698,6 +2698,17 @@ fn test_pop_if_mutates() {
     assert_eq!(v, [2]);
 }
 
+#[test]
+fn test_peek_mut() {
+    let mut vec = Vec::new();
+    assert!(vec.peek_mut().is_none());
+    vec.push(1);
+    vec.push(2);
+    assert_eq!(vec.peek_mut(), Some(2));
+    *vec.peek_mut() = 0;
+    assert_eq!(vec.peek_mut(), Some(0));
+}
+
 /// This assortment of tests, in combination with miri, verifies we handle UB on fishy arguments
 /// in the stdlib. Draining and extending the allocation are fairly well-tested earlier, but
 /// `vec.insert(usize::MAX, val)` once slipped by!

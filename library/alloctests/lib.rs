@@ -42,6 +42,7 @@
 #![feature(trusted_random_access)]
 #![feature(try_reserve_kind)]
 #![feature(try_trait_v2)]
+#![feature(vec_peek_mut)]
 // tidy-alphabetical-end
 //
 // Language features:
