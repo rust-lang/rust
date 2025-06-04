@@ -34,7 +34,7 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         let fully_moved = fully_moved_locals(&ssa, body);
         debug!(?fully_moved);
 
-        let mut storage_to_remove = DenseBitSet::new_empty(fully_moved.domain_size());
+        let mut storage_to_remove = DenseBitSet::new_empty(body.local_decls.len());
         for (local, &head) in ssa.copy_classes().iter_enumerated() {
             if local != head {
                 storage_to_remove.insert(head);

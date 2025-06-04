@@ -464,7 +464,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     // sets state bits for Arg places
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
         // set all bits to 1 (uninit) before gathering counter-evidence
-        state.insert_all();
+        state.insert_all(self.move_data().move_paths.len());
 
         drop_flag_effects_for_function_entry(self.body, self.move_data, |path, s| {
             assert!(s == DropFlagState::Present);

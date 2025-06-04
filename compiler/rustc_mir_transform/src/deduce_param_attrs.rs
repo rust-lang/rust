@@ -19,19 +19,20 @@ struct DeduceReadOnly {
     /// 1). The bit is true if the argument may have been mutated or false if we know it hasn't
     /// been up to the point we're at.
     mutable_args: DenseBitSet<usize>,
+    arg_count: usize,
 }
 
 impl DeduceReadOnly {
     /// Returns a new DeduceReadOnly instance.
     fn new(arg_count: usize) -> Self {
-        Self { mutable_args: DenseBitSet::new_empty(arg_count) }
+        Self { mutable_args: DenseBitSet::new_empty(arg_count), arg_count }
     }
 }
 
 impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
         // We're only interested in arguments.
-        if place.local == RETURN_PLACE || place.local.index() > self.mutable_args.domain_size() {
+        if place.local == RETURN_PLACE || place.local.index() > self.arg_count {
             return;
         }
 
@@ -86,7 +87,7 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
                     let local = place.local;
                     if place.is_indirect()
                         || local == RETURN_PLACE
-                        || local.index() > self.mutable_args.domain_size()
+                        || local.index() > self.arg_count
                     {
                         continue;
                     }
