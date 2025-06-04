@@ -318,7 +318,6 @@ declare_features! (
     (unstable, aarch64_ver_target_feature, "1.27.0", Some(44839)),
     (unstable, apx_target_feature, "1.88.0", Some(139284)),
     (unstable, arm_target_feature, "1.27.0", Some(44839)),
-    (unstable, avx512_target_feature, "1.27.0", Some(44839)),
     (unstable, bpf_target_feature, "1.54.0", Some(44839)),
     (unstable, csky_target_feature, "1.73.0", Some(44839)),
     (unstable, ermsb_target_feature, "1.49.0", Some(44839)),
@@ -372,6 +371,8 @@ declare_features! (
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
     /// Allows inherent and trait methods with arbitrary self types that are raw pointers.
     (unstable, arbitrary_self_types_pointers, "1.83.0", Some(44874)),
+    /// Allows #[cfg(...)] on inline assembly templates and operands.
+    (unstable, asm_cfg, "CURRENT_RUSTC_VERSION", Some(140364)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Enables experimental register support in inline assembly.
@@ -620,8 +621,6 @@ declare_features! (
     (incomplete, ref_pat_eat_one_layer_2024_structural, "1.81.0", Some(123076)),
     /// Allows using the `#[register_tool]` attribute.
     (unstable, register_tool, "1.41.0", Some(66079)),
-    /// Allows the `#[repr(i128)]` attribute for enums.
-    (incomplete, repr128, "1.16.0", Some(56071)),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (unstable, repr_simd, "1.4.0", Some(27731)),
     /// Allows bounding the return type of AFIT/RPITIT.

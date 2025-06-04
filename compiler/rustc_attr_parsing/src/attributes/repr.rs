@@ -1,7 +1,7 @@
 use rustc_abi::Align;
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
 use rustc_attr_data_structures::{AttributeKind, IntType, ReprAttr};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use super::{CombineAttributeParser, ConvertFn};
 use crate::context::AcceptContext;
@@ -21,7 +21,7 @@ pub(crate) struct ReprParser;
 
 impl CombineAttributeParser for ReprParser {
     type Item = (ReprAttr, Span);
-    const PATH: &'static [rustc_span::Symbol] = &[sym::repr];
+    const PATH: &'static [Symbol] = &[sym::repr];
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::Repr;
 
     fn extend<'a>(
@@ -99,7 +99,7 @@ fn parse_repr(cx: &AcceptContext<'_>, param: &MetaItemParser<'_>) -> Option<Repr
     let (name, ident_span) = if let Some(ident) = param.path_without_args().word() {
         (Some(ident.name), ident.span)
     } else {
-        (None, rustc_span::DUMMY_SP)
+        (None, DUMMY_SP)
     };
 
     let args = param.args();

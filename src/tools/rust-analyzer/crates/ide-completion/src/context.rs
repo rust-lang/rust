@@ -8,8 +8,8 @@ use std::{iter, ops::ControlFlow};
 
 use base_db::RootQueryDb as _;
 use hir::{
-    DisplayTarget, HasAttrs, Local, ModuleDef, ModuleSource, Name, PathResolution, ScopeDef,
-    Semantics, SemanticsScope, Symbol, Type, TypeInfo,
+    DisplayTarget, HasAttrs, InFile, Local, ModuleDef, ModuleSource, Name, PathResolution,
+    ScopeDef, Semantics, SemanticsScope, Symbol, Type, TypeInfo,
 };
 use ide_db::{
     FilePosition, FxHashMap, FxHashSet, RootDatabase, famous_defs::FamousDefs,
@@ -751,7 +751,7 @@ impl<'a> CompletionContext<'a> {
             original_offset,
         } = expand_and_analyze(
             &sema,
-            original_file.syntax().clone(),
+            InFile::new(editioned_file_id.into(), original_file.syntax().clone()),
             file_with_fake_ident.syntax().clone(),
             offset,
             &original_token,

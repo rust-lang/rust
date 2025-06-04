@@ -135,7 +135,10 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
 
     /// Reads as much as possible into the given buffer `ptr`.
     /// `len` indicates how many bytes we should try to read.
-    /// `dest` is where the return value should be stored: number of bytes read, or `-1` in case of error.
+    ///
+    /// When the read is done, `finish` will be called. Note that `read` itself may return before
+    /// that happens! Everything that should happen "after" the `read` needs to happen inside
+    /// `finish`.
     fn read<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
@@ -149,7 +152,10 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
 
     /// Writes as much as possible from the given buffer `ptr`.
     /// `len` indicates how many bytes we should try to write.
-    /// `dest` is where the return value should be stored: number of bytes written, or `-1` in case of error.
+    ///
+    /// When the write is done, `finish` will be called. Note that `write` itself may return before
+    /// that happens! Everything that should happen "after" the `write` needs to happen inside
+    /// `finish`.
     fn write<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
@@ -195,6 +201,20 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
 
     fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
         panic!("Not a unix file descriptor: {}", self.name());
+    }
+
+    /// Implementation of fcntl(F_GETFL) for this FD.
+    fn get_flags<'tcx>(&self, _ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
+        throw_unsup_format!("fcntl: {} is not supported for F_GETFL", self.name());
+    }
+
+    /// Implementation of fcntl(F_SETFL) for this FD.
+    fn set_flags<'tcx>(
+        &self,
+        _flag: i32,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
     }
 }
 

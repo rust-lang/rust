@@ -13,7 +13,7 @@ extern crate std;
 
 // Test that reverse mode ad macros are expanded correctly.
 
-use std::autodiff::autodiff;
+use std::autodiff::autodiff_reverse;
 
 #[rustc_autodiff]
 #[inline(never)]

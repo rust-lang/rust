@@ -100,7 +100,8 @@
 #![feature(bigint_helper_methods)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
-#![feature(cfg_match)]
+#![feature(cfg_select)]
+#![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(const_carrying_mul_add)]
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]
@@ -111,7 +112,6 @@
 #![feature(is_ascii_octdigit)]
 #![feature(lazy_get)]
 #![feature(link_cfg)]
-#![feature(non_null_from_ref)]
 #![feature(offset_of_enum)]
 #![feature(panic_internals)]
 #![feature(ptr_alignment_type)]
@@ -158,7 +158,6 @@
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
-#![feature(let_chains)]
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
 #![feature(marker_trait_attr)]
@@ -190,7 +189,6 @@
 // tidy-alphabetical-start
 #![feature(aarch64_unstable_target_feature)]
 #![feature(arm_target_feature)]
-#![feature(avx512_target_feature)]
 #![feature(hexagon_target_feature)]
 #![feature(keylocker_x86)]
 #![feature(loongarch_target_feature)]
@@ -229,14 +227,14 @@ pub mod assert_matches {
 /// Unstable module containing the unstable `autodiff` macro.
 pub mod autodiff {
     #[unstable(feature = "autodiff", issue = "124509")]
-    pub use crate::macros::builtin::autodiff;
+    pub use crate::macros::builtin::{autodiff_forward, autodiff_reverse};
 }
 
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 
-#[unstable(feature = "cfg_match", issue = "115585")]
-pub use crate::macros::cfg_match;
+#[unstable(feature = "cfg_select", issue = "115585")]
+pub use crate::macros::cfg_select;
 
 #[macro_use]
 mod internal_macros;

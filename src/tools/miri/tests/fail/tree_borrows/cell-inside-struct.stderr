@@ -1,0 +1,26 @@
+──────────────────────────────────────────────────
+Warning: this tree is indicative only. Some tags may have been hidden.
+0..   4..   8
+| Act | Act |    └─┬──<TAG=root of the allocation>
+| Frz |?Cel |      └────<TAG=a>
+──────────────────────────────────────────────────
+error: Undefined Behavior: write access through <TAG> (a) at ALLOC[0x0] is forbidden
+  --> tests/fail/tree_borrows/cell-inside-struct.rs:LL:CC
+   |
+LL |         (*a).field1 = 88;
+   |         ^^^^^^^^^^^^^^^^ write access through <TAG> (a) at ALLOC[0x0] is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> (a) has state Frozen which forbids this child write access
+help: the accessed tag <TAG> was created here, in the initial state Cell
+  --> tests/fail/tree_borrows/cell-inside-struct.rs:LL:CC
+   |
+LL |         let a = &root;
+   |                 ^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `main` at tests/fail/tree_borrows/cell-inside-struct.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

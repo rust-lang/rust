@@ -22,7 +22,6 @@ fn b() {
     let y = &x;
     let z = &x as &dyn Foo;
     //~^ ERROR E0038
-    //~| ERROR E0038
 }
 
 fn main() { }

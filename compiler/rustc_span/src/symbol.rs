@@ -34,17 +34,8 @@ symbols! {
         // unnamed method parameters, crate root module, error recovery etc.
         // Matching predicates: `is_special`/`is_reserved`
         //
-        // Notes about `kw::Empty`:
-        // - Its use can blur the lines between "empty symbol" and "no symbol".
-        //   Using `Option<Symbol>` is preferable, where possible, because that
-        //   is unambiguous.
-        // - For dummy symbols that are never used and absolutely must be
-        //   present, it's better to use `sym::dummy` than `kw::Empty`, because
-        //   it's clearer that it's intended as a dummy value, and more likely
-        //   to be detected if it accidentally does get used.
         // tidy-alphabetical-start
         DollarCrate:        "$crate",
-        Empty:              "",
         PathRoot:           "{{root}}",
         Underscore:         "_",
         // tidy-alphabetical-end
@@ -253,6 +244,7 @@ symbols! {
         FnMut,
         FnOnce,
         Formatter,
+        Forward,
         From,
         FromIterator,
         FromResidual,
@@ -348,6 +340,7 @@ symbols! {
         Result,
         ResumeTy,
         Return,
+        Reverse,
         Right,
         Rust,
         RustaceansAreAwesome,
@@ -398,7 +391,6 @@ symbols! {
         Wrapping,
         Yield,
         _DECLS,
-        _Self,
         __D,
         __H,
         __S,
@@ -475,6 +467,7 @@ symbols! {
         as_ref,
         as_str,
         asm,
+        asm_cfg,
         asm_const,
         asm_experimental_arch,
         asm_experimental_reg,
@@ -522,6 +515,7 @@ symbols! {
         async_iterator_poll_next,
         async_trait_bounds,
         atomic,
+        atomic_load,
         atomic_mod,
         atomics,
         att_syntax,
@@ -531,7 +525,8 @@ symbols! {
         audit_that,
         augmented_assignments,
         auto_traits,
-        autodiff,
+        autodiff_forward,
+        autodiff_reverse,
         automatically_derived,
         avx,
         avx10_target_feature,
@@ -864,7 +859,7 @@ symbols! {
         drop_types_in_const,
         dropck_eyepatch,
         dropck_parametricity,
-        dummy: "<!dummy!>", // use this instead of `kw::Empty` for symbols that won't be used
+        dummy: "<!dummy!>", // use this instead of `sym::empty` for symbols that won't be used
         dummy_cgu_name,
         dylib,
         dyn_compatible_for_dispatch,
@@ -883,6 +878,14 @@ symbols! {
         emit_enum_variant_arg,
         emit_struct,
         emit_struct_field,
+        // Notes about `sym::empty`:
+        // - It should only be used when it genuinely means "empty symbol". Use
+        //   `Option<Symbol>` when "no symbol" is a possibility.
+        // - For dummy symbols that are never used and absolutely must be
+        //   present, it's better to use `sym::dummy` than `sym::empty`, because
+        //   it's clearer that it's intended as a dummy value, and more likely
+        //   to be detected if it accidentally does get used.
+        empty: "",
         emscripten_wasm_eh,
         enable,
         encode,
@@ -934,8 +937,10 @@ symbols! {
         external_doc,
         f,
         f128,
+        f128_epsilon,
         f128_nan,
         f16,
+        f16_epsilon,
         f16_nan,
         f16c_target_feature,
         f32,
@@ -1997,6 +2002,7 @@ symbols! {
         slice,
         slice_from_raw_parts,
         slice_from_raw_parts_mut,
+        slice_get_unchecked,
         slice_into_vec,
         slice_iter,
         slice_len_fn,
@@ -2072,6 +2078,9 @@ symbols! {
         sym,
         sync,
         synthetic,
+        sys_mutex_lock,
+        sys_mutex_try_lock,
+        sys_mutex_unlock,
         t32,
         target,
         target_abi,
@@ -2362,7 +2371,7 @@ impl Ident {
     #[inline]
     /// Constructs a new identifier from a symbol and a span.
     pub fn new(name: Symbol, span: Span) -> Ident {
-        debug_assert_ne!(name, kw::Empty);
+        debug_assert_ne!(name, sym::empty);
         Ident { name, span }
     }
 
@@ -2584,7 +2593,7 @@ impl Symbol {
     }
 
     pub fn is_empty(self) -> bool {
-        self == kw::Empty
+        self == sym::empty
     }
 
     /// This method is supposed to be used in error messages, so it's expected to be
@@ -2592,7 +2601,8 @@ impl Symbol {
     /// (`token_to_string`, `Ident::to_string`), except that symbols don't keep the rawness flag
     /// or edition, so we have to guess the rawness using the global edition.
     pub fn to_ident_string(self) -> String {
-        Ident::with_dummy_span(self).to_string()
+        // Avoid creating an empty identifier, because that asserts in debug builds.
+        if self == sym::empty { String::new() } else { Ident::with_dummy_span(self).to_string() }
     }
 }
 
@@ -2772,7 +2782,7 @@ impl Symbol {
 
     /// Returns `true` if this symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
-        self != kw::Empty && self != kw::Underscore && !self.is_path_segment_keyword()
+        self != sym::empty && self != kw::Underscore && !self.is_path_segment_keyword()
     }
 
     /// Was this symbol predefined in the compiler's `symbols!` macro
@@ -2822,7 +2832,7 @@ impl Ident {
     /// Whether this would be the identifier for a tuple field like `self.0`, as
     /// opposed to a named field like `self.thing`.
     pub fn is_numeric(self) -> bool {
-        !self.name.is_empty() && self.as_str().bytes().all(|b| b.is_ascii_digit())
+        self.as_str().bytes().all(|b| b.is_ascii_digit())
     }
 }
 

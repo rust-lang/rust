@@ -1,8 +1,8 @@
 error[E0720]: cannot resolve opaque type
-  --> $DIR/infinite-cycle-involving-weak.rs:3:10
+  --> $DIR/infinite-cycle-involving-weak.rs:6:13
    |
-LL | type T = impl Copy;
-   |          ^^^^^^^^^ cannot resolve opaque type
+LL | fn foo() -> T {
+   |             ^
 
 error: aborting due to 1 previous error
 

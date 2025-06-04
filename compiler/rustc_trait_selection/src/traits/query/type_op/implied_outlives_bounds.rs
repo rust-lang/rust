@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use rustc_infer::infer::RegionObligation;
+use rustc_infer::infer::TypeOutlivesConstraint;
 use rustc_infer::infer::canonical::CanonicalQueryInput;
 use rustc_infer::traits::query::OutlivesBound;
 use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
@@ -141,7 +141,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
         && !ocx.infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat
         && ty.visit_with(&mut ContainsBevyParamSet { tcx: ocx.infcx.tcx }).is_break()
     {
-        for RegionObligation { sup_type, sub_region, .. } in
+        for TypeOutlivesConstraint { sup_type, sub_region, .. } in
             ocx.infcx.take_registered_region_obligations()
         {
             let mut components = smallvec![];

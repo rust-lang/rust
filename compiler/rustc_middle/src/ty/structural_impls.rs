@@ -202,7 +202,7 @@ impl<T: fmt::Debug> fmt::Debug for ty::Placeholder<T> {
 
 impl<'tcx> fmt::Debug for GenericArg<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.unpack() {
+        match self.kind() {
             GenericArgKind::Lifetime(lt) => lt.fmt(f),
             GenericArgKind::Type(ty) => ty.fmt(f),
             GenericArgKind::Const(ct) => ct.fmt(f),
@@ -326,7 +326,7 @@ impl<'tcx, T: Lift<TyCtxt<'tcx>>> Lift<TyCtxt<'tcx>> for Option<T> {
 impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Term<'a> {
     type Lifted = ty::Term<'tcx>;
     fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        match self.unpack() {
+        match self.kind() {
             TermKind::Ty(ty) => tcx.lift(ty).map(Into::into),
             TermKind::Const(c) => tcx.lift(c).map(Into::into),
         }
@@ -570,6 +570,19 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        folder.try_fold_clauses(self)
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        folder.fold_clauses(self)
+    }
+}
+
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_predicate(*self)
@@ -612,6 +625,19 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         self.as_slice().visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
+    fn try_super_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        ty::util::try_fold_list(self, folder, |tcx, v| tcx.mk_clauses(v))
+    }
+
+    fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_clauses(v))
     }
 }
 
@@ -775,7 +801,6 @@ macro_rules! list_fold {
 }
 
 list_fold! {
-    ty::Clauses<'tcx> : mk_clauses,
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> : mk_poly_existential_predicates,
     &'tcx ty::List<PlaceElem<'tcx>> : mk_place_elems,
     &'tcx ty::List<ty::Pattern<'tcx>> : mk_patterns,

@@ -13,6 +13,8 @@ lint_ambiguous_negative_literals = `-` has lower precedence than method calls, w
 lint_ambiguous_wide_pointer_comparisons = ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
     .addr_metadata_suggestion = use explicit `std::ptr::eq` method to compare metadata and addresses
     .addr_suggestion = use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+    .cast_suggestion = use untyped pointers to only compare their addresses
+    .expect_suggestion = or expect the lint to compare the pointers metadata and addresses
 
 lint_associated_const_elided_lifetime = {$elided ->
         [true] `&` without an explicit lifetime name cannot be used here
@@ -371,8 +373,6 @@ lint_implicit_unsafe_autorefs = implicit autoref creates a reference to the dere
 lint_improper_ctypes = `extern` {$desc} uses type `{$ty}`, which is not FFI-safe
     .label = not FFI-safe
     .note = the type is defined here
-
-lint_improper_ctypes_128bit = 128-bit integers don't currently have a known stable ABI
 
 lint_improper_ctypes_array_help = consider passing a pointer to the array
 
@@ -805,6 +805,11 @@ lint_type_ir_inherent_usage = do not use `rustc_type_ir::inherent` unless you're
 lint_type_ir_trait_usage = do not use `rustc_type_ir::Interner` or `rustc_type_ir::InferCtxtLike` unless you're inside of the trait solver
     .note = the method or struct you're looking for is likely defined somewhere else downstream in the compiler
 
+lint_undefined_transmute = pointers cannot be transmuted to integers during const eval
+    .note = at compile-time, pointers do not have an integer value
+    .note2 = avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior
+    .help = for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
+
 lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
     .label = argument has type `{$arg_ty}`
     .suggestion = use `std::mem::ManuallyDrop::into_inner` to get the inner value
@@ -835,6 +840,7 @@ lint_unexpected_cfg_name_similar_name = there is a config with a similar name
 lint_unexpected_cfg_name_similar_name_different_values = there is a config with a similar name and different values
 lint_unexpected_cfg_name_similar_name_no_value = there is a config with a similar name and no value
 lint_unexpected_cfg_name_similar_name_value = there is a config with a similar name and value
+lint_unexpected_cfg_name_version_syntax = there is a similar config predicate: `version("..")`
 lint_unexpected_cfg_name_with_similar_value = found config with similar value
 
 lint_unexpected_cfg_value = unexpected `cfg` condition value: {$has_value ->
@@ -952,7 +958,8 @@ lint_unused_doc_comment = unused doc comment
     .help = to document an item produced by a macro, the macro must produce the documentation as part of its expansion
 
 lint_unused_extern_crate = unused extern crate
-    .suggestion = remove it
+    .label = unused
+    .suggestion = remove the unused `extern crate`
 
 lint_unused_import_braces = braces around {$node} is unnecessary
 

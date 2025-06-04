@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: constructing invalid value: encountered a value of the never type `!`
   --> $DIR/validate_uninhabited_zsts.rs:17:33
    |
 LL | const FOO: [empty::Empty; 3] = [foo(); 3];
-   |                                 ^^^^^ constructing invalid value: encountered a value of the never type `!`
+   |                                 ^^^^^ evaluation of constant value failed here
    |
 note: inside `foo`
   --> $DIR/validate_uninhabited_zsts.rs:4:14
@@ -10,11 +10,11 @@ note: inside `foo`
 LL |     unsafe { std::mem::transmute(()) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: constructing invalid value at .0: encountered a value of uninhabited type `Void`
   --> $DIR/validate_uninhabited_zsts.rs:20:42
    |
 LL | const BAR: [empty::Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered a value of uninhabited type `Void`
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 2 previous errors
 

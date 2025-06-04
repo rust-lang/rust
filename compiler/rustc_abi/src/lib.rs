@@ -55,13 +55,14 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_Generic};
 
 mod callconv;
+mod canon_abi;
+mod extern_abi;
 mod layout;
 #[cfg(test)]
 mod tests;
 
-mod extern_abi;
-
 pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind};
+pub use canon_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 pub use extern_abi::{ExternAbi, all_names};
 #[cfg(feature = "nightly")]
 pub use layout::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
@@ -1894,4 +1895,12 @@ pub enum StructKind {
     MaybeUnsized,
     /// A univariant, but with a prefix of an arbitrary size & alignment (e.g., enum tag).
     Prefixed(Size, Align),
+}
+
+#[derive(Clone, Debug)]
+pub enum AbiFromStrErr {
+    /// not a known ABI
+    Unknown,
+    /// no "-unwind" variant can be used here
+    NoExplicitUnwind,
 }

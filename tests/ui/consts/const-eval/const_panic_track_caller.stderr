@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: hey
   --> $DIR/const_panic_track_caller.rs:19:16
    |
 LL | const X: u32 = c();
-   |                ^^^ evaluation panicked: hey
+   |                ^^^ evaluation of constant value failed here
    |
 note: inside `c`
   --> $DIR/const_panic_track_caller.rs:15:5

@@ -12,6 +12,6 @@ struct Foo(<&'static Foo as ::core::ops::Deref>::Target);
 // and it will infinitely recurse somewhere trying to figure out the
 // size of this pointer (is my guess):
 const _: *const Foo = 0 as _;
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR a cycle occurred during layout computation
 
 pub fn main() {}

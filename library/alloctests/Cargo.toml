@@ -39,7 +39,6 @@ harness = false
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = [
-    'cfg(bootstrap)',
     'cfg(no_global_oom_handling)',
     'cfg(no_rc)',
     'cfg(no_sync)',

@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: constant accesses mutable global memory
   --> $DIR/no-ice-from-static-in-const-issue-52060.rs:5:35
    |
 LL | static B: [u32; 1] = [0; unsafe { A.len() }];
-   |                                   ^ constant accesses mutable global memory
+   |                                   ^ evaluation of constant value failed here
 
 error: aborting due to 1 previous error
 

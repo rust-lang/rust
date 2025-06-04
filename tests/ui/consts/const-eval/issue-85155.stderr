@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `post_monomorphization_error::ValidateConstImm::<2, 0, 1>::VALID` failed
+error[E0080]: attempt to divide `1_usize` by zero
   --> $DIR/auxiliary/post_monomorphization_error.rs:7:17
    |
 LL |         let _ = 1 / ((IMM >= MIN && IMM <= MAX) as usize);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempt to divide `1_usize` by zero
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `post_monomorphization_error::ValidateConstImm::<2, 0, 1>::VALID` failed here
 
 note: erroneous constant encountered
   --> $DIR/auxiliary/post_monomorphization_error.rs:19:5

@@ -12,8 +12,7 @@ use rustc_ast::{AttrArgs, DelimArgs, Expr, ExprKind, LitKind, MetaItemLit, Norma
 use rustc_ast_pretty::pprust;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::{self as hir, AttrPath};
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 
 pub struct SegmentIterator<'a> {
     offset: usize,

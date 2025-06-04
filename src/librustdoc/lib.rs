@@ -3,6 +3,8 @@
     html_playground_url = "https://play.rust-lang.org/"
 )]
 #![feature(rustc_private)]
+#![feature(ascii_char)]
+#![feature(ascii_char_variants)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
@@ -11,7 +13,6 @@
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
 #![feature(never_type)]
 #![feature(round_char_boundary)]
 #![feature(test)]
@@ -37,6 +38,7 @@ extern crate pulldown_cmark;
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
+extern crate rustc_attr_data_structures;
 extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;

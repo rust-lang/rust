@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `fake_type::<!>` failed
+error[E0080]: reached the configured maximum number of stack frames
   --> $DIR/uninhabited-const-issue-61744.rs:13:36
    |
 LL |     const CONSTANT: i32 = unsafe { fake_type() };
-   |                                    ^^^^^^^^^^^ reached the configured maximum number of stack frames
+   |                                    ^^^^^^^^^^^ evaluation of `fake_type::<!>` failed here
    |
 note: inside `fake_type::<i32>`
   --> $DIR/uninhabited-const-issue-61744.rs:5:5

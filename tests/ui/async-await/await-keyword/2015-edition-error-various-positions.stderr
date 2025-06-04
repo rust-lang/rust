@@ -1,5 +1,5 @@
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-error-various-positions.rs:5:13
+  --> $DIR/2015-edition-error-various-positions.rs:6:13
    |
 LL |     pub mod await {
    |             ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -7,14 +7,14 @@ LL |     pub mod await {
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 note: the lint level is defined here
-  --> $DIR/2015-edition-error-various-positions.rs:2:9
+  --> $DIR/2015-edition-error-various-positions.rs:3:9
    |
 LL | #![deny(keyword_idents)]
    |         ^^^^^^^^^^^^^^
    = note: `#[deny(keyword_idents_2018)]` implied by `#[deny(keyword_idents)]`
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-error-various-positions.rs:7:20
+  --> $DIR/2015-edition-error-various-positions.rs:8:20
    |
 LL |         pub struct await;
    |                    ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -23,7 +23,7 @@ LL |         pub struct await;
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-error-various-positions.rs:11:16
+  --> $DIR/2015-edition-error-various-positions.rs:12:16
    |
 LL | use outer_mod::await::await;
    |                ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -32,7 +32,7 @@ LL | use outer_mod::await::await;
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-error-various-positions.rs:11:23
+  --> $DIR/2015-edition-error-various-positions.rs:12:23
    |
 LL | use outer_mod::await::await;
    |                       ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -41,7 +41,7 @@ LL | use outer_mod::await::await;
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-error-various-positions.rs:16:14
+  --> $DIR/2015-edition-error-various-positions.rs:17:14
    |
 LL | struct Foo { await: () }
    |              ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -50,7 +50,7 @@ LL | struct Foo { await: () }
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-error-various-positions.rs:20:15
+  --> $DIR/2015-edition-error-various-positions.rs:21:15
    |
 LL | impl Foo { fn await() {} }
    |               ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -59,7 +59,7 @@ LL | impl Foo { fn await() {} }
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-error-various-positions.rs:24:14
+  --> $DIR/2015-edition-error-various-positions.rs:25:14
    |
 LL | macro_rules! await {
    |              ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -68,7 +68,7 @@ LL | macro_rules! await {
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-error-various-positions.rs:31:5
+  --> $DIR/2015-edition-error-various-positions.rs:32:5
    |
 LL |     await!();
    |     ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -77,7 +77,7 @@ LL |     await!();
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-error-various-positions.rs:34:11
+  --> $DIR/2015-edition-error-various-positions.rs:35:11
    |
 LL |     match await { await => {} }
    |           ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -86,7 +86,7 @@ LL |     match await { await => {} }
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-error-various-positions.rs:34:19
+  --> $DIR/2015-edition-error-various-positions.rs:35:19
    |
 LL |     match await { await => {} }
    |                   ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`

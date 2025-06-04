@@ -1,0 +1,11 @@
+error[E0605]: non-primitive cast: `&for<'a, 'b> fn(&'a Event<'b>) {my_fn}` as `&for<'a, 'b> fn(&'a Event<'b>)`
+  --> $DIR/func-pointer-issue-140491.rs:6:34
+   |
+LL | ..._>) = &my_fn as _;
+   |          ^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+   |
+   = note: casting reference expression `&my_fn` because `&` binds tighter than `as`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0605`.

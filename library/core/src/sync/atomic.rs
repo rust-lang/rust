@@ -193,7 +193,7 @@
 //!
 //! A simple spinlock:
 //!
-//! ```
+//! ```ignore-wasm
 //! use std::sync::Arc;
 //! use std::sync::atomic::{AtomicUsize, Ordering};
 //! use std::{hint, thread};
@@ -622,7 +622,7 @@ impl AtomicBool {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore-wasm
     /// #![feature(atomic_from_mut)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
@@ -653,7 +653,7 @@ impl AtomicBool {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust,ignore-wasm
     /// #![feature(atomic_from_mut)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
@@ -1548,7 +1548,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore-wasm
     /// #![feature(atomic_from_mut)]
     /// use std::ptr::null_mut;
     /// use std::sync::atomic::{AtomicPtr, Ordering};
@@ -1585,7 +1585,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore-wasm
     /// #![feature(atomic_from_mut)]
     /// use std::ptr::null_mut;
     /// use std::sync::atomic::{AtomicPtr, Ordering};
@@ -2692,7 +2692,7 @@ macro_rules! atomic_int {
             ///
             /// # Examples
             ///
-            /// ```
+            /// ```ignore-wasm
             /// #![feature(atomic_from_mut)]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
@@ -2725,7 +2725,7 @@ macro_rules! atomic_int {
             ///
             /// # Examples
             ///
-            /// ```
+            /// ```ignore-wasm
             /// #![feature(atomic_from_mut)]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
@@ -3823,12 +3823,13 @@ unsafe fn atomic_store<T: Copy>(dst: *mut T, val: T, order: Ordering) {
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_load<T: Copy>(dst: *const T, order: Ordering) -> T {
+    use intrinsics::AtomicOrdering;
     // SAFETY: the caller must uphold the safety contract for `atomic_load`.
     unsafe {
         match order {
-            Relaxed => intrinsics::atomic_load_relaxed(dst),
-            Acquire => intrinsics::atomic_load_acquire(dst),
-            SeqCst => intrinsics::atomic_load_seqcst(dst),
+            Relaxed => intrinsics::atomic_load::<T, { AtomicOrdering::Relaxed }>(dst),
+            Acquire => intrinsics::atomic_load::<T, { AtomicOrdering::Acquire }>(dst),
+            SeqCst => intrinsics::atomic_load::<T, { AtomicOrdering::SeqCst }>(dst),
             Release => panic!("there is no such thing as a release load"),
             AcqRel => panic!("there is no such thing as an acquire-release load"),
         }
@@ -3885,10 +3886,13 @@ unsafe fn atomic_sub<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
+/// Publicly exposed for stdarch; nobody else should use this.
 #[inline]
 #[cfg(target_has_atomic)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-unsafe fn atomic_compare_exchange<T: Copy>(
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[doc(hidden)]
+pub unsafe fn atomic_compare_exchange<T: Copy>(
     dst: *mut T,
     old: T,
     new: T,

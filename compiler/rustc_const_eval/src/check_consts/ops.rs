@@ -281,7 +281,7 @@ fn build_error_for_const_call<'tcx>(
                 let mut sugg = None;
 
                 if ccx.tcx.is_lang_item(trait_id, LangItem::PartialEq) {
-                    match (args[0].unpack(), args[1].unpack()) {
+                    match (args[0].kind(), args[1].kind()) {
                         (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
                             if self_ty == rhs_ty
                                 && self_ty.is_ref()
@@ -486,24 +486,25 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
 pub(crate) struct Coroutine(pub hir::CoroutineKind);
 impl<'tcx> NonConstOp<'tcx> for Coroutine {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
-        if let hir::CoroutineKind::Desugared(
-            hir::CoroutineDesugaring::Async,
-            hir::CoroutineSource::Block,
-        ) = self.0
-        {
-            Status::Unstable {
+        match self.0 {
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async,
+                hir::CoroutineSource::Block,
+            )
+            // FIXME(coroutines): eventually we want to gate const coroutine coroutines behind a
+            // different feature.
+            | hir::CoroutineKind::Coroutine(_) => Status::Unstable {
                 gate: sym::const_async_blocks,
                 gate_already_checked: false,
                 safe_to_expose_on_stable: false,
                 is_function_call: false,
-            }
-        } else {
-            Status::Forbidden
+            },
+            _ => Status::Forbidden,
         }
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        let msg = format!("{:#}s are not allowed in {}s", self.0, ccx.const_kind());
+        let msg = format!("{} are not allowed in {}s", self.0.to_plural_string(), ccx.const_kind());
         if let Status::Unstable { gate, .. } = self.status_in_item(ccx) {
             ccx.tcx.sess.create_feature_err(errors::UnallowedOpInConstContext { span, msg }, gate)
         } else {

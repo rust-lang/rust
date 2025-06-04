@@ -347,7 +347,7 @@ impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
     fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: match (a.unpack(), b.unpack()) {
+            values: match (a.kind(), b.kind()) {
                 (GenericArgKind::Lifetime(a), GenericArgKind::Lifetime(b)) => {
                     ValuePairs::Regions(ExpectedFound::new(a, b))
                 }

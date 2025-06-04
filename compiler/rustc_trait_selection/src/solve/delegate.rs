@@ -1,19 +1,22 @@
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::LangItem;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
-    Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarInfo, CanonicalVarValues,
+    Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarKind, CanonicalVarValues,
 };
-use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, TypingMode};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
+};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use crate::traits::{EvaluateConstErr, specialization_graph};
+use crate::traits::{EvaluateConstErr, ObligationCause, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -55,12 +58,73 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         (SolverDelegate(infcx), value, vars)
     }
 
+    fn compute_goal_fast_path(
+        &self,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+        span: Span,
+    ) -> Option<Certainty> {
+        if let Some(trait_pred) = goal.predicate.as_trait_clause() {
+            if trait_pred.polarity() == ty::PredicatePolarity::Positive {
+                match self.0.tcx.as_lang_item(trait_pred.def_id()) {
+                    Some(LangItem::Sized)
+                        if self
+                            .resolve_vars_if_possible(trait_pred.self_ty().skip_binder())
+                            .is_trivially_sized(self.0.tcx) =>
+                    {
+                        return Some(Certainty::Yes);
+                    }
+                    Some(LangItem::Copy | LangItem::Clone) => {
+                        let self_ty =
+                            self.resolve_vars_if_possible(trait_pred.self_ty().skip_binder());
+                        // Unlike `Sized` traits, which always prefer the built-in impl,
+                        // `Copy`/`Clone` may be shadowed by a param-env candidate which
+                        // could force a lifetime error or guide inference. While that's
+                        // not generally desirable, it is observable, so for now let's
+                        // ignore this fast path for types that have regions or infer.
+                        if !self_ty
+                            .has_type_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_INFER)
+                            && self_ty.is_trivially_pure_clone_copy()
+                        {
+                            return Some(Certainty::Yes);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        let pred = goal.predicate.kind();
+        match pred.no_bound_vars()? {
+            ty::PredicateKind::DynCompatible(def_id) if self.0.tcx.is_dyn_compatible(def_id) => {
+                Some(Certainty::Yes)
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(outlives)) => {
+                self.0.sub_regions(
+                    SubregionOrigin::RelateRegionParamBound(span, None),
+                    outlives.1,
+                    outlives.0,
+                );
+                Some(Certainty::Yes)
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
+                self.0.register_type_outlives_constraint(
+                    outlives.0,
+                    outlives.1,
+                    &ObligationCause::dummy_with_span(span),
+                );
+
+                Some(Certainty::Yes)
+            }
+            _ => None,
+        }
+    }
+
     fn fresh_var_for_kind_with_span(
         &self,
         arg: ty::GenericArg<'tcx>,
         span: Span,
     ) -> ty::GenericArg<'tcx> {
-        match arg.unpack() {
+        match arg.kind() {
             ty::GenericArgKind::Lifetime(_) => {
                 self.next_region_var(RegionVariableOrigin::MiscVariable(span)).into()
             }
@@ -142,11 +206,11 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
     fn instantiate_canonical_var_with_infer(
         &self,
-        cv_info: CanonicalVarInfo<'tcx>,
+        kind: CanonicalVarKind<'tcx>,
         span: Span,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(span, cv_info, universe_map)
+        self.0.instantiate_canonical_var(span, kind, universe_map)
     }
 
     fn add_item_bounds_for_hidden_type(

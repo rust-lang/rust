@@ -776,7 +776,8 @@ impl Step for RustcDev {
         copy_src_dirs(
             builder,
             &builder.src,
-            &["compiler"],
+            // The compiler has a path dependency on proc_macro, so make sure to include it.
+            &["compiler", "library/proc_macro"],
             &[],
             &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
         );
@@ -2274,12 +2275,17 @@ impl Step for LlvmTools {
 
         let target = self.target;
 
-        /* run only if llvm-config isn't used */
-        if let Some(config) = builder.config.target_config.get(&target) {
-            if let Some(ref _s) = config.llvm_config {
-                builder.info(&format!("Skipping LlvmTools ({target}): external LLVM"));
-                return None;
-            }
+        // Run only if a custom llvm-config is not used
+        if let Some(config) = builder.config.target_config.get(&target)
+            && !builder.config.llvm_from_ci
+            && config.llvm_config.is_some()
+        {
+            builder.info(&format!("Skipping LlvmTools ({target}): external LLVM"));
+            return None;
+        }
+
+        if !builder.config.dry_run() {
+            builder.require_submodule("src/llvm-project", None);
         }
 
         builder.ensure(crate::core::build_steps::llvm::Llvm { target });
@@ -2294,6 +2300,12 @@ impl Step for LlvmTools {
             let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
             for tool in tools_to_install(&builder.paths) {
                 let exe = src_bindir.join(exe(tool, target));
+                // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
+                if !exe.exists() && builder.config.llvm_from_ci {
+                    eprintln!("{} does not exist; skipping copy", exe.display());
+                    continue;
+                }
+
                 tarball.add_file(&exe, &dst_bindir, FileType::Executable);
             }
         }
@@ -2387,11 +2399,15 @@ impl Step for RustDev {
         let target = self.target;
 
         /* run only if llvm-config isn't used */
-        if let Some(config) = builder.config.target_config.get(&target) {
-            if let Some(ref _s) = config.llvm_config {
-                builder.info(&format!("Skipping RustDev ({target}): external LLVM"));
-                return None;
-            }
+        if let Some(config) = builder.config.target_config.get(&target)
+            && let Some(ref _s) = config.llvm_config
+        {
+            builder.info(&format!("Skipping RustDev ({target}): external LLVM"));
+            return None;
+        }
+
+        if !builder.config.dry_run() {
+            builder.require_submodule("src/llvm-project", None);
         }
 
         let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);

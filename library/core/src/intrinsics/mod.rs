@@ -1,7 +1,10 @@
 //! Compiler intrinsics.
 //!
-//! The corresponding definitions are in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>.
-//! The corresponding const implementations are in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
+//! These are the imports making intrinsics available to Rust code. The actual implementations live in the compiler.
+//! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
+//! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
+//! and <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>,
+//! and for const evaluation in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
 //!
 //! # Const intrinsics
 //!
@@ -20,28 +23,14 @@
 //!
 //! The volatile intrinsics provide operations intended to act on I/O
 //! memory, which are guaranteed to not be reordered by the compiler
-//! across other volatile intrinsics. See the LLVM documentation on
-//! [[volatile]].
-//!
-//! [volatile]: https://llvm.org/docs/LangRef.html#volatile-memory-accesses
+//! across other volatile intrinsics. See [`read_volatile`][ptr::read_volatile]
+//! and [`write_volatile`][ptr::write_volatile].
 //!
 //! # Atomics
 //!
 //! The atomic intrinsics provide common atomic operations on machine
-//! words, with multiple possible memory orderings. They obey the same
-//! semantics as C++11. See the LLVM documentation on [[atomics]].
-//!
-//! [atomics]: https://llvm.org/docs/Atomics.html
-//!
-//! A quick refresher on memory ordering:
-//!
-//! * Acquire - a barrier for acquiring a lock. Subsequent reads and writes
-//!   take place after the barrier.
-//! * Release - a barrier for releasing a lock. Preceding reads and writes
-//!   take place before the barrier.
-//! * Sequentially consistent - sequentially consistent operations are
-//!   guaranteed to happen in order. This is the standard mode for working
-//!   with atomic types and is equivalent to Java's `volatile`.
+//! words, with multiple possible memory orderings. See the
+//! [atomic types][atomic] docs for details.
 //!
 //! # Unwinding
 //!
@@ -61,10 +50,10 @@
 )]
 #![allow(missing_docs)]
 
-use crate::marker::{DiscriminantKind, Tuple};
-use crate::mem::SizedTypeProperties;
-use crate::{ptr, ub_checks};
+use crate::marker::{ConstParamTy, DiscriminantKind, Tuple};
+use crate::ptr;
 
+mod bounds;
 pub mod fallback;
 pub mod mir;
 pub mod simd;
@@ -73,6 +62,20 @@ pub mod simd;
 #[allow(unused_imports)]
 #[cfg(all(target_has_atomic = "8", target_has_atomic = "32", target_has_atomic = "ptr"))]
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
+
+/// A type for atomic ordering parameters for intrinsics. This is a separate type from
+/// `atomic::Ordering` so that we can make it `ConstParamTy` and fix the values used here without a
+/// risk of leaking that to stable code.
+#[derive(Debug, ConstParamTy, PartialEq, Eq)]
+pub enum AtomicOrdering {
+    // These values must match the compiler's `AtomicOrdering` defined in
+    // `rustc_middle/src/ty/consts/int.rs`!
+    Relaxed = 0,
+    Release = 1,
+    Acquire = 2,
+    AcqRel = 3,
+    SeqCst = 4,
+}
 
 // N.B., these intrinsics take raw pointers because they mutate aliased
 // memory, which is not valid for either `&` or `&mut`.
@@ -407,29 +410,10 @@ pub unsafe fn atomic_cxchgweak_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: 
 /// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `load` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::load`].
+/// [`atomic`] types via the `load` method. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
-/// Loads the current value of the pointer.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `load` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::load`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_load_acquire<T: Copy>(src: *const T) -> T;
-/// Loads the current value of the pointer.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `load` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::load`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
+pub unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const T) -> T;
 
 /// Stores the value at the specified memory location.
 /// `T` must be an integer or pointer type.
@@ -1708,7 +1692,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool;
 /// # Safety
 ///
 /// If the computed offset is non-zero, then both the starting and resulting pointer must be
-/// either in bounds or at the end of an allocated object. If either pointer is out
+/// either in bounds or at the end of an allocation. If either pointer is out
 /// of bounds or arithmetic overflow occurs then this operation is undefined behavior.
 ///
 /// The stabilized version of this intrinsic is [`pointer::offset`].
@@ -1716,7 +1700,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
+pub const unsafe fn offset<Ptr: bounds::BuiltinDeref, Delta>(dst: Ptr, offset: Delta) -> Ptr;
 
 /// Calculates the offset from a pointer, potentially wrapping.
 ///
@@ -1736,6 +1720,32 @@ pub const unsafe fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const unsafe fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
+
+/// Projects to the `index`-th element of `slice_ptr`, as the same kind of pointer
+/// as the slice was provided -- so `&mut [T] → &mut T`, `&[T] → &T`,
+/// `*mut [T] → *mut T`, or `*const [T] → *const T` -- without a bounds check.
+///
+/// This is exposed via `<usize as SliceIndex>::get(_unchecked)(_mut)`,
+/// and isn't intended to be used elsewhere.
+///
+/// Expands in MIR to `{&, &mut, &raw const, &raw mut} (*slice_ptr)[index]`,
+/// depending on the types involved, so no backend support is needed.
+///
+/// # Safety
+///
+/// - `index < PtrMetadata(slice_ptr)`, so the indexing is in-bounds for the slice
+/// - the resulting offsetting is in-bounds of the allocated object, which is
+///   always the case for references, but needs to be upheld manually for pointers
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn slice_get_unchecked<
+    ItemPtr: bounds::ChangePointee<[T], Pointee = T, Output = SlicePtr>,
+    SlicePtr,
+    T,
+>(
+    slice_ptr: SlicePtr,
+    index: usize,
+) -> ItemPtr;
 
 /// Masks out bits of the pointer according to a mask.
 ///
@@ -2198,28 +2208,28 @@ pub unsafe fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
 /// [`f16::floor`](../../std/primitive.f16.html#method.floor)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn floorf16(x: f16) -> f16;
+pub const unsafe fn floorf16(x: f16) -> f16;
 /// Returns the largest integer less than or equal to an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::floor`](../../std/primitive.f32.html#method.floor)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn floorf32(x: f32) -> f32;
+pub const unsafe fn floorf32(x: f32) -> f32;
 /// Returns the largest integer less than or equal to an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::floor`](../../std/primitive.f64.html#method.floor)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn floorf64(x: f64) -> f64;
+pub const unsafe fn floorf64(x: f64) -> f64;
 /// Returns the largest integer less than or equal to an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::floor`](../../std/primitive.f128.html#method.floor)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn floorf128(x: f128) -> f128;
+pub const unsafe fn floorf128(x: f128) -> f128;
 
 /// Returns the smallest integer greater than or equal to an `f16`.
 ///
@@ -2227,28 +2237,28 @@ pub unsafe fn floorf128(x: f128) -> f128;
 /// [`f16::ceil`](../../std/primitive.f16.html#method.ceil)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn ceilf16(x: f16) -> f16;
+pub const unsafe fn ceilf16(x: f16) -> f16;
 /// Returns the smallest integer greater than or equal to an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::ceil`](../../std/primitive.f32.html#method.ceil)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn ceilf32(x: f32) -> f32;
+pub const unsafe fn ceilf32(x: f32) -> f32;
 /// Returns the smallest integer greater than or equal to an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::ceil`](../../std/primitive.f64.html#method.ceil)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn ceilf64(x: f64) -> f64;
+pub const unsafe fn ceilf64(x: f64) -> f64;
 /// Returns the smallest integer greater than or equal to an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::ceil`](../../std/primitive.f128.html#method.ceil)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn ceilf128(x: f128) -> f128;
+pub const unsafe fn ceilf128(x: f128) -> f128;
 
 /// Returns the integer part of an `f16`.
 ///
@@ -2256,28 +2266,28 @@ pub unsafe fn ceilf128(x: f128) -> f128;
 /// [`f16::trunc`](../../std/primitive.f16.html#method.trunc)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn truncf16(x: f16) -> f16;
+pub const unsafe fn truncf16(x: f16) -> f16;
 /// Returns the integer part of an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::trunc`](../../std/primitive.f32.html#method.trunc)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn truncf32(x: f32) -> f32;
+pub const unsafe fn truncf32(x: f32) -> f32;
 /// Returns the integer part of an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::trunc`](../../std/primitive.f64.html#method.trunc)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn truncf64(x: f64) -> f64;
+pub const unsafe fn truncf64(x: f64) -> f64;
 /// Returns the integer part of an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::trunc`](../../std/primitive.f128.html#method.trunc)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn truncf128(x: f128) -> f128;
+pub const unsafe fn truncf128(x: f128) -> f128;
 
 /// Returns the nearest integer to an `f16`. Rounds half-way cases to the number with an even
 /// least significant digit.
@@ -2286,7 +2296,7 @@ pub unsafe fn truncf128(x: f128) -> f128;
 /// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn round_ties_even_f16(x: f16) -> f16;
+pub const fn round_ties_even_f16(x: f16) -> f16;
 
 /// Returns the nearest integer to an `f32`. Rounds half-way cases to the number with an even
 /// least significant digit.
@@ -2295,13 +2305,7 @@ pub fn round_ties_even_f16(x: f16) -> f16;
 /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn round_ties_even_f32(x: f32) -> f32;
-
-/// Provided for compatibility with stdarch. DO NOT USE.
-#[inline(always)]
-pub unsafe fn rintf32(x: f32) -> f32 {
-    round_ties_even_f32(x)
-}
+pub const fn round_ties_even_f32(x: f32) -> f32;
 
 /// Returns the nearest integer to an `f64`. Rounds half-way cases to the number with an even
 /// least significant digit.
@@ -2310,13 +2314,7 @@ pub unsafe fn rintf32(x: f32) -> f32 {
 /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn round_ties_even_f64(x: f64) -> f64;
-
-/// Provided for compatibility with stdarch. DO NOT USE.
-#[inline(always)]
-pub unsafe fn rintf64(x: f64) -> f64 {
-    round_ties_even_f64(x)
-}
+pub const fn round_ties_even_f64(x: f64) -> f64;
 
 /// Returns the nearest integer to an `f128`. Rounds half-way cases to the number with an even
 /// least significant digit.
@@ -2325,7 +2323,7 @@ pub unsafe fn rintf64(x: f64) -> f64 {
 /// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn round_ties_even_f128(x: f128) -> f128;
+pub const fn round_ties_even_f128(x: f128) -> f128;
 
 /// Returns the nearest integer to an `f16`. Rounds half-way cases away from zero.
 ///
@@ -2333,28 +2331,28 @@ pub fn round_ties_even_f128(x: f128) -> f128;
 /// [`f16::round`](../../std/primitive.f16.html#method.round)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn roundf16(x: f16) -> f16;
+pub const unsafe fn roundf16(x: f16) -> f16;
 /// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::round`](../../std/primitive.f32.html#method.round)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn roundf32(x: f32) -> f32;
+pub const unsafe fn roundf32(x: f32) -> f32;
 /// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::round`](../../std/primitive.f64.html#method.round)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn roundf64(x: f64) -> f64;
+pub const unsafe fn roundf64(x: f64) -> f64;
 /// Returns the nearest integer to an `f128`. Rounds half-way cases away from zero.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::round`](../../std/primitive.f128.html#method.round)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn roundf128(x: f128) -> f128;
+pub const unsafe fn roundf128(x: f128) -> f128;
 
 /// Float addition that allows optimizations based on algebraic rules.
 /// May assume inputs are finite.
@@ -2635,7 +2633,7 @@ pub const fn three_way_compare<T: Copy>(lhs: T, rhss: T) -> crate::cmp::Ordering
 #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[track_caller]
 #[miri::intrinsic_fallback_is_spec] // the fallbacks all `assume` to tell Miri
 pub const unsafe fn disjoint_bitor<T: ~const fallback::DisjointBitOr>(a: T, b: T) -> T {
     // SAFETY: same preconditions as this function.
@@ -3317,7 +3315,7 @@ pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
 /// `#[inline]`), gating assertions on `ub_checks()` rather than `cfg!(ub_checks)` means that
 /// assertions are enabled whenever the *user crate* has UB checks enabled. However, if the
 /// user has UB checks disabled, the checks will still get optimized out. This intrinsic is
-/// primarily used by [`ub_checks::assert_unsafe_precondition`].
+/// primarily used by [`crate::ub_checks::assert_unsafe_precondition`].
 #[rustc_intrinsic_const_stable_indirect] // just for UB checks
 #[inline(always)]
 #[rustc_intrinsic]
@@ -3573,18 +3571,9 @@ pub const fn type_id<T: ?Sized + 'static>() -> u128;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn aggregate_raw_ptr<P: AggregateRawPtr<D, Metadata = M>, D, M>(data: D, meta: M) -> P;
-
-#[unstable(feature = "core_intrinsics", issue = "none")]
-pub trait AggregateRawPtr<D> {
-    type Metadata: Copy;
-}
-impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*const T> for *const P {
-    type Metadata = <P as ptr::Pointee>::Metadata;
-}
-impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
-    type Metadata = <P as ptr::Pointee>::Metadata;
-}
+pub const fn aggregate_raw_ptr<P: bounds::BuiltinDeref, D, M>(data: D, meta: M) -> P
+where
+    <P as bounds::BuiltinDeref>::Pointee: ptr::Pointee<Metadata = M>;
 
 /// Lowers in MIR to `Rvalue::UnaryOp` with `UnOp::PtrMetadata`.
 ///
@@ -3595,306 +3584,38 @@ impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
 #[rustc_intrinsic]
 pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(ptr: *const P) -> M;
 
-// Some functions are defined here because they accidentally got made
-// available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
-// (`transmute` also falls into this category, but it cannot be wrapped due to the
-// check that `T` and `U` have the same size.)
-
-/// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-/// and destination must *not* overlap.
-///
-/// For regions of memory which might overlap, use [`copy`] instead.
-///
-/// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
-/// with the source and destination arguments swapped,
-/// and `count` counting the number of `T`s instead of bytes.
-///
-/// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the
-/// requirements of `T`. The initialization state is preserved exactly.
-///
-/// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy
-///
-/// # Safety
-///
-/// Behavior is undefined if any of the following conditions are violated:
-///
-/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
-///
-/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
-///
-/// * Both `src` and `dst` must be properly aligned.
-///
-/// * The region of memory beginning at `src` with a size of `count *
-///   size_of::<T>()` bytes must *not* overlap with the region of memory
-///   beginning at `dst` with the same size.
-///
-/// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of
-/// whether `T` is [`Copy`]. If `T` is not [`Copy`], using *both* the values
-/// in the region beginning at `*src` and the region beginning at `*dst` can
-/// [violate memory safety][read-ownership].
-///
-/// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointers must be properly aligned.
-///
-/// [`read`]: crate::ptr::read
-/// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
-/// [valid]: crate::ptr#safety
-///
-/// # Examples
-///
-/// Manually implement [`Vec::append`]:
-///
-/// ```
-/// use std::ptr;
-///
-/// /// Moves all the elements of `src` into `dst`, leaving `src` empty.
-/// fn append<T>(dst: &mut Vec<T>, src: &mut Vec<T>) {
-///     let src_len = src.len();
-///     let dst_len = dst.len();
-///
-///     // Ensure that `dst` has enough capacity to hold all of `src`.
-///     dst.reserve(src_len);
-///
-///     unsafe {
-///         // The call to add is always safe because `Vec` will never
-///         // allocate more than `isize::MAX` bytes.
-///         let dst_ptr = dst.as_mut_ptr().add(dst_len);
-///         let src_ptr = src.as_ptr();
-///
-///         // Truncate `src` without dropping its contents. We do this first,
-///         // to avoid problems in case something further down panics.
-///         src.set_len(0);
-///
-///         // The two regions cannot overlap because mutable references do
-///         // not alias, and two different vectors cannot own the same
-///         // memory.
-///         ptr::copy_nonoverlapping(src_ptr, dst_ptr, src_len);
-///
-///         // Notify `dst` that it now holds the contents of `src`.
-///         dst.set_len(dst_len + src_len);
-///     }
-/// }
-///
-/// let mut a = vec!['r'];
-/// let mut b = vec!['u', 's', 't'];
-///
-/// append(&mut a, &mut b);
-///
-/// assert_eq!(a, &['r', 'u', 's', 't']);
-/// assert!(b.is_empty());
-/// ```
-///
-/// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
-#[doc(alias = "memcpy")]
+/// This is an accidentally-stable alias to [`ptr::copy_nonoverlapping`]; use that instead.
+// Note (intentionally not in the doc comment): `ptr::copy_nonoverlapping` adds some extra
+// debug assertions; if you are writing compiler tests or code inside the standard library
+// that wants to avoid those debug assertions, directly call this intrinsic instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
-#[inline(always)]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
-pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
-    #[rustc_intrinsic_const_stable_indirect]
-    #[rustc_nounwind]
-    #[rustc_intrinsic]
-    const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
-    ub_checks::assert_unsafe_precondition!(
-        check_language_ub,
-        "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
-        and the specified memory ranges do not overlap",
-        (
-            src: *const () = src as *const (),
-            dst: *mut () = dst as *mut (),
-            size: usize = size_of::<T>(),
-            align: usize = align_of::<T>(),
-            count: usize = count,
-        ) => {
-            let zero_size = count == 0 || size == 0;
-            ub_checks::maybe_is_aligned_and_not_null(src, align, zero_size)
-                && ub_checks::maybe_is_aligned_and_not_null(dst, align, zero_size)
-                && ub_checks::maybe_is_nonoverlapping(src, dst, size, count)
-        }
-    );
-
-    // SAFETY: the safety contract for `copy_nonoverlapping` must be
-    // upheld by the caller.
-    unsafe { copy_nonoverlapping(src, dst, count) }
-}
-
-/// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-/// and destination may overlap.
-///
-/// If the source and destination will *never* overlap,
-/// [`copy_nonoverlapping`] can be used instead.
-///
-/// `copy` is semantically equivalent to C's [`memmove`], but
-/// with the source and destination arguments swapped,
-/// and `count` counting the number of `T`s instead of bytes.
-/// Copying takes place as if the bytes were copied from `src`
-/// to a temporary array and then copied from the array to `dst`.
-///
-/// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the
-/// requirements of `T`. The initialization state is preserved exactly.
-///
-/// [`memmove`]: https://en.cppreference.com/w/c/string/byte/memmove
-///
-/// # Safety
-///
-/// Behavior is undefined if any of the following conditions are violated:
-///
-/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
-///
-/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes, and must remain valid even
-///   when `src` is read for `count * size_of::<T>()` bytes. (This means if the memory ranges
-///   overlap, the `dst` pointer must not be invalidated by `src` reads.)
-///
-/// * Both `src` and `dst` must be properly aligned.
-///
-/// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
-/// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the values
-/// in the region beginning at `*src` and the region beginning at `*dst` can
-/// [violate memory safety][read-ownership].
-///
-/// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointers must be properly aligned.
-///
-/// [`read`]: crate::ptr::read
-/// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
-/// [valid]: crate::ptr#safety
-///
-/// # Examples
-///
-/// Efficiently create a Rust vector from an unsafe buffer:
-///
-/// ```
-/// use std::ptr;
-///
-/// /// # Safety
-/// ///
-/// /// * `ptr` must be correctly aligned for its type and non-zero.
-/// /// * `ptr` must be valid for reads of `elts` contiguous elements of type `T`.
-/// /// * Those elements must not be used after calling this function unless `T: Copy`.
-/// # #[allow(dead_code)]
-/// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
-///     let mut dst = Vec::with_capacity(elts);
-///
-///     // SAFETY: Our precondition ensures the source is aligned and valid,
-///     // and `Vec::with_capacity` ensures that we have usable space to write them.
-///     unsafe { ptr::copy(ptr, dst.as_mut_ptr(), elts); }
-///
-///     // SAFETY: We created it with this much capacity earlier,
-///     // and the previous `copy` has initialized these elements.
-///     unsafe { dst.set_len(elts); }
-///     dst
-/// }
-/// ```
-#[doc(alias = "memmove")]
+/// This is an accidentally-stable alias to [`ptr::copy`]; use that instead.
+// Note (intentionally not in the doc comment): `ptr::copy` adds some extra
+// debug assertions; if you are writing compiler tests or code inside the standard library
+// that wants to avoid those debug assertions, directly call this intrinsic instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
-#[inline(always)]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[rustc_diagnostic_item = "ptr_copy"]
-pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
-    #[rustc_intrinsic_const_stable_indirect]
-    #[rustc_nounwind]
-    #[rustc_intrinsic]
-    const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
 
-    // SAFETY: the safety contract for `copy` must be upheld by the caller.
-    unsafe {
-        ub_checks::assert_unsafe_precondition!(
-            check_language_ub,
-            "ptr::copy requires that both pointer arguments are aligned and non-null",
-            (
-                src: *const () = src as *const (),
-                dst: *mut () = dst as *mut (),
-                align: usize = align_of::<T>(),
-                zero_size: bool = T::IS_ZST || count == 0,
-            ) =>
-            ub_checks::maybe_is_aligned_and_not_null(src, align, zero_size)
-                && ub_checks::maybe_is_aligned_and_not_null(dst, align, zero_size)
-        );
-        copy(src, dst, count)
-    }
-}
-
-/// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
-/// `val`.
-///
-/// `write_bytes` is similar to C's [`memset`], but sets `count *
-/// size_of::<T>()` bytes to `val`.
-///
-/// [`memset`]: https://en.cppreference.com/w/c/string/byte/memset
-///
-/// # Safety
-///
-/// Behavior is undefined if any of the following conditions are violated:
-///
-/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
-///
-/// * `dst` must be properly aligned.
-///
-/// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointer must be properly aligned.
-///
-/// Additionally, note that changing `*dst` in this way can easily lead to undefined behavior (UB)
-/// later if the written bytes are not a valid representation of some `T`. For instance, the
-/// following is an **incorrect** use of this function:
-///
-/// ```rust,no_run
-/// unsafe {
-///     let mut value: u8 = 0;
-///     let ptr: *mut bool = &mut value as *mut u8 as *mut bool;
-///     let _bool = ptr.read(); // This is fine, `ptr` points to a valid `bool`.
-///     ptr.write_bytes(42u8, 1); // This function itself does not cause UB...
-///     let _bool = ptr.read(); // ...but it makes this operation UB! ⚠️
-/// }
-/// ```
-///
-/// [valid]: crate::ptr#safety
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// use std::ptr;
-///
-/// let mut vec = vec![0u32; 4];
-/// unsafe {
-///     let vec_ptr = vec.as_mut_ptr();
-///     ptr::write_bytes(vec_ptr, 0xfe, 2);
-/// }
-/// assert_eq!(vec, [0xfefefefe, 0xfefefefe, 0, 0]);
-/// ```
-#[doc(alias = "memset")]
+/// This is an accidentally-stable alias to [`ptr::write_bytes`]; use that instead.
+// Note (intentionally not in the doc comment): `ptr::write_bytes` adds some extra
+// debug assertions; if you are writing compiler tests or code inside the standard library
+// that wants to avoid those debug assertions, directly call this intrinsic instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
-#[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
-#[inline(always)]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[rustc_diagnostic_item = "ptr_write_bytes"]
-pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
-    #[rustc_intrinsic_const_stable_indirect]
-    #[rustc_nounwind]
-    #[rustc_intrinsic]
-    const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
-
-    // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
-    unsafe {
-        ub_checks::assert_unsafe_precondition!(
-            check_language_ub,
-            "ptr::write_bytes requires that the destination pointer is aligned and non-null",
-            (
-                addr: *const () = dst as *const (),
-                align: usize = align_of::<T>(),
-                zero_size: bool = T::IS_ZST || count == 0,
-            ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, zero_size)
-        );
-        write_bytes(dst, val, count)
-    }
-}
+#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 
 /// Returns the minimum (IEEE 754-2008 minNum) of two `f16` values.
 ///
@@ -3957,7 +3678,7 @@ pub const fn minnumf128(x: f128, y: f128) -> f128;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn minimumf16(x: f16, y: f16) -> f16 {
     if x < y {
         x
@@ -3978,7 +3699,7 @@ pub const fn minimumf16(x: f16, y: f16) -> f16 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn minimumf32(x: f32, y: f32) -> f32 {
     if x < y {
         x
@@ -3999,7 +3720,7 @@ pub const fn minimumf32(x: f32, y: f32) -> f32 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn minimumf64(x: f64, y: f64) -> f64 {
     if x < y {
         x
@@ -4020,7 +3741,7 @@ pub const fn minimumf64(x: f64, y: f64) -> f64 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn minimumf128(x: f128, y: f128) -> f128 {
     if x < y {
         x
@@ -4095,7 +3816,7 @@ pub const fn maxnumf128(x: f128, y: f128) -> f128;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn maximumf16(x: f16, y: f16) -> f16 {
     if x > y {
         x
@@ -4115,7 +3836,7 @@ pub const fn maximumf16(x: f16, y: f16) -> f16 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn maximumf32(x: f32, y: f32) -> f32 {
     if x > y {
         x
@@ -4135,7 +3856,7 @@ pub const fn maximumf32(x: f32, y: f32) -> f32 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn maximumf64(x: f64, y: f64) -> f64 {
     if x > y {
         x
@@ -4155,7 +3876,7 @@ pub const fn maximumf64(x: f64, y: f64) -> f64 {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 pub const fn maximumf128(x: f128, y: f128) -> f128 {
     if x > y {
         x

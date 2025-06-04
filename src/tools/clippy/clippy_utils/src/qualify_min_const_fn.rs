@@ -5,7 +5,7 @@
 
 use crate::msrvs::{self, Msrv};
 use hir::LangItem;
-use rustc_attr_parsing::{RustcVersion, StableSince};
+use rustc_attr_data_structures::{RustcVersion, StableSince};
 use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -55,7 +55,7 @@ pub fn is_min_const_fn<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, msrv: Ms
 
 fn check_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, msrv: Msrv) -> McfResult {
     for arg in ty.walk() {
-        let ty = match arg.unpack() {
+        let ty = match arg.kind() {
             GenericArgKind::Type(ty) => ty,
 
             // No constraints on lifetimes or constants, except potentially
@@ -393,7 +393,8 @@ fn check_terminator<'tcx>(
     }
 }
 
-fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bool {
+/// Checks if the given `def_id` is a stable const fn, in respect to the given MSRV.
+pub fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bool {
     cx.tcx.is_const_fn(def_id)
         && cx
             .tcx
@@ -404,7 +405,7 @@ fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bool {
                     .and_then(|trait_def_id| cx.tcx.lookup_const_stability(trait_def_id))
             })
             .is_none_or(|const_stab| {
-                if let rustc_attr_parsing::StabilityLevel::Stable { since, .. } = const_stab.level {
+                if let rustc_attr_data_structures::StabilityLevel::Stable { since, .. } = const_stab.level {
                     // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                     // function could be removed if `rustc` provided a MSRV-aware version of `is_stable_const_fn`.
                     // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.

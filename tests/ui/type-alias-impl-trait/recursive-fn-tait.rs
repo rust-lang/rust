@@ -13,7 +13,7 @@ pub fn add(
     n: Diff,
     m: Diff,
 ) -> Diff {
-    //~^ ERROR concrete type differs
+    //~^ ERROR cannot resolve opaque type
     move |x: usize| m(n(x))
 }
 

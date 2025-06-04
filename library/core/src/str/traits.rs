@@ -186,6 +186,7 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
         }
     }
     #[inline]
+    #[track_caller]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
         let slice = slice as *const [u8];
 
@@ -213,6 +214,7 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
         }
     }
     #[inline]
+    #[track_caller]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
         let slice = slice as *mut [u8];
 
@@ -288,6 +290,7 @@ unsafe impl SliceIndex<str> for range::Range<usize> {
         }
     }
     #[inline]
+    #[track_caller]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
         let slice = slice as *const [u8];
 
@@ -315,6 +318,7 @@ unsafe impl SliceIndex<str> for range::Range<usize> {
         }
     }
     #[inline]
+    #[track_caller]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
         let slice = slice as *mut [u8];
 
@@ -751,6 +755,20 @@ unsafe impl SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// that do not contain a lifetime parameter themselves. In other words, you can
 /// parse an `i32` with `FromStr`, but not a `&i32`. You can parse a struct that
 /// contains an `i32`, but not one that contains an `&i32`.
+///
+/// # Input format and round-tripping
+///
+/// The input format expected by a type's `FromStr` implementation depends on the type. Check the
+/// type's documentation for the input formats it knows how to parse. Note that the input format of
+/// a type's `FromStr` implementation might not necessarily accept the output format of its
+/// `Display` implementation, and even if it does, the `Display` implementation may not be lossless
+/// so the round-trip may lose information.
+///
+/// However, if a type has a lossless `Display` implementation whose output is meant to be
+/// conveniently machine-parseable and not just meant for human consumption, then the type may wish
+/// to accept the same format in `FromStr`, and document that usage. Having both `Display` and
+/// `FromStr` implementations where the result of `Display` cannot be parsed with `FromStr` may
+/// surprise users.
 ///
 /// # Examples
 ///

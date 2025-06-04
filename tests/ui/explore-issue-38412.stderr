@@ -103,8 +103,8 @@ LL |     r.pub_mod();
    |
   ::: $DIR/auxiliary/pub-and-stability.rs:116:9
    |
-LL |         pub(in m) fn pub_mod(&self) -> i32 { self.d_priv }
-   |         ---------------------------------- private method defined here
+LL |         pub(in crate::m) fn pub_mod(&self) -> i32 { self.d_priv }
+   |         ----------------------------------------- private method defined here
 
 error[E0624]: method `private` is private
   --> $DIR/explore-issue-38412.rs:50:7
@@ -156,8 +156,8 @@ LL |     t.pub_mod();
    |
   ::: $DIR/auxiliary/pub-and-stability.rs:130:9
    |
-LL |         pub(in m) fn pub_mod(&self) -> i32 { self.0 }
-   |         ---------------------------------- private method defined here
+LL |         pub(in crate::m) fn pub_mod(&self) -> i32 { self.0 }
+   |         ----------------------------------------- private method defined here
 
 error[E0624]: method `private` is private
   --> $DIR/explore-issue-38412.rs:63:7

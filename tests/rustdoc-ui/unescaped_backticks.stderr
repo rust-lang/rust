@@ -628,10 +628,10 @@ LL | /// or even to add a number `n` to 42 (`add(42, n)\`)!
    |                                                   +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:108:9
+  --> $DIR/unescaped_backticks.rs:108:10
    |
 LL | #[doc = "`"]
-   |         ^^^
+   |          ^
    |
    = help: the opening or closing backtick of an inline code may be missing
    = help: if you meant to use a literal backtick, escape it
@@ -639,10 +639,10 @@ LL | #[doc = "`"]
            to this: \`
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:115:9
+  --> $DIR/unescaped_backticks.rs:115:26
    |
 LL | #[doc = concat!("\\", "`")]
-   |         ^^^^^^^^^^^^^^^^^^^^
+   |                          ^
    |
    = help: the opening backtick of an inline code may be missing
             change: \`

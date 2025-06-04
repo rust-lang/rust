@@ -3,7 +3,7 @@ use std::time::Duration;
 use std::{cmp, iter};
 
 use rand::RngCore;
-use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
+use rustc_abi::{Align, CanonAbi, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_hir::Safety;
@@ -18,7 +18,7 @@ use rustc_middle::ty::{self, Binder, FloatTy, FnSig, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -135,7 +135,7 @@ pub fn iter_exported_symbols<'tcx>(
             let codegen_attrs = tcx.codegen_fn_attrs(def_id);
             codegen_attrs.contains_extern_indicator()
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         };
         if exported {
@@ -470,7 +470,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             caller_fn_abi,
             &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
             /*with_caller_location*/ false,
-            &dest,
+            &dest.into(),
             stack_pop,
         )
     }
@@ -933,10 +933,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Check that the calling convention is what we expect.
-    fn check_callconv<'a>(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, exp_abi: Conv) -> InterpResult<'a, ()> {
+    fn check_callconv<'a>(
+        &self,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: CanonAbi,
+    ) -> InterpResult<'a, ()> {
         if fn_abi.conv != exp_abi {
             throw_ub_format!(
-                "calling a function with calling convention {exp_abi} using caller calling convention {}",
+                r#"calling a function with calling convention "{exp_abi}" using caller calling convention "{}""#,
                 fn_abi.conv
             );
         }
@@ -969,7 +973,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn check_abi_and_shim_symbol_clash(
         &mut self,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: Conv,
+        exp_abi: CanonAbi,
         link_name: Symbol,
     ) -> InterpResult<'tcx, ()> {
         self.check_callconv(abi, exp_abi)?;
@@ -994,7 +998,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn check_shim<'a, const N: usize>(
         &mut self,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: Conv,
+        exp_abi: CanonAbi,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
     ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
@@ -1094,7 +1098,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn check_shim_variadic<'a, const N: usize>(
         &mut self,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: Conv,
+        exp_abi: CanonAbi,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
     ) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], &'a [OpTy<'tcx>])>
@@ -1406,5 +1410,28 @@ pub(crate) fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
         // If the target buffer was not large enough to hold the data, the return value is the buffer size, in characters,
         // required to hold the string and its terminating null character.
         u32::try_from(len).unwrap()
+    }
+}
+
+/// We don't support 16-bit systems, so let's have ergonomic conversion from `u32` to `usize`.
+pub trait ToUsize {
+    fn to_usize(self) -> usize;
+}
+
+impl ToUsize for u32 {
+    fn to_usize(self) -> usize {
+        self.try_into().unwrap()
+    }
+}
+
+/// Similarly, a maximum address size of `u64` is assumed widely here, so let's have ergonomic
+/// converion from `usize` to `u64`.
+pub trait ToU64 {
+    fn to_u64(self) -> u64;
+}
+
+impl ToU64 for usize {
+    fn to_u64(self) -> u64 {
+        self.try_into().unwrap()
     }
 }

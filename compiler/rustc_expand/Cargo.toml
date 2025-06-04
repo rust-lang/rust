@@ -12,6 +12,7 @@ doctest = false
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_passes = { path = "../rustc_ast_passes" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_attr_data_structures = { path = "../rustc_attr_data_structures" }
 rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
@@ -22,6 +23,9 @@ rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_parse = { path = "../rustc_parse" }
+# We must use the proc_macro version that we will compile proc-macros against,
+# not the one from our own sysroot.
+rustc_proc_macro = { path = "../rustc_proc_macro" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }

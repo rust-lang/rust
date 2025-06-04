@@ -30,7 +30,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::LangItem;
-use crate::def::{CtorKind, DefKind, Res};
+use crate::def::{CtorKind, DefKind, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::{FnKind, VisitorExt};
@@ -85,7 +85,7 @@ impl From<Ident> for LifetimeSyntax {
     fn from(ident: Ident) -> Self {
         let name = ident.name;
 
-        if name == kw::Empty {
+        if name == sym::empty {
             unreachable!("A lifetime name should never be empty");
         } else if name == kw::UnderscoreLifetime {
             LifetimeSyntax::Anonymous
@@ -347,7 +347,7 @@ pub struct Path<'hir, R = Res> {
 }
 
 /// Up to three resolutions for type, value and macro namespaces.
-pub type UsePath<'hir> = Path<'hir, SmallVec<[Res; 3]>>;
+pub type UsePath<'hir> = Path<'hir, PerNS<Option<Res>>>;
 
 impl Path<'_> {
     pub fn is_global(&self) -> bool {
@@ -2061,11 +2061,18 @@ impl CoroutineKind {
             CoroutineKind::Coroutine(mov) => mov,
         }
     }
-}
 
-impl CoroutineKind {
     pub fn is_fn_like(self) -> bool {
         matches!(self, CoroutineKind::Desugared(_, CoroutineSource::Fn))
+    }
+
+    pub fn to_plural_string(&self) -> String {
+        match self {
+            CoroutineKind::Desugared(d, CoroutineSource::Fn) => format!("{d:#}fn bodies"),
+            CoroutineKind::Desugared(d, CoroutineSource::Block) => format!("{d:#}blocks"),
+            CoroutineKind::Desugared(d, CoroutineSource::Closure) => format!("{d:#}closure bodies"),
+            CoroutineKind::Coroutine(_) => "coroutines".to_string(),
+        }
     }
 }
 
@@ -2370,6 +2377,10 @@ impl Expr<'_> {
             // Lang item paths cannot currently be local variables or statics.
             ExprKind::Path(QPath::LangItem(..)) => false,
 
+            // Suppress errors for bad expressions.
+            ExprKind::Err(_guar)
+            | ExprKind::Let(&LetExpr { recovered: ast::Recovered::Yes(_guar), .. }) => true,
+
             // Partially qualified paths in expressions can only legally
             // refer to associated items which are always rvalues.
             ExprKind::Path(QPath::TypeRelative(..))
@@ -2401,8 +2412,7 @@ impl Expr<'_> {
             | ExprKind::Binary(..)
             | ExprKind::Yield(..)
             | ExprKind::Cast(..)
-            | ExprKind::DropTemps(..)
-            | ExprKind::Err(_) => false,
+            | ExprKind::DropTemps(..) => false,
         }
     }
 
@@ -4106,11 +4116,11 @@ impl<'hir> Item<'hir> {
 
         expect_use, (&'hir UsePath<'hir>, UseKind), ItemKind::Use(p, uk), (p, *uk);
 
-        expect_static, (Ident, &'hir Ty<'hir>, Mutability, BodyId),
-            ItemKind::Static(ident, ty, mutbl, body), (*ident, ty, *mutbl, *body);
+        expect_static, (Mutability, Ident, &'hir Ty<'hir>, BodyId),
+            ItemKind::Static(mutbl, ident, ty, body), (*mutbl, *ident, ty, *body);
 
-        expect_const, (Ident, &'hir Ty<'hir>, &'hir Generics<'hir>, BodyId),
-            ItemKind::Const(ident, ty, generics, body), (*ident, ty, generics, *body);
+        expect_const, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId),
+            ItemKind::Const(ident, generics, ty, body), (*ident, generics, ty, *body);
 
         expect_fn, (Ident, &FnSig<'hir>, &'hir Generics<'hir>, BodyId),
             ItemKind::Fn { ident, sig, generics, body, .. }, (*ident, sig, generics, *body);
@@ -4125,17 +4135,17 @@ impl<'hir> Item<'hir> {
 
         expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm { asm, .. }, asm;
 
-        expect_ty_alias, (Ident, &'hir Ty<'hir>, &'hir Generics<'hir>),
-            ItemKind::TyAlias(ident, ty, generics), (*ident, ty, generics);
+        expect_ty_alias, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>),
+            ItemKind::TyAlias(ident, generics, ty), (*ident, generics, ty);
 
-        expect_enum, (Ident, &EnumDef<'hir>, &'hir Generics<'hir>),
-            ItemKind::Enum(ident, def, generics), (*ident, def, generics);
+        expect_enum, (Ident, &'hir Generics<'hir>, &EnumDef<'hir>),
+            ItemKind::Enum(ident, generics, def), (*ident, generics, def);
 
-        expect_struct, (Ident, &VariantData<'hir>, &'hir Generics<'hir>),
-            ItemKind::Struct(ident, data, generics), (*ident, data, generics);
+        expect_struct, (Ident, &'hir Generics<'hir>, &VariantData<'hir>),
+            ItemKind::Struct(ident, generics, data), (*ident, generics, data);
 
-        expect_union, (Ident, &VariantData<'hir>, &'hir Generics<'hir>),
-            ItemKind::Union(ident, data, generics), (*ident, data, generics);
+        expect_union, (Ident, &'hir Generics<'hir>, &VariantData<'hir>),
+            ItemKind::Union(ident, generics, data), (*ident, generics, data);
 
         expect_trait,
             (
@@ -4278,13 +4288,13 @@ pub enum ItemKind<'hir> {
     Use(&'hir UsePath<'hir>, UseKind),
 
     /// A `static` item.
-    Static(Ident, &'hir Ty<'hir>, Mutability, BodyId),
+    Static(Mutability, Ident, &'hir Ty<'hir>, BodyId),
     /// A `const` item.
-    Const(Ident, &'hir Ty<'hir>, &'hir Generics<'hir>, BodyId),
+    Const(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId),
     /// A function declaration.
     Fn {
-        ident: Ident,
         sig: FnSig<'hir>,
+        ident: Ident,
         generics: &'hir Generics<'hir>,
         body: BodyId,
         /// Whether this function actually has a body.
@@ -4309,13 +4319,13 @@ pub enum ItemKind<'hir> {
         fake_body: BodyId,
     },
     /// A type alias, e.g., `type Foo = Bar<u8>`.
-    TyAlias(Ident, &'hir Ty<'hir>, &'hir Generics<'hir>),
+    TyAlias(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>),
     /// An enum definition, e.g., `enum Foo<A, B> { C<A>, D<B> }`.
-    Enum(Ident, EnumDef<'hir>, &'hir Generics<'hir>),
+    Enum(Ident, &'hir Generics<'hir>, EnumDef<'hir>),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`.
-    Struct(Ident, VariantData<'hir>, &'hir Generics<'hir>),
+    Struct(Ident, &'hir Generics<'hir>, VariantData<'hir>),
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
-    Union(Ident, VariantData<'hir>, &'hir Generics<'hir>),
+    Union(Ident, &'hir Generics<'hir>, VariantData<'hir>),
     /// A trait definition.
     Trait(IsAuto, Safety, Ident, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
     /// A trait alias.
@@ -4352,7 +4362,7 @@ impl ItemKind<'_> {
         match *self {
             ItemKind::ExternCrate(_, ident)
             | ItemKind::Use(_, UseKind::Single(ident))
-            | ItemKind::Static(ident, ..)
+            | ItemKind::Static(_, ident, ..)
             | ItemKind::Const(ident, ..)
             | ItemKind::Fn { ident, .. }
             | ItemKind::Macro(ident, ..)
@@ -4374,11 +4384,11 @@ impl ItemKind<'_> {
     pub fn generics(&self) -> Option<&Generics<'_>> {
         Some(match self {
             ItemKind::Fn { generics, .. }
-            | ItemKind::TyAlias(_, _, generics)
-            | ItemKind::Const(_, _, generics, _)
-            | ItemKind::Enum(_, _, generics)
-            | ItemKind::Struct(_, _, generics)
-            | ItemKind::Union(_, _, generics)
+            | ItemKind::TyAlias(_, generics, _)
+            | ItemKind::Const(_, generics, _, _)
+            | ItemKind::Enum(_, generics, _)
+            | ItemKind::Struct(_, generics, _)
+            | ItemKind::Union(_, generics, _)
             | ItemKind::Trait(_, _, _, generics, _, _)
             | ItemKind::TraitAlias(_, generics, _)
             | ItemKind::Impl(Impl { generics, .. }) => generics,
@@ -4802,9 +4812,9 @@ impl<'hir> Node<'hir> {
     pub fn ty(self) -> Option<&'hir Ty<'hir>> {
         match self {
             Node::Item(it) => match it.kind {
-                ItemKind::TyAlias(_, ty, _)
-                | ItemKind::Static(_, ty, _, _)
-                | ItemKind::Const(_, ty, _, _) => Some(ty),
+                ItemKind::TyAlias(_, _, ty)
+                | ItemKind::Static(_, _, ty, _)
+                | ItemKind::Const(_, _, ty, _) => Some(ty),
                 ItemKind::Impl(impl_item) => Some(&impl_item.self_ty),
                 _ => None,
             },
@@ -4824,7 +4834,7 @@ impl<'hir> Node<'hir> {
 
     pub fn alias_ty(self) -> Option<&'hir Ty<'hir>> {
         match self {
-            Node::Item(Item { kind: ItemKind::TyAlias(_, ty, _), .. }) => Some(ty),
+            Node::Item(Item { kind: ItemKind::TyAlias(_, _, ty), .. }) => Some(ty),
             _ => None,
         }
     }

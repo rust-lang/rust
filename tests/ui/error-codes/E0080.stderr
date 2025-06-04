@@ -1,14 +1,14 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to shift left by `500_i32`, which would overflow
   --> $DIR/E0080.rs:2:9
    |
 LL |     X = (1 << 500),
-   |         ^^^^^^^^^^ attempt to shift left by `500_i32`, which would overflow
+   |         ^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/E0080.rs:4:9
+error[E0080]: attempt to divide `1_isize` by zero
+  --> $DIR/E0080.rs:3:9
    |
-LL |     Y = (1 / 0)
-   |         ^^^^^^^ attempt to divide `1_isize` by zero
+LL |     Y = (1 / 0),
+   |         ^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 2 previous errors
 

@@ -7,11 +7,11 @@ LL |     let mut x = None;
 LL | };
    | - value is dropped here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: calling non-const function `<Vec<u8> as Drop>::drop`
   --> $DIR/qualif-indirect-mutation-fail.rs:18:1
    |
 LL | };
-   | ^ calling non-const function `<Vec<u8> as Drop>::drop`
+   | ^ evaluation of constant value failed here
    |
 note: inside `drop_in_place::<Option<String>> - shim(Some(Option<String>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -28,11 +28,11 @@ LL |     let _z = x;
 LL | };
    | - value is dropped here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: calling non-const function `<Vec<u8> as Drop>::drop`
   --> $DIR/qualif-indirect-mutation-fail.rs:29:1
    |
 LL | };
-   | ^ calling non-const function `<Vec<u8> as Drop>::drop`
+   | ^ evaluation of constant value failed here
    |
 note: inside `drop_in_place::<Option<String>> - shim(Some(Option<String>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL

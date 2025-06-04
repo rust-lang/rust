@@ -82,7 +82,7 @@ fn lint_impl_body(cx: &LateContext<'_>, impl_span: Span, impl_items: &[hir::Impl
             }
 
             // check for `unwrap`
-            if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
+            if let Some(arglists) = method_chain_args(expr, &[sym::unwrap]) {
                 let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
                 if is_type_diagnostic_item(self.lcx, receiver_ty, sym::Option)
                     || is_type_diagnostic_item(self.lcx, receiver_ty, sym::Result)

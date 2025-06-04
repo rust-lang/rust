@@ -22,7 +22,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
@@ -45,7 +45,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let intrinsic_name = this.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
 
-        match this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)? {
+        // FIXME: avoid allocating memory
+        let dest = this.force_allocation(dest)?;
+
+        match this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, &dest, ret)? {
             EmulateItemResult::NotSupported => {
                 // We haven't handled the intrinsic, let's see if we can use a fallback body.
                 if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
@@ -94,7 +97,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         if let Some(name) = intrinsic_name.strip_prefix("atomic_") {
-            return this.emulate_atomic_intrinsic(name, args, dest);
+            return this.emulate_atomic_intrinsic(name, generic_args, args, dest);
         }
         if let Some(name) = intrinsic_name.strip_prefix("simd_") {
             return this.emulate_simd_intrinsic(name, generic_args, args, dest);
@@ -154,67 +157,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // calls, so we don't *have* to do anything.
                 let branch: bool = this.machine.rng.get_mut().random();
                 this.write_scalar(Scalar::from_bool(branch), dest)?;
-            }
-
-            "floorf16" | "ceilf16" | "truncf16" | "roundf16" | "round_ties_even_f16" => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f16()?;
-                let mode = match intrinsic_name {
-                    "floorf16" => Round::TowardNegative,
-                    "ceilf16" => Round::TowardPositive,
-                    "truncf16" => Round::TowardZero,
-                    "roundf16" => Round::NearestTiesToAway,
-                    "round_ties_even_f16" => Round::NearestTiesToEven,
-                    _ => bug!(),
-                };
-                let res = f.round_to_integral(mode).value;
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-            "floorf32" | "ceilf32" | "truncf32" | "roundf32" | "round_ties_even_f32" => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f32()?;
-                let mode = match intrinsic_name {
-                    "floorf32" => Round::TowardNegative,
-                    "ceilf32" => Round::TowardPositive,
-                    "truncf32" => Round::TowardZero,
-                    "roundf32" => Round::NearestTiesToAway,
-                    "round_ties_even_f32" => Round::NearestTiesToEven,
-                    _ => bug!(),
-                };
-                let res = f.round_to_integral(mode).value;
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-            "floorf64" | "ceilf64" | "truncf64" | "roundf64" | "round_ties_even_f64" => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
-                let mode = match intrinsic_name {
-                    "floorf64" => Round::TowardNegative,
-                    "ceilf64" => Round::TowardPositive,
-                    "truncf64" => Round::TowardZero,
-                    "roundf64" => Round::NearestTiesToAway,
-                    "round_ties_even_f64" => Round::NearestTiesToEven,
-                    _ => bug!(),
-                };
-                let res = f.round_to_integral(mode).value;
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-            "floorf128" | "ceilf128" | "truncf128" | "roundf128" | "round_ties_even_f128" => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f128()?;
-                let mode = match intrinsic_name {
-                    "floorf128" => Round::TowardNegative,
-                    "ceilf128" => Round::TowardPositive,
-                    "truncf128" => Round::TowardZero,
-                    "roundf128" => Round::NearestTiesToAway,
-                    "round_ties_even_f128" => Round::NearestTiesToEven,
-                    _ => bug!(),
-                };
-                let res = f.round_to_integral(mode).value;
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
             }
 
             "sqrtf32" => {

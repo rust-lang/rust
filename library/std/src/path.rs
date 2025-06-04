@@ -1191,7 +1191,8 @@ impl PathBuf {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    pub fn new() -> PathBuf {
+    #[rustc_const_unstable(feature = "const_pathbuf_osstring_new", issue = "141520")]
+    pub const fn new() -> PathBuf {
         PathBuf { inner: OsString::new() }
     }
 
@@ -2154,6 +2155,13 @@ pub struct Path {
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 pub struct StripPrefixError(());
 
+/// An error returned from [`Path::normalize_lexically`] if a `..` parent reference
+/// would escape the path.
+#[unstable(feature = "normalize_lexically", issue = "134694")]
+#[derive(Debug, PartialEq)]
+#[non_exhaustive]
+pub struct NormalizeError;
+
 impl Path {
     // The following (private!) function allows construction of a path from a u8
     // slice, which is only safe when it is known to follow the OsStr encoding.
@@ -2739,15 +2747,30 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::{Path, PathBuf};
+    /// use std::path::Path;
     ///
     /// let path = Path::new("foo.rs");
-    /// assert_eq!(path.with_extension("txt"), PathBuf::from("foo.txt"));
+    /// assert_eq!(path.with_extension("txt"), Path::new("foo.txt"));
+    /// assert_eq!(path.with_extension(""), Path::new("foo"));
+    /// ```
+    ///
+    /// Handling multiple extensions:
+    ///
+    /// ```
+    /// use std::path::Path;
     ///
     /// let path = Path::new("foo.tar.gz");
-    /// assert_eq!(path.with_extension(""), PathBuf::from("foo.tar"));
-    /// assert_eq!(path.with_extension("xz"), PathBuf::from("foo.tar.xz"));
-    /// assert_eq!(path.with_extension("").with_extension("txt"), PathBuf::from("foo.txt"));
+    /// assert_eq!(path.with_extension("xz"), Path::new("foo.tar.xz"));
+    /// assert_eq!(path.with_extension("").with_extension("txt"), Path::new("foo.txt"));
+    /// ```
+    ///
+    /// Adding an extension where one did not exist:
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("foo");
+    /// assert_eq!(path.with_extension("rs"), Path::new("foo.rs"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
@@ -2961,6 +2984,67 @@ impl Path {
         fs::canonicalize(self)
     }
 
+    /// Normalize a path, including `..` without traversing the filesystem.
+    ///
+    /// Returns an error if normalization would leave leading `..` components.
+    ///
+    /// <div class="warning">
+    ///
+    /// This function always resolves `..` to the "lexical" parent.
+    /// That is "a/b/../c" will always resolve to `a/c` which can change the meaning of the path.
+    /// In particular, `a/c` and `a/b/../c` are distinct on many systems because `b` may be a symbolic link, so its parent isn’t `a`.
+    ///
+    /// </div>
+    ///
+    /// [`path::absolute`](absolute) is an alternative that preserves `..`.
+    /// Or [`Path::canonicalize`] can be used to resolve any `..` by querying the filesystem.
+    #[unstable(feature = "normalize_lexically", issue = "134694")]
+    pub fn normalize_lexically(&self) -> Result<PathBuf, NormalizeError> {
+        let mut lexical = PathBuf::new();
+        let mut iter = self.components().peekable();
+
+        // Find the root, if any, and add it to the lexical path.
+        // Here we treat the Windows path "C:\" as a single "root" even though
+        // `components` splits it into two: (Prefix, RootDir).
+        let root = match iter.peek() {
+            Some(Component::ParentDir) => return Err(NormalizeError),
+            Some(p @ Component::RootDir) | Some(p @ Component::CurDir) => {
+                lexical.push(p);
+                iter.next();
+                lexical.as_os_str().len()
+            }
+            Some(Component::Prefix(prefix)) => {
+                lexical.push(prefix.as_os_str());
+                iter.next();
+                if let Some(p @ Component::RootDir) = iter.peek() {
+                    lexical.push(p);
+                    iter.next();
+                }
+                lexical.as_os_str().len()
+            }
+            None => return Ok(PathBuf::new()),
+            Some(Component::Normal(_)) => 0,
+        };
+
+        for component in iter {
+            match component {
+                Component::RootDir => unreachable!(),
+                Component::Prefix(_) => return Err(NormalizeError),
+                Component::CurDir => continue,
+                Component::ParentDir => {
+                    // It's an error if ParentDir causes us to go above the "root".
+                    if lexical.as_os_str().len() == root {
+                        return Err(NormalizeError);
+                    } else {
+                        lexical.pop();
+                    }
+                }
+                Component::Normal(path) => lexical.push(path),
+            }
+        }
+        Ok(lexical)
+    }
+
     /// Reads a symbolic link, returning the file that the link points to.
     ///
     /// This is an alias to [`fs::read_link`].
@@ -3163,7 +3247,7 @@ impl Path {
     /// allocating.
     #[stable(feature = "into_boxed_path", since = "1.20.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
-    pub fn into_path_buf(self: Box<Path>) -> PathBuf {
+    pub fn into_path_buf(self: Box<Self>) -> PathBuf {
         let rw = Box::into_raw(self) as *mut OsStr;
         let inner = unsafe { Box::from_raw(rw) };
         PathBuf { inner: OsString::from(inner) }
@@ -3501,6 +3585,15 @@ impl Error for StripPrefixError {
         "prefix not found"
     }
 }
+
+#[unstable(feature = "normalize_lexically", issue = "134694")]
+impl fmt::Display for NormalizeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("parent reference `..` points outside of base directory")
+    }
+}
+#[unstable(feature = "normalize_lexically", issue = "134694")]
+impl Error for NormalizeError {}
 
 /// Makes the path absolute without accessing the filesystem.
 ///

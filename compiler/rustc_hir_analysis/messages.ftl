@@ -37,7 +37,7 @@ hir_analysis_assoc_kind_mismatch = expected {$expected}, found {$got}
 
 hir_analysis_assoc_kind_mismatch_wrap_in_braces_sugg = consider adding braces here
 
-hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the associated {$what} of a trait with uninferred generic parameters
+hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the {$what} of a trait with uninferred generic parameters
     .suggestion = use a fully qualified path with inferred lifetimes
 
 hir_analysis_associated_type_trait_uninferred_generic_params_multipart_suggestion = use a fully qualified path with explicit lifetimes

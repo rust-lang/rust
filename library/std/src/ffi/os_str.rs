@@ -137,7 +137,8 @@ impl OsString {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    pub fn new() -> OsString {
+    #[rustc_const_unstable(feature = "const_pathbuf_osstring_new", issue = "141520")]
+    pub const fn new() -> OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
 
@@ -594,9 +595,9 @@ impl OsString {
     /// The slice must be valid for the platform encoding (as described in
     /// [`OsStr::from_encoded_bytes_unchecked`]).
     ///
-    /// This bypasses the encoding-dependent surrogate joining, so `self` must
-    /// not end with a leading surrogate half and `other` must not start with
-    /// with a trailing surrogate half.
+    /// This bypasses the encoding-dependent surrogate joining, so either
+    /// `self` must not end with a leading surrogate half, or `other` must not
+    /// start with a trailing surrogate half.
     #[inline]
     pub(crate) unsafe fn extend_from_slice_unchecked(&mut self, other: &[u8]) {
         // SAFETY: Guaranteed by caller.
@@ -1040,7 +1041,7 @@ impl OsStr {
     /// Converts a <code>[Box]<[OsStr]></code> into an [`OsString`] without copying or allocating.
     #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
-    pub fn into_os_string(self: Box<OsStr>) -> OsString {
+    pub fn into_os_string(self: Box<Self>) -> OsString {
         let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut Slice) };
         OsString { inner: Buf::from_box(boxed) }
     }

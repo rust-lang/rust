@@ -1,9 +1,7 @@
 use std::iter;
 use std::ops::ControlFlow;
 
-use rustc_abi::{
-    BackendRepr, Integer, IntegerType, TagEncoding, VariantIdx, Variants, WrappingRange,
-};
+use rustc_abi::{BackendRepr, TagEncoding, VariantIdx, Variants, WrappingRange};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::intravisit::VisitorExt;
@@ -24,7 +22,8 @@ mod improper_ctypes;
 
 use crate::lints::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
-    AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
+    AmbiguousWidePointerComparisonsAddrSuggestion, AmbiguousWidePointerComparisonsCastSuggestion,
+    AmbiguousWidePointerComparisonsExpectSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
     AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
     InvalidNanComparisonsSuggestion, UnpredictableFunctionPointerComparisons,
     UnpredictableFunctionPointerComparisonsSuggestion, UnusedComparisons, UsesPowerAlignment,
@@ -362,6 +361,7 @@ fn lint_wide_pointer<'tcx>(
     let ne = if cmpop == ComparisonOp::BinOp(hir::BinOpKind::Ne) { "!" } else { "" };
     let is_eq_ne = matches!(cmpop, ComparisonOp::BinOp(hir::BinOpKind::Eq | hir::BinOpKind::Ne));
     let is_dyn_comparison = l_inner_ty_is_dyn && r_inner_ty_is_dyn;
+    let via_method_call = matches!(&e.kind, ExprKind::MethodCall(..) | ExprKind::Call(..));
 
     let left = e.span.shrink_to_lo().until(l_span.shrink_to_lo());
     let middle = l_span.shrink_to_hi().until(r_span.shrink_to_lo());
@@ -376,9 +376,21 @@ fn lint_wide_pointer<'tcx>(
     cx.emit_span_lint(
         AMBIGUOUS_WIDE_POINTER_COMPARISONS,
         e.span,
-        AmbiguousWidePointerComparisons::Spanful {
-            addr_metadata_suggestion: (is_eq_ne && !is_dyn_comparison).then(|| {
-                AmbiguousWidePointerComparisonsAddrMetadataSuggestion {
+        if is_eq_ne {
+            AmbiguousWidePointerComparisons::SpanfulEq {
+                addr_metadata_suggestion: (!is_dyn_comparison).then(|| {
+                    AmbiguousWidePointerComparisonsAddrMetadataSuggestion {
+                        ne,
+                        deref_left,
+                        deref_right,
+                        l_modifiers,
+                        r_modifiers,
+                        left,
+                        middle,
+                        right,
+                    }
+                }),
+                addr_suggestion: AmbiguousWidePointerComparisonsAddrSuggestion {
                     ne,
                     deref_left,
                     deref_right,
@@ -387,21 +399,11 @@ fn lint_wide_pointer<'tcx>(
                     left,
                     middle,
                     right,
-                }
-            }),
-            addr_suggestion: if is_eq_ne {
-                AmbiguousWidePointerComparisonsAddrSuggestion::AddrEq {
-                    ne,
-                    deref_left,
-                    deref_right,
-                    l_modifiers,
-                    r_modifiers,
-                    left,
-                    middle,
-                    right,
-                }
-            } else {
-                AmbiguousWidePointerComparisonsAddrSuggestion::Cast {
+                },
+            }
+        } else {
+            AmbiguousWidePointerComparisons::SpanfulCmp {
+                cast_suggestion: AmbiguousWidePointerComparisonsCastSuggestion {
                     deref_left,
                     deref_right,
                     l_modifiers,
@@ -412,8 +414,14 @@ fn lint_wide_pointer<'tcx>(
                     left_after: l_span.shrink_to_hi(),
                     right_before: (r_ty_refs != 0).then_some(r_span.shrink_to_lo()),
                     right_after: r_span.shrink_to_hi(),
-                }
-            },
+                },
+                expect_suggestion: AmbiguousWidePointerComparisonsExpectSuggestion {
+                    paren_left: if via_method_call { "" } else { "(" },
+                    paren_right: if via_method_call { "" } else { ")" },
+                    before: e.span.shrink_to_lo(),
+                    after: e.span.shrink_to_hi(),
+                },
+            }
         },
     );
 }
@@ -1274,14 +1282,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        if let Some(IntegerType::Fixed(Integer::I128, _)) = def.repr().int {
-                            return FfiUnsafe {
-                                ty,
-                                reason: fluent::lint_improper_ctypes_128bit,
-                                help: None,
-                            };
-                        }
-
                         use improper_ctypes::check_non_exhaustive_variant;
 
                         let non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
@@ -1313,10 +1313,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // It's just extra invariants on the type that you need to uphold,
             // but only the base type is relevant for being representable in FFI.
             ty::Pat(base, ..) => self.check_type_for_ffi(acc, base),
-
-            ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
-                FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_128bit, help: None }
-            }
 
             // Primitive types with a stable representation.
             ty::Bool | ty::Int(..) | ty::Uint(..) | ty::Float(..) | ty::Never => FfiSafe,
@@ -1700,7 +1696,7 @@ impl ImproperCTypesDefinitions {
             && cx.tcx.sess.target.os == "aix"
             && !adt_def.all_fields().next().is_none()
         {
-            let struct_variant_data = item.expect_struct().1;
+            let struct_variant_data = item.expect_struct().2;
             for field_def in struct_variant_data.fields().iter().skip(1) {
                 // Struct fields (after the first field) are checked for the
                 // power alignment rule, as fields after the first are likely
@@ -1725,9 +1721,9 @@ impl ImproperCTypesDefinitions {
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
-            hir::ItemKind::Static(_, ty, ..)
-            | hir::ItemKind::Const(_, ty, ..)
-            | hir::ItemKind::TyAlias(_, ty, ..) => {
+            hir::ItemKind::Static(_, _, ty, _)
+            | hir::ItemKind::Const(_, _, ty, _)
+            | hir::ItemKind::TyAlias(_, _, ty) => {
                 self.check_ty_maybe_containing_foreign_fnptr(
                     cx,
                     ty,
@@ -1794,7 +1790,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 
 impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        if let hir::ItemKind::Enum(_, ref enum_definition, _) = it.kind {
+        if let hir::ItemKind::Enum(_, _, ref enum_definition) = it.kind {
             let t = cx.tcx.type_of(it.owner_id).instantiate_identity();
             let ty = cx.tcx.erase_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };

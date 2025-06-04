@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: using uninitialized data, but this operation requires initialized memory
   --> $DIR/ub-enum-overwrite.rs:11:14
    |
 LL |     unsafe { *p }
-   |              ^^ using uninitialized data, but this operation requires initialized memory
+   |              ^^ evaluation of constant value failed here
 
 error: aborting due to 1 previous error
 

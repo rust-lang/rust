@@ -28,7 +28,6 @@ pub(crate) fn incorrect_generics_len(
         message,
         d.generics_or_segment.map(Into::into),
     )
-    .experimental()
 }
 
 #[cfg(test)]

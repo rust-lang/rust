@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `Fail::<T>::C` failed
+error[E0080]: evaluation panicked: explicit panic
   --> $DIR/collect-in-promoted-const.rs:9:19
    |
 LL |     const C: () = panic!();
-   |                   ^^^^^^^^ evaluation panicked: explicit panic
+   |                   ^^^^^^^^ evaluation of `Fail::<T>::C` failed here
 
 note: erroneous constant encountered
   --> $DIR/collect-in-promoted-const.rs:20:21
@@ -10,11 +10,11 @@ note: erroneous constant encountered
 LL |         let _val = &Fail::<T>::C;
    |                     ^^^^^^^^^^^^
 
-error[E0080]: evaluation of `Fail::<i32>::C` failed
+error[E0080]: evaluation panicked: explicit panic
   --> $DIR/collect-in-promoted-const.rs:9:19
    |
 LL |     const C: () = panic!();
-   |                   ^^^^^^^^ evaluation panicked: explicit panic
+   |                   ^^^^^^^^ evaluation of `Fail::<i32>::C` failed here
 
 note: erroneous constant encountered
   --> $DIR/collect-in-promoted-const.rs:20:21

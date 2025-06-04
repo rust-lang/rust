@@ -171,10 +171,15 @@ impl Cfg {
 
     /// Renders the configuration for long display, as a long HTML description.
     pub(crate) fn render_long_html(&self) -> String {
-        let on = if self.should_use_with_in_description() { "with" } else { "on" };
+        let on = if self.omit_preposition() {
+            ""
+        } else if self.should_use_with_in_description() {
+            "with "
+        } else {
+            "on "
+        };
 
-        let mut msg =
-            format!("Available {on} <strong>{}</strong>", Display(self, Format::LongHtml));
+        let mut msg = format!("Available {on}<strong>{}</strong>", Display(self, Format::LongHtml));
         if self.should_append_only_to_description() {
             msg.push_str(" only");
         }
@@ -243,6 +248,10 @@ impl Cfg {
         } else {
             Some(self.clone())
         }
+    }
+
+    fn omit_preposition(&self) -> bool {
+        matches!(self, Cfg::True | Cfg::False)
     }
 }
 

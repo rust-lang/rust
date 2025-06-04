@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 
 mod foo {
-    use baz::bar;
+    use crate::baz::bar;
     mod bar {}
     //~^ ERROR the name `bar` is defined multiple times
 }

@@ -5,7 +5,7 @@ use std::iter;
 use std::ops::{Range, RangeFrom};
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_attr_parsing::{InlineAttr, OptimizeAttr};
+use rustc_attr_data_structures::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;

@@ -9,7 +9,7 @@ use rustc_type_ir::{
     self as ty, Interner, Movability, TraitPredicate, TypeVisitableExt as _, TypingMode,
     Upcast as _, elaborate,
 };
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
@@ -17,7 +17,7 @@ use crate::solve::assembly::{self, AllowInferenceConstraints, AssembleCandidates
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    NoSolution, ParamEnvSource, QueryResult,
+    NoSolution, ParamEnvSource, QueryResult, has_only_region_constraints,
 };
 
 impl<D, I> assembly::GoalKind<D> for TraitPredicate<I>
@@ -1253,6 +1253,45 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    /// FIXME(#57893): For backwards compatability with the old trait solver implementation,
+    /// we need to handle overlap between builtin and user-written impls for trait objects.
+    ///
+    /// This overlap is unsound in general and something which we intend to fix separately.
+    /// To avoid blocking the stabilization of the trait solver, we add this hack to avoid
+    /// breakage in cases which are *mostly fine*™. Importantly, this preference is strictly
+    /// weaker than the old behavior.
+    ///
+    /// We only prefer builtin over user-written impls if there are no inference constraints.
+    /// Importantly, we also only prefer the builtin impls for trait goals, and not during
+    /// normalization. This means the only case where this special-case results in exploitable
+    /// unsoundness should be lifetime dependent user-written impls.
+    pub(super) fn unsound_prefer_builtin_dyn_impl(&mut self, candidates: &mut Vec<Candidate<I>>) {
+        match self.typing_mode() {
+            TypingMode::Coherence => return,
+            TypingMode::Analysis { .. }
+            | TypingMode::Borrowck { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => {}
+        }
+
+        if candidates
+            .iter()
+            .find(|c| {
+                matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Object(_)))
+            })
+            .is_some_and(|c| has_only_region_constraints(c.result))
+        {
+            candidates.retain(|c| {
+                if matches!(c.source, CandidateSource::Impl(_)) {
+                    debug!(?c, "unsoundly dropping impl in favor of builtin dyn-candidate");
+                    false
+                } else {
+                    true
+                }
+            });
+        }
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_trait_candidates(
         &mut self,
@@ -1313,6 +1352,7 @@ where
         }
 
         self.filter_specialized_impls(AllowInferenceConstraints::No, &mut candidates);
+        self.unsound_prefer_builtin_dyn_impl(&mut candidates);
 
         // If there are *only* global where bounds, then make sure to return that this
         // is still reported as being proven-via the param-env so that rigid projections

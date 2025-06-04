@@ -298,14 +298,14 @@ impl<'a> State<'a> {
                     *defaultness,
                 );
             }
-            ast::ItemKind::Enum(ident, enum_definition, params) => {
-                self.print_enum_def(enum_definition, params, *ident, item.span, &item.vis);
+            ast::ItemKind::Enum(ident, generics, enum_definition) => {
+                self.print_enum_def(enum_definition, generics, *ident, item.span, &item.vis);
             }
-            ast::ItemKind::Struct(ident, struct_def, generics) => {
+            ast::ItemKind::Struct(ident, generics, struct_def) => {
                 let (cb, ib) = self.head(visibility_qualified(&item.vis, "struct"));
                 self.print_struct(struct_def, generics, *ident, item.span, true, cb, ib);
             }
-            ast::ItemKind::Union(ident, struct_def, generics) => {
+            ast::ItemKind::Union(ident, generics, struct_def) => {
                 let (cb, ib) = self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, *ident, item.span, true, cb, ib);
             }

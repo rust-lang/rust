@@ -105,7 +105,8 @@ the `RePlaceholder` for the `'b` parameter is in a higher universe to track the 
 
 ## Instantiating with `ReLateParam`
 
-As discussed in a previous chapter, `RegionKind` has two variants for representing generic parameters, `ReLateParam` and `ReEarlyParam`. `ReLateParam` is conceptually a `Placeholder` that is always in the root universe (`U0`). It is used when instantiating late bound parameters of functions/closures while inside of them. Its actual representation is relatively different from both `ReEarlyParam` and `RePlaceholder`:
+As discussed in [the chapter about representing types][representing-types], `RegionKind` has two variants for representing generic parameters, `ReLateParam` and `ReEarlyParam`.
+`ReLateParam` is conceptually a `Placeholder` that is always in the root universe (`U0`). It is used when instantiating late bound parameters of functions/closures while inside of them. Its actual representation is relatively different from both `ReEarlyParam` and `RePlaceholder`:
 - A `DefId` for the item that introduced the late bound generic parameter
 - A [`BoundRegionKind`] which either specifies the `DefId` of the generic parameter and its name (via a `Symbol`), or that this placeholder is representing the anonymous lifetime of a `Fn`/`FnMut` closure's self borrow. There is also a variant for `BrAnon` but this is not used for `ReLateParam`.
 
@@ -133,6 +134,7 @@ Generally whenever we have a `Binder` for late bound parameters on a function/cl
 As a concrete example, accessing the signature of a function we are type checking will be represented as `EarlyBinder<Binder<FnSig>>`. As we are already "inside" of these binders, we would call `instantiate_identity` followed by `liberate_late_bound_regions`.
 
 [`liberate_late_bound_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.liberate_late_bound_regions
+[representing-types]: param_ty_const_regions.md
 [`BoundRegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.BoundRegionKind.html
 [`enter_forall`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/struct.InferCtxt.html#method.enter_forall
 [ch_placeholders_universes]: ../borrow_check/region_inference/placeholders_and_universes.md

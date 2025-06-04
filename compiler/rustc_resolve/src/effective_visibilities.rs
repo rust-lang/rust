@@ -252,7 +252,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
                 self.current_private_vis = prev_private_vis;
             }
 
-            ast::ItemKind::Enum(_, EnumDef { ref variants }, _) => {
+            ast::ItemKind::Enum(_, _, EnumDef { ref variants }) => {
                 self.set_bindings_effective_visibilities(def_id);
                 for variant in variants {
                     let variant_def_id = self.r.local_def_id(variant.id);
@@ -262,7 +262,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
                 }
             }
 
-            ast::ItemKind::Struct(_, ref def, _) | ast::ItemKind::Union(_, ref def, _) => {
+            ast::ItemKind::Struct(_, _, ref def) | ast::ItemKind::Union(_, _, ref def) => {
                 for field in def.fields() {
                     self.update_field(self.r.local_def_id(field.id), def_id);
                 }
