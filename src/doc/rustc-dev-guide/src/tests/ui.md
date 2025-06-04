@@ -220,8 +220,12 @@ negligible (i.e. there is no semantic difference between `//~ ERROR` and
 `//~ERROR` although the former is more common in the codebase).
 
 `~? <diagnostic kind>` (example being `~? ERROR`)
-is used to match diagnostics without line information.
-These can be placed on any line in the test file, but are conventionally placed at the end.
+is used to match diagnostics _without_ line info at all,
+or where the line info is outside the main test file[^main test file].
+These annotations can be placed on any line in the test file.
+
+[^main test file]: This is a file that has the `~?` annotations,
+as distinct from aux files, or sources that we have no control over.
 
 ### Error annotation examples
 
