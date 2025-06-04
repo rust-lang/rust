@@ -881,10 +881,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     hir::ForeignItemKind::Fn(sig, _, _) => {
                         require_c_abi_if_c_variadic(tcx, sig.decl, abi, item.span);
                     }
-                    hir::ForeignItemKind::Static(..) => {
-                        check_static_inhabited(tcx, def_id);
-                        check_static_linkage(tcx, def_id);
-                    }
                     _ => {}
                 }
             }

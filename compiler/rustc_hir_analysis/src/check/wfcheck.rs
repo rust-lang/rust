@@ -185,6 +185,7 @@ where
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+    crate::check::check::check_item_type(tcx, def_id);
     let node = tcx.hir_node_by_def_id(def_id);
     let mut res = match node {
         hir::Node::Crate(_) => bug!("check_well_formed cannot be applied to the crate root"),
@@ -192,9 +193,7 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
         hir::Node::TraitItem(item) => check_trait_item(tcx, item),
         hir::Node::ImplItem(item) => check_impl_item(tcx, item),
         hir::Node::ForeignItem(item) => check_foreign_item(tcx, item),
-        hir::Node::ConstBlock(_) | hir::Node::Expr(_) | hir::Node::OpaqueTy(_) => {
-            Ok(crate::check::check::check_item_type(tcx, def_id))
-        }
+        hir::Node::ConstBlock(_) | hir::Node::Expr(_) | hir::Node::OpaqueTy(_) => Ok(()),
         _ => unreachable!("{node:?}"),
     };
 
@@ -228,7 +227,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
     );
     crate::collect::lower_item(tcx, item.item_id());
 
-    let res = match item.kind {
+    match item.kind {
         // Right now we check that every default trait implementation
         // has an implementation of itself. Basically, a case like:
         //
@@ -332,11 +331,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             res
         }
         _ => Ok(()),
-    };
-
-    crate::check::check::check_item_type(tcx, def_id);
-
-    res
+    }
 }
 
 fn check_foreign_item<'tcx>(

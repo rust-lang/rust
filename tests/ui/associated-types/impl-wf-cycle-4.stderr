@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing normalized predicates of `<impl at $DIR/impl-wf-cycle-4.rs:5:1: 7:26>`
+error[E0391]: cycle detected when computing whether `<impl at $DIR/impl-wf-cycle-4.rs:5:1: 7:26>` has a guaranteed unsized self type
   --> $DIR/impl-wf-cycle-4.rs:5:1
    |
 LL | / impl<T> Filter for T
@@ -6,14 +6,14 @@ LL | | where
 LL | |     T: Fn(Self::ToMatch),
    | |_________________________^
    |
-note: ...which requires computing whether `<impl at $DIR/impl-wf-cycle-4.rs:5:1: 7:26>` has a guaranteed unsized self type...
+note: ...which requires computing normalized predicates of `<impl at $DIR/impl-wf-cycle-4.rs:5:1: 7:26>`...
   --> $DIR/impl-wf-cycle-4.rs:5:1
    |
 LL | / impl<T> Filter for T
 LL | | where
 LL | |     T: Fn(Self::ToMatch),
    | |_________________________^
-   = note: ...which again requires computing normalized predicates of `<impl at $DIR/impl-wf-cycle-4.rs:5:1: 7:26>`, completing the cycle
+   = note: ...which again requires computing whether `<impl at $DIR/impl-wf-cycle-4.rs:5:1: 7:26>` has a guaranteed unsized self type, completing the cycle
 note: cycle used when checking that `<impl at $DIR/impl-wf-cycle-4.rs:5:1: 7:26>` is well-formed
   --> $DIR/impl-wf-cycle-4.rs:5:1
    |
