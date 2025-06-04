@@ -2056,10 +2056,8 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///   irrelevant, and it can be created with [`without_provenance`]. The access must not trap. It
 ///   can cause side-effects, but those must not affect Rust-allocated memory in in any way. This
 ///   access is still not considered [atomic], and as such it cannot be used for inter-thread
-///   synchronization.
-///
-/// Note that volatile memory operations on zero-sized types (e.g., if a zero-sized type is passed
-/// to `read_volatile`) are noops and may be ignored.
+///   synchronization. Note that volatile memory operations where T is a zero-sized type are noops
+///   and may be ignored.
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 /// [allocation]: crate::ptr#allocated-object
