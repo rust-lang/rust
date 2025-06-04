@@ -197,6 +197,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Some(instance),
                 )
             }
+            _ if tcx.has_attr(def_id, sym::rustc_autodiff) => {
+                return Err(ty::Instance::new_raw(def_id, instance.args));
+            }
             sym::is_val_statically_known => {
                 let intrinsic_type = args[0].layout.immediate_llvm_type(self.cx);
                 let kind = self.type_kind(intrinsic_type);

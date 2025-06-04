@@ -174,6 +174,8 @@ pub(crate) fn check_intrinsic_type(
     };
     let name_str = intrinsic_name.as_str();
 
+    let has_autodiff = tcx.has_attr(intrinsic_id, sym::rustc_autodiff);
+
     let bound_vars = tcx.mk_bound_variable_kinds(&[
         ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
         ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
@@ -229,6 +231,17 @@ pub(crate) fn check_intrinsic_type(
         //
         // so: two type params, 0 lifetime param, 0 const params, two inputs, no return
         (2, 0, 0, vec![param(0), param(1)], param(1), hir::Safety::Safe)
+    } else if has_autodiff {
+        let sig = tcx.fn_sig(intrinsic_id.to_def_id());
+        let sig = sig.skip_binder();
+        let n_tps = generics.own_counts().types;
+        let n_lts = generics.own_counts().lifetimes;
+        let n_cts = generics.own_counts().consts;
+
+        let inputs = sig.skip_binder().inputs().to_vec();
+        let output = sig.skip_binder().output();
+
+        (n_tps, n_lts, n_cts, inputs, output, hir::Safety::Safe)
     } else {
         let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, n_cts, inputs, output) = match intrinsic_name {
