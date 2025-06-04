@@ -185,9 +185,9 @@ where
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
-    crate::check::check::check_item_type(tcx, def_id);
+    let mut res = crate::check::check::check_item_type(tcx, def_id);
     let node = tcx.hir_node_by_def_id(def_id);
-    let mut res = match node {
+    res = res.and(match node {
         hir::Node::Crate(_) => bug!("check_well_formed cannot be applied to the crate root"),
         hir::Node::Item(item) => check_item(tcx, item),
         hir::Node::TraitItem(item) => check_trait_item(tcx, item),
@@ -195,7 +195,7 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
         hir::Node::ForeignItem(item) => check_foreign_item(tcx, item),
         hir::Node::ConstBlock(_) | hir::Node::Expr(_) | hir::Node::OpaqueTy(_) => Ok(()),
         _ => unreachable!("{node:?}"),
-    };
+    });
 
     for param in &tcx.generics_of(def_id).own_params {
         res = res.and(check_param_wf(tcx, param));
@@ -291,9 +291,6 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             res
         }
         hir::ItemKind::Fn { ident, sig, .. } => check_item_fn(tcx, def_id, ident, sig.decl),
-        hir::ItemKind::Static(_, _, ty, _) => {
-            check_static_item(tcx, def_id, ty.span, UnsizedHandling::Forbid)
-        }
         hir::ItemKind::Const(_, _, ty, _) => check_const_item(tcx, def_id, ty.span, item.span),
         hir::ItemKind::Struct(_, generics, _) => {
             let res = check_type_defn(tcx, item, false);
@@ -347,10 +344,7 @@ fn check_foreign_item<'tcx>(
 
     match item.kind {
         hir::ForeignItemKind::Fn(sig, ..) => check_item_fn(tcx, def_id, item.ident, sig.decl),
-        hir::ForeignItemKind::Static(ty, ..) => {
-            check_static_item(tcx, def_id, ty.span, UnsizedHandling::AllowIfForeignTail)
-        }
-        hir::ForeignItemKind::Type => Ok(()),
+        hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => Ok(()),
     }
 }
 
@@ -1251,61 +1245,54 @@ fn check_item_fn(
     })
 }
 
-enum UnsizedHandling {
-    Forbid,
-    AllowIfForeignTail,
-}
-
-#[instrument(level = "debug", skip(tcx, ty_span, unsized_handling))]
-fn check_static_item(
+#[instrument(level = "debug", skip(tcx))]
+pub(super) fn check_static_item(
     tcx: TyCtxt<'_>,
     item_id: LocalDefId,
-    ty_span: Span,
-    unsized_handling: UnsizedHandling,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
         let ty = tcx.type_of(item_id).instantiate_identity();
-        let item_ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(item_id)), ty);
+        let item_ty = wfcx.deeply_normalize(DUMMY_SP, Some(WellFormedLoc::Ty(item_id)), ty);
 
-        let forbid_unsized = match unsized_handling {
-            UnsizedHandling::Forbid => true,
-            UnsizedHandling::AllowIfForeignTail => {
-                let tail =
-                    tcx.struct_tail_for_codegen(item_ty, wfcx.infcx.typing_env(wfcx.param_env));
-                !matches!(tail.kind(), ty::Foreign(_))
-            }
+        let is_foreign_item = tcx.is_foreign_item(item_id);
+
+        let forbid_unsized = !is_foreign_item || {
+            let tail = tcx.struct_tail_for_codegen(item_ty, wfcx.infcx.typing_env(wfcx.param_env));
+            !matches!(tail.kind(), ty::Foreign(_))
         };
 
-        wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
+        wfcx.register_wf_obligation(DUMMY_SP, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
         if forbid_unsized {
+            let span = tcx.def_span(item_id);
             wfcx.register_bound(
                 traits::ObligationCause::new(
-                    ty_span,
+                    span,
                     wfcx.body_def_id,
                     ObligationCauseCode::SizedConstOrStatic,
                 ),
                 wfcx.param_env,
                 item_ty,
-                tcx.require_lang_item(LangItem::Sized, ty_span),
+                tcx.require_lang_item(LangItem::Sized, span),
             );
         }
 
         // Ensure that the end result is `Sync` in a non-thread local `static`.
         let should_check_for_sync = tcx.static_mutability(item_id.to_def_id())
             == Some(hir::Mutability::Not)
-            && !tcx.is_foreign_item(item_id.to_def_id())
+            && !is_foreign_item
             && !tcx.is_thread_local_static(item_id.to_def_id());
 
         if should_check_for_sync {
+            let span = tcx.def_span(item_id);
             wfcx.register_bound(
                 traits::ObligationCause::new(
-                    ty_span,
+                    span,
                     wfcx.body_def_id,
                     ObligationCauseCode::SharedStatic,
                 ),
                 wfcx.param_env,
                 item_ty,
-                tcx.require_lang_item(LangItem::Sync, ty_span),
+                tcx.require_lang_item(LangItem::Sync, span),
             );
         }
         Ok(())

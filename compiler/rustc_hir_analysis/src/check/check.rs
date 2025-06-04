@@ -729,7 +729,7 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 }
 
-pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let generics = tcx.generics_of(def_id);
 
     for param in &generics.own_params {
@@ -757,6 +757,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         DefKind::Static { .. } => {
             check_static_inhabited(tcx, def_id);
             check_static_linkage(tcx, def_id);
+            wfcheck::check_static_item(tcx, def_id)?;
         }
         DefKind::Const => {}
         DefKind::Enum => {
@@ -774,13 +775,10 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         DefKind::Impl { of_trait } => {
             if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
-                if tcx
-                    .ensure_ok()
-                    .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id)
-                    .is_ok()
-                {
-                    check_impl_items_against_trait(tcx, def_id, impl_trait_header);
-                }
+                tcx.ensure_ok()
+                    .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id)?;
+
+                check_impl_items_against_trait(tcx, def_id, impl_trait_header);
             }
         }
         DefKind::Trait => {
@@ -838,7 +836,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         DefKind::ForeignMod => {
             let it = tcx.hir_expect_item(def_id);
             let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
-                return;
+                return Ok(());
             };
 
             check_abi(tcx, it.hir_id(), it.span, abi);
@@ -896,6 +894,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         _ => {}
     }
+    Ok(())
 }
 
 pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, def_id: LocalDefId) {
