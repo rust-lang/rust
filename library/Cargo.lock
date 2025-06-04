@@ -196,7 +196,6 @@ name = "panic_abort"
 version = "0.0.0"
 dependencies = [
  "alloc",
- "compiler_builtins",
  "core",
  "libc",
 ]
@@ -207,7 +206,6 @@ version = "0.0.0"
 dependencies = [
  "alloc",
  "cfg-if",
- "compiler_builtins",
  "core",
  "libc",
  "unwind",
@@ -396,7 +394,6 @@ name = "unwind"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
- "compiler_builtins",
  "core",
  "libc",
  "unwinding",
