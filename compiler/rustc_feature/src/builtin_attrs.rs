@@ -321,14 +321,14 @@ macro_rules! rustc_attr {
             $tpl,
             $duplicate,
             $encode_cross_crate,
-            [concat!(
+            concat!(
                 "the `#[",
                 stringify!($attr),
                 "]` attribute is used for rustc unit tests"
-            )],
+            ),
         )
     };
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr,[$($notes:expr),*] $(,)?) => {
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $($notes:expr),* $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
@@ -349,16 +349,6 @@ macro_rules! rustc_attr {
                     ]
             },
         }
-    };
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $($note: expr)?  $(,)?) => {
-        rustc_attr!(
-            $attr,
-            $typ,
-            $tpl,
-            $duplicates,
-            $encode_cross_crate,
-            [$($note)?]
-        )
     };
 }
 
@@ -650,7 +640,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Probably temporary component of min_generic_const_args.
-    // `#[type_const]` const ASSOC: usize;`
+    // `#[type_const]` const ASSOC: usize;
     gated!(
         type_const, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
@@ -954,10 +944,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::Yes,
-        ["the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document \
+        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document \
         guaranteed niche optimizations in the standard library",
         "the compiler does not even check whether the type indeed is being non-null-optimized; \
-        it is your responsibility to ensure that the attribute is only used on types that are optimized"],
+        it is your responsibility to ensure that the attribute is only used on types that are optimized",
     ),
 
     // ==========================================================================
