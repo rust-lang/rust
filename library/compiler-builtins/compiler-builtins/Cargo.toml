@@ -24,9 +24,6 @@ core = { version = "1.0.1", optional = true, package = "rustc-std-workspace-core
 [build-dependencies]
 cc = { optional = true, version = "1.2" }
 
-[dev-dependencies]
-panic-handler = { path = "../crates/panic-handler" }
-
 [features]
 default = ["compiler-builtins"]
 
