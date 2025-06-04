@@ -380,12 +380,34 @@ impl ExitStatusExt for process::ExitStatusError {
 
 #[unstable(feature = "unix_send_signal", issue = "141975")]
 pub trait ChildExt: Sealed {
-    fn send_signal(&mut self, signal: i32) -> io::Result<()>;
+    /// Sends a signal to a child process.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the signal is invalid. The integer values associated
+    /// with signals are implemenation-specific, so the use of [`libc`] is encouraged.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(unix_send_signal)]
+    ///
+    /// use std::{io, os::unix::process::ChildExt, process::{Command, Stdio}};
+    ///
+    /// use libc::SIGTERM;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let child = Command::new("cat").stdin(Stdio::piped()).spawn()?;
+    ///     child.send_signal(SIGTERM)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    fn send_signal(&self, signal: i32) -> io::Result<()>;
 }
 
 #[unstable(feature = "unix_send_signal", issue = "141975")]
 impl ChildExt for process::Child {
-    fn send_signal(&mut self, signal: i32) -> io::Result<()> {
+    fn send_signal(&self, signal: i32) -> io::Result<()> {
         self.handle.send_signal(signal)
     }
 }

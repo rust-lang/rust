@@ -967,7 +967,7 @@ impl Process {
         self.send_signal(libc::SIGKILL)
     }
 
-    pub(crate) fn send_signal(&mut self, signal: i32) -> io::Result<()> {
+    pub(crate) fn send_signal(&self, signal: i32) -> io::Result<()> {
         // If we've already waited on this process then the pid can be recycled
         // and used for another process, and we probably shouldn't be signaling
         // random processes, so return Ok because the process has exited already.
