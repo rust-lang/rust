@@ -424,7 +424,9 @@ pub struct Config {
     /// Cache for determining path modifications
     pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
 
-    /// Skip checking std if `rust.download-rustc` isn't available, mostly for RA
+    /// Skip checking the standard library if `rust.download-rustc` isn't available.
+    /// This is mostly for RA as building the stage1 compiler to check the library tree
+    /// on each code change might be too much for some computers.
     pub skip_std_check_if_no_download_rustc: bool,
 }
 
