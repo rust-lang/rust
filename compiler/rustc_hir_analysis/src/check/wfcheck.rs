@@ -7,7 +7,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AmbigArg, ItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
@@ -2402,8 +2402,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     }
 }
 
-fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), ErrorGuaranteed> {
-    let items = tcx.hir_module_items(module);
+fn check_type_wf(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
+    let items = tcx.hir_crate_items(());
     let res = items
         .par_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id))
         .and(items.par_impl_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
@@ -2412,9 +2412,8 @@ fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), Error
             items.par_foreign_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)),
         )
         .and(items.par_opaques(|item| tcx.ensure_ok().check_well_formed(item)));
-    if module == LocalModDefId::CRATE_DEF_ID {
-        super::entry::check_for_entry_fn(tcx);
-    }
+    super::entry::check_for_entry_fn(tcx);
+
     res
 }
 
@@ -2552,5 +2551,5 @@ struct RedundantLifetimeArgsLint<'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_type_wf, check_well_formed, ..*providers };
+    *providers = Providers { check_type_wf, check_well_formed, ..*providers };
 }
