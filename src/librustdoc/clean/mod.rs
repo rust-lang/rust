@@ -115,9 +115,16 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         let import = cx.tcx.hir_expect_item(*local_import_id);
         match import.kind {
             hir::ItemKind::Use(path, kind) => {
-                //let hir::UsePath { segments, span, .. } = *path;
-                //let path = hir::Path { segments, res: *res, span };
-                clean_use_statement(import, Some(name), &path, kind, cx, &mut Default::default())
+                let hir::UsePath { segments, span, .. } = *path;
+                let path = hir::Path { segments, res: *res, span };
+                clean_use_statement_inner(
+                    import,
+                    Some(name),
+                    &path,
+                    kind,
+                    cx,
+                    &mut Default::default(),
+                )
             }
             _ => unreachable!(),
         }
