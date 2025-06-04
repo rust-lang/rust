@@ -31,6 +31,7 @@ const CRATE_NAME: &str = "crate_variant_ty";
 fn test_def_tys() -> ControlFlow<()> {
     check_adt_mono();
     check_adt_poly();
+    check_adt_poly2();
 
     ControlFlow::Continue(())
 }
@@ -57,6 +58,26 @@ fn check_adt_mono() {
 
 fn check_adt_poly() {
     let poly = get_fn("poly").expect_body();
+
+    check_statement_is_aggregate_assign(
+        &poly.blocks[0].statements[0],
+        0,
+        RigidTy::Int(IntTy::Isize),
+    );
+    check_statement_is_aggregate_assign(
+        &poly.blocks[1].statements[0],
+        1,
+        RigidTy::Int(IntTy::Isize),
+    );
+    check_statement_is_aggregate_assign(
+        &poly.blocks[2].statements[0],
+        2,
+        RigidTy::Int(IntTy::Isize),
+    );
+}
+
+fn check_adt_poly2() {
+    let poly = get_fn("poly2").expect_body();
 
     check_statement_is_aggregate_assign(
         &poly.blocks[0].statements[0],
@@ -135,6 +156,8 @@ fn generate_input(path: &str) -> std::io::Result<()> {
 
         pub fn main() {{
             mono();
+            poly();
+            poly2::<i32>(1);
         }}
 
         fn mono() {{
@@ -147,6 +170,12 @@ fn generate_input(path: &str) -> std::io::Result<()> {
             black_box(Poly::<i32>::A);
             black_box(Poly::B(1i32));
             black_box(Poly::C {{ t: 1i32 }});
+        }}
+
+        fn poly2<T: Copy>(t: T) {{
+            black_box(Poly::<T>::A);
+            black_box(Poly::B(t));
+            black_box(Poly::C {{ t: t }});
         }}
     "#
     )?;
