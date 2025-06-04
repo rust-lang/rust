@@ -275,6 +275,17 @@ fn test_any() {
 }
 
 #[test]
+fn test_iterator_contains() {
+    let v: Box<[isize]> = Box::new([1, 2, 3, 4, 5]);
+    assert_eq!(true, v.iter().contains(&3));
+    assert_eq!(v.iter().contains(&3), v.iter().any(|&x| x == 3));
+    assert_eq!(false, v.iter().contains(&10));
+    assert_eq!(v.iter().contains(&10), v.iter().any(|&x| x == 10));
+    assert_eq!(true, Iterator::contains(&mut (1isize..=5), 3));
+    assert_eq!(false, Iterator::contains(&mut (1isize..=5), 10));
+}
+
+#[test]
 fn test_find() {
     let v: &[isize] = &[1, 3, 9, 27, 103, 14, 11];
     assert_eq!(*v.iter().find(|&&x| x & 1 == 0).unwrap(), 14);
