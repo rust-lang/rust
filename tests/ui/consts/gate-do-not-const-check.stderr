@@ -6,7 +6,7 @@ LL | #[rustc_do_not_const_check]
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `#[rustc_do_not_const_check]` attribute is an internal implementation detail that will never be stable
-   = note: `#[rustc_do_not_const_check] skips const-check for this function's body.It will always get replaced during CTFE
+   = note: `#[rustc_do_not_const_check]` skips const-check for this function's body
 
 error: aborting due to 1 previous error
 

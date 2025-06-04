@@ -350,7 +350,7 @@ macro_rules! rustc_attr {
             },
         }
     };
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr,  $($note: expr)?  $(,)?) => {
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $($note: expr)?  $(,)?) => {
         rustc_attr!(
             $attr,
             $typ,
@@ -650,7 +650,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Probably temporary component of min_generic_const_args.
-    // `#[type_const] const ASSOC: usize;`
+    // `#[type_const]` const ASSOC: usize;`
     gated!(
         type_const, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
@@ -705,7 +705,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_deprecated_safe_2024, Normal, template!(List: r#"audit_that = "...""#),
         ErrorFollowing, EncodeCrossCrate::Yes,
-        "`#[rustc_deprecated_safe_2024] is used to declare functions unsafe across the edition 2024 boundary",
+        "`#[rustc_deprecated_safe_2024]` is used to declare functions unsafe across the edition 2024 boundary",
     ),
     rustc_attr!(
         rustc_pub_transparent, Normal, template!(Word),
@@ -849,7 +849,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             NameValueStr: "message"
         ),
         ErrorFollowing, EncodeCrossCrate::Yes,
-        "see `#[diagnostic::on_unimplemented] for the stable equivalent of this attribute"
+        "see `#[diagnostic::on_unimplemented]` for the stable equivalent of this attribute"
     ),
     rustc_attr!(
         rustc_confusables, Normal,
@@ -912,8 +912,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Do not const-check this function's body. It will always get replaced during CTFE.
     rustc_attr!(
         rustc_do_not_const_check, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::Yes, "`#[rustc_do_not_const_check] skips const-check for this function's body.\
-        It will always get replaced during CTFE",
+        EncodeCrossCrate::Yes, "`#[rustc_do_not_const_check]` skips const-check for this function's body",
     ),
     rustc_attr!(
         rustc_const_panic_str, Normal, template!(Word), WarnFollowing,
@@ -989,7 +988,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
-        "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
+        "`#![rustc_coherence_is_core]` allows inherent methods on builtin types, only intended to be used in `core`."
     ),
     rustc_attr!(
         rustc_coinductive, AttributeType::Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
@@ -1112,7 +1111,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
-        "#[rustc_force_inline] forces a free function to be inlined"
+        "`#[rustc_force_inline]` forces a free function to be inlined"
     ),
 
     // ==========================================================================
