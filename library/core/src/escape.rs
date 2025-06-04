@@ -181,10 +181,12 @@ pub(crate) struct MaybeEscaped;
 pub(crate) struct EscapeIterInner<const N: usize, ESCAPING> {
     // Invariant:
     //
-    // If `alive.end <= Self::LITERAL_ESCAPE_START`, `data.escape_seq` must be valid and
-    // contain printable ASCII characters in the `alive` range.
-    // If `alive.end > Self::LITERAL_ESCAPE_START`, `data.literal` must be valid and
-    // the `alive` range must have a length of at most `1`.
+    // If `alive.end <= Self::LITERAL_ESCAPE_START`, `data` must contain
+    // printable ASCII characters in the `alive` range of its `escape_seq` variant.
+    //
+    // If `alive.end > Self::LITERAL_ESCAPE_START`, `data` must contain a
+    // `char` in its `literal` variant, and the `alive` range must have a
+    // length of at most `1`.
     data: MaybeEscapedCharacter<N>,
     alive: Range<u8>,
     escaping: PhantomData<ESCAPING>,
@@ -298,8 +300,10 @@ impl<const N: usize> EscapeIterInner<N, AlwaysEscaped> {
 }
 
 impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
-    // This is the only way to create any `EscapeIterInner` with `self.data.literal`, meaning
-    // the `AlwaysEscaped` marker guarantees that `self.data.escape_seq` is valid.
+    // This is the only way to create any `EscapeIterInner` containing a `char` in
+    // the `literal` variant of its `self.data`, meaning the `AlwaysEscaped` marker
+    // guarantees that `self.data` contains printable ASCII characters in its
+    // `escape_seq` variant.
     pub(crate) const fn printable(c: char) -> Self {
         Self {
             data: MaybeEscapedCharacter { literal: c },
