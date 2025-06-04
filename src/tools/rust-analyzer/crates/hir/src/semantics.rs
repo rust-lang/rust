@@ -892,7 +892,7 @@ impl<'db> SemanticsImpl<'db> {
 
         if first == last {
             // node is just the token, so descend the token
-            self.descend_into_macros_impl(
+            self.descend_into_macros_all(
                 InFile::new(file.file_id, first),
                 false,
                 &mut |InFile { value, .. }, _ctx| {
@@ -903,23 +903,19 @@ impl<'db> SemanticsImpl<'db> {
                     {
                         res.push(node)
                     }
-                    CONTINUE_NO_BREAKS
                 },
             );
         } else {
             // Descend first and last token, then zip them to look for the node they belong to
             let mut scratch: SmallVec<[_; 1]> = smallvec![];
-            self.descend_into_macros_impl(
+            self.descend_into_macros_all(
                 InFile::new(file.file_id, first),
                 false,
-                &mut |token, _ctx| {
-                    scratch.push(token);
-                    CONTINUE_NO_BREAKS
-                },
+                &mut |token, _ctx| scratch.push(token),
             );
 
             let mut scratch = scratch.into_iter();
-            self.descend_into_macros_impl(
+            self.descend_into_macros_all(
                 InFile::new(file.file_id, last),
                 false,
                 &mut |InFile { value: last, file_id: last_fid }, _ctx| {
@@ -938,17 +934,18 @@ impl<'db> SemanticsImpl<'db> {
                             }
                         }
                     }
-                    CONTINUE_NO_BREAKS
                 },
             );
         }
         res
     }
 
-    pub fn is_inside_macro_call(&self, token: InFile<&SyntaxToken>) -> bool {
-        // FIXME: Maybe `ancestors_with_macros()` is more suitable here? Currently
-        // this is only used on real (not macro) files so this is not a problem.
-        token.value.parent_ancestors().any(|ancestor| {
+    /// Returns true if the given input is within a macro call.
+    ///
+    /// Note that if this token itself is within the context of a macro expansion does not matter.
+    /// That is, we strictly check if it lies inside the input of a macro call.
+    pub fn is_inside_macro_call(&self, token @ InFile { value, .. }: InFile<&SyntaxToken>) -> bool {
+        value.parent_ancestors().any(|ancestor| {
             if ast::MacroCall::can_cast(ancestor.kind()) {
                 return true;
             }
@@ -983,21 +980,17 @@ impl<'db> SemanticsImpl<'db> {
         token: SyntaxToken,
         mut cb: impl FnMut(InFile<SyntaxToken>, SyntaxContext),
     ) {
-        self.descend_into_macros_impl(self.wrap_token_infile(token), false, &mut |t, ctx| {
-            cb(t, ctx);
-            CONTINUE_NO_BREAKS
+        self.descend_into_macros_all(self.wrap_token_infile(token), false, &mut |t, ctx| {
+            cb(t, ctx)
         });
     }
 
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         let mut res = smallvec![];
-        self.descend_into_macros_impl(
+        self.descend_into_macros_all(
             self.wrap_token_infile(token.clone()),
             false,
-            &mut |t, _ctx| {
-                res.push(t.value);
-                CONTINUE_NO_BREAKS
-            },
+            &mut |t, _ctx| res.push(t.value),
         );
         if res.is_empty() {
             res.push(token);
@@ -1011,12 +1004,11 @@ impl<'db> SemanticsImpl<'db> {
     ) -> SmallVec<[InFile<SyntaxToken>; 1]> {
         let mut res = smallvec![];
         let token = self.wrap_token_infile(token);
-        self.descend_into_macros_impl(token.clone(), true, &mut |t, ctx| {
+        self.descend_into_macros_all(token.clone(), true, &mut |t, ctx| {
             if !ctx.is_opaque(self.db) {
                 // Don't descend into opaque contexts
                 res.push(t);
             }
-            CONTINUE_NO_BREAKS
         });
         if res.is_empty() {
             res.push(token);
@@ -1097,6 +1089,18 @@ impl<'db> SemanticsImpl<'db> {
             },
         )
         .unwrap_or(token)
+    }
+
+    fn descend_into_macros_all(
+        &self,
+        token: InFile<SyntaxToken>,
+        always_descend_into_derives: bool,
+        f: &mut dyn FnMut(InFile<SyntaxToken>, SyntaxContext),
+    ) {
+        self.descend_into_macros_impl(token, always_descend_into_derives, &mut |tok, ctx| {
+            f(tok, ctx);
+            CONTINUE_NO_BREAKS
+        });
     }
 
     fn descend_into_macros_impl<T>(
@@ -1467,25 +1471,31 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Iterates the ancestors of the given node, climbing up macro expansions while doing so.
+    // FIXME: Replace with `ancestors_with_macros_file` when all usages are updated.
     pub fn ancestors_with_macros(
         &self,
         node: SyntaxNode,
     ) -> impl Iterator<Item = SyntaxNode> + Clone + '_ {
         let node = self.find_file(&node);
-        iter::successors(Some(node.cloned()), move |&InFile { file_id, ref value }| {
-            match value.parent() {
-                Some(parent) => Some(InFile::new(file_id, parent)),
-                None => {
-                    let macro_file = file_id.macro_file()?;
+        self.ancestors_with_macros_file(node.cloned()).map(|it| it.value)
+    }
 
-                    self.with_ctx(|ctx| {
-                        let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
-                        expansion_info.arg().map(|node| node?.parent()).transpose()
-                    })
-                }
+    /// Iterates the ancestors of the given node, climbing up macro expansions while doing so.
+    pub fn ancestors_with_macros_file(
+        &self,
+        node: InFile<SyntaxNode>,
+    ) -> impl Iterator<Item = InFile<SyntaxNode>> + Clone + '_ {
+        iter::successors(Some(node), move |&InFile { file_id, ref value }| match value.parent() {
+            Some(parent) => Some(InFile::new(file_id, parent)),
+            None => {
+                let macro_file = file_id.macro_file()?;
+
+                self.with_ctx(|ctx| {
+                    let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
+                    expansion_info.arg().map(|node| node?.parent()).transpose()
+                })
             }
         })
-        .map(|it| it.value)
     }
 
     pub fn ancestors_at_offset_with_macros(
