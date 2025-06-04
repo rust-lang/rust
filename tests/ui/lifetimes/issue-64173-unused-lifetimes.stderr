@@ -7,12 +7,6 @@ LL |     beta: [(); foo::<&'a ()>()],
    = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
-error: generic `Self` types are currently not permitted in anonymous constants
-  --> $DIR/issue-64173-unused-lifetimes.rs:4:28
-   |
-LL |     array: [(); size_of::<&Self>()],
-   |                            ^^^^
-
 error[E0392]: lifetime parameter `'s` is never used
   --> $DIR/issue-64173-unused-lifetimes.rs:3:12
    |
@@ -20,6 +14,12 @@ LL | struct Foo<'s> {
    |            ^^ unused lifetime parameter
    |
    = help: consider removing `'s`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/issue-64173-unused-lifetimes.rs:4:28
+   |
+LL |     array: [(); size_of::<&Self>()],
+   |                            ^^^^
 
 error[E0392]: lifetime parameter `'a` is never used
   --> $DIR/issue-64173-unused-lifetimes.rs:15:12
