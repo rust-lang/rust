@@ -1,4 +1,5 @@
 // Regression test for #85794
+//@ edition: 2015
 
 struct Baz {
     inner : dyn fn ()
