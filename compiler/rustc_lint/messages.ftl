@@ -298,8 +298,6 @@ lint_hidden_lifetime_in_path =
 lint_hidden_lifetime_in_path_suggestion =
     indicate the anonymous lifetime
 
-lint_hidden_lifetime_parameters = hidden lifetime parameters in types are deprecated
-
 lint_hidden_unicode_codepoints = unicode codepoint changing visible direction of text present in {$label}
     .label = this {$label} contains {$count ->
         [one] an invisible

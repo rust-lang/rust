@@ -12,7 +12,7 @@
 #![warn(unsafe_code, blerp = "or in league with robbers have reversed the signposts")]
 //~^ ERROR malformed lint attribute
 //~| NOTE bad attribute argument
-#![warn(elided_lifetimes_in_paths, reason("disrespectful to ancestors", "irresponsible to heirs"))]
+#![warn(hidden_lifetimes_in_paths, reason("disrespectful to ancestors", "irresponsible to heirs"))]
 //~^ ERROR malformed lint attribute
 //~| NOTE bad attribute argument
 #![warn(ellipsis_inclusive_range_patterns, reason = "born barren", reason = "a freak growth")]

@@ -12,6 +12,7 @@ static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
     ("let-underscore", "Lints that detect wildcard let bindings that are likely to be invalid"),
     ("rustdoc", "Rustdoc-specific lints"),
     ("rust-2018-idioms", "Lints to nudge you toward idiomatic features of Rust 2018"),
+    ("hidden-lifetimes-in-paths", "Lints that detect the use of hidden lifetime parameters"),
     ("nonstandard-style", "Violation of standard naming conventions"),
     ("future-incompatible", "Lints that detect code that has future-compatibility problems"),
     ("rust-2018-compatibility", "Lints used to transition code from the 2015 edition to 2018"),

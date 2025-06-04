@@ -82,10 +82,9 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(hidden_lifetimes_in_input_paths)]
-    ///
     /// struct ContainsLifetime<'a>(&'a i32);
     ///
+    /// #[deny(hidden_lifetimes_in_input_paths)]
     /// fn foo(x: ContainsLifetime) {}
     /// ```
     ///
@@ -117,10 +116,9 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(hidden_lifetimes_in_output_paths)]
-    ///
     /// struct ContainsLifetime<'a>(&'a i32);
     ///
+    /// #[deny(hidden_lifetimes_in_output_paths)]
     /// fn foo(x: &i32) -> ContainsLifetime {
     ///     ContainsLifetime(x)
     /// }
@@ -749,10 +747,9 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(hidden_lifetimes_in_type_paths)]
-    ///
     /// struct ContainsLifetime<'a>(&'a i32);
     ///
+    /// #[deny(hidden_lifetimes_in_type_paths)]
     /// static FOO: ContainsLifetime = ContainsLifetime(&42);
     /// ```
     ///
