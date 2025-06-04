@@ -1,3 +1,14 @@
+error: type parameter `T` is only used recursively
+  --> $DIR/issue-105231.rs:1:15
+   |
+LL | struct A<T>(B<T>);
+   |          -    ^
+   |          |
+   |          type parameter must be used non-recursively in the definition
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
 error[E0072]: recursive types `A` and `B` have infinite size
   --> $DIR/issue-105231.rs:1:1
    |
@@ -14,17 +25,6 @@ LL |
 LL |
 LL ~ struct B<T>(Box<A<A<T>>>);
    |
-
-error: type parameter `T` is only used recursively
-  --> $DIR/issue-105231.rs:1:15
-   |
-LL | struct A<T>(B<T>);
-   |          -    ^
-   |          |
-   |          type parameter must be used non-recursively in the definition
-   |
-   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
-   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
 error: type parameter `T` is only used recursively
   --> $DIR/issue-105231.rs:4:17
