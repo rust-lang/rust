@@ -4,6 +4,5 @@
 impl<T> Loop<T> {} //~ ERROR the type parameter `T` is not constrained
 
 type Loop<T> = Loop<T>; //~ ERROR overflow
-//~^ ERROR: `T` is only used recursively
 
 fn main() {}

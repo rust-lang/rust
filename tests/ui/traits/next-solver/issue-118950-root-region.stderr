@@ -14,10 +14,10 @@ LL | #![feature(lazy_type_alias)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0277]: the trait bound `*const T: ToUnit<'a>` is not satisfied
-  --> $DIR/issue-118950-root-region.rs:14:21
+  --> $DIR/issue-118950-root-region.rs:14:1
    |
 LL | type Assoc<'a, T> = <*const T as ToUnit<'a>>::Unit;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `ToUnit<'a>` is not implemented for `*const T`
+   | ^^^^^^^^^^^^^^^^^ the trait `ToUnit<'a>` is not implemented for `*const T`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/issue-118950-root-region.rs:8:1
