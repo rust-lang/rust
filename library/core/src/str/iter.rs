@@ -332,6 +332,14 @@ impl Iterator for Bytes<'_> {
     }
 
     #[inline]
+    fn contains<Q>(&mut self, item: Q) -> bool
+    where
+        Q: PartialEq<Self::Item> + ?Sized,
+    {
+        self.0.contains(item)
+    }
+
+    #[inline]
     fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         P: FnMut(&Self::Item) -> bool,
