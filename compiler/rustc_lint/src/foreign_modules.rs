@@ -366,14 +366,14 @@ fn structurally_same_type_impl<'tcx>(
                 // An Adt and a primitive or pointer type. This can be FFI-safe if non-null
                 // enum layout optimisation is being applied.
                 (ty::Adt(..) | ty::Pat(..), _) if is_primitive_or_pointer(b) => {
-                    if let Some(a_inner) = types::repr_nullable_ptr(tcx, typing_env, a, false) {
+                    if let Some(a_inner) = types::repr_nullable_ptr(tcx, typing_env, a) {
                         a_inner == b
                     } else {
                         false
                     }
                 }
                 (_, ty::Adt(..) | ty::Pat(..)) if is_primitive_or_pointer(a) => {
-                    if let Some(b_inner) = types::repr_nullable_ptr(tcx, typing_env, b, false) {
+                    if let Some(b_inner) = types::repr_nullable_ptr(tcx, typing_env, b) {
                         b_inner == a
                     } else {
                         false

@@ -78,7 +78,7 @@ extern "C" {
     pub fn char_type(p: char); //~ ERROR uses type `char`
     pub fn i128_type(p: i128); //~ ERROR uses type `i128`
     pub fn u128_type(p: u128); //~ ERROR uses type `u128`
-    pub fn pat_type1() -> pattern_type!(u32 is 1..); //~ ERROR uses type `(u32) is 1..`
+    pub fn pat_type1() -> pattern_type!(u32 is 1..);
     pub fn pat_type2(p: pattern_type!(u32 is 1..)); // no error!
     pub fn trait_type(p: &dyn Bar); //~ ERROR uses type `&dyn Bar`
     pub fn tuple_type(p: (i32, i32)); //~ ERROR uses type `(i32, i32)`
@@ -148,7 +148,6 @@ static EXPORTED_STATIC_BAD: &'static str = "is this reaching you, plugin?";
 //~^ ERROR: uses type `&str`
 #[export_name="EXPORTED_STATIC_MUT_BUT_RENAMED"]
 static mut EXPORTED_STATIC_MUT: &u32 = &DEFAULT_U32;
-//~^ ERROR: uses type `&u32`
 
 #[cfg(not(target_arch = "wasm32"))]
 extern "C" {

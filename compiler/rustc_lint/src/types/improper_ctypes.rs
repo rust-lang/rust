@@ -4,7 +4,6 @@ use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_abi::{Integer, IntegerType, VariantIdx};
-use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::def::CtorKind;
@@ -436,9 +435,6 @@ mod CTypesVisitorStateFlags {
     /// for times where we are only defining the type of something
     /// (struct/enum/union definitions, FnPtrs)
     pub(super) const THEORETICAL: u8 = 0b010000;
-    /// if we are looking at an interface where the value can be set by the non-rust side
-    /// (important for e.g. nonzero assumptions)
-    pub(super) const FOREIGN_VALUES: u8 = 0b100000;
 }
 
 #[repr(u8)]
@@ -446,21 +442,14 @@ mod CTypesVisitorStateFlags {
 enum CTypesVisitorState {
     None = CTypesVisitorStateFlags::NO_FLAGS,
     // uses bitflags from CTypesVisitorStateFlags
-    StaticTy = CTypesVisitorStateFlags::STATIC | CTypesVisitorStateFlags::FOREIGN_VALUES,
+    StaticTy = CTypesVisitorStateFlags::STATIC,
     ExportedStaticTy = CTypesVisitorStateFlags::STATIC | CTypesVisitorStateFlags::DEFINED,
-    ExportedStaticMutTy = CTypesVisitorStateFlags::STATIC
-        | CTypesVisitorStateFlags::DEFINED
-        | CTypesVisitorStateFlags::FOREIGN_VALUES,
-    ArgumentTyInDefinition = CTypesVisitorStateFlags::FUNC
-        | CTypesVisitorStateFlags::DEFINED
-        | CTypesVisitorStateFlags::FOREIGN_VALUES,
+    ArgumentTyInDefinition = CTypesVisitorStateFlags::FUNC | CTypesVisitorStateFlags::DEFINED,
     ReturnTyInDefinition = CTypesVisitorStateFlags::FUNC
         | CTypesVisitorStateFlags::FN_RETURN
         | CTypesVisitorStateFlags::DEFINED,
     ArgumentTyInDeclaration = CTypesVisitorStateFlags::FUNC,
-    ReturnTyInDeclaration = CTypesVisitorStateFlags::FUNC
-        | CTypesVisitorStateFlags::FN_RETURN
-        | CTypesVisitorStateFlags::FOREIGN_VALUES,
+    ReturnTyInDeclaration = CTypesVisitorStateFlags::FUNC | CTypesVisitorStateFlags::FN_RETURN,
     ArgumentTyInFnPtr = CTypesVisitorStateFlags::FUNC | CTypesVisitorStateFlags::THEORETICAL,
     ReturnTyInFnPtr = CTypesVisitorStateFlags::FUNC
         | CTypesVisitorStateFlags::THEORETICAL
@@ -509,27 +498,6 @@ impl CTypesVisitorState {
         use CTypesVisitorStateFlags::*;
         // rust-defined functions, as well as FnPtrs
         ((self as u8) & THEORETICAL) != 0 || self.is_in_defined_function()
-    }
-
-    /// whether the value for that type might come from the non-rust side of a FFI boundary
-    /// this is particularly useful for non-raw pointers, since rust assume they are non-null
-    fn value_may_be_unchecked(self) -> bool {
-        // function definitions are assumed to be maybe-not-rust-caller, rust-callee
-        // function declarations are assumed to be rust-caller, non-rust-callee
-        // 4 cases for function pointers:
-        // - rust caller, rust callee: everything comes from rust
-        // - non-rust-caller, non-rust callee: declaring invariants that are not valid
-        //   is suboptimal, but ultimately not our problem
-        // - non-rust-caller, rust callee: there will be a function declaration somewhere,
-        //   let's assume it will raise the appropriate warning in our stead
-        // - rust caller, non-rust callee: it's possible that the function is a callback,
-        //   not something from a pre-declared API.
-        // so, in theory, we need to care about the function return being possibly non-rust-controlled.
-        // sadly, we need to ignore this because making pointers out of rust-defined functions
-        // would force to systematically cast or overwrap their return types...
-        // FIXME: is there anything better we can do here?
-        use CTypesVisitorStateFlags::*;
-        ((self as u8) & FOREIGN_VALUES) != 0
     }
 }
 
@@ -704,7 +672,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_indirection(
         &self,
         state: CTypesVisitorState,
-        outer_ty: Option<Ty<'tcx>>,
         ty: Ty<'tcx>,
         inner_ty: Ty<'tcx>,
         indirection_type: IndirectionType,
@@ -745,7 +712,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // - is the pointee FFI-safe? (it might not matter, see mere lines below)
         // - does the pointer type contain a non-zero assumption, but has a value given by non-rust code?
         // this block deals with the first two.
-        let mut ffi_res = match get_type_sizedness(self.cx, inner_ty) {
+        match get_type_sizedness(self.cx, inner_ty) {
             TypeSizedness::UnsizedWithExternType | TypeSizedness::Definite => {
                 // FIXME:
                 // for now, we consider this to be safe even in the case of a FFI-unsafe pointee
@@ -783,35 +750,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 };
                 return FfiResult::new_with_reason(ty, reason, help);
             }
-        };
-
-        // and now the third concern (does the pointer type contain a non-zero assumption, and is the value given by non-rust code?)
-        // technically, pointers with non-rust-given values could also be misaligned, pointing to the wrong thing, or outright dangling, but we assume they never are
-        ffi_res += if state.value_may_be_unchecked() {
-            let has_nonnull_assumption = match indirection_type {
-                IndirectionType::RawPtr => false,
-                IndirectionType::Ref | IndirectionType::Box => true,
-            };
-            let has_optionlike_wrapper = if let Some(outer_ty) = outer_ty {
-                super::is_outer_optionlike_around_ty(self.cx, outer_ty, ty)
-            } else {
-                false
-            };
-
-            if has_nonnull_assumption && !has_optionlike_wrapper {
-                FfiResult::new_with_reason(
-                    ty,
-                    fluent::lint_improper_ctypes_ptr_validity_reason,
-                    Some(fluent::lint_improper_ctypes_ptr_validity_help),
-                )
-            } else {
-                FfiResult::FfiSafe
-            }
-        } else {
-            FfiResult::FfiSafe
-        };
-
-        ffi_res
+        }
     }
 
     /// Checks if the given `VariantDef`'s field types are "ffi-safe".
@@ -1062,12 +1001,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             && def.repr().int.is_none()
         {
             // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
-            if let Some(inner_ty) = repr_nullable_ptr(
-                self.cx.tcx,
-                self.cx.typing_env(),
-                ty,
-                state.value_may_be_unchecked(),
-            ) {
+            if let Some(inner_ty) = repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty) {
                 return self.visit_type(state, Some(ty), inner_ty);
             }
 
@@ -1158,13 +1092,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match *ty.kind() {
             ty::Adt(def, args) => {
                 if let Some(inner_ty) = ty.boxed_ty() {
-                    return self.visit_indirection(
-                        state,
-                        outer_ty,
-                        ty,
-                        inner_ty,
-                        IndirectionType::Box,
-                    );
+                    return self.visit_indirection(state, ty, inner_ty, IndirectionType::Box);
                 }
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
@@ -1186,56 +1114,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
             }
 
-            ty::Pat(pat_ty, pat) => {
+            ty::Pat(pat_ty, _) => {
                 #[cfg(debug_assertions)]
                 if !matches!(pat_ty.kind(), ty::Int(..) | ty::Uint(..) | ty::Float(..) | ty::Char) {
                     bug!(
                         "this lint was written when pattern types could only be integers constrained to ranges"
                     )
                 }
-
-                let mut ffires = self.visit_numeric(pat_ty);
-                if state.value_may_be_unchecked() {
-                    // if the pattern type's value can come from non-rust code,
-                    // ensure all values of `pat_ty` are accounted for
-
-                    if matches!(
-                        outer_ty.map(|outer_ty| super::is_outer_optionlike_around_ty(
-                            self.cx, outer_ty, ty
-                        )),
-                        Some(true)
-                    ) {
-                        // if this is the case, then super::get_pat_disallowed_value_count has been called already
-                        // for the optionlike wrapper, and had returned 2 or more disallowed values
-                        debug_assert!(
-                            matches!(super::get_pat_disallowed_value_count(pat), Some(i) if i != 1)
-                        );
-                        ffires += FfiResult::new_with_reason(
-                            ty,
-                            fluent::lint_improper_ctypes_pat_int2_reason,
-                            Some(fluent::lint_improper_ctypes_pat_int2_help),
-                        );
-                    } else {
-                        match super::get_pat_disallowed_value_count(pat) {
-                            None => {}
-                            Some(1) => {
-                                ffires += FfiResult::new_with_reason(
-                                    ty,
-                                    fluent::lint_improper_ctypes_pat_int1_reason,
-                                    Some(fluent::lint_improper_ctypes_pat_int1_help),
-                                );
-                            }
-                            Some(_) => {
-                                ffires += FfiResult::new_with_reason(
-                                    ty,
-                                    fluent::lint_improper_ctypes_pat_int2_reason,
-                                    Some(fluent::lint_improper_ctypes_pat_int2_help),
-                                );
-                            }
-                        }
-                    }
-                }
-                ffires
+                self.visit_numeric(pat_ty)
             }
 
             // types which likely have a stable representation, depending on the target architecture
@@ -1316,16 +1202,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::RawPtr(inner_ty, _) => {
-                return self.visit_indirection(
-                    state,
-                    outer_ty,
-                    ty,
-                    inner_ty,
-                    IndirectionType::RawPtr,
-                );
+                return self.visit_indirection(state, ty, inner_ty, IndirectionType::RawPtr);
             }
             ty::Ref(_, inner_ty, _) => {
-                return self.visit_indirection(state, outer_ty, ty, inner_ty, IndirectionType::Ref);
+                return self.visit_indirection(state, ty, inner_ty, IndirectionType::Ref);
             }
 
             ty::Array(inner_ty, _) => {
@@ -1352,7 +1232,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // as a result, don't go into them when scanning for the safety of something else
             ty::FnPtr(sig_tys, hdr) => {
                 let sig = sig_tys.with(hdr);
-                let inherent_safety = if sig.abi().is_rustic_abi() {
+                if sig.abi().is_rustic_abi() {
                     FfiResult::new_with_reason(
                         ty,
                         fluent::lint_improper_ctypes_fnptr_reason,
@@ -1360,21 +1240,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     )
                 } else {
                     FfiSafe
-                };
-
-                if let (Some(outer_ty), true) = (outer_ty, state.value_may_be_unchecked()) {
-                    if !super::is_outer_optionlike_around_ty(self.cx, outer_ty, ty) {
-                        inherent_safety
-                            + FfiResult::new_with_reason(
-                                ty,
-                                fluent::lint_improper_ctypes_ptr_validity_reason,
-                                Some(fluent::lint_improper_ctypes_ptr_validity_help),
-                            )
-                    } else {
-                        inherent_safety
-                    }
-                } else {
-                    inherent_safety
                 }
             }
 
@@ -1650,21 +1515,10 @@ impl ImproperCTypesLint {
     }
 
     /// Check that a `#[no_mangle]`/`#[export_name = _]` static variable is of a ffi-safe type
-    fn check_exported_static<'tcx>(
-        &self,
-        cx: &LateContext<'tcx>,
-        id: hir::OwnerId,
-        span: Span,
-        is_mut: bool,
-    ) {
+    fn check_exported_static<'tcx>(&self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
         let visitor = ImproperCTypesVisitor::new(cx);
-        let state = if is_mut {
-            CTypesVisitorState::ExportedStaticMutTy
-        } else {
-            CTypesVisitorState::ExportedStaticTy
-        };
-        let ffi_res = visitor.check_for_type(state, ty);
+        let ffi_res = visitor.check_for_type(CTypesVisitorState::ExportedStaticTy, ty);
         self.process_ffi_result(cx, span, ffi_res, CItemKind::ExportedStatic);
     }
 
@@ -1851,15 +1705,11 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
                     cx.tcx.type_of(item.owner_id).instantiate_identity(),
                 );
 
-                if let hir::ItemKind::Static(_, _, is_mut, _) = item.kind
+                if let hir::ItemKind::Static(..) = item.kind
                     && (cx.tcx.has_attr(item.owner_id, sym::no_mangle)
                         || cx.tcx.has_attr(item.owner_id, sym::export_name))
                 {
-                    let is_mut = match is_mut {
-                        Mutability::Not => false,
-                        Mutability::Mut => true,
-                    };
-                    self.check_exported_static(cx, item.owner_id, ty.span, is_mut);
+                    self.check_exported_static(cx, item.owner_id, ty.span);
                 }
             }
             // See `check_fn` for declarations, `check_foreign_items` for definitions in extern blocks

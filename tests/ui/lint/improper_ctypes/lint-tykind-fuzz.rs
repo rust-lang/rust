@@ -32,7 +32,7 @@ struct SomeStruct{
 impl SomeStruct{
   extern "C" fn klol(
       // Ref[Struct]
-      &self //~ ERROR: `extern` fn uses type `&SomeStruct`
+      &self
   ){}
 }
 
@@ -88,14 +88,14 @@ pub trait TimesTwo: std::ops::Add<Self> + Sized + Clone
    //}
    extern "C" fn t2_box(
        // Box[Param]
-       self: Box<Self>, //~ ERROR: `extern` fn uses type `Box<Self>`
+       self: Box<Self>,
        // Alias<Projection>
    ) -> <Box<Self> as std::ops::Add<Box<Self>>>::Output {
        self.clone() + self
    }
    extern "C" fn t2_ref(
        // Ref[Param]
-       &self //~ ERROR: `extern` fn uses type `&Self`
+       &self
        // Alias<Projection>
        ) -> <&Self as std::ops::Add<&Self>>::Output {
        self + self
@@ -131,7 +131,7 @@ extern "C" fn all_ty_kinds<'a,const N:usize,T>(
   // also Tuple
   (p2, p3):(u8, u8), //~ ERROR: uses type `(u8, u8)`
   // Pat
-  nz: pattern_type!(u32 is 1..), //~ ERROR: uses type `(u32) is 1..`
+  nz: pattern_type!(u32 is 1..),
   // Struct
   SomeStruct{b:p4,..}: SomeStruct,
   // Union
@@ -182,7 +182,7 @@ extern "C" fn all_ty_kinds_in_ptr<const N:usize, T>(
   // Pat
   nz: *const pattern_type!(u32 is 1..),
   // Ptr[Struct]
-  SomeStruct{b: ref p4,..}: & SomeStruct, //~ ERROR: uses type `&SomeStruct`
+  SomeStruct{b: ref p4,..}: & SomeStruct,
   // Ptr[Union]
   u2: *const SomeUnion,
   // Ptr[Enum],
@@ -268,7 +268,7 @@ extern "C" fn all_ty_kinds_in_box<const N:usize,T>(
   // Box[Str]
   s2: Box<str>, //~ ERROR: uses type `Box<str>`
   // Box[Char]
-  c: Box<char>, //~ ERROR: uses type `Box<char>`
+  c: Box<char>,
   // Box[Slice]
   s3: Box<[u8]>, //~ ERROR: uses type `Box<[u8]>`
   // Box[Array] (this gets caught outside of the code we want to test)
@@ -280,7 +280,7 @@ extern "C" fn all_ty_kinds_in_box<const N:usize,T>(
   // Pat
   nz: Option<Box<pattern_type!(u32 is 1..)>>,
   // Ref[Struct]
-  SomeStruct{b: ref p4,..}: &SomeStruct,  //~ ERROR: uses type `&SomeStruct`
+  SomeStruct{b: ref p4,..}: &SomeStruct,
   // Box[Union]
   u2: Option<Box<SomeUnion>>,
   // Box[Enum],
@@ -294,11 +294,10 @@ extern "C" fn all_ty_kinds_in_box<const N:usize,T>(
   // Box[Struct]
   e3: Box<StructWithDyn>, //~ ERROR: uses type `Box<StructWithDyn>`
   // Box[Never]
-  // (considered FFI-unsafe because of null pointers, not the litteral uninhabited type. smh.)
-  x: Box<!>, //~ ERROR: uses type `Box<!>`
+  x: Box<!>,
   //r1: Box<u8, r2:  Box<u8, r3: Box<u8>,
   // Box[FnPtr]
-  f2: Box<fn(u8)->u8>,  //~ ERROR: uses type `Box<fn(u8) -> u8>`
+  f2: Box<fn(u8)->u8>,
   // Box[Dynamic]
   f3: Box<dyn Fn(u8)->u8>,  //~ ERROR: uses type `Box<dyn Fn(u8) -> u8>`
   // Box[Dynamic]

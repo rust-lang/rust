@@ -4,7 +4,7 @@ use rustc_abi::{BackendRepr, Size, TagEncoding, Variants, WrappingRange};
 use rustc_hir::{Expr, ExprKind, HirId, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
-use rustc_middle::ty::{self, AdtKind, Const, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Const, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
@@ -868,14 +868,13 @@ fn is_niche_optimization_candidate<'tcx>(
 }
 
 /// Check if this enum can be safely exported based on the "nullable pointer optimization". If it
-/// can, return the type that `ty` can be safely converted to/from, otherwise return `None`.
+/// can, return the type that `ty` can be safely converted to, otherwise return `None`.
 /// Currently restricted to function pointers, boxes, references, `core::num::NonZero`,
 /// `core::ptr::NonNull`, `#[repr(transparent)]` newtypes, and int-range pattern types.
 pub(crate) fn repr_nullable_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
-    checked_conversion_is_from: bool,
 ) -> Option<Ty<'tcx>> {
     debug!("is_repr_nullable_ptr(tcx, ty = {:?})", ty);
     match ty.kind() {
@@ -901,17 +900,11 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             };
 
             if let ty::Pat(base, pat) = field_ty.kind() {
-                return if let Some(disallowed) = get_pat_disallowed_value_count(*pat) {
-                    if disallowed != 1 && checked_conversion_is_from {
-                        // if there are values not taken into account by the optionlike Enum
-                        // then we can't safely convert from the base type, only the pattern type
-                        Some(field_ty)
-                    } else {
-                        get_nullable_type_from_pat(tcx, typing_env, *base, *pat)
-                    }
+                if pattern_has_disallowed_values(*pat) || matches!(base.kind(), ty::Char) {
+                    return get_nullable_type_from_pat(tcx, typing_env, *base, *pat);
                 } else {
-                    None
-                };
+                    return None;
+                }
             }
 
             if !ty_is_known_nonnull(tcx, typing_env, field_ty) {
@@ -950,22 +943,13 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             }
             None
         }
-        ty::Pat(base, pat) => {
-            if checked_conversion_is_from && get_pat_disallowed_value_count(*pat).is_some() {
-                // if there are values not taken into account by the pattern (the usual case)
-                // then we can't safely convert from the base type
-                None
-            } else {
-                get_nullable_type_from_pat(tcx, typing_env, *base, *pat)
-            }
-        }
+        ty::Pat(base, pat) => get_nullable_type_from_pat(tcx, typing_env, *base, *pat),
         _ => None,
     }
 }
 
-/// return the number of disallowed values in a pattern type
-/// note that Some(0) actually maps to 2^128 rather than 0
-pub(crate) fn get_pat_disallowed_value_count<'tcx>(pat: ty::Pattern<'tcx>) -> Option<u128> {
+/// returns whether a pattern type actually has disallowed values
+pub(crate) fn pattern_has_disallowed_values<'tcx>(pat: ty::Pattern<'tcx>) -> bool {
     // note the logic in this function assumes that signed ints use one's complement representation,
     // which I believe is a requirement for rust
 
@@ -1028,17 +1012,7 @@ pub(crate) fn get_pat_disallowed_value_count<'tcx>(pat: ty::Pattern<'tcx>) -> Op
                 (0, scalar_size.unsigned_int_max())
             };
 
-            if (start.to_bits(scalar_size), end.to_bits(scalar_size)) == (scalar_min, scalar_max) {
-                return None;
-            }
-
-            // note: allow overflow here because negative values are allowed in the scalars represented here
-            let allowed_value_count_minus1 =
-                u128::overflowing_sub(end.to_bits(scalar_size), start.to_bits(scalar_size)).0
-                    & scalar_size.unsigned_int_max();
-            let disallowed_value_count =
-                u128::overflowing_sub(scalar_size.unsigned_int_max(), allowed_value_count_minus1).0;
-            Some(disallowed_value_count)
+            (start.to_bits(scalar_size), end.to_bits(scalar_size)) != (scalar_min, scalar_max)
         }
         ty::PatternKind::Or(patterns) => {
             // first, get a simplified an sorted view of the ranges
@@ -1077,8 +1051,6 @@ pub(crate) fn get_pat_disallowed_value_count<'tcx>(pat: ty::Pattern<'tcx>) -> Op
             // (`prev_tail` is the highest value currently accounted for by the ranges,
             // unless the first range has not been dealt with yet)
             let mut prev_tail = scalar_max;
-            let mut disallowed_value_count = 0_u128;
-            let mut only_had_overlaps = true;
 
             for (range_i, (start, end)) in ranges.into_iter().enumerate() {
                 let (start, end) = (start.to_bits(scalar_size), end.to_bits(scalar_size));
@@ -1109,28 +1081,11 @@ pub(crate) fn get_pat_disallowed_value_count<'tcx>(pat: ty::Pattern<'tcx>) -> Op
                         prev_tail = u128::max(prev_tail, end)
                     }
                 } else {
-                    // no range overlap: first, add the newfound disallowed values to the count
-                    only_had_overlaps = false;
-                    let new_gap = u128::overflowing_sub(
-                        start,
-                        u128::overflowing_add(prev_tail, 1).0 & scalar_size.unsigned_int_max(),
-                    )
-                    .0 & scalar_size.unsigned_int_max();
-                    disallowed_value_count =
-                        u128::overflowing_add(disallowed_value_count, new_gap).0;
-                    prev_tail = end;
+                    // no range overlap: there are disallowed values
+                    return true;
                 }
             }
-            if prev_tail != scalar_max {
-                disallowed_value_count = u128::overflowing_add(
-                    disallowed_value_count,
-                    u128::overflowing_sub(scalar_max, prev_tail).0,
-                )
-                .0;
-                only_had_overlaps = false;
-            }
-
-            if only_had_overlaps { None } else { Some(disallowed_value_count) }
+            prev_tail != scalar_max
         }
     }
 }
@@ -1150,38 +1105,6 @@ fn get_nullable_type_from_pat<'tcx>(
             }
             Some(first)
         }
-    }
-}
-
-/// determines wether or not `outer_ty` is an option-like enum, with the same size as its contained type, `ty`.
-/// this ASSUMES that `ty` is a type that is already 'inside' of `outer_ty`.
-fn is_outer_optionlike_around_ty<'tcx>(
-    cx: &LateContext<'tcx>,
-    outer_ty: Ty<'tcx>,
-    ty: Ty<'tcx>,
-) -> bool {
-    // three things to check to be sure outer_ty is option-like (since we know we reached the current ty from there)
-    // That outer_ty is an enum, that this enum doesn't have a defined discriminant representation,
-    // and the the outer_ty's size is that of ty.
-    if let ty::Adt(def, _) = outer_ty.kind() {
-        if (!matches!(def.adt_kind(), AdtKind::Enum))
-            || def.repr().c()
-            || def.repr().transparent()
-            || def.repr().int.is_some()
-        {
-            false
-        } else {
-            let (tcx, typing_env) = (cx.tcx, cx.typing_env());
-
-            // see the insides of super::repr_nullable_ptr()
-            let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, typing_env);
-            match (compute_size_skeleton(ty), compute_size_skeleton(outer_ty)) {
-                (Ok(sk1), Ok(sk2)) => sk1.same_size(sk2),
-                _ => false,
-            }
-        }
-    } else {
-        false
     }
 }
 

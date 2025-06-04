@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 
 #[repr(C)]
 pub(super) struct Closure<'a, A, R> {
+    // that `Option<_>` is just here to `unwrap()` on the nonzero assumption
     call: Option<unsafe extern "C" fn(*mut Env, A) -> R>,
     env: *mut Env,
     // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual way of doing
