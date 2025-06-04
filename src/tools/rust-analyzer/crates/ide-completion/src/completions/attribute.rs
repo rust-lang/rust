@@ -152,17 +152,22 @@ pub(crate) fn complete_attribute_path(
     });
 
     let add_completion = |attr_completion: &AttrCompletion| {
-        // if we already have the qualifier of the completion, then trim it from the label and the snippet
-        let mut label = attr_completion.label;
-        let mut snippet = attr_completion.snippet;
-        if let Some(name_ref) = qualifier_path.and_then(|q| q.as_single_name_ref()) {
-            if let Some((label_qual, label_seg)) = attr_completion.label.split_once("::") {
-                if name_ref.text() == label_qual {
-                    label = label_seg;
-                    snippet = snippet.map(|snippet| {
-                        snippet.trim_start_matches(label_qual).trim_start_matches("::")
-                    });
-                }
+        // if we don't already have the qualifiers of the completion, then
+        // add the missing parts to the label and snippet
+        let mut label = attr_completion.label.to_owned();
+        let mut snippet = attr_completion.snippet.map(|s| s.to_owned());
+        let segments = qualifier_path.iter().flat_map(|q| q.segments()).collect::<Vec<_>>();
+        let qualifiers = attr_completion.qualifiers;
+        let matching_qualifiers = segments
+            .iter()
+            .zip(qualifiers)
+            .take_while(|(s, q)| s.name_ref().is_some_and(|t| t.text() == **q))
+            .count();
+        if matching_qualifiers != qualifiers.len() {
+            let prefix = qualifiers[matching_qualifiers..].join("::");
+            label = format!("{prefix}::{label}");
+            if let Some(s) = snippet.as_mut() {
+                *s = format!("{prefix}::{s}");
             }
         }
 
@@ -197,12 +202,17 @@ struct AttrCompletion {
     label: &'static str,
     lookup: Option<&'static str>,
     snippet: Option<&'static str>,
+    qualifiers: &'static [&'static str],
     prefer_inner: bool,
 }
 
 impl AttrCompletion {
     fn key(&self) -> &'static str {
         self.lookup.unwrap_or(self.label)
+    }
+
+    const fn qualifiers(self, qualifiers: &'static [&'static str]) -> AttrCompletion {
+        AttrCompletion { qualifiers, ..self }
     }
 
     const fn prefer_inner(self) -> AttrCompletion {
@@ -215,7 +225,7 @@ const fn attr(
     lookup: Option<&'static str>,
     snippet: Option<&'static str>,
 ) -> AttrCompletion {
-    AttrCompletion { label, lookup, snippet, prefer_inner: false }
+    AttrCompletion { label, lookup, snippet, qualifiers: &[], prefer_inner: false }
 }
 
 macro_rules! attrs {
@@ -324,8 +334,14 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("deny(…)", Some("deny"), Some("deny(${0:lint})")),
     attr(r#"deprecated"#, Some("deprecated"), Some(r#"deprecated"#)),
     attr("derive(…)", Some("derive"), Some(r#"derive(${0:Debug})"#)),
-    attr("diagnostic::do_not_recommend", None, None),
-    attr("diagnostic::on_unimplemented", None, Some(r#"diagnostic::on_unimplemented(${0:keys})"#)),
+    attr("do_not_recommend", Some("diagnostic::do_not_recommend"), None)
+        .qualifiers(&["diagnostic"]),
+    attr(
+        "on_unimplemented",
+        Some("diagnostic::on_unimplemented"),
+        Some(r#"on_unimplemented(${0:keys})"#),
+    )
+    .qualifiers(&["diagnostic"]),
     attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
     attr(r#"doc(alias = "…")"#, Some("docalias"), Some(r#"doc(alias = "${0:docs}")"#)),
     attr(r#"doc(hidden)"#, Some("dochidden"), Some(r#"doc(hidden)"#)),
