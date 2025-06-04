@@ -228,6 +228,7 @@ impl Flags {
         let flags = Flags::parse_from(normalize_args(args));
         exec_ctx.set_dry_run(if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled });
         exec_ctx.set_verbose(flags.verbose);
+        exec_ctx.set_fail_fast(flags.cmd.fail_fast());
         (flags, exec_ctx)
     }
 }
