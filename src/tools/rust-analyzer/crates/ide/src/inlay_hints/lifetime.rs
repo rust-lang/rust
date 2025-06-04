@@ -135,7 +135,7 @@ pub(super) fn fn_path_hints(
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    func: ast::PathType,
+    func: &ast::PathType,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
         return None;

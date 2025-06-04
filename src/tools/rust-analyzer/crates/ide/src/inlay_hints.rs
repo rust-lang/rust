@@ -34,6 +34,7 @@ mod extern_block;
 mod generic_param;
 mod implicit_drop;
 mod implicit_static;
+mod implied_dyn_trait;
 mod lifetime;
 mod param_name;
 mod range_exclusive;
@@ -275,7 +276,12 @@ fn hints(
             ast::Type(ty) => match ty {
                 ast::Type::FnPtrType(ptr) => lifetime::fn_ptr_hints(hints, ctx, famous_defs, config,  ptr),
                 ast::Type::PathType(path) => {
-                    lifetime::fn_path_hints(hints, ctx, famous_defs, config,  path);
+                    lifetime::fn_path_hints(hints, ctx, famous_defs, config, &path);
+                    implied_dyn_trait::hints(hints, famous_defs, config, Either::Left(path));
+                    Some(())
+                },
+                ast::Type::DynTraitType(dyn_) => {
+                    implied_dyn_trait::hints(hints, famous_defs, config, Either::Right(dyn_));
                     Some(())
                 },
                 _ => Some(()),
@@ -445,6 +451,7 @@ pub enum InlayKind {
     Parameter,
     GenericParameter,
     Type,
+    Dyn,
     Drop,
     RangeExclusive,
     ExternUnsafety,
