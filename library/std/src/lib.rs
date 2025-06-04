@@ -275,7 +275,6 @@
 
 // stabilization was reverted after it hit beta
 #![cfg_attr(bootstrap, feature(doc_cfg_hide))]
-#![cfg_attr(not(bootstrap), feature(autodiff))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
