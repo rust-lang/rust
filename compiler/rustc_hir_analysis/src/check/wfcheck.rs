@@ -292,26 +292,24 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         }
         hir::ItemKind::Fn { ident, sig, .. } => check_item_fn(tcx, def_id, ident, sig.decl),
         hir::ItemKind::Const(_, _, ty, _) => check_const_item(tcx, def_id, ty.span, item.span),
-        hir::ItemKind::Struct(_, generics, _) => {
+        hir::ItemKind::Struct(..) => {
             let res = check_type_defn(tcx, item, false);
-            check_variances_for_type_defn(tcx, item, generics);
+            check_variances_for_type_defn(tcx, def_id);
             res
         }
-        hir::ItemKind::Union(_, generics, _) => {
+        hir::ItemKind::Union(..) => {
             let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, item, generics);
+            check_variances_for_type_defn(tcx, def_id);
             res
         }
-        hir::ItemKind::Enum(_, generics, _) => {
+        hir::ItemKind::Enum(..) => {
             let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, item, generics);
+            check_variances_for_type_defn(tcx, def_id);
             res
         }
         hir::ItemKind::Trait(..) => check_trait(tcx, item),
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
-        // `ForeignItem`s are handled separately.
-        hir::ItemKind::ForeignMod { .. } => Ok(()),
-        hir::ItemKind::TyAlias(_, generics, hir_ty) if tcx.type_alias_is_lazy(item.owner_id) => {
+        hir::ItemKind::TyAlias(.., hir_ty) if tcx.type_alias_is_lazy(item.owner_id) => {
             let res = enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
                 let ty = tcx.type_of(def_id).instantiate_identity();
                 let item_ty =
@@ -324,7 +322,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                 check_where_clauses(wfcx, item.span, def_id);
                 Ok(())
             });
-            check_variances_for_type_defn(tcx, item, generics);
+            check_variances_for_type_defn(tcx, def_id);
             res
         }
         _ => Ok(()),
@@ -1979,27 +1977,23 @@ fn legacy_receiver_is_implemented<'tcx>(
     }
 }
 
-fn check_variances_for_type_defn<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    item: &'tcx hir::Item<'tcx>,
-    hir_generics: &hir::Generics<'tcx>,
-) {
-    match item.kind {
-        ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
+fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+    match tcx.def_kind(def_id) {
+        DefKind::Enum | DefKind::Struct | DefKind::Union => {
             // Ok
         }
-        ItemKind::TyAlias(..) => {
+        DefKind::TyAlias => {
             assert!(
-                tcx.type_alias_is_lazy(item.owner_id),
+                tcx.type_alias_is_lazy(def_id),
                 "should not be computing variance of non-free type alias"
             );
         }
-        kind => span_bug!(item.span, "cannot compute the variances of {kind:?}"),
+        kind => span_bug!(tcx.def_span(def_id), "cannot compute the variances of {kind:?}"),
     }
 
-    let ty_predicates = tcx.predicates_of(item.owner_id);
+    let ty_predicates = tcx.predicates_of(def_id);
     assert_eq!(ty_predicates.parent, None);
-    let variances = tcx.variances_of(item.owner_id);
+    let variances = tcx.variances_of(def_id);
 
     let mut constrained_parameters: FxHashSet<_> = variances
         .iter()
@@ -2012,8 +2006,10 @@ fn check_variances_for_type_defn<'tcx>(
 
     // Lazily calculated because it is only needed in case of an error.
     let explicitly_bounded_params = LazyCell::new(|| {
-        let icx = crate::collect::ItemCtxt::new(tcx, item.owner_id.def_id);
-        hir_generics
+        let icx = crate::collect::ItemCtxt::new(tcx, def_id);
+        tcx.hir_node_by_def_id(def_id)
+            .generics()
+            .unwrap()
             .predicates
             .iter()
             .filter_map(|predicate| match predicate.kind {
@@ -2028,8 +2024,6 @@ fn check_variances_for_type_defn<'tcx>(
             .collect::<FxHashSet<_>>()
     });
 
-    let ty_generics = tcx.generics_of(item.owner_id);
-
     for (index, _) in variances.iter().enumerate() {
         let parameter = Parameter(index as u32);
 
@@ -2037,8 +2031,12 @@ fn check_variances_for_type_defn<'tcx>(
             continue;
         }
 
-        let ty_param = &ty_generics.own_params[index];
+        let node = tcx.hir_node_by_def_id(def_id);
+        let item = node.expect_item();
+        let hir_generics = node.generics().unwrap();
         let hir_param = &hir_generics.params[index];
+
+        let ty_param = &tcx.generics_of(item.owner_id).own_params[index];
 
         if ty_param.def_id != hir_param.def_id.into() {
             // Valid programs always have lifetimes before types in the generic parameter list.
@@ -2057,7 +2055,7 @@ fn check_variances_for_type_defn<'tcx>(
 
         // Look for `ErrorGuaranteed` deeply within this type.
         if let ControlFlow::Break(ErrorGuaranteed { .. }) = tcx
-            .type_of(item.owner_id)
+            .type_of(def_id)
             .instantiate_identity()
             .visit_with(&mut HasErrorDeep { tcx, seen: Default::default() })
         {
