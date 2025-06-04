@@ -1573,7 +1573,7 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     Multiple {
         tag: Scalar,
         tag_encoding: TagEncoding<VariantIdx>,
-        tag_field: usize,
+        tag_field: FieldIdx,
         variants: IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>,
     },
 }

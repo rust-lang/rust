@@ -373,7 +373,7 @@ fn build_discr_member_di_node<'ll, 'tcx>(
                 file,
                 UNKNOWN_LINE_NUMBER,
                 layout,
-                enum_or_coroutine_type_and_layout.fields.offset(tag_field),
+                enum_or_coroutine_type_and_layout.fields.offset(tag_field.as_usize()),
                 DIFlags::FlagArtificial,
                 ty,
             ))

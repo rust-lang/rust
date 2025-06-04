@@ -180,7 +180,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::
                 VariantsShape::Multiple {
                     tag: tag.stable(tables),
                     tag_encoding: tag_encoding.stable(tables),
-                    tag_field: *tag_field,
+                    tag_field: tag_field.stable(tables),
                     variants: variants.iter().as_slice().stable(tables),
                 }
             }
