@@ -42,31 +42,21 @@ pub(crate) fn complete_known_attribute_input(
 ) -> Option<()> {
     let attribute = fake_attribute_under_caret;
     let path = attribute.path()?;
-    let name_ref = path.segment()?.name_ref();
-    let (name_ref, tt) = name_ref.zip(attribute.token_tree())?;
-    tt.l_paren_token()?;
+    let segments = path.segments().map(|s| s.name_ref()).collect::<Option<Vec<_>>>()?;
+    let segments = segments.iter().map(|n| n.text()).collect::<Vec<_>>();
+    let segments = segments.iter().map(|t| t.as_str()).collect::<Vec<_>>();
+    let tt = attribute.token_tree()?;
 
-    if let Some(qualifier) = path.qualifier() {
-        let qualifier_name_ref = qualifier.as_single_name_ref()?;
-        match (qualifier_name_ref.text().as_str(), name_ref.text().as_str()) {
-            ("diagnostic", "on_unimplemented") => {
-                diagnostic::complete_on_unimplemented(acc, ctx, tt)
-            }
-            _ => (),
-        }
-        return Some(());
-    }
-
-    match name_ref.text().as_str() {
-        "repr" => repr::complete_repr(acc, ctx, tt),
-        "feature" => lint::complete_lint(
+    match segments.as_slice() {
+        ["repr"] => repr::complete_repr(acc, ctx, tt),
+        ["feature"] => lint::complete_lint(
             acc,
             ctx,
             colon_prefix,
             &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
             FEATURES,
         ),
-        "allow" | "expect" | "deny" | "forbid" | "warn" => {
+        ["allow"] | ["expect"] | ["deny"] | ["forbid"] | ["warn"] => {
             let existing_lints = parse_tt_as_comma_sep_paths(tt, ctx.edition)?;
 
             let lints: Vec<Lint> = CLIPPY_LINT_GROUPS
@@ -80,13 +70,14 @@ pub(crate) fn complete_known_attribute_input(
 
             lint::complete_lint(acc, ctx, colon_prefix, &existing_lints, &lints);
         }
-        "cfg" => cfg::complete_cfg(acc, ctx),
-        "macro_use" => macro_use::complete_macro_use(
+        ["cfg"] => cfg::complete_cfg(acc, ctx),
+        ["macro_use"] => macro_use::complete_macro_use(
             acc,
             ctx,
             extern_crate,
             &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
         ),
+        ["diagnostic", "on_unimplemented"] => diagnostic::complete_on_unimplemented(acc, ctx, tt),
         _ => (),
     }
     Some(())

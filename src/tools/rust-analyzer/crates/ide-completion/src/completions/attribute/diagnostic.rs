@@ -1,7 +1,7 @@
 //! Completion for diagnostic attributes.
 
 use ide_db::SymbolKind;
-use syntax::ast::{self};
+use syntax::ast;
 
 use crate::{CompletionItem, Completions, context::CompletionContext};
 
@@ -13,7 +13,7 @@ pub(super) fn complete_on_unimplemented(
     input: ast::TokenTree,
 ) {
     if let Some(existing_keys) = super::parse_comma_sep_expr(input) {
-        for attr in ATTRIBUTES {
+        for attr in ATTRIBUTE_ARGS {
             let already_annotated = existing_keys
                 .iter()
                 .filter_map(|expr| match expr {
@@ -53,7 +53,7 @@ pub(super) fn complete_on_unimplemented(
     }
 }
 
-const ATTRIBUTES: &[AttrCompletion] = &[
+const ATTRIBUTE_ARGS: &[AttrCompletion] = &[
     super::attr(r#"label = "…""#, Some("label"), Some(r#"label = "${0:label}""#)),
     super::attr(r#"message = "…""#, Some("message"), Some(r#"message = "${0:message}""#)),
     super::attr(r#"note = "…""#, Some("note"), Some(r#"note = "${0:note}""#)),
