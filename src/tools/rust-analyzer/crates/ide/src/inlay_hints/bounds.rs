@@ -3,7 +3,6 @@
 //! Currently this renders the implied `Sized` bound.
 use ide_db::{FileRange, famous_defs::FamousDefs};
 
-use span::EditionedFileId;
 use syntax::ast::{self, AstNode, HasTypeBounds};
 
 use crate::{
@@ -15,7 +14,6 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
     params: ast::GenericParamList,
 ) -> Option<()> {
     if !config.sized_bound {

@@ -89,7 +89,9 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) -> Option<Completed
     // test qual_paths
     // type X = <A as B>::Output;
     // fn foo() { <usize as Default>::default(); }
-    if first && p.eat(T![<]) {
+    if first && p.at(T![<]) {
+        let m = p.start();
+        p.bump(T![<]);
         // test_err angled_path_without_qual
         // type X = <()>;
         // type Y = <A as B>;
@@ -102,6 +104,7 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) -> Option<Completed
             }
         }
         p.expect(T![>]);
+        m.complete(p, TYPE_ANCHOR);
         if !p.at(T![::]) {
             p.error("expected `::`");
         }

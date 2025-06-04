@@ -5,7 +5,6 @@
 use either::Either;
 use ide_db::famous_defs::FamousDefs;
 use ide_db::text_edit::TextEdit;
-use span::EditionedFileId;
 use syntax::{
     SyntaxKind,
     ast::{self, AstNode},
@@ -17,7 +16,6 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(_sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
     statik_or_const: Either<ast::Static, ast::Const>,
 ) -> Option<()> {
     if config.lifetime_elision_hints != LifetimeElisionHints::Always {

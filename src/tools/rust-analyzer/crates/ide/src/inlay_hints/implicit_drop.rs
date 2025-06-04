@@ -12,7 +12,6 @@ use hir::{
 };
 use ide_db::{FileRange, famous_defs::FamousDefs};
 
-use span::EditionedFileId;
 use syntax::{
     ToSmolStr,
     ast::{self, AstNode},
@@ -25,7 +24,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
+    display_target: hir::DisplayTarget,
     node: &ast::Fn,
 ) -> Option<()> {
     if !config.implicit_drop_hints {
@@ -94,7 +93,7 @@ pub(super) fn hints(
                 MirSpan::Unknown => continue,
             };
             let binding = &hir.bindings[binding_idx];
-            let name = binding.name.display_no_db(file_id.edition()).to_smolstr();
+            let name = binding.name.display_no_db(display_target.edition).to_smolstr();
             if name.starts_with("<ra@") {
                 continue; // Ignore desugared variables
             }
