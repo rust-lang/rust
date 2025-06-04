@@ -217,6 +217,8 @@
 # upstream Rust you need to set this to "". However, note that if you set this to "" but
 # are not actually compatible -- for example if you've backported patches that change
 # behavior -- this may lead to miscompilations or other bugs.
+#
+# Changing `description` will be change version hash.
 #description = ""
 
 # Build triple for the pre-compiled snapshot compiler. If `rustc` is set, this must match its host
