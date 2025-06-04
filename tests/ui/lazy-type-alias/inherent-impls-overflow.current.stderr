@@ -14,6 +14,17 @@ LL | impl Loop {}
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
+error: type parameter `T` is only used recursively
+  --> $DIR/inherent-impls-overflow.rs:17:24
+   |
+LL | type Poly0<T> = Poly1<(T,)>;
+   |            -           ^
+   |            |
+   |            type parameter must be used non-recursively in the definition
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
 error[E0275]: overflow normalizing the type alias `Poly0<(((((((...,),),),),),),)>`
   --> $DIR/inherent-impls-overflow.rs:17:17
    |
@@ -21,6 +32,17 @@ LL | type Poly0<T> = Poly1<(T,)>;
    |                 ^^^^^^^^^^^
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error: type parameter `T` is only used recursively
+  --> $DIR/inherent-impls-overflow.rs:21:24
+   |
+LL | type Poly1<T> = Poly0<(T,)>;
+   |            -           ^
+   |            |
+   |            type parameter must be used non-recursively in the definition
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
 error[E0275]: overflow normalizing the type alias `Poly1<(((((((...,),),),),),),)>`
   --> $DIR/inherent-impls-overflow.rs:21:17
@@ -38,6 +60,6 @@ LL | impl Poly0<()> {}
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

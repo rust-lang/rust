@@ -36,6 +36,7 @@ use {rustc_attr_data_structures as attrs, rustc_hir as hir};
 
 use super::compare_impl_item::check_type_bounds;
 use super::*;
+use crate::check::wfcheck::check_variances_for_type_defn;
 
 fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T>) {
     if let ExternAbi::Cdecl { unwind } = abi {
@@ -762,6 +763,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
         DefKind::Const => {}
         DefKind::Enum => {
             check_enum(tcx, def_id);
+            check_variances_for_type_defn(tcx, def_id);
         }
         DefKind::Fn => {
             if let Some(i) = tcx.intrinsic(def_id) {
@@ -802,9 +804,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
         }
         DefKind::Struct => {
             check_struct(tcx, def_id);
+            check_variances_for_type_defn(tcx, def_id);
         }
         DefKind::Union => {
             check_union(tcx, def_id);
+            check_variances_for_type_defn(tcx, def_id);
         }
         DefKind::OpaqueTy => {
             check_opaque_precise_captures(tcx, def_id);
@@ -832,6 +836,9 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
         }
         DefKind::TyAlias => {
             check_type_alias_type_params_are_used(tcx, def_id);
+            if tcx.type_alias_is_lazy(def_id) {
+                check_variances_for_type_defn(tcx, def_id);
+            }
         }
         DefKind::ForeignMod => {
             let it = tcx.hir_expect_item(def_id);

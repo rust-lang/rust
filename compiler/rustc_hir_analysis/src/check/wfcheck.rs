@@ -292,25 +292,13 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         }
         hir::ItemKind::Fn { ident, sig, .. } => check_item_fn(tcx, def_id, ident, sig.decl),
         hir::ItemKind::Const(_, _, ty, _) => check_const_item(tcx, def_id, ty.span, item.span),
-        hir::ItemKind::Struct(..) => {
-            let res = check_type_defn(tcx, item, false);
-            check_variances_for_type_defn(tcx, def_id);
-            res
-        }
-        hir::ItemKind::Union(..) => {
-            let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, def_id);
-            res
-        }
-        hir::ItemKind::Enum(..) => {
-            let res = check_type_defn(tcx, item, true);
-            check_variances_for_type_defn(tcx, def_id);
-            res
-        }
+        hir::ItemKind::Struct(..) => check_type_defn(tcx, item, false),
+        hir::ItemKind::Union(..) => check_type_defn(tcx, item, true),
+        hir::ItemKind::Enum(..) => check_type_defn(tcx, item, true),
         hir::ItemKind::Trait(..) => check_trait(tcx, item),
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
         hir::ItemKind::TyAlias(.., hir_ty) if tcx.type_alias_is_lazy(item.owner_id) => {
-            let res = enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+            enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
                 let ty = tcx.type_of(def_id).instantiate_identity();
                 let item_ty =
                     wfcx.deeply_normalize(hir_ty.span, Some(WellFormedLoc::Ty(def_id)), ty);
@@ -321,9 +309,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                 );
                 check_where_clauses(wfcx, item.span, def_id);
                 Ok(())
-            });
-            check_variances_for_type_defn(tcx, def_id);
-            res
+            })
         }
         _ => Ok(()),
     }
@@ -1977,7 +1963,7 @@ fn legacy_receiver_is_implemented<'tcx>(
     }
 }
 
-fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+pub(super) fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
     match tcx.def_kind(def_id) {
         DefKind::Enum | DefKind::Struct | DefKind::Union => {
             // Ok
