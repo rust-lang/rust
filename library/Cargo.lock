@@ -28,7 +28,7 @@ dependencies = [
 name = "alloc"
 version = "0.0.0"
 dependencies = [
- "compiler_builtins",
+ "compiler_builtins_in_tree",
  "core",
 ]
 
@@ -51,11 +51,9 @@ dependencies = [
 
 [[package]]
 name = "cfg-if"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+version = "1.0.1"
+source = "git+https://github.com/tgross35/cfg-if.git?branch=no-compiler-builtins#91c07fb51b83c24c65383d82a2f7a46e55b4ce39"
 dependencies = [
- "compiler_builtins",
  "rustc-std-workspace-core",
 ]
 
@@ -65,8 +63,15 @@ version = "0.1.160"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6376049cfa92c0aa8b9ac95fae22184b981c658208d4ed8a1dc553cd83612895"
 dependencies = [
- "cc",
  "rustc-std-workspace-core",
+]
+
+[[package]]
+name = "compiler_builtins_in_tree"
+version = "0.1.160"
+dependencies = [
+ "cc",
+ "panic-handler",
 ]
 
 [[package]]
@@ -129,10 +134,8 @@ dependencies = [
 [[package]]
 name = "hashbrown"
 version = "0.15.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84b26c544d002229e640969970a2e74021aadf6e2f96372b9c58eff97de08eb3"
+source = "git+https://github.com/tgross35/hashbrown.git?branch=no-compiler-builtins#197a1ebf65a8ee692acedc698b98d92aec291ade"
 dependencies = [
- "compiler_builtins",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
 ]
@@ -192,11 +195,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "panic-handler"
+version = "0.1.0"
+
+[[package]]
 name = "panic_abort"
 version = "0.0.0"
 dependencies = [
  "alloc",
- "compiler_builtins",
+ "compiler_builtins_in_tree",
  "core",
  "libc",
 ]
@@ -207,7 +214,7 @@ version = "0.0.0"
 dependencies = [
  "alloc",
  "cfg-if",
- "compiler_builtins",
+ "compiler_builtins_in_tree",
  "core",
  "libc",
  "unwind",
@@ -277,10 +284,8 @@ dependencies = [
 [[package]]
 name = "rustc-demangle"
 version = "0.1.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "719b953e2095829ee67db738b3bfa9fa368c94900df327b3f07fe6e794d2fe1f"
+source = "git+https://github.com/tgross35/rustc-demangle.git?branch=no-compiler-builtins#384a09b4b6e559988f1638e5b2ff4194b0342e61"
 dependencies = [
- "compiler_builtins",
  "rustc-std-workspace-core",
 ]
 
@@ -304,6 +309,7 @@ dependencies = [
 name = "rustc-std-workspace-core"
 version = "1.99.0"
 dependencies = [
+ "compiler_builtins_in_tree",
  "core",
 ]
 
@@ -327,7 +333,7 @@ dependencies = [
  "addr2line",
  "alloc",
  "cfg-if",
- "compiler_builtins",
+ "compiler_builtins_in_tree",
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
@@ -382,11 +388,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-width"
-version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7dd6e30e90baa6f72411720665d41d89b9a3d039dc45b8faea1ddd07f617f6af"
+version = "0.1.7"
+source = "git+https://github.com/tgross35/unicode-width.git?branch=no-compiler-builtins#363d6352dbb9701acbf04ca4792bb2f0a0a9ed61"
 dependencies = [
- "compiler_builtins",
  "rustc-std-workspace-core",
  "rustc-std-workspace-std",
 ]
@@ -396,7 +400,7 @@ name = "unwind"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
- "compiler_builtins",
+ "compiler_builtins_in_tree",
  "core",
  "libc",
  "unwinding",

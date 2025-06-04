@@ -12,3 +12,4 @@ path = "lib.rs"
 
 [dependencies]
 core = { path = "../core" }
+compiler_builtins_in_tree = { path = "../compiler-builtins/compiler-builtins", features = ["rustc-dep-of-std"] }

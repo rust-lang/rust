@@ -1,11 +1,11 @@
-//! This is needed for tests on targets that require a `#[panic_handler]` function
+// //! This is needed for tests on targets that require a `#[panic_handler]` function
 
-#![feature(no_core)]
-#![no_core]
+// #![feature(no_core)]
+// #![no_core]
 
-extern crate core;
+// extern crate core;
 
-#[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// #[panic_handler]
+// fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
+//     loop {}
+// }
