@@ -147,6 +147,12 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     }
 }
 
+impl<'ll> Builder<'_, 'll, '_> {
+    pub(crate) fn get_dbg_loc(&self) -> Option<&'ll DILocation> {
+        unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder) }
+    }
+}
+
 impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
@@ -207,10 +213,6 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         unsafe {
             llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, ptr::null());
         }
-    }
-
-    fn get_dbg_loc(&self) -> Option<&'ll DILocation> {
-        unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder) }
     }
 
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {

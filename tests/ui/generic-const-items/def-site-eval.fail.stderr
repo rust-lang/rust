@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: explicit panic
   --> $DIR/def-site-eval.rs:13:20
    |
 LL | const _<'_a>: () = panic!();
-   |                    ^^^^^^^^ evaluation panicked: explicit panic
+   |                    ^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 1 previous error
 

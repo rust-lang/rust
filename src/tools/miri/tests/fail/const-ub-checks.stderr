@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
   --> tests/fail/const-ub-checks.rs:LL:CC
    |
 LL |     ptr.read();
-   |     ^^^^^^^^^^ accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
+   |     ^^^^^^^^^^ evaluation of constant value failed here
 
 note: erroneous constant encountered
   --> tests/fail/const-ub-checks.rs:LL:CC

@@ -1,50 +1,50 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `i8::MIN * 2_i8`, which would overflow
   --> $DIR/const-eval-overflow2c.rs:12:6
    |
 LL |      i8::MIN * 2,
-   |      ^^^^^^^^^^^ attempt to compute `i8::MIN * 2_i8`, which would overflow
+   |      ^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `i16::MIN * 2_i16`, which would overflow
   --> $DIR/const-eval-overflow2c.rs:18:6
    |
 LL |      i16::MIN * 2,
-   |      ^^^^^^^^^^^^ attempt to compute `i16::MIN * 2_i16`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `i32::MIN * 2_i32`, which would overflow
   --> $DIR/const-eval-overflow2c.rs:24:6
    |
 LL |      i32::MIN * 2,
-   |      ^^^^^^^^^^^^ attempt to compute `i32::MIN * 2_i32`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `i64::MIN * 2_i64`, which would overflow
   --> $DIR/const-eval-overflow2c.rs:30:6
    |
 LL |      i64::MIN * 2,
-   |      ^^^^^^^^^^^^ attempt to compute `i64::MIN * 2_i64`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `u8::MAX * 2_u8`, which would overflow
   --> $DIR/const-eval-overflow2c.rs:36:6
    |
 LL |      u8::MAX * 2,
-   |      ^^^^^^^^^^^ attempt to compute `u8::MAX * 2_u8`, which would overflow
+   |      ^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `u16::MAX * 2_u16`, which would overflow
   --> $DIR/const-eval-overflow2c.rs:41:6
    |
 LL |      u16::MAX * 2,
-   |      ^^^^^^^^^^^^ attempt to compute `u16::MAX * 2_u16`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `u32::MAX * 2_u32`, which would overflow
   --> $DIR/const-eval-overflow2c.rs:46:6
    |
 LL |      u32::MAX * 2,
-   |      ^^^^^^^^^^^^ attempt to compute `u32::MAX * 2_u32`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: attempt to compute `u64::MAX * 2_u64`, which would overflow
   --> $DIR/const-eval-overflow2c.rs:52:6
    |
 LL |      u64::MAX * 2,
-   |      ^^^^^^^^^^^^ attempt to compute `u64::MAX * 2_u64`, which would overflow
+   |      ^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 8 previous errors
 

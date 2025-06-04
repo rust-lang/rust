@@ -10,6 +10,6 @@ const _<_T>: () = panic!();
 const _<const _N: usize>: () = panic!();
 
 #[cfg(fail)]
-const _<'_a>: () = panic!(); //[fail]~ ERROR evaluation of constant value failed
+const _<'_a>: () = panic!(); //[fail]~ ERROR evaluation panicked: explicit panic
 
 fn main() {}

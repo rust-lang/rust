@@ -1,5 +1,5 @@
 error[E0178]: expected a path on the left-hand side of `+`
-  --> $DIR/trait-object-reference-without-parens-suggestion.rs:4:12
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:5:12
    |
 LL |     let _: &Copy + 'static;
    |            ^^^^^
@@ -10,7 +10,7 @@ LL |     let _: &(Copy + 'static);
    |             +              +
 
 error[E0178]: expected a path on the left-hand side of `+`
-  --> $DIR/trait-object-reference-without-parens-suggestion.rs:6:12
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:7:12
    |
 LL |     let _: &'static Copy + 'static;
    |            ^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL |     let _: &'static (Copy + 'static);
    |                     +              +
 
 error[E0038]: the trait `Copy` is not dyn compatible
-  --> $DIR/trait-object-reference-without-parens-suggestion.rs:4:13
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:5:13
    |
 LL |     let _: &Copy + 'static;
    |             ^^^^ `Copy` is not dyn compatible
@@ -31,7 +31,7 @@ LL |     let _: &Copy + 'static;
            for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
 
 error[E0038]: the trait `Copy` is not dyn compatible
-  --> $DIR/trait-object-reference-without-parens-suggestion.rs:6:21
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:7:21
    |
 LL |     let _: &'static Copy + 'static;
    |                     ^^^^ `Copy` is not dyn compatible

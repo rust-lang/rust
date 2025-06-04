@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: panic
   --> $DIR/issue-76064.rs:1:17
    |
 LL | struct Bug([u8; panic!("panic")]);
-   |                 ^^^^^^^^^^^^^^^ evaluation panicked: panic
+   |                 ^^^^^^^^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 1 previous error
 

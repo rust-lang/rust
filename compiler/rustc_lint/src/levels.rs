@@ -126,7 +126,7 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
         .filter(|lint| {
             // Lints that show up in future-compat reports must always be run.
             let has_future_breakage =
-                lint.future_incompatible.is_some_and(|fut| fut.reason.has_future_breakage());
+                lint.future_incompatible.is_some_and(|fut| fut.report_in_deps);
             !has_future_breakage && !lint.eval_always
         })
         .filter(|lint| {

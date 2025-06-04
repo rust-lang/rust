@@ -4,11 +4,11 @@ error: argument to `panic!()` in a const context must have type `&str`
 LL |     let _ = [0i32; panic!(2f32)];
    |                    ^^^^^^^^^^^^
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation panicked: explicit panic
   --> $DIR/issue-66693-panic-in-array-len.rs:10:21
    |
 LL |     let _ = [false; panic!()];
-   |                     ^^^^^^^^ evaluation panicked: explicit panic
+   |                     ^^^^^^^^ evaluation of constant value failed here
 
 error: aborting due to 2 previous errors
 

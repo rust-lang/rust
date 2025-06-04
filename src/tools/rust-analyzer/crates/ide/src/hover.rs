@@ -200,7 +200,7 @@ fn hover_offset(
         });
     }
 
-    if let Some((range, resolution)) =
+    if let Some((range, _, _, resolution)) =
         sema.check_for_format_args_template(original_token.clone(), offset)
     {
         let res = hover_for_definition(

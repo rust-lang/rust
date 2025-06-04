@@ -187,7 +187,6 @@
 //
 // Target features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(avx512_target_feature))]
 #![feature(aarch64_unstable_target_feature)]
 #![feature(arm_target_feature)]
 #![feature(hexagon_target_feature)]
@@ -225,7 +224,6 @@ pub mod assert_matches {
 
 // We don't export this through #[macro_export] for now, to avoid breakage.
 #[unstable(feature = "autodiff", issue = "124509")]
-#[cfg(not(bootstrap))]
 /// Unstable module containing the unstable `autodiff` macro.
 pub mod autodiff {
     #[unstable(feature = "autodiff", issue = "124509")]

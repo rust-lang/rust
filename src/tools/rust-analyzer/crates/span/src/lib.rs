@@ -112,7 +112,10 @@ pub struct EditionedFileId(u32);
 
 impl fmt::Debug for EditionedFileId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("EditionedFileId").field(&self.file_id()).field(&self.edition()).finish()
+        f.debug_tuple("EditionedFileId")
+            .field(&self.file_id().index())
+            .field(&self.edition())
+            .finish()
     }
 }
 

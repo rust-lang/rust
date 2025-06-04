@@ -1,13 +1,13 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/def-site-param-defaults-wf.rs:5:44
+error[E0080]: attempt to compute `0_usize - 1_usize`, which would overflow
+  --> $DIR/def-site-param-defaults-wf.rs:5:45
    |
-LL | type Alias<T = Vec<str>, const N: usize = {0 - 1}> = T;
-   |                                            ^^^^^ attempt to compute `0_usize - 1_usize`, which would overflow
+LL | type Alias<T = Vec<str>, const N: usize = { 0 - 1 }> = T;
+   |                                             ^^^^^ evaluation of constant value failed here
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/def-site-param-defaults-wf.rs:5:16
    |
-LL | type Alias<T = Vec<str>, const N: usize = {0 - 1}> = T;
+LL | type Alias<T = Vec<str>, const N: usize = { 0 - 1 }> = T;
    |                ^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`

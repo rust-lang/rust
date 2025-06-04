@@ -1,11 +1,11 @@
 use std::ffi::OsStr;
 use std::str;
 
-use rustc_abi::{ExternAbi, Size};
+use rustc_abi::{CanonAbi, ExternAbi, Size};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
 use self::shims::unix::android::foreign_items as android;
 use self::shims::unix::freebsd::foreign_items as freebsd;
@@ -334,7 +334,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "fcntl" => {
                 let ([fd_num, cmd], varargs) =
-                    this.check_shim_variadic(abi, Conv::C, link_name, args)?;
+                    this.check_shim_variadic(abi, CanonAbi::C, link_name, args)?;
                 let result = this.fcntl(fd_num, cmd, varargs)?;
                 this.write_scalar(result, dest)?;
             }
@@ -387,7 +387,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // `open` is variadic, the third argument is only present when the second argument
                 // has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
                 let ([path_raw, flag], varargs) =
-                    this.check_shim_variadic(abi, Conv::C, link_name, args)?;
+                    this.check_shim_variadic(abi, CanonAbi::C, link_name, args)?;
                 let result = this.open(path_raw, flag, varargs)?;
                 this.write_scalar(result, dest)?;
             }
@@ -701,20 +701,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Allocation
             "posix_memalign" => {
-                let [memptr, align, size] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [memptr, align, size] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.posix_memalign(memptr, align, size)?;
                 this.write_scalar(result, dest)?;
             }
 
             "mmap" => {
                 let [addr, length, prot, flags, fd, offset] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                    this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off_t").size)?;
                 let ptr = this.mmap(addr, length, prot, flags, fd, offset)?;
                 this.write_scalar(ptr, dest)?;
             }
             "munmap" => {
-                let [addr, length] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [addr, length] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.munmap(addr, length)?;
                 this.write_scalar(result, dest)?;
             }
@@ -722,7 +722,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "reallocarray" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
                 this.check_target_os(&["linux", "freebsd", "android"], link_name)?;
-                let [ptr, nmemb, size] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [ptr, nmemb, size] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let nmemb = this.read_target_usize(nmemb)?;
                 let size = this.read_target_usize(size)?;
@@ -745,14 +745,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "aligned_alloc" => {
                 // This is a C11 function, we assume all Unixes have it.
                 // (MSVC explicitly does not support this.)
-                let [align, size] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [align, size] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let res = this.aligned_alloc(align, size)?;
                 this.write_pointer(res, dest)?;
             }
 
             // Dynamic symbol loading
             "dlsym" => {
-                let [handle, symbol] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [handle, symbol] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.read_target_usize(handle)?;
                 let symbol = this.read_pointer(symbol)?;
                 let name = this.read_c_str(symbol)?;
@@ -768,7 +768,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Thread-local storage
             "pthread_key_create" => {
-                let [key, dtor] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [key, dtor] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let key_place = this.deref_pointer_as(key, this.libc_ty_layout("pthread_key_t"))?;
                 let dtor = this.read_pointer(dtor)?;
 
@@ -796,21 +796,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
             "pthread_key_delete" => {
-                let [key] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [key] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 this.machine.tls.delete_tls_key(key)?;
                 // Return success (0)
                 this.write_null(dest)?;
             }
             "pthread_getspecific" => {
-                let [key] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [key] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 let active_thread = this.active_thread();
                 let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
-                let [key, new_ptr] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [key, new_ptr] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 let active_thread = this.active_thread();
                 let new_data = this.read_scalar(new_ptr)?;
@@ -822,156 +822,157 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Synchronization primitives
             "pthread_mutexattr_init" => {
-                let [attr] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [attr] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_mutexattr_init(attr)?;
                 this.write_null(dest)?;
             }
             "pthread_mutexattr_settype" => {
-                let [attr, kind] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [attr, kind] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.pthread_mutexattr_settype(attr, kind)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_mutexattr_destroy" => {
-                let [attr] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [attr] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_mutexattr_destroy(attr)?;
                 this.write_null(dest)?;
             }
             "pthread_mutex_init" => {
-                let [mutex, attr] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [mutex, attr] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_mutex_init(mutex, attr)?;
                 this.write_null(dest)?;
             }
             "pthread_mutex_lock" => {
-                let [mutex] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [mutex] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_mutex_lock(mutex, dest)?;
             }
             "pthread_mutex_trylock" => {
-                let [mutex] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [mutex] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.pthread_mutex_trylock(mutex)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_mutex_unlock" => {
-                let [mutex] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [mutex] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.pthread_mutex_unlock(mutex)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_mutex_destroy" => {
-                let [mutex] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [mutex] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_mutex_destroy(mutex)?;
                 this.write_int(0, dest)?;
             }
             "pthread_rwlock_rdlock" => {
-                let [rwlock] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [rwlock] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_rwlock_rdlock(rwlock, dest)?;
             }
             "pthread_rwlock_tryrdlock" => {
-                let [rwlock] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [rwlock] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.pthread_rwlock_tryrdlock(rwlock)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_rwlock_wrlock" => {
-                let [rwlock] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [rwlock] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_rwlock_wrlock(rwlock, dest)?;
             }
             "pthread_rwlock_trywrlock" => {
-                let [rwlock] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [rwlock] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.pthread_rwlock_trywrlock(rwlock)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_rwlock_unlock" => {
-                let [rwlock] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [rwlock] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_rwlock_unlock(rwlock)?;
                 this.write_null(dest)?;
             }
             "pthread_rwlock_destroy" => {
-                let [rwlock] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [rwlock] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_rwlock_destroy(rwlock)?;
                 this.write_null(dest)?;
             }
             "pthread_condattr_init" => {
-                let [attr] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [attr] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_condattr_init(attr)?;
                 this.write_null(dest)?;
             }
             "pthread_condattr_setclock" => {
-                let [attr, clock_id] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [attr, clock_id] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.pthread_condattr_setclock(attr, clock_id)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_condattr_getclock" => {
-                let [attr, clock_id] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [attr, clock_id] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_condattr_getclock(attr, clock_id)?;
                 this.write_null(dest)?;
             }
             "pthread_condattr_destroy" => {
-                let [attr] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [attr] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_condattr_destroy(attr)?;
                 this.write_null(dest)?;
             }
             "pthread_cond_init" => {
-                let [cond, attr] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [cond, attr] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_cond_init(cond, attr)?;
                 this.write_null(dest)?;
             }
             "pthread_cond_signal" => {
-                let [cond] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [cond] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_cond_signal(cond)?;
                 this.write_null(dest)?;
             }
             "pthread_cond_broadcast" => {
-                let [cond] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [cond] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_cond_broadcast(cond)?;
                 this.write_null(dest)?;
             }
             "pthread_cond_wait" => {
-                let [cond, mutex] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [cond, mutex] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_cond_wait(cond, mutex, dest)?;
             }
             "pthread_cond_timedwait" => {
-                let [cond, mutex, abstime] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [cond, mutex, abstime] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_cond_timedwait(cond, mutex, abstime, dest)?;
             }
             "pthread_cond_destroy" => {
-                let [cond] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [cond] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_cond_destroy(cond)?;
                 this.write_null(dest)?;
             }
 
             // Threading
             "pthread_create" => {
-                let [thread, attr, start, arg] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [thread, attr, start, arg] =
+                    this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.pthread_create(thread, attr, start, arg)?;
                 this.write_null(dest)?;
             }
             "pthread_join" => {
-                let [thread, retval] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [thread, retval] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let res = this.pthread_join(thread, retval)?;
                 this.write_scalar(res, dest)?;
             }
             "pthread_detach" => {
-                let [thread] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [thread] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let res = this.pthread_detach(thread)?;
                 this.write_scalar(res, dest)?;
             }
             "pthread_self" => {
-                let [] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let res = this.pthread_self()?;
                 this.write_scalar(res, dest)?;
             }
             "sched_yield" => {
-                let [] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.sched_yield()?;
                 this.write_null(dest)?;
             }
             "nanosleep" => {
-                let [req, rem] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [req, rem] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.nanosleep(req, rem)?;
                 this.write_scalar(result, dest)?;
             }
             "sched_getaffinity" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
                 this.check_target_os(&["linux", "freebsd", "android"], link_name)?;
-                let [pid, cpusetsize, mask] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [pid, cpusetsize, mask] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let pid = this.read_scalar(pid)?.to_u32()?;
                 let cpusetsize = this.read_target_usize(cpusetsize)?;
                 let mask = this.read_pointer(mask)?;
@@ -1008,7 +1009,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "sched_setaffinity" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
                 this.check_target_os(&["linux", "freebsd", "android"], link_name)?;
-                let [pid, cpusetsize, mask] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [pid, cpusetsize, mask] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let pid = this.read_scalar(pid)?.to_u32()?;
                 let cpusetsize = this.read_target_usize(cpusetsize)?;
                 let mask = this.read_pointer(mask)?;
@@ -1048,12 +1049,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Miscellaneous
             "isatty" => {
-                let [fd] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [fd] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.isatty(fd)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_atfork" => {
-                let [prepare, parent, child] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [prepare, parent, child] =
+                    this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.read_pointer(prepare)?;
                 this.read_pointer(parent)?;
                 this.read_pointer(child)?;
@@ -1067,7 +1069,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     &["linux", "macos", "freebsd", "illumos", "solaris", "android"],
                     link_name,
                 )?;
-                let [buf, bufsize] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [buf, bufsize] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let buf = this.read_pointer(buf)?;
                 let bufsize = this.read_target_usize(bufsize)?;
 
@@ -1085,7 +1087,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "strerror_r" => {
-                let [errnum, buf, buflen] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [errnum, buf, buflen] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let result = this.strerror_r(errnum, buf, buflen)?;
                 this.write_scalar(result, dest)?;
             }
@@ -1097,7 +1099,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     &["linux", "freebsd", "illumos", "solaris", "android"],
                     link_name,
                 )?;
-                let [ptr, len, flags] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [ptr, len, flags] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_target_usize(len)?;
                 let _flags = this.read_scalar(flags)?.to_i32()?;
@@ -1109,7 +1111,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This function is non-standard but exists with the same signature and
                 // same behavior (eg never fails) on FreeBSD and Solaris/Illumos.
                 this.check_target_os(&["freebsd", "illumos", "solaris"], link_name)?;
-                let [ptr, len] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [ptr, len] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_target_usize(len)?;
                 this.gen_random(ptr, len)?;
@@ -1133,12 +1135,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     link_name,
                 )?;
                 // This function looks and behaves excatly like miri_start_unwind.
-                let [payload] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [payload] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.handle_miri_start_unwind(payload)?;
                 return interp_ok(EmulateItemResult::NeedsUnwind);
             }
             "getuid" | "geteuid" => {
-                let [] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 // For now, just pretend we always have this fixed UID.
                 this.write_int(UID, dest)?;
             }
@@ -1146,7 +1148,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "pthread_attr_getguardsize" if this.frame_in_std() => {
-                let [_attr, guard_size] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [_attr, guard_size] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let guard_size_layout = this.machine.layouts.usize;
                 let guard_size = this.deref_pointer_as(guard_size, guard_size_layout)?;
                 this.write_scalar(
@@ -1159,11 +1161,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "pthread_attr_init" | "pthread_attr_destroy" if this.frame_in_std() => {
-                let [_] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [_] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.write_null(dest)?;
             }
             "pthread_attr_setstacksize" if this.frame_in_std() => {
-                let [_, _] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [_, _] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.write_null(dest)?;
             }
 
@@ -1171,7 +1173,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here.
                 // Hence we can mostly ignore the input `attr_place`.
                 let [attr_place, addr_place, size_place] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                    this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let _attr_place =
                     this.deref_pointer_as(attr_place, this.libc_ty_layout("pthread_attr_t"))?;
                 let addr_place = this.deref_pointer_as(addr_place, this.machine.layouts.usize)?;
@@ -1191,18 +1193,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "signal" | "sigaltstack" if this.frame_in_std() => {
-                let [_, _] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [_, _] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.write_null(dest)?;
             }
             "sigaction" | "mprotect" if this.frame_in_std() => {
-                let [_, _, _] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [_, _, _] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.write_null(dest)?;
             }
 
             "getpwuid_r" | "__posix_getpwuid_r" if this.frame_in_std() => {
                 // getpwuid_r is the standard name, __posix_getpwuid_r is used on solarish
                 let [uid, pwd, buf, buflen, result] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                    this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 this.check_no_isolation("`getpwuid_r`")?;
 
                 let uid = this.read_scalar(uid)?.to_u32()?;

@@ -27,6 +27,7 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV SCRIPT \
+        python3 ../x.py check && \
         python3 ../x.py clippy ci && \
         python3 ../x.py test --stage 1 core alloc std test proc_macro && \
         # Build both public and internal documentation.

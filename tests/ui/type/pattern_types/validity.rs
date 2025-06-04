@@ -8,32 +8,32 @@
 use std::pat::pattern_type;
 
 const BAD: pattern_type!(u32 is 1..) = unsafe { std::mem::transmute(0) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR: constructing invalid value: encountered 0
 
 const BAD_UNINIT: pattern_type!(u32 is 1..) =
-    //~^ ERROR: evaluation of constant value failed
+    //~^ ERROR: using uninitialized data, but this operation requires initialized memory
     unsafe { std::mem::transmute(std::mem::MaybeUninit::<u32>::uninit()) };
 
 const BAD_PTR: pattern_type!(usize is 1..) = unsafe { std::mem::transmute(&42) };
-//~^ ERROR: evaluation of constant value failed
+//~^ ERROR: unable to turn pointer into integer
 
 const BAD_AGGREGATE: (pattern_type!(u32 is 1..), u32) = (unsafe { std::mem::transmute(0) }, 0);
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR: constructing invalid value at .0: encountered 0
 
 struct Foo(Bar);
 struct Bar(pattern_type!(u32 is 1..));
 
 const BAD_FOO: Foo = Foo(Bar(unsafe { std::mem::transmute(0) }));
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR: constructing invalid value at .0.0: encountered 0
 
 const CHAR_UNINIT: pattern_type!(char is 'A'..'Z') =
-    //~^ ERROR: evaluation of constant value failed
+    //~^ ERROR: using uninitialized data, but this operation requires initialized memory
     unsafe { std::mem::transmute(std::mem::MaybeUninit::<u32>::uninit()) };
 
 const CHAR_OOB_PAT: pattern_type!(char is 'A'..'Z') = unsafe { std::mem::transmute('a') };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR: constructing invalid value: encountered 97, but expected something in the range 65..=89
 
 const CHAR_OOB: pattern_type!(char is 'A'..'Z') = unsafe { std::mem::transmute(u32::MAX) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR: constructing invalid value: encountered 0xffffffff
 
 fn main() {}

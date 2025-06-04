@@ -1,0 +1,16 @@
+# Rust files
+Cargo.lock
+target
+
+# Sources for external files
+compiler-rt
+*.tar.gz
+
+# Benchmark cache
+baseline-*
+iai-home
+
+# Temporary files
+*.bk
+*.rs.bk
+.#*

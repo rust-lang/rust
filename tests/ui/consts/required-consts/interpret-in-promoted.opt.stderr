@@ -1,8 +1,8 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: entering unreachable code
   --> $DIR/interpret-in-promoted.rs:15:28
    |
 LL |     let _x: &'static () = &ub();
-   |                            ^^^^ entering unreachable code
+   |                            ^^^^ evaluation of constant value failed here
    |
 note: inside `ub`
   --> $DIR/interpret-in-promoted.rs:9:5
