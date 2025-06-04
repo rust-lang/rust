@@ -1043,7 +1043,7 @@ function preLoadCss(cssUrl) {
     }
 
     /**
-     * @param {boolean} collapseImpls - also collapse impl blocks
+     * @param {boolean} collapseImpls - also collapse impl blocks if set to true
      */
     function collapseAllDocs(collapseImpls) {
         const innerToggle = document.getElementById(toggleAllDocsId);
