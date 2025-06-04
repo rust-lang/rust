@@ -491,7 +491,7 @@ fn file_test_io_read_write_at() {
 }
 
 #[test]
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "cosmo")))]
 fn set_get_unix_permissions() {
     use crate::os::unix::fs::PermissionsExt;
 

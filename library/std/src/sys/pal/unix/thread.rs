@@ -126,12 +126,13 @@ impl Thread {
         target_os = "freebsd",
         target_os = "dragonfly",
         target_os = "nuttx",
-        target_os = "cygwin"
+        target_os = "cygwin",
+        target_os = "cosmo",
     ))]
     pub fn set_name(name: &CStr) {
         unsafe {
             cfg_if::cfg_if! {
-                if #[cfg(any(target_os = "linux", target_os = "cygwin"))] {
+                if #[cfg(any(target_os = "linux", target_os = "cygwin", target_os = "cosmo"))] {
                     // Linux and Cygwin limits the allowed length of the name.
                     const TASK_COMM_LEN: usize = 16;
                     let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
@@ -143,7 +144,13 @@ impl Thread {
             // FreeBSD 12.2 and 13.0, and DragonFly BSD 6.0.
             let res = libc::pthread_setname_np(libc::pthread_self(), name.as_ptr());
             // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
-            debug_assert_eq!(res, 0);
+            cfg_if::cfg_if! {
+                if #[cfg(target_os = "cosmo")] {
+                    let _ = res;
+                } else {
+                    debug_assert_eq!(res, 0);
+                }
+            };
         }
     }
 
@@ -325,6 +332,7 @@ impl Drop for Thread {
     target_os = "illumos",
     target_os = "vxworks",
     target_os = "cygwin",
+    target_os = "cosmo",
     target_vendor = "apple",
 ))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
@@ -346,6 +354,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "aix",
             target_vendor = "apple",
             target_os = "cygwin",
+            target_os = "cosmo",
         ))] {
             #[allow(unused_assignments)]
             #[allow(unused_mut)]

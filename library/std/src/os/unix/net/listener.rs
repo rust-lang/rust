@@ -101,7 +101,7 @@ impl UnixListener {
                 target_os = "openbsd",
                 target_vendor = "apple",
             )))]
-            const backlog: libc::c_int = libc::SOMAXCONN;
+            let backlog: libc::c_int = libc::SOMAXCONN;
 
             cvt(libc::bind(inner.as_inner().as_raw_fd(), (&raw const addr) as *const _, len as _))?;
             cvt(libc::listen(inner.as_inner().as_raw_fd(), backlog))?;

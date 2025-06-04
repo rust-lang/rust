@@ -51,3 +51,4 @@ rustc-std-workspace-core = { path = 'rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'rustc-std-workspace-std' }
 compiler_builtins = { path = "compiler-builtins/compiler-builtins" }
+libc = { path = 'TODO change to fork' }

@@ -169,4 +169,5 @@ check-cfg = [
     'cfg(target_has_reliable_f16_math)',
     'cfg(target_has_reliable_f128)',
     'cfg(target_has_reliable_f128_math)',
+    # 'cfg(target_os = "cosmo")',
 ]

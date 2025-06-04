@@ -109,6 +109,7 @@ mod c_char_definition {
             not(windows),
             not(target_vendor = "apple"),
             not(target_os = "vita"),
+            not(target_os = "cosmo"),
             any(
                 target_arch = "aarch64",
                 target_arch = "arm",

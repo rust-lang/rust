@@ -1,11 +1,25 @@
+use cfg_if::cfg_if;
+
 use super::{Command, Output, Stdio};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind};
 use crate::mem::MaybeUninit;
 use crate::str;
 
+fn is_windows() -> bool {
+    cfg_if! {
+        if #[cfg(windows)] {
+            true
+        } else if #[cfg(target_os = "cosmo")] {
+            libc::IsWindows()
+        } else {
+            false
+        }
+    }
+}
+
 fn known_command() -> Command {
-    if cfg!(windows) { Command::new("help") } else { Command::new("echo") }
+    if is_windows() { Command::new("help") } else { Command::new("echo") }
 }
 
 #[cfg(target_os = "android")]
@@ -18,14 +32,40 @@ fn shell_cmd() -> Command {
     Command::new("/bin/sh")
 }
 
+fn exit_0_cmd() -> Command {
+    if is_windows() {
+        let mut cmd = Command::new("cmd");
+        cmd.args(&["/C", "exit 0"]);
+        cmd
+    } else {
+        let mut cmd = shell_cmd();
+        cmd.args(&["-c", "true"]);
+        cmd
+    }
+}
+
+fn exit_1_cmd() -> Command {
+    if is_windows() {
+        let mut cmd = Command::new("cmd");
+        cmd.args(&[
+            "/C",
+            #[cfg(not(target_os = "cosmo"))]
+            "exit 1",
+            #[cfg(target_os = "cosmo")]
+            "exit 256",
+        ]);
+        cmd
+    } else {
+        let mut cmd = shell_cmd();
+        cmd.args(&["-c", "false"]);
+        cmd
+    }
+}
+
 #[test]
 #[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn smoke() {
-    let p = if cfg!(target_os = "windows") {
-        Command::new("cmd").args(&["/C", "exit 0"]).spawn()
-    } else {
-        shell_cmd().arg("-c").arg("true").spawn()
-    };
+    let p = exit_0_cmd().spawn();
     assert!(p.is_ok());
     let mut p = p.unwrap();
     assert!(p.wait().unwrap().success());
@@ -43,20 +83,16 @@ fn smoke_failure() {
 #[test]
 #[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn exit_reported_right() {
-    let p = if cfg!(target_os = "windows") {
-        Command::new("cmd").args(&["/C", "exit 1"]).spawn()
-    } else {
-        shell_cmd().arg("-c").arg("false").spawn()
-    };
+    let p = exit_1_cmd().spawn();
     assert!(p.is_ok());
     let mut p = p.unwrap();
-    assert!(p.wait().unwrap().code() == Some(1));
+    assert_eq!(p.wait().unwrap().code(), Some(1));
     drop(p.wait());
 }
 
 #[test]
 #[cfg(unix)]
-#[cfg_attr(any(target_os = "vxworks"), ignore)]
+#[cfg_attr(any(target_os = "vxworks", target_os = "cosmo"), ignore)]
 fn signal_reported_right() {
     use crate::os::unix::process::ExitStatusExt;
 
@@ -82,7 +118,7 @@ pub fn run_output(mut cmd: Command) -> String {
 #[test]
 #[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn stdout_works() {
-    if cfg!(target_os = "windows") {
+    if is_windows() {
         let mut cmd = Command::new("cmd");
         cmd.args(&["/C", "echo foobar"]).stdout(Stdio::piped());
         assert_eq!(run_output(cmd), "foobar\r\n");
@@ -94,7 +130,7 @@ fn stdout_works() {
 }
 
 #[test]
-#[cfg_attr(any(windows, target_os = "vxworks"), ignore)]
+#[cfg_attr(any(windows, target_os = "vxworks", target_os = "cosmo"), ignore)]
 fn set_current_dir_works() {
     // On many Unix platforms this will use the posix_spawn path.
     let mut cmd = shell_cmd();
@@ -116,7 +152,7 @@ fn set_current_dir_works() {
 }
 
 #[test]
-#[cfg_attr(any(windows, target_os = "vxworks"), ignore)]
+#[cfg_attr(any(windows, target_os = "vxworks", target_os = "cosmo"), ignore)]
 fn stdin_works() {
     let mut p = shell_cmd()
         .arg("-c")
@@ -136,7 +172,7 @@ fn stdin_works() {
 #[test]
 #[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn child_stdout_read_buf() {
-    let mut cmd = if cfg!(target_os = "windows") {
+    let mut cmd = if is_windows() {
         let mut cmd = Command::new("cmd");
         cmd.arg("/C").arg("echo abc");
         cmd
@@ -155,7 +191,7 @@ fn child_stdout_read_buf() {
     stdout.read_buf(buf.unfilled()).unwrap();
 
     // ChildStdout::read_buf should omit buffer initialization.
-    if cfg!(target_os = "windows") {
+    if is_windows() {
         assert_eq!(buf.filled(), b"abc\r\n");
         assert_eq!(buf.init_len(), 5);
     } else {
@@ -167,18 +203,10 @@ fn child_stdout_read_buf() {
 #[test]
 #[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_process_status() {
-    let mut status = if cfg!(target_os = "windows") {
-        Command::new("cmd").args(&["/C", "exit 1"]).status().unwrap()
-    } else {
-        shell_cmd().arg("-c").arg("false").status().unwrap()
-    };
+    let mut status = exit_1_cmd().status().unwrap();
     assert!(status.code() == Some(1));
 
-    status = if cfg!(target_os = "windows") {
-        Command::new("cmd").args(&["/C", "exit 0"]).status().unwrap()
-    } else {
-        shell_cmd().arg("-c").arg("true").status().unwrap()
-    };
+    status = exit_0_cmd().status().unwrap();
     assert!(status.success());
 }
 
@@ -193,7 +221,7 @@ fn test_process_output_fail_to_start() {
 #[test]
 #[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_process_output_output() {
-    let Output { status, stdout, stderr } = if cfg!(target_os = "windows") {
+    let Output { status, stdout, stderr } = if is_windows() {
         Command::new("cmd").args(&["/C", "echo hello"]).output().unwrap()
     } else {
         shell_cmd().arg("-c").arg("echo hello").output().unwrap()
@@ -208,7 +236,7 @@ fn test_process_output_output() {
 #[test]
 #[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_process_output_error() {
-    let Output { status, stdout, stderr } = if cfg!(target_os = "windows") {
+    let Output { status, stdout, stderr } = if is_windows() {
         Command::new("cmd").args(&["/C", "mkdir ."]).output().unwrap()
     } else {
         Command::new("mkdir").arg("./").output().unwrap()
@@ -223,22 +251,14 @@ fn test_process_output_error() {
 #[test]
 #[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_finish_once() {
-    let mut prog = if cfg!(target_os = "windows") {
-        Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
-    } else {
-        shell_cmd().arg("-c").arg("false").spawn().unwrap()
-    };
+    let mut prog = exit_1_cmd().spawn().unwrap();
     assert!(prog.wait().unwrap().code() == Some(1));
 }
 
 #[test]
 #[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_finish_twice() {
-    let mut prog = if cfg!(target_os = "windows") {
-        Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
-    } else {
-        shell_cmd().arg("-c").arg("false").spawn().unwrap()
-    };
+    let mut prog = exit_1_cmd().spawn().unwrap();
     assert!(prog.wait().unwrap().code() == Some(1));
     assert!(prog.wait().unwrap().code() == Some(1));
 }
@@ -246,7 +266,7 @@ fn test_finish_twice() {
 #[test]
 #[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_wait_with_output_once() {
-    let prog = if cfg!(target_os = "windows") {
+    let prog = if is_windows() {
         Command::new("cmd").args(&["/C", "echo hello"]).stdout(Stdio::piped()).spawn().unwrap()
     } else {
         shell_cmd().arg("-c").arg("echo hello").stdout(Stdio::piped()).spawn().unwrap()
@@ -260,7 +280,7 @@ fn test_wait_with_output_once() {
     assert_eq!(stderr, Vec::new());
 }
 
-#[cfg(all(unix, not(target_os = "android")))]
+#[cfg(all(unix, not(target_os = "android"), not(target_os = "cosmo")))]
 pub fn env_cmd() -> Command {
     Command::new("env")
 }
@@ -269,6 +289,16 @@ pub fn env_cmd() -> Command {
     let mut cmd = Command::new("/system/bin/sh");
     cmd.arg("-c").arg("set");
     cmd
+}
+#[cfg(target_os = "cosmo")]
+pub fn env_cmd() -> Command {
+    if libc::IsWindows() {
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/c").arg("set");
+        cmd
+    } else {
+        Command::new("env")
+    }
 }
 
 #[cfg(windows)]
@@ -406,7 +436,7 @@ fn test_command_implements_send_sync() {
 #[test]
 #[cfg(windows)]
 fn env_empty() {
-    let p = Command::new("cmd").args(&["/C", "exit 0"]).env_clear().spawn();
+    let p = exit_0_cmd().env_clear().spawn();
     assert!(p.is_ok());
 }
 

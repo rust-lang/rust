@@ -84,6 +84,7 @@ pub fn args() -> Args {
     target_os = "hurd",
     target_os = "rtems",
     target_os = "nuttx",
+    target_os = "cosmo",
 ))]
 mod imp {
     use crate::ffi::c_char;

@@ -36,6 +36,7 @@ impl Drop for Handler {
         target_os = "openbsd",
         target_os = "solaris",
         target_os = "illumos",
+        target_os = "cosmo",
     ),
 ))]
 mod thread_info;
@@ -54,6 +55,7 @@ mod thread_info;
         target_os = "openbsd",
         target_os = "solaris",
         target_os = "illumos",
+        target_os = "cosmo",
     )
 ))]
 mod imp {
@@ -340,7 +342,8 @@ mod imp {
         target_os = "netbsd",
         target_os = "hurd",
         target_os = "linux",
-        target_os = "l4re"
+        target_os = "l4re",
+        target_os = "cosmo",
     ))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
@@ -401,6 +404,8 @@ mod imp {
                 install_main_guard_freebsd(page_size)
             } else if cfg!(any(target_os = "netbsd", target_os = "openbsd")) {
                 install_main_guard_bsds(page_size)
+            } else if cfg!(target_os = "cosmo") {
+                install_main_guard_linux(page_size)
             } else {
                 install_main_guard_default(page_size)
             }
@@ -549,7 +554,8 @@ mod imp {
         target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
-        target_os = "l4re"
+        target_os = "l4re",
+        target_os = "cosmo",
     ))]
     // FIXME: I am probably not unsafe.
     unsafe fn current_guard() -> Option<Range<usize>> {
@@ -626,6 +632,7 @@ mod imp {
         target_os = "openbsd",
         target_os = "solaris",
         target_os = "illumos",
+        target_os = "cosmo",
         target_os = "cygwin",
     ))
 ))]

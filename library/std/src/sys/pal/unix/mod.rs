@@ -88,13 +88,13 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
 
             while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
                 match errno() {
-                    libc::EINTR => continue,
+                    x if x == libc::EINTR => continue,
                     #[cfg(target_vendor = "unikraft")]
-                    libc::ENOSYS => {
+                    x if x == libc::ENOSYS => {
                         // Not all configurations of Unikraft enable `LIBPOSIX_EVENT`.
                         break 'poll;
                     }
-                    libc::EINVAL | libc::EAGAIN | libc::ENOMEM => {
+                    x if x == libc::EINVAL || x == libc::EAGAIN || x == libc::ENOMEM => {
                         // RLIMIT_NOFILE or temporary allocation failures
                         // may be preventing use of poll(), fall back to fcntl
                         break 'poll;
@@ -237,45 +237,45 @@ pub(crate) fn is_interrupted(errno: i32) -> bool {
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     use ErrorKind::*;
     match errno as libc::c_int {
-        libc::E2BIG => ArgumentListTooLong,
-        libc::EADDRINUSE => AddrInUse,
-        libc::EADDRNOTAVAIL => AddrNotAvailable,
-        libc::EBUSY => ResourceBusy,
-        libc::ECONNABORTED => ConnectionAborted,
-        libc::ECONNREFUSED => ConnectionRefused,
-        libc::ECONNRESET => ConnectionReset,
-        libc::EDEADLK => Deadlock,
-        libc::EDQUOT => QuotaExceeded,
-        libc::EEXIST => AlreadyExists,
-        libc::EFBIG => FileTooLarge,
-        libc::EHOSTUNREACH => HostUnreachable,
-        libc::EINTR => Interrupted,
-        libc::EINVAL => InvalidInput,
-        libc::EISDIR => IsADirectory,
-        libc::ELOOP => FilesystemLoop,
-        libc::ENOENT => NotFound,
-        libc::ENOMEM => OutOfMemory,
-        libc::ENOSPC => StorageFull,
-        libc::ENOSYS => Unsupported,
-        libc::EMLINK => TooManyLinks,
-        libc::ENAMETOOLONG => InvalidFilename,
-        libc::ENETDOWN => NetworkDown,
-        libc::ENETUNREACH => NetworkUnreachable,
-        libc::ENOTCONN => NotConnected,
-        libc::ENOTDIR => NotADirectory,
+        x if x == libc::E2BIG => ArgumentListTooLong,
+        x if x == libc::EADDRINUSE => AddrInUse,
+        x if x == libc::EADDRNOTAVAIL => AddrNotAvailable,
+        x if x == libc::EBUSY => ResourceBusy,
+        x if x == libc::ECONNABORTED => ConnectionAborted,
+        x if x == libc::ECONNREFUSED => ConnectionRefused,
+        x if x == libc::ECONNRESET => ConnectionReset,
+        x if x == libc::EDEADLK => Deadlock,
+        x if x == libc::EDQUOT => QuotaExceeded,
+        x if x == libc::EEXIST => AlreadyExists,
+        x if x == libc::EFBIG => FileTooLarge,
+        x if x == libc::EHOSTUNREACH => HostUnreachable,
+        x if x == libc::EINTR => Interrupted,
+        x if x == libc::EINVAL => InvalidInput,
+        x if x == libc::EISDIR => IsADirectory,
+        x if x == libc::ELOOP => FilesystemLoop,
+        x if x == libc::ENOENT => NotFound,
+        x if x == libc::ENOMEM => OutOfMemory,
+        x if x == libc::ENOSPC => StorageFull,
+        x if x == libc::ENOSYS => Unsupported,
+        x if x == libc::EMLINK => TooManyLinks,
+        x if x == libc::ENAMETOOLONG => InvalidFilename,
+        x if x == libc::ENETDOWN => NetworkDown,
+        x if x == libc::ENETUNREACH => NetworkUnreachable,
+        x if x == libc::ENOTCONN => NotConnected,
+        x if x == libc::ENOTDIR => NotADirectory,
         #[cfg(not(target_os = "aix"))]
-        libc::ENOTEMPTY => DirectoryNotEmpty,
-        libc::EPIPE => BrokenPipe,
-        libc::EROFS => ReadOnlyFilesystem,
-        libc::ESPIPE => NotSeekable,
-        libc::ESTALE => StaleNetworkFileHandle,
-        libc::ETIMEDOUT => TimedOut,
-        libc::ETXTBSY => ExecutableFileBusy,
-        libc::EXDEV => CrossesDevices,
-        libc::EINPROGRESS => InProgress,
-        libc::EOPNOTSUPP => Unsupported,
+        x if x == libc::ENOTEMPTY => DirectoryNotEmpty,
+        x if x == libc::EPIPE => BrokenPipe,
+        x if x == libc::EROFS => ReadOnlyFilesystem,
+        x if x == libc::ESPIPE => NotSeekable,
+        x if x == libc::ESTALE => StaleNetworkFileHandle,
+        x if x == libc::ETIMEDOUT => TimedOut,
+        x if x == libc::ETXTBSY => ExecutableFileBusy,
+        x if x == libc::EXDEV => CrossesDevices,
+        x if x == libc::EINPROGRESS => InProgress,
+        x if x == libc::EOPNOTSUPP => Unsupported,
 
-        libc::EACCES | libc::EPERM => PermissionDenied,
+        x if x == libc::EACCES || x == libc::EPERM => PermissionDenied,
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match

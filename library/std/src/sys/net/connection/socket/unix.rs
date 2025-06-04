@@ -160,8 +160,8 @@ impl Socket {
             if result.is_minus_one() {
                 let err = crate::sys::os::errno();
                 match err {
-                    libc::EINTR => continue,
-                    libc::EISCONN => return Ok(()),
+                    _ if err == libc::EINTR => continue,
+                    _ if err == libc::EISCONN => return Ok(()),
                     _ => return Err(io::Error::from_raw_os_error(err)),
                 }
             }

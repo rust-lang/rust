@@ -29,6 +29,7 @@ use libc::fstatat64;
     target_os = "aix",
     target_os = "nto",
     target_os = "vita",
+    target_os = "cosmo",
     all(target_os = "linux", target_env = "musl"),
 ))]
 use libc::readdir as readdir64;
@@ -44,6 +45,7 @@ use libc::readdir as readdir64;
     target_os = "nto",
     target_os = "vita",
     target_os = "hurd",
+    target_os = "cosmo",
 )))]
 use libc::readdir_r as readdir64_r;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
@@ -280,6 +282,7 @@ unsafe impl Sync for Dir {}
     target_os = "nto",
     target_os = "vita",
     target_os = "hurd",
+    target_os = "cosmo",
 ))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
@@ -304,6 +307,7 @@ pub struct DirEntry {
     target_os = "nto",
     target_os = "vita",
     target_os = "hurd",
+    target_os = "cosmo",
 ))]
 struct dirent64_min {
     d_ino: u64,
@@ -328,6 +332,7 @@ struct dirent64_min {
     target_os = "nto",
     target_os = "vita",
     target_os = "hurd",
+    target_os = "cosmo",
 )))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
@@ -707,6 +712,7 @@ impl Iterator for ReadDir {
         target_os = "nto",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "cosmo",
     ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         use crate::sys::os::{errno, set_errno};
@@ -800,6 +806,7 @@ impl Iterator for ReadDir {
         target_os = "nto",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "cosmo",
     )))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.end_of_stream {
@@ -987,6 +994,7 @@ impl DirEntry {
         target_os = "nto",
         target_os = "hurd",
         target_os = "rtems",
+        target_os = "cosmo",
         target_vendor = "apple",
     ))]
     pub fn ino(&self) -> u64 {
@@ -1048,6 +1056,7 @@ impl DirEntry {
         target_os = "nto",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "cosmo",
     )))]
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
@@ -1063,6 +1072,7 @@ impl DirEntry {
         target_os = "nto",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "cosmo",
     ))]
     fn name_cstr(&self) -> &CStr {
         &self.name
@@ -2156,10 +2166,16 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
     Err(io::const_error!(io::ErrorKind::Unsupported, "chroot not supported by vxworks"))
 }
 
+#[cfg(not(target_os = "cosmo"))]
 pub fn mkfifo(path: &Path, mode: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::mkfifo(path.as_ptr(), mode.try_into().unwrap()) }).map(|_| ())
     })
+}
+
+#[cfg(target_os = "cosmo")]
+pub fn mkfifo(_path: &Path, _mode: u32) -> io::Result<()> {
+    Err(io::const_error!(io::ErrorKind::Unsupported, "mkfifo not supported by Cosmopolitan libc"))
 }
 
 pub use remove_dir_impl::remove_dir_all;
@@ -2258,7 +2274,7 @@ mod remove_dir_impl {
 
     fn is_enoent(result: &io::Result<()>) -> bool {
         if let Err(err) = result
-            && matches!(err.raw_os_error(), Some(libc::ENOENT))
+            && err.raw_os_error() == Some(libc::ENOENT)
         {
             true
         } else {
@@ -2269,7 +2285,10 @@ mod remove_dir_impl {
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
         let fd = match openat_nofollow_dironly(parent_fd, &path) {
-            Err(err) if matches!(err.raw_os_error(), Some(libc::ENOTDIR | libc::ELOOP)) => {
+            Err(err)
+                if err.raw_os_error() == Some(libc::ENOTDIR)
+                    || err.raw_os_error() == Some(libc::ELOOP) =>
+            {
                 // not a directory - don't traverse further
                 // (for symlinks, older Linux kernels may return ELOOP instead of ENOTDIR)
                 return match parent_fd {

@@ -276,7 +276,7 @@ impl Instant {
         #[cfg(target_vendor = "apple")]
         const clock_id: libc::clockid_t = libc::CLOCK_UPTIME_RAW;
         #[cfg(not(target_vendor = "apple"))]
-        const clock_id: libc::clockid_t = libc::CLOCK_MONOTONIC;
+        let clock_id: libc::clockid_t = libc::CLOCK_MONOTONIC;
         Instant { t: Timespec::now(clock_id) }
     }
 

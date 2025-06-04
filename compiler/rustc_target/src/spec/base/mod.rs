@@ -3,6 +3,7 @@ pub(crate) mod android;
 pub mod apple;
 pub(crate) mod avr;
 pub(crate) mod bpf;
+pub(crate) mod cosmo;
 pub(crate) mod cygwin;
 pub(crate) mod dragonfly;
 pub(crate) mod freebsd;

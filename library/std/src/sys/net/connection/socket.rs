@@ -42,6 +42,7 @@ cfg_if::cfg_if! {
         target_os = "l4re",
         target_os = "nto",
         target_os = "nuttx",
+        target_os = "cosmo",
         target_vendor = "apple",
     ))] {
         use c::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
@@ -169,13 +170,13 @@ unsafe fn socket_addr_from_c(
     len: usize,
 ) -> io::Result<SocketAddr> {
     match (*storage).ss_family as c_int {
-        c::AF_INET => {
+        family if family == c::AF_INET => {
             assert!(len >= size_of::<c::sockaddr_in>());
             Ok(SocketAddr::V4(socket_addr_v4_from_c(unsafe {
                 *(storage as *const _ as *const c::sockaddr_in)
             })))
         }
-        c::AF_INET6 => {
+        family if family == c::AF_INET6 => {
             assert!(len >= size_of::<c::sockaddr_in6>());
             Ok(SocketAddr::V6(socket_addr_v6_from_c(unsafe {
                 *(storage as *const _ as *const c::sockaddr_in6)

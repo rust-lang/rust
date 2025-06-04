@@ -45,6 +45,7 @@ cfg_if::cfg_if! {
         target_os = "l4re",
         target_os = "nto",
         target_os = "nuttx",
+        target_os = "cosmo",
     ))] {
         mod unix_legacy;
         pub use unix_legacy::fill_bytes;

@@ -56,6 +56,7 @@ fn write_vectored_at() {
     assert_eq!(&content, expected);
 }
 
+#[cfg(not(target_os = "cosmo"))]
 #[test]
 fn test_mkfifo() {
     let tmp_dir = crate::test_helpers::tmpdir();

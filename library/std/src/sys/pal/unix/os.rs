@@ -34,6 +34,7 @@ unsafe extern "C" {
             target_os = "fuchsia",
             target_os = "l4re",
             target_os = "hurd",
+            target_os = "cosmo",
         ),
         link_name = "__errno_location"
     )]
@@ -408,7 +409,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     target_os = "hurd",
     target_os = "android",
     target_os = "nuttx",
-    target_os = "emscripten"
+    target_os = "emscripten",
 ))]
 pub fn current_exe() -> io::Result<PathBuf> {
     match crate::fs::read_link("/proc/self/exe") {
@@ -418,6 +419,13 @@ pub fn current_exe() -> io::Result<PathBuf> {
         )),
         other => other,
     }
+}
+
+#[cfg(target_os = "cosmo")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    let bytes = unsafe { CStr::from_ptr(libc::GetProgramExecutableName()).to_bytes() };
+    let path = PathBuf::from(<OsStr as OsStrExt>::from_bytes(bytes));
+    Ok(path)
 }
 
 #[cfg(target_os = "nto")]
@@ -625,6 +633,11 @@ pub fn temp_dir() -> PathBuf {
                 darwin_temp_dir()
             } else if #[cfg(target_os = "android")] {
                 PathBuf::from("/data/local/tmp")
+            } else if #[cfg(target_os = "cosmo")] {
+                let bytes = unsafe {
+                    CStr::from_ptr(libc::__get_tmpdir()).to_bytes()
+                };
+                PathBuf::from(<OsStr as OsStrExt>::from_bytes(bytes))
             } else {
                 PathBuf::from("/tmp")
             }

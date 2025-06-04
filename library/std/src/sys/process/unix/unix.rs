@@ -399,7 +399,16 @@ impl Command {
             *sys::env::environ() = envp.as_ptr();
         }
 
-        libc::execvp(self.get_program_cstr().as_ptr(), self.get_argv().as_ptr());
+        let program = self.get_program_cstr();
+        let argv = self.get_argv().as_ptr();
+        #[cfg(target_os = "cosmo")]
+        if libc::IsWindows() && !program.to_bytes().ends_with(b".exe") {
+            let mut program = program.to_bytes().to_vec();
+            program.extend_from_slice(b".exe");
+            let program = crate::ffi::CString::new(program).unwrap();
+            libc::execvp(program.as_ptr(), argv);
+        }
+        libc::execvp(program.as_ptr(), argv);
         Err(io::Error::last_os_error())
     }
 
@@ -1106,54 +1115,54 @@ impl From<c_int> for ExitStatus {
 /// something like "9 (SIGKILL)".
 fn signal_string(signal: i32) -> &'static str {
     match signal {
-        libc::SIGHUP => " (SIGHUP)",
-        libc::SIGINT => " (SIGINT)",
-        libc::SIGQUIT => " (SIGQUIT)",
-        libc::SIGILL => " (SIGILL)",
-        libc::SIGTRAP => " (SIGTRAP)",
-        libc::SIGABRT => " (SIGABRT)",
+        _ if signal == libc::SIGHUP => " (SIGHUP)",
+        _ if signal == libc::SIGINT => " (SIGINT)",
+        _ if signal == libc::SIGQUIT => " (SIGQUIT)",
+        _ if signal == libc::SIGILL => " (SIGILL)",
+        _ if signal == libc::SIGTRAP => " (SIGTRAP)",
+        _ if signal == libc::SIGABRT => " (SIGABRT)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGBUS => " (SIGBUS)",
-        libc::SIGFPE => " (SIGFPE)",
-        libc::SIGKILL => " (SIGKILL)",
+        _ if signal == libc::SIGBUS => " (SIGBUS)",
+        _ if signal == libc::SIGFPE => " (SIGFPE)",
+        _ if signal == libc::SIGKILL => " (SIGKILL)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGUSR1 => " (SIGUSR1)",
-        libc::SIGSEGV => " (SIGSEGV)",
+        _ if signal == libc::SIGUSR1 => " (SIGUSR1)",
+        _ if signal == libc::SIGSEGV => " (SIGSEGV)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGUSR2 => " (SIGUSR2)",
-        libc::SIGPIPE => " (SIGPIPE)",
-        libc::SIGALRM => " (SIGALRM)",
-        libc::SIGTERM => " (SIGTERM)",
+        _ if signal == libc::SIGUSR2 => " (SIGUSR2)",
+        _ if signal == libc::SIGPIPE => " (SIGPIPE)",
+        _ if signal == libc::SIGALRM => " (SIGALRM)",
+        _ if signal == libc::SIGTERM => " (SIGTERM)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGCHLD => " (SIGCHLD)",
+        _ if signal == libc::SIGCHLD => " (SIGCHLD)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGCONT => " (SIGCONT)",
+        _ if signal == libc::SIGCONT => " (SIGCONT)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGSTOP => " (SIGSTOP)",
+        _ if signal == libc::SIGSTOP => " (SIGSTOP)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGTSTP => " (SIGTSTP)",
+        _ if signal == libc::SIGTSTP => " (SIGTSTP)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGTTIN => " (SIGTTIN)",
+        _ if signal == libc::SIGTTIN => " (SIGTTIN)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGTTOU => " (SIGTTOU)",
+        _ if signal == libc::SIGTTOU => " (SIGTTOU)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGURG => " (SIGURG)",
+        _ if signal == libc::SIGURG => " (SIGURG)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGXCPU => " (SIGXCPU)",
+        _ if signal == libc::SIGXCPU => " (SIGXCPU)",
         #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
-        libc::SIGXFSZ => " (SIGXFSZ)",
+        _ if signal == libc::SIGXFSZ => " (SIGXFSZ)",
         #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
-        libc::SIGVTALRM => " (SIGVTALRM)",
+        _ if signal == libc::SIGVTALRM => " (SIGVTALRM)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGPROF => " (SIGPROF)",
+        _ if signal == libc::SIGPROF => " (SIGPROF)",
         #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
-        libc::SIGWINCH => " (SIGWINCH)",
+        _ if signal == libc::SIGWINCH => " (SIGWINCH)",
         #[cfg(not(any(target_os = "haiku", target_os = "l4re")))]
-        libc::SIGIO => " (SIGIO)",
+        _ if signal == libc::SIGIO => " (SIGIO)",
         #[cfg(target_os = "haiku")]
-        libc::SIGPOLL => " (SIGPOLL)",
+        _ if signal == libc::SIGPOLL => " (SIGPOLL)",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGSYS => " (SIGSYS)",
+        _ if signal == libc::SIGSYS => " (SIGSYS)",
         // For information on Linux signals, run `man 7 signal`
         #[cfg(all(
             target_os = "linux",
@@ -1164,9 +1173,9 @@ fn signal_string(signal: i32) -> &'static str {
                 target_arch = "aarch64"
             )
         ))]
-        libc::SIGSTKFLT => " (SIGSTKFLT)",
+        _ if signal == libc::SIGSTKFLT => " (SIGSTKFLT)",
         #[cfg(any(target_os = "linux", target_os = "nto", target_os = "cygwin"))]
-        libc::SIGPWR => " (SIGPWR)",
+        _ if signal == libc::SIGPWR => " (SIGPWR)",
         #[cfg(any(
             target_os = "freebsd",
             target_os = "netbsd",
@@ -1176,7 +1185,7 @@ fn signal_string(signal: i32) -> &'static str {
             target_vendor = "apple",
             target_os = "cygwin",
         ))]
-        libc::SIGEMT => " (SIGEMT)",
+        _ if signal == libc::SIGEMT => " (SIGEMT)",
         #[cfg(any(
             target_os = "freebsd",
             target_os = "netbsd",
@@ -1184,13 +1193,13 @@ fn signal_string(signal: i32) -> &'static str {
             target_os = "dragonfly",
             target_vendor = "apple",
         ))]
-        libc::SIGINFO => " (SIGINFO)",
+        _ if signal == libc::SIGINFO => " (SIGINFO)",
         #[cfg(target_os = "hurd")]
-        libc::SIGLOST => " (SIGLOST)",
+        _ if signal == libc::SIGLOST => " (SIGLOST)",
         #[cfg(target_os = "freebsd")]
-        libc::SIGTHR => " (SIGTHR)",
+        _ if signal == libc::SIGTHR => " (SIGTHR)",
         #[cfg(target_os = "freebsd")]
-        libc::SIGLIBRT => " (SIGLIBRT)",
+        _ if signal == libc::SIGLIBRT => " (SIGLIBRT)",
         _ => "",
     }
 }

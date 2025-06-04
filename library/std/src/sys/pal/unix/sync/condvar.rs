@@ -70,7 +70,7 @@ impl Condvar {
         #[cfg(any(target_vendor = "apple", target_os = "cygwin"))]
         let dur = Duration::min(dur, Duration::from_secs(1000 * 365 * 86400));
 
-        let timeout = Timespec::now(Self::CLOCK).checked_add_duration(&dur);
+        let timeout = Timespec::now(Self::clock()).checked_add_duration(&dur);
 
         #[cfg(not(target_os = "nto"))]
         let timeout = timeout.and_then(|t| t.to_timespec()).unwrap_or(TIMESPEC_MAX);
@@ -95,7 +95,10 @@ impl Condvar {
 )))]
 impl Condvar {
     pub const PRECISE_TIMEOUT: bool = true;
-    const CLOCK: libc::clockid_t = libc::CLOCK_MONOTONIC;
+
+    fn clock() -> libc::clockid_t {
+        libc::CLOCK_MONOTONIC
+    }
 
     /// # Safety
     /// May only be called once per instance of `Self`.
@@ -117,7 +120,7 @@ impl Condvar {
             let r = libc::pthread_condattr_init(attr.as_mut_ptr());
             assert_eq!(r, 0);
             let attr = AttrGuard(&mut attr);
-            let r = libc::pthread_condattr_setclock(attr.0.as_mut_ptr(), Self::CLOCK);
+            let r = libc::pthread_condattr_setclock(attr.0.as_mut_ptr(), Self::clock());
             assert_eq!(r, 0);
             let r = libc::pthread_cond_init(self.raw(), attr.0.as_ptr());
             assert_eq!(r, 0);
@@ -137,7 +140,10 @@ impl Condvar {
 ))]
 impl Condvar {
     pub const PRECISE_TIMEOUT: bool = false;
-    const CLOCK: libc::clockid_t = libc::CLOCK_REALTIME;
+
+    fn clock() -> libc::clockid_t {
+        libc::CLOCK_REALTIME
+    }
 
     /// # Safety
     /// May only be called once per instance of `Self`.
