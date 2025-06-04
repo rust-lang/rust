@@ -2033,18 +2033,18 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// semantics will almost always end up pretty similar to [C11's definition of volatile][c11].
 ///
 /// Volatile operations are intended to act on I/O memory. As such, they are considered externally
-/// observable events (just like syscalls), and are guaranteed to not be elided or reordered by the
-/// compiler across other externally observable events. With this in mind, there are two cases of
-/// usage that need to be distinguished:
+/// observable events (just like syscalls, but less opaque), and are guaranteed to not be elided or
+/// reordered by the compiler across other externally observable events. With this in mind, there
+/// are two cases of usage that need to be distinguished:
 ///
 /// - When a volatile operation is used for memory inside an [allocation], it behaves exactly like
 ///   [`read`], except for the additional guarantee that it won't be elided or reordered (see
 ///   above). This implies that the operation will actually access memory and not e.g. be lowered to
-///   reusing data from a previous read, such as a register that performed a previous load on that
-///   memory. Other than that, all the usual rules for memory accesses apply (including provenance).
-///   In particular, just like in C, whether an operation is volatile has no bearing whatsoever on
-///   questions involving concurrent access from multiple threads. Volatile accesses behave exactly
-///   like non-atomic accesses in that regard.
+///   reusing data from a previous read, such as from a register on which previous load of that
+///   memory was performed. Other than that, all the usual rules for memory accesses apply
+///   (including provenance).  In particular, just like in C, whether an operation is volatile has
+///   no bearing whatsoever on questions involving concurrent access from multiple threads. Volatile
+///   accesses behave exactly like non-atomic accesses in that regard.
 ///
 /// - Volatile operations, however, may also be used to access memory that is _outside_ of any Rust
 ///   allocation. In this use-case, the pointer does *not* have to be [valid] for reads. This is
