@@ -181,9 +181,9 @@ pub(crate) struct MaybeEscaped;
 pub(crate) struct EscapeIterInner<const N: usize, ESCAPING> {
     // Invariant:
     //
-    // If `alive.end <= 128`, `data.escape_seq` must be valid and
+    // If `alive.end <= Self::LITERAL_ESCAPE_START`, `data.escape_seq` must be valid and
     // contain printable ASCII characters in the `alive` range.
-    // If `alive.end > 128`, `data.literal` must be valid and
+    // If `alive.end > Self::LITERAL_ESCAPE_START`, `data.literal` must be valid and
     // the `alive` range must have a length of at most `1`.
     data: MaybeEscapedCharacter<N>,
     alive: Range<u8>,
@@ -191,13 +191,16 @@ pub(crate) struct EscapeIterInner<const N: usize, ESCAPING> {
 }
 
 impl<const N: usize, ESCAPING> EscapeIterInner<N, ESCAPING> {
+    const LITERAL_ESCAPE_START: u8 = 128;
+
     /// # Safety
     ///
     /// `data.escape_seq` must contain an escape sequence in the range given by `alive`.
     #[inline]
     const unsafe fn new(data: MaybeEscapedCharacter<N>, alive: Range<u8>) -> Self {
-        // Longer escape sequences are not useful given `alive.end` is at most 128.
-        const { assert!(N < 128) };
+        // Longer escape sequences are not useful given `alive.end` is at most
+        // `Self::LITERAL_ESCAPE_START`.
+        const { assert!(N < Self::LITERAL_ESCAPE_START as usize) };
         Self { data, alive, escaping: PhantomData }
     }
 
@@ -263,9 +266,9 @@ impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
     pub(crate) const fn printable(c: char) -> Self {
         Self {
             data: MaybeEscapedCharacter { literal: c },
-            // Uphold invariant (`alive.end > 128`), and ensure `len` behaves
-            // correctly for iterating through one character literal.
-            alive: 128..129,
+            // Uphold invariant (`alive.end > Self::LITERAL_ESCAPE_START`), and ensure `len`
+            // behaves correctly for iterating through one character literal.
+            alive: Self::LITERAL_ESCAPE_START..(Self::LITERAL_ESCAPE_START + 1),
             escaping: PhantomData,
         }
     }
@@ -273,7 +276,7 @@ impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
     pub(crate) fn next(&mut self) -> Option<char> {
         let i = self.alive.next()?;
 
-        if self.alive.end > 128 {
+        if self.alive.end > Self::LITERAL_ESCAPE_START {
             // SAFETY: We just checked that `self.data.literal` is valid.
             return Some(unsafe { self.data.literal });
         }
@@ -297,7 +300,7 @@ impl<const N: usize> fmt::Display for EscapeIterInner<N, AlwaysEscaped> {
 
 impl<const N: usize> fmt::Display for EscapeIterInner<N, MaybeEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.alive.end > 128 {
+        if self.alive.end > Self::LITERAL_ESCAPE_START {
             // SAFETY: We just checked that `self.data.literal` is valid.
             return f.write_char(unsafe { self.data.literal });
         }
@@ -323,7 +326,7 @@ impl<const N: usize> fmt::Debug for EscapeIterInner<N, AlwaysEscaped> {
 impl<const N: usize> fmt::Debug for EscapeIterInner<N, MaybeEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut d = f.debug_tuple("EscapeIterInner");
-        if self.alive.end > 128 {
+        if self.alive.end > Self::LITERAL_ESCAPE_START {
             // SAFETY: We just checked that `self.data.literal` is valid.
             d.field(unsafe { &self.data.literal });
         } else {
