@@ -233,12 +233,45 @@ impl<const N: usize, ESCAPING> EscapeIterInner<N, ESCAPING> {
         usize::from(self.alive.end - self.alive.start)
     }
 
+    #[inline]
     pub(crate) fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.alive.advance_by(n)
     }
 
+    #[inline]
     pub(crate) fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.alive.advance_back_by(n)
+    }
+
+    /// Returns a `char` if `self.data` contains one in its `literal` variant.
+    #[inline]
+    const fn to_char(&self) -> Option<char> {
+        if self.alive.end > Self::LITERAL_ESCAPE_START {
+            // SAFETY: We just checked that `self.data` contains a `char` in
+            //         its `literal` variant.
+            return Some(unsafe { self.data.literal });
+        }
+
+        None
+    }
+
+    /// Returns a string of printable ASCII characters in `self.data.escape_seq`.
+    ///
+    /// # Safety
+    ///
+    /// - `self.data` must contain printable ASCII characters in its `escape_seq` variant.
+    /// - `self.alive` must be a valid range for `self.data.escape_seq`.
+    #[inline]
+    unsafe fn to_str_unchecked(&self) -> &str {
+        // SAFETY: The caller guarantees `self.data` contains printable ASCII
+        //         characters in its `escape_seq` variant, and `self.alive` is
+        //         a valid range for `self.data.escape_seq`.
+        unsafe {
+            self.data
+                .escape_seq
+                .get_unchecked(usize::from(self.alive.start)..usize::from(self.alive.end))
+                .as_str()
+        }
     }
 }
 
@@ -246,16 +279,20 @@ impl<const N: usize> EscapeIterInner<N, AlwaysEscaped> {
     pub(crate) fn next(&mut self) -> Option<u8> {
         let i = self.alive.next()?;
 
-        // SAFETY: The `AlwaysEscaped` marker guarantees that `self.data.escape_seq` is valid,
-        // and `i` is guaranteed to be a valid index for `self.data.escape_seq`.
+        // SAFETY: The `AlwaysEscaped` marker guarantees that `self.data`
+        //         contains printable ASCII characters in its `escape_seq`
+        //         variant, and `i` is guaranteed to be a valid index for
+        //         `self.data.escape_seq`.
         unsafe { Some(self.data.escape_seq.get_unchecked(usize::from(i)).to_u8()) }
     }
 
     pub(crate) fn next_back(&mut self) -> Option<u8> {
         let i = self.alive.next_back()?;
 
-        // SAFETY: The `AlwaysEscaped` marker guarantees that `self.data.escape_seq` is valid,
-        // and `i` is guaranteed to be a valid index for `self.data.escape_seq`.
+        // SAFETY: The `AlwaysEscaped` marker guarantees that `self.data`
+        //         contains printable ASCII characters in its `escape_seq`
+        //         variant, and `i` is guaranteed to be a valid index for
+        //         `self.data.escape_seq`.
         unsafe { Some(self.data.escape_seq.get_unchecked(usize::from(i)).to_u8()) }
     }
 }
@@ -276,63 +313,47 @@ impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
     pub(crate) fn next(&mut self) -> Option<char> {
         let i = self.alive.next()?;
 
-        if self.alive.end > Self::LITERAL_ESCAPE_START {
-            // SAFETY: We just checked that `self.data.literal` is valid.
-            return Some(unsafe { self.data.literal });
+        if let Some(c) = self.to_char() {
+            return Some(c);
         }
 
-        // SAFETY: At this point, `self.data.escape_seq` must be valid, and
-        // `i` is guaranteed to be a valid index for `self.data.escape_seq`.
+        // SAFETY: At this point, `self.data` must contain printable ASCII
+        //         characters in its `escape_seq` variant, and `i` is
+        //         guaranteed to be a valid index for `self.data.escape_seq`.
         Some(char::from(unsafe { self.data.escape_seq.get_unchecked(usize::from(i)).to_u8() }))
     }
 }
 
 impl<const N: usize> fmt::Display for EscapeIterInner<N, AlwaysEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // SAFETY: The `AlwaysEscaped` marker guarantees that `self.data.escape_seq` is valid,
-        // and `self.alive` is guaranteed to be a valid range for `self.data.escape_seq`.
-        f.write_str(unsafe {
-            self.data.escape_seq[usize::from(self.alive.start)..usize::from(self.alive.end)]
-                .as_str()
-        })
+        // SAFETY: The `AlwaysEscaped` marker guarantees that `self.data`
+        //         contains printable ASCII chars, and `self.alive` is
+        //         guaranteed to be a valid range for `self.data`.
+        f.write_str(unsafe { self.to_str_unchecked() })
     }
 }
 
 impl<const N: usize> fmt::Display for EscapeIterInner<N, MaybeEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.alive.end > Self::LITERAL_ESCAPE_START {
-            // SAFETY: We just checked that `self.data.literal` is valid.
-            return f.write_char(unsafe { self.data.literal });
+        if let Some(c) = self.to_char() {
+            return f.write_char(c);
         }
 
-        // SAFETY: At this point, `self.data.escape_seq` must be valid,
-        // and `self.alive` is guaranteed to be a valid range for `self.data.escape_seq`.
-        f.write_str(unsafe {
-            self.data.escape_seq[usize::from(self.alive.start)..usize::from(self.alive.end)]
-                .as_str()
-        })
+        // SAFETY: At this point, `self.data` must contain printable ASCII
+        //         characters in its `escape_seq` variant, and `self.alive`
+        //         is guaranteed to be a valid range for `self.data`.
+        f.write_str(unsafe { self.to_str_unchecked() })
     }
 }
 
 impl<const N: usize> fmt::Debug for EscapeIterInner<N, AlwaysEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("EscapeIterInner")
-            // SAFETY: The `AlwaysEscaped` marker guarantees that `self.data.escape_seq` is valid.
-            .field(unsafe { &self.data.escape_seq })
-            .finish()
+        f.debug_tuple("EscapeIterInner").field(&format_args!("{:?}", self)).finish()
     }
 }
 
 impl<const N: usize> fmt::Debug for EscapeIterInner<N, MaybeEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut d = f.debug_tuple("EscapeIterInner");
-        if self.alive.end > Self::LITERAL_ESCAPE_START {
-            // SAFETY: We just checked that `self.data.literal` is valid.
-            d.field(unsafe { &self.data.literal });
-        } else {
-            // SAFETY: At this point, `self.data.escape_seq` must be valid.
-            d.field(unsafe { &self.data.escape_seq });
-        }
-        d.finish()
+        f.debug_tuple("EscapeIterInner").field(&format_args!("{:?}", self)).finish()
     }
 }
