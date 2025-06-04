@@ -1,7 +1,4 @@
-use std::io::BufWriter;
 use std::path::PathBuf;
-
-use termcolor::{BufferWriter, ColorChoice};
 
 use super::*;
 
@@ -35,19 +32,20 @@ quis dolor non venenatis. Aliquam ut. ";
 #[test]
 fn test_wrapping_write() {
     WIDTH.with(|w| w.set(TEST_WIDTH));
-    let mut buf = BufWriter::new(Vec::new());
+    let mut buf = Vec::new();
     let txt = TXT.replace("-\n", "-").replace("_\n", "_").replace('\n', " ").replace("    ", "");
-    write_wrapping(&mut buf, &txt, 0, None).unwrap();
-    write_wrapping(&mut buf, &txt, 4, None).unwrap();
+    write_wrapping(&mut buf, &txt, 0, None, None).unwrap();
+    write_wrapping(&mut buf, &txt, 4, None, None).unwrap();
     write_wrapping(
         &mut buf,
         "Sample link lorem ipsum dolor sit amet. ",
         4,
         Some("link-address-placeholder"),
+        None,
     )
     .unwrap();
-    write_wrapping(&mut buf, &txt, 0, None).unwrap();
-    let out = String::from_utf8(buf.into_inner().unwrap()).unwrap();
+    write_wrapping(&mut buf, &txt, 0, None, None).unwrap();
+    let out = String::from_utf8(buf).unwrap();
     let out = out
         .replace("\x1b\\", "")
         .replace('\x1b', "")
@@ -66,18 +64,17 @@ fn test_output() {
     // Capture `--bless` when run via ./x
     let bless = std::env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
     let ast = MdStream::parse_str(INPUT);
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
-    let mut buffer = bufwtr.buffer();
-    ast.write_termcolor_buf(&mut buffer).unwrap();
+    let mut buffer = Vec::new();
+    ast.write_anstream_buf(&mut buffer).unwrap();
 
     let mut blessed = PathBuf::new();
     blessed.extend(OUTPUT_PATH);
 
     if bless {
-        std::fs::write(&blessed, buffer.into_inner()).unwrap();
+        std::fs::write(&blessed, buffer.as_slice()).unwrap();
         eprintln!("blessed output at {}", blessed.display());
     } else {
-        let output = buffer.into_inner();
+        let output = buffer.as_slice();
         if std::fs::read(blessed).unwrap() != output {
             // hack: I don't know any way to write bytes to the captured stdout
             // that cargo test uses
