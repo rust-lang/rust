@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
-use clippy_utils::{is_res_lang_ctor, paths, peel_blocks};
+use clippy_utils::{is_res_lang_ctor, paths, peel_blocks, sym};
 use hir::{ExprKind, HirId, PatKind};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -232,8 +232,16 @@ fn is_unreachable_or_panic(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
 fn unpack_call_chain<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     while let ExprKind::MethodCall(path, receiver, ..) = expr.kind {
         if matches!(
-            path.ident.as_str(),
-            "unwrap" | "expect" | "unwrap_or" | "unwrap_or_else" | "ok" | "is_ok" | "is_err" | "or_else" | "or"
+            path.ident.name,
+            sym::unwrap
+                | sym::expect
+                | sym::unwrap_or
+                | sym::unwrap_or_else
+                | sym::ok
+                | sym::is_ok
+                | sym::is_err
+                | sym::or_else
+                | sym::or
         ) {
             expr = receiver;
         } else {

@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
         let segments = &poly.trait_ref.path.segments;
 
         if segments.len() == 1
-            && ["Fn", "FnMut", "FnOnce"].contains(&segments[0].ident.name.as_str())
+            && matches!(segments[0].ident.name, sym::Fn | sym::FnMut | sym::FnOnce)
             && let Some(args) = segments[0].args
             && args.parenthesized == GenericArgsParentheses::ParenSugar
             && let constraints = &args.constraints

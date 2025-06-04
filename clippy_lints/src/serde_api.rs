@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::paths;
+use clippy_utils::{paths, sym};
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -36,9 +36,9 @@ impl<'tcx> LateLintPass<'tcx> for SerdeApi {
                 let mut seen_str = None;
                 let mut seen_string = None;
                 for item in *items {
-                    match item.ident.as_str() {
-                        "visit_str" => seen_str = Some(item.span),
-                        "visit_string" => seen_string = Some(item.span),
+                    match item.ident.name {
+                        sym::visit_str => seen_str = Some(item.span),
+                        sym::visit_string => seen_string = Some(item.span),
                         _ => {},
                     }
                 }

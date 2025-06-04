@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
-use clippy_utils::get_enclosing_block;
 use clippy_utils::higher::{VecInitKind, get_vec_init_kind};
 use clippy_utils::source::snippet;
+use clippy_utils::{get_enclosing_block, sym};
 
 use hir::{Expr, ExprKind, HirId, LetStmt, PatKind, PathSegment, QPath, StmtKind};
 use rustc_errors::Applicability;
@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                                 diag.span_suggestion(
                                     expr.span,
                                     "try",
-                                    format!("{}.resize({len}, 0); {}", ident.as_str(), snippet(cx, expr.span, "..")),
+                                    format!("{}.resize({len}, 0); {}", ident, snippet(cx, expr.span, "..")),
                                     applicability,
                                 );
                             },
@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                                         "try",
                                         format!(
                                             "{}.resize({}, 0); {}",
-                                            ident.as_str(),
+                                            ident,
                                             snippet(cx, e.span, ".."),
                                             snippet(cx, expr.span, "..")
                                         ),
@@ -142,8 +142,8 @@ impl<'tcx> Visitor<'tcx> for ReadVecVisitor<'tcx> {
         if let ExprKind::MethodCall(path, receiver, args, _) = e.kind {
             let PathSegment { ident, .. } = *path;
 
-            match ident.as_str() {
-                "read" | "read_exact" => {
+            match ident.name {
+                sym::read | sym::read_exact => {
                     let [arg] = args else { return };
                     if let ExprKind::AddrOf(_, hir::Mutability::Mut, inner) = arg.kind
                         && let ExprKind::Path(QPath::Resolved(None, inner_path)) = inner.kind
@@ -155,7 +155,7 @@ impl<'tcx> Visitor<'tcx> for ReadVecVisitor<'tcx> {
                         return;
                     }
                 },
-                "resize" => {
+                sym::resize => {
                     // If the Vec is resized, then it's a valid read
                     if let ExprKind::Path(QPath::Resolved(_, inner_path)) = receiver.kind
                         && let Res::Local(res_id) = inner_path.res
