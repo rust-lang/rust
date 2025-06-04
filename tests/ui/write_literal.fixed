@@ -87,3 +87,15 @@ fn issue_13959() {
 "
     );
 }
+
+fn issue_14930() {
+    let mut v = Vec::new();
+    writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
+    //~^ write_literal
+    writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
+    //~^ write_literal
+    writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
+    //~^ write_literal
+    writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
+    //~^ write_literal
+}
