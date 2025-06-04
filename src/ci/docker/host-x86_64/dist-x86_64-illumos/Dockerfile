@@ -15,6 +15,7 @@ RUN apt-get update && \
     python2.7 \
     && rm -rf /var/lib/apt/lists/*
 
+COPY scripts/shared.sh /tmp/
 COPY scripts/illumos-toolchain.sh /tmp/
 
 RUN bash /tmp/illumos-toolchain.sh x86_64 sysroot
