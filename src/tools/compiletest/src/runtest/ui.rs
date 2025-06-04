@@ -142,7 +142,6 @@ impl TestCx<'_> {
             }
             if self.should_run_successfully(pm) {
                 if !proc_res.status.success() {
-                    debug!("proc_res: {}", proc_res.stdout);
                     self.fatal_proc_rec("test run failed!", &proc_res);
                 }
             } else if proc_res.status.success() {
