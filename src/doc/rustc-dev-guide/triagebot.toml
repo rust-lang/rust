@@ -82,8 +82,8 @@ days-threshold = 7
 [assign.custom_welcome_messages]
 welcome-message = ""
 welcome-message-no-reviewer = """\
-Thanks for the PR. If you have write access, feel free to merge this PR if it
-does not need reviews. You can request a review using `r? rustc-dev-guide` or
+Thanks for the PR. If you have write access, feel free to merge this PR if it \
+does not need reviews. You can request a review using `r? rustc-dev-guide` or \
 `r? <username>`.
 """
 
