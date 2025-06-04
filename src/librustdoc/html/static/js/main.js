@@ -1049,7 +1049,7 @@ function preLoadCss(cssUrl) {
         const innerToggle = document.getElementById(toggleAllDocsId);
         addClass(innerToggle, "will-expand");
         onEachLazy(document.getElementsByClassName("toggle"), e => {
-            if (collapseImpls || e.parentNode.id !== "implementations-list" ||
+            if ((collapseImpls || e.parentNode.id !== "implementations-list") ||
                 (!hasClass(e, "implementors-toggle") &&
                  !hasClass(e, "type-contents-toggle"))
             ) {
