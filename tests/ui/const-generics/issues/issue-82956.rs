@@ -23,7 +23,7 @@ where
 
     fn pop(self) -> (Self::Newlen, Self::Output) {
         let mut iter = IntoIter::new(self);
-        //~^ ERROR: failed to resolve: use of undeclared type `IntoIter`
+        //~^ ERROR cannot find item `IntoIter`
         let end = iter.next_back().unwrap();
         let new = [(); N - 1].map(move |()| iter.next().unwrap());
         (new, end)

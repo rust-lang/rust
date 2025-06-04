@@ -12,7 +12,7 @@ fn ufcs_trait() {
 }
 
 fn ufcs_item() {
-    NonExistent::Assoc::<u8>; //~ ERROR undeclared type `NonExistent`
+    NonExistent::Assoc::<u8>; //~ ERROR cannot find item `NonExistent` in this scope
 }
 
 fn method() {

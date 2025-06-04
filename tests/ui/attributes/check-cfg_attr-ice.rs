@@ -10,27 +10,27 @@
 #![crate_type = "lib"]
 
 #[cfg_attr::no_such_thing]
-//~^ ERROR failed to resolve
+//~^ ERROR cannot find
 mod we_are_no_strangers_to_love {}
 
 #[cfg_attr::no_such_thing]
-//~^ ERROR failed to resolve
+//~^ ERROR cannot find
 struct YouKnowTheRules {
     #[cfg_attr::no_such_thing]
-    //~^ ERROR failed to resolve
+    //~^ ERROR cannot find
     and_so_do_i: u8,
 }
 
 #[cfg_attr::no_such_thing]
-//~^ ERROR failed to resolve
+//~^ ERROR cannot find
 fn a_full_commitment() {
     #[cfg_attr::no_such_thing]
-    //~^ ERROR failed to resolve
+    //~^ ERROR cannot find
     let is_what_i_am_thinking_of = ();
 }
 
 #[cfg_attr::no_such_thing]
-//~^ ERROR failed to resolve
+//~^ ERROR cannot find
 union AnyOtherGuy {
     owo: ()
 }
@@ -39,30 +39,30 @@ struct This;
 #[cfg_attr(FALSE, doc = "you wouldn't get this")]
 impl From<AnyOtherGuy> for This {
     #[cfg_attr::no_such_thing]
-    //~^ ERROR failed to resolve
+    //~^ ERROR cannot find
     fn from(#[cfg_attr::no_such_thing] any_other_guy: AnyOtherGuy) -> This {
-        //~^ ERROR failed to resolve
+        //~^ ERROR cannot find
         #[cfg_attr::no_such_thing]
         //~^ ERROR attributes on expressions are experimental
-        //~| ERROR failed to resolve
+        //~| ERROR cannot find
         unreachable!()
     }
 }
 
 #[cfg_attr::no_such_thing]
-//~^ ERROR failed to resolve
+//~^ ERROR cannot find
 enum NeverGonna {
     #[cfg_attr::no_such_thing]
-    //~^ ERROR failed to resolve
+    //~^ ERROR cannot find
     GiveYouUp(#[cfg_attr::no_such_thing] u8),
-    //~^ ERROR failed to resolve
+    //~^ ERROR cannot find
     LetYouDown {
         #![cfg_attr::no_such_thing]
         //~^ ERROR an inner attribute is not permitted in this context
         never_gonna: (),
         round_around: (),
         #[cfg_attr::no_such_thing]
-        //~^ ERROR failed to resolve
+        //~^ ERROR cannot find
         and_desert_you: (),
     },
 }

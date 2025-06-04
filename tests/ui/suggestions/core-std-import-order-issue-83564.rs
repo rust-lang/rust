@@ -10,7 +10,7 @@
 fn main() {
     //~^ HELP consider importing this struct
     let _x = NonZero::new(5u32).unwrap();
-    //~^ ERROR failed to resolve: use of undeclared type `NonZero`
+    //~^ ERROR cannot find item `NonZero`
 }
 
 #[allow(dead_code)]

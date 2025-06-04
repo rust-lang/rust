@@ -19,12 +19,12 @@ const FOO: Self = 0;
 //~^ ERROR cannot find type `Self`
 
 const FOO2: u32 = Self::bar();
-//~^ ERROR failed to resolve: `Self`
+//~^ ERROR cannot find item `Self` in this scope
 
 static FOO_S: Self = 0;
 //~^ ERROR cannot find type `Self`
 
 static FOO_S2: u32 = Self::bar();
-//~^ ERROR failed to resolve: `Self`
+//~^ ERROR cannot find item `Self` in this scope
 
 fn main() {}

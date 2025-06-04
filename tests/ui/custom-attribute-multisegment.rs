@@ -2,5 +2,5 @@
 
 mod existent {}
 
-#[existent::nonexistent] //~ ERROR failed to resolve: could not find `nonexistent` in `existent`
+#[existent::nonexistent] //~ ERROR cannot find macro `nonexistent` in module `existent`
 fn main() {}

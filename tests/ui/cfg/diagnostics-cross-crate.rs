@@ -15,7 +15,7 @@ fn main() {
 
     // The module isn't found - we would like to get a diagnostic, but currently don't due to
     // the awkward way the resolver diagnostics are currently implemented.
-    cfged_out::inner::doesnt_exist::hello(); //~ ERROR failed to resolve
+    cfged_out::inner::doesnt_exist::hello(); //~ ERROR cannot find item `doesnt_exist`
     //~^ NOTE could not find `doesnt_exist` in `inner`
     //~| NOTE found an item that was configured out
     //~| NOTE the item is gated here
