@@ -1428,6 +1428,18 @@ mod prim_i64 {}
 #[rustc_doc_primitive = "i128"]
 //
 /// The 128-bit signed integer type.
+///
+/// # ABI compatibility
+///
+/// Rust's `i128` is expected to be ABI-compatible with C's `__int128` on platforms where the type
+/// is available, which includes most 64-bit architectures. If any platforms that do not specify
+/// `__int128` are updated to introduce it, the Rust `i128` ABI on relevant targets will be changed
+/// to match.
+///
+/// It is important to note that in C, `__int128` is _not_ the same as `_BitInt(128)`, and the two
+/// types are allowed to have different ABIs. In particular, on x86, `__int128` and `_BitInt(128)`
+/// do not use the same alignment. `i128` is intended to always match `__int128` and does not
+/// attempt to match `_BitInt(128)` on platforms without `__int128`.
 #[stable(feature = "i128", since = "1.26.0")]
 mod prim_i128 {}
 
@@ -1458,6 +1470,8 @@ mod prim_u64 {}
 #[rustc_doc_primitive = "u128"]
 //
 /// The 128-bit unsigned integer type.
+///
+/// Please see [the documentation for `i128`](prim@i128) for information on ABI compatibility.
 #[stable(feature = "i128", since = "1.26.0")]
 mod prim_u128 {}
 
