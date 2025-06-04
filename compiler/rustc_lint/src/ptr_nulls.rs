@@ -160,12 +160,10 @@ impl<'tcx> LateLintPass<'tcx> for PtrNullChecks {
                 let (arg_indices, are_zsts_allowed): (&[_], _) = match diag_name {
                     sym::ptr_read
                     | sym::ptr_read_unaligned
-                    | sym::ptr_read_volatile
                     | sym::ptr_replace
                     | sym::ptr_write
                     | sym::ptr_write_bytes
-                    | sym::ptr_write_unaligned
-                    | sym::ptr_write_volatile => (&[0], true),
+                    | sym::ptr_write_unaligned => (&[0], true),
                     sym::slice_from_raw_parts | sym::slice_from_raw_parts_mut => (&[0], false),
                     sym::ptr_copy
                     | sym::ptr_copy_nonoverlapping
