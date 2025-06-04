@@ -21,13 +21,14 @@
 //! ```
 
 // tidy-alphabetical-start
-#![allow(elided_lifetimes_in_paths)]
 #![allow(internal_features)]
 #![allow(unreachable_pub)] // because this crate is mostly generated code
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 // #![warn(unreachable_pub)] // don't use because this crate is mostly generated code
 // tidy-alphabetical-end
+#![cfg_attr(bootstrap, allow(elided_lifetimes_in_paths))]
+#![cfg_attr(not(bootstrap), allow(hidden_lifetimes_in_paths))]
 
 mod data {
     include!("data/mod.rs");
