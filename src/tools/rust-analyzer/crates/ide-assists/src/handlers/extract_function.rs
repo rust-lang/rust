@@ -204,12 +204,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 .kind
                 .is_some_and(|kind| matches!(kind, FlowKind::Break(_, _) | FlowKind::Continue(_)))
             {
-                let scope = match scope {
-                    ImportScope::File(it) => ImportScope::File(builder.make_mut(it)),
-                    ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
-                    ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
-                };
-
+                let scope = builder.make_import_scope_mut(scope);
                 let control_flow_enum =
                     FamousDefs(&ctx.sema, module.krate()).core_ops_ControlFlow();
 

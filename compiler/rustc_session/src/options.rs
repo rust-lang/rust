@@ -2366,6 +2366,8 @@ options! {
         "run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)"),
     no_profiler_runtime: bool = (false, parse_no_value, [TRACKED],
         "prevent automatic injection of the profiler_builtins crate"),
+    no_steal_thir: bool = (false, parse_bool, [UNTRACKED],
+        "don't steal the THIR when we're done with it; useful for rustc drivers (default: no)"),
     no_trait_vptr: bool = (false, parse_no_value, [TRACKED],
         "disable generation of trait vptr in vtable for upcasting"),
     no_unique_section_names: bool = (false, parse_bool, [TRACKED],

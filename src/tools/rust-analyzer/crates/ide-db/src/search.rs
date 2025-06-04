@@ -961,12 +961,16 @@ impl<'a> FindUsages<'a> {
             // Search for occurrences of the items name
             for offset in Self::match_indices(&text, finder, search_range) {
                 let ret = tree.token_at_offset(offset).any(|token| {
-                    let Some(str_token) = ast::String::cast(token.clone()) else { return false };
-                    if let Some((range, Some(nameres))) =
-                        sema.check_for_format_args_template(token, offset)
+                    if let Some((range, _frange, string_token, Some(nameres))) =
+                        sema.check_for_format_args_template(token.clone(), offset)
                     {
-                        return self
-                            .found_format_args_ref(file_id, range, str_token, nameres, sink);
+                        return self.found_format_args_ref(
+                            file_id,
+                            range,
+                            string_token,
+                            nameres,
+                            sink,
+                        );
                     }
                     false
                 });
