@@ -28,13 +28,16 @@ pub struct Std {
     /// passing `Builder::kind` to cargo invocations would run clippy on the entire compiler and library,
     /// which is not useful if we only want to lint a few crates with specific rules.
     override_build_kind: Option<Kind>,
+    /// Never use this from outside calls. It is intended for internal use only within `check::Std::make_run`
+    /// and `check::Std::run`.
+    custom_stage: Option<u32>,
 }
 
 impl Std {
     const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests"];
 
     pub fn new(target: TargetSelection) -> Self {
-        Self { target, crates: vec![], override_build_kind: None }
+        Self { target, crates: vec![], override_build_kind: None, custom_stage: None }
     }
 
     pub fn build_kind(mut self, kind: Option<Kind>) -> Self {
@@ -48,34 +51,35 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        let stage = if builder.config.is_explicit_stage() || builder.top_stage >= 1 {
-            builder.top_stage
-        } else {
-            1
-        };
-
         let mut run = run;
         for c in Std::CRATE_OR_DEPS {
             run = run.crate_or_deps(c);
         }
 
-        run.path("library").default_condition(stage != 0)
+        run.path("library")
     }
 
     fn make_run(run: RunConfig<'_>) {
         let crates = std_crates_for_run_make(&run);
-        run.builder.ensure(Std { target: run.target, crates, override_build_kind: None });
+
+        let stage = if run.builder.config.is_explicit_stage() || run.builder.top_stage >= 1 {
+            run.builder.top_stage
+        } else {
+            1
+        };
+
+        run.builder.ensure(Std {
+            target: run.target,
+            crates,
+            override_build_kind: None,
+            custom_stage: Some(stage),
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
         builder.require_submodule("library/stdarch", None);
 
-        let stage = if builder.config.is_explicit_stage() || builder.top_stage >= 1 {
-            builder.top_stage
-        } else {
-            1
-        };
+        let stage = self.custom_stage.unwrap_or(builder.top_stage);
 
         let target = self.target;
         let compiler = builder.compiler(stage, builder.config.build);
