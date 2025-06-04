@@ -5,6 +5,7 @@
 struct Foo;
 impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
 //~^ ERROR the const parameter `NUM` is not constrained by the impl trait, self type, or predicates
+//~| ERROR missing: `Output`, `add`
 where
     [(); 1 + 0]: Sized,
 {

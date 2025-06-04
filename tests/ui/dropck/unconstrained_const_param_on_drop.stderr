@@ -10,6 +10,14 @@ note: the implementor must specify the same requirement
 LL | struct Foo {}
    | ^^^^^^^^^^
 
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/unconstrained_const_param_on_drop.rs:3:1
+   |
+LL | impl<const UNUSED: usize> Drop for Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
+   |
+   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+
 error[E0207]: the const parameter `UNUSED` is not constrained by the impl trait, self type, or predicates
   --> $DIR/unconstrained_const_param_on_drop.rs:3:6
    |
@@ -19,7 +27,7 @@ LL | impl<const UNUSED: usize> Drop for Foo {}
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0207, E0367.
-For more information about an error, try `rustc --explain E0207`.
+Some errors have detailed explanations: E0046, E0207, E0367.
+For more information about an error, try `rustc --explain E0046`.

@@ -316,18 +316,6 @@ LL - enum N<F> where F: Fn() -> _ {
 LL + enum N<F, T> where F: Fn() -> T {
    |
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for unions
-  --> $DIR/bad-assoc-ty.rs:71:29
-   |
-LL | union O<F> where F: Fn() -> _ {
-   |                             ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - union O<F> where F: Fn() -> _ {
-LL + union O<F, T> where F: Fn() -> T {
-   |
-
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
   --> $DIR/bad-assoc-ty.rs:73:5
    |
@@ -339,6 +327,18 @@ help: wrap the field type in `ManuallyDrop<...>`
    |
 LL |     foo: std::mem::ManuallyDrop<F>,
    |          +++++++++++++++++++++++ +
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for unions
+  --> $DIR/bad-assoc-ty.rs:71:29
+   |
+LL | union O<F> where F: Fn() -> _ {
+   |                             ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL - union O<F> where F: Fn() -> _ {
+LL + union O<F, T> where F: Fn() -> T {
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for traits
   --> $DIR/bad-assoc-ty.rs:77:29
