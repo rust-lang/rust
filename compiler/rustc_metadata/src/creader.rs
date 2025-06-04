@@ -1179,7 +1179,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     fn inject_compiler_builtins(&mut self, krate: &ast::Crate) {
         // `compiler_builtins` does not get extern builtins, nor do `#![no_core]` crates
         if attr::contains_name(&krate.attrs, sym::compiler_builtins)
-            || attr::contains_name(&krate.attrs, sym::no_core)
+            || (attr::contains_name(&krate.attrs, sym::no_core)
+                && self.tcx.crate_name(LOCAL_CRATE) != sym::core)
         {
             info!("`compiler_builtins` unneeded");
             return;
@@ -1195,9 +1196,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }
 
         // `compiler_builtins` is not yet in the graph; inject it. Error on resolution failure.
-        let Some(cnum) = self.resolve_crate(
+        let Ok(cnum) = self.maybe_resolve_crate(
             sym::compiler_builtins,
-            krate.spans.inner_span.shrink_to_lo(),
             CrateDepKind::Explicit,
             CrateOrigin::Injected,
         ) else {
