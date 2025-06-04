@@ -347,7 +347,7 @@ impl dyn Error {
     /// let b = B(Some(Box::new(A)));
     ///
     /// // let err : Box<Error> = b.into(); // or
-    /// let err = &b as &(dyn Error);
+    /// let err = &b as &dyn Error;
     ///
     /// let mut iter = err.sources();
     ///

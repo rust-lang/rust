@@ -3,6 +3,7 @@ use std::iter;
 use rustc_ast::util::{classify, parser};
 use rustc_ast::{self as ast, ExprKind, HasAttrs as _, StmtKind};
 use rustc_attr_data_structures::{AttributeKind, find_attr};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{MultiSpan, pluralize};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -10,6 +11,7 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_infer::traits::util::elaborate;
 use rustc_middle::ty::{self, Ty, adjustment};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
+use rustc_span::edition::Edition::Edition2015;
 use rustc_span::{BytePos, Span, Symbol, kw, sym};
 use tracing::instrument;
 
@@ -1032,6 +1034,14 @@ pub(crate) struct UnusedParens {
     /// `1 as (i32) < 2` parses to ExprKind::Lt
     /// `1 as i32 < 2` parses to i32::<2[missing angle bracket]
     parens_in_cast_in_lt: Vec<ast::NodeId>,
+    /// Ty nodes in this map are in TypeNoBounds position. Any bounds they
+    /// contain may be ambiguous w/r/t trailing `+` operators.
+    in_no_bounds_pos: FxHashMap<ast::NodeId, NoBoundsException>,
+}
+
+enum NoBoundsException {
+    None,
+    OneBound,
 }
 
 impl_lint_pass!(UnusedParens => [UNUSED_PARENS]);
@@ -1276,10 +1286,12 @@ impl EarlyLintPass for UnusedParens {
             }
             ast::TyKind::Paren(r) => {
                 match &r.kind {
-                    ast::TyKind::TraitObject(..) => {}
+                    ast::TyKind::ImplTrait(_, bounds) | ast::TyKind::TraitObject(bounds, _)
+                        if self.in_no_bounds_pos.get(&ty.id).is_some_and(|exception| {
+                            matches!(exception, NoBoundsException::None) || bounds.len() > 1
+                        }) => {}
                     ast::TyKind::BareFn(b)
                         if self.with_self_ty_parens && b.generic_params.len() > 0 => {}
-                    ast::TyKind::ImplTrait(_, bounds) if bounds.len() > 1 => {}
                     _ => {
                         let spans = if !ty.span.from_expansion() {
                             r.span
@@ -1293,12 +1305,84 @@ impl EarlyLintPass for UnusedParens {
                 }
                 self.with_self_ty_parens = false;
             }
+            ast::TyKind::Ref(_, mut_ty) | ast::TyKind::Ptr(mut_ty) => {
+                self.in_no_bounds_pos.insert(mut_ty.ty.id, NoBoundsException::OneBound);
+            }
+            ast::TyKind::TraitObject(bounds, _) | ast::TyKind::ImplTrait(_, bounds) => {
+                for i in 0..bounds.len() {
+                    let last = i == bounds.len() - 1;
+
+                    if let ast::GenericBound::Trait(poly_trait_ref) = &bounds[i] {
+                        let parenthesized = cx
+                            .sess()
+                            .source_map()
+                            .span_to_snippet(poly_trait_ref.span)
+                            .map(|snip| snip.starts_with('(') && snip.ends_with(')'))
+                            .unwrap_or(false);
+
+                        let fn_with_explicit_ret_ty = if let [.., segment] =
+                            &*poly_trait_ref.trait_ref.path.segments
+                            && let Some(args) = segment.args.as_ref()
+                            && let ast::GenericArgs::Parenthesized(paren_args) = &**args
+                            && let ast::FnRetTy::Ty(ret_ty) = &paren_args.output
+                        {
+                            self.in_no_bounds_pos.insert(
+                                ret_ty.id,
+                                if last {
+                                    NoBoundsException::OneBound
+                                } else {
+                                    NoBoundsException::None
+                                },
+                            );
+
+                            true
+                        } else {
+                            false
+                        };
+
+                        let dyn2015_exception = cx.sess().psess.edition == Edition2015
+                            && matches!(ty.kind, ast::TyKind::TraitObject(..))
+                            && i == 0
+                            && poly_trait_ref
+                                .trait_ref
+                                .path
+                                .segments
+                                .first()
+                                .map(|s| s.ident.name == kw::PathRoot)
+                                .unwrap_or(false);
+
+                        if parenthesized && (last || !fn_with_explicit_ret_ty) && !dyn2015_exception
+                        {
+                            let s = poly_trait_ref.span;
+                            let spans = (!s.from_expansion()).then(|| {
+                                (
+                                    s.with_hi(s.lo() + rustc_span::BytePos(1)),
+                                    s.with_lo(s.hi() - rustc_span::BytePos(1)),
+                                )
+                            });
+
+                            self.emit_unused_delims(
+                                cx,
+                                poly_trait_ref.span,
+                                spans,
+                                "type",
+                                (false, false),
+                                false,
+                            );
+                        }
+                    }
+                }
+            }
             _ => {}
         }
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         <Self as UnusedDelimLint>::check_item(self, cx, item)
+    }
+
+    fn check_item_post(&mut self, _: &EarlyContext<'_>, _: &rustc_ast::Item) {
+        self.in_no_bounds_pos.clear();
     }
 
     fn enter_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
