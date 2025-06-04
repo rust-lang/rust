@@ -187,6 +187,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     &[ptr, args[1].immediate()],
                 )
             }
+            _ if tcx.has_attr(def_id, sym::rustc_autodiff) => {
+                return Err(ty::Instance::new_raw(def_id, instance.args));
+            }
             sym::is_val_statically_known => {
                 if let OperandValue::Immediate(imm) = args[0].val {
                     self.call_intrinsic(
