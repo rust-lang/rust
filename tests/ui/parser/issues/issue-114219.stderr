@@ -1,5 +1,5 @@
 error: `async move` blocks are only allowed in Rust 2018 or later
-  --> $DIR/issue-114219.rs:2:5
+  --> $DIR/issue-114219.rs:4:5
    |
 LL |     async move {};
    |     ^^^^^^^^^^
