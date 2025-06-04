@@ -2739,6 +2739,46 @@ fn main() {
 }
 
 #[test]
+fn doctest_remove_else_branches() {
+    check_doc_test(
+        "remove_else_branches",
+        r#####"
+fn main() {
+    if true {
+        let _ = 2;
+    } $0else {
+        unreachable!();
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    if true {
+        let _ = 2;
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_remove_else_branches_1() {
+    check_doc_test(
+        "remove_else_branches",
+        r#####"
+fn main() {
+    let _x = 2 $0else { unreachable!() };
+}
+"#####,
+        r#####"
+fn main() {
+    let _x = 2;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_remove_hash() {
     check_doc_test(
         "remove_hash",
