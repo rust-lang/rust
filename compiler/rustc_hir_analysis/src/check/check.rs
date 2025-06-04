@@ -701,11 +701,12 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 }
 
-pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     match tcx.def_kind(def_id) {
         DefKind::Static { .. } => {
             check_static_inhabited(tcx, def_id);
             check_static_linkage(tcx, def_id);
+            wfcheck::check_static_item(tcx, def_id)?;
         }
         DefKind::Const => {}
         DefKind::Enum => {
@@ -723,13 +724,10 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         DefKind::Impl { of_trait } => {
             if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
-                if tcx
-                    .ensure_ok()
-                    .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id)
-                    .is_ok()
-                {
-                    check_impl_items_against_trait(tcx, def_id, impl_trait_header);
-                }
+                tcx.ensure_ok()
+                    .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id)?;
+
+                check_impl_items_against_trait(tcx, def_id, impl_trait_header);
             }
         }
         DefKind::Trait => {
@@ -775,11 +773,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             check_type_alias_type_params_are_used(tcx, def_id);
         }
         DefKind::ForeignMod => {
-            let it = tcx.hir_expect_item(def_id);
-            let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
-                return;
-            };
-            check_abi(tcx, it.span, abi);
+            let (abi, items) = tcx.hir_expect_item(def_id).expect_foreign_mod();
+            check_abi(tcx, tcx.def_span(def_id), abi);
 
             for item in items {
                 let def_id = item.id.owner_id.def_id;
@@ -825,6 +820,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         _ => {}
     }
+    Ok(())
 }
 
 pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, def_id: LocalDefId) {

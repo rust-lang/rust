@@ -4828,6 +4828,10 @@ impl<'hir> Node<'hir> {
                 ImplItemKind::Type(ty) => Some(ty),
                 _ => None,
             },
+            Node::ForeignItem(it) => match it.kind {
+                ForeignItemKind::Static(ty, ..) => Some(ty),
+                _ => None,
+            },
             _ => None,
         }
     }
