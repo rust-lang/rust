@@ -214,7 +214,6 @@ impl FusedIterator for EscapeUnicode {}
 
 #[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for EscapeUnicode {
-    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
     }
@@ -347,7 +346,6 @@ impl Iterator for EscapeDebug {
 
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
 impl ExactSizeIterator for EscapeDebug {
-    #[inline]
     fn len(&self) -> usize {
         self.0.len()
     }
