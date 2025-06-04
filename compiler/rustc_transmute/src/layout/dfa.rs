@@ -2,32 +2,35 @@ use std::fmt;
 use std::iter::Peekable;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use super::{Byte, Ref, Tree, Uninhabited};
+use super::{Byte, Reference, Region, Tree, Type, Uninhabited};
 use crate::{Map, Set};
 
 #[derive(PartialEq)]
 #[cfg_attr(test, derive(Clone))]
-pub(crate) struct Dfa<R>
+pub(crate) struct Dfa<R, T>
 where
-    R: Ref,
+    R: Region,
+    T: Type,
 {
-    pub(crate) transitions: Map<State, Transitions<R>>,
+    pub(crate) transitions: Map<State, Transitions<R, T>>,
     pub(crate) start: State,
     pub(crate) accept: State,
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub(crate) struct Transitions<R>
+pub(crate) struct Transitions<R, T>
 where
-    R: Ref,
+    R: Region,
+    T: Type,
 {
     byte_transitions: EdgeSet<State>,
-    ref_transitions: Map<R, State>,
+    ref_transitions: Map<Reference<R, T>, State>,
 }
 
-impl<R> Default for Transitions<R>
+impl<R, T> Default for Transitions<R, T>
 where
-    R: Ref,
+    R: Region,
+    T: Type,
 {
     fn default() -> Self {
         Self { byte_transitions: EdgeSet::empty(), ref_transitions: Map::default() }
@@ -51,9 +54,10 @@ impl fmt::Debug for State {
     }
 }
 
-impl<R> Dfa<R>
+impl<R, T> Dfa<R, T>
 where
-    R: Ref,
+    R: Region,
+    T: Type,
 {
     #[cfg(test)]
     pub(crate) fn bool() -> Self {
@@ -64,7 +68,7 @@ where
     }
 
     pub(crate) fn unit() -> Self {
-        let transitions: Map<State, Transitions<R>> = Map::default();
+        let transitions: Map<State, Transitions<R, T>> = Map::default();
         let start = State::new();
         let accept = start;
 
@@ -78,21 +82,21 @@ where
         })
     }
 
-    pub(crate) fn from_ref(r: R) -> Self {
+    pub(crate) fn from_ref(r: Reference<R, T>) -> Self {
         Self::from_transitions(|accept| Transitions {
             byte_transitions: EdgeSet::empty(),
             ref_transitions: [(r, accept)].into_iter().collect(),
         })
     }
 
-    fn from_transitions(f: impl FnOnce(State) -> Transitions<R>) -> Self {
+    fn from_transitions(f: impl FnOnce(State) -> Transitions<R, T>) -> Self {
         let start = State::new();
         let accept = State::new();
 
         Self { transitions: [(start, f(accept))].into_iter().collect(), start, accept }
     }
 
-    pub(crate) fn from_tree(tree: Tree<!, R>) -> Result<Self, Uninhabited> {
+    pub(crate) fn from_tree(tree: Tree<!, R, T>) -> Result<Self, Uninhabited> {
         Ok(match tree {
             Tree::Byte(b) => Self::from_byte(b),
             Tree::Ref(r) => Self::from_ref(r),
@@ -125,7 +129,7 @@ where
         let start = self.start;
         let accept = other.accept;
 
-        let mut transitions: Map<State, Transitions<R>> = self.transitions;
+        let mut transitions: Map<State, Transitions<R, T>> = self.transitions;
 
         for (source, transition) in other.transitions {
             let fix_state = |state| if state == other.start { self.accept } else { state };
@@ -169,7 +173,7 @@ where
         };
 
         let start = mapped((Some(a.start), Some(b.start)));
-        let mut transitions: Map<State, Transitions<R>> = Map::default();
+        let mut transitions: Map<State, Transitions<R, T>> = Map::default();
         let empty_transitions = Transitions::default();
 
         struct WorkQueue {
@@ -257,7 +261,7 @@ where
             .flat_map(|transitions| transitions.byte_transitions.iter())
     }
 
-    pub(crate) fn refs_from(&self, start: State) -> impl Iterator<Item = (R, State)> {
+    pub(crate) fn refs_from(&self, start: State) -> impl Iterator<Item = (Reference<R, T>, State)> {
         self.transitions
             .get(&start)
             .into_iter()
@@ -297,9 +301,10 @@ where
 }
 
 /// Serialize the DFA using the Graphviz DOT format.
-impl<R> fmt::Debug for Dfa<R>
+impl<R, T> fmt::Debug for Dfa<R, T>
 where
-    R: Ref,
+    R: Region,
+    T: Type,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "digraph {{")?;

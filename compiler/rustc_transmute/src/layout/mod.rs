@@ -78,16 +78,41 @@ impl From<u8> for Byte {
     }
 }
 
+/// A reference, i.e., `&'region T` or `&'region mut T`.
+#[derive(Debug, Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
+pub(crate) struct Reference<R, T>
+where
+    R: Region,
+    T: Type,
+{
+    pub(crate) region: R,
+    pub(crate) is_mut: bool,
+    pub(crate) referent: T,
+    pub(crate) referent_size: usize,
+    pub(crate) referent_align: usize,
+}
+
+impl<R, T> fmt::Display for Reference<R, T>
+where
+    R: Region,
+    T: Type,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("&")?;
+        if self.is_mut {
+            f.write_str("mut ")?;
+        }
+        self.referent.fmt(f)
+    }
+}
+
 pub(crate) trait Def: Debug + Hash + Eq + PartialEq + Copy + Clone {
     fn has_safety_invariants(&self) -> bool;
 }
-pub trait Ref: Debug + Hash + Eq + PartialEq + Copy + Clone {
-    fn min_align(&self) -> usize;
 
-    fn size(&self) -> usize;
+pub(crate) trait Region: Debug + Hash + Eq + PartialEq + Copy + Clone {}
 
-    fn is_mutable(&self) -> bool;
-}
+pub(crate) trait Type: Debug + Hash + Eq + PartialEq + Copy + Clone {}
 
 impl Def for ! {
     fn has_safety_invariants(&self) -> bool {
@@ -95,79 +120,21 @@ impl Def for ! {
     }
 }
 
-impl Ref for ! {
-    fn min_align(&self) -> usize {
-        unreachable!()
-    }
-    fn size(&self) -> usize {
-        unreachable!()
-    }
-    fn is_mutable(&self) -> bool {
-        unreachable!()
-    }
-}
+impl Region for ! {}
+
+impl Type for ! {}
 
 #[cfg(test)]
-impl<const N: usize> Ref for [(); N] {
-    fn min_align(&self) -> usize {
-        N
-    }
+impl Region for usize {}
 
-    fn size(&self) -> usize {
-        N
-    }
-
-    fn is_mutable(&self) -> bool {
-        false
-    }
-}
+#[cfg(test)]
+impl Type for () {}
 
 #[cfg(feature = "rustc")]
 pub mod rustc {
-    use std::fmt::{self, Write};
-
     use rustc_abi::Layout;
-    use rustc_middle::mir::Mutability;
     use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError};
-    use rustc_middle::ty::{self, Ty};
-
-    /// A reference in the layout.
-    #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
-    pub struct Ref<'tcx> {
-        pub lifetime: ty::Region<'tcx>,
-        pub ty: Ty<'tcx>,
-        pub mutability: Mutability,
-        pub align: usize,
-        pub size: usize,
-    }
-
-    impl<'tcx> super::Ref for Ref<'tcx> {
-        fn min_align(&self) -> usize {
-            self.align
-        }
-
-        fn size(&self) -> usize {
-            self.size
-        }
-
-        fn is_mutable(&self) -> bool {
-            match self.mutability {
-                Mutability::Mut => true,
-                Mutability::Not => false,
-            }
-        }
-    }
-    impl<'tcx> Ref<'tcx> {}
-
-    impl<'tcx> fmt::Display for Ref<'tcx> {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.write_char('&')?;
-            if self.mutability == Mutability::Mut {
-                f.write_str("mut ")?;
-            }
-            self.ty.fmt(f)
-        }
-    }
+    use rustc_middle::ty::{self, Region, Ty};
 
     /// A visibility node in the layout.
     #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
@@ -186,6 +153,10 @@ pub mod rustc {
             self != &Self::Primitive
         }
     }
+
+    impl<'tcx> super::Region for Region<'tcx> {}
+
+    impl<'tcx> super::Type for Ty<'tcx> {}
 
     pub(crate) fn layout_of<'tcx>(
         cx: LayoutCx<'tcx>,

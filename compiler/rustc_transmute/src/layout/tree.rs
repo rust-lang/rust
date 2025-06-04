@@ -1,6 +1,6 @@
 use std::ops::{ControlFlow, RangeInclusive};
 
-use super::{Byte, Def, Ref};
+use super::{Byte, Def, Reference, Region, Type};
 
 #[cfg(test)]
 mod tests;
@@ -15,10 +15,11 @@ mod tests;
 /// 2. A `Seq` is never directly nested beneath another `Seq`.
 /// 3. `Seq`s and `Alt`s with a single member do not exist.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) enum Tree<D, R>
+pub(crate) enum Tree<D, R, T>
 where
     D: Def,
-    R: Ref,
+    R: Region,
+    T: Type,
 {
     /// A sequence of successive layouts.
     Seq(Vec<Self>),
@@ -27,7 +28,7 @@ where
     /// A definition node.
     Def(D),
     /// A reference node.
-    Ref(R),
+    Ref(Reference<R, T>),
     /// A byte node.
     Byte(Byte),
 }
@@ -48,10 +49,11 @@ impl From<rustc_abi::Endian> for Endian {
     }
 }
 
-impl<D, R> Tree<D, R>
+impl<D, R, T> Tree<D, R, T>
 where
     D: Def,
-    R: Ref,
+    R: Region,
+    T: Type,
 {
     /// A `Tree` consisting only of a definition node.
     pub(crate) fn def(def: D) -> Self {
@@ -138,7 +140,7 @@ where
 
     /// Remove all `Def` nodes, and all branches of the layout for which `f`
     /// produces `true`.
-    pub(crate) fn prune<F>(self, f: &F) -> Tree<!, R>
+    pub(crate) fn prune<F>(self, f: &F) -> Tree<!, R, T>
     where
         F: Fn(D) -> bool,
     {
@@ -198,13 +200,13 @@ where
 
     /// Produces a `Tree` where each of the trees in `trees` are sequenced one
     /// after another.
-    pub(crate) fn seq<const N: usize>(trees: [Tree<D, R>; N]) -> Self {
+    pub(crate) fn seq<const N: usize>(trees: [Tree<D, R, T>; N]) -> Self {
         trees.into_iter().fold(Tree::unit(), Self::then)
     }
 
     /// Produces a `Tree` where each of the trees in `trees` are accepted as
     /// alternative layouts.
-    pub(crate) fn alt<const N: usize>(trees: [Tree<D, R>; N]) -> Self {
+    pub(crate) fn alt<const N: usize>(trees: [Tree<D, R, T>; N]) -> Self {
         trees.into_iter().fold(Tree::uninhabited(), Self::or)
     }
 
@@ -251,11 +253,14 @@ pub(crate) mod rustc {
         FieldIdx, FieldsShape, Layout, Size, TagEncoding, TyAndLayout, VariantIdx, Variants,
     };
     use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError};
-    use rustc_middle::ty::{self, AdtDef, AdtKind, List, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+    use rustc_middle::ty::{
+        self, AdtDef, AdtKind, List, Region, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
+    };
     use rustc_span::ErrorGuaranteed;
 
     use super::Tree;
-    use crate::layout::rustc::{Def, Ref, layout_of};
+    use crate::layout::Reference;
+    use crate::layout::rustc::{Def, layout_of};
 
     #[derive(Debug, Copy, Clone)]
     pub(crate) enum Err {
@@ -281,7 +286,7 @@ pub(crate) mod rustc {
         }
     }
 
-    impl<'tcx> Tree<Def<'tcx>, Ref<'tcx>> {
+    impl<'tcx> Tree<Def<'tcx>, Region<'tcx>, Ty<'tcx>> {
         pub(crate) fn from_ty(ty: Ty<'tcx>, cx: LayoutCx<'tcx>) -> Result<Self, Err> {
             use rustc_abi::HasDataLayout;
             let layout = layout_of(cx, ty)?;
@@ -353,16 +358,17 @@ pub(crate) mod rustc {
                     }
                 }
 
-                ty::Ref(lifetime, ty, mutability) => {
+                ty::Ref(region, ty, mutability) => {
                     let layout = layout_of(cx, *ty)?;
-                    let align = layout.align.abi.bytes_usize();
-                    let size = layout.size.bytes_usize();
-                    Ok(Tree::Ref(Ref {
-                        lifetime: *lifetime,
-                        ty: *ty,
-                        mutability: *mutability,
-                        align,
-                        size,
+                    let referent_align = layout.align.abi.bytes_usize();
+                    let referent_size = layout.size.bytes_usize();
+
+                    Ok(Tree::Ref(Reference {
+                        region: *region,
+                        is_mut: mutability.is_mut(),
+                        referent: *ty,
+                        referent_align,
+                        referent_size,
                     }))
                 }
 
