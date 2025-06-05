@@ -191,16 +191,6 @@ where
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let mut res = crate::check::check::check_item_type(tcx, def_id);
-    let node = tcx.hir_node_by_def_id(def_id);
-    res = res.and(match node {
-        hir::Node::Crate(_) => bug!("check_well_formed cannot be applied to the crate root"),
-        hir::Node::Item(item) => check_item(tcx, item),
-        hir::Node::TraitItem(..) => Ok(()),
-        hir::Node::ImplItem(..) => Ok(()),
-        hir::Node::ForeignItem(item) => check_foreign_item(tcx, item),
-        hir::Node::ConstBlock(_) | hir::Node::Expr(_) | hir::Node::OpaqueTy(_) => Ok(()),
-        _ => unreachable!("{node:?}"),
-    });
 
     for param in &tcx.generics_of(def_id).own_params {
         res = res.and(check_param_wf(tcx, param));
@@ -223,7 +213,10 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
 /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
 /// the types first.
 #[instrument(skip(tcx), level = "debug")]
-fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<(), ErrorGuaranteed> {
+pub(super) fn check_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item: &'tcx hir::Item<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
     let def_id = item.owner_id.def_id;
 
     debug!(
@@ -305,7 +298,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
     }
 }
 
-fn check_foreign_item<'tcx>(
+pub(super) fn check_foreign_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &'tcx hir::ForeignItem<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
