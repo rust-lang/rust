@@ -1,10 +1,13 @@
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/ex1-return-one-existing-name-if-else-2.rs:2:16
    |
-LL | fn foo<'a>(x: &i32, y: &'a i32) -> &'a i32 {
-   |               ---- help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
 LL |     if x > y { x } else { y }
    |                ^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `x`
+   |
+LL | fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
+   |                ++
 
 error: aborting due to 1 previous error
 

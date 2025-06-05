@@ -15,11 +15,14 @@ LL | struct Foo<'c, 'd>(&'c (), &'d ());
 error[E0621]: explicit lifetime required in the type of `foo`
   --> $DIR/noisy-follow-up-erro.rs:14:9
    |
-LL |     fn boom(&self, foo: &mut Foo<'_, '_, 'a>) -> Result<(), &'a ()> {
-   |                         -------------------- help: add explicit lifetime `'a` to the type of `foo`: `&mut Foo<'_, 'a>`
-LL |
 LL |         self.bar().map_err(|()| foo.acc(self))?;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `foo`
+   |
+LL -     fn boom(&self, foo: &mut Foo<'_, '_, 'a>) -> Result<(), &'a ()> {
+LL +     fn boom(&self, foo: &mut Foo<'_, 'a>) -> Result<(), &'a ()> {
+   |
 
 error: aborting due to 2 previous errors
 
