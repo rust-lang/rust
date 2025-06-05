@@ -1915,6 +1915,8 @@ symbols! {
         rustc_no_mir_inline,
         rustc_nonnull_optimization_guaranteed,
         rustc_nounwind,
+        rustc_objc_class,
+        rustc_objc_selector,
         rustc_object_lifetime_default,
         rustc_on_unimplemented,
         rustc_outlives,

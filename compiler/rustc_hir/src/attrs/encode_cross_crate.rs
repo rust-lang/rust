@@ -67,6 +67,8 @@ impl AttributeKind {
             NoImplicitPrelude(..) => No,
             NoMangle(..) => Yes,      // Needed for rustdoc
             NonExhaustive(..) => Yes, // Needed for rustdoc
+            ObjcClass { .. } => No,
+            ObjcSelector { .. } => No,
             Optimize(..) => No,
             ParenSugar(..) => No,
             PassByValue(..) => Yes,
