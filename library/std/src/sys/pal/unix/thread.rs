@@ -326,8 +326,12 @@ impl Thread {
         // If we're awoken with a signal and the return value is -1
         // clock_nanosleep needs to be called again.
         unsafe {
-            while libc::clock_nanosleep(libc::CLOCK_MONOTONIC, libc::TIMER_ABSTIME, ts_ptr, ts_ptr)
-                == -1
+            while libc::clock_nanosleep(
+                super::time::Instant::CLOCK_ID,
+                libc::TIMER_ABSTIME,
+                ts_ptr,
+                ts_ptr,
+            ) == -1
             {
                 assert_eq!(
                     os::errno(),

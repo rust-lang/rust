@@ -261,6 +261,10 @@ pub struct Instant {
 }
 
 impl Instant {
+    #[cfg(target_vendor = "apple")]
+    pub(crate) const CLOCK_ID: libc::clockid_t = libc::CLOCK_UPTIME_RAW;
+    #[cfg(not(target_vendor = "apple"))]
+    pub(crate) const CLOCK_ID: libc::clockid_t = libc::CLOCK_MONOTONIC;
     pub fn now() -> Instant {
         // https://www.manpagez.com/man/3/clock_gettime/
         //
@@ -273,11 +277,7 @@ impl Instant {
         //
         // Instant on macos was historically implemented using mach_absolute_time;
         // we preserve this value domain out of an abundance of caution.
-        #[cfg(target_vendor = "apple")]
-        const clock_id: libc::clockid_t = libc::CLOCK_UPTIME_RAW;
-        #[cfg(not(target_vendor = "apple"))]
-        const clock_id: libc::clockid_t = libc::CLOCK_MONOTONIC;
-        Instant { t: Timespec::now(clock_id) }
+        Instant { t: Timespec::now(Self::CLOCK_ID) }
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
