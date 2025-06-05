@@ -186,9 +186,11 @@ Note that if you start the default try job using `@bors try`, it will skip build
 Multiple try builds can execute concurrently across different PRs.
 
 <div class="warning">
-bors identify try jobs by commit hash. This means that if you have two PRs
+
+Bors identifies try jobs by commit hash. This means that if you have two PRs
 containing the same (latest) commits, running `@bors try` will result in the
 *same* try job and it really confuses `bors`. Please refrain from doing so.
+
 </div>
 
 [rustc-perf]: https://github.com/rust-lang/rustc-perf
