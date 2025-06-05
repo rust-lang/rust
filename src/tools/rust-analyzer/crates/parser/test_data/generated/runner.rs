@@ -876,6 +876,10 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/tuple_pat_leading_comma.rs");
     }
     #[test]
+    fn type_bounds_macro_call_recovery() {
+        run_and_expect_errors("test_data/parser/inline/err/type_bounds_macro_call_recovery.rs");
+    }
+    #[test]
     fn type_in_array_recover() {
         run_and_expect_errors("test_data/parser/inline/err/type_in_array_recover.rs");
     }

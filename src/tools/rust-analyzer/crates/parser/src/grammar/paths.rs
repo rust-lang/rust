@@ -98,7 +98,7 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) -> Option<Completed
         types::type_(p);
         if p.eat(T![as]) {
             if is_use_path_start(p) {
-                types::path_type(p);
+                types::path_type_bounds(p, true);
             } else {
                 p.error("expected a trait");
             }
