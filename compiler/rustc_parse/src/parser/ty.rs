@@ -7,6 +7,7 @@ use rustc_ast::{
     Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
     TyKind, UnsafeBinderTy,
 };
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -104,14 +105,17 @@ fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
 impl<'a> Parser<'a> {
     /// Parses a type.
     pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(
-            AllowPlus::Yes,
-            AllowCVariadic::No,
-            RecoverQPath::Yes,
-            RecoverReturnSign::Yes,
-            None,
-            RecoverQuestionMark::Yes,
-        )
+        // Make sure deeply nested types don't overflow the stack.
+        ensure_sufficient_stack(|| {
+            self.parse_ty_common(
+                AllowPlus::Yes,
+                AllowCVariadic::No,
+                RecoverQPath::Yes,
+                RecoverReturnSign::Yes,
+                None,
+                RecoverQuestionMark::Yes,
+            )
+        })
     }
 
     pub(super) fn parse_ty_with_generics_recovery(
