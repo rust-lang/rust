@@ -25,7 +25,7 @@ where
 
 impl<T: 'static> Inject for RefMutFamily<T> {
     type I = Self;
-    fn inject(_: &()) -> <Self::I as FamilyLt>::Out {
+    fn inject(_: &()) -> <Self::I as FamilyLt<'_>>::Out {
         unimplemented!()
     }
 }

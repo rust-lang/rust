@@ -20,7 +20,7 @@ trait Iterator {
 }
 
 trait IteratorExt: Iterator + Sized {
-    fn by_ref(&mut self) -> ByRef<Self> {
+    fn by_ref(&mut self) -> ByRef<'_, Self> {
         ByRef(self)
     }
 }
