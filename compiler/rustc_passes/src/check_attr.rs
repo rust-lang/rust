@@ -276,6 +276,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PatternComplexityLimit { .. }
                     | AttributeKind::NoCore { .. }
                     | AttributeKind::NoStd { .. }
+                    | AttributeKind::ObjcClass { .. }
+                    | AttributeKind::ObjcSelector { .. }
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);

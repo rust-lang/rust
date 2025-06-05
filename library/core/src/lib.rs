@@ -313,6 +313,7 @@ pub mod io;
 pub mod iter;
 pub mod net;
 pub mod option;
+pub mod os;
 pub mod panic;
 pub mod panicking;
 #[unstable(feature = "pattern_type_macro", issue = "123646")]
