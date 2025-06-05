@@ -11,18 +11,21 @@ pub trait Foo {
 }
 #[stable(feature = "a", since = "1.1.1" )]
 pub struct Bar;
+#[stable(feature = "a", since = "1.1.1" )]
+pub struct Moo;
 
 // Annotate the impl as unstable.
-#[unstable_feature_bound(feat_foo)]
-#[unstable(feature = "feat_foo", issue = "none" )]
+#[unstable_feature_bound(feat_bar)]
+#[unstable(feature = "feat_bar", issue = "none" )]
 impl Foo for Bar {
     fn foo() {}
 }
 
-// Use the unstable impl inside std/core.
-#[unstable_feature_bound(feat_foo)]
-fn bar() {
-    Bar::foo();
+
+#[unstable_feature_bound(feat_moo)]
+#[unstable(feature = "feat_moo", issue = "none" )]
+impl Foo for Moo {
+    fn foo() {}
 }
 
 fn main() {
