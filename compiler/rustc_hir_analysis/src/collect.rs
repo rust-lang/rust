@@ -287,17 +287,6 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         intravisit::walk_item(self, item);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure(closure) = expr.kind {
-            self.tcx.ensure_ok().generics_of(closure.def_id);
-            self.tcx.ensure_ok().codegen_fn_attrs(closure.def_id);
-            // We do not call `type_of` for closures here as that
-            // depends on typecheck and would therefore hide
-            // any further errors in case one typeck fails.
-        }
-        intravisit::walk_expr(self, expr);
-    }
-
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         lower_trait_item(self.tcx, trait_item.trait_item_id());
         intravisit::walk_trait_item(self, trait_item);

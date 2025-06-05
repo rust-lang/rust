@@ -195,7 +195,9 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
         hir::Node::TraitItem(item) => check_trait_item(tcx, item),
         hir::Node::ImplItem(item) => check_impl_item(tcx, item),
         hir::Node::ForeignItem(item) => check_foreign_item(tcx, item),
-        hir::Node::OpaqueTy(_) => Ok(crate::check::check::check_item_type(tcx, def_id)),
+        hir::Node::ConstBlock(_) | hir::Node::Expr(_) | hir::Node::OpaqueTy(_) => {
+            Ok(crate::check::check::check_item_type(tcx, def_id))
+        }
         _ => unreachable!("{node:?}"),
     };
 
@@ -2411,6 +2413,7 @@ fn check_type_wf(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
         .and(
             items.par_foreign_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)),
         )
+        .and(items.par_nested_bodies(|item| tcx.ensure_ok().check_well_formed(item)))
         .and(items.par_opaques(|item| tcx.ensure_ok().check_well_formed(item)));
     super::entry::check_for_entry_fn(tcx);
 
