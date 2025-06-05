@@ -1341,7 +1341,7 @@ impl PreciseCapturingArg {
 pub(crate) enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<GenericParamDef> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
-    EqPredicate { lhs: Type, rhs: Term },
+    EqPredicate { lhs: QPathData, rhs: Term },
 }
 
 impl WherePredicate {
@@ -1702,14 +1702,6 @@ impl Type {
 
     pub(crate) fn is_unit(&self) -> bool {
         matches!(self, Type::Tuple(v) if v.is_empty())
-    }
-
-    pub(crate) fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
-        if let QPath(box QPathData { self_type, trait_, assoc, .. }) = self {
-            Some((self_type, trait_.as_ref()?.def_id(), assoc.clone()))
-        } else {
-            None
-        }
     }
 
     /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.

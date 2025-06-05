@@ -371,10 +371,9 @@ fn clean_where_predicate<'tcx>(
             bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
         },
 
-        hir::WherePredicateKind::EqPredicate(wrp) => WherePredicate::EqPredicate {
-            lhs: clean_ty(wrp.lhs_ty, cx),
-            rhs: clean_ty(wrp.rhs_ty, cx).into(),
-        },
+        // We should never actually reach this case because these predicates should've already been
+        // rejected in an earlier compiler pass. This feature isn't fully implemented (#20041).
+        hir::WherePredicateKind::EqPredicate(_) => bug!("EqPredicate"),
     })
 }
 
@@ -470,46 +469,34 @@ fn clean_projection_predicate<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> WherePredicate {
     WherePredicate::EqPredicate {
-        lhs: clean_projection(
-            pred.map_bound(|p| {
-                // FIXME: This needs to be made resilient for `AliasTerm`s that
-                // are associated consts.
-                p.projection_term.expect_ty(cx.tcx)
-            }),
-            cx,
-            None,
-        ),
+        lhs: clean_projection(pred.map_bound(|p| p.projection_term), cx, None),
         rhs: clean_middle_term(pred.map_bound(|p| p.term), cx),
     }
 }
 
 fn clean_projection<'tcx>(
-    ty: ty::Binder<'tcx, ty::AliasTy<'tcx>>,
+    proj: ty::Binder<'tcx, ty::AliasTerm<'tcx>>,
     cx: &mut DocContext<'tcx>,
-    def_id: Option<DefId>,
-) -> Type {
-    if cx.tcx.is_impl_trait_in_trait(ty.skip_binder().def_id) {
-        return clean_middle_opaque_bounds(cx, ty.skip_binder().def_id, ty.skip_binder().args);
-    }
-
+    parent_def_id: Option<DefId>,
+) -> QPathData {
     let trait_ = clean_trait_ref_with_constraints(
         cx,
-        ty.map_bound(|ty| ty.trait_ref(cx.tcx)),
+        proj.map_bound(|proj| proj.trait_ref(cx.tcx)),
         ThinVec::new(),
     );
-    let self_type = clean_middle_ty(ty.map_bound(|ty| ty.self_ty()), cx, None, None);
-    let self_def_id = if let Some(def_id) = def_id {
-        cx.tcx.opt_parent(def_id).or(Some(def_id))
-    } else {
-        self_type.def_id(&cx.cache)
+    let self_type = clean_middle_ty(proj.map_bound(|proj| proj.self_ty()), cx, None, None);
+    let self_def_id = match parent_def_id {
+        Some(parent_def_id) => cx.tcx.opt_parent(parent_def_id).or(Some(parent_def_id)),
+        None => self_type.def_id(&cx.cache),
     };
     let should_fully_qualify = should_fully_qualify_path(self_def_id, &trait_, &self_type);
-    Type::QPath(Box::new(QPathData {
-        assoc: projection_to_path_segment(ty, cx),
-        should_fully_qualify,
+
+    QPathData {
+        assoc: projection_to_path_segment(proj, cx),
         self_type,
+        should_fully_qualify,
         trait_: Some(trait_),
-    }))
+    }
 }
 
 fn should_fully_qualify_path(self_def_id: Option<DefId>, trait_: &Path, self_type: &Type) -> bool {
@@ -520,18 +507,17 @@ fn should_fully_qualify_path(self_def_id: Option<DefId>, trait_: &Path, self_typ
 }
 
 fn projection_to_path_segment<'tcx>(
-    ty: ty::Binder<'tcx, ty::AliasTy<'tcx>>,
+    proj: ty::Binder<'tcx, ty::AliasTerm<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> PathSegment {
-    let def_id = ty.skip_binder().def_id;
-    let item = cx.tcx.associated_item(def_id);
+    let def_id = proj.skip_binder().def_id;
     let generics = cx.tcx.generics_of(def_id);
     PathSegment {
-        name: item.name(),
+        name: cx.tcx.item_name(def_id),
         args: GenericArgs::AngleBracketed {
             args: clean_middle_generic_args(
                 cx,
-                ty.map_bound(|ty| &ty.args[generics.parent_count..]),
+                proj.map_bound(|ty| &ty.args[generics.parent_count..]),
                 false,
                 def_id,
             ),
@@ -845,7 +831,7 @@ fn clean_ty_generics<'tcx>(
         .predicates
         .iter()
         .flat_map(|(pred, _)| {
-            let mut projection = None;
+            let mut proj_pred = None;
             let param_idx = {
                 let bound_p = pred.kind();
                 match bound_p.skip_binder() {
@@ -860,7 +846,7 @@ fn clean_ty_generics<'tcx>(
                     ty::ClauseKind::Projection(p)
                         if let ty::Param(param) = p.projection_term.self_ty().kind() =>
                     {
-                        projection = Some(bound_p.rebind(p));
+                        proj_pred = Some(bound_p.rebind(p));
                         Some(param.index)
                     }
                     _ => None,
@@ -874,22 +860,12 @@ fn clean_ty_generics<'tcx>(
 
                 bounds.extend(pred.get_bounds().into_iter().flatten().cloned());
 
-                if let Some(proj) = projection
-                    && let lhs = clean_projection(
-                        proj.map_bound(|p| {
-                            // FIXME: This needs to be made resilient for `AliasTerm`s that
-                            // are associated consts.
-                            p.projection_term.expect_ty(cx.tcx)
-                        }),
-                        cx,
-                        None,
-                    )
-                    && let Some((_, trait_did, name)) = lhs.projection()
-                {
+                if let Some(pred) = proj_pred {
+                    let lhs = clean_projection(pred.map_bound(|p| p.projection_term), cx, None);
                     impl_trait_proj.entry(param_idx).or_default().push((
-                        trait_did,
-                        name,
-                        proj.map_bound(|p| p.term),
+                        lhs.trait_.unwrap().def_id(),
+                        lhs.assoc,
+                        pred.map_bound(|p| p.term),
                     ));
                 }
 
@@ -2146,14 +2122,8 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .map(|pb| AssocItemConstraint {
                     assoc: projection_to_path_segment(
                         pb.map_bound(|pb| {
-                            pb
-                                // HACK(compiler-errors): Doesn't actually matter what self
-                                // type we put here, because we're only using the GAT's args.
-                                .with_self_ty(cx.tcx, cx.tcx.types.self_param)
+                            pb.with_self_ty(cx.tcx, cx.tcx.types.trait_object_dummy_self)
                                 .projection_term
-                                // FIXME: This needs to be made resilient for `AliasTerm`s
-                                // that are associated consts.
-                                .expect_ty(cx.tcx)
                         }),
                         cx,
                     ),
@@ -2186,18 +2156,25 @@ pub(crate) fn clean_middle_ty<'tcx>(
             Tuple(t.iter().map(|t| clean_middle_ty(bound_ty.rebind(t), cx, None, None)).collect())
         }
 
-        ty::Alias(ty::Projection, data) => {
-            clean_projection(bound_ty.rebind(data), cx, parent_def_id)
+        ty::Alias(ty::Projection, alias_ty @ ty::AliasTy { def_id, args, .. }) => {
+            if cx.tcx.is_impl_trait_in_trait(def_id) {
+                clean_middle_opaque_bounds(cx, def_id, args)
+            } else {
+                Type::QPath(Box::new(clean_projection(
+                    bound_ty.rebind(alias_ty.into()),
+                    cx,
+                    parent_def_id,
+                )))
+            }
         }
 
-        ty::Alias(ty::Inherent, alias_ty) => {
-            let def_id = alias_ty.def_id;
+        ty::Alias(ty::Inherent, alias_ty @ ty::AliasTy { def_id, .. }) => {
             let alias_ty = bound_ty.rebind(alias_ty);
             let self_type = clean_middle_ty(alias_ty.map_bound(|ty| ty.self_ty()), cx, None, None);
 
             Type::QPath(Box::new(QPathData {
                 assoc: PathSegment {
-                    name: cx.tcx.associated_item(def_id).name(),
+                    name: cx.tcx.item_name(def_id),
                     args: GenericArgs::AngleBracketed {
                         args: clean_middle_generic_args(
                             cx,
@@ -2214,20 +2191,15 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }))
         }
 
-        ty::Alias(ty::Free, data) => {
+        ty::Alias(ty::Free, ty::AliasTy { def_id, args, .. }) => {
             if cx.tcx.features().lazy_type_alias() {
                 // Free type alias `data` represents the `type X` in `type X = Y`. If we need `Y`,
                 // we need to use `type_of`.
-                let path = clean_middle_path(
-                    cx,
-                    data.def_id,
-                    false,
-                    ThinVec::new(),
-                    bound_ty.rebind(data.args),
-                );
+                let path =
+                    clean_middle_path(cx, def_id, false, ThinVec::new(), bound_ty.rebind(args));
                 Type::Path { path }
             } else {
-                let ty = cx.tcx.type_of(data.def_id).instantiate(cx.tcx, data.args);
+                let ty = cx.tcx.type_of(def_id).instantiate(cx.tcx, args);
                 clean_middle_ty(bound_ty.rebind(ty), cx, None, None)
             }
         }
@@ -2314,18 +2286,17 @@ fn clean_middle_opaque_bounds<'tcx>(
             let bindings: ThinVec<_> = bounds
                 .iter()
                 .filter_map(|(bound, _)| {
-                    if let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder()
-                        && proj.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder()
+                    let bound = bound.kind();
+                    if let ty::ClauseKind::Projection(proj_pred) = bound.skip_binder()
+                        && proj_pred.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder()
                     {
                         return Some(AssocItemConstraint {
                             assoc: projection_to_path_segment(
-                                // FIXME: This needs to be made resilient for `AliasTerm`s that
-                                // are associated consts.
-                                bound.kind().rebind(proj.projection_term.expect_ty(cx.tcx)),
+                                bound.rebind(proj_pred.projection_term),
                                 cx,
                             ),
                             kind: AssocItemConstraintKind::Equality {
-                                term: clean_middle_term(bound.kind().rebind(proj.term), cx),
+                                term: clean_middle_term(bound.rebind(proj_pred.term), cx),
                             },
                         });
                     }
