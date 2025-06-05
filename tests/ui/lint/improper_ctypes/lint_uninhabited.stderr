@@ -4,6 +4,7 @@ error: `extern` block uses type `AlsoUninhabited`, which is not FFI-safe
 LL | fn bad_entry(e: AlsoUninhabited);
    |                 ^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = help: `AlsoUninhabited` has exactly one non-zero-sized field, consider making it `#[repr(transparent)]` instead
    = note: this struct/enum/union (`AlsoUninhabited`) is FFI-unsafe due to a `Uninhabited` field
 note: the type is defined here
   --> $DIR/lint_uninhabited.rs:12:1
@@ -21,26 +22,6 @@ note: the lint level is defined here
    |
 LL | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
-
-error: `extern` block uses type `AlsoUninhabited`, which is not FFI-safe
-  --> $DIR/lint_uninhabited.rs:35:16
-   |
-LL | fn bad_exit()->AlsoUninhabited;
-   |                ^^^^^^^^^^^^^^^ not FFI-safe
-   |
-   = note: this struct/enum/union (`AlsoUninhabited`) is FFI-unsafe due to a `Uninhabited` field
-note: the type is defined here
-  --> $DIR/lint_uninhabited.rs:12:1
-   |
-LL | struct AlsoUninhabited{
-   | ^^^^^^^^^^^^^^^^^^^^^^
-   = help: if you meant to have a function that never returns, consider setting its return type to the never type (`!`) or a zero-variant enum
-   = note: zero-variant enums and other uninhabited types are only allowed in function returns if used directly
-note: the type is defined here
-  --> $DIR/lint_uninhabited.rs:9:1
-   |
-LL | enum Uninhabited{}
-   | ^^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `Uninhabited`, which is not FFI-safe
   --> $DIR/lint_uninhabited.rs:37:18
@@ -69,6 +50,7 @@ error: `extern` fn uses type `AlsoUninhabited`, which is not FFI-safe
 LL | extern "C" fn impl_bad_entry(e: AlsoUninhabited) {}
    |                                 ^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = help: `AlsoUninhabited` has exactly one non-zero-sized field, consider making it `#[repr(transparent)]` instead
    = note: this struct/enum/union (`AlsoUninhabited`) is FFI-unsafe due to a `Uninhabited` field
 note: the type is defined here
   --> $DIR/lint_uninhabited.rs:12:1
@@ -86,26 +68,6 @@ note: the lint level is defined here
    |
 LL | #![deny(improper_c_fn_definitions, improper_c_callbacks)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: `extern` fn uses type `AlsoUninhabited`, which is not FFI-safe
-  --> $DIR/lint_uninhabited.rs:49:32
-   |
-LL | extern "C" fn impl_bad_exit()->AlsoUninhabited {
-   |                                ^^^^^^^^^^^^^^^ not FFI-safe
-   |
-   = note: this struct/enum/union (`AlsoUninhabited`) is FFI-unsafe due to a `Uninhabited` field
-note: the type is defined here
-  --> $DIR/lint_uninhabited.rs:12:1
-   |
-LL | struct AlsoUninhabited{
-   | ^^^^^^^^^^^^^^^^^^^^^^
-   = help: if you meant to have a function that never returns, consider setting its return type to the never type (`!`) or a zero-variant enum
-   = note: zero-variant enums and other uninhabited types are only allowed in function returns if used directly
-note: the type is defined here
-  --> $DIR/lint_uninhabited.rs:9:1
-   |
-LL | enum Uninhabited{}
-   | ^^^^^^^^^^^^^^^^
 
 error: `extern` fn uses type `Uninhabited`, which is not FFI-safe
   --> $DIR/lint_uninhabited.rs:56:34
@@ -155,5 +117,5 @@ LL | struct HalfHiddenUninhabited {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables
 
-error: aborting due to 9 previous errors; 1 warning emitted
+error: aborting due to 7 previous errors; 1 warning emitted
 
