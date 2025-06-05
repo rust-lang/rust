@@ -248,7 +248,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
     let tcx = selcx.tcx();
-    let destruct_def_id = tcx.require_lang_item(LangItem::Destruct, None);
+    let destruct_def_id = tcx.require_lang_item(LangItem::Destruct, obligation.cause.span);
     let self_ty = obligation.predicate.self_ty();
 
     let const_conditions = match *self_ty.kind() {
@@ -267,7 +267,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
                 Some(hir::Constness::NotConst) => return Err(EvaluationFailure::NoSolution),
                 // `Drop` impl exists, and it's const. Require `Ty: ~const Drop` to hold.
                 Some(hir::Constness::Const) => {
-                    let drop_def_id = tcx.require_lang_item(LangItem::Drop, None);
+                    let drop_def_id = tcx.require_lang_item(LangItem::Drop, obligation.cause.span);
                     let drop_trait_ref = ty::TraitRef::new(tcx, drop_def_id, [self_ty]);
                     const_conditions.push(drop_trait_ref);
                 }

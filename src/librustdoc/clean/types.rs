@@ -1277,7 +1277,7 @@ impl GenericBound {
     }
 
     fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
-        let did = cx.tcx.require_lang_item(LangItem::Sized, None);
+        let did = cx.tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
         let empty = ty::Binder::dummy(ty::GenericArgs::empty());
         let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);

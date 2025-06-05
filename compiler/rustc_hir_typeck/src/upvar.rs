@@ -1560,7 +1560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
-            let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, Some(closure_span));
+            let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, closure_span);
             self.infcx
                 .type_implements_trait(drop_trait, [ty], self.tcx.param_env(closure_def_id))
                 .must_apply_modulo_regions()
