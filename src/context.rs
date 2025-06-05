@@ -127,7 +127,8 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
 
     /// NOTE: a hack is used because the rustc API is not suitable to libgccjit and as such,
-    /// `const_undef()` returns struct as pointer so that they can later be assigned a value.
+    /// `const_undef()` returns struct as pointer so that they can later be assigned a value (in
+    /// e.g. Builder::insert_value).
     /// As such, this set remembers which of these pointers were returned by this function so that
     /// they can be dereferenced later.
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
