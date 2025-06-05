@@ -352,12 +352,12 @@ impl<const N: usize> fmt::Display for EscapeIterInner<N, MaybeEscaped> {
 
 impl<const N: usize> fmt::Debug for EscapeIterInner<N, AlwaysEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("EscapeIterInner").field(&format_args!("{:?}", self)).finish()
+        f.debug_tuple("EscapeIterInner").field(&format_args!("'{}'", self)).finish()
     }
 }
 
 impl<const N: usize> fmt::Debug for EscapeIterInner<N, MaybeEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("EscapeIterInner").field(&format_args!("{:?}", self)).finish()
+        f.debug_tuple("EscapeIterInner").field(&format_args!("'{}'", self)).finish()
     }
 }
