@@ -219,9 +219,6 @@ pub trait Visitor<'ast>: Sized {
     fn visit_field_def(&mut self, s: &'ast FieldDef) -> Self::Result {
         walk_field_def(self, s)
     }
-    fn visit_enum_def(&mut self, enum_definition: &'ast EnumDef) -> Self::Result {
-        walk_enum_def(self, enum_definition)
-    }
     fn visit_variant(&mut self, v: &'ast Variant) -> Self::Result {
         walk_variant(self, v)
     }
@@ -246,13 +243,12 @@ pub trait Visitor<'ast>: Sized {
     fn visit_path(&mut self, path: &'ast Path) -> Self::Result {
         walk_path(self, path)
     }
-    fn visit_use_tree(
-        &mut self,
-        use_tree: &'ast UseTree,
-        id: NodeId,
-        _nested: bool,
-    ) -> Self::Result {
-        walk_use_tree(self, use_tree, id)
+    fn visit_use_tree(&mut self, use_tree: &'ast UseTree) -> Self::Result {
+        walk_use_tree(self, use_tree)
+    }
+    fn visit_nested_use_tree(&mut self, use_tree: &'ast UseTree, id: NodeId) -> Self::Result {
+        try_visit!(self.visit_id(id));
+        self.visit_use_tree(use_tree)
     }
     fn visit_path_segment(&mut self, path_segment: &'ast PathSegment) -> Self::Result {
         walk_path_segment(self, path_segment)
@@ -472,8 +468,7 @@ macro_rules! common_visitor_and_walkers {
             ) $(-> <V as Visitor<$lt>>::Result)? {
                 match self {
                     ItemKind::ExternCrate(_orig_name, ident) => vis.visit_ident(ident),
-                    // FIXME(fee1-dead): look into this weird assymetry
-                    ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree$(${ignore($lt)}, id, false)?),
+                    ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
                     ItemKind::Static(box StaticItem {
                         ident,
                         ty,
@@ -536,10 +531,7 @@ macro_rules! common_visitor_and_walkers {
                     ItemKind::Enum(ident, generics, enum_definition) => {
                         try_visit!(vis.visit_ident(ident));
                         try_visit!(vis.visit_generics(generics));
-                        $(${ignore($mut)}
-                            enum_definition.variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
-                        )?
-                        $(${ignore($lt)}vis.visit_enum_def(enum_definition))?
+                        visit_variants(vis, &$($mut)? enum_definition.variants)
                     }
                     ItemKind::Struct(ident, generics, variant_data)
                     | ItemKind::Union(ident, generics, variant_data) => {
@@ -564,35 +556,14 @@ macro_rules! common_visitor_and_walkers {
                         try_visit!(visit_polarity(vis, polarity));
                         visit_opt!(vis, visit_trait_ref, of_trait);
                         try_visit!(vis.visit_ty(self_ty));
-                        $(${ignore($mut)}
-                            items.flat_map_in_place(|item| {
-                                vis.flat_map_assoc_item(item, AssocCtxt::Impl { of_trait: of_trait.is_some() })
-                            });
-                        )?
-                        $(${ignore($lt)}
-                            walk_list!(
-                                vis,
-                                visit_assoc_item,
-                                items,
-                                AssocCtxt::Impl { of_trait: of_trait.is_some() }
-                            );
-                            <V as Visitor<$lt>>::Result::output()
-                        )?
+                        visit_assoc_items(vis, items, AssocCtxt::Impl { of_trait: of_trait.is_some() })
                     }
                     ItemKind::Trait(box Trait { safety, is_auto: _, ident, generics, bounds, items }) => {
                         try_visit!(visit_safety(vis, safety));
                         try_visit!(vis.visit_ident(ident));
                         try_visit!(vis.visit_generics(generics));
                         try_visit!(visit_bounds(vis, bounds, BoundKind::Bound));
-                        $(${ignore($mut)}
-                            items.flat_map_in_place(|item| {
-                                vis.flat_map_assoc_item(item, AssocCtxt::Trait)
-                            });
-                        )?
-                        $(${ignore($lt)}
-                            walk_list!(vis, visit_assoc_item, items, AssocCtxt::Trait);
-                            <V as Visitor<$lt>>::Result::output()
-                        )?
+                        visit_assoc_items(vis, items, AssocCtxt::Trait)
                     }
                     ItemKind::TraitAlias(ident, generics, bounds) => {
                         try_visit!(vis.visit_ident(ident));
@@ -987,7 +958,7 @@ macro_rules! common_visitor_and_walkers {
             visit_span(vis, span)
         }
 
-        fn walk_poly_trait_ref<$($lt,)? V: $Visitor$(<$lt>)?>(
+        pub fn walk_poly_trait_ref<$($lt,)? V: $Visitor$(<$lt>)?>(
             vis: &mut V,
             p: &$($lt)? $($mut)? PolyTraitRef,
         ) $(-> <V as Visitor<$lt>>::Result)? {
@@ -997,19 +968,129 @@ macro_rules! common_visitor_and_walkers {
             try_visit!(vis.visit_trait_ref(trait_ref));
             visit_span(vis, span)
         }
+
+        pub fn walk_trait_ref<$($lt,)? V: $Visitor$(<$lt>)?>(
+            vis: &mut V,
+            TraitRef { path, ref_id }: &$($lt)? $($mut)? TraitRef,
+        ) $(-> <V as Visitor<$lt>>::Result)? {
+            try_visit!(vis.visit_path(path));
+            visit_id(vis, ref_id)
+        }
+
+        pub fn walk_variant<$($lt,)? V: $Visitor$(<$lt>)?>(
+            vis: &mut V,
+            variant: &$($lt)? $($mut)? Variant,
+        ) $(-> <V as Visitor<$lt>>::Result)? {
+            let Variant { attrs, id, span, vis: visibility, ident, data, disr_expr, is_placeholder: _ } = variant;
+            try_visit!(visit_id(vis, id));
+            walk_list!(vis, visit_attribute, attrs);
+            try_visit!(vis.visit_vis(visibility));
+            try_visit!(vis.visit_ident(ident));
+            try_visit!(vis.visit_variant_data(data));
+            $(${ignore($lt)} visit_opt!(vis, visit_variant_discr, disr_expr); )?
+            $(${ignore($mut)} visit_opt!(vis, visit_anon_const, disr_expr); )?
+            visit_span(vis, span)
+        }
+
+        pub fn walk_expr_field<$($lt,)? V: $Visitor$(<$lt>)?>(
+            vis: &mut V,
+            f: &$($lt)? $($mut)? ExprField,
+        ) $(-> <V as Visitor<$lt>>::Result)? {
+            let ExprField { attrs, id, span, ident, expr, is_shorthand: _, is_placeholder: _ } = f;
+            try_visit!(visit_id(vis, id));
+            walk_list!(vis, visit_attribute, attrs);
+            try_visit!(vis.visit_ident(ident));
+            try_visit!(vis.visit_expr(expr));
+            visit_span(vis, span)
+        }
+
+        pub fn walk_pat_field<$($lt,)? V: $Visitor$(<$lt>)?>(
+            vis: &mut V,
+            fp: &$($lt)? $($mut)? PatField,
+        ) $(-> <V as Visitor<$lt>>::Result)? {
+            let PatField { ident, pat, is_shorthand: _, attrs, id, span, is_placeholder: _ } = fp;
+            try_visit!(visit_id(vis, id));
+            walk_list!(vis, visit_attribute, attrs);
+            try_visit!(vis.visit_ident(ident));
+            try_visit!(vis.visit_pat(pat));
+            visit_span(vis, span)
+        }
+
+        pub fn walk_ty_pat<$($lt,)? V: $Visitor$(<$lt>)?>(
+            vis: &mut V,
+            tp: &$($lt)? $($mut)? TyPat,
+        ) $(-> <V as Visitor<$lt>>::Result)? {
+            let TyPat { id, kind, span, tokens: _ } = tp;
+            try_visit!(visit_id(vis, id));
+            match kind {
+                TyPatKind::Range(start, end, _include_end) => {
+                    visit_opt!(vis, visit_anon_const, start);
+                    visit_opt!(vis, visit_anon_const, end);
+                }
+                TyPatKind::Or(variants) => walk_list!(vis, visit_ty_pat, variants),
+                TyPatKind::Err(_) => {}
+            }
+            visit_span(vis, span)
+        }
+
+        fn walk_qself<$($lt,)? V: $Visitor$(<$lt>)?>(
+            vis: &mut V,
+            qself: &$($lt)? $($mut)? Option<P<QSelf>>,
+        ) $(-> <V as Visitor<$lt>>::Result)? {
+            if let Some(qself) = qself {
+                let QSelf { ty, path_span, position: _ } = &$($mut)? **qself;
+                try_visit!(vis.visit_ty(ty));
+                try_visit!(visit_span(vis, path_span));
+            }
+            $(<V as Visitor<$lt>>::Result::output())?
+        }
+
+        pub fn walk_path<$($lt,)? V: $Visitor$(<$lt>)?>(
+            vis: &mut V,
+            path: &$($lt)? $($mut)? Path,
+        ) $(-> <V as Visitor<$lt>>::Result)? {
+            let Path { span, segments, tokens: _ } = path;
+            walk_list!(vis, visit_path_segment, segments);
+            visit_span(vis, span)
+        }
+
+        pub fn walk_use_tree<$($lt,)? V: $Visitor$(<$lt>)?>(
+            vis: &mut V,
+            use_tree: &$($lt)? $($mut)? UseTree,
+        ) $(-> <V as Visitor<$lt>>::Result)? {
+            let UseTree { prefix, kind, span } = use_tree;
+            try_visit!(vis.visit_path(prefix));
+            match kind {
+                UseTreeKind::Simple(rename) => {
+                    // The extra IDs are handled during AST lowering.
+                    visit_opt!(vis, visit_ident, rename);
+                }
+                UseTreeKind::Glob => {}
+                UseTreeKind::Nested { items, span } => {
+                    for (nested_tree, nested_id) in items {
+                        try_visit!(visit_nested_use_tree(vis, nested_tree, nested_id));
+                    }
+                    try_visit!(visit_span(vis, span));
+                }
+            }
+            visit_span(vis, span)
+        }
     };
 }
 
 common_visitor_and_walkers!(Visitor<'a>);
 
 macro_rules! generate_list_visit_fns {
-    ($($name:ident, $Ty:ty, $visit_fn:ident;)+) => {
+    ($($name:ident, $Ty:ty, $visit_fn:ident$(, $param:ident: $ParamTy:ty)*;)+) => {
         $(
             fn $name<'a, V: Visitor<'a>>(
                 vis: &mut V,
                 values: &'a ThinVec<$Ty>,
+                $(
+                    $param: $ParamTy,
+                )*
             ) -> V::Result {
-                walk_list!(vis, $visit_fn, values);
+                walk_list!(vis, $visit_fn, values$(,$param)*);
                 V::Result::output()
             }
         )+
@@ -1022,99 +1103,17 @@ generate_list_visit_fns! {
     visit_generic_params, GenericParam, visit_generic_param;
     visit_stmts, Stmt, visit_stmt;
     visit_pat_fields, PatField, visit_pat_field;
+    visit_variants, Variant, visit_variant;
+    visit_assoc_items, P<AssocItem>, visit_assoc_item, ctxt: AssocCtxt;
 }
 
-pub fn walk_trait_ref<'a, V: Visitor<'a>>(visitor: &mut V, trait_ref: &'a TraitRef) -> V::Result {
-    let TraitRef { path, ref_id } = trait_ref;
-    try_visit!(visitor.visit_path(path));
-    visitor.visit_id(*ref_id)
-}
-
-pub fn walk_enum_def<'a, V: Visitor<'a>>(
-    visitor: &mut V,
-    EnumDef { variants }: &'a EnumDef,
+#[expect(rustc::pass_by_value)] // needed for symmetry with mut_visit
+fn visit_nested_use_tree<'a, V: Visitor<'a>>(
+    vis: &mut V,
+    nested_tree: &'a UseTree,
+    &nested_id: &NodeId,
 ) -> V::Result {
-    walk_list!(visitor, visit_variant, variants);
-    V::Result::output()
-}
-
-pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant) -> V::Result
-where
-    V: Visitor<'a>,
-{
-    let Variant { attrs, id: _, span: _, vis, ident, data, disr_expr, is_placeholder: _ } = variant;
-    walk_list!(visitor, visit_attribute, attrs);
-    try_visit!(visitor.visit_vis(vis));
-    try_visit!(visitor.visit_ident(ident));
-    try_visit!(visitor.visit_variant_data(data));
-    visit_opt!(visitor, visit_variant_discr, disr_expr);
-    V::Result::output()
-}
-
-pub fn walk_expr_field<'a, V: Visitor<'a>>(visitor: &mut V, f: &'a ExprField) -> V::Result {
-    let ExprField { attrs, id: _, span: _, ident, expr, is_shorthand: _, is_placeholder: _ } = f;
-    walk_list!(visitor, visit_attribute, attrs);
-    try_visit!(visitor.visit_ident(ident));
-    try_visit!(visitor.visit_expr(expr));
-    V::Result::output()
-}
-
-pub fn walk_pat_field<'a, V: Visitor<'a>>(visitor: &mut V, fp: &'a PatField) -> V::Result {
-    let PatField { ident, pat, is_shorthand: _, attrs, id: _, span: _, is_placeholder: _ } = fp;
-    walk_list!(visitor, visit_attribute, attrs);
-    try_visit!(visitor.visit_ident(ident));
-    try_visit!(visitor.visit_pat(pat));
-    V::Result::output()
-}
-
-pub fn walk_ty_pat<'a, V: Visitor<'a>>(visitor: &mut V, tp: &'a TyPat) -> V::Result {
-    let TyPat { id: _, kind, span: _, tokens: _ } = tp;
-    match kind {
-        TyPatKind::Range(start, end, _include_end) => {
-            visit_opt!(visitor, visit_anon_const, start);
-            visit_opt!(visitor, visit_anon_const, end);
-        }
-        TyPatKind::Or(variants) => walk_list!(visitor, visit_ty_pat, variants),
-        TyPatKind::Err(_) => {}
-    }
-    V::Result::output()
-}
-
-fn walk_qself<'a, V: Visitor<'a>>(visitor: &mut V, qself: &'a Option<P<QSelf>>) -> V::Result {
-    if let Some(qself) = qself {
-        let QSelf { ty, path_span: _, position: _ } = &**qself;
-        try_visit!(visitor.visit_ty(ty));
-    }
-    V::Result::output()
-}
-
-pub fn walk_path<'a, V: Visitor<'a>>(visitor: &mut V, path: &'a Path) -> V::Result {
-    let Path { span: _, segments, tokens: _ } = path;
-    walk_list!(visitor, visit_path_segment, segments);
-    V::Result::output()
-}
-
-pub fn walk_use_tree<'a, V: Visitor<'a>>(
-    visitor: &mut V,
-    use_tree: &'a UseTree,
-    id: NodeId,
-) -> V::Result {
-    let UseTree { prefix, kind, span: _ } = use_tree;
-    try_visit!(visitor.visit_id(id));
-    try_visit!(visitor.visit_path(prefix));
-    match kind {
-        UseTreeKind::Simple(rename) => {
-            // The extra IDs are handled during AST lowering.
-            visit_opt!(visitor, visit_ident, rename);
-        }
-        UseTreeKind::Glob => {}
-        UseTreeKind::Nested { items, span: _ } => {
-            for &(ref nested_tree, nested_id) in items {
-                try_visit!(visitor.visit_use_tree(nested_tree, nested_id, true));
-            }
-        }
-    }
-    V::Result::output()
+    vis.visit_nested_use_tree(nested_tree, nested_id)
 }
 
 pub fn walk_generic_args<'a, V>(visitor: &mut V, generic_args: &'a GenericArgs) -> V::Result

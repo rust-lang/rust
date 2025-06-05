@@ -208,7 +208,7 @@ pub trait MutVisitor: Sized {
     }
 
     fn visit_ident(&mut self, i: &mut Ident) {
-        walk_ident(self, i);
+        self.visit_span(&mut i.span);
     }
 
     fn visit_path(&mut self, p: &mut Path) {
@@ -364,13 +364,16 @@ pub trait MutVisitor: Sized {
 super::common_visitor_and_walkers!((mut) MutVisitor);
 
 macro_rules! generate_flat_map_visitor_fns {
-    ($($name:ident, $Ty:ty, $flat_map_fn:ident;)+) => {
+    ($($name:ident, $Ty:ty, $flat_map_fn:ident$(, $param:ident: $ParamTy:ty)*;)+) => {
         $(
             fn $name<V: MutVisitor>(
                 vis: &mut V,
                 values: &mut ThinVec<$Ty>,
+                $(
+                    $param: $ParamTy,
+                )*
             ) {
-                values.flat_map_in_place(|value| vis.$flat_map_fn(value));
+                values.flat_map_in_place(|value| vis.$flat_map_fn(value$(,$param)*));
             }
         )+
     }
@@ -383,6 +386,8 @@ generate_flat_map_visitor_fns! {
     visit_stmts, Stmt, flat_map_stmt;
     visit_exprs, P<Expr>, filter_map_expr;
     visit_pat_fields, PatField, flat_map_pat_field;
+    visit_variants, Variant, flat_map_variant;
+    visit_assoc_items, P<AssocItem>, flat_map_assoc_item, ctxt: AssocCtxt;
 }
 
 #[inline]
@@ -439,15 +444,6 @@ fn visit_delim_args<T: MutVisitor>(vis: &mut T, args: &mut DelimArgs) {
     vis.visit_span(close);
 }
 
-pub fn walk_pat_field<T: MutVisitor>(vis: &mut T, fp: &mut PatField) {
-    let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = fp;
-    vis.visit_id(id);
-    visit_attrs(vis, attrs);
-    vis.visit_ident(ident);
-    vis.visit_pat(pat);
-    vis.visit_span(span);
-}
-
 pub fn walk_flat_map_pat_field<T: MutVisitor>(
     vis: &mut T,
     mut fp: PatField,
@@ -456,21 +452,13 @@ pub fn walk_flat_map_pat_field<T: MutVisitor>(
     smallvec![fp]
 }
 
-fn walk_use_tree<T: MutVisitor>(vis: &mut T, use_tree: &mut UseTree) {
-    let UseTree { prefix, kind, span } = use_tree;
-    vis.visit_path(prefix);
-    match kind {
-        UseTreeKind::Simple(rename) => visit_opt(rename, |rename| vis.visit_ident(rename)),
-        UseTreeKind::Nested { items, span } => {
-            for (tree, id) in items {
-                vis.visit_id(id);
-                vis.visit_use_tree(tree);
-            }
-            vis.visit_span(span);
-        }
-        UseTreeKind::Glob => {}
-    }
-    vis.visit_span(span);
+fn visit_nested_use_tree<V: MutVisitor>(
+    vis: &mut V,
+    nested_tree: &mut UseTree,
+    nested_id: &mut NodeId,
+) {
+    vis.visit_id(nested_id);
+    vis.visit_use_tree(nested_tree);
 }
 
 pub fn walk_arm<T: MutVisitor>(vis: &mut T, arm: &mut Arm) {
@@ -507,56 +495,12 @@ fn walk_assoc_item_constraint<T: MutVisitor>(
     vis.visit_span(span);
 }
 
-pub fn walk_ty_pat<T: MutVisitor>(vis: &mut T, ty: &mut TyPat) {
-    let TyPat { id, kind, span, tokens: _ } = ty;
-    vis.visit_id(id);
-    match kind {
-        TyPatKind::Range(start, end, _include_end) => {
-            visit_opt(start, |c| vis.visit_anon_const(c));
-            visit_opt(end, |c| vis.visit_anon_const(c));
-        }
-        TyPatKind::Or(variants) => visit_thin_vec(variants, |p| vis.visit_ty_pat(p)),
-        TyPatKind::Err(_) => {}
-    }
-    vis.visit_span(span);
-}
-
-pub fn walk_variant<T: MutVisitor>(visitor: &mut T, variant: &mut Variant) {
-    let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = variant;
-    visitor.visit_id(id);
-    visit_attrs(visitor, attrs);
-    visitor.visit_vis(vis);
-    visitor.visit_ident(ident);
-    visitor.visit_variant_data(data);
-    visit_opt(disr_expr, |disr_expr| visitor.visit_anon_const(disr_expr));
-    visitor.visit_span(span);
-}
-
 pub fn walk_flat_map_variant<T: MutVisitor>(
     vis: &mut T,
     mut variant: Variant,
 ) -> SmallVec<[Variant; 1]> {
     vis.visit_variant(&mut variant);
     smallvec![variant]
-}
-
-fn walk_ident<T: MutVisitor>(vis: &mut T, Ident { name: _, span }: &mut Ident) {
-    vis.visit_span(span);
-}
-
-fn walk_path<T: MutVisitor>(vis: &mut T, Path { segments, span, tokens: _ }: &mut Path) {
-    for segment in segments {
-        vis.visit_path_segment(segment);
-    }
-    vis.visit_span(span);
-}
-
-fn walk_qself<T: MutVisitor>(vis: &mut T, qself: &mut Option<P<QSelf>>) {
-    visit_opt(qself, |qself| {
-        let QSelf { ty, path_span, position: _ } = &mut **qself;
-        vis.visit_ty(ty);
-        vis.visit_span(path_span);
-    })
 }
 
 fn walk_generic_args<T: MutVisitor>(vis: &mut T, generic_args: &mut GenericArgs) {
@@ -841,11 +785,6 @@ fn walk_variant_data<T: MutVisitor>(vis: &mut T, vdata: &mut VariantData) {
     }
 }
 
-fn walk_trait_ref<T: MutVisitor>(vis: &mut T, TraitRef { path, ref_id }: &mut TraitRef) {
-    vis.visit_id(ref_id);
-    vis.visit_path(path);
-}
-
 pub fn walk_field_def<T: MutVisitor>(visitor: &mut T, fd: &mut FieldDef) {
     let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _, safety, default } = fd;
     visitor.visit_id(id);
@@ -864,15 +803,6 @@ pub fn walk_flat_map_field_def<T: MutVisitor>(
 ) -> SmallVec<[FieldDef; 1]> {
     vis.visit_field_def(&mut fd);
     smallvec![fd]
-}
-
-pub fn walk_expr_field<T: MutVisitor>(vis: &mut T, f: &mut ExprField) {
-    let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = f;
-    vis.visit_id(id);
-    visit_attrs(vis, attrs);
-    vis.visit_ident(ident);
-    vis.visit_expr(expr);
-    vis.visit_span(span);
 }
 
 pub fn walk_flat_map_expr_field<T: MutVisitor>(
