@@ -1,13 +1,13 @@
 [package]
 authors = ["Jorge Aparicio <japaricious@gmail.com>"]
 name = "compiler_builtins"
-version = "0.1.159"
+version = "0.1.160"
 license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
 readme = "README.md"
 repository = "https://github.com/rust-lang/compiler-builtins"
 homepage = "https://github.com/rust-lang/compiler-builtins"
 documentation = "https://docs.rs/compiler_builtins"
-edition = "2021"
+edition = "2024"
 description = "Compiler intrinsics used by the Rust compiler."
 links = "compiler-rt"
 
@@ -19,13 +19,10 @@ test = false
 [dependencies]
 # For more information on this dependency see
 # https://github.com/rust-lang/rust/tree/master/library/rustc-std-workspace-core
-core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
+core = { version = "1.0.1", optional = true, package = "rustc-std-workspace-core" }
 
 [build-dependencies]
-cc = { optional = true, version = "1.0" }
-
-[dev-dependencies]
-panic-handler = { path = "../crates/panic-handler" }
+cc = { optional = true, version = "1.2" }
 
 [features]
 default = ["compiler-builtins"]

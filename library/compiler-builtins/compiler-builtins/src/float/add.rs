@@ -1,5 +1,5 @@
 use crate::float::Float;
-use crate::int::{CastInto, Int, MinInt};
+use crate::int::{CastFrom, CastInto, Int, MinInt};
 
 /// Returns `a + b`
 fn add<F: Float>(a: F, b: F) -> F
@@ -12,7 +12,7 @@ where
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
 
-    let bits = F::BITS.cast();
+    let bits: F::Int = F::BITS.cast();
     let significand_bits = F::SIG_BITS;
     let max_exponent = F::EXP_SAT;
 
@@ -115,9 +115,10 @@ where
     let align = a_exponent.wrapping_sub(b_exponent).cast();
     if align != MinInt::ZERO {
         if align < bits {
-            let sticky =
-                F::Int::from_bool(b_significand << bits.wrapping_sub(align).cast() != MinInt::ZERO);
-            b_significand = (b_significand >> align.cast()) | sticky;
+            let sticky = F::Int::from_bool(
+                b_significand << u32::cast_from(bits.wrapping_sub(align)) != MinInt::ZERO,
+            );
+            b_significand = (b_significand >> u32::cast_from(align)) | sticky;
         } else {
             b_significand = one; // sticky; b is known to be non-zero.
         }
@@ -132,8 +133,8 @@ where
         // If partial cancellation occured, we need to left-shift the result
         // and adjust the exponent:
         if a_significand < implicit_bit << 3 {
-            let shift =
-                a_significand.leading_zeros() as i32 - (implicit_bit << 3).leading_zeros() as i32;
+            let shift = a_significand.leading_zeros() as i32
+                - (implicit_bit << 3u32).leading_zeros() as i32;
             a_significand <<= shift;
             a_exponent -= shift;
         }
@@ -159,14 +160,15 @@ where
         // Result is denormal before rounding; the exponent is zero and we
         // need to shift the significand.
         let shift = (1 - a_exponent).cast();
-        let sticky =
-            F::Int::from_bool((a_significand << bits.wrapping_sub(shift).cast()) != MinInt::ZERO);
-        a_significand = (a_significand >> shift.cast()) | sticky;
+        let sticky = F::Int::from_bool(
+            (a_significand << u32::cast_from(bits.wrapping_sub(shift))) != MinInt::ZERO,
+        );
+        a_significand = (a_significand >> u32::cast_from(shift)) | sticky;
         a_exponent = 0;
     }
 
     // Low three bits are round, guard, and sticky.
-    let a_significand_i32: i32 = a_significand.cast();
+    let a_significand_i32: i32 = a_significand.cast_lossy();
     let round_guard_sticky: i32 = a_significand_i32 & 0x7;
 
     // Shift the significand into place, and mask off the implicit bit.
