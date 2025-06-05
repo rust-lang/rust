@@ -1,6 +1,7 @@
 //@ needs-enzyme
 
 #![feature(autodiff)]
+#![feature(intrinsics)]
 //@ pretty-mode:expanded
 //@ pretty-compare-only
 //@ pp-exact:autodiff_reverse.pp
@@ -23,7 +24,9 @@ pub fn f3(x: &[f64], y: f64) -> f64 {
     unimplemented!()
 }
 
-enum Foo { Reverse }
+enum Foo {
+    Reverse,
+}
 use Foo::Reverse;
 // What happens if we already have Reverse in type (enum variant decl) and value (enum variant
 // constructor) namespace? > It's expected to work normally.
