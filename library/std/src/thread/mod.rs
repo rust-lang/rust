@@ -920,8 +920,6 @@ pub fn sleep(dur: Duration) {
 ///
 /// [currently]: crate::io#platform-specific-behavior
 /// [clock_nanosleep]: https://linux.die.net/man/3/clock_nanosleep
-/// [subscription_clock]: https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#-subscription_clock-record
-/// [mach_wait_until]: https://developer.apple.com/library/archive/technotes/tn2169/_index.html
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///
