@@ -211,10 +211,6 @@ pub trait MutVisitor: Sized {
         walk_ident(self, i);
     }
 
-    fn visit_modifiers(&mut self, m: &mut TraitBoundModifiers) {
-        walk_modifiers(self, m);
-    }
-
     fn visit_path(&mut self, p: &mut Path) {
         walk_path(self, p);
     }
@@ -367,6 +363,28 @@ pub trait MutVisitor: Sized {
 
 super::common_visitor_and_walkers!((mut) MutVisitor);
 
+macro_rules! generate_flat_map_visitor_fns {
+    ($($name:ident, $Ty:ty, $flat_map_fn:ident;)+) => {
+        $(
+            fn $name<V: MutVisitor>(
+                vis: &mut V,
+                values: &mut ThinVec<$Ty>,
+            ) {
+                values.flat_map_in_place(|value| vis.$flat_map_fn(value));
+            }
+        )+
+    }
+}
+
+generate_flat_map_visitor_fns! {
+    visit_items, P<Item>, flat_map_item;
+    visit_foreign_items, P<ForeignItem>, flat_map_foreign_item;
+    visit_generic_params, GenericParam, flat_map_generic_param;
+    visit_stmts, Stmt, flat_map_stmt;
+    visit_exprs, P<Expr>, filter_map_expr;
+    visit_pat_fields, PatField, flat_map_pat_field;
+}
+
 #[inline]
 fn visit_vec<T, F>(elems: &mut Vec<T>, mut visit_elem: F)
 where
@@ -401,15 +419,6 @@ fn visit_attrs<T: MutVisitor>(vis: &mut T, attrs: &mut AttrVec) {
     for attr in attrs.iter_mut() {
         vis.visit_attribute(attr);
     }
-}
-
-#[allow(unused)]
-fn visit_exprs<T: MutVisitor>(vis: &mut T, exprs: &mut Vec<P<Expr>>) {
-    exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
-}
-
-fn visit_thin_exprs<T: MutVisitor>(vis: &mut T, exprs: &mut ThinVec<P<Expr>>) {
-    exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
 }
 
 fn visit_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
@@ -581,27 +590,6 @@ fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut Pare
     vis.visit_fn_ret_ty(output);
     vis.visit_span(span);
     vis.visit_span(inputs_span);
-}
-
-fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut Local) {
-    let Local { id, super_, pat, ty, kind, span, colon_sp, attrs, tokens: _ } = local;
-    visit_opt(super_, |sp| vis.visit_span(sp));
-    vis.visit_id(id);
-    visit_attrs(vis, attrs);
-    vis.visit_pat(pat);
-    visit_opt(ty, |ty| vis.visit_ty(ty));
-    match kind {
-        LocalKind::Decl => {}
-        LocalKind::Init(init) => {
-            vis.visit_expr(init);
-        }
-        LocalKind::InitElse(init, els) => {
-            vis.visit_expr(init);
-            vis.visit_block(els);
-        }
-    }
-    visit_opt(colon_sp, |sp| vis.visit_span(sp));
-    vis.visit_span(span);
 }
 
 fn walk_attribute<T: MutVisitor>(vis: &mut T, attr: &mut Attribute) {
@@ -858,30 +846,6 @@ fn walk_trait_ref<T: MutVisitor>(vis: &mut T, TraitRef { path, ref_id }: &mut Tr
     vis.visit_path(path);
 }
 
-fn walk_poly_trait_ref<T: MutVisitor>(vis: &mut T, p: &mut PolyTraitRef) {
-    let PolyTraitRef { bound_generic_params, modifiers, trait_ref, span } = p;
-    vis.visit_modifiers(modifiers);
-    bound_generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
-    vis.visit_trait_ref(trait_ref);
-    vis.visit_span(span);
-}
-
-fn walk_modifiers<V: MutVisitor>(vis: &mut V, m: &mut TraitBoundModifiers) {
-    let TraitBoundModifiers { constness, asyncness, polarity } = m;
-    match constness {
-        BoundConstness::Never => {}
-        BoundConstness::Always(span) | BoundConstness::Maybe(span) => vis.visit_span(span),
-    }
-    match asyncness {
-        BoundAsyncness::Normal => {}
-        BoundAsyncness::Async(span) => vis.visit_span(span),
-    }
-    match polarity {
-        BoundPolarity::Positive => {}
-        BoundPolarity::Negative(span) | BoundPolarity::Maybe(span) => vis.visit_span(span),
-    }
-}
-
 pub fn walk_field_def<T: MutVisitor>(visitor: &mut T, fd: &mut FieldDef) {
     let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _, safety, default } = fd;
     visitor.visit_id(id);
@@ -928,16 +892,6 @@ pub fn walk_item_kind<K: WalkItemKind>(
     vis: &mut impl MutVisitor,
 ) {
     kind.walk(span, id, visibility, ctxt, vis)
-}
-
-pub fn walk_crate<T: MutVisitor>(vis: &mut T, krate: &mut Crate) {
-    let Crate { attrs, items, spans, id, is_placeholder: _ } = krate;
-    vis.visit_id(id);
-    visit_attrs(vis, attrs);
-    items.flat_map_in_place(|item| vis.flat_map_item(item));
-    let ModSpans { inner_span, inject_use_span } = spans;
-    vis.visit_span(inner_span);
-    vis.visit_span(inject_use_span);
 }
 
 pub fn walk_flat_map_item(vis: &mut impl MutVisitor, mut item: P<Item>) -> SmallVec<[P<Item>; 1]> {
@@ -1021,7 +975,7 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     match kind {
-        ExprKind::Array(exprs) => visit_thin_exprs(vis, exprs),
+        ExprKind::Array(exprs) => visit_exprs(vis, exprs),
         ExprKind::ConstBlock(anon_const) => {
             vis.visit_anon_const(anon_const);
         }
@@ -1029,10 +983,10 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
             vis.visit_expr(expr);
             vis.visit_anon_const(count);
         }
-        ExprKind::Tup(exprs) => visit_thin_exprs(vis, exprs),
+        ExprKind::Tup(exprs) => visit_exprs(vis, exprs),
         ExprKind::Call(f, args) => {
             vis.visit_expr(f);
-            visit_thin_exprs(vis, args);
+            visit_exprs(vis, args);
         }
         ExprKind::MethodCall(box MethodCall {
             seg: PathSegment { ident, id, args: seg_args },
@@ -1044,7 +998,7 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
             vis.visit_id(id);
             vis.visit_ident(ident);
             visit_opt(seg_args, |args| vis.visit_generic_args(args));
-            visit_thin_exprs(vis, call_args);
+            visit_exprs(vis, call_args);
             vis.visit_span(span);
         }
         ExprKind::Binary(binop, lhs, rhs) => {
