@@ -585,37 +585,17 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_uninhabited(
         &self,
         state: CTypesVisitorState,
-        outer_ty: Option<Ty<'tcx>>,
         ty: Ty<'tcx>,
     ) -> FfiResult<'tcx> {
-        if state.is_in_function_return()
-            && matches!(outer_ty.map(|ty| ty.kind()), None | Some(ty::FnPtr(..)))
-        {
+        if state.is_in_function_return() {
             FfiResult::FfiSafe
         } else {
-            let help = if state.is_in_function_return() {
-                Some(fluent::lint_improper_ctypes_uninhabited_use_direct)
-            } else {
-                None
-            };
             let desc = match ty.kind() {
-                ty::Adt(..) => {
-                    if state.is_in_function_return() {
-                        fluent::lint_improper_ctypes_uninhabited_enum_deep
-                    } else {
-                        fluent::lint_improper_ctypes_uninhabited_enum
-                    }
-                }
-                ty::Never => {
-                    if state.is_in_function_return() {
-                        fluent::lint_improper_ctypes_uninhabited_never_deep
-                    } else {
-                        fluent::lint_improper_ctypes_uninhabited_never
-                    }
-                }
+                ty::Adt(..) => fluent::lint_improper_ctypes_uninhabited_enum,
+                ty::Never => fluent::lint_improper_ctypes_uninhabited_never,
                 r @ _ => bug!("unexpected ty_kind in uninhabited type handling: {:?}", r),
             };
-            FfiResult::new_with_reason(ty, desc, help)
+            FfiResult::new_with_reason(ty, desc, None)
         }
     }
 
@@ -771,7 +751,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 // determine if there is 0 or 1 non-1ZST field, and which it is.
                 // (note: for enums, "transparent" means 1-variant)
                 if ty.is_privately_uninhabited(self.cx.tcx, self.cx.typing_env()) {
-                    // let's consider transparent structs are considered unsafe if uninhabited,
+                    // let's consider transparent structs to be maybe unsafe if uninhabited,
                     // even if that is because of fields otherwise ignored in FFI-safety checks
                     // FIXME: and also maybe this should be "!is_inhabited_from" but from where?
                     ffires_accumulator += variant
@@ -782,9 +762,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             let mut field_res = self.visit_type(state, Some(ty), field_ty);
                             field_res.take_with_core_note(&[
                                 fluent::lint_improper_ctypes_uninhabited_enum,
-                                fluent::lint_improper_ctypes_uninhabited_enum_deep,
                                 fluent::lint_improper_ctypes_uninhabited_never,
-                                fluent::lint_improper_ctypes_uninhabited_never_deep,
                             ])
                         })
                         .reduce(|r1, r2| r1 + r2)
@@ -876,19 +854,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 let help = if non_1zst_count == 1
                     && last_non_1zst.map(|field_i| fields_ok_list[field_i]) == Some(true)
                 {
-                    if ty.is_privately_uninhabited(self.cx.tcx, self.cx.typing_env()) {
-                        // uninhabited types can't be helped by being turned transparent
-                        None
-                    } else {
-                        match def.adt_kind() {
-                            AdtKind::Struct => {
-                                Some(fluent::lint_improper_ctypes_struct_consider_transparent)
-                            }
-                            AdtKind::Union => {
-                                Some(fluent::lint_improper_ctypes_union_consider_transparent)
-                            }
-                            AdtKind::Enum => bug!("cannot suggest an enum to be repr(transparent)"),
+                    match def.adt_kind() {
+                        AdtKind::Struct => {
+                            Some(fluent::lint_improper_ctypes_struct_consider_transparent)
                         }
+                        AdtKind::Union => {
+                            Some(fluent::lint_improper_ctypes_union_consider_transparent)
+                        }
+                        AdtKind::Enum => bug!("cannot suggest an enum to be repr(transparent)"),
                     }
                 } else {
                     None
@@ -982,7 +955,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_enum(
         &self,
         state: CTypesVisitorState,
-        outer_ty: Option<Ty<'tcx>>,
         ty: Ty<'tcx>,
         def: AdtDef<'tcx>,
         args: GenericArgsRef<'tcx>,
@@ -992,7 +964,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         if def.variants().is_empty() {
             // Empty enums are implicitely handled as the never type:
-            return self.visit_uninhabited(state, outer_ty, ty);
+            return self.visit_uninhabited(state, ty);
         }
         // Check for a repr() attribute to specify the size of the
         // discriminant.
@@ -1050,9 +1022,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     let mut variant_res = self.visit_variant_fields(state, ty, def, variant, args);
                     variants_uninhabited_ffires[variant_i] = variant_res.take_with_core_note(&[
                         fluent::lint_improper_ctypes_uninhabited_enum,
-                        fluent::lint_improper_ctypes_uninhabited_enum_deep,
                         fluent::lint_improper_ctypes_uninhabited_never,
-                        fluent::lint_improper_ctypes_uninhabited_never_deep,
                     ]);
                     // FIXME: check that enums allow any (up to all) variants to be phantoms?
                     // (previous code says no, but I don't know why? the problem with phantoms is that they're ZSTs, right?)
@@ -1110,7 +1080,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         }
                         self.visit_struct_or_union(state, ty, def, args)
                     }
-                    AdtKind::Enum => self.visit_enum(state, outer_ty, ty, def, args),
+                    AdtKind::Enum => self.visit_enum(state, ty, def, args),
                 }
             }
 
@@ -1245,7 +1215,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Foreign(..) => FfiSafe,
 
-            ty::Never => self.visit_uninhabited(state, outer_ty, ty),
+            ty::Never => self.visit_uninhabited(state, ty),
 
             // This is only half of the checking-for-opaque-aliases story:
             // since they are liable to vanish on normalisation, we need a specific to find them through

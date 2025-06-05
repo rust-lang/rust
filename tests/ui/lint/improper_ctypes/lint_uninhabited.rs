@@ -32,7 +32,7 @@ struct HalfHiddenUninhabited {
 extern "C" {
 
 fn bad_entry(e: AlsoUninhabited); //~ ERROR: uses type `AlsoUninhabited`
-fn bad_exit()->AlsoUninhabited; //~ ERROR: uses type `AlsoUninhabited`
+fn bad_exit()->AlsoUninhabited;
 
 fn bad0_entry(e: Uninhabited); //~ ERROR: uses type `Uninhabited`
 fn bad0_exit()->Uninhabited;
@@ -46,7 +46,7 @@ fn never_exit()->!;
 }
 
 extern "C" fn impl_bad_entry(e: AlsoUninhabited) {} //~ ERROR: uses type `AlsoUninhabited`
-extern "C" fn impl_bad_exit()->AlsoUninhabited { //~ ERROR: uses type `AlsoUninhabited`
+extern "C" fn impl_bad_exit()->AlsoUninhabited {
     AlsoUninhabited{
         a: impl_bad0_exit(),
         b: 0,
