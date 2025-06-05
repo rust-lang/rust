@@ -142,7 +142,7 @@ pub trait Decoder {
 ///   `rustc_metadata::rmeta::Lazy`.
 /// * `TyEncodable` should be used for types that are only serialized in crate
 ///   metadata or the incremental cache. This is most types in `rustc_middle`.
-pub trait Encodable<S: Encoder> {
+pub trait Encodable<S: Encoder>: crate::PointeeSized {
     fn encode(&self, s: &mut S);
 }
 
@@ -198,7 +198,7 @@ direct_serialize_impls! {
     char emit_char read_char
 }
 
-impl<S: Encoder, T: ?Sized> Encodable<S> for &T
+impl<S: Encoder, T: ?Sized + crate::PointeeSized> Encodable<S> for &T
 where
     T: Encodable<S>,
 {

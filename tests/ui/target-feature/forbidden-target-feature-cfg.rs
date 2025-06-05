@@ -6,8 +6,14 @@
 #![no_core]
 #![allow(unexpected_cfgs)]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+pub trait Sized: MetaSized {}
 
 // The compile_error macro does not exist, so if the `cfg` evaluates to `true` this
 // complains about the missing macro rather than showing the error... but that's good enough.
