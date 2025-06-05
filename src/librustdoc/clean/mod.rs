@@ -503,16 +503,16 @@ fn clean_projection<'tcx>(
     } else {
         self_type.def_id(&cx.cache)
     };
-    let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
+    let should_fully_qualify = should_fully_qualify_path(self_def_id, &trait_, &self_type);
     Type::QPath(Box::new(QPathData {
         assoc: projection_to_path_segment(ty, cx),
-        should_show_cast,
+        should_fully_qualify,
         self_type,
         trait_: Some(trait_),
     }))
 }
 
-fn compute_should_show_cast(self_def_id: Option<DefId>, trait_: &Path, self_type: &Type) -> bool {
+fn should_fully_qualify_path(self_def_id: Option<DefId>, trait_: &Path, self_type: &Type) -> bool {
     !trait_.segments.is_empty()
         && self_def_id
             .zip(Some(trait_.def_id()))
@@ -1695,10 +1695,11 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             register_res(cx, trait_.res);
             let self_def_id = DefId::local(qself.hir_id.owner.def_id.local_def_index);
             let self_type = clean_ty(qself, cx);
-            let should_show_cast = compute_should_show_cast(Some(self_def_id), &trait_, &self_type);
+            let should_fully_qualify =
+                should_fully_qualify_path(Some(self_def_id), &trait_, &self_type);
             Type::QPath(Box::new(QPathData {
                 assoc: clean_path_segment(p.segments.last().expect("segments were empty"), cx),
-                should_show_cast,
+                should_fully_qualify,
                 self_type,
                 trait_: Some(trait_),
             }))
@@ -1707,16 +1708,16 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let ty = lower_ty(cx.tcx, hir_ty);
             let self_type = clean_ty(qself, cx);
 
-            let (trait_, should_show_cast) = match ty.kind() {
+            let (trait_, should_fully_qualify) = match ty.kind() {
                 ty::Alias(ty::Projection, proj) => {
                     let res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
                     let trait_ = clean_path(&hir::Path { span, res, segments: &[] }, cx);
                     register_res(cx, trait_.res);
                     let self_def_id = res.opt_def_id();
-                    let should_show_cast =
-                        compute_should_show_cast(self_def_id, &trait_, &self_type);
+                    let should_fully_qualify =
+                        should_fully_qualify_path(self_def_id, &trait_, &self_type);
 
-                    (Some(trait_), should_show_cast)
+                    (Some(trait_), should_fully_qualify)
                 }
                 ty::Alias(ty::Inherent, _) => (None, false),
                 // Rustdoc handles `ty::Error`s by turning them into `Type::Infer`s.
@@ -1726,7 +1727,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
 
             Type::QPath(Box::new(QPathData {
                 assoc: clean_path_segment(segment, cx),
-                should_show_cast,
+                should_fully_qualify,
                 self_type,
                 trait_,
             }))
@@ -2207,7 +2208,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                         constraints: Default::default(),
                     },
                 },
-                should_show_cast: false,
+                should_fully_qualify: false,
                 self_type,
                 trait_: None,
             }))

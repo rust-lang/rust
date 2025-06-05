@@ -1023,14 +1023,14 @@ fn fmt_type(
             ref assoc,
             ref self_type,
             ref trait_,
-            should_show_cast,
+            should_fully_qualify,
         }) => {
             // FIXME(inherent_associated_types): Once we support non-ADT self-types (#106719),
             // we need to surround them with angle brackets in some cases (e.g. `<dyn …>::P`).
 
             if f.alternate() {
                 if let Some(trait_) = trait_
-                    && should_show_cast
+                    && should_fully_qualify
                 {
                     write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
                 } else {
@@ -1038,7 +1038,7 @@ fn fmt_type(
                 }
             } else {
                 if let Some(trait_) = trait_
-                    && should_show_cast
+                    && should_fully_qualify
                 {
                     write!(f, "&lt;{} as {}&gt;::", self_type.print(cx), trait_.print(cx))?
                 } else {

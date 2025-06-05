@@ -1746,7 +1746,7 @@ pub(crate) struct QPathData {
     pub assoc: PathSegment,
     pub self_type: Type,
     /// FIXME: compute this field on demand.
-    pub should_show_cast: bool,
+    pub should_fully_qualify: bool,
     pub trait_: Option<Path>,
 }
 
