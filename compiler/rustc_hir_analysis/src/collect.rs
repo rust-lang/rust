@@ -287,29 +287,6 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         intravisit::walk_item(self, item);
     }
 
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
-        for param in generics.params {
-            match param.kind {
-                hir::GenericParamKind::Lifetime { .. } => {}
-                hir::GenericParamKind::Type { default: Some(_), .. } => {
-                    self.tcx.ensure_ok().type_of(param.def_id);
-                }
-                hir::GenericParamKind::Type { .. } => {}
-                hir::GenericParamKind::Const { default, .. } => {
-                    self.tcx.ensure_ok().type_of(param.def_id);
-                    if let Some(default) = default {
-                        // need to store default and type of default
-                        self.tcx.ensure_ok().const_param_default(param.def_id);
-                        if let hir::ConstArgKind::Anon(ac) = default.kind {
-                            self.tcx.ensure_ok().type_of(ac.def_id);
-                        }
-                    }
-                }
-            }
-        }
-        intravisit::walk_generics(self, generics);
-    }
-
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Closure(closure) = expr.kind {
             self.tcx.ensure_ok().generics_of(closure.def_id);

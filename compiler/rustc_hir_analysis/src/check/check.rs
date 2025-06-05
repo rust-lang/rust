@@ -702,6 +702,29 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 }
 
 pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    let generics = tcx.generics_of(def_id);
+
+    for param in &generics.own_params {
+        match param.kind {
+            ty::GenericParamDefKind::Lifetime { .. } => {}
+            ty::GenericParamDefKind::Type { has_default, .. } => {
+                if has_default {
+                    tcx.ensure_ok().type_of(param.def_id);
+                }
+            }
+            ty::GenericParamDefKind::Const { has_default, .. } => {
+                tcx.ensure_ok().type_of(param.def_id);
+                if has_default {
+                    // need to store default and type of default
+                    let ct = tcx.const_param_default(param.def_id).skip_binder();
+                    if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
+                        tcx.ensure_ok().type_of(uv.def);
+                    }
+                }
+            }
+        }
+    }
+
     match tcx.def_kind(def_id) {
         DefKind::Static { .. } => {
             check_static_inhabited(tcx, def_id);
@@ -771,7 +794,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 check_opaque(tcx, def_id);
             }
 
-            tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().explicit_item_bounds(def_id);
             tcx.ensure_ok().explicit_item_self_bounds(def_id);
