@@ -1056,6 +1056,14 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_std_internal_symbol, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No,
     ),
+    rustc_attr!(
+        rustc_objc_class, Normal, template!(NameValueStr: "ClassName"), ErrorPreceding,
+        EncodeCrossCrate::No,
+    ),
+    rustc_attr!(
+        rustc_objc_selector, Normal, template!(NameValueStr: "methodName"), ErrorPreceding,
+        EncodeCrossCrate::No,
+    ),
 
     // ==========================================================================
     // Internal attributes, Macro related:

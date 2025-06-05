@@ -1,0 +1,50 @@
+error: attribute value must be a literal
+  --> $DIR/darwin-objc-bad-arg.rs:12:18
+   |
+LL |     objc::class!(s);
+   |                  ^
+
+error: attribute value must be a literal
+  --> $DIR/darwin-objc-bad-arg.rs:15:18
+   |
+LL |     objc::class!(NSObject);
+   |                  ^^^^^^^^
+
+error: `objc::class!` expected a string literal
+  --> $DIR/darwin-objc-bad-arg.rs:18:18
+   |
+LL |     objc::class!(123);
+   |                  ^^^
+
+error: `objc::class!` may not contain null characters
+  --> $DIR/darwin-objc-bad-arg.rs:21:18
+   |
+LL |     objc::class!("NSObject\0");
+   |                  ^^^^^^^^^^^^
+
+error: attribute value must be a literal
+  --> $DIR/darwin-objc-bad-arg.rs:25:21
+   |
+LL |     objc::selector!(s);
+   |                     ^
+
+error: attribute value must be a literal
+  --> $DIR/darwin-objc-bad-arg.rs:28:21
+   |
+LL |     objc::selector!(alloc);
+   |                     ^^^^^
+
+error: `objc::selector!` expected a string literal
+  --> $DIR/darwin-objc-bad-arg.rs:31:21
+   |
+LL |     objc::selector!(123);
+   |                     ^^^
+
+error: `objc::selector!` may not contain null characters
+  --> $DIR/darwin-objc-bad-arg.rs:34:21
+   |
+LL |     objc::selector!("alloc\0");
+   |                     ^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

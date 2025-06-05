@@ -1237,6 +1237,7 @@ unsafe extern "C" {
     pub(crate) safe fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
     pub(crate) safe fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
     pub(crate) safe fn LLVMSetTailCallKind(CallInst: &Value, kind: TailCallKind);
+    pub(crate) safe fn LLVMSetExternallyInitialized(GlobalVar: &Value, IsExtInit: Bool);
 
     // Operations on attributes
     pub(crate) fn LLVMCreateStringAttribute(

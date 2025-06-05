@@ -122,6 +122,14 @@ attr_parsing_null_on_export = `export_name` may not contain null characters
 
 attr_parsing_null_on_link_section = `link_section` may not contain null characters
 
+attr_parsing_null_on_objc_class = `objc::class!` may not contain null characters
+
+attr_parsing_null_on_objc_selector = `objc::selector!` may not contain null characters
+
+attr_parsing_objc_class_expected_string_literal = `objc::class!` expected a string literal
+
+attr_parsing_objc_selector_expected_string_literal = `objc::selector!` expected a string literal
+
 attr_parsing_repr_ident =
     meta item in `repr` must be an identifier
 
