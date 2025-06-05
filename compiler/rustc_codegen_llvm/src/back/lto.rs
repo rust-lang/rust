@@ -653,6 +653,7 @@ pub(crate) fn run_pass_manager(
     // We then run the llvm_optimize function a second time, to optimize the code which we generated
     // in the enzyme differentiation pass.
     let enable_ad = config.autodiff.contains(&config::AutoDiff::Enable);
+    let enable_gpu = true;//config.offload.contains(&config::Offload::Enable);
     let stage = if thin {
         write::AutodiffStage::PreAD
     } else {
@@ -665,6 +666,114 @@ pub(crate) fn run_pass_manager(
 
     unsafe {
         write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
+    }
+
+    if cfg!(llvm_enzyme) && enable_gpu && !thin {
+        // first we need to add all the fun to the host module
+        // %struct.__tgt_offload_entry = type { i64, i16, i16, i32, ptr, ptr, i64, i64, ptr }
+        // %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
+        let cx =
+            SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
+        if cx.get_function("gen_tgt_offload").is_some() {
+            let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
+            let kernel_arguments_ty = cx.type_named_struct("struct.__tgt_kernel_arguments");
+            let tptr = cx.type_ptr();
+            let ti64 = cx.type_i64();
+            let ti32 = cx.type_i32();
+            let ti16 = cx.type_i16();
+            let tarr = cx.type_array(ti32, 3);
+
+            let entry_elements = vec![ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
+            let kernel_elements = vec![ti32, ti32, tptr, tptr, tptr, tptr, tptr, tptr, ti64, ti64, tarr, tarr, ti32];
+
+            cx.set_struct_body(offload_entry_ty, &entry_elements, false);
+            cx.set_struct_body(kernel_arguments_ty, &kernel_elements, false);
+            let global = cx.declare_global("my_struct_global", offload_entry_ty);
+            let global = cx.declare_global("my_struct_global2", kernel_arguments_ty);
+            dbg!(&offload_entry_ty);
+            dbg!(&kernel_arguments_ty);
+            //LLVMTypeRef elements[9] = {i64Ty, i16Ty, i16Ty, i32Ty, ptrTy, ptrTy, i64Ty, i64Ty, ptrTy};
+            //LLVMStructSetBody(structTy, elements, 9, 0);
+            dbg!("created struct");
+            for num in 0..5 {
+                if !cx.get_function(&format!("kernel_{num}")).is_some() {
+                    continue;
+                }
+            //for function in cx.get_functions() {
+                //if !attributes::has_attr(function, Function, llvm::AttributeKind::OptimizeForSize) {
+                //    dbg!("skipping minsize fnc");
+                //    dbg!(&function);
+                //    // print fnc name
+                //    let enzyme_marker = "minsize";
+                //    if attributes::has_string_attr(function, enzyme_marker) {
+                //        dbg!("found minsize str");
+                //    }
+                //    continue;
+
+                let size_name = format!(".offload_sizes.{num}");
+                let size_ty = cx.type_array(ti64, 4);
+                //let size_val = vec![8i64,0,16,0];
+                let c_val_8 = cx.get_const_i64(8);
+                let c_val_0 = cx.get_const_i64(0);
+                let c_val_16 = cx.get_const_i64(16);
+                let size_val = vec![c_val_8, c_val_0, c_val_16, c_val_0];
+
+                //let val = cx.define_global(&size_name, size_ty).unwrap();
+                //dbg!(&val);
+                //let section_var = cx
+                //    .define_global(section_var_name, llvm_type)
+                //    .unwrap_or_else(|| bug!("symbol `{}` is already defined", section_var_name));
+                //llvm::set_section(section_var, c".debug_gdb_scripts");
+                //llvm::set_initializer(section_var, cx.const_bytes(section_contents));
+                //llvm::LLVMSetGlobalConstant(section_var, llvm::True);
+                //llvm::set_linkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
+                //// This should make sure that the whole section is not larger than
+                //// the string it contains. Otherwise we get a warning from GDB.
+                //llvm::LLVMSetAlignment(section_var, 1);
+                //llvm::set_initializer(val, cx.const_bytes(size_val.as_slice()));
+                let initializer = cx.const_array(ti64, &size_val);
+                let name = format!(".offload_sizes.{num}");
+                let c_name = CString::new(name).unwrap();
+                let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), &c_name );
+                llvm::set_global_constant(array, true);
+                unsafe {llvm::LLVMSetUnnamedAddress(array, llvm::UnnamedAddr::Global)};
+                llvm::set_linkage(array, llvm::Linkage::PrivateLinkage);
+                llvm::set_initializer(array, initializer);
+                dbg!(&array);
+                // 1. @.offload_sizes.{num} = private unnamed_addr constant [4 x i64] [i64 8, i64 0, i64 16, i64 0]
+                // 2. @.offload_maptypes
+                // 3. @.__omp_offloading_<hash>_fnc_name_<hash> = weak constant i8 0
+                // 4. @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
+                // 5. @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
+            }
+            // @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id = weak constant i8 0
+            // @.offload_sizes = private unnamed_addr constant [4 x i64] [i64 8, i64 0, i64 16, i64 0]
+            // @.offload_maptypes = private unnamed_addr constant [4 x i64] [i64 800, i64 544, i64 547, i64 544]
+            // @.__omp_offloading_86fafab6_c40006a1__Z3barPSt7complexIdES1_S0_m_l13.region_id = weak constant i8 0
+            // @.offload_sizes.1 = private unnamed_addr constant [4 x i64] [i64 8, i64 0, i64 16, i64 0]
+            // @.offload_maptypes.2 = private unnamed_addr constant [4 x i64] [i64 800, i64 544, i64 547, i64 544]
+            // @.__omp_offloading_86fafab6_c40006a1__Z5zaxpyPSt7complexIdES1_S0_m_l19.region_id = weak constant i8 0
+            // @.offload_sizes.3 = private unnamed_addr constant [4 x i64] [i64 8, i64 0, i64 16, i64 0]
+            // @.offload_maptypes.4 = private unnamed_addr constant [4 x i64] [i64 800, i64 544, i64 547, i64 544]
+            // @.offload_sizes.5 = private unnamed_addr constant [2 x i64] [i64 16384, i64 16384]
+            // @.offload_maptypes.6 = private unnamed_addr constant [2 x i64] [i64 1, i64 3]
+            // @_ZSt4cout = external global %"class.std::basic_ostream", align 8
+            // @.str = private unnamed_addr constant [3 x i8] c"hi\00", align 1
+            // @.offload_sizes.7 = private unnamed_addr constant [2 x i64] [i64 16384, i64 16384]
+            // @.offload_maptypes.8 = private unnamed_addr constant [2 x i64] [i64 1, i64 3]
+            // @.str.9 = private unnamed_addr constant [3 x i8] c"ho\00", align 1
+            // @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
+            // @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
+            // @.offloading.entry_name.10 = internal unnamed_addr constant [67 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3barPSt7complexIdES1_S0_m_l13\00", section ".llvm.rodata.offloading", align 1
+            // @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3barPSt7complexIdES1_S0_m_l13 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3barPSt7complexIdES1_S0_m_l13.region_id, ptr @.offloading.entry_name.10, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
+            // @.offloading.entry_name.11 = internal unnamed_addr constant [69 x i8] c"__omp_offloading_86fafab6_c40006a1__Z5zaxpyPSt7complexIdES1_S0_m_l19\00", section ".llvm.rodata.offloading", align 1
+            // @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z5zaxpyPSt7complexIdES1_S0_m_l19 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z5zaxpyPSt7complexIdES1_S0_m_l19.region_id, ptr @.offloading.entry_name.11, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
+            // @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @_GLOBAL__sub_I_zaxpy.cpp, ptr null }]
+        } else {
+            dbg!("no marker found");
+        }
+    } else {
+        dbg!("Not creating struct");
     }
 
     if cfg!(llvm_enzyme) && enable_ad && !thin {
