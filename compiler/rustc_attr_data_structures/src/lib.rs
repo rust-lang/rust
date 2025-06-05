@@ -1,3 +1,30 @@
+//! Data structures for representing parsed attributes in the Rust compiler.
+//!
+//! For detailed documentation about attribute processing, see [rustc_attr_parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html).
+//!
+//! ## Key Components
+//! - [`AttributeKind`]: The main enum that represents different types of built-in inert attributes
+//! - [`InlineAttr`]: Controls function inlining behavior
+//! - [`OptimizeAttr`]: Controls optimization levels
+//! - [`InstructionSetAttr`]: Controls target-specific code generation
+//!
+//! ## Attribute Organization
+//! Attributes in this crate are organized based on their usage in the compiler:
+//! - Attributes in [`AttributeKind`] are used throughout the compilation process
+//! - Other attributes (like [`InlineAttr`]) are used in specific compiler phases
+//!   and are handled by their respective passes in the [`rustc_codegen_ssa`] crate
+//!
+//! ## Related Crates
+//! - [`rustc_attr_parsing`]: Handles the parsing of attributes into these data structures
+//! - [`rustc_codegen_ssa`]: Uses some of these structures for code generation
+//!
+//! [`AttributeKind`]: attributes::AttributeKind
+//! [`InlineAttr`]: attributes::InlineAttr
+//! [`OptimizeAttr`]: attributes::OptimizeAttr
+//! [`InstructionSetAttr`]: attributes::InstructionSetAttr
+//! [`rustc_attr_parsing`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html
+//! [`rustc_codegen_ssa`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/index.html
+
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![doc(rust_logo)]
