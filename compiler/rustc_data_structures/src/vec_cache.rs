@@ -68,13 +68,22 @@ impl SlotIndex {
     // slots (see `slot_index_exhaustive` in tests).
     #[inline]
     const fn from_index(idx: u32) -> Self {
-        if idx < 4096 {
-            return SlotIndex { bucket_idx: 0, entries: 4096, index_in_bucket: idx as usize };
+        const FIRST_BUCKET_SHIFT: usize = 12;
+        if idx < (1 << FIRST_BUCKET_SHIFT) {
+            return SlotIndex {
+                bucket_idx: 0,
+                entries: 1 << FIRST_BUCKET_SHIFT,
+                index_in_bucket: idx as usize,
+            };
         }
         // SAFETY: We already ruled out idx 0, so `checked_ilog2` can't return `None`.
         let bucket = unsafe { idx.checked_ilog2().unwrap_unchecked() as usize };
         let entries = 1 << bucket;
-        SlotIndex { bucket_idx: bucket - 11, entries, index_in_bucket: idx as usize - entries }
+        SlotIndex {
+            bucket_idx: bucket - FIRST_BUCKET_SHIFT + 1,
+            entries,
+            index_in_bucket: idx as usize - entries,
+        }
     }
 
     // SAFETY: Buckets must be managed solely by functions here (i.e., get/put on SlotIndex) and
