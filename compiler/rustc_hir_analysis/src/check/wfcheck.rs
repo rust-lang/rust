@@ -40,7 +40,6 @@ use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::autoderef::Autoderef;
-use crate::collect::CollectItemTypesVisitor;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
 use crate::errors::InvalidReceiverTyHint;
 use crate::{errors, fluent_generated as fluent};
@@ -231,7 +230,8 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id)
     );
-    CollectItemTypesVisitor { tcx }.visit_item(item);
+    crate::collect::lower_item(tcx, item.item_id());
+    crate::collect::reject_placeholder_type_signatures_in_item(tcx, item);
 
     let res = match item.kind {
         // Right now we check that every default trait implementation
@@ -352,8 +352,6 @@ fn check_foreign_item<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let def_id = item.owner_id.def_id;
 
-    CollectItemTypesVisitor { tcx }.visit_foreign_item(item);
-
     debug!(
         ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id)
@@ -376,7 +374,7 @@ fn check_trait_item<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let def_id = trait_item.owner_id.def_id;
 
-    CollectItemTypesVisitor { tcx }.visit_trait_item(trait_item);
+    crate::collect::lower_trait_item(tcx, trait_item.trait_item_id());
 
     let (method_sig, span) = match trait_item.kind {
         hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
@@ -941,7 +939,7 @@ fn check_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_item: &'tcx hir::ImplItem<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    CollectItemTypesVisitor { tcx }.visit_impl_item(impl_item);
+    crate::collect::lower_impl_item(tcx, impl_item.impl_item_id());
 
     let (method_sig, span) = match impl_item.kind {
         hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),
