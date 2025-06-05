@@ -50,7 +50,7 @@ where
         // The exponent of a is within the range of normal numbers in the
         // destination format.  We can convert by simply right-shifting with
         // rounding and adjusting the exponent.
-        abs_result = (a_abs >> sig_bits_delta).cast();
+        abs_result = (a_abs >> sig_bits_delta).cast_lossy();
         // Cast before shifting to prevent overflow.
         let bias_diff: R::Int = src_exp_bias.wrapping_sub(dst_exp_bias).cast();
         let tmp = bias_diff << R::SIG_BITS;

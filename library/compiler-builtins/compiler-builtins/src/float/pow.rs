@@ -32,8 +32,6 @@ intrinsics! {
 
     #[ppc_alias = __powikf2]
     #[cfg(f128_enabled)]
-    // FIXME(f16_f128): MSVC cannot build these until `__divtf3` is available in nightly.
-    #[cfg(not(target_env = "msvc"))]
     pub extern "C" fn __powitf2(a: f128, b: i32) -> f128 {
         pow(a, b)
     }

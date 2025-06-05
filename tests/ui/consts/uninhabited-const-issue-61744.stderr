@@ -2,7 +2,7 @@ error[E0080]: reached the configured maximum number of stack frames
   --> $DIR/uninhabited-const-issue-61744.rs:13:36
    |
 LL |     const CONSTANT: i32 = unsafe { fake_type() };
-   |                                    ^^^^^^^^^^^ evaluation of `fake_type::<!>` failed here
+   |                                    ^^^^^^^^^^^ evaluation of `<i32 as Const>::CONSTANT` failed here
    |
 note: inside `fake_type::<i32>`
   --> $DIR/uninhabited-const-issue-61744.rs:5:5
