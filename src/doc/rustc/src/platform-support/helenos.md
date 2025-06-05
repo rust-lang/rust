@@ -12,15 +12,11 @@ Target triplets available:
 - `powerpc-unknown-helenos`
 - `aarch64-unknown-helenos`
 - `i686-unknown-helenos`*
-- `armv5te-unknown-helenos`*
 
-Support of the latter two platforms is available in the compiler, however, the toolchains are not fully functional:
 
-- On i686, some portions of native HelenOS libraries run into issues due to vector instructions accessing variables from stack that seems
+On i686, some portions of native HelenOS libraries run into issues due to vector instructions accessing variables from the stack that seems
 to be misaligned. It is not clear if this is fault of HelenOS or Rust. Most programs work, but for example calling `ui_window_create` from HelenOS
 libui does not work.
-- On 32-bit Arm, HelenOS libc is missing atomic primitives, and even after attempting to fill them, the resulting executables weren't functional,
-again for reasons that weren't fully understood yet.
 
 ## Target maintainers
 

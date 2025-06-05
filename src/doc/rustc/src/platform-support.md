@@ -283,7 +283,6 @@ target | std | host | notes
 [`armv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Bare Armv4T
 `armv4t-unknown-linux-gnueabi` | ? |  | Armv4T Linux
 [`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Bare Armv5TE
-[`armv5te-unknown-helenos-eabi`](platform-support/helenos.md) | ✓ |  | Armv5TE HelenOS (see docs for pending issues)
 `armv5te-unknown-linux-uclibceabi` | ? |  | Armv5TE Linux with uClibc
 [`armv6-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | Armv6 FreeBSD
 [`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | Armv6 NetBSD w/hard-float

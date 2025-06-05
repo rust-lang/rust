@@ -118,9 +118,6 @@
 //@ revisions: armv5te_none_eabi
 //@ [armv5te_none_eabi] compile-flags: --target armv5te-none-eabi
 //@ [armv5te_none_eabi] needs-llvm-components: arm
-//@ revisions: armv5te_unknown_helenos_eabi
-//@ [armv5te_unknown_helenos_eabi] compile-flags: --target armv5te-unknown-helenos-eabi
-//@ [armv5te_unknown_helenos_eabi] needs-llvm-components: arm
 //@ revisions: armv5te_unknown_linux_gnueabi
 //@ [armv5te_unknown_linux_gnueabi] compile-flags: --target armv5te-unknown-linux-gnueabi
 //@ [armv5te_unknown_linux_gnueabi] needs-llvm-components: arm
