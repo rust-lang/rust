@@ -2590,7 +2590,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
             }
             &hir::TyKind::Path(hir::QPath::LangItem(lang_item, span)) => {
-                let def_id = tcx.require_lang_item(lang_item, Some(span));
+                let def_id = tcx.require_lang_item(lang_item, span);
                 let (args, _) = self.lower_generic_args_of_path(
                     span,
                     def_id,

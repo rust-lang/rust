@@ -561,7 +561,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
         let EntryFnType::Main { sigpipe } = entry_type;
         let (start_fn, start_ty, args, instance) = {
-            let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
+            let start_def_id = cx.tcx().require_lang_item(LangItem::Start, DUMMY_SP);
             let start_instance = ty::Instance::expect_resolve(
                 cx.tcx(),
                 cx.typing_env(),

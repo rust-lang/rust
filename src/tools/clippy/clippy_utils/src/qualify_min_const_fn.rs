@@ -439,7 +439,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
             tcx,
             ObligationCause::dummy_with_span(body.span),
             param_env,
-            TraitRef::new(tcx, tcx.require_lang_item(LangItem::Destruct, Some(body.span)), [ty]),
+            TraitRef::new(tcx, tcx.require_lang_item(LangItem::Destruct, body.span), [ty]),
         );
 
         let mut selcx = SelectionContext::new(&infcx);
