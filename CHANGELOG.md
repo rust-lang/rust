@@ -5685,6 +5685,7 @@ Released 2018-09-13
 [`cmp_nan`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_nan
 [`cmp_null`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_null
 [`cmp_owned`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_owned
+[`coerce_container_to_any`]: https://rust-lang.github.io/rust-clippy/master/index.html#coerce_container_to_any
 [`cognitive_complexity`]: https://rust-lang.github.io/rust-clippy/master/index.html#cognitive_complexity
 [`collapsible_else_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_else_if
 [`collapsible_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
