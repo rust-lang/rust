@@ -8,6 +8,7 @@ pub(crate) mod dragonfly;
 pub(crate) mod freebsd;
 pub(crate) mod fuchsia;
 pub(crate) mod haiku;
+pub(crate) mod helenos;
 pub(crate) mod hermit;
 pub(crate) mod hurd;
 pub(crate) mod hurd_gnu;

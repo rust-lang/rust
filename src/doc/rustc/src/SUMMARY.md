@@ -107,6 +107,7 @@
     - [solaris](platform-support/solaris.md)
     - [\*-nto-qnx-\*](platform-support/nto-qnx.md)
     - [\*-unikraft-linux-musl](platform-support/unikraft-linux-musl.md)
+    - [\*-unknown-helenos](platform-support/helenos.md)
     - [\*-unknown-hermit](platform-support/hermit.md)
     - [\*-unknown-freebsd](platform-support/freebsd.md)
     - [\*-unknown-netbsd\*](platform-support/netbsd.md)
