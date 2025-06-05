@@ -4,11 +4,11 @@ error[E0432]: unresolved import `self::*`
 LL | use self::*;
    |     ^^^^^^^ cannot glob-import a module into itself
 
-error[E0432]: unresolved import `foo::*`
+error[E0432]: unresolved import `crate::foo::*`
   --> $DIR/issue-8208.rs:5:9
    |
-LL |     use foo::*;
-   |         ^^^^^^ cannot glob-import a module into itself
+LL |     use crate::foo::*;
+   |         ^^^^^^^^^^^^^ cannot glob-import a module into itself
 
 error[E0432]: unresolved import `super::bar::*`
   --> $DIR/issue-8208.rs:9:13

@@ -12,7 +12,7 @@ LL |     struct ExplicitlyPadded(Box<ExplicitlyPadded>);
 error[E0391]: cycle detected when computing layout of `should_pad_explicitly_packed_field::ExplicitlyPadded`
    |
    = note: ...which immediately requires computing layout of `should_pad_explicitly_packed_field::ExplicitlyPadded` again
-   = note: cycle used when evaluating trait selection obligation `(): core::mem::transmutability::TransmuteFrom<should_pad_explicitly_packed_field::ExplicitlyPadded, core::mem::transmutability::Assume { alignment: false, lifetimes: false, safety: false, validity: false }>`
+   = note: cycle used when evaluating trait selection obligation `(): core::mem::transmutability::TransmuteFrom<should_pad_explicitly_packed_field::ExplicitlyPadded, ValTree(Branch([Leaf(0x00), Leaf(0x00), Leaf(0x00), Leaf(0x00)]): core::mem::transmutability::Assume)>`
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 2 previous errors

@@ -7,7 +7,7 @@ impl Test for u32 {
 
 pub mod export {
     #[no_mangle]
-    pub extern "C" fn issue_28983(t: <u32 as ::Test>::T) -> i32 { t*3 }
+    pub extern "C" fn issue_28983(t: <u32 as crate::Test>::T) -> i32 { t*3 }
 }
 
 // to test both exporting and importing functions, import

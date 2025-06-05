@@ -1,3 +1,5 @@
+//@ edition: 2015
+
 type A0 = dyn;
 //~^ ERROR cannot find type `dyn` in this scope
 type A1 = dyn::dyn;

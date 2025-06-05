@@ -182,9 +182,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         // what we are intending to discard, to help future type-based refactoring.
         type R = Result<(), ErrorGuaranteed>;
 
-        tcx.par_hir_for_each_module(|module| {
-            let _: R = tcx.ensure_ok().check_mod_type_wf(module);
-        });
+        let _: R = tcx.ensure_ok().check_type_wf(());
 
         for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
             let _: R = tcx.ensure_ok().coherent_trait(trait_def_id);
