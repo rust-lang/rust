@@ -546,6 +546,9 @@
 # compiler.
 #download-rustc = false
 
+# Whether to check and detect incompatible options when using download-rustc.
+#download_rustc_incompatibility_check = true
+
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
 # compiler.

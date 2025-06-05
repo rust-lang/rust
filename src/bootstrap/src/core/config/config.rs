@@ -423,6 +423,9 @@ pub struct Config {
 
     /// Cache for determining path modifications
     pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+
+    /// Whether to check and detect incompatible options when using download-rustc.
+    pub download_rustc_incompatibility_check: bool,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -1315,6 +1318,7 @@ define_config! {
         profile_use: Option<String> = "profile-use",
         // ignored; this is set from an env var set by bootstrap.py
         download_rustc: Option<StringOrBool> = "download-rustc",
+        download_rustc_incompatibility_check: Option<bool> = "download-rustc-incompatibility-check",
         lto: Option<String> = "lto",
         validate_mir_opts: Option<u32> = "validate-mir-opts",
         std_features: Option<BTreeSet<String>> = "std-features",
@@ -2041,6 +2045,7 @@ impl Config {
                 strip,
                 lld_mode,
                 std_features: std_features_toml,
+                download_rustc_incompatibility_check,
             } = rust;
 
             // FIXME(#133381): alt rustc builds currently do *not* have rustc debug assertions
@@ -2086,6 +2091,8 @@ impl Config {
             debuginfo_level_std = debuginfo_level_std_toml;
             debuginfo_level_tools = debuginfo_level_tools_toml;
             debuginfo_level_tests = debuginfo_level_tests_toml;
+            config.download_rustc_incompatibility_check =
+                download_rustc_incompatibility_check.unwrap_or(true);
             lld_enabled = lld_enabled_toml;
             std_features = std_features_toml;
 
@@ -2789,7 +2796,7 @@ impl Config {
                         }
                     }
 
-                    if let Some(config_path) = &self.config {
+                    if let Some(config_path) = &self.config && self.download_rustc_incompatibility_check {
                         let ci_config_toml = match self.get_builder_toml("ci-rustc") {
                             Ok(ci_config_toml) => ci_config_toml,
                             Err(e) if e.to_string().contains("unknown field") => {
@@ -3555,6 +3562,7 @@ fn check_incompatible_options_for_ci_rustc(
         download_rustc: _,
         validate_mir_opts: _,
         frame_pointers: _,
+        download_rustc_incompatibility_check: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
