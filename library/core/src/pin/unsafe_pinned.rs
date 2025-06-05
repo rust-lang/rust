@@ -1,10 +1,13 @@
+use crate::cell::UnsafeCell;
 use crate::marker::{PointerLike, Unpin};
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::pin::Pin;
 use crate::{fmt, ptr};
 
-/// This type provides a way to opt-out of typical aliasing rules;
+/// This type provides a way to entirely opt-out of typical aliasing rules;
 /// specifically, `&mut UnsafePinned<T>` is not guaranteed to be a unique pointer.
+/// This also subsumes the effects of `UnsafeCell`, i.e., `&UnsafePinned<T>` may point to data
+/// that is being mutated.
 ///
 /// However, even if you define your type like `pub struct Wrapper(UnsafePinned<...>)`, it is still
 /// very risky to have an `&mut Wrapper` that aliases anything else. Many functions that work
@@ -17,37 +20,23 @@ use crate::{fmt, ptr};
 /// the public API of a library. It is an internal implementation detail of libraries that need to
 /// support aliasing mutable references.
 ///
-/// Further note that this does *not* lift the requirement that shared references must be read-only!
-/// Use `UnsafeCell` for that.
-///
 /// This type blocks niches the same way `UnsafeCell` does.
 #[lang = "unsafe_pinned"]
 #[repr(transparent)]
 #[unstable(feature = "unsafe_pinned", issue = "125735")]
 pub struct UnsafePinned<T: ?Sized> {
-    value: T,
+    value: UnsafeCell<T>,
 }
+
+// Override the manual `!Sync` in `UnsafeCell`.
+#[unstable(feature = "unsafe_pinned", issue = "125735")]
+unsafe impl<T: ?Sized + Sync> Sync for UnsafePinned<T> {}
 
 /// When this type is used, that almost certainly means safe APIs need to use pinning to avoid the
 /// aliases from becoming invalidated. Therefore let's mark this as `!Unpin`. You can always opt
 /// back in to `Unpin` with an `impl` block, provided your API is still sound while unpinned.
 #[unstable(feature = "unsafe_pinned", issue = "125735")]
 impl<T: ?Sized> !Unpin for UnsafePinned<T> {}
-
-/// The type is `Copy` when `T` is to avoid people assuming that `Copy` implies there is no
-/// `UnsafePinned` anywhere. (This is an issue with `UnsafeCell`: people use `Copy` bounds to mean
-/// `Freeze`.) Given that there is no `unsafe impl Copy for ...`, this is also the option that
-/// leaves the user more choices (as they can always wrap this in a `!Copy` type).
-// FIXME(unsafe_pinned): this may be unsound or a footgun?
-#[unstable(feature = "unsafe_pinned", issue = "125735")]
-impl<T: Copy> Copy for UnsafePinned<T> {}
-
-#[unstable(feature = "unsafe_pinned", issue = "125735")]
-impl<T: Copy> Clone for UnsafePinned<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
 
 // `Send` and `Sync` are inherited from `T`. This is similar to `SyncUnsafeCell`, since
 // we eventually concluded that `UnsafeCell` implicitly making things `!Sync` is sometimes
@@ -63,7 +52,7 @@ impl<T> UnsafePinned<T> {
     #[must_use]
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
     pub const fn new(value: T) -> Self {
-        UnsafePinned { value }
+        UnsafePinned { value: UnsafeCell::new(value) }
     }
 
     /// Unwraps the value, consuming this `UnsafePinned`.
@@ -72,7 +61,7 @@ impl<T> UnsafePinned<T> {
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_inner(self) -> T {
-        self.value
+        self.value.into_inner()
     }
 }
 
