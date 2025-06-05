@@ -8,6 +8,7 @@ pub(crate) mod cc_detect;
 pub(crate) mod change_tracker;
 pub(crate) mod channel;
 pub(crate) mod exec;
+pub(crate) mod execution_context;
 pub(crate) mod helpers;
 pub(crate) mod job;
 pub(crate) mod render_tests;
