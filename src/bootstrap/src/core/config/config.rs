@@ -2823,7 +2823,14 @@ impl Config {
                             return None;
                         }
 
-                        res.unwrap();
+                        // On CI, avoid using download-rustc if the configuration differs from the one used to build download-rustc.
+                        // We typically use `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` to skip download-rustc in such cases.
+                        if CiEnv::is_ci() {
+                            res.unwrap();
+                        } else if let Err(err) = res {
+                            // For non-CI environments, print the error instead of panicking.
+                            eprintln!("{err}");
+                        }
                     }
 
                     Some(commit.clone())
