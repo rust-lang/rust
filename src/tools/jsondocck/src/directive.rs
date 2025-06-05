@@ -105,7 +105,7 @@ impl DirectiveKind {
                 [_path, value] => Self::HasNotValue { value: value.clone() },
                 _ => panic!("`//@ !has` must have 2 or 3 arguments, but got {args:?}"),
             },
-
+            // Ignore compiletest directives, like //@ edition
             (_, false) if KNOWN_DIRECTIVE_NAMES.contains(&directive_name) => {
                 return None;
             }
