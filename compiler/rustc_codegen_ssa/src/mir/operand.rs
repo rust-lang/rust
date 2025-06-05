@@ -462,10 +462,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let tag_op = match self.val {
             OperandValue::ZeroSized => bug!(),
             OperandValue::Immediate(_) | OperandValue::Pair(_, _) => {
-                self.extract_field(fx, bx, tag_field)
+                self.extract_field(fx, bx, tag_field.as_usize())
             }
             OperandValue::Ref(place) => {
-                let tag = place.with_type(self.layout).project_field(bx, tag_field);
+                let tag = place.with_type(self.layout).project_field(bx, tag_field.as_usize());
                 bx.load_operand(tag)
             }
         };

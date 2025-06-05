@@ -1,3 +1,3 @@
 pub mod foo {
-    pub use foo;
+    pub use crate::foo;
 }

@@ -1332,8 +1332,9 @@ pub fn walk_precise_capturing_arg<'v, V: Visitor<'v>>(
     match *arg {
         PreciseCapturingArg::Lifetime(lt) => visitor.visit_lifetime(lt),
         PreciseCapturingArg::Param(param) => {
-            let PreciseCapturingNonLifetimeArg { hir_id, ident: _, res: _ } = param;
-            visitor.visit_id(hir_id)
+            let PreciseCapturingNonLifetimeArg { hir_id, ident, res: _ } = param;
+            try_visit!(visitor.visit_id(hir_id));
+            visitor.visit_ident(ident)
         }
     }
 }

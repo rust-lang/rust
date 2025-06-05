@@ -1148,8 +1148,8 @@ rustc_queries! {
         desc { |tcx| "checking deathness of variables in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_type_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
-        desc { |tcx| "checking that types are well-formed in {}", describe_as_module(key, tcx) }
+    query check_type_wf(key: ()) -> Result<(), ErrorGuaranteed> {
+        desc { "checking that types are well-formed" }
         return_result_from_ensure_ok
     }
 
