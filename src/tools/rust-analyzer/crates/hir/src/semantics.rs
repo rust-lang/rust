@@ -1948,16 +1948,10 @@ impl<'db> SemanticsImpl<'db> {
             ChildContainer::TraitId(it) => {
                 return Some(SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset));
             }
-            ChildContainer::TraitAliasId(it) => {
-                return Some(SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset));
-            }
             ChildContainer::ImplId(it) => {
                 return Some(SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset));
             }
             ChildContainer::EnumId(it) => {
-                return Some(SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset));
-            }
-            ChildContainer::TypeAliasId(it) => {
                 return Some(SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset));
             }
             ChildContainer::GenericDefId(it) => {
