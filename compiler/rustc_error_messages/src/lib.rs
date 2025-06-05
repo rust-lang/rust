@@ -107,7 +107,7 @@ impl From<Vec<FluentError>> for TranslationBundleError {
 #[instrument(level = "trace")]
 pub fn fluent_bundle(
     sysroot: PathBuf,
-    sysroot_candidates: Vec<PathBuf>,
+    default_sysroot: PathBuf,
     requested_locale: Option<LanguageIdentifier>,
     additional_ftl_path: Option<&Path>,
     with_directionality_markers: bool,
@@ -141,7 +141,7 @@ pub fn fluent_bundle(
     // If the user requests the default locale then don't try to load anything.
     if let Some(requested_locale) = requested_locale {
         let mut found_resources = false;
-        for mut sysroot in Some(sysroot).into_iter().chain(sysroot_candidates.into_iter()) {
+        for mut sysroot in [sysroot, default_sysroot] {
             sysroot.push("share");
             sysroot.push("locale");
             sysroot.push(requested_locale.to_string());

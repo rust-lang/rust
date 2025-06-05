@@ -182,35 +182,13 @@ fn current_dll_path() -> Result<PathBuf, String> {
     Err("current_dll_path is not supported on WASI".to_string())
 }
 
-pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
-    let mut sysroot_candidates: SmallVec<[PathBuf; 2]> = smallvec![get_or_default_sysroot()];
-    if let Ok(dll) = current_dll_path() {
-        // use `parent` twice to chop off the file name and then also the
-        // directory containing the dll which should be either `lib` or `bin`.
-        if let Some(path) = dll.parent().and_then(|p| p.parent()) {
-            // The original `path` pointed at the `rustc_driver` crate's dll.
-            // Now that dll should only be in one of two locations. The first is
-            // in the compiler's libdir, for example `$sysroot/lib/*.dll`. The
-            // other is the target's libdir, for example
-            // `$sysroot/lib/rustlib/$target/lib/*.dll`.
-            //
-            // We don't know which, so let's assume that if our `path` above
-            // ends in `$target` we *could* be in the target libdir, and always
-            // assume that we may be in the main libdir.
-            sysroot_candidates.push(path.to_owned());
-
-            if path.ends_with(crate::config::host_tuple()) {
-                sysroot_candidates.extend(
-                    path.parent() // chop off `$target`
-                        .and_then(|p| p.parent()) // chop off `rustlib`
-                        .and_then(|p| p.parent()) // chop off `lib`
-                        .map(|s| s.to_owned()),
-                );
-            }
-        }
+pub fn sysroot_with_fallback(sysroot: &Path) -> SmallVec<[PathBuf; 2]> {
+    let mut candidates = smallvec![sysroot.to_owned()];
+    let default_sysroot = get_or_default_sysroot();
+    if default_sysroot != sysroot {
+        candidates.push(default_sysroot);
     }
-
-    sysroot_candidates
+    candidates
 }
 
 /// Returns the provided sysroot or calls [`get_or_default_sysroot`] if it's none.
@@ -236,7 +214,7 @@ pub fn get_or_default_sysroot() -> PathBuf {
             dll.display()
         ))?;
 
-        // if `dir` points target's dir, move up to the sysroot
+        // if `dir` points to target's dir, move up to the sysroot
         let mut sysroot_dir = if dir.ends_with(crate::config::host_tuple()) {
             dir.parent() // chop off `$target`
                 .and_then(|p| p.parent()) // chop off `rustlib`
