@@ -40,13 +40,6 @@ libc = "0.2"
 libffi = "4.0.0"
 libloading = "0.8"
 
-[target.'cfg(target_family = "windows")'.dependencies]
-windows-sys = { version = "0.59", features = [
-    "Win32_Foundation",
-    "Win32_System_IO",
-    "Win32_Storage_FileSystem",
-] }
-
 [dev-dependencies]
 ui_test = "0.29.1"
 colored = "2"
