@@ -76,8 +76,8 @@ extern "C" {
     pub fn box_type(p: Box<u32>);
     pub fn opt_box_type(p: Option<Box<u32>>);
     pub fn char_type(p: char); //~ ERROR uses type `char`
-    pub fn i128_type(p: i128); //~ ERROR uses type `i128`
-    pub fn u128_type(p: u128); //~ ERROR uses type `u128`
+    pub fn i128_type(p: i128);
+    pub fn u128_type(p: u128);
     pub fn pat_type1() -> pattern_type!(u32 is 1..);
     pub fn pat_type2(p: pattern_type!(u32 is 1..)); // no error!
     pub fn trait_type(p: &dyn Bar); //~ ERROR uses type `&dyn Bar`
@@ -91,7 +91,7 @@ extern "C" {
     pub fn fn_type(p: RustFn); //~ ERROR uses type `fn()`
     pub fn fn_type2(p: fn()); //~ ERROR uses type `fn()`
     pub fn fn_contained(p: RustBoxRet);
-    pub fn transparent_i128(p: TransparentI128); //~ ERROR: uses type `TransparentI128`
+    pub fn transparent_i128(p: TransparentI128);
     pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `TransparentStr`
     pub fn transparent_fn(p: TransparentBoxFn);
     pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
@@ -110,8 +110,8 @@ extern "C" {
     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
     //~^ ERROR: uses type `Option<UnsafeCell<&i32>>`
 
-    pub static static_u128_type: u128; //~ ERROR: uses type `u128`
-    pub static static_u128_array_type: [u128; 16]; //~ ERROR: uses type `u128`
+    pub static static_u128_type: u128;
+    pub static static_u128_array_type: [u128; 16];
 
     pub fn good3(fptr: Option<extern "C" fn()>);
     pub fn good4(aptr: &[u8; 4 as usize]);

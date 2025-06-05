@@ -92,10 +92,8 @@ pub extern "C" fn char_type(p: char) { }
 //~^ ERROR uses type `char`
 
 pub extern "C" fn i128_type(p: i128) { }
-//~^ ERROR uses type `i128`
 
 pub extern "C" fn u128_type(p: u128) { }
-//~^ ERROR uses type `u128`
 
 pub extern "C" fn tuple_type(p: (i32, i32)) { }
 //~^ ERROR uses type `(i32, i32)`
@@ -124,7 +122,6 @@ pub extern "C" fn fn_contained(p: RustBadRet) { }
 // ^ FIXME it doesn't see the error... but at least it reports it elsewhere?
 
 pub extern "C" fn transparent_i128(p: TransparentI128) { }
-//~^ ERROR: uses type `TransparentI128`
 
 pub extern "C" fn transparent_str(p: TransparentStr) { }
 //~^ ERROR: uses type `TransparentStr`

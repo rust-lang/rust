@@ -3,7 +3,7 @@ use std::cmp::{Eq, PartialEq};
 use std::iter;
 use std::ops::ControlFlow;
 
-use rustc_abi::{Integer, IntegerType, VariantIdx};
+use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::def::CtorKind;
@@ -582,11 +582,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     /// Checks whether an uninhabited type (one without valid values) is safe-ish to have here
-    fn visit_uninhabited(
-        &self,
-        state: CTypesVisitorState,
-        ty: Ty<'tcx>,
-    ) -> FfiResult<'tcx> {
+    fn visit_uninhabited(&self, state: CTypesVisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         if state.is_in_function_return() {
             FfiResult::FfiSafe
         } else {
@@ -604,9 +600,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_numeric(&self, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         // FIXME: for now, this is very incomplete, and seems to assume a x86_64 target
         match ty.kind() {
-            ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
-                FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_128bit, None)
-            }
+            // note: before rust 1.77, 128-bit ints were not FFI-safe on x86_64
+            // ...they probably are still unsafe on i686 and other x86_32 architectures
             ty::Int(..) | ty::Uint(..) | ty::Float(..) => FfiResult::FfiSafe,
 
             ty::Char => FfiResult::new_with_reason(
@@ -614,7 +609,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 fluent::lint_improper_ctypes_char_reason,
                 Some(fluent::lint_improper_ctypes_char_help),
             ),
-            _ => bug!("visit_numeric is to be called with numeric (int, float) types"),
+            _ => bug!("visit_numeric is to be called with numeric (char, int, float) types"),
         }
     }
 
@@ -984,9 +979,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             );
         }
 
-        if let Some(IntegerType::Fixed(Integer::I128, _)) = def.repr().int {
-            return FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_128bit, None);
-        }
+        // FIXME: connect `def.repr().int` to visit_numeric
+        // (for now it's OK, `repr(char)` doesn't exist and visit_numeric doesn't warn on anything else)
 
         let non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
         // Check the contained variants.
