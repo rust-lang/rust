@@ -121,6 +121,10 @@ pub enum LifetimeCtxt {
 /// explicitly, you need to override each method. (And you also need
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
+///
+/// Every `walk_*` method uses deconstruction to access fields of structs and
+/// enums. This will result in a compile error if a field is added, which makes
+/// it more likely the appropriate visit call will be added for it.
 pub trait Visitor<'ast>: Sized {
     /// The result type of the `visit_*` methods. Can be either `()`,
     /// or `ControlFlow<T>`.

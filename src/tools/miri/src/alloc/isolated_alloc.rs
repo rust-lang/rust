@@ -145,10 +145,7 @@ impl IsolatedAlloc {
             if pinfo.domain_size() < offset_pinfo + size_pinfo {
                 break;
             }
-            // FIXME: is there a more efficient way to check whether the entire range is unset
-            // in the bitset?
-            let range_avail = !(offset_pinfo..offset_pinfo + size_pinfo).any(|i| pinfo.contains(i));
-            if range_avail {
+            if !pinfo.contains_any(offset_pinfo..offset_pinfo + size_pinfo) {
                 pinfo.insert_range(offset_pinfo..offset_pinfo + size_pinfo);
                 // SAFETY: We checked the available bytes after `idx` in the call
                 // to `domain_size` above and asserted there are at least `idx +

@@ -8,6 +8,7 @@ type PairCoupledTypes: Trait<
     }],
 > = impl Trait<
     //~^ ERROR: cannot find trait `Trait` in this scope
+    //~| ERROR: unconstrained opaque type
     [u32; {
         static FOO: usize; //~ ERROR: free static item without body
     }],

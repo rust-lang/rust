@@ -53,7 +53,7 @@ fn parse_unstable<'a>(
 
     for param in list.mixed() {
         let param_span = param.span();
-        if let Some(ident) = param.meta_item().and_then(|i| i.path_without_args().word()) {
+        if let Some(ident) = param.meta_item().and_then(|i| i.path().word()) {
             res.push(ident.name);
         } else {
             cx.emit_err(session_diagnostics::ExpectsFeatures {

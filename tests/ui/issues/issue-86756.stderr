@@ -1,5 +1,5 @@
 error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
-  --> $DIR/issue-86756.rs:1:14
+  --> $DIR/issue-86756.rs:2:14
    |
 LL | trait Foo<T, T = T> {}
    |           -  ^ already used
@@ -7,13 +7,13 @@ LL | trait Foo<T, T = T> {}
    |           first use of `T`
 
 error[E0412]: cannot find type `dyn` in this scope
-  --> $DIR/issue-86756.rs:5:10
+  --> $DIR/issue-86756.rs:6:10
    |
 LL |     eq::<dyn, Foo>
    |          ^^^ not found in this scope
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-86756.rs:5:15
+  --> $DIR/issue-86756.rs:6:15
    |
 LL |     eq::<dyn, Foo>
    |               ^^^
@@ -27,13 +27,13 @@ LL |     eq::<dyn, dyn Foo>
    |               +++
 
 error[E0107]: missing generics for trait `Foo`
-  --> $DIR/issue-86756.rs:5:15
+  --> $DIR/issue-86756.rs:6:15
    |
 LL |     eq::<dyn, Foo>
    |               ^^^ expected at least 1 generic argument
    |
 note: trait defined here, with at least 1 generic parameter: `T`
-  --> $DIR/issue-86756.rs:1:7
+  --> $DIR/issue-86756.rs:2:7
    |
 LL | trait Foo<T, T = T> {}
    |       ^^^ -

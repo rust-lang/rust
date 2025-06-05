@@ -3841,7 +3841,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .expr_ty_adjusted_opt(inner_expr)
                     .unwrap_or(Ty::new_misc_error(tcx));
                 let span = inner_expr.span;
-                if Some(span) != err.span.primary_span() {
+                if Some(span) != err.span.primary_span()
+                    && !span.in_external_macro(tcx.sess.source_map())
+                {
                     err.span_label(
                         span,
                         if ty.references_error() {

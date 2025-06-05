@@ -16,7 +16,7 @@ pub mod name_pool {
 }
 
 pub mod rust {
-    pub use name_pool::add;
+    pub use crate::name_pool::add;
 
     pub type rt = Box<()>;
 

@@ -30,16 +30,18 @@ fn load<T, const N: usize>(v: PackedSimd<T, N>) -> FullSimd<T, N> {
     }
 }
 
-// CHECK-LABEL: define <3 x float> @square_packed_full(ptr{{[a-z_ ]*}} align 4 {{[^,]*}})
+// CHECK-LABEL: square_packed_full
+// CHECK-SAME: ptr{{[a-z_ ]*}} sret([[RET_TYPE:[^)]+]]) [[RET_ALIGN:align (8|16)]]{{[^%]*}} [[RET_VREG:%[_0-9]*]]
+// CHECK-SAME: ptr{{[a-z_ ]*}} align 4
 #[no_mangle]
 pub fn square_packed_full(x: PackedSimd<f32, 3>) -> FullSimd<f32, 3> {
-    // The unoptimized version of this is not very interesting to check
-    // since `load` does not get inlined.
-    // opt3-NEXT: start:
-    // opt3-NEXT: load <3 x float>
+    // CHECK-NEXT: start
+    // noopt: alloca [[RET_TYPE]], [[RET_ALIGN]]
+    // CHECK: load <3 x float>
     let x = load(x);
-    // opt3-NEXT: [[VREG:%[a-z0-9_]+]] = fmul <3 x float>
-    // opt3-NEXT: ret <3 x float> [[VREG:%[a-z0-9_]+]]
+    // CHECK: [[VREG:%[a-z0-9_]+]] = fmul <3 x float>
+    // CHECK-NEXT: store <3 x float> [[VREG]], ptr [[RET_VREG]], [[RET_ALIGN]]
+    // CHECK-NEXT: ret void
     unsafe { intrinsics::simd_mul(x, x) }
 }
 
