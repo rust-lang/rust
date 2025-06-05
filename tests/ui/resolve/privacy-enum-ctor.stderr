@@ -7,7 +7,7 @@ LL |         n::Z;
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
    |
-LL | /         pub(in m) enum Z {
+LL | /         pub(in crate::m) enum Z {
 LL | |             Fn(u8),
 LL | |             Struct {
 LL | |                 s: u8,
@@ -35,7 +35,7 @@ LL |         Z;
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
    |
-LL | /         pub(in m) enum Z {
+LL | /         pub(in crate::m) enum Z {
 LL | |             Fn(u8),
 LL | |             Struct {
 LL | |                 s: u8,
@@ -154,8 +154,8 @@ LL |     let _: Z = m::n::Z;
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:11:9
    |
-LL |         pub(in m) enum Z {
-   |         ^^^^^^^^^^^^^^^^ not accessible
+LL |         pub(in crate::m) enum Z {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
 
 error[E0423]: expected value, found enum `m::n::Z`
   --> $DIR/privacy-enum-ctor.rs:57:16
@@ -166,7 +166,7 @@ LL |     let _: Z = m::n::Z;
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
    |
-LL | /         pub(in m) enum Z {
+LL | /         pub(in crate::m) enum Z {
 LL | |             Fn(u8),
 LL | |             Struct {
 LL | |                 s: u8,
@@ -197,8 +197,8 @@ LL |     let _: Z = m::n::Z::Fn;
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:11:9
    |
-LL |         pub(in m) enum Z {
-   |         ^^^^^^^^^^^^^^^^ not accessible
+LL |         pub(in crate::m) enum Z {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:64:12
@@ -212,8 +212,8 @@ LL |     let _: Z = m::n::Z::Struct;
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:11:9
    |
-LL |         pub(in m) enum Z {
-   |         ^^^^^^^^^^^^^^^^ not accessible
+LL |         pub(in crate::m) enum Z {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:68:12
@@ -227,8 +227,8 @@ LL |     let _: Z = m::n::Z::Unit {};
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:11:9
    |
-LL |         pub(in m) enum Z {
-   |         ^^^^^^^^^^^^^^^^ not accessible
+LL |         pub(in crate::m) enum Z {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
 
 error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:57:22
@@ -239,8 +239,8 @@ LL |     let _: Z = m::n::Z;
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
    |
-LL |         pub(in m) enum Z {
-   |         ^^^^^^^^^^^^^^^^
+LL |         pub(in crate::m) enum Z {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:61:22
@@ -253,8 +253,8 @@ LL |     let _: Z = m::n::Z::Fn;
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
    |
-LL |         pub(in m) enum Z {
-   |         ^^^^^^^^^^^^^^^^
+LL |         pub(in crate::m) enum Z {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:64:22
@@ -265,8 +265,8 @@ LL |     let _: Z = m::n::Z::Struct;
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
    |
-LL |         pub(in m) enum Z {
-   |         ^^^^^^^^^^^^^^^^
+LL |         pub(in crate::m) enum Z {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:68:22
@@ -279,8 +279,8 @@ LL |     let _: Z = m::n::Z::Unit {};
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
    |
-LL |         pub(in m) enum Z {
-   |         ^^^^^^^^^^^^^^^^
+LL |         pub(in crate::m) enum Z {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:27:20
