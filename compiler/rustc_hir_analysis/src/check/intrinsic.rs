@@ -180,7 +180,7 @@ pub(crate) fn check_intrinsic_type(
         ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
     ]);
     let mk_va_list_ty = |mutbl| {
-        let did = tcx.require_lang_item(LangItem::VaList, Some(span));
+        let did = tcx.require_lang_item(LangItem::VaList, span);
         let region = ty::Region::new_bound(
             tcx,
             ty::INNERMOST,
@@ -442,9 +442,7 @@ pub(crate) fn check_intrinsic_type(
 
             sym::bswap | sym::bitreverse => (1, 0, vec![param(0)], param(0)),
 
-            sym::three_way_compare => {
-                (1, 0, vec![param(0), param(0)], tcx.ty_ordering_enum(Some(span)))
-            }
+            sym::three_way_compare => (1, 0, vec![param(0), param(0)], tcx.ty_ordering_enum(span)),
 
             sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                 (1, 0, vec![param(0), param(0)], Ty::new_tup(tcx, &[param(0), tcx.types.bool]))
@@ -520,7 +518,7 @@ pub(crate) fn check_intrinsic_type(
 
             sym::discriminant_value => {
                 let assoc_items = tcx.associated_item_def_ids(
-                    tcx.require_lang_item(hir::LangItem::DiscriminantKind, None),
+                    tcx.require_lang_item(hir::LangItem::DiscriminantKind, span),
                 );
                 let discriminant_def_id = assoc_items[0];
 

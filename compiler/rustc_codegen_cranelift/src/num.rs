@@ -54,7 +54,7 @@ fn codegen_three_way_compare<'tcx>(
     let gt = fx.bcx.ins().icmp(gt_cc, lhs, rhs);
     let lt = fx.bcx.ins().icmp(lt_cc, lhs, rhs);
     let val = fx.bcx.ins().isub(gt, lt);
-    CValue::by_val(val, fx.layout_of(fx.tcx.ty_ordering_enum(Some(fx.mir.span))))
+    CValue::by_val(val, fx.layout_of(fx.tcx.ty_ordering_enum(fx.mir.span)))
 }
 
 fn codegen_compare_bin_op<'tcx>(

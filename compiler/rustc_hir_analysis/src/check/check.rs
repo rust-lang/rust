@@ -97,7 +97,7 @@ fn allowed_union_or_unsafe_field<'tcx>(
     let def_id = tcx
         .lang_items()
         .get(LangItem::BikeshedGuaranteedNoDrop)
-        .unwrap_or_else(|| tcx.require_lang_item(LangItem::Copy, Some(span)));
+        .unwrap_or_else(|| tcx.require_lang_item(LangItem::Copy, span));
     let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, ty) else {
         tcx.dcx().span_delayed_bug(span, "could not normalize field type");
         return true;

@@ -783,7 +783,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
 
-        let (fn_abi, llfn, instance) = common::build_langcall(bx, Some(span), lang_item);
+        let (fn_abi, llfn, instance) = common::build_langcall(bx, span, lang_item);
 
         // Codegen the actual panic invoke/call.
         let merging_succ =
@@ -803,7 +803,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(bx, terminator.source_info);
 
         // Obtain the panic entry point.
-        let (fn_abi, llfn, instance) = common::build_langcall(bx, Some(span), reason.lang_item());
+        let (fn_abi, llfn, instance) = common::build_langcall(bx, span, reason.lang_item());
 
         // Codegen the actual panic invoke/call.
         let merging_succ = helper.do_call(
@@ -871,7 +871,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Obtain the panic entry point.
         let (fn_abi, llfn, instance) =
-            common::build_langcall(bx, Some(source_info.span), LangItem::PanicNounwind);
+            common::build_langcall(bx, source_info.span, LangItem::PanicNounwind);
 
         // Codegen the actual panic invoke/call.
         Some(helper.do_call(
@@ -1830,7 +1830,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
 
-        let (fn_abi, fn_ptr, instance) = common::build_langcall(&bx, None, reason.lang_item());
+        let (fn_abi, fn_ptr, instance) =
+            common::build_langcall(&bx, self.mir.span, reason.lang_item());
         if is_call_from_compiler_builtins_to_upstream_monomorphization(bx.tcx(), instance) {
             bx.abort();
         } else {

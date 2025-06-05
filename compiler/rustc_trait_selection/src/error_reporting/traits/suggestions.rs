@@ -955,7 +955,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 return false;
             };
 
-            let clone_trait = self.tcx.require_lang_item(LangItem::Clone, None);
+            let clone_trait = self.tcx.require_lang_item(LangItem::Clone, obligation.cause.span);
             let has_clone = |ty| {
                 self.type_implements_trait(clone_trait, [ty], obligation.param_env)
                     .must_apply_modulo_regions()
@@ -3625,7 +3625,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         span: Span,
     ) {
-        let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
+        let future_trait = self.tcx.require_lang_item(LangItem::Future, span);
 
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
         let impls_future = self.type_implements_trait(
@@ -4141,7 +4141,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let pred = ty::Binder::dummy(ty::TraitPredicate {
                             trait_ref: ty::TraitRef::new(
                                 tcx,
-                                tcx.require_lang_item(LangItem::Clone, Some(span)),
+                                tcx.require_lang_item(LangItem::Clone, span),
                                 [*ty],
                             ),
                             polarity: ty::PredicatePolarity::Positive,

@@ -345,11 +345,7 @@ fn build_error_for_const_call<'tcx>(
                 non_or_conditionally,
             });
 
-            note_trait_if_possible(
-                &mut err,
-                self_ty,
-                tcx.require_lang_item(LangItem::Deref, Some(span)),
-            );
+            note_trait_if_possible(&mut err, self_ty, tcx.require_lang_item(LangItem::Deref, span));
             err
         }
         _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::FmtArgumentsNew) => {
