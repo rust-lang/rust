@@ -631,14 +631,14 @@ impl SourceToDefCtx<'_, '_> {
             match &item {
                 ast::Item::Module(it) => self.module_to_def(container.with_value(it))?.into(),
                 ast::Item::Trait(it) => self.trait_to_def(container.with_value(it))?.into(),
-                ast::Item::TraitAlias(it) => {
-                    self.trait_alias_to_def(container.with_value(it))?.into()
-                }
                 ast::Item::Impl(it) => self.impl_to_def(container.with_value(it))?.into(),
                 ast::Item::Enum(it) => self.enum_to_def(container.with_value(it))?.into(),
-                ast::Item::TypeAlias(it) => {
-                    self.type_alias_to_def(container.with_value(it))?.into()
-                }
+                ast::Item::TypeAlias(it) => ChildContainer::GenericDefId(
+                    self.type_alias_to_def(container.with_value(it))?.into(),
+                ),
+                ast::Item::TraitAlias(it) => ChildContainer::GenericDefId(
+                    self.trait_alias_to_def(container.with_value(it))?.into(),
+                ),
                 ast::Item::Struct(it) => {
                     let def = self.struct_to_def(container.with_value(it))?;
                     let is_in_body = it.field_list().is_some_and(|it| {
@@ -738,11 +738,9 @@ pub(crate) enum ChildContainer {
     DefWithBodyId(DefWithBodyId),
     ModuleId(ModuleId),
     TraitId(TraitId),
-    TraitAliasId(TraitAliasId),
     ImplId(ImplId),
     EnumId(EnumId),
     VariantId(VariantId),
-    TypeAliasId(TypeAliasId),
     /// XXX: this might be the same def as, for example an `EnumId`. However,
     /// here the children are generic parameters, and not, eg enum variants.
     GenericDefId(GenericDefId),
@@ -751,11 +749,9 @@ impl_from! {
     DefWithBodyId,
     ModuleId,
     TraitId,
-    TraitAliasId,
     ImplId,
     EnumId,
     VariantId,
-    TypeAliasId,
     GenericDefId
     for ChildContainer
 }
@@ -767,11 +763,9 @@ impl ChildContainer {
             ChildContainer::DefWithBodyId(it) => it.child_by_source(db, file_id),
             ChildContainer::ModuleId(it) => it.child_by_source(db, file_id),
             ChildContainer::TraitId(it) => it.child_by_source(db, file_id),
-            ChildContainer::TraitAliasId(_) => DynMap::default(),
             ChildContainer::ImplId(it) => it.child_by_source(db, file_id),
             ChildContainer::EnumId(it) => it.child_by_source(db, file_id),
             ChildContainer::VariantId(it) => it.child_by_source(db, file_id),
-            ChildContainer::TypeAliasId(_) => DynMap::default(),
             ChildContainer::GenericDefId(it) => it.child_by_source(db, file_id),
         }
     }
