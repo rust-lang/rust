@@ -681,6 +681,7 @@ pub(crate) fn run_pass_manager(
             let ti64 = cx.type_i64();
             let ti32 = cx.type_i32();
             let ti16 = cx.type_i16();
+            let ti16 = cx.type_i8();
             let tarr = cx.type_array(ti32, 3);
 
             let entry_elements = vec![ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
@@ -699,47 +700,75 @@ pub(crate) fn run_pass_manager(
                 if !cx.get_function(&format!("kernel_{num}")).is_some() {
                     continue;
                 }
-            //for function in cx.get_functions() {
-                //if !attributes::has_attr(function, Function, llvm::AttributeKind::OptimizeForSize) {
-                //    dbg!("skipping minsize fnc");
-                //    dbg!(&function);
-                //    // print fnc name
-                //    let enzyme_marker = "minsize";
-                //    if attributes::has_string_attr(function, enzyme_marker) {
-                //        dbg!("found minsize str");
-                //    }
-                //    continue;
 
-                let size_name = format!(".offload_sizes.{num}");
-                let size_ty = cx.type_array(ti64, 4);
-                //let size_val = vec![8i64,0,16,0];
-                let c_val_8 = cx.get_const_i64(8);
-                let c_val_0 = cx.get_const_i64(0);
-                let c_val_16 = cx.get_const_i64(16);
-                let size_val = vec![c_val_8, c_val_0, c_val_16, c_val_0];
+                fn add_priv_unnamed_arr(cx: &SimpleCx<'_>, name: &str, vals: &[u64]) {
+                    let ti64 = cx.type_i64();
+                    let size_ty = cx.type_array(ti64, vals.len() as u64);
+                    let mut size_val = Vec::with_capacity(vals.len());
+                    for &val in vals {
+                        size_val.push(cx.get_const_i64(val));
+                    }
+                    let initializer = cx.const_array(ti64, &size_val);
+                    let c_name = CString::new(name).unwrap();
+                    let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), &c_name );
+                    llvm::set_global_constant(array, true);
+                    unsafe {llvm::LLVMSetUnnamedAddress(array, llvm::UnnamedAddr::Global)};
+                    llvm::set_linkage(array, llvm::Linkage::PrivateLinkage);
+                    llvm::set_initializer(array, initializer);
 
-                //let val = cx.define_global(&size_name, size_ty).unwrap();
-                //dbg!(&val);
-                //let section_var = cx
-                //    .define_global(section_var_name, llvm_type)
-                //    .unwrap_or_else(|| bug!("symbol `{}` is already defined", section_var_name));
-                //llvm::set_section(section_var, c".debug_gdb_scripts");
-                //llvm::set_initializer(section_var, cx.const_bytes(section_contents));
-                //llvm::LLVMSetGlobalConstant(section_var, llvm::True);
-                //llvm::set_linkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
-                //// This should make sure that the whole section is not larger than
-                //// the string it contains. Otherwise we get a warning from GDB.
-                //llvm::LLVMSetAlignment(section_var, 1);
-                //llvm::set_initializer(val, cx.const_bytes(size_val.as_slice()));
-                let initializer = cx.const_array(ti64, &size_val);
-                let name = format!(".offload_sizes.{num}");
-                let c_name = CString::new(name).unwrap();
-                let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), &c_name );
-                llvm::set_global_constant(array, true);
-                unsafe {llvm::LLVMSetUnnamedAddress(array, llvm::UnnamedAddr::Global)};
-                llvm::set_linkage(array, llvm::Linkage::PrivateLinkage);
-                llvm::set_initializer(array, initializer);
+                }
+
+                // We add a pair of sizes and maptypes per offloadable function.
+                // @.offload_maptypes = private unnamed_addr constant [4 x i64] [i64 800, i64 544, i64 547, i64 544]
+                let array = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{num}"), &vec![8u64,0,16,0]);
+                let maptypes = add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{num}"), &vec![800u64, 544, 547, 544]);
                 dbg!(&array);
+                // TODO: We should add another pair per call to offloadable functions
+                // @.offload_sizes.5 = private unnamed_addr constant [2 x i64] [i64 16384, i64 16384]
+                // @.offload_maptypes.6 = private unnamed_addr constant [2 x i64] [i64 1, i64 3]
+
+                // Next: For each function, generate these three entries. A weak constant,
+                // the llvm.rodata entry name, and  the omp_offloading_entries value
+                // @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id = weak constant i8 0
+                // @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
+                // @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
+
+                let name = format!(".kernel_{num}.region_id");
+                let name = CString::new(name).unwrap();
+                let entry = llvm::add_global(cx.llmod, cx.type_i8(), &name);
+                llvm::set_global_constant(entry, true);
+                llvm::set_linkage(entry, llvm::Linkage::WeakAnyLinkage);
+                llvm::set_initializer(entry, cx.get_const_i8(0));
+
+                // typedef struct {
+                //   uint64_t Reserved;
+                //   uint16_t Version;
+                //   uint16_t Kind;
+                //   uint32_t Flags;
+                //   void *Address;
+                //   char *SymbolName;
+                //   uint64_t Size;
+                //   uint64_t Data;
+                //   void *AuxAddr;
+                // } __tgt_offload_entry;
+                //
+                // enum Flags {
+                //   OMP_REGISTER_REQUIRES = 0x10,
+                // };
+                //
+                // typedef struct {
+                //   void *ImageStart;
+                //   void *ImageEnd;
+                //   __tgt_offload_entry *EntriesBegin;
+                //   __tgt_offload_entry *EntriesEnd;
+                // } __tgt_device_image;
+                //
+                // typedef struct {
+                //   int32_t NumDeviceImages;
+                //   __tgt_device_image *DeviceImages;
+                //   __tgt_offload_entry *HostEntriesBegin;
+                //   __tgt_offload_entry *HostEntriesEnd;
+                // } __tgt_bin_desc;
                 // 1. @.offload_sizes.{num} = private unnamed_addr constant [4 x i64] [i64 8, i64 0, i64 16, i64 0]
                 // 2. @.offload_maptypes
                 // 3. @.__omp_offloading_<hash>_fnc_name_<hash> = weak constant i8 0
