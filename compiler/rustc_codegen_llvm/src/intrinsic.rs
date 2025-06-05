@@ -1532,6 +1532,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_fsin => "llvm.sin",
             sym::simd_fsqrt => "llvm.sqrt",
             sym::simd_round => "llvm.round",
+            sym::simd_round_ties_even => "llvm.rint",
             sym::simd_trunc => "llvm.trunc",
             _ => return_error!(InvalidMonomorphization::UnrecognizedIntrinsic { span, name }),
         };
@@ -1558,6 +1559,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             | sym::simd_fsqrt
             | sym::simd_relaxed_fma
             | sym::simd_round
+            | sym::simd_round_ties_even
             | sym::simd_trunc
     ) {
         return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
@@ -2304,7 +2306,13 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     // Unary integer intrinsics
     if matches!(
         name,
-        sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctlz | sym::simd_ctpop | sym::simd_cttz
+        sym::simd_bswap
+            | sym::simd_bitreverse
+            | sym::simd_ctlz
+            | sym::simd_ctpop
+            | sym::simd_cttz
+            | sym::simd_funnel_shl
+            | sym::simd_funnel_shr
     ) {
         let vec_ty = bx.cx.type_vector(
             match *in_elem.kind() {
@@ -2325,6 +2333,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_ctlz => "llvm.ctlz",
             sym::simd_ctpop => "llvm.ctpop",
             sym::simd_cttz => "llvm.cttz",
+            sym::simd_funnel_shl => "llvm.fshl",
+            sym::simd_funnel_shr => "llvm.fshr",
             _ => unreachable!(),
         };
         let int_size = in_elem.int_size_and_signed(bx.tcx()).0.bits();
@@ -2345,6 +2355,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 // simple unary argument cases
                 Ok(bx.call_intrinsic(llvm_intrinsic, &[vec_ty], &[args[0].immediate()]))
             }
+            sym::simd_funnel_shl | sym::simd_funnel_shr => Ok(bx.call_intrinsic(
+                llvm_intrinsic,
+                &[vec_ty],
+                &[args[0].immediate(), args[1].immediate(), args[2].immediate()],
+            )),
             _ => unreachable!(),
         };
     }
