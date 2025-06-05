@@ -416,4 +416,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Stage0 library no longer matches the in-tree library, which means stage1 compiler now uses the beta library.",
     },
+    ChangeInfo {
+        change_id: 142055,
+        severity: ChangeSeverity::Info,
+        summary: "Added a new option `rust.download_rustc_incompatibility_check`: it is now possible to disable the config incompatibility check for `download-rustc` usage.",
+    },
 ];
