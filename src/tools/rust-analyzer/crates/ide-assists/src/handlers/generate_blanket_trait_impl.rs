@@ -8,10 +8,9 @@ use syntax::{
     AstNode,
     ast::{
         self, AssocItem, BlockExpr, GenericParam, HasGenericParams, HasName, HasTypeBounds,
-        HasVisibility as astHasVisibility,
-        edit_in_place::{AttrsOwnerEdit, Indent},
-        make,
+        HasVisibility as astHasVisibility, edit_in_place::Indent, make,
     },
+    syntax_editor::Position,
 };
 
 // Assist: generate_blanket_trait_impl
@@ -64,6 +63,7 @@ pub(crate) fn generate_blanket_trait_impl(
         "Generate blanket trait implementation",
         name.syntax().text_range(),
         |builder| {
+            let mut edit = builder.make_editor(traitd.syntax());
             let namety = make::ty_path(make::path_from_text(&name.text()));
             let trait_where_clause = traitd.where_clause().map(|it| it.clone_for_update());
             let bounds = traitd.type_bound_list();
@@ -109,7 +109,6 @@ pub(crate) fn generate_blanket_trait_impl(
                         continue;
                     }
                     let f = todo_fn(&method, ctx.config).clone_for_update();
-                    f.remove_attrs_and_docs();
                     add_cfg_attrs_to(&method, &f);
                     f.indent(1.into());
                     assoc_item_list.add_item(AssocItem::Fn(f));
@@ -118,10 +117,21 @@ pub(crate) fn generate_blanket_trait_impl(
 
             add_cfg_attrs_to(&traitd, &impl_);
 
-            impl_.reindent_to(indent);
+            impl_.indent(indent);
 
-            // FIXME: $0 after the cfg attributes
-            builder.insert(traitd.syntax().text_range().end(), format!("\n\n{indent}$0{impl_}"));
+            edit.insert_all(
+                Position::after(traitd.syntax()),
+                vec![
+                    make::tokens::whitespace(&format!("\n\n{indent}")).into(),
+                    impl_.syntax().clone().into(),
+                ],
+            );
+
+            if let Some(cap) = ctx.config.snippet_cap {
+                builder.add_tabstop_before_token(cap, impl_.impl_token().unwrap());
+            }
+
+            builder.add_file_edits(ctx.vfs_file_id(), edit);
         },
     );
 
@@ -426,8 +436,8 @@ mod foo {
             }
         }
 
-        $0#[cfg(test)]
-        impl<This> Foo for This {
+        #[cfg(test)]
+        $0impl<This> Foo for This {
             fn foo(&self) -> T {
                 todo!()
             }
@@ -667,8 +677,8 @@ trait Foo {
     }
 }
 
-$0#[cfg(test)]
-impl<This> Foo for This {
+#[cfg(test)]
+$0impl<This> Foo for This {
     fn foo(&self, x: i32) -> i32 {
         todo!()
     }
@@ -701,8 +711,8 @@ trait Foo {
     }
 }
 
-$0#[cfg(test)]
-impl<This> Foo for This {
+#[cfg(test)]
+$0impl<This> Foo for This {
     #[cfg(test)]
     fn foo(&self, x: i32) -> i32 {
         todo!()
