@@ -218,6 +218,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::ifs::IF_SAME_THEN_ELSE_INFO,
     crate::ifs::IFS_SAME_COND_INFO,
     crate::ifs::SAME_FUNCTIONS_IN_IF_CONDITION_INFO,
+    crate::ifs_as_logical_ops::IFS_AS_LOGICAL_OPS_INFO,
     crate::ignored_unit_patterns::IGNORED_UNIT_PATTERNS_INFO,
     crate::impl_hash_with_borrow_str_and_bytes::IMPL_HASH_BORROW_WITH_STR_AND_BYTES_INFO,
     crate::implicit_hasher::IMPLICIT_HASHER_INFO,

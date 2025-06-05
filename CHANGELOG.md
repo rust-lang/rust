@@ -7192,6 +7192,7 @@ Released 2018-09-13
 [`if_not_else`]: https://clippy.rust-lang.org/main/index.html#if_not_else
 [`if_same_then_else`]: https://clippy.rust-lang.org/main/index.html#if_same_then_else
 [`if_then_some_else_none`]: https://clippy.rust-lang.org/main/index.html#if_then_some_else_none
+[`ifs_as_logical_ops`]: https://clippy.rust-lang.org/main/index.html#ifs_as_logical_ops
 [`ifs_same_cond`]: https://clippy.rust-lang.org/main/index.html#ifs_same_cond
 [`ignore_without_reason`]: https://clippy.rust-lang.org/main/index.html#ignore_without_reason
 [`ignored_unit_patterns`]: https://clippy.rust-lang.org/main/index.html#ignored_unit_patterns
