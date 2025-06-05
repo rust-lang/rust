@@ -408,8 +408,11 @@ impl Instant {
         self.0.checked_sub_duration(&duration).map(Instant)
     }
 
-    // used by platform specific `sleep_until` implementations.
-    #[allow(unused, reason = "not every platform has a specific `sleep_until`")]
+    // Used by platform specific `sleep_until` implementations such as the one used on Linux.
+    #[cfg_attr(
+        not(target_os = "linux"),
+        allow(unused, reason = "not every platform has a specific `sleep_until`")
+    )]
     pub(crate) fn into_inner(self) -> time::Instant {
         self.0
     }
