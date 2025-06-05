@@ -1,3 +1,7 @@
+//! Check that trying to cast an enum with a Drop impl to an integer is rejected.
+//!
+//! Issue: <https://github.com/rust-lang/rust/issues/35941>
+
 enum E {
     A = 0,
 }
