@@ -767,7 +767,12 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 DefKind::Static { .. } => {
                     check_static_inhabited(tcx, def_id);
                     check_static_linkage(tcx, def_id);
-                    wfcheck::check_static_item(tcx, def_id)?;
+                    res = res.and(wfcheck::check_static_item(tcx, def_id));
+
+                    // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+                    // checks. Returning early here does not miss any checks and
+                    // avoids this query from having a direct dependency edge on the HIR
+                    return res;
                 }
                 DefKind::Const => {}
                 _ => unreachable!(),
@@ -803,10 +808,17 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
             if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
-                tcx.ensure_ok()
-                    .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id)?;
+                res = res.and(
+                    tcx.ensure_ok()
+                        .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id),
+                );
 
-                check_impl_items_against_trait(tcx, def_id, impl_trait_header);
+                if res.is_ok() {
+                    // Checking this only makes sense if the all trait impls satisfy basic
+                    // requirements (see `coherent_trait` query), otherwise
+                    // we run into infinite recursions a lot.
+                    check_impl_items_against_trait(tcx, def_id, impl_trait_header);
+                }
             }
         }
         DefKind::Trait => {
@@ -884,6 +896,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 tcx.ensure_ok().explicit_implied_const_bounds(def_id);
                 tcx.ensure_ok().const_conditions(def_id);
             }
+
+            // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+            // checks. Returning early here does not miss any checks and
+            // avoids this query from having a direct dependency edge on the HIR
+            return res;
         }
         DefKind::TyAlias => {
             tcx.ensure_ok().generics_of(def_id);
@@ -976,6 +993,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // We do not call `type_of` for closures here as that
             // depends on typecheck and would therefore hide
             // any further errors in case one typeck fails.
+
+            // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+            // checks. Returning early here does not miss any checks and
+            // avoids this query from having a direct dependency edge on the HIR
+            return res;
         }
         DefKind::AssocFn => {
             tcx.ensure_ok().codegen_fn_attrs(def_id);
@@ -990,6 +1012,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     res = res.and(check_trait_item(tcx, def_id));
                 }
             }
+
+            // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+            // checks. Returning early here does not miss any checks and
+            // avoids this query from having a direct dependency edge on the HIR
+            return res;
         }
         DefKind::AssocConst => {
             tcx.ensure_ok().type_of(def_id);
@@ -1002,6 +1029,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     res = res.and(check_trait_item(tcx, def_id));
                 }
             }
+
+            // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+            // checks. Returning early here does not miss any checks and
+            // avoids this query from having a direct dependency edge on the HIR
+            return res;
         }
         DefKind::AssocTy => {
             tcx.ensure_ok().predicates_of(def_id);
@@ -1020,10 +1052,26 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             if has_type {
                 tcx.ensure_ok().type_of(def_id);
             }
+
+            // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+            // checks. Returning early here does not miss any checks and
+            // avoids this query from having a direct dependency edge on the HIR
+            return res;
         }
+
+        // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+        // checks. Returning early here does not miss any checks and
+        // avoids this query from having a direct dependency edge on the HIR
+        DefKind::AnonConst | DefKind::InlineConst => return res,
         _ => {}
     }
-    res
+    let node = tcx.hir_node_by_def_id(def_id);
+    res.and(match node {
+        hir::Node::Crate(_) => bug!("check_well_formed cannot be applied to the crate root"),
+        hir::Node::Item(item) => wfcheck::check_item(tcx, item),
+        hir::Node::ForeignItem(item) => wfcheck::check_foreign_item(tcx, item),
+        _ => unreachable!("{node:?}"),
+    })
 }
 
 pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, def_id: LocalDefId) {
