@@ -19,12 +19,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use stable_mir::crate_def::CrateDef;
-use stable_mir::mir::alloc::GlobalAlloc;
-use stable_mir::mir::mono::{Instance, InstanceKind, StaticDef};
-use stable_mir::mir::{Body, TerminatorKind};
-use stable_mir::ty::{Allocation, ConstantKind, RigidTy, TyKind};
-use stable_mir::{CrateItem, CrateItems, ItemKind};
 use std::ascii::Char;
 use std::assert_matches::assert_matches;
 use std::cmp::{max, min};
@@ -32,6 +26,13 @@ use std::collections::HashMap;
 use std::ffi::CStr;
 use std::io::Write;
 use std::ops::ControlFlow;
+
+use stable_mir::crate_def::CrateDef;
+use stable_mir::mir::alloc::GlobalAlloc;
+use stable_mir::mir::mono::{Instance, InstanceKind, StaticDef};
+use stable_mir::mir::{Body, TerminatorKind};
+use stable_mir::ty::{Allocation, ConstantKind, RigidTy, TyKind};
+use stable_mir::{CrateItem, CrateItems, ItemKind};
 
 const CRATE_NAME: &str = "input";
 
@@ -77,11 +78,13 @@ fn check_bar(item: CrateItem) {
 
     let alloc_id_0 = alloc.provenance.ptrs[0].1.0;
     let GlobalAlloc::Memory(allocation) = GlobalAlloc::from(alloc_id_0) else { unreachable!() };
-    assert_eq!(allocation.bytes.len(), 3);
+    assert_eq!(allocation.bytes.len(), 5);
     assert_eq!(allocation.bytes[0].unwrap(), Char::CapitalB.to_u8());
     assert_eq!(allocation.bytes[1].unwrap(), Char::SmallA.to_u8());
     assert_eq!(allocation.bytes[2].unwrap(), Char::SmallR.to_u8());
-    assert_eq!(std::str::from_utf8(&allocation.raw_bytes().unwrap()), Ok("Bar"));
+    assert_eq!(allocation.bytes[3].unwrap(), 0xff);
+    assert_eq!(allocation.bytes[4].unwrap(), Char::Null.to_u8());
+    assert_eq!(allocation.raw_bytes().unwrap(), b"Bar\xff\0");
 }
 
 /// Check the allocation data for static `C_STR`.
