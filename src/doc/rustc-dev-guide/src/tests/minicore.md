@@ -7,9 +7,11 @@ ui/codegen/assembly test suites. It provides `core` stubs for tests that need to
 build for cross-compiled targets but do not need/want to run.
 
 <div class="warning">
+
 Please note that [`minicore`] is only intended for `core` items, and explicitly
 **not** `std` or `alloc` items because `core` items are applicable to a wider
 range of tests.
+
 </div>
 
 A test can use [`minicore`] by specifying the `//@ add-core-stubs` directive.

@@ -423,6 +423,11 @@ pub struct Config {
 
     /// Cache for determining path modifications
     pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
+
+    /// Skip checking the standard library if `rust.download-rustc` isn't available.
+    /// This is mostly for RA as building the stage1 compiler to check the library tree
+    /// on each code change might be too much for some computers.
+    pub skip_std_check_if_no_download_rustc: bool,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -1507,6 +1512,7 @@ impl Config {
         config.enable_bolt_settings = flags.enable_bolt_settings;
         config.bypass_bootstrap_lock = flags.bypass_bootstrap_lock;
         config.is_running_on_ci = flags.ci.unwrap_or(CiEnv::is_ci());
+        config.skip_std_check_if_no_download_rustc = flags.skip_std_check_if_no_download_rustc;
 
         // Infer the rest of the configuration.
 
