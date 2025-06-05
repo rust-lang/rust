@@ -5,7 +5,7 @@ on:
 
 concurrency:
   # Make sure that new pushes cancel running jobs
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 env:
@@ -13,7 +13,7 @@ env:
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
   RUST_BACKTRACE: full
-  BENCHMARK_RUSTC: nightly-2025-01-16 # Pin the toolchain for reproducable results
+  BENCHMARK_RUSTC: nightly-2025-05-28 # Pin the toolchain for reproducable results
 
 jobs:
   # Determine which tests should be run based on changed files.
@@ -108,8 +108,6 @@ jobs:
     - name: Print runner information
       run: uname -a
     - uses: actions/checkout@v4
-      with:
-        submodules: true
     - name: Install Rust (rustup)
       shell: bash
       run: |
@@ -119,7 +117,6 @@ jobs:
         rustup update "$channel" --no-self-update
         rustup default "$channel"
         rustup target add "${{ matrix.target }}"
-        rustup component add llvm-tools-preview
     - uses: taiki-e/install-action@nextest
     - uses: Swatinem/rust-cache@v2
       with:
@@ -146,6 +143,10 @@ jobs:
       run: ./ci/download-compiler-rt.sh
       shell: bash
     - run: echo "RUST_COMPILER_RT_ROOT=$(realpath ./compiler-rt)" >> "$GITHUB_ENV"
+      shell: bash
+      
+    - name: Download musl source
+      run: ./ci/update-musl.sh
       shell: bash
 
     - name: Verify API list
@@ -183,8 +184,6 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
-      with:
-        submodules: true
     # Unlike rustfmt, stable clippy does not work on code with nightly features.
     - name: Install nightly `clippy`
       run: |
@@ -192,16 +191,22 @@ jobs:
         rustup default nightly
         rustup component add clippy
     - uses: Swatinem/rust-cache@v2
+    - name: Download musl source
+      run: ./ci/update-musl.sh
     - run: cargo clippy --workspace --all-targets
 
   benchmarks:
     name: Benchmarks
-    runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - target: x86_64-unknown-linux-gnu
+          os: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@master
-      with:
-        submodules: true
     - uses: taiki-e/install-action@cargo-binstall
 
     - name: Set up dependencies
@@ -216,12 +221,16 @@ jobs:
         cargo binstall -y iai-callgrind-runner --version "$iai_version"
         sudo apt-get install valgrind
     - uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ matrix.target }}
+    - name: Download musl source
+      run: ./ci/update-musl.sh
 
     - name: Run icount benchmarks
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
-      run: ./ci/bench-icount.sh
+      run: ./ci/bench-icount.sh ${{ matrix.target }}
 
     - name: Upload the benchmark baseline
       uses: actions/upload-artifact@v4
@@ -249,8 +258,6 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
-      with:
-        submodules: true
     - name: Install Rust (rustup)
       run: rustup update nightly --no-self-update && rustup default nightly
       shell: bash
@@ -285,8 +292,6 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
-      with:
-        submodules: true
     - name: Install stable `rustfmt`
       run: rustup set profile minimal && rustup default stable && rustup component add rustfmt
     - run: cargo fmt -- --check
@@ -310,13 +315,13 @@ jobs:
       TO_TEST: ${{ matrix.to_test }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
       - name: Install Rust
         run: |
           rustup update nightly --no-self-update
           rustup default nightly
       - uses: Swatinem/rust-cache@v2
+      - name: download musl source
+        run: ./ci/update-musl.sh
       - name: Run extensive tests
         run: ./ci/run-extensive.sh
       - name: Print test logs if available

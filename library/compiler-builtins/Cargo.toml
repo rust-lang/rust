@@ -3,9 +3,11 @@ resolver = "2"
 members = [
     "builtins-test",
     "compiler-builtins",
+    "crates/josh-sync",
     "crates/libm-macros",
     "crates/musl-math-sys",
     "crates/panic-handler",
+    "crates/symbol-check",
     "crates/util",
     "libm",
     "libm-test",

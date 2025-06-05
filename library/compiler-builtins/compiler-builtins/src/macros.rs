@@ -132,7 +132,7 @@ macro_rules! intrinsics {
     ) => (
         #[cfg($name = "optimized-c")]
         pub $(unsafe $($empty)? )? extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-            extern $abi {
+            unsafe extern $abi {
                 fn $name($($argname: $ty),*) $(-> $ret)?;
             }
             unsafe {
@@ -435,7 +435,7 @@ macro_rules! intrinsics {
         pub mod $name {
             #[unsafe(naked)]
             $(#[$($attr)*])*
-            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            #[cfg_attr(not(feature = "mangled-names"), unsafe(no_mangle))]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*

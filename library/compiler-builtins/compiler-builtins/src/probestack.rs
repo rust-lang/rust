@@ -49,7 +49,9 @@
 // We only define stack probing for these architectures today.
 #![cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 
-extern "C" {
+// SAFETY: defined in this module.
+// FIXME(extern_custom): the ABI is not correct.
+unsafe extern "C" {
     pub fn __rust_probestack();
 }
 

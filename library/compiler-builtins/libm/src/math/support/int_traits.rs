@@ -1,6 +1,7 @@
 use core::{cmp, fmt, ops};
 
 /// Minimal integer implementations needed on all integer types, including wide integers.
+#[allow(dead_code)] // Some constants are only used with tests
 pub trait MinInt:
     Copy
     + fmt::Debug
@@ -78,6 +79,7 @@ pub trait Int:
     fn unsigned(self) -> Self::Unsigned;
     fn from_unsigned(unsigned: Self::Unsigned) -> Self;
     fn abs(self) -> Self;
+    fn unsigned_abs(self) -> Self::Unsigned;
 
     fn from_bool(b: bool) -> Self;
 
@@ -203,6 +205,10 @@ macro_rules! int_impl {
                 unimplemented!()
             }
 
+            fn unsigned_abs(self) -> Self {
+                unimplemented!()
+            }
+
             // It makes writing macros easier if this is implemented for both signed and unsigned
             #[allow(clippy::wrong_self_convention)]
             fn from_unsigned(me: $uty) -> Self {
@@ -240,6 +246,10 @@ macro_rules! int_impl {
 
             fn abs(self) -> Self {
                 self.abs()
+            }
+
+            fn unsigned_abs(self) -> Self::Unsigned {
+                self.unsigned_abs()
             }
 
             fn from_unsigned(me: $uty) -> Self {
@@ -365,14 +375,19 @@ impl_h_int!(
 /// Trait to express (possibly lossy) casting of integers
 pub trait CastInto<T: Copy>: Copy {
     /// By default, casts should be exact.
+    #[track_caller]
     fn cast(self) -> T;
 
     /// Call for casts that are expected to truncate.
+    ///
+    /// In practice, this is exactly the same as `cast`; the main difference is to document intent
+    /// in code. `cast` may panic in debug mode.
     fn cast_lossy(self) -> T;
 }
 
 pub trait CastFrom<T: Copy>: Copy {
     /// By default, casts should be exact.
+    #[track_caller]
     fn cast_from(value: T) -> Self;
 
     /// Call for casts that are expected to truncate.

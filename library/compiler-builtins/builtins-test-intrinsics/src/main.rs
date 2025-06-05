@@ -13,11 +13,14 @@
 #![no_std]
 #![no_main]
 
+// Ensure this `compiler_builtins` gets used, rather than the version injected from the sysroot.
+extern crate compiler_builtins;
 extern crate panic_handler;
 
+// SAFETY: no definitions, only used for linking
 #[cfg(all(not(thumb), not(windows), not(target_arch = "wasm32")))]
 #[link(name = "c")]
-extern "C" {}
+unsafe extern "C" {}
 
 // Every function in this module maps will be lowered to an intrinsic by LLVM, if the platform
 // doesn't have native support for the operation used in the function. ARM has a naming convention
@@ -651,22 +654,23 @@ fn something_with_a_dtor(f: &dyn Fn()) {
 
 #[unsafe(no_mangle)]
 #[cfg(not(thumb))]
-fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
+extern "C" fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
     run();
     0
 }
 
 #[unsafe(no_mangle)]
 #[cfg(thumb)]
-pub fn _start() -> ! {
+extern "C" fn _start() -> ! {
     run();
     loop {}
 }
 
+// SAFETY: no definitions, only used for linking
 #[cfg(windows)]
 #[link(name = "kernel32")]
 #[link(name = "msvcrt")]
-extern "C" {}
+unsafe extern "C" {}
 
 // ARM targets need these symbols
 #[unsafe(no_mangle)]

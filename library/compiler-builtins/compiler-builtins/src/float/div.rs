@@ -370,7 +370,7 @@ where
         let hi_corr: F::Int = corr_uq1 >> hw;
 
         // x_UQ0 * corr_UQ1 = (x_UQ0_hw * 2^HW) * (hi_corr * 2^HW + lo_corr) - corr_UQ1
-        let mut x_uq0: F::Int = ((F::Int::from(x_uq0_hw) * hi_corr) << 1)
+        let mut x_uq0: F::Int = ((F::Int::from(x_uq0_hw) * hi_corr) << 1u32)
             .wrapping_add((F::Int::from(x_uq0_hw) * lo_corr) >> (hw - 1))
             // 1 to account for the highest bit of corr_UQ1 can be 1
             // 1 to account for possible carry
@@ -482,7 +482,7 @@ where
 
         let ret = quotient.wrapping_shr(u32::cast_from(res_exponent.wrapping_neg()) + 1);
         residual_lo = a_significand
-            .wrapping_shl(significand_bits.wrapping_add(CastInto::<u32>::cast(res_exponent)))
+            .wrapping_shl(significand_bits.wrapping_add(CastInto::<u32>::cast_lossy(res_exponent)))
             .wrapping_sub(ret.wrapping_mul(b_significand) << 1);
         ret
     };
