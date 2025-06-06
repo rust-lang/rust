@@ -1183,9 +1183,8 @@ impl InvocationCollectorNode for P<ast::Item> {
         matches!(self.kind, ItemKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
-        let node = self.into_inner();
-        match node.kind {
-            ItemKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
+        match self.kind {
+            ItemKind::MacCall(mac) => (mac, self.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1339,7 +1338,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitItemTag>
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
-        let item = self.wrapped.into_inner();
+        let item = self.wrapped;
         match item.kind {
             AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
             _ => unreachable!(),
@@ -1380,7 +1379,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
-        let item = self.wrapped.into_inner();
+        let item = self.wrapped;
         match item.kind {
             AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
             _ => unreachable!(),
@@ -1421,7 +1420,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitImplItem
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
-        let item = self.wrapped.into_inner();
+        let item = self.wrapped;
         match item.kind {
             AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
             _ => unreachable!(),
@@ -1459,9 +1458,8 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
         matches!(self.kind, ForeignItemKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
-        let node = self.into_inner();
-        match node.kind {
-            ForeignItemKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
+        match self.kind {
+            ForeignItemKind::MacCall(mac) => (mac, self.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1596,16 +1594,16 @@ impl InvocationCollectorNode for ast::Stmt {
         // `StmtKind`s and treat them as statement macro invocations, not as items or expressions.
         let (add_semicolon, mac, attrs) = match self.kind {
             StmtKind::MacCall(mac) => {
-                let ast::MacCallStmt { mac, style, attrs, .. } = mac.into_inner();
+                let ast::MacCallStmt { mac, style, attrs, .. } = *mac;
                 (style == MacStmtStyle::Semicolon, mac, attrs)
             }
-            StmtKind::Item(item) => match item.into_inner() {
+            StmtKind::Item(item) => match *item {
                 ast::Item { kind: ItemKind::MacCall(mac), attrs, .. } => {
                     (mac.args.need_semicolon(), mac, attrs)
                 }
                 _ => unreachable!(),
             },
-            StmtKind::Semi(expr) => match expr.into_inner() {
+            StmtKind::Semi(expr) => match *expr {
                 ast::Expr { kind: ExprKind::MacCall(mac), attrs, .. } => {
                     (mac.args.need_semicolon(), mac, attrs)
                 }
@@ -1686,8 +1684,7 @@ impl InvocationCollectorNode for P<ast::Ty> {
         matches!(self.kind, ast::TyKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
-        let node = self.into_inner();
-        match node.kind {
+        match self.kind {
             TyKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
             _ => unreachable!(),
         }
@@ -1710,8 +1707,7 @@ impl InvocationCollectorNode for P<ast::Pat> {
         matches!(self.kind, PatKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
-        let node = self.into_inner();
-        match node.kind {
+        match self.kind {
             PatKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
             _ => unreachable!(),
         }
@@ -1737,9 +1733,8 @@ impl InvocationCollectorNode for P<ast::Expr> {
         matches!(self.kind, ExprKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
-        let node = self.into_inner();
-        match node.kind {
-            ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
+        match self.kind {
+            ExprKind::MacCall(mac) => (mac, self.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1763,7 +1758,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
         matches!(self.wrapped.kind, ast::ExprKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
-        let node = self.wrapped.into_inner();
+        let node = self.wrapped;
         match node.kind {
             ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
             _ => unreachable!(),
@@ -1797,7 +1792,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag>
         matches!(self.wrapped.kind, ast::ExprKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
-        let node = self.wrapped.into_inner();
+        let node = self.wrapped;
         match node.kind {
             ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
             _ => unreachable!(),
