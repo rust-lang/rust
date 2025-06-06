@@ -30,6 +30,7 @@ mod fallback;
 mod fn_ctxt;
 mod gather_locals;
 mod intrinsicck;
+mod loops;
 mod method;
 mod op;
 mod opaque_types;
@@ -150,6 +151,7 @@ fn typeck_with_inspect<'tcx>(
         };
 
         check_abi(tcx, span, fn_sig.abi());
+        loops::check(tcx, def_id, body);
 
         // Compute the function signature from point of view of inside the fn.
         let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
@@ -185,6 +187,8 @@ fn typeck_with_inspect<'tcx>(
         } else {
             tcx.type_of(def_id).instantiate_identity()
         };
+
+        loops::check(tcx, def_id, body);
 
         let expected_type = fcx.normalize(body.value.span, expected_type);
 

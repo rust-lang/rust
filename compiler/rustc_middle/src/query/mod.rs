@@ -1115,11 +1115,6 @@ rustc_queries! {
         desc { |tcx| "checking for unstable API usage in {}", describe_as_module(key, tcx) }
     }
 
-    /// Checks the loops in the module.
-    query check_mod_loops(key: LocalModDefId) {
-        desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
-    }
-
     query check_mod_naked_functions(key: LocalModDefId) {
         desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
     }

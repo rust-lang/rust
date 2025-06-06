@@ -1,10 +1,4 @@
 error[E0268]: `break` outside of a loop or labeled block
-  --> $DIR/break-inside-unsafe-block-issue-128604.rs:2:28
-   |
-LL |     let a = ["_"; unsafe { break; 1 + 2 }];
-   |                            ^^^^^ cannot `break` outside of a loop or labeled block
-
-error[E0268]: `break` outside of a loop or labeled block
   --> $DIR/break-inside-unsafe-block-issue-128604.rs:14:9
    |
 LL |         break;
@@ -36,6 +30,12 @@ LL |
 LL |         unsafe {
 LL ~             break 'block;
    |
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-inside-unsafe-block-issue-128604.rs:2:28
+   |
+LL |     let a = ["_"; unsafe { break; 1 + 2 }];
+   |                            ^^^^^ cannot `break` outside of a loop or labeled block
 
 error: aborting due to 4 previous errors
 
