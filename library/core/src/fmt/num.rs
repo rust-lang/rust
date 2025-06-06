@@ -61,7 +61,7 @@ unsafe trait GenericRadix: Sized {
         let zero = T::zero();
         let is_nonnegative = x >= zero;
         let mut buf = [MaybeUninit::<u8>::uninit(); 128];
-        let mut curr = buf.len();
+        let mut offset = buf.len();
         let base = T::from_u8(Self::BASE);
         if is_nonnegative {
             // Accumulate each digit of the number from the least significant
@@ -69,8 +69,8 @@ unsafe trait GenericRadix: Sized {
             loop {
                 let n = x % base; // Get the current place value.
                 x = x / base; // Deaccumulate the number.
-                curr -= 1;
-                buf[curr].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                offset -= 1;
+                buf[offset].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 if x == zero {
                     // No more digits left to accumulate.
                     break;
@@ -81,27 +81,17 @@ unsafe trait GenericRadix: Sized {
             loop {
                 let n = zero - (x % base); // Get the current place value.
                 x = x / base; // Deaccumulate the number.
-                curr -= 1;
-                buf[curr].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                offset -= 1;
+                buf[offset].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 if x == zero {
                     // No more digits left to accumulate.
                     break;
                 };
             }
         }
-        // SAFETY: `curr` is initialized to `buf.len()` and is only decremented, so it can't overflow. It is
-        // decremented exactly once for each digit. Since u128 is the widest fixed width integer format supported,
-        // the maximum number of digits (bits) is 128 for base-2, so `curr` won't underflow as well.
-        let buf = unsafe { buf.get_unchecked(curr..) };
-        // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
-        // valid UTF-8
-        let buf = unsafe {
-            str::from_utf8_unchecked(slice::from_raw_parts(
-                MaybeUninit::slice_as_ptr(buf),
-                buf.len(),
-            ))
-        };
-        f.pad_integral(is_nonnegative, Self::PREFIX, buf)
+        // SAFETY: Starting from `offset`, all elements of the slice have been set.
+        let buf_slice = unsafe { slice_buffer_to_str(&buf, offset) };
+        f.pad_integral(is_nonnegative, Self::PREFIX, buf_slice)
     }
 }
 
