@@ -17,8 +17,8 @@
 fn build<T>(x: T) -> impl Sized {
     //[current]~^ ERROR cannot resolve opaque type
     let (x,) = (build(x),);
-    //[next]~^ ERROR type annotations needed
     build(x)
+    //[next]~^ ERROR type annotations needed: cannot normalize `build<_>::{opaque#0}`
 }
 
 // Opaque<T> = (Opaque<T>,)
