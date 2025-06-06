@@ -3,7 +3,7 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::sync::OnceLock;
 
 use xz2::bufread::XzDecoder;
@@ -87,20 +87,14 @@ impl Config {
     /// on NixOS
     fn should_fix_bins_and_dylibs(&self) -> bool {
         let val = *SHOULD_FIX_BINS_AND_DYLIBS.get_or_init(|| {
-            match Command::new("uname").arg("-s").stderr(Stdio::inherit()).output() {
-                Err(_) => return false,
-                Ok(output) if !output.status.success() => return false,
-                Ok(output) => {
-                    let mut os_name = output.stdout;
-                    if os_name.last() == Some(&b'\n') {
-                        os_name.pop();
-                    }
-                    if os_name != b"Linux" {
-                        return false;
-                    }
-                }
+            let uname = command("uname").arg("-s").run_capture_stdout_exec_ctx(self);
+            if uname.is_failure() {
+                return false;
             }
-
+            let output = uname.stdout();
+            if !output.starts_with("Linux") {
+                return false;
+            }
             // If the user has asked binaries to be patched for Nix, then
             // don't check for NixOS or `/lib`.
             // NOTE: this intentionally comes after the Linux check:
