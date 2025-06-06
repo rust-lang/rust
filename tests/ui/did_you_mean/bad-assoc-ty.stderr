@@ -249,84 +249,36 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL | fn bar<F>(_: F) where F: Fn() -> _ {}
    |                                  ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - fn bar<F>(_: F) where F: Fn() -> _ {}
-LL + fn bar<F, T>(_: F) where F: Fn() -> T {}
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/bad-assoc-ty.rs:57:19
    |
 LL | fn baz<F: Fn() -> _>(_: F) {}
    |                   ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - fn baz<F: Fn() -> _>(_: F) {}
-LL + fn baz<F: Fn() -> T, T>(_: F) {}
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
   --> $DIR/bad-assoc-ty.rs:60:33
    |
 LL | struct L<F>(F) where F: Fn() -> _;
    |                                 ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - struct L<F>(F) where F: Fn() -> _;
-LL + struct L<F, T>(F) where F: Fn() -> T;
-   |
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:82:38
-   |
-LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
-   |                                      ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL -     fn foo<F>(_: F) where F: Fn() -> _ {}
-LL +     fn foo<F, T>(_: F) where F: Fn() -> T {}
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
   --> $DIR/bad-assoc-ty.rs:62:30
    |
 LL | struct M<F> where F: Fn() -> _ {
    |                              ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - struct M<F> where F: Fn() -> _ {
-LL + struct M<F, T> where F: Fn() -> T {
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for enums
   --> $DIR/bad-assoc-ty.rs:66:28
    |
 LL | enum N<F> where F: Fn() -> _ {
    |                            ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - enum N<F> where F: Fn() -> _ {
-LL + enum N<F, T> where F: Fn() -> T {
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for unions
   --> $DIR/bad-assoc-ty.rs:71:29
    |
 LL | union O<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - union O<F> where F: Fn() -> _ {
-LL + union O<F, T> where F: Fn() -> T {
-   |
 
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
   --> $DIR/bad-assoc-ty.rs:73:5
@@ -345,12 +297,12 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL | trait P<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/bad-assoc-ty.rs:82:38
    |
-help: use type parameters instead
-   |
-LL - trait P<F> where F: Fn() -> _ {
-LL + trait P<F, T> where F: Fn() -> T {
-   |
+LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
+   |                                      ^ not allowed in type signatures
 
 error: aborting due to 29 previous errors; 1 warning emitted
 
