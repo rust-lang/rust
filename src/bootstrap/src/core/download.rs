@@ -3,7 +3,6 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::OnceLock;
 
 use xz2::bufread::XzDecoder;
@@ -15,12 +14,6 @@ use crate::utils::helpers::{check_run, exe, hex_encode, move_file};
 use crate::{Config, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
-
-/// `Config::try_run` wrapper for this module to avoid warnings on `try_run`, since we don't have access to a `builder` yet.
-fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
-    #[expect(deprecated)]
-    config.try_run(cmd)
-}
 
 fn extract_curl_version(out: String) -> semver::Version {
     // The output should look like this: "curl <major>.<minor>.<patch> ..."
@@ -169,23 +162,18 @@ impl Config {
                 ];
             }
             ";
-            nix_build_succeeded = try_run(
-                self,
-                Command::new("nix-build").args([
-                    Path::new("-E"),
-                    Path::new(NIX_EXPR),
-                    Path::new("-o"),
-                    &nix_deps_dir,
-                ]),
-            )
-            .is_ok();
+            nix_build_succeeded = command("nix-build")
+                .allow_failure()
+                .args([Path::new("-E"), Path::new(NIX_EXPR), Path::new("-o"), &nix_deps_dir])
+                .run_capture_stdout_exec_ctx(self)
+                .is_success();
             nix_deps_dir
         });
         if !nix_build_succeeded {
             return;
         }
 
-        let mut patchelf = Command::new(nix_deps_dir.join("bin/patchelf"));
+        let mut patchelf = command(nix_deps_dir.join("bin/patchelf"));
         patchelf.args(&[
             OsString::from("--add-rpath"),
             OsString::from(t!(fs::canonicalize(nix_deps_dir)).join("lib")),
@@ -196,8 +184,8 @@ impl Config {
             let dynamic_linker = t!(fs::read_to_string(dynamic_linker_path));
             patchelf.args(["--set-interpreter", dynamic_linker.trim_end()]);
         }
-
-        let _ = try_run(self, patchelf.arg(fname));
+        patchelf.arg(fname);
+        let _ = patchelf.run_capture_stdout_exec_ctx(self);
     }
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
@@ -271,7 +259,7 @@ impl Config {
             if self.build.contains("windows-msvc") {
                 eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {
-                    if try_run(self, Command::new("PowerShell.exe").args([
+                    let powershell = command("PowerShell.exe").args([
                         "/nologo",
                         "-Command",
                         "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
@@ -279,9 +267,12 @@ impl Config {
                             "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
                             url, tempfile.to_str().expect("invalid UTF-8 not supported with powershell downloads"),
                         ),
-                    ])).is_err() {
+                    ]).run_capture_stdout_exec_ctx(self);
+
+                    if powershell.is_failure() {
                         return;
                     }
+
                     eprintln!("\nspurious failure, trying again");
                 }
             }

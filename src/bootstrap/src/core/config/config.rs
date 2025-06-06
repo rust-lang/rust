@@ -1034,18 +1034,6 @@ impl Config {
         self.explicit_stage_from_cli || self.explicit_stage_from_config
     }
 
-    /// Runs a command, printing out nice contextual information if it fails.
-    /// Exits if the command failed to execute at all, otherwise returns its
-    /// `status.success()`.
-    #[deprecated = "use `Builder::try_run` instead where possible"]
-    pub(crate) fn try_run(&self, cmd: &mut Command) -> Result<(), ()> {
-        if self.dry_run() {
-            return Ok(());
-        }
-        self.verbose(|| println!("running: {cmd:?}"));
-        build_helper::util::try_run(cmd, self.is_verbose())
-    }
-
     pub(crate) fn test_args(&self) -> Vec<&str> {
         let mut test_args = match self.cmd {
             Subcommand::Test { ref test_args, .. }
