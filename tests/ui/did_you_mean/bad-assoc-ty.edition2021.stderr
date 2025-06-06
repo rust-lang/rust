@@ -222,96 +222,52 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/bad-assoc-ty.rs:56:13
    |
 LL | fn foo<X: K<_, _>>(x: X) {}
-   |             ^  ^ not allowed in type signatures
-   |             |
-   |             not allowed in type signatures
+   |             ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:59:34
+  --> $DIR/bad-assoc-ty.rs:56:16
+   |
+LL | fn foo<X: K<_, _>>(x: X) {}
+   |                ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/bad-assoc-ty.rs:60:34
    |
 LL | fn bar<F>(_: F) where F: Fn() -> _ {}
    |                                  ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - fn bar<F>(_: F) where F: Fn() -> _ {}
-LL + fn bar<F, T>(_: F) where F: Fn() -> T {}
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:62:19
+  --> $DIR/bad-assoc-ty.rs:63:19
    |
 LL | fn baz<F: Fn() -> _>(_: F) {}
    |                   ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - fn baz<F: Fn() -> _>(_: F) {}
-LL + fn baz<F: Fn() -> T, T>(_: F) {}
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
-  --> $DIR/bad-assoc-ty.rs:65:33
+  --> $DIR/bad-assoc-ty.rs:66:33
    |
 LL | struct L<F>(F) where F: Fn() -> _;
    |                                 ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - struct L<F>(F) where F: Fn() -> _;
-LL + struct L<F, T>(F) where F: Fn() -> T;
-   |
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:87:38
-   |
-LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
-   |                                      ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL -     fn foo<F>(_: F) where F: Fn() -> _ {}
-LL +     fn foo<F, T>(_: F) where F: Fn() -> T {}
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
-  --> $DIR/bad-assoc-ty.rs:67:30
+  --> $DIR/bad-assoc-ty.rs:68:30
    |
 LL | struct M<F> where F: Fn() -> _ {
    |                              ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - struct M<F> where F: Fn() -> _ {
-LL + struct M<F, T> where F: Fn() -> T {
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for enums
-  --> $DIR/bad-assoc-ty.rs:71:28
+  --> $DIR/bad-assoc-ty.rs:72:28
    |
 LL | enum N<F> where F: Fn() -> _ {
    |                            ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - enum N<F> where F: Fn() -> _ {
-LL + enum N<F, T> where F: Fn() -> T {
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for unions
-  --> $DIR/bad-assoc-ty.rs:76:29
+  --> $DIR/bad-assoc-ty.rs:77:29
    |
 LL | union O<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - union O<F> where F: Fn() -> _ {
-LL + union O<F, T> where F: Fn() -> T {
-   |
 
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/bad-assoc-ty.rs:78:5
+  --> $DIR/bad-assoc-ty.rs:79:5
    |
 LL |     foo: F,
    |     ^^^^^^
@@ -323,18 +279,18 @@ LL |     foo: std::mem::ManuallyDrop<F>,
    |          +++++++++++++++++++++++ +
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for traits
-  --> $DIR/bad-assoc-ty.rs:82:29
+  --> $DIR/bad-assoc-ty.rs:83:29
    |
 LL | trait P<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL - trait P<F> where F: Fn() -> _ {
-LL + trait P<F, T> where F: Fn() -> T {
-   |
 
-error: aborting due to 29 previous errors
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/bad-assoc-ty.rs:88:38
+   |
+LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
+   |                                      ^ not allowed in type signatures
+
+error: aborting due to 30 previous errors
 
 Some errors have detailed explanations: E0121, E0223, E0740, E0782.
 For more information about an error, try `rustc --explain E0121`.
