@@ -69,6 +69,7 @@ pub(crate) fn unlinked_file(
             FileRange { file_id, range },
         )
         .with_unused(unused)
+        .stable()
         .with_fixes(fixes),
     );
 }
