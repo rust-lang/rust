@@ -40,7 +40,7 @@ rustc_index::newtype_index! {
 }
 
 impl FieldIdx {
-    /// The second field.
+    /// The second field, at index 1.
     ///
     /// For use alongside [`FieldIdx::ZERO`], particularly with scalar pairs.
     pub const ONE: FieldIdx = FieldIdx::from_u32(1);
