@@ -745,11 +745,19 @@ pub(crate) fn run_pass_manager(
                 let entry_name = format!("kernel_{num}");
                 let c_entry_name = CString::new(entry_name).unwrap();
                 let c_val = c_entry_name.as_bytes_with_nul();
-                //let const_name = cx.const_bytes(c_val);
-                let len = u64::try_from(c_val.len()).expect("LLVMConstArray2 elements len overflow");
-                let foo = unsafe { llvm::LLVMConstArray2(ti8, c_val.as_ptr(), len) };
-                llvm::set_alignment(foo, rustc_abi::Align::ONE);
-                dbg!(&foo);
+                let foo = format!(".offloading.entry_name.{num}");
+                let c_foo = CString::new(foo).unwrap();
+
+                let llconst = crate::common::bytes_in_context(cx.llcx, c_val);
+                let llglobal =
+                    llvm::add_global(cx.llmod, crate::common::val_ty(llconst), &c_foo);
+                llvm::set_alignment(llglobal, rustc_abi::Align::ONE);
+                llvm::set_section(llglobal, &c_section_name);
+                llvm::set_global_constant(llglobal, true);
+                llvm::set_linkage(llglobal, llvm::Linkage::InternalLinkage);
+                unsafe {llvm::LLVMSetUnnamedAddress(llglobal, llvm::UnnamedAddr::Global)};
+                llvm::set_initializer(llglobal, llconst);
+                //dbg!(&foo);
                 // @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
                 // @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
 
