@@ -8,7 +8,7 @@ use syntax::{
     AstNode,
     ast::{
         self, AssocItem, BlockExpr, GenericParam, HasGenericParams, HasName, HasTypeBounds,
-        HasVisibility as astHasVisibility, edit_in_place::Indent, make,
+        HasVisibility, edit_in_place::Indent, make,
     },
     syntax_editor::Position,
 };
@@ -42,7 +42,7 @@ use syntax::{
 //     }
 // }
 //
-// $0impl<T: Send, This: ToOwned> Foo<T> for This
+// $0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
 // where
 //     Self::Owned: Default,
 // {
@@ -66,15 +66,15 @@ pub(crate) fn generate_blanket_trait_impl(
             let mut edit = builder.make_editor(traitd.syntax());
             let namety = make::ty_path(make::path_from_text(&name.text()));
             let trait_where_clause = traitd.where_clause().map(|it| it.clone_for_update());
-            let bounds = traitd.type_bound_list();
+            let bounds = traitd.type_bound_list().and_then(exlucde_sized);
             let is_unsafe = traitd.unsafe_token().is_some();
-            let thisname = make::name("This");
+            let thisname = this_name(&traitd);
             let thisty = make::ty_path(make::path_from_text(&thisname.text()));
             let indent = traitd.indent_level();
 
             let gendecl = make::generic_param_list([GenericParam::TypeParam(make::type_param(
                 thisname.clone(),
-                bounds,
+                apply_sized(has_sized(&traitd), bounds),
             ))]);
 
             let trait_gen_args =
@@ -138,6 +138,122 @@ pub(crate) fn generate_blanket_trait_impl(
     Some(())
 }
 
+fn has_sized(traitd: &ast::Trait) -> bool {
+    if let Some(sized) = find_bound("Sized", traitd.type_bound_list()) {
+        sized.question_mark_token().is_none()
+    } else if let Some(is_sized) = where_clause_sized(traitd.where_clause()) {
+        is_sized
+    } else {
+        contained_owned_self_method(traitd.assoc_item_list())
+    }
+}
+
+fn contained_owned_self_method(item_list: Option<ast::AssocItemList>) -> bool {
+    item_list.into_iter().flat_map(|assoc_item_list| assoc_item_list.assoc_items()).any(|item| {
+        match item {
+            AssocItem::Fn(f) => {
+                has_owned_self(&f) && where_clause_sized(f.where_clause()).is_none()
+            }
+            _ => false,
+        }
+    })
+}
+
+fn has_owned_self(f: &ast::Fn) -> bool {
+    has_owned_self_param(f) || has_ret_owned_self(f)
+}
+
+fn has_owned_self_param(f: &ast::Fn) -> bool {
+    f.param_list()
+        .and_then(|param_list| param_list.self_param())
+        .is_some_and(|sp| sp.amp_token().is_none() && sp.colon_token().is_none())
+}
+
+fn has_ret_owned_self(f: &ast::Fn) -> bool {
+    f.ret_type()
+        .and_then(|ret| match ret.ty() {
+            Some(ast::Type::PathType(ty)) => ty.path(),
+            _ => None,
+        })
+        .is_some_and(|path| {
+            path.segment()
+                .and_then(|seg| seg.name_ref())
+                .is_some_and(|name| path.qualifier().is_none() && name.text() == "Self")
+        })
+}
+
+fn where_clause_sized(where_clause: Option<ast::WhereClause>) -> Option<bool> {
+    where_clause?.predicates().find_map(|pred| {
+        find_bound("Sized", pred.type_bound_list())
+            .map(|bound| bound.question_mark_token().is_none())
+    })
+}
+
+fn apply_sized(has_sized: bool, bounds: Option<ast::TypeBoundList>) -> Option<ast::TypeBoundList> {
+    if has_sized {
+        return bounds;
+    }
+    let bounds = bounds
+        .into_iter()
+        .flat_map(|bounds| bounds.bounds())
+        .chain([make::type_bound_text("?Sized")]);
+    make::type_bound_list(bounds)
+}
+
+fn exlucde_sized(bounds: ast::TypeBoundList) -> Option<ast::TypeBoundList> {
+    make::type_bound_list(bounds.bounds().filter(|bound| !ty_bound_is(bound, "Sized")))
+}
+
+fn this_name(traitd: &ast::Trait) -> ast::Name {
+    let mut use_t = false;
+    let mut use_i = false;
+    let mut use_this = false;
+
+    let has_iter = find_bound("Iterator", traitd.type_bound_list()).is_some();
+
+    traitd
+        .generic_param_list()
+        .into_iter()
+        .flat_map(|param_list| param_list.generic_params())
+        .filter_map(|param| match param {
+            GenericParam::LifetimeParam(_) => None,
+            GenericParam::ConstParam(cp) => cp.name(),
+            GenericParam::TypeParam(tp) => tp.name(),
+        })
+        .for_each(|name| match &*name.text() {
+            "T" => use_t = true,
+            "I" => use_i = true,
+            "This" => use_this = true,
+            _ => (),
+        });
+
+    make::name(if has_iter {
+        if !use_i {
+            "I"
+        } else if !use_t {
+            "T"
+        } else {
+            "This"
+        }
+    } else if !use_t {
+        "T"
+    } else {
+        "This"
+    })
+}
+
+fn find_bound(s: &str, bounds: Option<ast::TypeBoundList>) -> Option<ast::TypeBound> {
+    bounds.into_iter().flat_map(|bounds| bounds.bounds()).find(|bound| ty_bound_is(bound, s))
+}
+
+fn ty_bound_is(bound: &ast::TypeBound, s: &str) -> bool {
+    matches!(bound.ty(),
+        Some(ast::Type::PathType(ty)) if ty.path()
+            .and_then(|path| path.segment())
+            .and_then(|segment| segment.name_ref())
+            .is_some_and(|name| name.text() == s))
+}
+
 fn todo_fn(f: &ast::Fn, config: &AssistConfig) -> ast::Fn {
     let params = f.param_list().unwrap_or_else(|| make::param_list(None, None));
     make::fn_(
@@ -198,11 +314,151 @@ where
     }
 }
 
-$0impl<T: Send, This: ToOwned> Foo<T> for This
+$0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
 where
     Self::Owned: Default,
 {
     fn foo(&self) -> T {
+        todo!()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_gen_blanket_sized() {
+        check_assist(
+            generate_blanket_trait_impl,
+            r#"
+trait $0Foo: Iterator + Sized {
+    fn foo(mut self) -> Self::Item {
+        self.next().unwrap()
+    }
+}
+"#,
+            r#"
+trait Foo: Iterator + Sized {
+    fn foo(mut self) -> Self::Item {
+        self.next().unwrap()
+    }
+}
+
+$0impl<I: Iterator> Foo for I {}
+"#,
+        );
+
+        check_assist(
+            generate_blanket_trait_impl,
+            r#"
+trait $0Foo: Iterator {
+    fn foo(self) -> Self::Item;
+}
+"#,
+            r#"
+trait Foo: Iterator {
+    fn foo(self) -> Self::Item;
+}
+
+$0impl<I: Iterator> Foo for I {
+    fn foo(self) -> Self::Item {
+        todo!()
+    }
+}
+"#,
+        );
+
+        check_assist(
+            generate_blanket_trait_impl,
+            r#"
+trait $0Foo {
+    fn foo(&self) -> Self;
+}
+"#,
+            r#"
+trait Foo {
+    fn foo(&self) -> Self;
+}
+
+$0impl<T> Foo for T {
+    fn foo(&self) -> Self {
+        todo!()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_gen_blanket_non_sized() {
+        check_assist(
+            generate_blanket_trait_impl,
+            r#"
+trait $0Foo: Iterator {
+    fn foo(&self) -> Self::Item;
+}
+"#,
+            r#"
+trait Foo: Iterator {
+    fn foo(&self) -> Self::Item;
+}
+
+$0impl<I: Iterator + ?Sized> Foo for I {
+    fn foo(&self) -> Self::Item {
+        todo!()
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_blanket_trait_impl,
+            r#"
+trait $0Foo: Iterator {
+    fn foo(&self) -> Self::Item;
+
+    fn each(self) where Self: Sized;
+}
+"#,
+            r#"
+trait Foo: Iterator {
+    fn foo(&self) -> Self::Item;
+
+    fn each(self) where Self: Sized;
+}
+
+$0impl<I: Iterator + ?Sized> Foo for I {
+    fn foo(&self) -> Self::Item {
+        todo!()
+    }
+
+    fn each(self) where Self: Sized {
+        todo!()
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_blanket_trait_impl,
+            r#"
+trait $0Foo: Iterator {
+    fn foo(&self) -> Self::Item;
+
+    fn each(&self) -> Self where Self: Sized;
+}
+"#,
+            r#"
+trait Foo: Iterator {
+    fn foo(&self) -> Self::Item;
+
+    fn each(&self) -> Self where Self: Sized;
+}
+
+$0impl<I: Iterator + ?Sized> Foo for I {
+    fn foo(&self) -> Self::Item {
+        todo!()
+    }
+
+    fn each(&self) -> Self where Self: Sized {
         todo!()
     }
 }
@@ -241,7 +497,7 @@ mod foo {
         }
     }
 
-    $0impl<T: Send, This: ToOwned> Foo<T> for This
+    $0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
     where
         Self::Owned: Default,
     {
@@ -283,7 +539,7 @@ mod foo {
         }
     }
 
-    $0impl<T: Send, This: ToOwned> Foo<T> for This
+    $0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
     where
         Self::Owned: Default,
         Self: Send,
@@ -329,7 +585,7 @@ mod foo {
             }
         }
 
-        $0impl<T: Send, This: ToOwned> Foo<T> for This
+        $0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
         where
             Self::Owned: Default,
             Self: Send,
@@ -347,7 +603,7 @@ mod foo {
             r#"
 mod foo {
     trait $0Foo {
-        fn foo(&self) -> T;
+        fn foo(&self) -> i32;
 
         fn print_foo(&self) {
             println!("{}", self.foo());
@@ -358,15 +614,15 @@ mod foo {
             r#"
 mod foo {
     trait Foo {
-        fn foo(&self) -> T;
+        fn foo(&self) -> i32;
 
         fn print_foo(&self) {
             println!("{}", self.foo());
         }
     }
 
-    $0impl<This> Foo for This {
-        fn foo(&self) -> T {
+    $0impl<T: ?Sized> Foo for T {
+        fn foo(&self) -> i32 {
             todo!()
         }
     }
@@ -379,7 +635,7 @@ mod foo {
 mod foo {
     mod bar {
         trait $0Foo {
-            fn foo(&self) -> T;
+            fn foo(&self) -> i32;
 
             fn print_foo(&self) {
                 println!("{}", self.foo());
@@ -392,15 +648,15 @@ mod foo {
 mod foo {
     mod bar {
         trait Foo {
-            fn foo(&self) -> T;
+            fn foo(&self) -> i32;
 
             fn print_foo(&self) {
                 println!("{}", self.foo());
             }
         }
 
-        $0impl<This> Foo for This {
-            fn foo(&self) -> T {
+        $0impl<T: ?Sized> Foo for T {
+            fn foo(&self) -> i32 {
                 todo!()
             }
         }
@@ -415,7 +671,7 @@ mod foo {
     mod bar {
         #[cfg(test)]
         trait $0Foo {
-            fn foo(&self) -> T;
+            fn foo(&self) -> i32;
 
             fn print_foo(&self) {
                 println!("{}", self.foo());
@@ -429,7 +685,7 @@ mod foo {
     mod bar {
         #[cfg(test)]
         trait Foo {
-            fn foo(&self) -> T;
+            fn foo(&self) -> i32;
 
             fn print_foo(&self) {
                 println!("{}", self.foo());
@@ -437,8 +693,8 @@ mod foo {
         }
 
         #[cfg(test)]
-        $0impl<This> Foo for This {
-            fn foo(&self) -> T {
+        $0impl<T: ?Sized> Foo for T {
+            fn foo(&self) -> i32 {
                 todo!()
             }
         }
@@ -480,7 +736,7 @@ where
     }
 }
 
-$0impl<T: Send, This: ToOwned> Foo<T> for This
+$0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
 where
     Self::Owned: Default,
 {
@@ -524,7 +780,7 @@ where
     }
 }
 
-$0impl<T: Send, This: ToOwned> Foo<T> for This
+$0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
 where
     Self::Owned: Default,
 {
@@ -570,7 +826,7 @@ where
     }
 }
 
-$0impl<T: Send, This> Foo<T> for This
+$0impl<T: Send, This: ?Sized> Foo<T> for This
 where
     Self: ToOwned,
     Self::Owned: Default,
@@ -609,7 +865,7 @@ trait Foo<T: Send> {
     }
 }
 
-$0impl<T: Send, This> Foo<T> for This {
+$0impl<T: Send, This: ?Sized> Foo<T> for This {
     fn foo(&self, x: Self::X) -> T {
         todo!()
     }
@@ -644,7 +900,7 @@ trait Foo {
     }
 }
 
-$0impl<This> Foo for This {
+$0impl<T: ?Sized> Foo for T {
     fn foo(&self, x: Self::X) -> i32 {
         todo!()
     }
@@ -678,7 +934,7 @@ trait Foo {
 }
 
 #[cfg(test)]
-$0impl<This> Foo for This {
+$0impl<T: ?Sized> Foo for T {
     fn foo(&self, x: i32) -> i32 {
         todo!()
     }
@@ -712,7 +968,7 @@ trait Foo {
 }
 
 #[cfg(test)]
-$0impl<This> Foo for This {
+$0impl<T: ?Sized> Foo for T {
     #[cfg(test)]
     fn foo(&self, x: i32) -> i32 {
         todo!()
@@ -732,7 +988,7 @@ trait $0Foo {}
             r#"
 trait Foo {}
 
-$0impl<This> Foo for This {}
+$0impl<T: ?Sized> Foo for T {}
 "#,
         );
     }
@@ -747,7 +1003,7 @@ trait $0Foo: Copy {}
             r#"
 trait Foo: Copy {}
 
-$0impl<This: Copy> Foo for This {}
+$0impl<T: Copy + ?Sized> Foo for T {}
 "#,
         );
     }
@@ -762,7 +1018,7 @@ trait $0Foo where Self: Copy {}
             r#"
 trait Foo where Self: Copy {}
 
-$0impl<This> Foo for This
+$0impl<T: ?Sized> Foo for T
 where Self: Copy
 {
 }
@@ -780,7 +1036,7 @@ trait $0Foo where Self: Copy, {}
             r#"
 trait Foo where Self: Copy, {}
 
-$0impl<This> Foo for This
+$0impl<T: ?Sized> Foo for T
 where Self: Copy,
 {
 }
@@ -802,7 +1058,7 @@ trait Foo
 where Self: Copy
 {}
 
-$0impl<This> Foo for This
+$0impl<T: ?Sized> Foo for T
 where Self: Copy
 {
 }
@@ -826,7 +1082,7 @@ where
     Self: Copy
 {}
 
-$0impl<This> Foo for This
+$0impl<T: ?Sized> Foo for T
 where
     Self: Copy
 {
@@ -851,7 +1107,7 @@ where
     Self: Copy,
 {}
 
-$0impl<This> Foo for This
+$0impl<T: ?Sized> Foo for T
 where
     Self: Copy,
 {
@@ -878,7 +1134,7 @@ where
     (): Into<Self>,
 {}
 
-$0impl<This> Foo for This
+$0impl<T: ?Sized> Foo for T
 where
     Self: Copy,
     (): Into<Self>,
@@ -906,7 +1162,7 @@ where
     (): Into<Self>,
 {}
 
-$0impl<This> Foo for This
+$0impl<T: ?Sized> Foo for T
 where
     Self: Copy + Sync,
     (): Into<Self>,
@@ -930,7 +1186,7 @@ trait Foo {
     fn foo(&self) {}
 }
 
-$0impl<This> Foo for This {}
+$0impl<T: ?Sized> Foo for T {}
 "#,
         );
     }
@@ -947,7 +1203,7 @@ trait $0Foo {}
 /// some docs
 trait Foo {}
 
-$0impl<This> Foo for This {}
+$0impl<T: ?Sized> Foo for T {}
 "#,
         );
     }
@@ -968,7 +1224,7 @@ trait Foo {
     fn bar(&self);
 }
 
-$0impl<This> Foo for This {
+$0impl<T: ?Sized> Foo for T {
     fn foo(&self) {
         todo!()
     }
@@ -987,18 +1243,18 @@ $0impl<This> Foo for This {
             generate_blanket_trait_impl,
             r#"
 trait $0Foo {
-    fn foo<T>(&self, value: T) -> T;
-    fn bar<T>(&self, value: T) -> T { todo!() }
+    fn foo<T>(&self, value: i32) -> i32;
+    fn bar<T>(&self, value: i32) -> i32 { todo!() }
 }
 "#,
             r#"
 trait Foo {
-    fn foo<T>(&self, value: T) -> T;
-    fn bar<T>(&self, value: T) -> T { todo!() }
+    fn foo<T>(&self, value: i32) -> i32;
+    fn bar<T>(&self, value: i32) -> i32 { todo!() }
 }
 
-$0impl<This> Foo for This {
-    fn foo<T>(&self, value: T) -> T {
+$0impl<T: ?Sized> Foo for T {
+    fn foo<T>(&self, value: i32) -> i32 {
         todo!()
     }
 }
@@ -1020,7 +1276,7 @@ trait Foo<'a> {
     fn foo(&self) -> &'a str;
 }
 
-$0impl<'a, This> Foo<'a> for This {
+$0impl<'a, T: ?Sized> Foo<'a> for T {
     fn foo(&self) -> &'a str {
         todo!()
     }
@@ -1043,7 +1299,7 @@ trait Foo<'a: 'static> {
     fn foo(&self) -> &'a str;
 }
 
-$0impl<'a: 'static, This> Foo<'a> for This {
+$0impl<'a: 'static, T: ?Sized> Foo<'a> for T {
     fn foo(&self) -> &'a str {
         todo!()
     }
@@ -1066,7 +1322,7 @@ trait Foo<'a>: 'a {
     fn foo(&self) -> &'a str;
 }
 
-$0impl<'a, This: 'a> Foo<'a> for This {
+$0impl<'a, T: 'a + ?Sized> Foo<'a> for T {
     fn foo(&self) -> &'a str {
         todo!()
     }
@@ -1089,7 +1345,7 @@ trait Foo<'a, 'b> {
     fn foo(&self) -> &'a &'b str;
 }
 
-$0impl<'a, 'b, This> Foo<'a, 'b> for This {
+$0impl<'a, 'b, T: ?Sized> Foo<'a, 'b> for T {
     fn foo(&self) -> &'a &'b str {
         todo!()
     }
@@ -1116,7 +1372,7 @@ where 'a: 'static,
     fn foo(&self) -> &'a str;
 }
 
-$0impl<'a, This> Foo<'a> for This
+$0impl<'a, T: ?Sized> Foo<'a> for T
 where 'a: 'static,
 {
     fn foo(&self) -> &'a str {
@@ -1203,7 +1459,7 @@ trait Foo {
     }
 }
 
-$0impl<This> Foo for This {
+$0impl<T: ?Sized> Foo for T {
     fn foo(&self) -> i32 {
         todo!()
     }
@@ -1229,7 +1485,7 @@ trait $0Foo {
 }
 
 trait Bar {}
-impl<This> Bar for This {}
+impl<T> Bar for T {}
 "#,
             r#"
 trait Foo {
@@ -1240,14 +1496,14 @@ trait Foo {
     }
 }
 
-$0impl<This> Foo for This {
+$0impl<T: ?Sized> Foo for T {
     fn foo(&self) -> i32 {
         todo!()
     }
 }
 
 trait Bar {}
-impl<This> Bar for This {}
+impl<T> Bar for T {}
 "#,
         );
     }
