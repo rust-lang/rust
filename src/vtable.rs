@@ -53,7 +53,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
                     .layout()
                     .non_1zst_field(fx)
                     .expect("not exactly one non-1-ZST field in a `DispatchFromDyn` type");
-                arg = arg.value_field(fx, FieldIdx::new(idx));
+                arg = arg.value_field(fx, idx);
             }
         }
 
@@ -62,8 +62,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
                 let inner_layout = fx.layout_of(arg.layout().ty.builtin_deref(true).unwrap());
                 let dyn_star = CPlace::for_ptr(Pointer::new(arg.load_scalar(fx)), inner_layout);
                 let ptr = dyn_star.place_field(fx, FieldIdx::ZERO).to_ptr();
-                let vtable =
-                    dyn_star.place_field(fx, FieldIdx::new(1)).to_cvalue(fx).load_scalar(fx);
+                let vtable = dyn_star.place_field(fx, FieldIdx::ONE).to_cvalue(fx).load_scalar(fx);
                 break 'block (ptr, vtable);
             }
         }
