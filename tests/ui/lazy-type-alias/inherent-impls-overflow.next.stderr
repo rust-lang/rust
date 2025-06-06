@@ -1,8 +1,8 @@
 error[E0271]: type mismatch resolving `Loop normalizes-to _`
-  --> $DIR/inherent-impls-overflow.rs:8:13
+  --> $DIR/inherent-impls-overflow.rs:8:1
    |
 LL | type Loop = Loop;
-   |             ^^^^ types differ
+   | ^^^^^^^^^ types differ
 
 error[E0271]: type mismatch resolving `Loop normalizes-to _`
   --> $DIR/inherent-impls-overflow.rs:12:1
@@ -17,10 +17,10 @@ LL | impl Loop {}
    |      ^^^^ types differ
 
 error[E0275]: overflow evaluating the requirement `Poly1<(T,)> == _`
-  --> $DIR/inherent-impls-overflow.rs:17:17
+  --> $DIR/inherent-impls-overflow.rs:17:1
    |
 LL | type Poly0<T> = Poly1<(T,)>;
-   |                 ^^^^^^^^^^^
+   | ^^^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
 
@@ -36,10 +36,10 @@ LL | type Poly0<T> = Poly1<(T,)>;
    = note: all type parameters must be used in a non-recursive way in order to constrain their variance
 
 error[E0275]: overflow evaluating the requirement `Poly0<(T,)> == _`
-  --> $DIR/inherent-impls-overflow.rs:21:17
+  --> $DIR/inherent-impls-overflow.rs:21:1
    |
 LL | type Poly1<T> = Poly0<(T,)>;
-   |                 ^^^^^^^^^^^
+   | ^^^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
 

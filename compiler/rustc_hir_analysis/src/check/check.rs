@@ -9,7 +9,7 @@ use rustc_errors::codes::*;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{LangItem, Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
-use rustc_infer::traits::{Obligation, ObligationCauseCode};
+use rustc_infer::traits::{Obligation, ObligationCauseCode, WellFormedLoc};
 use rustc_lint_defs::builtin::{
     REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS, UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
 };
@@ -34,6 +34,9 @@ use {rustc_attr_data_structures as attrs, rustc_hir as hir};
 
 use super::compare_impl_item::check_type_bounds;
 use super::*;
+use crate::check::wfcheck::{
+    check_variances_for_type_defn, check_where_clauses, enter_wf_checking_ctxt,
+};
 
 pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: ExternAbi) {
     if !tcx.sess.target.is_abi_supported(abi) {
@@ -701,15 +704,18 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 }
 
-pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+    let mut res = Ok(());
     match tcx.def_kind(def_id) {
         DefKind::Static { .. } => {
             check_static_inhabited(tcx, def_id);
             check_static_linkage(tcx, def_id);
+            wfcheck::check_static_item(tcx, def_id)?;
         }
         DefKind::Const => {}
         DefKind::Enum => {
             check_enum(tcx, def_id);
+            check_variances_for_type_defn(tcx, def_id);
         }
         DefKind::Fn => {
             if let Some(i) = tcx.intrinsic(def_id) {
@@ -723,13 +729,10 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         DefKind::Impl { of_trait } => {
             if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
-                if tcx
-                    .ensure_ok()
-                    .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id)
-                    .is_ok()
-                {
-                    check_impl_items_against_trait(tcx, def_id, impl_trait_header);
-                }
+                tcx.ensure_ok()
+                    .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id)?;
+
+                check_impl_items_against_trait(tcx, def_id, impl_trait_header);
             }
         }
         DefKind::Trait => {
@@ -753,9 +756,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         DefKind::Struct => {
             check_struct(tcx, def_id);
+            check_variances_for_type_defn(tcx, def_id);
         }
         DefKind::Union => {
             check_union(tcx, def_id);
+            check_variances_for_type_defn(tcx, def_id);
         }
         DefKind::OpaqueTy => {
             check_opaque_precise_captures(tcx, def_id);
@@ -773,13 +778,25 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         DefKind::TyAlias => {
             check_type_alias_type_params_are_used(tcx, def_id);
+            if tcx.type_alias_is_lazy(def_id) {
+                res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+                    let ty = tcx.type_of(def_id).instantiate_identity();
+                    let span = tcx.def_span(def_id);
+                    let item_ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
+                    wfcx.register_wf_obligation(
+                        span,
+                        Some(WellFormedLoc::Ty(def_id)),
+                        item_ty.into(),
+                    );
+                    check_where_clauses(wfcx, def_id);
+                    Ok(())
+                }));
+                check_variances_for_type_defn(tcx, def_id);
+            }
         }
         DefKind::ForeignMod => {
-            let it = tcx.hir_expect_item(def_id);
-            let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
-                return;
-            };
-            check_abi(tcx, it.span, abi);
+            let (abi, items) = tcx.hir_expect_item(def_id).expect_foreign_mod();
+            check_abi(tcx, tcx.def_span(def_id), abi);
 
             for item in items {
                 let def_id = item.id.owner_id.def_id;
@@ -819,16 +836,13 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     hir::ForeignItemKind::Fn(sig, _, _) => {
                         require_c_abi_if_c_variadic(tcx, sig.decl, abi, item.span);
                     }
-                    hir::ForeignItemKind::Static(..) => {
-                        check_static_inhabited(tcx, def_id);
-                        check_static_linkage(tcx, def_id);
-                    }
                     _ => {}
                 }
             }
         }
         _ => {}
     }
+    res
 }
 
 pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, def_id: LocalDefId) {

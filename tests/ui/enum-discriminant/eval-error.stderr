@@ -15,6 +15,18 @@ LL | |     A
 LL | | }
    | |_- not a struct or union
 
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/eval-error.rs:2:5
+   |
+LL |     a: str,
+   |     ^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     a: std::mem::ManuallyDrop<str>,
+   |        +++++++++++++++++++++++   +
+
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/eval-error.rs:2:8
    |
@@ -32,18 +44,6 @@ help: the `Box` type always has a statically known size and allocates its conten
    |
 LL |     a: Box<str>,
    |        ++++   +
-
-error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/eval-error.rs:2:5
-   |
-LL |     a: str,
-   |     ^^^^^^
-   |
-   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
-help: wrap the field type in `ManuallyDrop<...>`
-   |
-LL |     a: std::mem::ManuallyDrop<str>,
-   |        +++++++++++++++++++++++   +
 
 error[E0080]: the type `Foo` has an unknown layout
   --> $DIR/eval-error.rs:9:30

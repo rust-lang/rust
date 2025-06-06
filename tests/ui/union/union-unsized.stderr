@@ -1,3 +1,15 @@
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/union-unsized.rs:2:5
+   |
+LL |     a: str,
+   |     ^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     a: std::mem::ManuallyDrop<str>,
+   |        +++++++++++++++++++++++   +
+
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/union-unsized.rs:2:8
    |
@@ -17,15 +29,15 @@ LL |     a: Box<str>,
    |        ++++   +
 
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/union-unsized.rs:2:5
+  --> $DIR/union-unsized.rs:11:5
    |
-LL |     a: str,
+LL |     b: str,
    |     ^^^^^^
    |
    = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 help: wrap the field type in `ManuallyDrop<...>`
    |
-LL |     a: std::mem::ManuallyDrop<str>,
+LL |     b: std::mem::ManuallyDrop<str>,
    |        +++++++++++++++++++++++   +
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
@@ -45,18 +57,6 @@ help: the `Box` type always has a statically known size and allocates its conten
    |
 LL |     b: Box<str>,
    |        ++++   +
-
-error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/union-unsized.rs:11:5
-   |
-LL |     b: str,
-   |     ^^^^^^
-   |
-   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
-help: wrap the field type in `ManuallyDrop<...>`
-   |
-LL |     b: std::mem::ManuallyDrop<str>,
-   |        +++++++++++++++++++++++   +
 
 error: aborting due to 4 previous errors
 

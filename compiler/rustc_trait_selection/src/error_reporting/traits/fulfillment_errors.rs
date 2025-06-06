@@ -31,7 +31,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, trace};
 
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
 use super::suggestions::get_explanation_based_on_obligation;
@@ -67,6 +67,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
+                trace!(?root_obligation.cause);
                 // If this obligation was generated as a result of well-formedness checking, see if we
                 // can get a better error message by performing HIR-based well-formedness checking.
                 if let ObligationCauseCode::WellFormed(Some(wf_loc)) =
@@ -80,6 +81,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         obligation.cause = cause.clone();
                         span = obligation.cause.span;
                     }
+                }
+                if let ObligationCauseCode::SizedConstOrStatic | ObligationCauseCode::SharedStatic = root_obligation.cause.code() {
+                    let node = tcx.hir_node_by_def_id(root_obligation.cause.body_id);
+                    span = node.ty().unwrap_or_else(|| panic!("{node:?} had no type")).span;
+                    obligation.cause.span = span;
+                    trace!("patched up span")
                 }
 
                 if let ObligationCauseCode::CompareImplItem {
@@ -1186,7 +1193,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> Diag<'a> {
-        let span = obligation.cause.span;
+        let param = obligation.cause.body_id;
+        let hir::GenericParamKind::Const { ty: &hir::Ty { span, .. }, .. } =
+            self.tcx.hir_node_by_def_id(param).expect_generic_param().kind
+        else {
+            bug!()
+        };
 
         let mut diag = match ty.kind() {
             ty::Float(_) => {

@@ -18,14 +18,6 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
    = note: `#[warn(incomplete_features)]` on by default
 
-error: impls of auto traits cannot be default
-  --> $DIR/validation.rs:9:21
-   |
-LL | default unsafe impl Send for S {}
-   | -------             ^^^^ auto trait
-   | |
-   | default because of this
-
 error[E0367]: `!Send` impl requires `Z: Send` but the struct it is implemented for does not
   --> $DIR/validation.rs:12:1
    |
@@ -37,6 +29,14 @@ note: the implementor must specify the same requirement
    |
 LL | struct Z;
    | ^^^^^^^^
+
+error: impls of auto traits cannot be default
+  --> $DIR/validation.rs:9:21
+   |
+LL | default unsafe impl Send for S {}
+   | -------             ^^^^ auto trait
+   | |
+   | default because of this
 
 error: impls of auto traits cannot be default
   --> $DIR/validation.rs:12:15

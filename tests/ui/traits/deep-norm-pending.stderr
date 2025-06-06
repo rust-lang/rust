@@ -1,19 +1,7 @@
 error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/deep-norm-pending.rs:15:5
-   |
-LL |     fn method() {}
-   |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
-   |
-help: consider further restricting type parameter `T` with trait `Foo`
-   |
-LL |     <T as Foo>::Assoc: Sized, T: Foo
-   |                               ++++++
-
-error[E0277]: the trait bound `T: Foo` is not satisfied
   --> $DIR/deep-norm-pending.rs:9:1
    |
 LL | / impl<T> Bar for T
-LL | |
 LL | |
 LL | | where
 LL | |     <T as Foo>::Assoc: Sized,
@@ -25,15 +13,10 @@ LL |     <T as Foo>::Assoc: Sized, T: Foo
    |                               ++++++
 
 error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/deep-norm-pending.rs:9:1
+  --> $DIR/deep-norm-pending.rs:16:5
    |
-LL | / impl<T> Bar for T
-LL | |
-LL | |
-LL | | where
-...  |
-LL | | }
-   | |_^ the trait `Foo` is not implemented for `T`
+LL |     fn method() {}
+   |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
    |
 help: consider further restricting type parameter `T` with trait `Foo`
    |
@@ -41,7 +24,7 @@ LL |     <T as Foo>::Assoc: Sized, T: Foo
    |                               ++++++
 
 error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/deep-norm-pending.rs:15:5
+  --> $DIR/deep-norm-pending.rs:16:5
    |
 LL |     fn method() {}
    |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
@@ -53,7 +36,7 @@ LL |     <T as Foo>::Assoc: Sized, T: Foo
    |                               ++++++
 
 error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/deep-norm-pending.rs:15:5
+  --> $DIR/deep-norm-pending.rs:16:5
    |
 LL |     fn method() {}
    |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
@@ -72,7 +55,7 @@ LL |     <T as Foo>::Assoc: Sized, T: Foo
    |                               ++++++
 
 error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/deep-norm-pending.rs:15:5
+  --> $DIR/deep-norm-pending.rs:16:5
    |
 LL |     fn method() {}
    |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
@@ -103,7 +86,18 @@ LL |     <T as Foo>::Assoc: Sized, T: Foo
    |                               ++++++
 
 error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/deep-norm-pending.rs:15:5
+  --> $DIR/deep-norm-pending.rs:12:24
+   |
+LL |     <T as Foo>::Assoc: Sized,
+   |                        ^^^^^ the trait `Foo` is not implemented for `T`
+   |
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     <T as Foo>::Assoc: Sized, T: Foo
+   |                               ++++++
+
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/deep-norm-pending.rs:16:5
    |
 LL |     fn method() {}
    |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
@@ -115,11 +109,12 @@ LL |     <T as Foo>::Assoc: Sized, T: Foo
    |                               ++++++
 
 error[E0277]: the trait bound `T: Foo` is not satisfied
-  --> $DIR/deep-norm-pending.rs:15:8
+  --> $DIR/deep-norm-pending.rs:12:24
    |
-LL |     fn method() {}
-   |        ^^^^^^ the trait `Foo` is not implemented for `T`
+LL |     <T as Foo>::Assoc: Sized,
+   |                        ^^^^^ the trait `Foo` is not implemented for `T`
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider further restricting type parameter `T` with trait `Foo`
    |
 LL |     <T as Foo>::Assoc: Sized, T: Foo
