@@ -101,7 +101,6 @@ window.rustdocToggleSrcSidebar = () => {
  * @param {string} srcIndexStr - strinified json map from crate name to dir structure
  */
 function createSrcSidebar(srcIndexStr) {
-    console.log(srcIndexStr);
     const container = nonnull(document.querySelector("nav.sidebar"));
 
     const sidebar = document.createElement("div");
