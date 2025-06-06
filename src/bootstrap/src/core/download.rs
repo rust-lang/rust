@@ -22,8 +22,7 @@ fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
     config.try_run(cmd)
 }
 
-fn extract_curl_version(out: &[u8]) -> semver::Version {
-    let out = String::from_utf8_lossy(out);
+fn extract_curl_version(out: String) -> semver::Version {
     // The output should look like this: "curl <major>.<minor>.<patch> ..."
     out.lines()
         .next()
@@ -32,12 +31,15 @@ fn extract_curl_version(out: &[u8]) -> semver::Version {
         .unwrap_or(semver::Version::new(1, 0, 0))
 }
 
-fn curl_version() -> semver::Version {
-    let mut curl = Command::new("curl");
+fn curl_version(config: &Config) -> semver::Version {
+    let mut curl = command("curl");
     curl.arg("-V");
-    let Ok(out) = curl.output() else { return semver::Version::new(1, 0, 0) };
-    let out = out.stdout;
-    extract_curl_version(&out)
+    let curl = curl.run_capture_stdout_exec_ctx(config);
+    if curl.is_failure() {
+        return semver::Version::new(1, 0, 0);
+    }
+    let output = curl.stdout();
+    extract_curl_version(output)
 }
 
 /// Generic helpers that are useful anywhere in bootstrap.
@@ -267,7 +269,7 @@ impl Config {
             curl.arg("--progress-bar");
         }
         // --retry-all-errors was added in 7.71.0, don't use it if curl is old.
-        if curl_version() >= semver::Version::new(7, 71, 0) {
+        if curl_version(self) >= semver::Version::new(7, 71, 0) {
             curl.arg("--retry-all-errors");
         }
         curl.arg(url);
