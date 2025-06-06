@@ -747,6 +747,7 @@ impl<T> Vec<T> {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(vec_peek_mut)]
     /// let mut vec = Vec::new();
     /// assert!(vec.peek_mut().is_none());
     ///

@@ -2704,9 +2704,13 @@ fn test_peek_mut() {
     assert!(vec.peek_mut().is_none());
     vec.push(1);
     vec.push(2);
-    assert_eq!(vec.peek_mut(), Some(2));
-    *vec.peek_mut() = 0;
-    assert_eq!(vec.peek_mut(), Some(0));
+    if let Some(mut p) = vec.peek_mut() {
+        assert_eq!(*p, 2);
+        *p = 0;
+        assert_eq!(*p, 0);
+    } else {
+        unreachable!()
+    }
 }
 
 /// This assortment of tests, in combination with miri, verifies we handle UB on fishy arguments
