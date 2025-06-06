@@ -191,6 +191,8 @@ impl ChildBySource for VariantId {
                 Either::Right(source) => res[keys::RECORD_FIELD].insert(AstPtr::new(&source), id),
             }
         }
+        let (_, sm) = db.variant_fields_with_source_map(*self);
+        sm.expansions().for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
     }
 }
 
@@ -209,11 +211,10 @@ impl ChildBySource for EnumId {
                 .insert(ast_id_map.get(tree[variant.lookup(db).id.value].ast_id), variant);
         });
         let (_, source_map) = db.enum_signature_with_source_map(*self);
-        source_map.expansions().filter(|(ast, _)| ast.file_id == file_id).for_each(
-            |(ast, &exp_id)| {
-                res[keys::MACRO_CALL].insert(ast.value, exp_id);
-            },
-        );
+        source_map
+            .expansions()
+            .filter(|(ast, _)| ast.file_id == file_id)
+            .for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
     }
 }
 
@@ -274,11 +275,10 @@ impl ChildBySource for GenericDefId {
             }
         }
 
-        source_map.expansions().filter(|(ast, _)| ast.file_id == file_id).for_each(
-            |(ast, &exp_id)| {
-                res[keys::MACRO_CALL].insert(ast.value, exp_id);
-            },
-        );
+        source_map
+            .expansions()
+            .filter(|(ast, _)| ast.file_id == file_id)
+            .for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
     }
 }
 

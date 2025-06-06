@@ -844,4 +844,21 @@ impl<const C: foo$0!()> Trait for () {}
                 Trait"#]],
         );
     }
+
+    #[test]
+    fn works_in_fields() {
+        check(
+            r#"
+macro_rules! foo {
+    () => { u32 };
+}
+struct S {
+    field: foo$0!(),
+}
+"#,
+            expect![[r#"
+                foo!
+                u32"#]],
+        );
+    }
 }
