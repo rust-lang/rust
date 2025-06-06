@@ -219,21 +219,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
-    /// Gets declared value by name.
-    pub(crate) fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
-        debug!("get_declared_value(name={:?})", name);
-        unsafe { llvm::LLVMRustGetNamedValue(self.llmod(), name.as_c_char_ptr(), name.len()) }
-    }
-
-    /// Gets defined or externally defined (AvailableExternally linkage) value by
-    /// name.
-    pub(crate) fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
-        self.get_declared_value(name).and_then(|val| {
-            let declaration = llvm::is_declaration(val);
-            if !declaration { Some(val) } else { None }
-        })
-    }
-
     /// Declare a global with an intention to define it.
     ///
     /// Use this function when you intend to define a global. This function will
@@ -253,5 +238,20 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// Use this function when you intend to define a global without a name.
     pub(crate) fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMRustInsertPrivateGlobal(self.llmod(), ty) }
+    }
+
+    /// Gets declared value by name.
+    pub(crate) fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
+        debug!("get_declared_value(name={:?})", name);
+        unsafe { llvm::LLVMRustGetNamedValue(self.llmod(), name.as_c_char_ptr(), name.len()) }
+    }
+
+    /// Gets defined or externally defined (AvailableExternally linkage) value by
+    /// name.
+    pub(crate) fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
+        self.get_declared_value(name).and_then(|val| {
+            let declaration = llvm::is_declaration(val);
+            if !declaration { Some(val) } else { None }
+        })
     }
 }
