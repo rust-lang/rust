@@ -381,7 +381,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 if self.expr_ty.is_numeric() {
                     if self.expr_ty == fcx.tcx.types.u32 {
                         err.multipart_suggestion(
-                            "try `char::from_u32` instead",
+                            "consider using `char::from_u32` instead",
                             vec![
                                 (self.expr_span.shrink_to_lo(), "char::from_u32(".to_string()),
                                 (self.expr_span.shrink_to_hi().to(self.cast_span), ")".to_string()),
@@ -389,9 +389,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             Applicability::MachineApplicable,
                         );
                     } else if self.expr_ty == fcx.tcx.types.i8 {
-                        err.span_help(self.span, "try casting from `u8` instead");
+                        err.span_help(self.span, "consider casting from `u8` instead");
                     } else {
-                        err.span_help(self.span, "try `char::from_u32` instead (via a `u32`)");
+                        err.span_help(
+                            self.span,
+                            "consider using `char::from_u32` instead (via a `u32`)",
+                        );
                     };
                 }
                 err.emit();
@@ -643,7 +646,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let mtstr = mt.prefix_str();
                 err.span_suggestion_verbose(
                     self.cast_span.shrink_to_lo(),
-                    "try casting to a reference instead",
+                    "consider casting to a reference instead",
                     format!("&{mtstr}"),
                     Applicability::MachineApplicable,
                 );

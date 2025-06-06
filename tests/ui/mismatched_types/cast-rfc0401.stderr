@@ -106,7 +106,7 @@ error[E0604]: only `u8` can be cast as `char`, not `u32`
 LL |     let _ = 0x61u32 as char;
    |             ^^^^^^^^^^^^^^^ invalid cast
    |
-help: try `char::from_u32` instead
+help: consider using `char::from_u32` instead
    |
 LL -     let _ = 0x61u32 as char;
 LL +     let _ = char::from_u32(0x61u32);

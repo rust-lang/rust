@@ -4,7 +4,7 @@ error[E0620]: cast to unsized type: `&[u8]` as `[char]`
 LL |     "example".as_bytes() as [char];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: try casting to a reference instead
+help: consider casting to a reference instead
    |
 LL |     "example".as_bytes() as &[char];
    |                             +
@@ -15,7 +15,7 @@ error[E0620]: cast to unsized type: `&[u8]` as `[char]`
 LL |     arr as [char];
    |     ^^^^^^^^^^^^^
    |
-help: try casting to a reference instead
+help: consider casting to a reference instead
    |
 LL |     arr as &[char];
    |            +

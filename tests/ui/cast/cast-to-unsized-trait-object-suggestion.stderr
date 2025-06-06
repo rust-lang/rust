@@ -4,7 +4,7 @@ error[E0620]: cast to unsized type: `&{integer}` as `dyn Send`
 LL |     &1 as dyn Send;
    |     ^^^^^^^^^^^^^^
    |
-help: try casting to a reference instead
+help: consider casting to a reference instead
    |
 LL |     &1 as &dyn Send;
    |           +

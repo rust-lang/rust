@@ -4,7 +4,7 @@ error[E0620]: cast to unsized type: `&[usize; 2]` as `[usize]`
 LL |     let _foo = &[1_usize, 2] as [usize];
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: try casting to a reference instead
+help: consider casting to a reference instead
    |
 LL |     let _foo = &[1_usize, 2] as &[usize];
    |                                 +
