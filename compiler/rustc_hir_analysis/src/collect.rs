@@ -615,105 +615,6 @@ fn get_new_lifetime_name<'tcx>(
     (1..).flat_map(a_to_z_repeat_n).find(|lt| !existing_lifetimes.contains(lt.as_str())).unwrap()
 }
 
-#[instrument(level = "debug", skip_all)]
-pub(super) fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
-    let it = tcx.hir_item(item_id);
-    debug!(item = ?it.kind.ident(), id = %it.hir_id());
-    let def_id = item_id.owner_id.def_id;
-
-    match &it.kind {
-        // These don't define types.
-        hir::ItemKind::ExternCrate(..)
-        | hir::ItemKind::Use(..)
-        | hir::ItemKind::Macro(..)
-        | hir::ItemKind::Mod(..)
-        | hir::ItemKind::GlobalAsm { .. } => {}
-        hir::ItemKind::ForeignMod { items, .. } => {
-            for item in *items {
-                let item = tcx.hir_foreign_item(item.id);
-                tcx.ensure_ok().generics_of(item.owner_id);
-                tcx.ensure_ok().type_of(item.owner_id);
-                tcx.ensure_ok().predicates_of(item.owner_id);
-                if tcx.is_conditionally_const(def_id) {
-                    tcx.ensure_ok().explicit_implied_const_bounds(def_id);
-                    tcx.ensure_ok().const_conditions(def_id);
-                }
-                match item.kind {
-                    hir::ForeignItemKind::Fn(..) => {
-                        tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
-                        tcx.ensure_ok().fn_sig(item.owner_id)
-                    }
-                    hir::ForeignItemKind::Static(..) => {
-                        tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
-                    }
-                    _ => (),
-                }
-            }
-        }
-        hir::ItemKind::Enum(..) => {
-            tcx.ensure_ok().generics_of(def_id);
-            tcx.ensure_ok().type_of(def_id);
-            tcx.ensure_ok().predicates_of(def_id);
-            lower_enum_variant_types(tcx, def_id.to_def_id());
-        }
-        hir::ItemKind::Impl { .. } => {
-            tcx.ensure_ok().generics_of(def_id);
-            tcx.ensure_ok().type_of(def_id);
-            tcx.ensure_ok().impl_trait_header(def_id);
-            tcx.ensure_ok().predicates_of(def_id);
-            tcx.ensure_ok().associated_items(def_id);
-        }
-        hir::ItemKind::Trait(..) => {
-            tcx.ensure_ok().generics_of(def_id);
-            tcx.ensure_ok().trait_def(def_id);
-            tcx.at(it.span).explicit_super_predicates_of(def_id);
-            tcx.ensure_ok().predicates_of(def_id);
-            tcx.ensure_ok().associated_items(def_id);
-        }
-        hir::ItemKind::TraitAlias(..) => {
-            tcx.ensure_ok().generics_of(def_id);
-            tcx.at(it.span).explicit_implied_predicates_of(def_id);
-            tcx.at(it.span).explicit_super_predicates_of(def_id);
-            tcx.ensure_ok().predicates_of(def_id);
-        }
-        hir::ItemKind::Struct(_, _, struct_def) | hir::ItemKind::Union(_, _, struct_def) => {
-            tcx.ensure_ok().generics_of(def_id);
-            tcx.ensure_ok().type_of(def_id);
-            tcx.ensure_ok().predicates_of(def_id);
-
-            for f in struct_def.fields() {
-                tcx.ensure_ok().generics_of(f.def_id);
-                tcx.ensure_ok().type_of(f.def_id);
-                tcx.ensure_ok().predicates_of(f.def_id);
-            }
-
-            if let Some(ctor_def_id) = struct_def.ctor_def_id() {
-                lower_variant_ctor(tcx, ctor_def_id);
-            }
-        }
-
-        hir::ItemKind::TyAlias(..) => {
-            tcx.ensure_ok().generics_of(def_id);
-            tcx.ensure_ok().type_of(def_id);
-            tcx.ensure_ok().predicates_of(def_id);
-        }
-
-        hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => {
-            tcx.ensure_ok().generics_of(def_id);
-            tcx.ensure_ok().type_of(def_id);
-            tcx.ensure_ok().predicates_of(def_id);
-        }
-
-        hir::ItemKind::Fn { .. } => {
-            tcx.ensure_ok().generics_of(def_id);
-            tcx.ensure_ok().type_of(def_id);
-            tcx.ensure_ok().predicates_of(def_id);
-            tcx.ensure_ok().fn_sig(def_id);
-            tcx.ensure_ok().codegen_fn_attrs(def_id);
-        }
-    }
-}
-
 pub(crate) fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
     let trait_item = tcx.hir_trait_item(trait_item_id);
     let def_id = trait_item_id.owner_id;
@@ -761,13 +662,13 @@ pub(super) fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
     }
 }
 
-fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(super) fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     tcx.ensure_ok().generics_of(def_id);
     tcx.ensure_ok().type_of(def_id);
     tcx.ensure_ok().predicates_of(def_id);
 }
 
-fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
+pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr().discr_type();
     let initial = repr_type.initial_discriminant(tcx);

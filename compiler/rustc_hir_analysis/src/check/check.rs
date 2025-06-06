@@ -758,17 +758,34 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
     }
 
     match tcx.def_kind(def_id) {
-        DefKind::Static { .. } => {
-            check_static_inhabited(tcx, def_id);
-            check_static_linkage(tcx, def_id);
-            wfcheck::check_static_item(tcx, def_id)?;
+        def_kind @ (DefKind::Static { .. } | DefKind::Const) => {
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
+            match def_kind {
+                DefKind::Static { .. } => {
+                    check_static_inhabited(tcx, def_id);
+                    check_static_linkage(tcx, def_id);
+                    wfcheck::check_static_item(tcx, def_id)?;
+                }
+                DefKind::Const => {}
+                _ => unreachable!(),
+            }
         }
-        DefKind::Const => {}
         DefKind::Enum => {
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
+            crate::collect::lower_enum_variant_types(tcx, def_id.to_def_id());
             check_enum(tcx, def_id);
             check_variances_for_type_defn(tcx, def_id);
         }
         DefKind::Fn => {
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
+            tcx.ensure_ok().fn_sig(def_id);
+            tcx.ensure_ok().codegen_fn_attrs(def_id);
             if let Some(i) = tcx.intrinsic(def_id) {
                 intrinsic::check_intrinsic_type(
                     tcx,
@@ -779,6 +796,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             }
         }
         DefKind::Impl { of_trait } => {
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().impl_trait_header(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
+            tcx.ensure_ok().associated_items(def_id);
             if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
                 tcx.ensure_ok()
                     .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id)?;
@@ -787,6 +809,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             }
         }
         DefKind::Trait => {
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().trait_def(def_id);
+            tcx.ensure_ok().explicit_super_predicates_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
+            tcx.ensure_ok().associated_items(def_id);
             let assoc_items = tcx.associated_items(def_id);
             check_on_unimplemented(tcx, def_id);
 
@@ -805,12 +832,32 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 }
             }
         }
-        DefKind::Struct => {
-            check_struct(tcx, def_id);
-            check_variances_for_type_defn(tcx, def_id);
+        DefKind::TraitAlias => {
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().explicit_implied_predicates_of(def_id);
+            tcx.ensure_ok().explicit_super_predicates_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
         }
-        DefKind::Union => {
-            check_union(tcx, def_id);
+        def_kind @ (DefKind::Struct | DefKind::Union) => {
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
+
+            let adt = tcx.adt_def(def_id).non_enum_variant();
+            for f in adt.fields.iter() {
+                tcx.ensure_ok().generics_of(f.did);
+                tcx.ensure_ok().type_of(f.did);
+                tcx.ensure_ok().predicates_of(f.did);
+            }
+
+            if let Some((_, ctor_def_id)) = adt.ctor {
+                crate::collect::lower_variant_ctor(tcx, ctor_def_id.expect_local());
+            }
+            match def_kind {
+                DefKind::Struct => check_struct(tcx, def_id),
+                DefKind::Union => check_union(tcx, def_id),
+                _ => unreachable!(),
+            }
             check_variances_for_type_defn(tcx, def_id);
         }
         DefKind::OpaqueTy => {
@@ -838,6 +885,9 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             }
         }
         DefKind::TyAlias => {
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
             check_type_alias_type_params_are_used(tcx, def_id);
             if tcx.type_alias_is_lazy(def_id) {
                 res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
@@ -897,11 +947,23 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 }
 
                 let item = tcx.hir_foreign_item(item.id);
-                match &item.kind {
-                    hir::ForeignItemKind::Fn(sig, _, _) => {
+                tcx.ensure_ok().generics_of(item.owner_id);
+                tcx.ensure_ok().type_of(item.owner_id);
+                tcx.ensure_ok().predicates_of(item.owner_id);
+                if tcx.is_conditionally_const(def_id) {
+                    tcx.ensure_ok().explicit_implied_const_bounds(def_id);
+                    tcx.ensure_ok().const_conditions(def_id);
+                }
+                match item.kind {
+                    hir::ForeignItemKind::Fn(sig, ..) => {
+                        tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
+                        tcx.ensure_ok().fn_sig(item.owner_id);
                         require_c_abi_if_c_variadic(tcx, sig.decl, abi, item.span);
                     }
-                    _ => {}
+                    hir::ForeignItemKind::Static(..) => {
+                        tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
+                    }
+                    _ => (),
                 }
             }
         }

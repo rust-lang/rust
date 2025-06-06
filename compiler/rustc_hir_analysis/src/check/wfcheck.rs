@@ -230,7 +230,6 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id)
     );
-    crate::collect::lower_item(tcx, item.item_id());
 
     match item.kind {
         // Right now we check that every default trait implementation
