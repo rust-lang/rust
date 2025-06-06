@@ -4,6 +4,7 @@ use std::sync::Arc;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::svh::Svh;
+use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::DepGraph;
@@ -88,6 +89,7 @@ impl Linker {
         }
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
+        let _timing = sess.timings.start_section(sess.dcx(), TimingSection::Linking);
         codegen_backend.link(sess, codegen_results, self.metadata, &self.output_filenames)
     }
 }
