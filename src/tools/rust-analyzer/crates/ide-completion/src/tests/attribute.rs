@@ -30,6 +30,8 @@ pub struct Foo(#[m$0] i32);
             at deprecated
             at derive                                  macro derive
             at derive(…)
+            at diagnostic::do_not_recommend
+            at diagnostic::on_unimplemented
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
@@ -472,12 +474,12 @@ fn attr_on_trait() {
             at cfg_attr(…)
             at deny(…)
             at deprecated
+            at diagnostic::on_unimplemented
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
             at expect(…)
             at forbid(…)
-            at must_use
             at must_use
             at no_mangle
             at warn(…)
@@ -498,6 +500,7 @@ fn attr_on_impl() {
             at cfg_attr(…)
             at deny(…)
             at deprecated
+            at diagnostic::do_not_recommend
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
@@ -528,6 +531,76 @@ fn attr_on_impl() {
             at warn(…)
             kw crate::
             kw self::
+        "#]],
+    );
+}
+
+#[test]
+fn attr_with_qualifier() {
+    check(
+        r#"#[diagnostic::$0] impl () {}"#,
+        expect![[r#"
+            at allow(…)
+            at automatically_derived
+            at cfg(…)
+            at cfg_attr(…)
+            at deny(…)
+            at deprecated
+            at do_not_recommend
+            at doc = "…"
+            at doc(alias = "…")
+            at doc(hidden)
+            at expect(…)
+            at forbid(…)
+            at must_use
+            at no_mangle
+            at warn(…)
+        "#]],
+    );
+    check(
+        r#"#[diagnostic::$0] trait Foo {}"#,
+        expect![[r#"
+            at allow(…)
+            at cfg(…)
+            at cfg_attr(…)
+            at deny(…)
+            at deprecated
+            at doc = "…"
+            at doc(alias = "…")
+            at doc(hidden)
+            at expect(…)
+            at forbid(…)
+            at must_use
+            at no_mangle
+            at on_unimplemented
+            at warn(…)
+        "#]],
+    );
+}
+
+#[test]
+fn attr_diagnostic_on_unimplemented() {
+    check(
+        r#"#[diagnostic::on_unimplemented($0)] trait Foo {}"#,
+        expect![[r#"
+            ba label = "…"
+            ba message = "…"
+            ba note = "…"
+        "#]],
+    );
+    check(
+        r#"#[diagnostic::on_unimplemented(message = "foo", $0)] trait Foo {}"#,
+        expect![[r#"
+            ba label = "…"
+            ba note = "…"
+        "#]],
+    );
+    check(
+        r#"#[diagnostic::on_unimplemented(note = "foo", $0)] trait Foo {}"#,
+        expect![[r#"
+            ba label = "…"
+            ba message = "…"
+            ba note = "…"
         "#]],
     );
 }
@@ -619,7 +692,6 @@ fn attr_on_fn() {
             at link_name = "…"
             at link_section = "…"
             at must_use
-            at must_use
             at no_mangle
             at panic_handler
             at proc_macro
@@ -649,6 +721,8 @@ fn attr_in_source_file_end() {
             at deny(…)
             at deprecated
             at derive(…)
+            at diagnostic::do_not_recommend
+            at diagnostic::on_unimplemented
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
