@@ -40,14 +40,6 @@ pub struct Feature {
     issue: Option<NonZero<u32>>,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum Stability {
-    Unstable,
-    // First argument is tracking issue link; second argument is an optional
-    // help message, which defaults to "remove this attribute".
-    Deprecated(&'static str, Option<&'static str>),
-}
-
 #[derive(Clone, Copy, Debug, Hash)]
 pub enum UnstableFeatures {
     /// Disallow use of unstable features, as on beta/stable channels.
@@ -144,9 +136,8 @@ pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZero<u
 pub use accepted::ACCEPTED_LANG_FEATURES;
 pub use builtin_attrs::{
     AttributeDuplicates, AttributeGate, AttributeSafety, AttributeTemplate, AttributeType,
-    BUILTIN_ATTRIBUTE_MAP, BUILTIN_ATTRIBUTES, BuiltinAttribute, GatedCfg, deprecated_attributes,
-    encode_cross_crate, find_gated_cfg, is_builtin_attr_name, is_stable_diagnostic_attribute,
-    is_valid_for_get_attr,
+    BUILTIN_ATTRIBUTE_MAP, BUILTIN_ATTRIBUTES, BuiltinAttribute, GatedCfg, encode_cross_crate,
+    find_gated_cfg, is_builtin_attr_name, is_stable_diagnostic_attribute, is_valid_for_get_attr,
 };
 pub use removed::REMOVED_LANG_FEATURES;
 pub use unstable::{
