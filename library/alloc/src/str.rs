@@ -246,8 +246,6 @@ impl str {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s = "this is old";
     ///
@@ -302,8 +300,6 @@ impl str {
     /// replaces them with the replacement string slice at most `count` times.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let s = "foo foo 123 foo";
