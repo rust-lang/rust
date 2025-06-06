@@ -2525,11 +2525,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(v);
     }
 
-    if name == sym::simd_fshr || name == sym::simd_fshl {
+    if name == sym::simd_funnel_shr || name == sym::simd_funnel_shl {
         let a = args[0].immediate();
         let b = args[1].immediate();
         let shift = args[2].immediate();
-        let is_left = name == sym::simd_fshl;
+        let is_left = name == sym::simd_funnel_shl;
         let ptr_bits = bx.tcx().data_layout.pointer_size.bits();
 
         let elem_width = match *in_elem.kind() {

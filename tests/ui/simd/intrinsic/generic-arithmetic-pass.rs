@@ -84,7 +84,7 @@ fn main() {
         all_eq!(simd_shr(simd_shl(y2, y1), y1), y2);
 
         all_eq!(
-            simd_fshl(x1, x2, x1),
+            simd_funnel_shl(x1, x2, x1),
             i32x4([
                 (1 << 1) | (2 >> 31),
                 (2 << 2) | (3 >> 30),
@@ -93,7 +93,7 @@ fn main() {
             ])
         );
         all_eq!(
-            simd_fshl(x2, x1, x1),
+            simd_funnel_shl(x2, x1, x1),
             i32x4([
                 (2 << 1) | (1 >> 31),
                 (3 << 2) | (2 >> 30),
@@ -102,7 +102,7 @@ fn main() {
             ])
         );
         all_eq!(
-            simd_fshl(y1, y2, y1),
+            simd_funnel_shl(y1, y2, y1),
             U32::<4>([
                 (1 << 1) | (2 >> 31),
                 (2 << 2) | (3 >> 30),
@@ -111,7 +111,7 @@ fn main() {
             ])
         );
         all_eq!(
-            simd_fshl(y2, y1, y1),
+            simd_funnel_shl(y2, y1, y1),
             U32::<4>([
                 (2 << 1) | (1 >> 31),
                 (3 << 2) | (2 >> 30),
@@ -121,7 +121,7 @@ fn main() {
         );
 
         all_eq!(
-            simd_fshr(x1, x2, x1),
+            simd_funnel_shr(x1, x2, x1),
             i32x4([
                 (1 << 31) | (2 >> 1),
                 (2 << 30) | (3 >> 2),
@@ -130,7 +130,7 @@ fn main() {
             ])
         );
         all_eq!(
-            simd_fshr(x2, x1, x1),
+            simd_funnel_shr(x2, x1, x1),
             i32x4([
                 (2 << 31) | (1 >> 1),
                 (3 << 30) | (2 >> 2),
@@ -139,7 +139,7 @@ fn main() {
             ])
         );
         all_eq!(
-            simd_fshr(y1, y2, y1),
+            simd_funnel_shr(y1, y2, y1),
             U32::<4>([
                 (1 << 31) | (2 >> 1),
                 (2 << 30) | (3 >> 2),
@@ -148,7 +148,7 @@ fn main() {
             ])
         );
         all_eq!(
-            simd_fshr(y2, y1, y1),
+            simd_funnel_shr(y2, y1, y1),
             U32::<4>([
                 (2 << 31) | (1 >> 1),
                 (3 << 30) | (2 >> 2),

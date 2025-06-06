@@ -34,17 +34,17 @@ error[E0511]: invalid monomorphization of `simd_shr` intrinsic: expected SIMD in
 LL |         simd_shr(0, 0);
    |         ^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_fshl` intrinsic: expected SIMD input type, found non-SIMD `i32`
+error[E0511]: invalid monomorphization of `simd_funnel_shl` intrinsic: expected SIMD input type, found non-SIMD `i32`
   --> $DIR/generic-arithmetic-2.rs:80:9
    |
-LL |         simd_fshl(0, 0, 0);
-   |         ^^^^^^^^^^^^^^^^^^
+LL |         simd_funnel_shl(0, 0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_fshr` intrinsic: expected SIMD input type, found non-SIMD `i32`
+error[E0511]: invalid monomorphization of `simd_funnel_shr` intrinsic: expected SIMD input type, found non-SIMD `i32`
   --> $DIR/generic-arithmetic-2.rs:82:9
    |
-LL |         simd_fshr(0, 0, 0);
-   |         ^^^^^^^^^^^^^^^^^^
+LL |         simd_funnel_shr(0, 0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_and` intrinsic: expected SIMD input type, found non-SIMD `i32`
   --> $DIR/generic-arithmetic-2.rs:84:9
@@ -106,17 +106,17 @@ error[E0511]: invalid monomorphization of `simd_shr` intrinsic: unsupported oper
 LL |         simd_shr(z, z);
    |         ^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_fshl` intrinsic: unsupported operation on `f32x4` with element `f32`
+error[E0511]: invalid monomorphization of `simd_funnel_shl` intrinsic: unsupported operation on `f32x4` with element `f32`
   --> $DIR/generic-arithmetic-2.rs:106:9
    |
-LL |         simd_fshl(z, z, z);
-   |         ^^^^^^^^^^^^^^^^^^
+LL |         simd_funnel_shl(z, z, z);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_fshr` intrinsic: unsupported operation on `f32x4` with element `f32`
+error[E0511]: invalid monomorphization of `simd_funnel_shr` intrinsic: unsupported operation on `f32x4` with element `f32`
   --> $DIR/generic-arithmetic-2.rs:108:9
    |
-LL |         simd_fshr(z, z, z);
-   |         ^^^^^^^^^^^^^^^^^^
+LL |         simd_funnel_shr(z, z, z);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_and` intrinsic: unsupported operation on `f32x4` with element `f32`
   --> $DIR/generic-arithmetic-2.rs:110:9

@@ -661,7 +661,7 @@ pub(crate) fn check_intrinsic_type(
             | sym::simd_round
             | sym::simd_round_ties_even
             | sym::simd_trunc => (1, 0, vec![param(0)], param(0)),
-            sym::simd_fma | sym::simd_relaxed_fma | sym::simd_fshl | sym::simd_fshr => {
+            sym::simd_fma | sym::simd_relaxed_fma | sym::simd_funnel_shl | sym::simd_funnel_shr => {
                 (1, 0, vec![param(0), param(0), param(0)], param(0))
             }
             sym::simd_gather => (3, 0, vec![param(0), param(1), param(2)], param(0)),

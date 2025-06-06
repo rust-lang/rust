@@ -141,7 +141,7 @@ pub unsafe fn simd_shr<T>(lhs: T, rhs: T) -> T;
 /// Each element of `shift` must be less than `<int>::BITS`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_fshl<T>(a: T, b: T, shift: T) -> T;
+pub unsafe fn simd_funnel_shl<T>(a: T, b: T, shift: T) -> T;
 
 /// Funnel Shifts vector right elementwise, with UB on overflow.
 ///
@@ -158,7 +158,7 @@ pub unsafe fn simd_fshl<T>(a: T, b: T, shift: T) -> T;
 /// Each element of `shift` must be less than `<int>::BITS`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_fshr<T>(a: T, b: T, shift: T) -> T;
+pub unsafe fn simd_funnel_shr<T>(a: T, b: T, shift: T) -> T;
 
 /// "Ands" vectors elementwise.
 ///
