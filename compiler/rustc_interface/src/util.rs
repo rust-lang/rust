@@ -345,14 +345,10 @@ pub fn rustc_path<'a>() -> Option<&'a Path> {
 }
 
 fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
-    Some(filesearch::get_or_default_sysroot()).iter().find_map(|sysroot| {
-        let candidate = sysroot.join(bin_path).join(if cfg!(target_os = "windows") {
-            "rustc.exe"
-        } else {
-            "rustc"
-        });
-        candidate.exists().then_some(candidate)
-    })
+    let candidate = filesearch::get_or_default_sysroot()
+        .join(bin_path)
+        .join(if cfg!(target_os = "windows") { "rustc.exe" } else { "rustc" });
+    candidate.exists().then_some(candidate)
 }
 
 #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
