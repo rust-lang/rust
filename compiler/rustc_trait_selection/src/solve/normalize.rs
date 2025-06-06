@@ -16,7 +16,6 @@ use tracing::instrument;
 use super::{FulfillmentCtxt, NextSolverError};
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::error_reporting::traits::OverflowCause;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
@@ -143,12 +142,18 @@ where
 
     fn normalize_unevaluated_const(
         &mut self,
-        uv: ty::UnevaluatedConst<'tcx>,
+        alias_ct: ty::Const<'tcx>,
     ) -> Result<ty::Const<'tcx>, Vec<E>> {
+        assert_matches!(alias_ct.kind(), ty::ConstKind::Unevaluated(..));
+
         let infcx = self.at.infcx;
         let tcx = infcx.tcx;
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
+            let ty::ConstKind::Unevaluated(uv) = alias_ct.kind() else {
+                unreachable!();
+            };
+
             self.at.infcx.err_ctxt().report_overflow_error(
                 OverflowCause::DeeplyNormalize(uv.into()),
                 self.at.cause.span,
@@ -164,21 +169,20 @@ where
             tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::NormalizesTo { alias: uv.into(), term: new_infer_ct.into() },
+            ty::PredicateKind::AliasRelate(
+                alias_ct.into(),
+                new_infer_ct.into(),
+                ty::AliasRelationDirection::Equate,
+            ),
         );
 
-        let result = if infcx.predicate_may_hold(&obligation) {
-            self.fulfill_cx.register_predicate_obligation(infcx, obligation);
-            let errors = self.fulfill_cx.select_where_possible(infcx);
-            if !errors.is_empty() {
-                return Err(errors);
-            }
-            let ct = infcx.resolve_vars_if_possible(new_infer_ct);
-            ct.try_fold_with(self)?
-        } else {
-            ty::Const::new_unevaluated(tcx, uv).try_super_fold_with(self)?
-        };
+        self.fulfill_cx.register_predicate_obligation(infcx, obligation);
+        self.select_all_and_stall_coroutine_predicates()?;
 
+        // Alias is guaranteed to be fully structurally resolved,
+        // so we can super fold here.
+        let ct = infcx.resolve_vars_if_possible(new_infer_ct);
+        let result = ct.try_super_fold_with(self)?;
         self.depth -= 1;
         Ok(result)
     }
@@ -260,15 +264,12 @@ where
             return Ok(ct);
         }
 
-        let uv = match ct.kind() {
-            ty::ConstKind::Unevaluated(ct) => ct,
-            _ => return ct.try_super_fold_with(self),
-        };
+        let ty::ConstKind::Unevaluated(..) = ct.kind() else { return ct.try_super_fold_with(self) };
 
-        if uv.has_escaping_bound_vars() {
-            let (uv, mapped_regions, mapped_types, mapped_consts) =
-                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, uv);
-            let result = ensure_sufficient_stack(|| self.normalize_unevaluated_const(uv))?;
+        if ct.has_escaping_bound_vars() {
+            let (ct, mapped_regions, mapped_types, mapped_consts) =
+                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, ct);
+            let result = ensure_sufficient_stack(|| self.normalize_unevaluated_const(ct))?;
             Ok(PlaceholderReplacer::replace_placeholders(
                 infcx,
                 mapped_regions,
@@ -278,7 +279,7 @@ where
                 result,
             ))
         } else {
-            ensure_sufficient_stack(|| self.normalize_unevaluated_const(uv))
+            ensure_sufficient_stack(|| self.normalize_unevaluated_const(ct))
         }
     }
 }
