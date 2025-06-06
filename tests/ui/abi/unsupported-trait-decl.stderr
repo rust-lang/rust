@@ -1,0 +1,15 @@
+error[E0570]: `"gpu-kernel"` is not a supported ABI for the current target
+  --> $DIR/unsupported-trait-decl.rs:6:12
+   |
+LL |     extern "gpu-kernel" fn mu();
+   |            ^^^^^^^^^^^^
+
+error[E0570]: `"gpu-kernel"` is not a supported ABI for the current target
+  --> $DIR/unsupported-trait-decl.rs:10:19
+   |
+LL | type TAU = extern "gpu-kernel" fn();
+   |                   ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0570`.
