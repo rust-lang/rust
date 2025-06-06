@@ -229,9 +229,9 @@ fn mutex_kind_from_static_initializer<'tcx>(
 // We store some data directly inside the type, ignoring the platform layout:
 // - init: u32
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 struct PthreadRwLock {
-    id: RwLockId,
+    rwlock_ref: RwLockRef,
 }
 
 fn rwlock_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> {
@@ -278,8 +278,8 @@ where
             )? {
                 throw_unsup_format!("unsupported static initializer used for `pthread_rwlock_t`");
             }
-            let id = ecx.machine.sync.rwlock_create();
-            interp_ok(PthreadRwLock { id })
+            let rwlock_ref = ecx.machine.sync.rwlock_create();
+            interp_ok(PthreadRwLock { rwlock_ref })
         },
     )
 }
@@ -616,12 +616,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = rwlock_get_data(this, rwlock_op)?.id;
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
 
-        if this.rwlock_is_write_locked(id) {
-            this.rwlock_enqueue_and_block_reader(id, Scalar::from_i32(0), dest.clone());
+        if this.rwlock_is_write_locked(&rwlock.rwlock_ref) {
+            this.rwlock_enqueue_and_block_reader(
+                rwlock.rwlock_ref,
+                Scalar::from_i32(0),
+                dest.clone(),
+            );
         } else {
-            this.rwlock_reader_lock(id);
+            this.rwlock_reader_lock(&rwlock.rwlock_ref);
             this.write_null(dest)?;
         }
 
@@ -631,12 +635,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_rwlock_tryrdlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let id = rwlock_get_data(this, rwlock_op)?.id;
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
 
-        if this.rwlock_is_write_locked(id) {
+        if this.rwlock_is_write_locked(&rwlock.rwlock_ref) {
             interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
         } else {
-            this.rwlock_reader_lock(id);
+            this.rwlock_reader_lock(&rwlock.rwlock_ref);
             interp_ok(Scalar::from_i32(0))
         }
     }
@@ -648,9 +652,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let id = rwlock_get_data(this, rwlock_op)?.id;
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
 
-        if this.rwlock_is_locked(id) {
+        if this.rwlock_is_locked(&rwlock.rwlock_ref) {
             // Note: this will deadlock if the lock is already locked by this
             // thread in any way.
             //
@@ -663,9 +667,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // report the deadlock only when no thread can continue execution,
             // but we could detect that this lock is already locked and report
             // an error.)
-            this.rwlock_enqueue_and_block_writer(id, Scalar::from_i32(0), dest.clone());
+            this.rwlock_enqueue_and_block_writer(
+                rwlock.rwlock_ref,
+                Scalar::from_i32(0),
+                dest.clone(),
+            );
         } else {
-            this.rwlock_writer_lock(id);
+            this.rwlock_writer_lock(&rwlock.rwlock_ref);
             this.write_null(dest)?;
         }
 
@@ -675,12 +683,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_rwlock_trywrlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let id = rwlock_get_data(this, rwlock_op)?.id;
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
 
-        if this.rwlock_is_locked(id) {
+        if this.rwlock_is_locked(&rwlock.rwlock_ref) {
             interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
         } else {
-            this.rwlock_writer_lock(id);
+            this.rwlock_writer_lock(&rwlock.rwlock_ref);
             interp_ok(Scalar::from_i32(0))
         }
     }
@@ -688,9 +696,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_rwlock_unlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
 
-        let id = rwlock_get_data(this, rwlock_op)?.id;
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
 
-        if this.rwlock_reader_unlock(id)? || this.rwlock_writer_unlock(id)? {
+        if this.rwlock_reader_unlock(&rwlock.rwlock_ref)?
+            || this.rwlock_writer_unlock(&rwlock.rwlock_ref)?
+        {
             interp_ok(())
         } else {
             throw_ub_format!("unlocked an rwlock that was not locked by the active thread");
@@ -702,9 +712,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Reading the field also has the side-effect that we detect double-`destroy`
         // since we make the field uninit below.
-        let id = rwlock_get_data(this, rwlock_op)?.id;
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
 
-        if this.rwlock_is_locked(id) {
+        if this.rwlock_is_locked(&rwlock.rwlock_ref) {
             throw_ub_format!("destroyed a locked rwlock");
         }
 

@@ -75,8 +75,6 @@ impl VisitProvenance for MutexRef {
     }
 }
 
-declare_id!(RwLockId);
-
 /// The read-write lock state.
 #[derive(Default, Debug)]
 struct RwLock {
@@ -109,6 +107,21 @@ struct RwLock {
     /// locks.
     /// This is only relevant when there is an active reader.
     clock_current_readers: VClock,
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct RwLockRef(Rc<RefCell<RwLock>>);
+
+impl RwLockRef {
+    fn new() -> Self {
+        RwLockRef(Rc::new(RefCell::new(RwLock::default())))
+    }
+}
+
+impl VisitProvenance for RwLockRef {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
+        // RwLockRef contains no provenance.
+    }
 }
 
 declare_id!(CondvarId);
@@ -164,7 +177,6 @@ struct FutexWaiter {
 /// The state of all synchronization objects.
 #[derive(Default, Debug)]
 pub struct SynchronizationObjects {
-    rwlocks: IndexVec<RwLockId, RwLock>,
     condvars: IndexVec<CondvarId, Condvar>,
     pub(super) init_onces: IndexVec<InitOnceId, InitOnce>,
 }
@@ -196,8 +208,8 @@ impl SynchronizationObjects {
     pub fn mutex_create(&mut self) -> MutexRef {
         MutexRef::new()
     }
-    pub fn rwlock_create(&mut self) -> RwLockId {
-        self.rwlocks.push(Default::default())
+    pub fn rwlock_create(&mut self) -> RwLockRef {
+        RwLockRef::new()
     }
 
     pub fn condvar_create(&mut self) -> CondvarId {
@@ -447,12 +459,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     #[inline]
     /// Check if locked.
-    fn rwlock_is_locked(&self, id: RwLockId) -> bool {
-        let this = self.eval_context_ref();
-        let rwlock = &this.machine.sync.rwlocks[id];
+    fn rwlock_is_locked(&self, rw_lock_ref: &RwLockRef) -> bool {
+        let rwlock = rw_lock_ref.0.borrow();
         trace!(
-            "rwlock_is_locked: {:?} writer is {:?} and there are {} reader threads (some of which could hold multiple read locks)",
-            id,
+            "rwlock_is_locked: writer is {:?} and there are {} reader threads (some of which could hold multiple read locks)",
             rwlock.writer,
             rwlock.readers.len(),
         );
@@ -461,21 +471,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Check if write locked.
     #[inline]
-    fn rwlock_is_write_locked(&self, id: RwLockId) -> bool {
-        let this = self.eval_context_ref();
-        let rwlock = &this.machine.sync.rwlocks[id];
-        trace!("rwlock_is_write_locked: {:?} writer is {:?}", id, rwlock.writer);
+    fn rwlock_is_write_locked(&self, rwlock_ref: &RwLockRef) -> bool {
+        let rwlock = rwlock_ref.0.borrow();
+        trace!("rwlock_is_write_locked: writer is {:?}", rwlock.writer);
         rwlock.writer.is_some()
     }
 
     /// Read-lock the lock by adding the `reader` the list of threads that own
     /// this lock.
-    fn rwlock_reader_lock(&mut self, id: RwLockId) {
+    fn rwlock_reader_lock(&mut self, rwlock_ref: &RwLockRef) {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
-        assert!(!this.rwlock_is_write_locked(id), "the lock is write locked");
-        trace!("rwlock_reader_lock: {:?} now also held (one more time) by {:?}", id, thread);
-        let rwlock = &mut this.machine.sync.rwlocks[id];
+        assert!(!this.rwlock_is_write_locked(rwlock_ref), "the lock is write locked");
+        trace!("rwlock_reader_lock: now also held (one more time) by {:?}", thread);
+        let mut rwlock = rwlock_ref.0.borrow_mut();
         let count = rwlock.readers.entry(thread).or_insert(0);
         *count = count.strict_add(1);
         if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
@@ -485,20 +494,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Try read-unlock the lock for the current threads and potentially give the lock to a new owner.
     /// Returns `true` if succeeded, `false` if this `reader` did not hold the lock.
-    fn rwlock_reader_unlock(&mut self, id: RwLockId) -> InterpResult<'tcx, bool> {
+    fn rwlock_reader_unlock(&mut self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
-        let rwlock = &mut this.machine.sync.rwlocks[id];
+        let mut rwlock = rwlock_ref.0.borrow_mut();
         match rwlock.readers.entry(thread) {
             Entry::Occupied(mut entry) => {
                 let count = entry.get_mut();
                 assert!(*count > 0, "rwlock locked with count == 0");
                 *count -= 1;
                 if *count == 0 {
-                    trace!("rwlock_reader_unlock: {:?} no longer held by {:?}", id, thread);
+                    trace!("rwlock_reader_unlock: no longer held by {:?}", thread);
                     entry.remove();
                 } else {
-                    trace!("rwlock_reader_unlock: {:?} held one less time by {:?}", id, thread);
+                    trace!("rwlock_reader_unlock: held one less time by {:?}", thread);
                 }
             }
             Entry::Vacant(_) => return interp_ok(false), // we did not even own this lock
@@ -509,17 +518,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 rwlock.clock_current_readers.join(clock)
             });
         }
+        drop(rwlock); // FIXME can we avoid releasing and re-acquiring the RefCell?
 
         // The thread was a reader. If the lock is not held any more, give it to a writer.
-        if this.rwlock_is_locked(id).not() {
+        if this.rwlock_is_locked(rwlock_ref).not() {
             // All the readers are finished, so set the writer data-race handle to the value
             // of the union of all reader data race handles, since the set of readers
             // happen-before the writers
-            let rwlock = &mut this.machine.sync.rwlocks[id];
-            rwlock.clock_unlocked.clone_from(&rwlock.clock_current_readers);
+            let mut rwlock = rwlock_ref.0.borrow_mut();
+            let rwlock_ref = &mut *rwlock;
+            rwlock_ref.clock_unlocked.clone_from(&rwlock_ref.clock_current_readers);
             // See if there is a thread to unblock.
-            if let Some(writer) = rwlock.writer_queue.pop_front() {
-                this.unblock_thread(writer, BlockReason::RwLock(id))?;
+            if let Some(writer) = rwlock_ref.writer_queue.pop_front() {
+                drop(rwlock); // make RefCell available for unblock callback
+                this.unblock_thread(writer, BlockReason::RwLock)?;
             }
         }
         interp_ok(true)
@@ -530,26 +542,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[inline]
     fn rwlock_enqueue_and_block_reader(
         &mut self,
-        id: RwLockId,
+        rwlock_ref: RwLockRef,
         retval: Scalar,
         dest: MPlaceTy<'tcx>,
     ) {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
-        assert!(this.rwlock_is_write_locked(id), "read-queueing on not write locked rwlock");
-        this.machine.sync.rwlocks[id].reader_queue.push_back(thread);
+        assert!(
+            this.rwlock_is_write_locked(&rwlock_ref),
+            "read-queueing on not write locked rwlock"
+        );
+        rwlock_ref.0.borrow_mut().reader_queue.push_back(thread);
         this.block_thread(
-            BlockReason::RwLock(id),
+            BlockReason::RwLock,
             None,
             callback!(
                 @capture<'tcx> {
-                    id: RwLockId,
+                    rwlock_ref: RwLockRef,
                     retval: Scalar,
                     dest: MPlaceTy<'tcx>,
                 }
                 |this, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    this.rwlock_reader_lock(id);
+                    this.rwlock_reader_lock(&rwlock_ref);
                     this.write_scalar(retval, &dest)?;
                     interp_ok(())
                 }
@@ -559,12 +574,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Lock by setting the writer that owns the lock.
     #[inline]
-    fn rwlock_writer_lock(&mut self, id: RwLockId) {
+    fn rwlock_writer_lock(&mut self, rwlock_ref: &RwLockRef) {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
-        assert!(!this.rwlock_is_locked(id), "the rwlock is already locked");
-        trace!("rwlock_writer_lock: {:?} now held by {:?}", id, thread);
-        let rwlock = &mut this.machine.sync.rwlocks[id];
+        assert!(!this.rwlock_is_locked(rwlock_ref), "the rwlock is already locked");
+        trace!("rwlock_writer_lock: now held by {:?}", thread);
+
+        let mut rwlock = rwlock_ref.0.borrow_mut();
         rwlock.writer = Some(thread);
         if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
             data_race.acquire_clock(&rwlock.clock_unlocked, &this.machine.threads);
@@ -574,35 +590,38 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Try to unlock an rwlock held by the current thread.
     /// Return `false` if it is held by another thread.
     #[inline]
-    fn rwlock_writer_unlock(&mut self, id: RwLockId) -> InterpResult<'tcx, bool> {
+    fn rwlock_writer_unlock(&mut self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
-        let rwlock = &mut this.machine.sync.rwlocks[id];
+        let mut rwlock = rwlock_ref.0.borrow_mut();
         interp_ok(if let Some(current_writer) = rwlock.writer {
             if current_writer != thread {
                 // Only the owner can unlock the rwlock.
                 return interp_ok(false);
             }
             rwlock.writer = None;
-            trace!("rwlock_writer_unlock: {:?} unlocked by {:?}", id, thread);
+            trace!("rwlock_writer_unlock: unlocked by {:?}", thread);
             // Record release clock for next lock holder.
             if let Some(data_race) = this.machine.data_race.as_vclocks_ref() {
                 data_race.release_clock(&this.machine.threads, |clock| {
                     rwlock.clock_unlocked.clone_from(clock)
                 });
             }
+
             // The thread was a writer.
             //
             // We are prioritizing writers here against the readers. As a
             // result, not only readers can starve writers, but also writers can
             // starve readers.
             if let Some(writer) = rwlock.writer_queue.pop_front() {
-                this.unblock_thread(writer, BlockReason::RwLock(id))?;
+                drop(rwlock); // make RefCell available for unblock callback
+                this.unblock_thread(writer, BlockReason::RwLock)?;
             } else {
                 // Take the entire read queue and wake them all up.
                 let readers = std::mem::take(&mut rwlock.reader_queue);
+                drop(rwlock); // make RefCell available for unblock callback
                 for reader in readers {
-                    this.unblock_thread(reader, BlockReason::RwLock(id))?;
+                    this.unblock_thread(reader, BlockReason::RwLock)?;
                 }
             }
             true
@@ -616,26 +635,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[inline]
     fn rwlock_enqueue_and_block_writer(
         &mut self,
-        id: RwLockId,
+        rwlock_ref: RwLockRef,
         retval: Scalar,
         dest: MPlaceTy<'tcx>,
     ) {
         let this = self.eval_context_mut();
-        assert!(this.rwlock_is_locked(id), "write-queueing on unlocked rwlock");
+        assert!(this.rwlock_is_locked(&rwlock_ref), "write-queueing on unlocked rwlock");
         let thread = this.active_thread();
-        this.machine.sync.rwlocks[id].writer_queue.push_back(thread);
+        rwlock_ref.0.borrow_mut().writer_queue.push_back(thread);
         this.block_thread(
-            BlockReason::RwLock(id),
+            BlockReason::RwLock,
             None,
             callback!(
                 @capture<'tcx> {
-                    id: RwLockId,
+                    rwlock_ref: RwLockRef,
                     retval: Scalar,
                     dest: MPlaceTy<'tcx>,
                 }
                 |this, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    this.rwlock_writer_lock(id);
+                    this.rwlock_writer_lock(&rwlock_ref);
                     this.write_scalar(retval, &dest)?;
                     interp_ok(())
                 }
