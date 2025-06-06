@@ -84,19 +84,45 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeSyntax {
         _: rustc_span::Span,
         _: rustc_span::def_id::LocalDefId,
     ) {
-        let mut input_map = Default::default();
-        let mut output_map = Default::default();
-
-        for input in fd.inputs {
-            LifetimeInfoCollector::collect(input, &mut input_map);
-        }
-
-        if let hir::FnRetTy::Return(output) = fd.output {
-            LifetimeInfoCollector::collect(output, &mut output_map);
-        }
-
-        report_mismatches(cx, &input_map, &output_map);
+        check_fn_like(cx, fd);
     }
+
+    #[instrument(skip_all)]
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, ti: &'tcx hir::TraitItem<'tcx>) {
+        match ti.kind {
+            hir::TraitItemKind::Const(..) => {}
+            hir::TraitItemKind::Fn(fn_sig, _trait_fn) => check_fn_like(cx, fn_sig.decl),
+            hir::TraitItemKind::Type(..) => {}
+        }
+    }
+
+    #[instrument(skip_all)]
+    fn check_foreign_item(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        fi: &'tcx rustc_hir::ForeignItem<'tcx>,
+    ) {
+        match fi.kind {
+            hir::ForeignItemKind::Fn(fn_sig, _idents, _generics) => check_fn_like(cx, fn_sig.decl),
+            hir::ForeignItemKind::Static(..) => {}
+            hir::ForeignItemKind::Type => {}
+        }
+    }
+}
+
+fn check_fn_like<'tcx>(cx: &LateContext<'tcx>, fd: &'tcx hir::FnDecl<'tcx>) {
+    let mut input_map = Default::default();
+    let mut output_map = Default::default();
+
+    for input in fd.inputs {
+        LifetimeInfoCollector::collect(input, &mut input_map);
+    }
+
+    if let hir::FnRetTy::Return(output) = fd.output {
+        LifetimeInfoCollector::collect(output, &mut output_map);
+    }
+
+    report_mismatches(cx, &input_map, &output_map);
 }
 
 #[instrument(skip_all)]
