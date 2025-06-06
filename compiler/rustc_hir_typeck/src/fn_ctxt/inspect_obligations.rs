@@ -120,15 +120,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'a, 'tcx> {
     fn visit_goal(&mut self, inspect_goal: &InspectGoal<'_, 'tcx>) {
         // No need to walk into goal subtrees that certainly hold, since they
         // wouldn't then be stalled on an infer var.
-        // FIXME: We also walk into normalizes-to goals since their certainty
-        // is forced to `Certainty::Yes` since they pass down ambiguous subgoals
-        // to their parent.
-        if inspect_goal.result() == Ok(Certainty::Yes)
-            && !matches!(
-                inspect_goal.goal().predicate.kind().skip_binder(),
-                ty::PredicateKind::NormalizesTo(_)
-            )
-        {
+        if inspect_goal.result() == Ok(Certainty::Yes) {
             return;
         }
 
