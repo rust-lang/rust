@@ -199,7 +199,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
     /// by applying extended parameter rules.
-    /// Details may be find in `rustc_hir_analysis::check::rvalue_scopes`.
+    /// Details may be found in `rustc_hir_analysis::check::rvalue_scopes`.
     pub rvalue_scopes: RvalueScopes,
 
     /// Stores the predicates that apply on coroutine witness types.
