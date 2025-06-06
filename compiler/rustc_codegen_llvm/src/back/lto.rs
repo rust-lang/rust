@@ -681,7 +681,7 @@ pub(crate) fn run_pass_manager(
             let ti64 = cx.type_i64();
             let ti32 = cx.type_i32();
             let ti16 = cx.type_i16();
-            let ti16 = cx.type_i8();
+            let ti8 = cx.type_i8();
             let tarr = cx.type_array(ti32, 3);
 
             let entry_elements = vec![ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
@@ -729,16 +729,29 @@ pub(crate) fn run_pass_manager(
 
                 // Next: For each function, generate these three entries. A weak constant,
                 // the llvm.rodata entry name, and  the omp_offloading_entries value
-                // @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id = weak constant i8 0
-                // @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
-                // @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
 
+                // @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id = weak constant i8 0
                 let name = format!(".kernel_{num}.region_id");
                 let name = CString::new(name).unwrap();
                 let entry = llvm::add_global(cx.llmod, cx.type_i8(), &name);
                 llvm::set_global_constant(entry, true);
                 llvm::set_linkage(entry, llvm::Linkage::WeakAnyLinkage);
                 llvm::set_initializer(entry, cx.get_const_i8(0));
+
+
+                let section_name = format!(".llvm.rodata.offloading");
+                let c_section_name = CString::new(section_name).unwrap();
+
+                let entry_name = format!("kernel_{num}");
+                let c_entry_name = CString::new(entry_name).unwrap();
+                let c_val = c_entry_name.as_bytes_with_nul();
+                //let const_name = cx.const_bytes(c_val);
+                let len = u64::try_from(c_val.len()).expect("LLVMConstArray2 elements len overflow");
+                let foo = unsafe { llvm::LLVMConstArray2(ti8, c_val.as_ptr(), len) };
+                llvm::set_alignment(foo, rustc_abi::Align::ONE);
+                dbg!(&foo);
+                // @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
+                // @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
 
                 // typedef struct {
                 //   uint64_t Reserved;
