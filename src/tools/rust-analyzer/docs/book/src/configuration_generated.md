@@ -13,6 +13,13 @@ Default: `"todo"`
 Placeholder expression to use for missing expressions in assists.
 
 
+## rust-analyzer.assist.preferSelf {#assist.preferSelf}
+
+Default: `false`
+
+When inserting a type (e.g. in "fill match arms" assist), prefer to use `Self` over the type name where possible.
+
+
 ## rust-analyzer.assist.termSearch.borrowcheck {#assist.termSearch.borrowcheck}
 
 Default: `true`
