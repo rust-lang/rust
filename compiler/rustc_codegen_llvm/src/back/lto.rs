@@ -22,6 +22,8 @@ use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel
 use rustc_session::config::{self, CrateType, Lto};
 use tracing::{debug, info};
 
+use llvm::Linkage::*;
+
 use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
 };
@@ -29,7 +31,7 @@ use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, build_string};
+use crate::llvm::{self, build_string, Linkage};
 use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
 
 /// We keep track of the computed LTO cache keys from the previous
@@ -701,7 +703,7 @@ pub(crate) fn run_pass_manager(
                     continue;
                 }
 
-                fn add_priv_unnamed_arr(cx: &SimpleCx<'_>, name: &str, vals: &[u64]) {
+                fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'ll llvm::Value{
                     let ti64 = cx.type_i64();
                     let size_ty = cx.type_array(ti64, vals.len() as u64);
                     let mut size_val = Vec::with_capacity(vals.len());
@@ -709,20 +711,23 @@ pub(crate) fn run_pass_manager(
                         size_val.push(cx.get_const_i64(val));
                     }
                     let initializer = cx.const_array(ti64, &size_val);
-                    let c_name = CString::new(name).unwrap();
-                    let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), &c_name );
-                    llvm::set_global_constant(array, true);
-                    unsafe {llvm::LLVMSetUnnamedAddress(array, llvm::UnnamedAddr::Global)};
-                    llvm::set_linkage(array, llvm::Linkage::PrivateLinkage);
-                    llvm::set_initializer(array, initializer);
+                    add_global(cx, name, initializer, PrivateLinkage)
+                }
 
+                fn add_global<'ll>(cx: &SimpleCx<'ll>, name: &str, initializer: &'ll llvm::Value, l: Linkage) -> &'ll llvm::Value {
+                    let c_name = CString::new(name).unwrap();
+                    let llglobal: &'ll llvm::Value = llvm::add_global(cx.llmod, cx.val_ty(initializer), &c_name);
+                    llvm::set_global_constant(llglobal, true);
+                    unsafe {llvm::LLVMSetUnnamedAddress(llglobal, llvm::UnnamedAddr::Global)};
+                    llvm::set_linkage(llglobal, l);
+                    llvm::set_initializer(llglobal, initializer);
+                    llglobal
                 }
 
                 // We add a pair of sizes and maptypes per offloadable function.
                 // @.offload_maptypes = private unnamed_addr constant [4 x i64] [i64 800, i64 544, i64 547, i64 544]
-                let array = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{num}"), &vec![8u64,0,16,0]);
-                let maptypes = add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{num}"), &vec![800u64, 544, 547, 544]);
-                dbg!(&array);
+                let o_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{num}"), &vec![8u64,0,16,0]);
+                let o_types = add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{num}"), &vec![800u64, 544, 547, 544]);
                 // TODO: We should add another pair per call to offloadable functions
                 // @.offload_sizes.5 = private unnamed_addr constant [2 x i64] [i64 16384, i64 16384]
                 // @.offload_maptypes.6 = private unnamed_addr constant [2 x i64] [i64 1, i64 3]
@@ -732,32 +737,19 @@ pub(crate) fn run_pass_manager(
 
                 // @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id = weak constant i8 0
                 let name = format!(".kernel_{num}.region_id");
-                let name = CString::new(name).unwrap();
-                let entry = llvm::add_global(cx.llmod, cx.type_i8(), &name);
-                llvm::set_global_constant(entry, true);
-                llvm::set_linkage(entry, llvm::Linkage::WeakAnyLinkage);
-                llvm::set_initializer(entry, cx.get_const_i8(0));
-
-
-                let section_name = format!(".llvm.rodata.offloading");
-                let c_section_name = CString::new(section_name).unwrap();
+                let initializer = cx.get_const_i8(0);
+                add_global(&cx, &name, initializer, WeakAnyLinkage);
 
                 let entry_name = format!("kernel_{num}");
                 let c_entry_name = CString::new(entry_name).unwrap();
                 let c_val = c_entry_name.as_bytes_with_nul();
                 let foo = format!(".offloading.entry_name.{num}");
-                let c_foo = CString::new(foo).unwrap();
 
-                let llconst = crate::common::bytes_in_context(cx.llcx, c_val);
-                let llglobal =
-                    llvm::add_global(cx.llmod, crate::common::val_ty(llconst), &c_foo);
+                let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
+                let llglobal = add_global(&cx, &foo, initializer, InternalLinkage);
                 llvm::set_alignment(llglobal, rustc_abi::Align::ONE);
+                let c_section_name = CString::new(".llvm.rodata.offloading").unwrap();
                 llvm::set_section(llglobal, &c_section_name);
-                llvm::set_global_constant(llglobal, true);
-                llvm::set_linkage(llglobal, llvm::Linkage::InternalLinkage);
-                unsafe {llvm::LLVMSetUnnamedAddress(llglobal, llvm::UnnamedAddr::Global)};
-                llvm::set_initializer(llglobal, llconst);
-                //dbg!(&foo);
                 // @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
                 // @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
 
