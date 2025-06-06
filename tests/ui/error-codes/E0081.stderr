@@ -73,6 +73,14 @@ LL |
 LL |     V9,
    |     -- `-2` assigned here
 
+error[E0370]: enum discriminant overflowed
+  --> $DIR/E0081.rs:87:5
+   |
+LL |     X256,
+   |     ^^^^ overflowed on value after 255
+   |
+   = note: explicitly set `X256 = 0` if that is desired outcome
+
 error[E0081]: discriminant value `0` assigned more than once
   --> $DIR/E0081.rs:57:1
    |
@@ -87,14 +95,6 @@ LL |     X000, X001, X002, X003, X004, X005, X006, X007, X008, X009,
 ...
 LL |     X256,
    |     ---- `0` assigned here
-
-error[E0370]: enum discriminant overflowed
-  --> $DIR/E0081.rs:87:5
-   |
-LL |     X256,
-   |     ^^^^ overflowed on value after 255
-   |
-   = note: explicitly set `X256 = 0` if that is desired outcome
 
 error: aborting due to 7 previous errors
 
