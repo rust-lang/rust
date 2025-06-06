@@ -1,0 +1,90 @@
+//@aux-build:proc_macros.rs
+//@aux-build:non-exhaustive-struct.rs
+#![warn(clippy::unnecessary_rest_pattern)]
+#![allow(clippy::unneeded_wildcard_pattern)]
+
+use non_exhaustive_struct::{NonExhaustiveStruct, NonExhaustiveStructNoPrivateFields};
+
+struct S {
+    a: u8,
+    b: u8,
+    c: u8,
+}
+
+#[derive(Default)]
+#[non_exhaustive]
+struct LocalNonExhaustive {
+    field: i32,
+}
+
+enum E {
+    A { a1: u8, a2: u8 },
+    B { b1: u8, b2: u8 },
+    C {},
+}
+
+mod m {
+    #[derive(Default)]
+    pub struct Sm {
+        pub a: u8,
+        pub(crate) b: u8,
+        c: u8,
+    }
+}
+
+fn main() {
+    let s = S { a: 1, b: 2, c: 3 };
+
+    let S { a, b, c, .. } = s;
+    //~^ unnecessary_rest_pattern
+
+    let e = E::A { a1: 1, a2: 2 };
+
+    match e {
+        E::A { a1, a2 } => (),
+        E::B { b1, b2, .. } => (),
+        //~^ unnecessary_rest_pattern
+        E::C { .. } => (),
+        //~^ unnecessary_rest_pattern
+    }
+
+    proc_macros::external! {
+        let s1 = S { a: 1, b: 2, c: 3 };
+        let S { a, b, c, .. } = s1;
+    }
+
+    proc_macros::with_span! {
+        span
+        let s2 = S { a: 1, b: 2, c: 3 };
+        let S { a, b, c, .. } = s2;
+    }
+
+    let ne = NonExhaustiveStruct::default();
+    let NonExhaustiveStruct { field1: _, .. } = ne;
+
+    let ne = NonExhaustiveStruct::default();
+    let NonExhaustiveStruct {
+        field1: _, field2: _, ..
+    } = ne;
+
+    let ne = NonExhaustiveStructNoPrivateFields::default();
+    let NonExhaustiveStructNoPrivateFields { .. } = ne;
+
+    let ne = NonExhaustiveStructNoPrivateFields::default();
+    let NonExhaustiveStructNoPrivateFields { field: _, .. } = ne;
+
+    let ne = LocalNonExhaustive::default();
+    let LocalNonExhaustive { field: _ } = ne;
+
+    let ne = LocalNonExhaustive::default();
+    let LocalNonExhaustive { field: _, .. } = ne;
+    //~^ unnecessary_rest_pattern
+
+    let ne = LocalNonExhaustive::default();
+    let LocalNonExhaustive { .. } = ne;
+
+    use m::Sm;
+
+    let Sm { .. } = Sm::default();
+    let Sm { a: _, b: _, .. } = Sm::default();
+}
