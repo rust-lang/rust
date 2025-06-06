@@ -1,18 +1,29 @@
-warning: elided lifetime has a name
-  --> $DIR/self_lifetime.rs:7:38
+warning: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/self_lifetime.rs:7:23
    |
 LL |     fn foo<'b>(self: &'b Foo<'a>) -> &() { self.0 }
-   |            --                        ^ this elided lifetime gets resolved as `'b`
-   |            |
-   |            lifetime `'b` declared here
+   |                       ^^             --- the lifetime gets resolved as `'b`
+   |                       |
+   |                       this lifetime flows to the output
    |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
+   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: one option is to consistently use `'b`
+   |
+LL |     fn foo<'b>(self: &'b Foo<'a>) -> &'b () { self.0 }
+   |                                       ++
 
-warning: elided lifetime has a name
-  --> $DIR/self_lifetime.rs:13:46
+warning: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/self_lifetime.rs:13:36
    |
 LL |     fn bar<'a>(self: &Alias, arg: &'a ()) -> &() { arg }
-   |            -- lifetime `'a` declared here    ^ this elided lifetime gets resolved as `'a`
+   |                                    ^^        --- the lifetime gets resolved as `'a`
+   |                                    |
+   |                                    this lifetime flows to the output
+   |
+help: one option is to consistently use `'a`
+   |
+LL |     fn bar<'a>(self: &Alias, arg: &'a ()) -> &'a () { arg }
+   |                                               ++
 
 warning: 2 warnings emitted
 

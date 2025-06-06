@@ -381,7 +381,7 @@ fn unop_common<F1: Float, F2: Float>(
         }
 
         // abs and copysign require signaling NaNs to be propagated, so verify bit equality.
-        if actual.to_bits() == expected.to_bits() {
+        if actual.biteq(expected) {
             return CheckAction::Custom(Ok(()));
         } else {
             return CheckAction::Custom(Err(anyhow::anyhow!("NaNs have different bitpatterns")));
@@ -444,13 +444,18 @@ fn binop_common<F1: Float, F2: Float>(
     expected: F2,
     ctx: &CheckCtx,
 ) -> CheckAction {
-    // MPFR only has one NaN bitpattern; allow the default `.is_nan()` checks to validate. Skip if
-    // the first input (magnitude source) is NaN and the output is also a NaN, or if the second
-    // input (sign source) is NaN.
-    if ctx.basis == CheckBasis::Mpfr
+    // MPFR only has one NaN bitpattern; skip tests in cases where the first argument would take
+    // the sign of a NaN second argument. The default NaN checks cover other cases.
+    if ctx.base_name == BaseName::Copysign && ctx.basis == CheckBasis::Mpfr && input.1.is_nan() {
+        return SKIP;
+    }
+
+    // FIXME(#939): this should not be skipped, there is a bug in our implementationi.
+    if ctx.base_name == BaseName::FmaximumNum
+        && ctx.basis == CheckBasis::Mpfr
         && ((input.0.is_nan() && actual.is_nan() && expected.is_nan()) || input.1.is_nan())
     {
-        return SKIP;
+        return XFAIL_NOCHECK;
     }
 
     /* FIXME(#439): our fmin and fmax do not compare signed zeros */

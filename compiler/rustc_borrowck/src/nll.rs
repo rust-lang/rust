@@ -20,6 +20,7 @@ use tracing::{debug, instrument};
 use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
 use crate::diagnostics::RegionErrors;
+use crate::handle_placeholders::compute_sccs_applying_placeholder_outlives_constraints;
 use crate::polonius::PoloniusDiagnosticsContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
@@ -113,6 +114,12 @@ pub(crate) fn compute_regions<'tcx>(
         Rc::clone(&location_map),
     );
 
+    let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
+        constraints,
+        &universal_region_relations,
+        infcx,
+    );
+
     // If requested, emit legacy polonius facts.
     polonius::legacy::emit_facts(
         &mut polonius_facts,
@@ -122,11 +129,15 @@ pub(crate) fn compute_regions<'tcx>(
         borrow_set,
         move_data,
         &universal_region_relations,
-        &constraints,
+        &lowered_constraints,
     );
 
-    let mut regioncx =
-        RegionInferenceContext::new(infcx, constraints, universal_region_relations, location_map);
+    let mut regioncx = RegionInferenceContext::new(
+        infcx,
+        lowered_constraints,
+        universal_region_relations,
+        location_map,
+    );
 
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
     // and use them to compute loan liveness.

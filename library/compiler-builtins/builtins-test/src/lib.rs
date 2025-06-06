@@ -40,6 +40,75 @@ pub const N: u32 = if cfg!(target_arch = "x86_64") && !cfg!(debug_assertions) {
     10_000
 };
 
+/// Additional constants that determine how the integer gets fuzzed.
+trait FuzzInt: MinInt {
+    /// LUT used for maximizing the space covered and minimizing the computational cost of fuzzing
+    /// in `builtins-test`. For example, Self = u128 produces [0,1,2,7,8,15,16,31,32,63,64,95,96,
+    /// 111,112,119,120,125,126,127].
+    const FUZZ_LENGTHS: [u8; 20] = make_fuzz_lengths(Self::BITS);
+
+    /// The number of entries of `FUZZ_LENGTHS` actually used. The maximum is 20 for u128.
+    const FUZZ_NUM: usize = {
+        let log2 = Self::BITS.ilog2() as usize;
+        if log2 == 3 {
+            // case for u8
+            6
+        } else {
+            // 3 entries on each extreme, 2 in the middle, and 4 for each scale of intermediate
+            // boundaries.
+            8 + (4 * (log2 - 4))
+        }
+    };
+}
+
+impl<I> FuzzInt for I where I: MinInt {}
+
+const fn make_fuzz_lengths(bits: u32) -> [u8; 20] {
+    let mut v = [0u8; 20];
+    v[0] = 0;
+    v[1] = 1;
+    v[2] = 2; // important for parity and the iX::MIN case when reversed
+    let mut i = 3;
+
+    // No need for any more until the byte boundary, because there should be no algorithms
+    // that are sensitive to anything not next to byte boundaries after 2. We also scale
+    // in powers of two, which is important to prevent u128 corner tests from getting too
+    // big.
+    let mut l = 8;
+    loop {
+        if l >= ((bits / 2) as u8) {
+            break;
+        }
+        // get both sides of the byte boundary
+        v[i] = l - 1;
+        i += 1;
+        v[i] = l;
+        i += 1;
+        l *= 2;
+    }
+
+    if bits != 8 {
+        // add the lower side of the middle boundary
+        v[i] = ((bits / 2) - 1) as u8;
+        i += 1;
+    }
+
+    // We do not want to jump directly from the Self::BITS/2 boundary to the Self::BITS
+    // boundary because of algorithms that split the high part up. We reverse the scaling
+    // as we go to Self::BITS.
+    let mid = i;
+    let mut j = 1;
+    loop {
+        v[i] = (bits as u8) - (v[mid - j]) - 1;
+        if j == mid {
+            break;
+        }
+        i += 1;
+        j += 1;
+    }
+    v
+}
+
 /// Random fuzzing step. When run several times, it results in excellent fuzzing entropy such as:
 /// 11110101010101011110111110011111
 /// 10110101010100001011101011001010
@@ -92,10 +161,9 @@ fn fuzz_step<I: Int>(rng: &mut Xoshiro128StarStar, x: &mut I) {
 macro_rules! edge_cases {
     ($I:ident, $case:ident, $inner:block) => {
         for i0 in 0..$I::FUZZ_NUM {
-            let mask_lo = (!$I::UnsignedInt::ZERO).wrapping_shr($I::FUZZ_LENGTHS[i0] as u32);
+            let mask_lo = (!$I::Unsigned::ZERO).wrapping_shr($I::FUZZ_LENGTHS[i0] as u32);
             for i1 in i0..I::FUZZ_NUM {
-                let mask_hi =
-                    (!$I::UnsignedInt::ZERO).wrapping_shl($I::FUZZ_LENGTHS[i1 - i0] as u32);
+                let mask_hi = (!$I::Unsigned::ZERO).wrapping_shl($I::FUZZ_LENGTHS[i1 - i0] as u32);
                 let $case = I::from_unsigned(mask_lo & mask_hi);
                 $inner
             }
@@ -107,7 +175,7 @@ macro_rules! edge_cases {
 /// edge cases, followed by a more random fuzzer that runs `n` times.
 pub fn fuzz<I: Int, F: FnMut(I)>(n: u32, mut f: F)
 where
-    <I as MinInt>::UnsignedInt: Int,
+    <I as MinInt>::Unsigned: Int,
 {
     // edge case tester. Calls `f` 210 times for u128.
     // zero gets skipped by the loop
@@ -128,7 +196,7 @@ where
 /// The same as `fuzz`, except `f` has two inputs.
 pub fn fuzz_2<I: Int, F: Fn(I, I)>(n: u32, f: F)
 where
-    <I as MinInt>::UnsignedInt: Int,
+    <I as MinInt>::Unsigned: Int,
 {
     // Check cases where the first and second inputs are zero. Both call `f` 210 times for `u128`.
     edge_cases!(I, case, {

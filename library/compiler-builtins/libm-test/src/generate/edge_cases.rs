@@ -51,6 +51,7 @@ where
 
     // Check some special values that aren't included in the above ranges
     values.push(Op::FTy::NAN);
+    values.push(Op::FTy::NEG_NAN);
     values.extend(Op::FTy::consts().iter());
 
     // Check around the maximum subnormal value

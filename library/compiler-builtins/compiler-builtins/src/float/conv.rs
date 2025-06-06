@@ -72,9 +72,9 @@ mod int_to_float {
         F: Float,
         I: Int,
         F::Int: CastFrom<I>,
-        Conv: Fn(I::UnsignedInt) -> F::Int,
+        Conv: Fn(I::Unsigned) -> F::Int,
     {
-        let sign_bit = F::Int::cast_from(i >> (I::BITS - 1)) << (F::BITS - 1);
+        let sign_bit = F::Int::cast_from_lossy(i >> (I::BITS - 1)) << (F::BITS - 1);
         F::from_bits(conv(i.unsigned_abs()) | sign_bit)
     }
 
@@ -166,7 +166,7 @@ mod int_to_float {
 
         // Within the upper `F::BITS`, everything except for the signifcand
         // gets truncated
-        let d1: u32 = (i_m >> (u128::BITS - f32::BITS - f32::SIG_BITS - 1)).cast();
+        let d1: u32 = (i_m >> (u128::BITS - f32::BITS - f32::SIG_BITS - 1)).cast_lossy();
 
         // The entire rest of `i_m` gets truncated. Zero the upper `F::BITS` then just
         // check if it is nonzero.
@@ -313,10 +313,10 @@ intrinsics! {
 fn float_to_unsigned_int<F, U>(f: F) -> U
 where
     F: Float,
-    U: Int<UnsignedInt = U>,
+    U: Int<Unsigned = U>,
     F::Int: CastInto<U>,
     F::Int: CastFrom<u32>,
-    F::Int: CastInto<U::UnsignedInt>,
+    F::Int: CastInto<U::Unsigned>,
     u32: CastFrom<F::Int>,
 {
     float_to_int_inner::<F, U, _, _>(f.to_bits(), |i: U| i, || U::MAX)
@@ -327,8 +327,8 @@ fn float_to_signed_int<F, I>(f: F) -> I
 where
     F: Float,
     I: Int + Neg<Output = I>,
-    I::UnsignedInt: Int,
-    F::Int: CastInto<I::UnsignedInt>,
+    I::Unsigned: Int,
+    F::Int: CastInto<I::Unsigned>,
     F::Int: CastFrom<u32>,
     u32: CastFrom<F::Int>,
 {
@@ -355,27 +355,27 @@ where
     I: Int,
     FnFoo: FnOnce(I) -> I,
     FnOob: FnOnce() -> I,
-    I::UnsignedInt: Int,
-    F::Int: CastInto<I::UnsignedInt>,
+    I::Unsigned: Int,
+    F::Int: CastInto<I::Unsigned>,
     F::Int: CastFrom<u32>,
     u32: CastFrom<F::Int>,
 {
     let int_max_exp = F::EXP_BIAS + I::MAX.ilog2() + 1;
-    let foobar = F::EXP_BIAS + I::UnsignedInt::BITS - 1;
+    let foobar = F::EXP_BIAS + I::Unsigned::BITS - 1;
 
     if fbits < F::ONE.to_bits() {
         // < 0 gets rounded to 0
         I::ZERO
     } else if fbits < F::Int::cast_from(int_max_exp) << F::SIG_BITS {
         // >= 1, < integer max
-        let m_base = if I::UnsignedInt::BITS >= F::Int::BITS {
-            I::UnsignedInt::cast_from(fbits) << (I::BITS - F::SIG_BITS - 1)
+        let m_base = if I::Unsigned::BITS >= F::Int::BITS {
+            I::Unsigned::cast_from(fbits) << (I::BITS - F::SIG_BITS - 1)
         } else {
-            I::UnsignedInt::cast_from(fbits >> (F::SIG_BITS - I::BITS + 1))
+            I::Unsigned::cast_from_lossy(fbits >> (F::SIG_BITS - I::BITS + 1))
         };
 
         // Set the implicit 1-bit.
-        let m: I::UnsignedInt = (I::UnsignedInt::ONE << (I::BITS - 1)) | m_base;
+        let m: I::Unsigned = (I::Unsigned::ONE << (I::BITS - 1)) | m_base;
 
         // Shift based on the exponent and bias.
         let s: u32 = (foobar) - u32::cast_from(fbits >> F::SIG_BITS);

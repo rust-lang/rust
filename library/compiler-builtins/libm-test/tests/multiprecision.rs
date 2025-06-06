@@ -55,7 +55,7 @@ macro_rules! mp_tests {
             $(#[$attr])*
             fn [< mp_quickspace_ $fn_name >]() {
                 type Op = libm_test::op::$fn_name::Routine;
-                let ctx = CheckCtx::new(Op::IDENTIFIER, BASIS, GeneratorKind::QuickSpaced);
+                let ctx = CheckCtx::new(Op::IDENTIFIER, BASIS, GeneratorKind::Spaced);
                 let cases = spaced::get_test_cases::<Op>(&ctx).0;
                 mp_runner::<Op>(&ctx, cases);
             }

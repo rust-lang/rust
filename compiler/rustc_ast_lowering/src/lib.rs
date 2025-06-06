@@ -1406,7 +1406,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 };
                 let span = self.tcx.sess.source_map().start_point(t.span).shrink_to_hi();
                 let region = Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id };
-                (region, LifetimeSyntax::Hidden)
+                (region, LifetimeSyntax::Implicit)
             }
         };
         self.lower_lifetime(&region, LifetimeSource::Reference, syntax)
@@ -1790,7 +1790,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             id,
             Ident::new(kw::UnderscoreLifetime, span),
             LifetimeSource::Path { angle_brackets },
-            LifetimeSyntax::Hidden,
+            LifetimeSyntax::Implicit,
         )
     }
 
@@ -2422,7 +2422,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             Ident::new(kw::UnderscoreLifetime, self.lower_span(span)),
             hir::LifetimeKind::ImplicitObjectLifetimeDefault,
             LifetimeSource::Other,
-            LifetimeSyntax::Hidden,
+            LifetimeSyntax::Implicit,
         );
         debug!("elided_dyn_bound: r={:?}", r);
         self.arena.alloc(r)

@@ -72,13 +72,13 @@ pub enum LifetimeSource {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
 pub enum LifetimeSyntax {
     /// E.g. `&Type`, `ContainsLifetime`
-    Hidden,
+    Implicit,
 
     /// E.g. `&'_ Type`, `ContainsLifetime<'_>`, `impl Trait + '_`, `impl Trait + use<'_>`
-    Anonymous,
+    ExplicitAnonymous,
 
     /// E.g. `&'a Type`, `ContainsLifetime<'a>`, `impl Trait + 'a`, `impl Trait + use<'a>`
-    Named,
+    ExplicitBound,
 }
 
 impl From<Ident> for LifetimeSyntax {
@@ -88,10 +88,10 @@ impl From<Ident> for LifetimeSyntax {
         if name == sym::empty {
             unreachable!("A lifetime name should never be empty");
         } else if name == kw::UnderscoreLifetime {
-            LifetimeSyntax::Anonymous
+            LifetimeSyntax::ExplicitAnonymous
         } else {
             debug_assert!(name.as_str().starts_with('\''));
-            LifetimeSyntax::Named
+            LifetimeSyntax::ExplicitBound
         }
     }
 }
@@ -102,48 +102,48 @@ impl From<Ident> for LifetimeSyntax {
 ///
 /// ```
 /// #[repr(C)]
-/// struct S<'a>(&'a u32);       // res=Param, name='a, source=Reference, syntax=Named
+/// struct S<'a>(&'a u32);       // res=Param, name='a, source=Reference, syntax=ExplicitBound
 /// unsafe extern "C" {
-///     fn f1(s: S);             // res=Param, name='_, source=Path, syntax=Hidden
-///     fn f2(s: S<'_>);         // res=Param, name='_, source=Path, syntax=Anonymous
-///     fn f3<'a>(s: S<'a>);     // res=Param, name='a, source=Path, syntax=Named
+///     fn f1(s: S);             // res=Param, name='_, source=Path, syntax=Implicit
+///     fn f2(s: S<'_>);         // res=Param, name='_, source=Path, syntax=ExplicitAnonymous
+///     fn f3<'a>(s: S<'a>);     // res=Param, name='a, source=Path, syntax=ExplicitBound
 /// }
 ///
-/// struct St<'a> { x: &'a u32 } // res=Param, name='a, source=Reference, syntax=Named
+/// struct St<'a> { x: &'a u32 } // res=Param, name='a, source=Reference, syntax=ExplicitBound
 /// fn f() {
-///     _ = St { x: &0 };        // res=Infer, name='_, source=Path, syntax=Hidden
-///     _ = St::<'_> { x: &0 };  // res=Infer, name='_, source=Path, syntax=Anonymous
+///     _ = St { x: &0 };        // res=Infer, name='_, source=Path, syntax=Implicit
+///     _ = St::<'_> { x: &0 };  // res=Infer, name='_, source=Path, syntax=ExplicitAnonymous
 /// }
 ///
-/// struct Name<'a>(&'a str);    // res=Param,  name='a, source=Reference, syntax=Named
-/// const A: Name = Name("a");   // res=Static, name='_, source=Path, syntax=Hidden
-/// const B: &str = "";          // res=Static, name='_, source=Reference, syntax=Hidden
-/// static C: &'_ str = "";      // res=Static, name='_, source=Reference, syntax=Anonymous
-/// static D: &'static str = ""; // res=Static, name='static, source=Reference, syntax=Named
+/// struct Name<'a>(&'a str);    // res=Param,  name='a, source=Reference, syntax=ExplicitBound
+/// const A: Name = Name("a");   // res=Static, name='_, source=Path, syntax=Implicit
+/// const B: &str = "";          // res=Static, name='_, source=Reference, syntax=Implicit
+/// static C: &'_ str = "";      // res=Static, name='_, source=Reference, syntax=ExplicitAnonymous
+/// static D: &'static str = ""; // res=Static, name='static, source=Reference, syntax=ExplicitBound
 ///
 /// trait Tr {}
-/// fn tr(_: Box<dyn Tr>) {}     // res=ImplicitObjectLifetimeDefault, name='_, source=Other, syntax=Hidden
+/// fn tr(_: Box<dyn Tr>) {}     // res=ImplicitObjectLifetimeDefault, name='_, source=Other, syntax=Implicit
 ///
 /// fn capture_outlives<'a>() ->
-///     impl FnOnce() + 'a       // res=Param, ident='a, source=OutlivesBound, syntax=Named
+///     impl FnOnce() + 'a       // res=Param, ident='a, source=OutlivesBound, syntax=ExplicitBound
 /// {
 ///     || {}
 /// }
 ///
 /// fn capture_precise<'a>() ->
-///     impl FnOnce() + use<'a>  // res=Param, ident='a, source=PreciseCapturing, syntax=Named
+///     impl FnOnce() + use<'a>  // res=Param, ident='a, source=PreciseCapturing, syntax=ExplicitBound
 /// {
 ///     || {}
 /// }
 ///
 /// // (commented out because these cases trigger errors)
-/// // struct S1<'a>(&'a str);   // res=Param, name='a, source=Reference, syntax=Named
-/// // struct S2(S1);            // res=Error, name='_, source=Path, syntax=Hidden
-/// // struct S3(S1<'_>);        // res=Error, name='_, source=Path, syntax=Anonymous
-/// // struct S4(S1<'a>);        // res=Error, name='a, source=Path, syntax=Named
+/// // struct S1<'a>(&'a str);   // res=Param, name='a, source=Reference, syntax=ExplicitBound
+/// // struct S2(S1);            // res=Error, name='_, source=Path, syntax=Implicit
+/// // struct S3(S1<'_>);        // res=Error, name='_, source=Path, syntax=ExplicitAnonymous
+/// // struct S4(S1<'a>);        // res=Error, name='a, source=Path, syntax=ExplicitBound
 /// ```
 ///
-/// Some combinations that cannot occur are `LifetimeSyntax::Hidden` with
+/// Some combinations that cannot occur are `LifetimeSyntax::Implicit` with
 /// `LifetimeSource::OutlivesBound` or `LifetimeSource::PreciseCapturing`
 /// — there's no way to "elide" these lifetimes.
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
@@ -206,7 +206,7 @@ impl ParamName {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub enum LifetimeKind {
     /// User-given names or fresh (synthetic) names.
     Param(LocalDefId),
@@ -287,12 +287,8 @@ impl Lifetime {
         self.ident.name == kw::UnderscoreLifetime
     }
 
-    pub fn is_syntactically_hidden(&self) -> bool {
-        matches!(self.syntax, LifetimeSyntax::Hidden)
-    }
-
-    pub fn is_syntactically_anonymous(&self) -> bool {
-        matches!(self.syntax, LifetimeSyntax::Anonymous)
+    pub fn is_implicit(&self) -> bool {
+        matches!(self.syntax, LifetimeSyntax::Implicit)
     }
 
     pub fn is_static(&self) -> bool {
@@ -307,28 +303,28 @@ impl Lifetime {
 
         match (self.syntax, self.source) {
             // The user wrote `'a` or `'_`.
-            (Named | Anonymous, _) => (self.ident.span, format!("{new_lifetime}")),
+            (ExplicitBound | ExplicitAnonymous, _) => (self.ident.span, format!("{new_lifetime}")),
 
             // The user wrote `Path<T>`, and omitted the `'_,`.
-            (Hidden, Path { angle_brackets: AngleBrackets::Full }) => {
+            (Implicit, Path { angle_brackets: AngleBrackets::Full }) => {
                 (self.ident.span, format!("{new_lifetime}, "))
             }
 
             // The user wrote `Path<>`, and omitted the `'_`..
-            (Hidden, Path { angle_brackets: AngleBrackets::Empty }) => {
+            (Implicit, Path { angle_brackets: AngleBrackets::Empty }) => {
                 (self.ident.span, format!("{new_lifetime}"))
             }
 
             // The user wrote `Path` and omitted the `<'_>`.
-            (Hidden, Path { angle_brackets: AngleBrackets::Missing }) => {
+            (Implicit, Path { angle_brackets: AngleBrackets::Missing }) => {
                 (self.ident.span.shrink_to_hi(), format!("<{new_lifetime}>"))
             }
 
             // The user wrote `&type` or `&mut type`.
-            (Hidden, Reference) => (self.ident.span, format!("{new_lifetime} ")),
+            (Implicit, Reference) => (self.ident.span, format!("{new_lifetime} ")),
 
-            (Hidden, source) => {
-                unreachable!("can't suggest for a hidden lifetime of {source:?}")
+            (Implicit, source) => {
+                unreachable!("can't suggest for a implicit lifetime of {source:?}")
             }
         }
     }
