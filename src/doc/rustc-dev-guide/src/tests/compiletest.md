@@ -438,7 +438,9 @@ To work around this when working on a particular test, temporarily create a
 with these contents:
 
 <div class="warning">
+
 Be careful not to add this `Cargo.toml` or its `Cargo.lock` to your actual PR!
+
 </div>
 
 ```toml

@@ -1,11 +1,8 @@
 //! This is needed for tests on targets that require a `#[panic_handler]` function
 
-#![feature(no_core)]
-#![no_core]
-
-extern crate core;
+#![no_std]
 
 #[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! {
+fn panic(_: &core::panic::PanicInfo<'_>) -> ! {
     loop {}
 }

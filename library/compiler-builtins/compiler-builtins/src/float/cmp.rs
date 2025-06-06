@@ -2,14 +2,23 @@
 
 use crate::float::Float;
 use crate::int::MinInt;
+use crate::support::cfg_if;
 
-// https://github.com/llvm/llvm-project/blob/1e6ba3cd2fe96be00b6ed6ba28b3d9f9271d784d/compiler-rt/lib/builtins/fp_compare_impl.inc#L22
-#[cfg(target_arch = "avr")]
-pub type CmpResult = i8;
-
-// https://github.com/llvm/llvm-project/blob/1e6ba3cd2fe96be00b6ed6ba28b3d9f9271d784d/compiler-rt/lib/builtins/fp_compare_impl.inc#L25
-#[cfg(not(target_arch = "avr"))]
-pub type CmpResult = i32;
+// Taken from LLVM config:
+// https://github.com/llvm/llvm-project/blob/0cf3c437c18ed27d9663d87804a9a15ff6874af2/compiler-rt/lib/builtins/fp_compare_impl.inc#L11-L27
+cfg_if! {
+    if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))] {
+        // Aarch64 uses `int` rather than a pointer-sized value.
+        pub type CmpResult = i32;
+    } else if #[cfg(target_arch = "avr")] {
+        // AVR uses a single byte.
+        pub type CmpResult = i8;
+    } else {
+        // In compiler-rt, LLP64 ABIs use `long long` and everything else uses `long`. In effect,
+        // this means the return value is always pointer-sized.
+        pub type CmpResult = isize;
+    }
+}
 
 #[derive(Clone, Copy)]
 enum Result {

@@ -58,8 +58,6 @@ pow! {
 }
 
 #[cfg(f128_enabled)]
-// FIXME(f16_f128): MSVC cannot build these until `__divtf3` is available in nightly.
-#[cfg(not(target_env = "msvc"))]
 #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
 pow! {
     f128, 1e-36, __powitf2, not(feature = "no-sys-f128");

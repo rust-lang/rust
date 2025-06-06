@@ -358,8 +358,8 @@ impl_testio!(float f16);
 impl_testio!(float f32, f64);
 #[cfg(f128_enabled)]
 impl_testio!(float f128);
-impl_testio!(int i16, i32, i64, i128);
-impl_testio!(int u16, u32, u64, u128);
+impl_testio!(int i8, i16, i32, i64, i128, isize);
+impl_testio!(int u8, u16, u32, u64, u128, usize);
 impl_testio!((float, int)(f32, i32));
 impl_testio!((float, int)(f64, i32));
 #[cfg(f128_enabled)]

@@ -143,7 +143,7 @@ where
         // a zero of the appropriate sign.  Mathematically there is no need to
         // handle this case separately, but we make it a special case to
         // simplify the shift logic.
-        let shift = one.wrapping_sub(product_exponent.cast()).cast();
+        let shift: u32 = one.wrapping_sub(product_exponent.cast_lossy()).cast();
         if shift >= bits {
             return F::from_bits(product_sign);
         }

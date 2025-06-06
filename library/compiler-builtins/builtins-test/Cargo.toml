@@ -10,11 +10,11 @@ license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
 # For fuzzing tests we want a deterministic seedable RNG. We also eliminate potential
 # problems with system RNGs on the variety of platforms this crate is tested on.
 # `xoshiro128**` is used for its quality, size, and speed at generating `u32` shift amounts.
-rand_xoshiro = "0.6"
+rand_xoshiro = "0.7"
 # To compare float builtins against
-rustc_apfloat = "0.2.1"
+rustc_apfloat = "0.2.2"
 # Really a dev dependency, but dev dependencies can't be optional
-iai-callgrind = { version = "0.14.0", optional = true }
+iai-callgrind = { version = "0.14.1", optional = true }
 
 [dependencies.compiler_builtins]
 path = "../compiler-builtins"
@@ -22,7 +22,7 @@ default-features = false
 features = ["unstable-public-internals"]
 
 [dev-dependencies]
-criterion = { version = "0.5.1", default-features = false, features = ["cargo_bench_support"] }
+criterion = { version = "0.6.0", default-features = false, features = ["cargo_bench_support"] }
 paste = "1.0.15"
 
 [target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
