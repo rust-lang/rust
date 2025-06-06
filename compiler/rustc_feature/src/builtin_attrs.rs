@@ -628,7 +628,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Probably temporary component of min_generic_const_args.
-    // `#[type_const]` const ASSOC: usize;
+    // `#[type_const] const ASSOC: usize;`
     gated!(
         type_const, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
