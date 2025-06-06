@@ -4,13 +4,13 @@
 // name_pool::methods impl in the other crate is reachable from this
 // crate.
 
-//@ aux-build:crate-method-reexport-grrrrrrr2.rs
+//@ aux-build:method_reexport_aux.rs
 
-extern crate crate_method_reexport_grrrrrrr2;
+extern crate method_reexport_aux;
 
 pub fn main() {
-    use crate_method_reexport_grrrrrrr2::rust::add;
-    use crate_method_reexport_grrrrrrr2::rust::cx;
+    use method_reexport_aux::rust::add;
+    use method_reexport_aux::rust::cx;
     let x: Box<_> = Box::new(());
     x.cx();
     let y = ();
