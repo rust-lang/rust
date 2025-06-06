@@ -2,10 +2,21 @@
 
 set -eux
 
+target="${1:-}"
+
+if [ -z "$target" ]; then
+    host_target=$(rustc -vV | awk '/^host/ { print $2 }')
+    echo "Defaulted to host target $host_target"
+    target="$host_target"
+fi
+
 iai_home="iai-home"
 
+# Use the arch as a tag to disambiguate artifacts
+tag="$(echo "$target" | cut -d'-' -f1)"
+
 # Download the baseline from master
-./ci/ci-util.py locate-baseline --download --extract
+./ci/ci-util.py locate-baseline --download --extract --tag "$tag"
 
 # Run benchmarks once
 function run_icount_benchmarks() {
@@ -35,16 +46,18 @@ function run_icount_benchmarks() {
         shift
     done
 
-    # Run iai-callgrind benchmarks
-    cargo bench "${cargo_args[@]}" -- "${iai_args[@]}"
+    # Run iai-callgrind benchmarks. Do this in a subshell with `&& true` to
+    # capture rather than exit on error.
+    (cargo bench "${cargo_args[@]}" -- "${iai_args[@]}") && true
+    exit_code="$?"
 
-    # NB: iai-callgrind should exit on error but does not, so we inspect the sumary
-    # for errors. See  https://github.com/iai-callgrind/iai-callgrind/issues/337
-    if [ -n "${PR_NUMBER:-}" ]; then
-        # If this is for a pull request, ignore regressions if specified.
-        ./ci/ci-util.py check-regressions --home "$iai_home" --allow-pr-override "$PR_NUMBER"
+    if [ "$exit_code" -eq 0 ]; then
+        echo "Benchmarks completed with no regressions"
+    elif [ -z "${PR_NUMBER:-}" ]; then
+        # Disregard regressions after merge
+        echo "Benchmarks completed with regressions; ignoring (not in a PR)"
     else
-        ./ci/ci-util.py check-regressions --home "$iai_home" || true
+        ./ci/ci-util.py handle-banch-regressions "$PR_NUMBER"
     fi
 }
 
@@ -53,6 +66,6 @@ run_icount_benchmarks --features force-soft-floats -- --save-baseline=softfloat
 run_icount_benchmarks -- --save-baseline=hardfloat
 
 # Name and tar the new baseline
-name="baseline-icount-$(date -u +'%Y%m%d%H%M')-${GITHUB_SHA:0:12}"
+name="baseline-icount-$tag-$(date -u +'%Y%m%d%H%M')-${GITHUB_SHA:0:12}"
 echo "BASELINE_NAME=$name" >>"$GITHUB_ENV"
 tar cJf "$name.tar.xz" "$iai_home"

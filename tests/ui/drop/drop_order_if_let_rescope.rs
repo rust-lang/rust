@@ -18,7 +18,7 @@ impl Drop for LoudDrop<'_> {
 }
 
 impl DropOrderCollector {
-    fn option_loud_drop(&self, n: u32) -> Option<LoudDrop> {
+    fn option_loud_drop(&self, n: u32) -> Option<LoudDrop<'_>> {
         Some(LoudDrop(self, n))
     }
 

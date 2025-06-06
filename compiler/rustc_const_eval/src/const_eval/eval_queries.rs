@@ -454,11 +454,12 @@ fn report_eval_error<'tcx>(
             // FIXME(oli-obk): figure out how to use structured diagnostics again.
             diag.code(E0080);
             diag.span_label(span, crate::fluent_generated::const_eval_error);
-            diag.arg("instance", instance);
-            diag.arg("error_kind", kind);
             for frame in frames {
                 diag.subdiagnostic(frame);
             }
+            // Add after the frame rendering above, as it adds its own `instance` args.
+            diag.arg("instance", instance);
+            diag.arg("error_kind", kind);
         },
     )
 }

@@ -9,11 +9,14 @@ pub use implementation::{leading_zeros_default, leading_zeros_riscv};
 pub(crate) use implementation::{leading_zeros_default, leading_zeros_riscv};
 
 mod implementation {
-    use crate::int::{CastInto, Int};
+    use crate::int::{CastFrom, Int};
 
     /// Returns the number of leading binary zeros in `x`.
     #[allow(dead_code)]
-    pub fn leading_zeros_default<T: Int + CastInto<usize>>(x: T) -> usize {
+    pub fn leading_zeros_default<I: Int>(x: I) -> usize
+    where
+        usize: CastFrom<I>,
+    {
         // The basic idea is to test if the higher bits of `x` are zero and bisect the number
         // of leading zeros. It is possible for all branches of the bisection to use the same
         // code path by conditionally shifting the higher parts down to let the next bisection
@@ -23,44 +26,48 @@ mod implementation {
         // because it simplifies the final bisection step.
         let mut x = x;
         // the number of potential leading zeros
-        let mut z = T::BITS as usize;
+        let mut z = I::BITS as usize;
         // a temporary
-        let mut t: T;
+        let mut t: I;
 
-        const { assert!(T::BITS <= 64) };
-        if T::BITS >= 64 {
+        const { assert!(I::BITS <= 64) };
+        if I::BITS >= 64 {
             t = x >> 32;
-            if t != T::ZERO {
+            if t != I::ZERO {
                 z -= 32;
                 x = t;
             }
         }
-        if T::BITS >= 32 {
+        if I::BITS >= 32 {
             t = x >> 16;
-            if t != T::ZERO {
+            if t != I::ZERO {
                 z -= 16;
                 x = t;
             }
         }
-        const { assert!(T::BITS >= 16) };
+        const { assert!(I::BITS >= 16) };
         t = x >> 8;
-        if t != T::ZERO {
+        if t != I::ZERO {
             z -= 8;
             x = t;
         }
         t = x >> 4;
-        if t != T::ZERO {
+        if t != I::ZERO {
             z -= 4;
             x = t;
         }
         t = x >> 2;
-        if t != T::ZERO {
+        if t != I::ZERO {
             z -= 2;
             x = t;
         }
         // the last two bisections are combined into one conditional
         t = x >> 1;
-        if t != T::ZERO { z - 2 } else { z - x.cast() }
+        if t != I::ZERO {
+            z - 2
+        } else {
+            z - usize::cast_from(x)
+        }
 
         // We could potentially save a few cycles by using the LUT trick from
         // "https://embeddedgurus.com/state-space/2014/09/
@@ -82,10 +89,13 @@ mod implementation {
 
     /// Returns the number of leading binary zeros in `x`.
     #[allow(dead_code)]
-    pub fn leading_zeros_riscv<T: Int + CastInto<usize>>(x: T) -> usize {
+    pub fn leading_zeros_riscv<I: Int>(x: I) -> usize
+    where
+        usize: CastFrom<I>,
+    {
         let mut x = x;
         // the number of potential leading zeros
-        let mut z = T::BITS;
+        let mut z = I::BITS;
         // a temporary
         let mut t: u32;
 
@@ -97,11 +107,11 @@ mod implementation {
         // right). If we try to save an instruction by using `x < imm` for each bisection, we
         // have to shift `x` left and compare with powers of two approaching `usize::MAX + 1`,
         // but the immediate will never fit into 12 bits and never save an instruction.
-        const { assert!(T::BITS <= 64) };
-        if T::BITS >= 64 {
+        const { assert!(I::BITS <= 64) };
+        if I::BITS >= 64 {
             // If the upper 32 bits of `x` are not all 0, `t` is set to `1 << 5`, otherwise
             // `t` is set to 0.
-            t = ((x >= (T::ONE << 32)) as u32) << 5;
+            t = ((x >= (I::ONE << 32)) as u32) << 5;
             // If `t` was set to `1 << 5`, then the upper 32 bits are shifted down for the
             // next step to process.
             x >>= t;
@@ -109,27 +119,27 @@ mod implementation {
             // leading zeros
             z -= t;
         }
-        if T::BITS >= 32 {
-            t = ((x >= (T::ONE << 16)) as u32) << 4;
+        if I::BITS >= 32 {
+            t = ((x >= (I::ONE << 16)) as u32) << 4;
             x >>= t;
             z -= t;
         }
-        const { assert!(T::BITS >= 16) };
-        t = ((x >= (T::ONE << 8)) as u32) << 3;
+        const { assert!(I::BITS >= 16) };
+        t = ((x >= (I::ONE << 8)) as u32) << 3;
         x >>= t;
         z -= t;
-        t = ((x >= (T::ONE << 4)) as u32) << 2;
+        t = ((x >= (I::ONE << 4)) as u32) << 2;
         x >>= t;
         z -= t;
-        t = ((x >= (T::ONE << 2)) as u32) << 1;
+        t = ((x >= (I::ONE << 2)) as u32) << 1;
         x >>= t;
         z -= t;
-        t = (x >= (T::ONE << 1)) as u32;
+        t = (x >= (I::ONE << 1)) as u32;
         x >>= t;
         z -= t;
         // All bits except the LSB are guaranteed to be zero for this final bisection step.
         // If `x != 0` then `x == 1` and subtracts one potential zero from `z`.
-        z as usize - x.cast()
+        z as usize - usize::cast_from(x)
     }
 }
 

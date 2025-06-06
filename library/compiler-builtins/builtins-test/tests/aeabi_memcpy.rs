@@ -22,7 +22,8 @@ macro_rules! panic {
     };
 }
 
-extern "C" {
+// SAFETY: defined in  compiler-builtins
+unsafe extern "aapcs" {
     fn __aeabi_memcpy(dest: *mut u8, src: *const u8, n: usize);
     fn __aeabi_memcpy4(dest: *mut u8, src: *const u8, n: usize);
 }

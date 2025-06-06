@@ -17,7 +17,7 @@ pub fn fmaximum<F: Float>(x: F, y: F) -> F {
         x
     } else if y.is_nan() {
         y
-    } else if x > y || (y.to_bits() == F::NEG_ZERO.to_bits() && x.is_sign_positive()) {
+    } else if x > y || (y.biteq(F::NEG_ZERO) && x.is_sign_positive()) {
         x
     } else {
         y
