@@ -1,7 +1,7 @@
 use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
-use rustc_abi::FieldIdx;
+use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_attr_data_structures::ReprAttr::ReprPacked;
 use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -13,7 +13,6 @@ use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_lint_defs::builtin::{
     REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS, UNSUPPORTED_CALLING_CONVENTIONS,
-    UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
@@ -66,30 +65,6 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
             tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
                 lint.primary_message("use of calling convention not supported on this target");
                 add_abi_diag_help(abi, lint);
-            });
-        }
-    }
-}
-
-pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
-    // This is always an FCW, even for `AbiMapping::Invalid`, since we started linting later than
-    // in `check_abi` above.
-    match AbiMap::from_target(&tcx.sess.target).canonize_abi(abi, false) {
-        AbiMapping::Direct(..) => (),
-        // This is not a redundant match arm: these ABIs started linting after introducing
-        // UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS already existed and we want to
-        // avoid expanding the scope of that lint so it can move to a hard error sooner.
-        AbiMapping::Deprecated(..) => {
-            tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message("use of calling convention not supported on this target");
-                add_abi_diag_help(abi, lint);
-            });
-        }
-        AbiMapping::Invalid => {
-            tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message(format!(
-                    "the calling convention {abi} is not supported on this target"
-                ));
             });
         }
     }
@@ -862,6 +837,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
                 return;
             };
+
             check_abi(tcx, it.hir_id(), it.span, abi);
 
             for item in items {

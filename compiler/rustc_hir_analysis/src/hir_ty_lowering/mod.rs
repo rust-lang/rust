@@ -51,7 +51,7 @@ use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, FulfillmentError};
 use tracing::{debug, instrument};
 
-use crate::check::check_abi_fn_ptr;
+use crate::check::check_abi;
 use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
@@ -2660,7 +2660,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if let hir::Node::Ty(hir::Ty { kind: hir::TyKind::BareFn(bare_fn_ty), span, .. }) =
             tcx.hir_node(hir_id)
         {
-            check_abi_fn_ptr(tcx, hir_id, *span, bare_fn_ty.abi);
+            check_abi(tcx, hir_id, *span, bare_fn_ty.abi);
         }
 
         // reject function types that violate cmse ABI requirements
