@@ -71,7 +71,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
                  See https://github.com/rust-lang/rustc_codegen_cranelift/issues/171\n\
                  Please open an issue at https://github.com/rust-lang/rustc_codegen_cranelift/issues"
             );
-            crate::base::codegen_panic_nounwind(fx, &msg, None);
+            crate::base::codegen_panic_nounwind(fx, &msg, span);
             return;
         }
     }

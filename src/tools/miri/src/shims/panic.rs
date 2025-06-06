@@ -247,7 +247,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             _ => {
                 // Call the lang item associated with this message.
-                let fn_item = this.tcx.require_lang_item(msg.panic_function(), None);
+                let fn_item = this.tcx.require_lang_item(msg.panic_function(), this.tcx.span);
                 let instance = ty::Instance::mono(this.tcx.tcx, fn_item);
                 this.call_function(
                     instance,
