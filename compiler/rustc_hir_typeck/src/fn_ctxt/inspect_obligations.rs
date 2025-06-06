@@ -4,6 +4,7 @@ use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
 use rustc_middle::traits::solve::GoalSource;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
+use rustc_trait_selection::solve::Certainty;
 use rustc_trait_selection::solve::inspect::{
     InspectConfig, InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor,
 };
@@ -117,6 +118,20 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'a, 'tcx> {
     }
 
     fn visit_goal(&mut self, inspect_goal: &InspectGoal<'_, 'tcx>) {
+        // No need to walk into goal subtrees that certainly hold, since they
+        // wouldn't then be stalled on an infer var.
+        // FIXME: We also walk into normalizes-to goals since their certainty
+        // is forced to `Certainty::Yes` since they pass down ambiguous subgoals
+        // to their parent.
+        if inspect_goal.result() == Ok(Certainty::Yes)
+            && !matches!(
+                inspect_goal.goal().predicate.kind().skip_binder(),
+                ty::PredicateKind::NormalizesTo(_)
+            )
+        {
+            return;
+        }
+
         let tcx = self.fcx.tcx;
         let goal = inspect_goal.goal();
         if self.fcx.predicate_has_self_ty(goal.predicate, self.self_ty)
