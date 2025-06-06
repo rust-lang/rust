@@ -412,7 +412,7 @@ top_level_options!(
 
         /// `true` if we're emitting JSON timings with the start and end of
         /// high-level compilation sections
-        json_section_timings: bool [UNTRACKED],
+        json_timings: bool [UNTRACKED],
 
         /// `true` if we're emitting a JSON blob containing the unused externs
         json_unused_externs: JsonUnusedExterns [UNTRACKED],

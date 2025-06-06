@@ -18,6 +18,7 @@ use rustc_errors::emitter::{
     DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
 };
 use rustc_errors::json::JsonEmitter;
+use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
     FluentBundle, LazyFallbackBundle, TerminalUrl, fallback_fluent_bundle,
@@ -155,6 +156,9 @@ pub struct Session {
 
     /// Used by `-Z self-profile`.
     pub prof: SelfProfilerRef,
+
+    /// Used to emit section timings events (enabled by `--json=timings`).
+    pub timings: TimingSectionHandler,
 
     /// Data about code being compiled, gathered during compilation.
     pub code_stats: CodeStats,
@@ -1126,6 +1130,8 @@ pub fn build_session(
         .as_ref()
         .map(|_| rng().next_u32().to_base_fixed_len(CASE_INSENSITIVE).to_string());
 
+    let timings = TimingSectionHandler::new(sopts.json_timings);
+
     let sess = Session {
         target,
         host,
@@ -1136,6 +1142,7 @@ pub fn build_session(
         io,
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
+        timings,
         code_stats: Default::default(),
         lint_store: None,
         driver_lint_caps,

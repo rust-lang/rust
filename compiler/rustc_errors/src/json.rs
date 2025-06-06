@@ -28,9 +28,10 @@ use termcolor::{ColorSpec, WriteColor};
 use crate::diagnostic::IsLint;
 use crate::emitter::{
     ColorConfig, Destination, Emitter, HumanEmitter, HumanReadableErrorType, OutputTheme,
-    should_show_source_code,
+    TimingEvent, should_show_source_code,
 };
 use crate::registry::Registry;
+use crate::timings::{TimingRecord, TimingSection};
 use crate::translation::{Translate, to_fluent_args};
 use crate::{
     CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, Subdiag, Suggestions,
@@ -104,6 +105,7 @@ impl JsonEmitter {
 enum EmitTyped<'a> {
     Diagnostic(Diagnostic),
     Artifact(ArtifactNotification<'a>),
+    SectionTiming(SectionTimestamp<'a>),
     FutureIncompat(FutureIncompatReport<'a>),
     UnusedExtern(UnusedExterns<'a>),
 }
@@ -132,6 +134,21 @@ impl Emitter for JsonEmitter {
         let result = self.emit(EmitTyped::Artifact(data));
         if let Err(e) = result {
             panic!("failed to print notification: {e:?}");
+        }
+    }
+
+    fn emit_timing_section(&mut self, record: TimingRecord, event: TimingEvent) {
+        let event = match event {
+            TimingEvent::Start => "start",
+            TimingEvent::End => "end",
+        };
+        let name = match record.section {
+            TimingSection::Linking => "link",
+        };
+        let data = SectionTimestamp { name, event, timestamp: record.timestamp };
+        let result = self.emit(EmitTyped::SectionTiming(data));
+        if let Err(e) = result {
+            panic!("failed to print timing section: {e:?}");
         }
     }
 
@@ -261,6 +278,16 @@ struct ArtifactNotification<'a> {
     artifact: &'a Path,
     /// What kind of artifact we're emitting.
     emit: &'a str,
+}
+
+#[derive(Serialize)]
+struct SectionTimestamp<'a> {
+    /// Name of the section
+    name: &'a str,
+    /// Start/end of the section
+    event: &'a str,
+    /// Opaque timestamp.
+    timestamp: u128,
 }
 
 #[derive(Serialize)]

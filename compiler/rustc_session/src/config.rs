@@ -1366,7 +1366,7 @@ impl Default for Options {
             real_rust_source_base_dir: None,
             edition: DEFAULT_EDITION,
             json_artifact_notifications: false,
-            json_section_timings: false,
+            json_timings: false,
             json_unused_externs: JsonUnusedExterns::No,
             json_future_incompat: false,
             pretty: None,
@@ -1883,7 +1883,7 @@ pub struct JsonConfig {
     json_artifact_notifications: bool,
     /// Output start and end timestamps of several high-level compilation sections
     /// (frontend, backend, linker).
-    json_section_timings: bool,
+    json_timings: bool,
     pub json_unused_externs: JsonUnusedExterns,
     json_future_incompat: bool,
 }
@@ -1925,7 +1925,7 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
     let mut json_artifact_notifications = false;
     let mut json_unused_externs = JsonUnusedExterns::No;
     let mut json_future_incompat = false;
-    let mut json_section_timings = false;
+    let mut json_timings = false;
     for option in matches.opt_strs("json") {
         // For now conservatively forbid `--color` with `--json` since `--json`
         // won't actually be emitting any colors and anything colorized is
@@ -1942,7 +1942,7 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
                 }
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
-                "timings" => json_section_timings = true,
+                "timings" => json_timings = true,
                 "unused-externs" => json_unused_externs = JsonUnusedExterns::Loud,
                 "unused-externs-silent" => json_unused_externs = JsonUnusedExterns::Silent,
                 "future-incompat" => json_future_incompat = true,
@@ -1955,7 +1955,7 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
         json_rendered,
         json_color,
         json_artifact_notifications,
-        json_section_timings,
+        json_timings,
         json_unused_externs,
         json_future_incompat,
     }
@@ -2483,7 +2483,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         json_rendered,
         json_color,
         json_artifact_notifications,
-        json_section_timings,
+        json_timings,
         json_unused_externs,
         json_future_incompat,
     } = parse_json(early_dcx, matches);
@@ -2505,7 +2505,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut target_modifiers);
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
-    if !unstable_opts.unstable_options && json_section_timings {
+    if !unstable_opts.unstable_options && json_timings {
         early_dcx.early_fatal("--json=timings is unstable and requires using `-Zunstable-options`");
     }
 
@@ -2786,7 +2786,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         real_rust_source_base_dir,
         edition,
         json_artifact_notifications,
-        json_section_timings,
+        json_timings,
         json_unused_externs,
         json_future_incompat,
         pretty,
