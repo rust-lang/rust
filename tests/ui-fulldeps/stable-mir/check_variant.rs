@@ -1,6 +1,6 @@
 //@ run-pass
-//! Test that users are able to use stable mir APIs to retrieve type information from a crate item
-//! definition.
+//! Test that users are able to use stable mir APIs to retrieve
+//! discriminant value and type for AdtDef and Coroutine variants
 
 //@ ignore-stage1
 //@ ignore-cross-compile
