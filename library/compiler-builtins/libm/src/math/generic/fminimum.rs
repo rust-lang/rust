@@ -17,7 +17,7 @@ pub fn fminimum<F: Float>(x: F, y: F) -> F {
         x
     } else if y.is_nan() {
         y
-    } else if x < y || (x.to_bits() == F::NEG_ZERO.to_bits() && y.is_sign_positive()) {
+    } else if x < y || (x.biteq(F::NEG_ZERO) && y.is_sign_positive()) {
         x
     } else {
         y

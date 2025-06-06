@@ -13,7 +13,7 @@ impl<'a> Drop for r<'a> {
     }
 }
 
-fn r(b: &Cell<isize>) -> r {
+fn r(b: &Cell<isize>) -> r<'_> {
     r {
         b: b
     }

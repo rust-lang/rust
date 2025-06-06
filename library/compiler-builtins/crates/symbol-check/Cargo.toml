@@ -1,0 +1,13 @@
+[package]
+name = "symbol-check"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+# FIXME: used as a git dependency since the latest release does not support wasm
+object = { git = "https://github.com/gimli-rs/object.git", rev = "013fac75da56a684377af4151b8164b78c1790e0" }
+serde_json = "1.0.140"
+
+[features]
+wasm = ["object/wasm"]

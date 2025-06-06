@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.160](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.159...compiler_builtins-v0.1.160) - 2025-05-29
+
+### Other
+
+- Change `compiler-builtins` to edition 2024
+- Remove unneeded C symbols
+- Reuse `libm`'s `Caat` and `CastFrom` in `compiler-builtins`
+- Reuse `MinInt` and `Int` from `libm` in `compiler-builtins`
+- Update `CmpResult` to use a pointer-sized return type
+- Enable `__powitf2` on MSVC
+- Fix `i256::MAX`
+- Add a note saying why we use `frintx` rather than `frintn`
+- Typo in README.md
+- Clean up unused files
+
 ## [0.1.159](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.158...compiler_builtins-v0.1.159) - 2025-05-12
 
 ### Other

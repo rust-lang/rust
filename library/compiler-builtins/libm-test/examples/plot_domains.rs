@@ -55,7 +55,7 @@ where
     Op: MathOp<FTy = f32, RustArgs = (f32,)>,
     Op::RustArgs: SpacedInput<Op>,
 {
-    let mut ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr, GeneratorKind::QuickSpaced);
+    let mut ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr, GeneratorKind::Spaced);
     plot_one_generator(
         out_dir,
         &ctx,

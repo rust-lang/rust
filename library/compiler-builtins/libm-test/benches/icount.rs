@@ -1,9 +1,11 @@
 //! Benchmarks that use `iai-cachegrind` to be reasonably CI-stable.
+#![feature(f16)]
+#![feature(f128)]
 
 use std::hint::black_box;
 
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
-use libm::support::{HInt, u256};
+use libm::support::{HInt, Hexf, hf16, hf32, hf64, hf128, u256};
 use libm_test::generate::spaced;
 use libm_test::{CheckBasis, CheckCtx, GeneratorKind, MathOp, OpRustArgs, TupleCall, op};
 
@@ -21,7 +23,7 @@ macro_rules! icount_benches {
                 let mut ctx = CheckCtx::new(
                     Op::IDENTIFIER,
                     CheckBasis::None,
-                    GeneratorKind::QuickSpaced
+                    GeneratorKind::Spaced
                 );
                 ctx.override_iterations(BENCH_ITER_ITEMS);
                 let ret = spaced::get_test_cases::<Op>(&ctx).0.collect::<Vec<_>>();
@@ -109,11 +111,6 @@ fn icount_bench_u128_widen_mul(cases: Vec<(u128, u128)>) {
     }
 }
 
-library_benchmark_group!(
-    name = icount_bench_u128_widen_mul_group;
-    benchmarks = icount_bench_u128_widen_mul
-);
-
 #[library_benchmark]
 #[bench::linspace(setup_u256_add())]
 fn icount_bench_u256_add(cases: Vec<(u256, u256)>) {
@@ -121,11 +118,6 @@ fn icount_bench_u256_add(cases: Vec<(u256, u256)>) {
         black_box(black_box(x) + black_box(y));
     }
 }
-
-library_benchmark_group!(
-    name = icount_bench_u256_add_group;
-    benchmarks = icount_bench_u256_add
-);
 
 #[library_benchmark]
 #[bench::linspace(setup_u256_shift())]
@@ -136,16 +128,90 @@ fn icount_bench_u256_shr(cases: Vec<(u256, u32)>) {
 }
 
 library_benchmark_group!(
-    name = icount_bench_u256_shr_group;
-    benchmarks = icount_bench_u256_shr
+    name = icount_bench_u128_group;
+    benchmarks = icount_bench_u128_widen_mul, icount_bench_u256_add, icount_bench_u256_shr
+);
+
+#[library_benchmark]
+#[bench::short("0x12.34p+8")]
+#[bench::max("0x1.ffcp+15")]
+fn icount_bench_hf16(s: &str) -> f16 {
+    black_box(hf16(s))
+}
+
+#[library_benchmark]
+#[bench::short("0x12.34p+8")]
+#[bench::max("0x1.fffffep+127")]
+fn icount_bench_hf32(s: &str) -> f32 {
+    black_box(hf32(s))
+}
+
+#[library_benchmark]
+#[bench::short("0x12.34p+8")]
+#[bench::max("0x1.fffffffffffffp+1023")]
+fn icount_bench_hf64(s: &str) -> f64 {
+    black_box(hf64(s))
+}
+
+#[library_benchmark]
+#[bench::short("0x12.34p+8")]
+#[bench::max("0x1.ffffffffffffffffffffffffffffp+16383")]
+fn icount_bench_hf128(s: &str) -> f128 {
+    black_box(hf128(s))
+}
+
+library_benchmark_group!(
+    name = icount_bench_hf_parse_group;
+    benchmarks =
+    icount_bench_hf16,
+    icount_bench_hf32,
+    icount_bench_hf64,
+    icount_bench_hf128
+);
+
+#[library_benchmark]
+#[bench::short(1.015625)]
+#[bench::max(f16::MAX)]
+fn icount_bench_print_hf16(x: f16) -> String {
+    black_box(Hexf(x).to_string())
+}
+
+#[library_benchmark]
+#[bench::short(1.015625)]
+#[bench::max(f32::MAX)]
+fn icount_bench_print_hf32(x: f32) -> String {
+    black_box(Hexf(x).to_string())
+}
+
+#[library_benchmark]
+#[bench::short(1.015625)]
+#[bench::max(f64::MAX)]
+fn icount_bench_print_hf64(x: f64) -> String {
+    black_box(Hexf(x).to_string())
+}
+
+#[library_benchmark]
+#[bench::short(1.015625)]
+#[bench::max(f128::MAX)]
+fn icount_bench_print_hf128(x: f128) -> String {
+    black_box(Hexf(x).to_string())
+}
+
+library_benchmark_group!(
+    name = icount_bench_hf_print_group;
+    benchmarks =
+    icount_bench_print_hf16,
+    icount_bench_print_hf32,
+    icount_bench_print_hf64,
+    icount_bench_print_hf128
 );
 
 main!(
     library_benchmark_groups =
-    // u256-related benchmarks
-    icount_bench_u128_widen_mul_group,
-    icount_bench_u256_add_group,
-    icount_bench_u256_shr_group,
+    // Benchmarks not related to public libm math
+    icount_bench_u128_group,
+    icount_bench_hf_parse_group,
+    icount_bench_hf_print_group,
     // verify-apilist-start
     // verify-sorted-start
     icount_bench_acos_group,

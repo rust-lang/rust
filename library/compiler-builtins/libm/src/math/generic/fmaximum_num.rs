@@ -15,12 +15,11 @@ use crate::support::Float;
 
 #[inline]
 pub fn fmaximum_num<F: Float>(x: F, y: F) -> F {
-    let res =
-        if x.is_nan() || x < y || (x.to_bits() == F::NEG_ZERO.to_bits() && y.is_sign_positive()) {
-            y
-        } else {
-            x
-        };
+    let res = if x.is_nan() || x < y || (x.biteq(F::NEG_ZERO) && y.is_sign_positive()) {
+        y
+    } else {
+        x
+    };
 
     // Canonicalize
     res * F::ONE
