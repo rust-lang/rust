@@ -1,18 +1,11 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
-#[cfg(unix)]
-use std::ffi::c_int;
 use std::fmt::Debug;
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Output};
-
-#[cfg(unix)]
-unsafe extern "C" {
-    fn raise(signal: c_int) -> c_int;
-}
 
 fn exec_command(
     input: &[&dyn AsRef<OsStr>],
@@ -27,9 +20,6 @@ fn exec_command(
     #[cfg(unix)]
     {
         if let Some(signal) = status.signal() {
-            unsafe {
-                raise(signal as _);
-            }
             // In case the signal didn't kill the current process.
             return Err(command_error(input, &cwd, format!("Process received signal {}", signal)));
         }
@@ -37,7 +27,7 @@ fn exec_command(
     Ok(status)
 }
 
-fn get_command_inner(
+pub(crate) fn get_command_inner(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
     env: Option<&HashMap<String, String>>,
@@ -136,6 +126,7 @@ pub fn run_command_with_output_and_env(
     Ok(())
 }
 
+#[cfg(not(unix))]
 pub fn run_command_with_output_and_env_no_err(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
