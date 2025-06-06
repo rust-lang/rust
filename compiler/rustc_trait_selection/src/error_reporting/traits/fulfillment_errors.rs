@@ -2558,32 +2558,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         rustc_transmute::Reason::SrcIsNotYetSupported => {
                             format!("analyzing the transmutability of `{src}` is not yet supported")
                         }
-
                         rustc_transmute::Reason::DstIsNotYetSupported => {
                             format!("analyzing the transmutability of `{dst}` is not yet supported")
                         }
-
                         rustc_transmute::Reason::DstIsBitIncompatible => {
                             format!(
                                 "at least one value of `{src}` isn't a bit-valid value of `{dst}`"
                             )
                         }
-
                         rustc_transmute::Reason::DstUninhabited => {
                             format!("`{dst}` is uninhabited")
                         }
-
                         rustc_transmute::Reason::DstMayHaveSafetyInvariants => {
                             format!("`{dst}` may carry safety invariants")
                         }
                         rustc_transmute::Reason::DstIsTooBig => {
                             format!("the size of `{src}` is smaller than the size of `{dst}`")
                         }
-                        rustc_transmute::Reason::DstRefIsTooBig { src, dst } => {
-                            let src_size = src.size;
-                            let dst_size = dst.size;
+                        rustc_transmute::Reason::DstRefIsTooBig {
+                            src,
+                            src_size,
+                            dst,
+                            dst_size,
+                        } => {
                             format!(
-                                "the referent size of `{src}` ({src_size} bytes) \
+                                "the size of `{src}` ({src_size} bytes) \
                         is smaller than that of `{dst}` ({dst_size} bytes)"
                             )
                         }
