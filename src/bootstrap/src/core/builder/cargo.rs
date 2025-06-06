@@ -183,6 +183,12 @@ impl Cargo {
         self
     }
 
+    // Testing only.
+    #[cfg(feature = "tracing")]
+    pub fn cmd(&self) -> &BootstrapCommand {
+        &self.command
+    }
+
     pub fn add_rustc_lib_path(&mut self, builder: &Builder<'_>) {
         builder.add_rustc_lib_path(self.compiler, &mut self.command);
     }
