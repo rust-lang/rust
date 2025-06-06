@@ -22,7 +22,7 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_errors::{Applicability, LintDiagnostic};
-use rustc_feature::{AttributeGate, BuiltinAttribute, GateIssue, Stability, deprecated_attributes};
+use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
@@ -48,8 +48,7 @@ use rustc_trait_selection::traits::{self};
 
 use crate::errors::BuiltinEllipsisInclusiveRangePatterns;
 use crate::lints::{
-    BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
-    BuiltinDeprecatedAttrLinkSuggestion, BuiltinDerefNullptr, BuiltinDoubleNegations,
+    BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
     BuiltinDoubleNegationsAddParens, BuiltinEllipsisInclusiveRangePatternsLint,
     BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote,
     BuiltinIncompleteFeatures, BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures,
@@ -793,50 +792,6 @@ impl EarlyLintPass for AnonymousParameters {
                         BuiltinAnonymousParams { suggestion: (arg.pat.span, appl), ty_snip },
                     );
                 }
-            }
-        }
-    }
-}
-
-/// Check for use of attributes which have been deprecated.
-#[derive(Clone)]
-pub struct DeprecatedAttr {
-    // This is not free to compute, so we want to keep it around, rather than
-    // compute it for every attribute.
-    depr_attrs: Vec<&'static BuiltinAttribute>,
-}
-
-impl_lint_pass!(DeprecatedAttr => []);
-
-impl Default for DeprecatedAttr {
-    fn default() -> Self {
-        DeprecatedAttr { depr_attrs: deprecated_attributes() }
-    }
-}
-
-impl EarlyLintPass for DeprecatedAttr {
-    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
-        for BuiltinAttribute { name, gate, .. } in &self.depr_attrs {
-            if attr.ident().map(|ident| ident.name) == Some(*name) {
-                if let &AttributeGate::Gated {
-                    stability: Stability::Deprecated(link, suggestion),
-                    message,
-                    ..
-                } = gate
-                {
-                    let suggestion = match suggestion {
-                        Some(suggestion) => {
-                            BuiltinDeprecatedAttrLinkSuggestion::Msg { span: attr.span, suggestion }
-                        }
-                        None => BuiltinDeprecatedAttrLinkSuggestion::Default { span: attr.span },
-                    };
-                    cx.emit_span_lint(
-                        DEPRECATED,
-                        attr.span,
-                        BuiltinDeprecatedAttrLink { name: *name, message, link, suggestion },
-                    );
-                }
-                return;
             }
         }
     }

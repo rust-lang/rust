@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_span::edition::Edition;
 use rustc_span::{Symbol, sym};
 
-use crate::{Features, Stability};
+use crate::Features;
 
 type GateFn = fn(&Features) -> bool;
 
@@ -98,7 +98,6 @@ pub enum AttributeSafety {
 pub enum AttributeGate {
     /// A gated attribute which requires a feature gate to be enabled.
     Gated {
-        stability: Stability,
         /// The feature gate, for example `#![feature(rustc_attrs)]` for rustc_* attributes.
         feature: Symbol,
         /// The error message displayed when an attempt is made to use the attribute without its feature gate.
@@ -110,12 +109,6 @@ pub enum AttributeGate {
     },
     /// Ungated attribute, can be used on all release channels
     Ungated,
-}
-
-impl AttributeGate {
-    fn is_deprecated(&self) -> bool {
-        matches!(*self, Self::Gated { stability: Stability::Deprecated(_, _), .. })
-    }
 }
 
 /// A template that the attribute input must match.
@@ -252,7 +245,6 @@ macro_rules! gated {
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated {
-                stability: Stability::Unstable,
                 feature: sym::$gate,
                 message: $message,
                 check: Features::$gate,
@@ -269,7 +261,6 @@ macro_rules! gated {
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated {
-                stability: Stability::Unstable,
                 feature: sym::$attr,
                 message: $message,
                 check: Features::$attr,
@@ -286,7 +277,6 @@ macro_rules! gated {
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated {
-                stability: Stability::Unstable,
                 feature: sym::$gate,
                 message: $message,
                 check: Features::$gate,
@@ -303,7 +293,6 @@ macro_rules! gated {
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated {
-                stability: Stability::Unstable,
                 feature: sym::$attr,
                 message: $message,
                 check: Features::$attr,
@@ -337,7 +326,6 @@ macro_rules! rustc_attr {
             template: $tpl,
             duplicates: $duplicates,
             gate: Gated {
-                stability: Stability::Unstable,
                 feature: sym::rustc_attrs,
                 message: "use of an internal attribute",
                 check: Features::rustc_attrs,
@@ -1025,7 +1013,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template: template!(NameValueStr: "name"),
         duplicates: ErrorFollowing,
         gate: Gated{
-            stability: Stability::Unstable,
             feature: sym::rustc_attrs,
             message: "use of an internal attribute",
             check: Features::rustc_attrs,
@@ -1239,10 +1226,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorFollowing, EncodeCrossCrate::No,
     ),
 ];
-
-pub fn deprecated_attributes() -> Vec<&'static BuiltinAttribute> {
-    BUILTIN_ATTRIBUTES.iter().filter(|attr| attr.gate.is_deprecated()).collect()
-}
 
 pub fn is_builtin_attr_name(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()

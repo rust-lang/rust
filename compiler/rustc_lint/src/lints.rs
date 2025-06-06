@@ -199,32 +199,6 @@ pub(crate) struct BuiltinAnonymousParams<'a> {
     pub ty_snip: &'a str,
 }
 
-// FIXME(davidtwco) translatable deprecated attr
-#[derive(LintDiagnostic)]
-#[diag(lint_builtin_deprecated_attr_link)]
-pub(crate) struct BuiltinDeprecatedAttrLink<'a> {
-    pub name: Symbol,
-    pub message: &'a str,
-    pub link: &'a str,
-    #[subdiagnostic]
-    pub suggestion: BuiltinDeprecatedAttrLinkSuggestion<'a>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum BuiltinDeprecatedAttrLinkSuggestion<'a> {
-    #[suggestion(lint_msg_suggestion, code = "", applicability = "machine-applicable")]
-    Msg {
-        #[primary_span]
-        span: Span,
-        suggestion: &'a str,
-    },
-    #[suggestion(lint_default_suggestion, code = "", applicability = "machine-applicable")]
-    Default {
-        #[primary_span]
-        span: Span,
-    },
-}
-
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_unused_doc_comment)]
 pub(crate) struct BuiltinUnusedDocComment<'a> {
