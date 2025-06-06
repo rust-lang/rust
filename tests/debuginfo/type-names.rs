@@ -19,7 +19,7 @@
 // gdb-check:type = type_names::GenericStruct<type_names::mod1::Struct2, type_names::mod1::mod2::Struct3>
 
 // gdb-command:whatis generic_struct2
-// gdb-check:type = type_names::GenericStruct<type_names::Struct1, extern "fastcall" fn(isize) -> usize>
+// gdb-check:type = type_names::GenericStruct<type_names::Struct1, extern "system" fn(isize) -> usize>
 
 // gdb-command:whatis mod_struct
 // gdb-check:type = type_names::mod1::Struct2
@@ -379,7 +379,7 @@ fn main() {
     let simple_struct = Struct1;
     let generic_struct1: GenericStruct<mod1::Struct2, mod1::mod2::Struct3> =
         GenericStruct(PhantomData);
-    let generic_struct2: GenericStruct<Struct1, extern "fastcall" fn(isize) -> usize> =
+    let generic_struct2: GenericStruct<Struct1, extern "system" fn(isize) -> usize> =
         GenericStruct(PhantomData);
     let mod_struct = mod1::Struct2;
 
