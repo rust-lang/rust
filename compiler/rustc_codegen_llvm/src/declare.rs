@@ -100,42 +100,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         }
     }
 
-    /// Gets declared value by name.
-    pub(crate) fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
-        debug!("get_declared_value(name={:?})", name);
-        unsafe { llvm::LLVMRustGetNamedValue(self.llmod(), name.as_c_char_ptr(), name.len()) }
-    }
-
-    /// Gets defined or externally defined (AvailableExternally linkage) value by
-    /// name.
-    pub(crate) fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
-        self.get_declared_value(name).and_then(|val| {
-            let declaration = llvm::is_declaration(val);
-            if !declaration { Some(val) } else { None }
-        })
-    }
-
-    /// Declare a global with an intention to define it.
-    ///
-    /// Use this function when you intend to define a global. This function will
-    /// return `None` if the name already has a definition associated with it. In that
-    /// case an error should be reported to the user, because it usually happens due
-    /// to user’s fault (e.g., misuse of `#[no_mangle]` or `#[export_name]` attributes).
-    pub(crate) fn define_global(&self, name: &str, ty: &'ll Type) -> Option<&'ll Value> {
-        if self.get_defined_value(name).is_some() {
-            None
-        } else {
-            Some(self.declare_global(name, ty))
-        }
-    }
-
-    /// Declare a private global
-    ///
-    /// Use this function when you intend to define a global without a name.
-    pub(crate) fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
-        unsafe { llvm::LLVMRustInsertPrivateGlobal(self.llmod(), ty) }
-    }
-
 }
 
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
@@ -251,5 +215,43 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         }
 
         llfn
+    }
+}
+
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
+    /// Gets declared value by name.
+    pub(crate) fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
+        debug!("get_declared_value(name={:?})", name);
+        unsafe { llvm::LLVMRustGetNamedValue(self.llmod(), name.as_c_char_ptr(), name.len()) }
+    }
+
+    /// Gets defined or externally defined (AvailableExternally linkage) value by
+    /// name.
+    pub(crate) fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
+        self.get_declared_value(name).and_then(|val| {
+            let declaration = llvm::is_declaration(val);
+            if !declaration { Some(val) } else { None }
+        })
+    }
+
+    /// Declare a global with an intention to define it.
+    ///
+    /// Use this function when you intend to define a global. This function will
+    /// return `None` if the name already has a definition associated with it. In that
+    /// case an error should be reported to the user, because it usually happens due
+    /// to user’s fault (e.g., misuse of `#[no_mangle]` or `#[export_name]` attributes).
+    pub(crate) fn define_global(&self, name: &str, ty: &'ll Type) -> Option<&'ll Value> {
+        if self.get_defined_value(name).is_some() {
+            None
+        } else {
+            Some(self.declare_global(name, ty))
+        }
+    }
+
+    /// Declare a private global
+    ///
+    /// Use this function when you intend to define a global without a name.
+    pub(crate) fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMRustInsertPrivateGlobal(self.llmod(), ty) }
     }
 }
