@@ -6,6 +6,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(deny(warnings)))
@@ -14,7 +15,6 @@
 #![feature(array_windows)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
-#![feature(if_let_guard)]
 #![feature(macro_metavar_expr)]
 #![feature(negative_impls)]
 #![feature(never_type)]
