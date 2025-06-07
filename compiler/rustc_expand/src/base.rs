@@ -12,7 +12,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr_data_structures::{AttributeKind, Deprecation, Stability, find_attr};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
@@ -727,6 +727,7 @@ pub enum SyntaxExtensionKind {
     /// A trivial attribute "macro" that does nothing,
     /// only keeps the attribute and marks it as inert,
     /// thus making it ineligible for further expansion.
+    /// E.g. `#[default]`, `#[rustfmt::skip]`.
     NonMacroAttr,
 
     /// A token-based derive macro.
@@ -1166,6 +1167,22 @@ pub struct ExpansionData {
     pub is_trailing_mac: bool,
 }
 
+#[derive(Default)]
+pub struct MacroStat {
+    /// Number of invocations of the macro.
+    pub count: usize,
+
+    /// Net increase in number of lines of code (when pretty-printed), i.e.
+    /// `lines(output) - lines(invocation)`. Can be negative because a macro
+    /// output may be smaller than the invocation.
+    pub lines: isize,
+
+    /// Net increase in number of lines of code (when pretty-printed), i.e.
+    /// `bytes(output) - bytes(invocation)`. Can be negative because a macro
+    /// output may be smaller than the invocation.
+    pub bytes: isize,
+}
+
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
 /// -> expn_data` of their expansion context stored into their span.
@@ -1189,6 +1206,8 @@ pub struct ExtCtxt<'a> {
     /// in the AST, but insert it here so that we know
     /// not to expand it again.
     pub(super) expanded_inert_attrs: MarkedAttrs,
+    /// `-Zmacro-stats` data.
+    pub macro_stats: FxHashMap<(String, MacroKind), MacroStat>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -1218,6 +1237,7 @@ impl<'a> ExtCtxt<'a> {
             expansions: FxIndexMap::default(),
             expanded_inert_attrs: MarkedAttrs::new(),
             buffered_early_lint: vec![],
+            macro_stats: Default::default(),
         }
     }
 

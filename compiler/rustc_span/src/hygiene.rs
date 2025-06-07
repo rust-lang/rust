@@ -1135,7 +1135,7 @@ impl ExpnKind {
 }
 
 /// The kind of macro invocation or definition.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
@@ -1166,6 +1166,23 @@ impl MacroKind {
         match self {
             MacroKind::Attr => "an",
             _ => "a",
+        }
+    }
+
+    pub fn macro_stats_label(&self) -> String {
+        match self {
+            MacroKind::Attr => "attr".to_string(),
+            MacroKind::Derive => "derive".to_string(),
+            MacroKind::Bang => "fn-like".to_string(),
+        }
+    }
+
+    // Decorate the name to look like the macro invocation.
+    pub fn macro_stats_decorated_name(&self, name: &str) -> String {
+        match self {
+            MacroKind::Attr => format!("#[{name}]"),
+            MacroKind::Derive => name.to_string(),
+            MacroKind::Bang => format!("{name}!"),
         }
     }
 }

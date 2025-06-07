@@ -1063,6 +1063,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_item(i))
     }
 
+    fn assoc_item_to_string(&self, i: &ast::AssocItem) -> String {
+        Self::to_string(|s| s.print_assoc_item(i))
+    }
+
+    fn foreign_item_to_string(&self, i: &ast::ForeignItem) -> String {
+        Self::to_string(|s| s.print_foreign_item(i))
+    }
+
     fn path_to_string(&self, p: &ast::Path) -> String {
         Self::to_string(|s| s.print_path(p, false, 0))
     }

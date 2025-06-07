@@ -2305,6 +2305,8 @@ options! {
         (space separated)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
         "show macro backtraces (default: no)"),
+    macro_stats: bool = (false, parse_bool, [UNTRACKED],
+        "print some statistics about macro expansions (default: no)"),
     maximal_hir_to_mir_coverage: bool = (false, parse_bool, [TRACKED],
         "save as much information as possible about the correspondence between MIR and HIR \
         as source scopes (default: no)"),

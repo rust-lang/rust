@@ -25,8 +25,8 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
-use rustc_span::hygiene::SyntaxContext;
-use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, sym};
+use rustc_span::hygiene::{MacroKind, SyntaxContext};
+use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, kw, sym};
 use smallvec::SmallVec;
 
 use crate::base::*;
@@ -47,8 +47,16 @@ macro_rules! ast_fragments {
     (
         $($Kind:ident($AstTy:ty) {
             $kind_name:expr;
-            $(one fn $mut_visit_ast:ident; fn $visit_ast:ident;)?
-            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident($($args:tt)*);)?
+            $(one
+                fn $mut_visit_ast:ident;
+                fn $visit_ast:ident;
+                fn $ast_to_string:path;
+            )?
+            $(many
+                fn $flat_map_ast_elt:ident;
+                fn $visit_ast_elt:ident($($args:tt)*);
+                fn $ast_to_string_elt:path;
+            )?
             fn $make_ast:ident;
         })*
     ) => {
@@ -61,7 +69,7 @@ macro_rules! ast_fragments {
         }
 
         /// "Discriminant" of an AST fragment.
-        #[derive(Copy, Clone, PartialEq, Eq)]
+        #[derive(Copy, Clone, Debug, PartialEq, Eq)]
         pub enum AstFragmentKind {
             OptExpr,
             MethodReceiverExpr,
@@ -151,6 +159,21 @@ macro_rules! ast_fragments {
                 }
                 V::Result::output()
             }
+
+            fn to_string(&self) -> String {
+                match self {
+                    AstFragment::OptExpr(Some(expr)) => pprust::expr_to_string(expr),
+                    AstFragment::OptExpr(None) => unreachable!(),
+                    AstFragment::MethodReceiverExpr(expr) => pprust::expr_to_string(expr),
+                    $($(AstFragment::$Kind(ast) => $ast_to_string(ast),)?)*
+                    $($(
+                        AstFragment::$Kind(ast) => {
+                            // The closure unwraps a `P` if present, or does nothing otherwise.
+                            elems_to_string(&*ast, |ast| $ast_to_string_elt(&*ast))
+                        }
+                    )?)*
+                }
+            }
         }
 
         impl<'a> MacResult for crate::mbe::macro_rules::ParserAnyMacro<'a> {
@@ -162,77 +185,114 @@ macro_rules! ast_fragments {
     }
 }
 
+fn elems_to_string<T>(elems: &SmallVec<[T; 1]>, f: impl Fn(&T) -> String) -> String {
+    let mut s = String::new();
+    for (i, elem) in elems.iter().enumerate() {
+        if i > 0 {
+            s.push('\n');
+        }
+        s.push_str(&f(elem));
+    }
+    s
+}
+
+fn unreachable_to_string<T>(_: &T) -> String {
+    unreachable!()
+}
+
 ast_fragments! {
-    Expr(P<ast::Expr>) { "expression"; one fn visit_expr; fn visit_expr; fn make_expr; }
-    Pat(P<ast::Pat>) { "pattern"; one fn visit_pat; fn visit_pat; fn make_pat; }
-    Ty(P<ast::Ty>) { "type"; one fn visit_ty; fn visit_ty; fn make_ty; }
+    Expr(P<ast::Expr>) {
+        "expression";
+        one fn visit_expr; fn visit_expr; fn pprust::expr_to_string;
+        fn make_expr;
+    }
+    Pat(P<ast::Pat>) {
+        "pattern";
+        one fn visit_pat; fn visit_pat; fn pprust::pat_to_string;
+        fn make_pat;
+    }
+    Ty(P<ast::Ty>) {
+        "type";
+        one fn visit_ty; fn visit_ty; fn pprust::ty_to_string;
+        fn make_ty;
+    }
     Stmts(SmallVec<[ast::Stmt; 1]>) {
-        "statement"; many fn flat_map_stmt; fn visit_stmt(); fn make_stmts;
+        "statement";
+        many fn flat_map_stmt; fn visit_stmt(); fn pprust::stmt_to_string;
+        fn make_stmts;
     }
     Items(SmallVec<[P<ast::Item>; 1]>) {
-        "item"; many fn flat_map_item; fn visit_item(); fn make_items;
+        "item";
+        many fn flat_map_item; fn visit_item(); fn pprust::item_to_string;
+        fn make_items;
     }
     TraitItems(SmallVec<[P<ast::AssocItem>; 1]>) {
         "trait item";
-        many fn flat_map_assoc_item;
-        fn visit_assoc_item(AssocCtxt::Trait);
+        many fn flat_map_assoc_item; fn visit_assoc_item(AssocCtxt::Trait);
+            fn pprust::assoc_item_to_string;
         fn make_trait_items;
     }
     ImplItems(SmallVec<[P<ast::AssocItem>; 1]>) {
         "impl item";
-        many fn flat_map_assoc_item;
-        fn visit_assoc_item(AssocCtxt::Impl { of_trait: false });
+        many fn flat_map_assoc_item; fn visit_assoc_item(AssocCtxt::Impl { of_trait: false });
+            fn pprust::assoc_item_to_string;
         fn make_impl_items;
     }
     TraitImplItems(SmallVec<[P<ast::AssocItem>; 1]>) {
         "impl item";
-        many fn flat_map_assoc_item;
-        fn visit_assoc_item(AssocCtxt::Impl { of_trait: true });
+        many fn flat_map_assoc_item; fn visit_assoc_item(AssocCtxt::Impl { of_trait: true });
+            fn pprust::assoc_item_to_string;
         fn make_trait_impl_items;
     }
     ForeignItems(SmallVec<[P<ast::ForeignItem>; 1]>) {
         "foreign item";
-        many fn flat_map_foreign_item;
-        fn visit_foreign_item();
+        many fn flat_map_foreign_item; fn visit_foreign_item(); fn pprust::foreign_item_to_string;
         fn make_foreign_items;
     }
     Arms(SmallVec<[ast::Arm; 1]>) {
-        "match arm"; many fn flat_map_arm; fn visit_arm(); fn make_arms;
+        "match arm";
+        many fn flat_map_arm; fn visit_arm(); fn unreachable_to_string;
+        fn make_arms;
     }
     ExprFields(SmallVec<[ast::ExprField; 1]>) {
-        "field expression"; many fn flat_map_expr_field; fn visit_expr_field(); fn make_expr_fields;
+        "field expression";
+        many fn flat_map_expr_field; fn visit_expr_field(); fn unreachable_to_string;
+        fn make_expr_fields;
     }
     PatFields(SmallVec<[ast::PatField; 1]>) {
         "field pattern";
-        many fn flat_map_pat_field;
-        fn visit_pat_field();
+        many fn flat_map_pat_field; fn visit_pat_field(); fn unreachable_to_string;
         fn make_pat_fields;
     }
     GenericParams(SmallVec<[ast::GenericParam; 1]>) {
         "generic parameter";
-        many fn flat_map_generic_param;
-        fn visit_generic_param();
+        many fn flat_map_generic_param; fn visit_generic_param(); fn unreachable_to_string;
         fn make_generic_params;
     }
     Params(SmallVec<[ast::Param; 1]>) {
-        "function parameter"; many fn flat_map_param; fn visit_param(); fn make_params;
+        "function parameter";
+        many fn flat_map_param; fn visit_param(); fn unreachable_to_string;
+        fn make_params;
     }
     FieldDefs(SmallVec<[ast::FieldDef; 1]>) {
         "field";
-        many fn flat_map_field_def;
-        fn visit_field_def();
+        many fn flat_map_field_def; fn visit_field_def(); fn unreachable_to_string;
         fn make_field_defs;
     }
     Variants(SmallVec<[ast::Variant; 1]>) {
-        "variant"; many fn flat_map_variant; fn visit_variant(); fn make_variants;
+        "variant"; many fn flat_map_variant; fn visit_variant(); fn unreachable_to_string;
+        fn make_variants;
     }
     WherePredicates(SmallVec<[ast::WherePredicate; 1]>) {
         "where predicate";
-        many fn flat_map_where_predicate;
-        fn visit_where_predicate();
+        many fn flat_map_where_predicate; fn visit_where_predicate(); fn unreachable_to_string;
         fn make_where_predicates;
-     }
-    Crate(ast::Crate) { "crate"; one fn visit_crate; fn visit_crate; fn make_crate; }
+    }
+    Crate(ast::Crate) {
+        "crate";
+        one fn visit_crate; fn visit_crate; fn unreachable_to_string;
+        fn make_crate;
+    }
 }
 
 pub enum SupportsMacroExpansion {
@@ -686,13 +746,20 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             return ExpandResult::Ready(invoc.fragment_kind.dummy(invoc.span(), guar));
         }
 
+        let macro_stats = self.cx.sess.opts.unstable_opts.macro_stats;
+
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, span } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
                     match expander.expand(self.cx, span, mac.args.tokens.clone()) {
                         Ok(tok_result) => {
-                            self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
+                            let fragment =
+                                self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span);
+                            if macro_stats {
+                                self.update_bang_macro_stats(fragment_kind, span, mac, &fragment);
+                            }
+                            fragment
                         }
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
@@ -708,13 +775,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             });
                         }
                     };
-                    let result = if let Some(result) = fragment_kind.make_from(tok_result) {
-                        result
+                    if let Some(fragment) = fragment_kind.make_from(tok_result) {
+                        if macro_stats {
+                            self.update_bang_macro_stats(fragment_kind, span, mac, &fragment);
+                        }
+                        fragment
                     } else {
                         let guar = self.error_wrong_fragment_kind(fragment_kind, &mac, span);
                         fragment_kind.dummy(span, guar)
-                    };
-                    result
+                    }
                 }
                 _ => unreachable!(),
             },
@@ -746,24 +815,38 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         }
                         _ => item.to_tokens(),
                     };
-                    let attr_item = attr.unwrap_normal_item();
+                    let attr_item = attr.get_normal_item();
                     if let AttrArgs::Eq { .. } = attr_item.args {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
                     match expander.expand(self.cx, span, inner_tokens, tokens) {
-                        Ok(tok_result) => self.parse_ast_fragment(
-                            tok_result,
-                            fragment_kind,
-                            &attr_item.path,
-                            span,
-                        ),
+                        Ok(tok_result) => {
+                            let fragment = self.parse_ast_fragment(
+                                tok_result,
+                                fragment_kind,
+                                &attr_item.path,
+                                span,
+                            );
+                            if macro_stats {
+                                self.update_attr_macro_stats(
+                                    fragment_kind,
+                                    span,
+                                    &attr_item.path,
+                                    &attr,
+                                    item,
+                                    &fragment,
+                                );
+                            }
+                            fragment
+                        }
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
                     match validate_attr::parse_meta(&self.cx.sess.psess, &attr) {
                         Ok(meta) => {
+                            let item_clone = macro_stats.then(|| item.clone());
                             let items = match expander.expand(self.cx, span, &meta, item, false) {
                                 ExpandResult::Ready(items) => items,
                                 ExpandResult::Retry(item) => {
@@ -782,7 +865,18 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 let guar = self.cx.dcx().emit_err(RemoveExprNotSupported { span });
                                 fragment_kind.dummy(span, guar)
                             } else {
-                                fragment_kind.expect_from_annotatables(items)
+                                let fragment = fragment_kind.expect_from_annotatables(items);
+                                if macro_stats {
+                                    self.update_attr_macro_stats(
+                                        fragment_kind,
+                                        span,
+                                        &meta.path,
+                                        &attr,
+                                        item_clone.unwrap(),
+                                        &fragment,
+                                    );
+                                }
+                                fragment
                             }
                         }
                         Err(err) => {
@@ -792,6 +886,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
                 }
                 SyntaxExtensionKind::NonMacroAttr => {
+                    // `-Zmacro-stats` ignores these because they don't do any real expansion.
                     self.cx.expanded_inert_attrs.mark(&attr);
                     item.visit_attrs(|attrs| attrs.insert(pos, attr));
                     fragment_kind.expect_from_annotatables(iter::once(item))
@@ -822,7 +917,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             });
                         }
                     };
-                    fragment_kind.expect_from_annotatables(items)
+                    let fragment = fragment_kind.expect_from_annotatables(items);
+                    if macro_stats {
+                        self.update_derive_macro_stats(fragment_kind, span, &meta.path, &fragment);
+                    }
+                    fragment
                 }
                 _ => unreachable!(),
             },
@@ -852,12 +951,143 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let single_delegations = build_single_delegations::<Node>(
                     self.cx, deleg, &item, &suffixes, item.span, true,
                 );
+                // `-Zmacro-stats` ignores these because they don't seem important.
                 fragment_kind.expect_from_annotatables(
                     single_delegations
                         .map(|item| Annotatable::AssocItem(P(item), AssocCtxt::Impl { of_trait })),
                 )
             }
         })
+    }
+
+    fn update_bang_macro_stats(
+        &mut self,
+        fragment_kind: AstFragmentKind,
+        span: Span,
+        mac: P<ast::MacCall>,
+        fragment: &AstFragment,
+    ) {
+        // Does this path match any of the include macros, e.g. `include!`?
+        // Ignore them. They would have large numbers but are entirely
+        // unsurprising and uninteresting.
+        let is_include_path = mac.path == sym::include
+            || mac.path == sym::include_bytes
+            || mac.path == sym::include_str
+            || mac.path == [sym::std, sym::include].as_slice() // std::include
+            || mac.path == [sym::std, sym::include_bytes].as_slice() // std::include_bytes
+            || mac.path == [sym::std, sym::include_str].as_slice(); // std::include_str
+        if is_include_path {
+            return;
+        }
+
+        // The call itself (e.g. `println!("hi")`) is the input. Need to wrap
+        // `mac` in something printable; `ast::Expr` is as good as anything
+        // else.
+        let expr = ast::Expr {
+            id: ast::DUMMY_NODE_ID,
+            kind: ExprKind::MacCall(mac),
+            span: Default::default(),
+            attrs: Default::default(),
+            tokens: None,
+        };
+        let input = pprust::expr_to_string(&expr);
+
+        // Get `mac` back out of `expr`.
+        let ast::Expr { kind: ExprKind::MacCall(mac), .. } = expr else { unreachable!() };
+
+        self.update_macro_stats(MacroKind::Bang, fragment_kind, span, &mac.path, &input, fragment);
+    }
+
+    fn update_attr_macro_stats(
+        &mut self,
+        fragment_kind: AstFragmentKind,
+        span: Span,
+        path: &ast::Path,
+        attr: &ast::Attribute,
+        item: Annotatable,
+        fragment: &AstFragment,
+    ) {
+        // Does this path match `#[derive(...)]` in any of its forms? If so,
+        // ignore it because the individual derives will go through the
+        // `Invocation::Derive` handling separately.
+        let is_derive_path = *path == sym::derive
+            // ::core::prelude::v1::derive
+            || *path == [kw::PathRoot, sym::core, sym::prelude, sym::v1, sym::derive].as_slice();
+        if is_derive_path {
+            return;
+        }
+
+        // The attribute plus the item itself constitute the input, which we
+        // measure.
+        let input = format!(
+            "{}\n{}",
+            pprust::attribute_to_string(attr),
+            fragment_kind.expect_from_annotatables(iter::once(item)).to_string(),
+        );
+        self.update_macro_stats(MacroKind::Attr, fragment_kind, span, path, &input, fragment);
+    }
+
+    fn update_derive_macro_stats(
+        &mut self,
+        fragment_kind: AstFragmentKind,
+        span: Span,
+        path: &ast::Path,
+        fragment: &AstFragment,
+    ) {
+        // Use something like `#[derive(Clone)]` for the measured input, even
+        // though it may have actually appeared in a multi-derive attribute
+        // like `#[derive(Clone, Copy, Debug)]`.
+        let input = format!("#[derive({})]", pprust::path_to_string(path));
+        self.update_macro_stats(MacroKind::Derive, fragment_kind, span, path, &input, fragment);
+    }
+
+    fn update_macro_stats(
+        &mut self,
+        macro_kind: MacroKind,
+        fragment_kind: AstFragmentKind,
+        span: Span,
+        path: &ast::Path,
+        input: &str,
+        fragment: &AstFragment,
+    ) {
+        fn lines_and_bytes(s: &str) -> (usize, usize) {
+            (s.trim_end().split('\n').count(), s.len())
+        }
+
+        // Measure the size of the output by pretty-printing it and counting
+        // the lines and bytes.
+        let path = pprust::path_to_string(path);
+        let output = fragment.to_string();
+        let (in_l, in_b) = lines_and_bytes(input);
+        let (out_l, out_b) = lines_and_bytes(&output);
+
+        // This code is useful for debugging `-Zmacro-stats`. For every
+        // invocation it prints the full input and output.
+        if false {
+            let label = macro_kind.macro_stats_label();
+            let name = &self.cx.ecfg.crate_name;
+            let span = self
+                .cx
+                .sess
+                .source_map()
+                .span_to_string(span, rustc_span::FileNameDisplayPreference::Local);
+            eprint!(
+                "\
+                -------------------------------\n\
+                {label:?}: [{name}] ({fragment_kind:?}) path={path} span={span}\n\
+                -------------------------------\n\
+                {input}\n\
+                -- ({in_l} lines, {in_b} bytes) --> ({out_l} lines, {out_b} bytes) --\n\
+                {output}\n\
+            "
+            );
+        }
+
+        // The recorded size is the difference between the input and the output.
+        let entry = self.cx.macro_stats.entry((path, macro_kind)).or_insert(MacroStat::default());
+        entry.count += 1;
+        entry.lines += out_l as isize - in_l as isize;
+        entry.bytes += out_b as isize - in_b as isize;
     }
 
     #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
