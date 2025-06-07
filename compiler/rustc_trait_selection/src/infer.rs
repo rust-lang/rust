@@ -33,8 +33,8 @@ impl<'tcx> InferCtxt<'tcx> {
         let ty = self.resolve_vars_if_possible(ty);
 
         // FIXME(#132279): This should be removed as it causes us to incorrectly
-        // handle opaques in their defining scope.
-        if !self.next_trait_solver() && !(param_env, ty).has_infer() {
+        // handle opaques in their defining scope, and stalled coroutines.
+        if !self.next_trait_solver() && !(param_env, ty).has_infer() && !ty.has_coroutines() {
             return self.tcx.type_is_copy_modulo_regions(self.typing_env(param_env), ty);
         }
 
