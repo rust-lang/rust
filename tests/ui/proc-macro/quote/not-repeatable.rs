@@ -1,7 +1,3 @@
-// FIXME(quote): `proc_macro::quote!` doesn't support repetition at the moment, so the stderr is
-// expected to be incorrect.
-//@ known-bug: #54722
-
 #![feature(proc_macro_quote)]
 
 extern crate proc_macro;
@@ -12,5 +8,5 @@ struct Ipv4Addr;
 
 fn main() {
     let ip = Ipv4Addr;
-    let _ = quote! { $($ip)* };
+    let _ = quote! { $($ip)* }; //~ ERROR the method `quote_into_iter` exists for struct `Ipv4Addr`, but its trait bounds were not satisfied
 }
