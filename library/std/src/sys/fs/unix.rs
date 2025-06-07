@@ -54,7 +54,8 @@ use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
     dirent as dirent64, fstat as fstat64, fstatat as fstatat64, ftruncate64, lseek64,
-    lstat as lstat64, off64_t, open as open64, stat as stat64,
+    lstat as lstat64, mkdirat, off64_t, open as open64, openat as openat64, renameat,
+    stat as stat64, unlinkat,
 };
 #[cfg(not(any(
     all(target_os = "linux", not(target_env = "musl")),
@@ -64,14 +65,18 @@ use libc::{
 )))]
 use libc::{
     dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
-    lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
+    lstat as lstat64, mkdirat, off_t as off64_t, open as open64, openat as openat64, renameat,
+    stat as stat64, unlinkat,
 };
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
     target_os = "l4re",
     target_os = "hurd"
 ))]
-use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
+use libc::{
+    dirent64, fstat64, ftruncate64, lseek64, lstat64, mkdirat, off64_t, open64, openat64, renameat,
+    stat64, unlinkat,
+};
 
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt::{self, Write as _};
@@ -249,7 +254,7 @@ cfg_has_statx! {{
 
 // all DirEntry's will have a reference to this struct
 struct InnerReadDir {
-    dirp: Dir,
+    dirp: DirStream,
     root: PathBuf,
 }
 
@@ -264,10 +269,205 @@ impl ReadDir {
     }
 }
 
-struct Dir(*mut libc::DIR);
+struct DirStream(*mut libc::DIR);
 
-unsafe impl Send for Dir {}
-unsafe impl Sync for Dir {}
+pub struct Dir(OwnedFd);
+
+impl Dir {
+    pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        run_path_with_cstr(path.as_ref(), &|path| Self::open_c_dir(path, &opts))
+    }
+
+    pub fn new_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
+        run_path_with_cstr(path.as_ref(), &|path| Self::open_c_dir(path, &opts))
+    }
+
+    pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        run_path_with_cstr(path.as_ref(), &|path| self.open_c(path, &opts))
+    }
+
+    pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
+        run_path_with_cstr(path.as_ref(), &|path| self.open_c(path, opts))
+    }
+
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        run_path_with_cstr(path.as_ref(), &|path| self.create_dir_c(path))
+    }
+
+    pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        run_path_with_cstr(path.as_ref(), &|path| self.remove_c(path, false))
+    }
+
+    pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        run_path_with_cstr(path.as_ref(), &|path| self.remove_c(path, true))
+    }
+
+    pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        from: P,
+        to_dir: &Self,
+        to: Q,
+    ) -> io::Result<()> {
+        run_path_with_cstr(from.as_ref(), &|from| {
+            run_path_with_cstr(to.as_ref(), &|to| self.rename_c(from, to_dir, to))
+        })
+    }
+
+    pub fn open_c(&self, path: &CStr, opts: &OpenOptions) -> io::Result<File> {
+        let flags = libc::O_CLOEXEC
+            | opts.get_access_mode()?
+            | opts.get_creation_mode()?
+            | (opts.custom_flags as c_int & !libc::O_ACCMODE);
+        let fd = cvt_r(|| unsafe {
+            openat64(self.0.as_raw_fd(), path.as_ptr(), flags, opts.mode as c_int)
+        })?;
+        Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
+    }
+
+    pub fn open_c_dir(path: &CStr, opts: &OpenOptions) -> io::Result<Self> {
+        let flags = libc::O_CLOEXEC
+            | libc::O_DIRECTORY
+            | opts.get_access_mode()?
+            | opts.get_creation_mode()?
+            | (opts.custom_flags as c_int & !libc::O_ACCMODE);
+        let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
+        Ok(Self(unsafe { OwnedFd::from_raw_fd(fd) }))
+    }
+
+    pub fn create_dir_c(&self, path: &CStr) -> io::Result<()> {
+        cvt(unsafe { mkdirat(self.0.as_raw_fd(), path.as_ptr(), 0o777) }).map(|_| ())
+    }
+
+    pub fn remove_c(&self, path: &CStr, remove_dir: bool) -> io::Result<()> {
+        cvt(unsafe {
+            unlinkat(
+                self.0.as_raw_fd(),
+                path.as_ptr(),
+                if remove_dir { libc::AT_REMOVEDIR } else { 0 },
+            )
+        })
+        .map(|_| ())
+    }
+
+    pub fn rename_c(&self, p1: &CStr, new_dir: &Self, p2: &CStr) -> io::Result<()> {
+        cvt(unsafe {
+            renameat(self.0.as_raw_fd(), p1.as_ptr(), new_dir.0.as_raw_fd(), p2.as_ptr())
+        })
+        .map(|_| ())
+    }
+}
+
+fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
+    #[cfg(any(target_os = "linux", target_os = "illumos", target_os = "solaris"))]
+    fn get_path(fd: c_int) -> Option<PathBuf> {
+        let mut p = PathBuf::from("/proc/self/fd");
+        p.push(&fd.to_string());
+        run_path_with_cstr(&p, &readlink).ok()
+    }
+
+    #[cfg(any(target_vendor = "apple", target_os = "netbsd"))]
+    fn get_path(fd: c_int) -> Option<PathBuf> {
+        // FIXME: The use of PATH_MAX is generally not encouraged, but it
+        // is inevitable in this case because Apple targets and NetBSD define `fcntl`
+        // with `F_GETPATH` in terms of `MAXPATHLEN`, and there are no
+        // alternatives. If a better method is invented, it should be used
+        // instead.
+        let mut buf = vec![0; libc::PATH_MAX as usize];
+        let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_ptr()) };
+        if n == -1 {
+            cfg_if::cfg_if! {
+                if #[cfg(target_os = "netbsd")] {
+                    // fallback to procfs as last resort
+                    let mut p = PathBuf::from("/proc/self/fd");
+                    p.push(&fd.to_string());
+                    return run_path_with_cstr(&p, &readlink).ok()
+                } else {
+                    return None;
+                }
+            }
+        }
+        let l = buf.iter().position(|&c| c == 0).unwrap();
+        buf.truncate(l as usize);
+        buf.shrink_to_fit();
+        Some(PathBuf::from(OsString::from_vec(buf)))
+    }
+
+    #[cfg(target_os = "freebsd")]
+    fn get_path(fd: c_int) -> Option<PathBuf> {
+        let info = Box::<libc::kinfo_file>::new_zeroed();
+        let mut info = unsafe { info.assume_init() };
+        info.kf_structsize = size_of::<libc::kinfo_file>() as libc::c_int;
+        let n = unsafe { libc::fcntl(fd, libc::F_KINFO, &mut *info) };
+        if n == -1 {
+            return None;
+        }
+        let buf = unsafe { CStr::from_ptr(info.kf_path.as_mut_ptr()).to_bytes().to_vec() };
+        Some(PathBuf::from(OsString::from_vec(buf)))
+    }
+
+    #[cfg(target_os = "vxworks")]
+    fn get_path(fd: c_int) -> Option<PathBuf> {
+        let mut buf = vec![0; libc::PATH_MAX as usize];
+        let n = unsafe { libc::ioctl(fd, libc::FIOGETNAME, buf.as_ptr()) };
+        if n == -1 {
+            return None;
+        }
+        let l = buf.iter().position(|&c| c == 0).unwrap();
+        buf.truncate(l as usize);
+        Some(PathBuf::from(OsString::from_vec(buf)))
+    }
+
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "vxworks",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "illumos",
+        target_os = "solaris",
+        target_vendor = "apple",
+    )))]
+    fn get_path(_fd: c_int) -> Option<PathBuf> {
+        // FIXME(#24570): implement this for other Unix platforms
+        None
+    }
+
+    get_path(fd)
+}
+
+impl fmt::Debug for Dir {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn get_mode(fd: c_int) -> Option<(bool, bool)> {
+            let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+            if mode == -1 {
+                return None;
+            }
+            match mode & libc::O_ACCMODE {
+                libc::O_RDONLY => Some((true, false)),
+                libc::O_RDWR => Some((true, true)),
+                libc::O_WRONLY => Some((false, true)),
+                _ => None,
+            }
+        }
+
+        let fd = self.0.as_raw_fd();
+        let mut b = f.debug_struct("Dir");
+        b.field("fd", &fd);
+        if let Some(path) = get_path_from_fd(fd) {
+            b.field("path", &path);
+        }
+        if let Some((read, write)) = get_mode(fd) {
+            b.field("read", &read).field("write", &write);
+        }
+        b.finish()
+    }
+}
+
+unsafe impl Send for DirStream {}
+unsafe impl Sync for DirStream {}
 
 #[cfg(any(
     target_os = "android",
@@ -852,7 +1052,7 @@ pub(crate) fn debug_assert_fd_is_open(fd: RawFd) {
     }
 }
 
-impl Drop for Dir {
+impl Drop for DirStream {
     fn drop(&mut self) {
         // dirfd isn't supported everywhere
         #[cfg(not(any(
@@ -1661,79 +1861,6 @@ impl FromRawFd for File {
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(any(target_os = "linux", target_os = "illumos", target_os = "solaris"))]
-        fn get_path(fd: c_int) -> Option<PathBuf> {
-            let mut p = PathBuf::from("/proc/self/fd");
-            p.push(&fd.to_string());
-            run_path_with_cstr(&p, &readlink).ok()
-        }
-
-        #[cfg(any(target_vendor = "apple", target_os = "netbsd"))]
-        fn get_path(fd: c_int) -> Option<PathBuf> {
-            // FIXME: The use of PATH_MAX is generally not encouraged, but it
-            // is inevitable in this case because Apple targets and NetBSD define `fcntl`
-            // with `F_GETPATH` in terms of `MAXPATHLEN`, and there are no
-            // alternatives. If a better method is invented, it should be used
-            // instead.
-            let mut buf = vec![0; libc::PATH_MAX as usize];
-            let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_ptr()) };
-            if n == -1 {
-                cfg_if::cfg_if! {
-                    if #[cfg(target_os = "netbsd")] {
-                        // fallback to procfs as last resort
-                        let mut p = PathBuf::from("/proc/self/fd");
-                        p.push(&fd.to_string());
-                        return run_path_with_cstr(&p, &readlink).ok()
-                    } else {
-                        return None;
-                    }
-                }
-            }
-            let l = buf.iter().position(|&c| c == 0).unwrap();
-            buf.truncate(l as usize);
-            buf.shrink_to_fit();
-            Some(PathBuf::from(OsString::from_vec(buf)))
-        }
-
-        #[cfg(target_os = "freebsd")]
-        fn get_path(fd: c_int) -> Option<PathBuf> {
-            let info = Box::<libc::kinfo_file>::new_zeroed();
-            let mut info = unsafe { info.assume_init() };
-            info.kf_structsize = size_of::<libc::kinfo_file>() as libc::c_int;
-            let n = unsafe { libc::fcntl(fd, libc::F_KINFO, &mut *info) };
-            if n == -1 {
-                return None;
-            }
-            let buf = unsafe { CStr::from_ptr(info.kf_path.as_mut_ptr()).to_bytes().to_vec() };
-            Some(PathBuf::from(OsString::from_vec(buf)))
-        }
-
-        #[cfg(target_os = "vxworks")]
-        fn get_path(fd: c_int) -> Option<PathBuf> {
-            let mut buf = vec![0; libc::PATH_MAX as usize];
-            let n = unsafe { libc::ioctl(fd, libc::FIOGETNAME, buf.as_ptr()) };
-            if n == -1 {
-                return None;
-            }
-            let l = buf.iter().position(|&c| c == 0).unwrap();
-            buf.truncate(l as usize);
-            Some(PathBuf::from(OsString::from_vec(buf)))
-        }
-
-        #[cfg(not(any(
-            target_os = "linux",
-            target_os = "vxworks",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "illumos",
-            target_os = "solaris",
-            target_vendor = "apple",
-        )))]
-        fn get_path(_fd: c_int) -> Option<PathBuf> {
-            // FIXME(#24570): implement this for other Unix platforms
-            None
-        }
-
         fn get_mode(fd: c_int) -> Option<(bool, bool)> {
             let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
             if mode == -1 {
@@ -1750,7 +1877,7 @@ impl fmt::Debug for File {
         let fd = self.as_raw_fd();
         let mut b = f.debug_struct("File");
         b.field("fd", &fd);
-        if let Some(path) = get_path(fd) {
+        if let Some(path) = get_path_from_fd(fd) {
             b.field("path", &path);
         }
         if let Some((read, write)) = get_mode(fd) {
@@ -1833,7 +1960,7 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
         Err(Error::last_os_error())
     } else {
         let root = path.to_path_buf();
-        let inner = InnerReadDir { dirp: Dir(ptr), root };
+        let inner = InnerReadDir { dirp: DirStream(ptr), root };
         Ok(ReadDir::new(inner))
     }
 }
@@ -2194,7 +2321,7 @@ mod remove_dir_impl {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use libc::{fdopendir, openat64 as openat, unlinkat};
 
-    use super::{Dir, DirEntry, InnerReadDir, ReadDir, lstat};
+    use super::{DirEntry, DirStream, InnerReadDir, ReadDir, lstat};
     use crate::ffi::CStr;
     use crate::io;
     use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
@@ -2220,7 +2347,7 @@ mod remove_dir_impl {
         if ptr.is_null() {
             return Err(io::Error::last_os_error());
         }
-        let dirp = Dir(ptr);
+        let dirp = DirStream(ptr);
         // file descriptor is automatically closed by libc::closedir() now, so give up ownership
         let new_parent_fd = dir_fd.into_raw_fd();
         // a valid root is not needed because we do not call any functions involving the full path
