@@ -1940,6 +1940,55 @@ pub(crate) enum UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx> {
     },
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_interior_mutable_consts)]
+#[note(lint_temporary)]
+#[note(lint_never_original)]
+#[help(lint_suggestion_inline_const)]
+pub(crate) struct InteriorMutableConstsDiag {
+    pub ty_name: Ident,
+    pub const_name: Ident,
+    #[label]
+    pub ty_span: Span,
+    #[subdiagnostic]
+    pub sugg_static: InteriorMutableConstsSuggestionStatic,
+    #[subdiagnostic]
+    pub sugg_expect: InteriorMutableConstsSuggestionExpect,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum InteriorMutableConstsSuggestionStatic {
+    #[suggestion(
+        lint_suggestion_static,
+        code = "{before}static ",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    Spanful {
+        #[primary_span]
+        const_: Span,
+        before: &'static str,
+    },
+    #[help(lint_suggestion_static)]
+    Spanless,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum InteriorMutableConstsSuggestionExpect {
+    #[suggestion(
+        lint_suggestion_expect,
+        code = "#[expect(interior_mutable_consts, reason = \"...\")] ",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    Spanful {
+        #[primary_span]
+        span: Span,
+    },
+    #[help(lint_suggestion_expect)]
+    Spanless,
+}
+
 pub(crate) struct ImproperCTypes<'a> {
     pub ty: Ty<'a>,
     pub desc: &'a str,

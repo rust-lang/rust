@@ -949,6 +949,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_no_implicit_autorefs]` is used to mark functions for which an autoref to the dereference of a raw pointer should not be used as an argument."
     ),
     rustc_attr!(
+        rustc_significant_interior_mutable_type, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
+        "#[rustc_significant_interior_mutable_type] is used to mark type that are significant interior mutable types."
+    ),
+    rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
         "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
     ),
