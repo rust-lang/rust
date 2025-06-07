@@ -1,6 +1,6 @@
-//@ run-pass
+//! Checks basic default method functionality.
 
-#![allow(dead_code)]
+//@ run-pass
 
 trait Foo {
     fn f(&self) {
@@ -10,9 +10,7 @@ trait Foo {
     fn g(&self);
 }
 
-struct A {
-    x: isize
-}
+struct A;
 
 impl Foo for A {
     fn g(&self) {
@@ -21,6 +19,6 @@ impl Foo for A {
 }
 
 pub fn main() {
-    let a = A { x: 1 };
+    let a = A;
     a.f();
 }
