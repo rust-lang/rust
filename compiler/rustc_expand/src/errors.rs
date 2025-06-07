@@ -154,12 +154,16 @@ pub(crate) struct HelperAttributeNameInvalid {
 
 #[derive(Diagnostic)]
 #[diag(expand_feature_removed, code = E0557)]
+#[note]
 pub(crate) struct FeatureRemoved<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
     #[subdiagnostic]
     pub reason: Option<FeatureRemovedReason<'a>>,
+    pub removed_rustc_version: &'a str,
+    pub current_rustc_version: &'a str,
+    pub pull_note: String,
 }
 
 #[derive(Subdiagnostic)]
