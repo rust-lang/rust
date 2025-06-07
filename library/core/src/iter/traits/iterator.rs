@@ -2925,8 +2925,8 @@ pub const trait Iterator {
     ///
     /// ```
     /// #![feature(iter_contains)]
-    /// assert!([1, 2, 3].iter().contains(2));
-    /// assert!(![1, 2, 3].iter().contains(5));
+    /// assert!([1, 2, 3].iter().contains(&2));
+    /// assert!(![1, 2, 3].iter().contains(&5));
     /// ```
     ///
     /// [`Iterator::contains`] can be used where [`slice::contains`] cannot:
