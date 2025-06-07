@@ -1,8 +1,9 @@
 //! Module providing interface for running tests in the console.
 
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io;
 use std::io::prelude::Write;
+use std::path::PathBuf;
 use std::time::Instant;
 
 use super::bench::fmt_bench_samples;
@@ -171,11 +172,7 @@ impl ConsoleTestState {
 
 // List the tests to console, and optionally to logfile. Filters are honored.
 pub(crate) fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
-    let output = match term::stdout() {
-        None => OutputLocation::Raw(io::stdout().lock()),
-        Some(t) => OutputLocation::Pretty(t),
-    };
-
+    let output = build_test_output(&opts.test_results_file)?;
     let mut out: Box<dyn OutputFormatter> = match opts.format {
         OutputFormat::Pretty | OutputFormat::Junit => {
             Box::new(PrettyFormatter::new(output, false, 0, false, None))
@@ -209,6 +206,24 @@ pub(crate) fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> 
     }
 
     out.write_discovery_finish(&st)
+}
+
+pub(crate) fn build_test_output(
+    test_results_file: &Option<PathBuf>,
+) -> io::Result<OutputLocation<Box<dyn Write>>> {
+    let output: OutputLocation<Box<dyn Write>> = match test_results_file {
+        Some(results_file_path) => {
+            let file_output =
+                OpenOptions::new().write(true).create_new(true).open(results_file_path)?;
+
+            OutputLocation::Raw(Box::new(file_output))
+        }
+        None => match term::stdout() {
+            None => OutputLocation::Raw(Box::new(io::stdout().lock())),
+            Some(t) => OutputLocation::Pretty(t),
+        },
+    };
+    Ok(output)
 }
 
 // Updates `ConsoleTestState` depending on result of the test execution.
@@ -284,10 +299,7 @@ fn on_test_event(
 /// A simple console test runner.
 /// Runs provided tests reporting process and results to the stdout.
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
-    let output = match term::stdout() {
-        None => OutputLocation::Raw(io::stdout()),
-        Some(t) => OutputLocation::Pretty(t),
-    };
+    let output = build_test_output(&opts.test_results_file)?;
 
     let max_name_len = tests
         .iter()
