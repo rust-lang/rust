@@ -137,7 +137,7 @@
 //! | [`ptr::NonNull<U>`]                                                 | when `U: Sized`                                                            |
 //! | `#[repr(transparent)]` struct around one of the types in this list. | when it holds for the inner type                                           |
 //!
-//! [^extern_fn]: this remains true for any argument/return types and any other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
+//! [^extern_fn]: this remains true for `unsafe` variants, any argument/return types, and any other ABI: `[unsafe] extern "abi" fn` (_e.g._, `extern "system" fn`)
 //!
 //! Under some conditions the above types `T` are also null pointer optimized when wrapped in a [`Result`][result_repr].
 //!
