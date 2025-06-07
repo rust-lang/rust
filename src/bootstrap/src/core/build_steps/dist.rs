@@ -1681,7 +1681,7 @@ impl Step for Extended {
             cmd.run(builder);
         }
 
-        if target.is_windows() {
+        if target.is_windows() && self.host.is_windows() {
             let exe = tmp.join("exe");
             let _ = fs::remove_dir_all(&exe);
 
