@@ -112,7 +112,7 @@ use crate::ops::ControlFlow;
 ///     R::from_output(accum)
 /// }
 /// ```
-#[unstable(feature = "try_trait_v2", issue = "84277")]
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_on_unimplemented(
     on(
         all(from_desugaring = "TryBlock"),
@@ -130,7 +130,7 @@ use crate::ops::ControlFlow;
 #[lang = "Try"]
 pub trait Try: FromResidual {
     /// The type of the value produced by `?` when *not* short-circuiting.
-    #[unstable(feature = "try_trait_v2", issue = "84277")]
+    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     type Output;
 
     /// The type of the value passed to [`FromResidual::from_residual`]
@@ -154,7 +154,7 @@ pub trait Try: FromResidual {
     /// then typically you can use `Foo<std::convert::Infallible>` as its `Residual`
     /// type: that type will have a "hole" in the correct place, and will maintain the
     /// "foo-ness" of the residual so other types need to opt-in to interconversion.
-    #[unstable(feature = "try_trait_v2", issue = "84277")]
+    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     type Residual;
 
     /// Constructs the type from its `Output` type.
@@ -186,7 +186,7 @@ pub trait Try: FromResidual {
     /// assert_eq!(r, Some(4));
     /// ```
     #[lang = "from_output"]
-    #[unstable(feature = "try_trait_v2", issue = "84277")]
+    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     fn from_output(output: Self::Output) -> Self;
 
     /// Used in `?` to decide whether the operator should produce a value
@@ -213,7 +213,7 @@ pub trait Try: FromResidual {
     /// );
     /// ```
     #[lang = "branch"]
-    #[unstable(feature = "try_trait_v2", issue = "84277")]
+    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
 }
 
@@ -303,7 +303,7 @@ pub trait Try: FromResidual {
     ),
 )]
 #[rustc_diagnostic_item = "FromResidual"]
-#[unstable(feature = "try_trait_v2", issue = "84277")]
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 pub trait FromResidual<R = <Self as Try>::Residual> {
     /// Constructs the type from a compatible `Residual` type.
     ///
@@ -326,7 +326,7 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     /// );
     /// ```
     #[lang = "from_residual"]
-    #[unstable(feature = "try_trait_v2", issue = "84277")]
+    #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     fn from_residual(residual: R) -> Self;
 }
 

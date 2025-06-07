@@ -2638,7 +2638,7 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 8);
-    static_assert_size!(ItemInner, 136);
+    static_assert_size!(ItemInner, 144);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);
