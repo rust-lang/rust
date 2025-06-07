@@ -45,6 +45,7 @@ pub(crate) struct BuildDocTestBuilder<'a> {
     test_id: Option<String>,
     lang_str: Option<&'a LangString>,
     span: Span,
+    global_crate_attrs: Vec<String>,
 }
 
 impl<'a> BuildDocTestBuilder<'a> {
@@ -57,6 +58,7 @@ impl<'a> BuildDocTestBuilder<'a> {
             test_id: None,
             lang_str: None,
             span: DUMMY_SP,
+            global_crate_attrs: Vec::new(),
         }
     }
 
@@ -96,6 +98,12 @@ impl<'a> BuildDocTestBuilder<'a> {
         self
     }
 
+    #[inline]
+    pub(crate) fn global_crate_attrs(mut self, global_crate_attrs: Vec<String>) -> Self {
+        self.global_crate_attrs = global_crate_attrs;
+        self
+    }
+
     pub(crate) fn build(self, dcx: Option<DiagCtxtHandle<'_>>) -> DocTestBuilder {
         let BuildDocTestBuilder {
             source,
@@ -106,6 +114,7 @@ impl<'a> BuildDocTestBuilder<'a> {
             test_id,
             lang_str,
             span,
+            global_crate_attrs,
         } = self;
         let can_merge_doctests = can_merge_doctests
             && lang_str.is_some_and(|lang_str| {
@@ -133,6 +142,7 @@ impl<'a> BuildDocTestBuilder<'a> {
             // If the AST returned an error, we don't want this doctest to be merged with the
             // others.
             return DocTestBuilder::invalid(
+                Vec::new(),
                 String::new(),
                 String::new(),
                 String::new(),
@@ -155,6 +165,7 @@ impl<'a> BuildDocTestBuilder<'a> {
         DocTestBuilder {
             supports_color,
             has_main_fn,
+            global_crate_attrs,
             crate_attrs,
             maybe_crate_attrs,
             crates,
@@ -173,6 +184,7 @@ pub(crate) struct DocTestBuilder {
     pub(crate) supports_color: bool,
     pub(crate) already_has_extern_crate: bool,
     pub(crate) has_main_fn: bool,
+    pub(crate) global_crate_attrs: Vec<String>,
     pub(crate) crate_attrs: String,
     /// If this is a merged doctest, it will be put into `everything_else`, otherwise it will
     /// put into `crate_attrs`.
@@ -186,6 +198,7 @@ pub(crate) struct DocTestBuilder {
 
 impl DocTestBuilder {
     fn invalid(
+        global_crate_attrs: Vec<String>,
         crate_attrs: String,
         maybe_crate_attrs: String,
         crates: String,
@@ -195,6 +208,7 @@ impl DocTestBuilder {
         Self {
             supports_color: false,
             has_main_fn: false,
+            global_crate_attrs,
             crate_attrs,
             maybe_crate_attrs,
             crates,
@@ -224,7 +238,8 @@ impl DocTestBuilder {
         let mut line_offset = 0;
         let mut prog = String::new();
         let everything_else = self.everything_else.trim();
-        if opts.attrs.is_empty() {
+
+        if self.global_crate_attrs.is_empty() {
             // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
             // lints that are commonly triggered in doctests. The crate-level test attributes are
             // commonly used to make tests fail in case they trigger warnings, so having this there in
@@ -233,8 +248,8 @@ impl DocTestBuilder {
             line_offset += 1;
         }
 
-        // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
-        for attr in &opts.attrs {
+        // Next, any attributes that came from #![doc(test(attr(...)))].
+        for attr in &self.global_crate_attrs {
             prog.push_str(&format!("#![{attr}]\n"));
             line_offset += 1;
         }
