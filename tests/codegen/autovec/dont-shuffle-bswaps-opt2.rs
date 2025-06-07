@@ -3,6 +3,8 @@
 #![crate_type = "lib"]
 #![no_std]
 
+// This test is paired with the arch-specific -opt3.rs test.
+
 // The code is from https://github.com/rust-lang/rust/issues/122805.
 // Ensure we do not generate the shufflevector instruction
 // to avoid complicating the code.
