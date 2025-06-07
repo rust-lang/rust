@@ -4,7 +4,6 @@
 //! of MIR building, and only after this pass we think of the program has having the
 //! normal MIR semantics.
 
-use rustc_hir::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -28,7 +27,6 @@ fn may_contain_reference<'tcx>(ty: Ty<'tcx>, depth: u32, tcx: TyCtxt<'tcx>) -> b
         // References and Boxes (`noalias` sources)
         ty::Ref(..) => true,
         ty::Adt(..) if ty.is_box() => true,
-        ty::Adt(adt, _) if tcx.is_lang_item(adt.did(), LangItem::PtrUnique) => true,
         // Compound types: recurse
         ty::Array(ty, _) | ty::Slice(ty) => {
             // This does not branch so we keep the depth the same.
@@ -153,6 +151,13 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
                                 }
                             }
                             Rvalue::Ref(..) => None,
+                            // Also skip coercions whose source is already a local. This is crucial
+                            // to avoid unnecessary retags in `my_array.len()` calls.
+                            Rvalue::Cast(
+                                CastKind::PointerCoercion(_, CoercionSource::Implicit),
+                                Operand::Copy(p) | Operand::Move(p),
+                                _,
+                            ) if p.as_local().is_some() => None,
                             _ => {
                                 if needs_retag(place) {
                                     Some(RetagKind::Default)

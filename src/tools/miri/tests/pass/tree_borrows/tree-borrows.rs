@@ -1,7 +1,7 @@
 //@compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
 
-use std::{mem, ptr};
+use std::mem;
 
 // Test various tree-borrows-specific things
 // (i.e., these do not work the same under SB).
@@ -9,20 +9,7 @@ fn main() {
     aliasing_read_only_mutable_refs();
     string_as_mut_ptr();
     two_mut_protected_same_alloc();
-    direct_mut_to_const_raw();
-    local_addr_of_mut();
     returned_mut_is_usable();
-}
-
-#[allow(unused_assignments)]
-fn local_addr_of_mut() {
-    let mut local = 0;
-    let ptr = ptr::addr_of_mut!(local);
-    // In SB, `local` and `*ptr` would have different tags, but in TB they have the same tag.
-    local = 1;
-    unsafe { *ptr = 2 };
-    local = 3;
-    unsafe { *ptr = 4 };
 }
 
 // Tree Borrows has no issue with several mutable references existing
@@ -91,14 +78,4 @@ fn returned_mut_is_usable() {
     let x = &mut data;
     let y = reborrow(x);
     *y = 1;
-}
-
-// Make sure that coercing &mut T to *const T produces a writeable pointer.
-fn direct_mut_to_const_raw() {
-    let x = &mut 0;
-    let y: *const i32 = x;
-    unsafe {
-        *(y as *mut i32) = 1;
-    }
-    assert_eq!(*x, 1);
 }

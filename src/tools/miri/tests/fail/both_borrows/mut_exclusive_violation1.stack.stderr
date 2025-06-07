@@ -12,8 +12,8 @@ LL |         *LEAK = 7;
 help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x4]
   --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
    |
-LL |         LEAK = x as *const _ as *mut _;
-   |                ^
+LL | fn unknown_code_1(x: &i32) {
+   |                   ^
 help: <TAG> was later invalidated at offsets [0x0..0x4] by a write access
   --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
    |

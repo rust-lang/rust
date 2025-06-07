@@ -15,10 +15,6 @@
           StorageDead(_3);
 -         _0 = PtrMetadata(move _2);
 +         _0 = const N;
-          goto -> bb1;
-      }
-  
-      bb1: {
           StorageDead(_2);
           return;
       }

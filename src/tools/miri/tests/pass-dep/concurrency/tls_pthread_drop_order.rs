@@ -38,8 +38,7 @@ unsafe extern "C" fn dtor(ptr: *mut u64) {
     assert!(CANARY != ptr::null_mut()); // make sure we do not get run too often
     let val = *ptr;
 
-    let which_key =
-        GLOBALS.iter().position(|global| global as *const _ == ptr).expect("Should find my global");
+    let which_key = ptr.offset_from_unsigned(&raw mut GLOBALS as *mut u64);
     record(which_key);
 
     if val > 0 {
