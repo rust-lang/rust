@@ -465,10 +465,12 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Break { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Continue { .. }
+            | ExprKind::ConstContinue { .. }
             | ExprKind::Return { .. }
             | ExprKind::Become { .. }
             | ExprKind::Yield { .. }
             | ExprKind::Loop { .. }
+            | ExprKind::LoopMatch { .. }
             | ExprKind::Let { .. }
             | ExprKind::Match { .. }
             | ExprKind::Box { .. }

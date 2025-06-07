@@ -565,12 +565,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Match { .. }
             | ExprKind::If { .. }
             | ExprKind::Loop { .. }
+            | ExprKind::LoopMatch { .. }
             | ExprKind::Block { .. }
             | ExprKind::Let { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
             | ExprKind::Break { .. }
             | ExprKind::Continue { .. }
+            | ExprKind::ConstContinue { .. }
             | ExprKind::Return { .. }
             | ExprKind::Become { .. }
             | ExprKind::Literal { .. }
