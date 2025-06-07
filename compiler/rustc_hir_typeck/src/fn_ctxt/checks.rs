@@ -165,7 +165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => traits::IsConstable::No,
             };
 
-            let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
+            let lang_item = self.tcx.require_lang_item(LangItem::Copy, element.span);
             let code = traits::ObligationCauseCode::RepeatElementCopy {
                 is_constable,
                 elt_span: element.span,
@@ -1680,8 +1680,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::CStr(_, _) => Ty::new_imm_ref(
                 tcx,
                 tcx.lifetimes.re_static,
-                tcx.type_of(tcx.require_lang_item(hir::LangItem::CStr, Some(lit.span)))
-                    .skip_binder(),
+                tcx.type_of(tcx.require_lang_item(hir::LangItem::CStr, lit.span)).skip_binder(),
             ),
             ast::LitKind::Err(guar) => Ty::new_error(tcx, guar),
         }

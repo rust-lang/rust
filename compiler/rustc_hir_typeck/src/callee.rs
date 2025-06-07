@@ -508,7 +508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some(ty) = fn_sig.inputs().last().copied() {
                 self.register_bound(
                     ty,
-                    self.tcx.require_lang_item(hir::LangItem::Tuple, Some(sp)),
+                    self.tcx.require_lang_item(hir::LangItem::Tuple, sp),
                     self.cause(sp, ObligationCauseCode::RustCall),
                 );
                 self.require_type_is_sized(ty, sp, ObligationCauseCode::RustCall);

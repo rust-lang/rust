@@ -593,7 +593,7 @@ impl<'tcx> Ty<'tcx> {
         ty: Ty<'tcx>,
         mutbl: ty::Mutability,
     ) -> Ty<'tcx> {
-        let pin = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, None));
+        let pin = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, DUMMY_SP));
         Ty::new_adt(tcx, pin, tcx.mk_args(&[Ty::new_ref(tcx, r, ty, mutbl).into()]))
     }
 
@@ -857,19 +857,19 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_box(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = tcx.require_lang_item(LangItem::OwnedBox, None);
+        let def_id = tcx.require_lang_item(LangItem::OwnedBox, DUMMY_SP);
         Ty::new_generic_adt(tcx, def_id, ty)
     }
 
     #[inline]
     pub fn new_maybe_uninit(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = tcx.require_lang_item(LangItem::MaybeUninit, None);
+        let def_id = tcx.require_lang_item(LangItem::MaybeUninit, DUMMY_SP);
         Ty::new_generic_adt(tcx, def_id, ty)
     }
 
     /// Creates a `&mut Context<'_>` [`Ty`] with erased lifetimes.
     pub fn new_task_context(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        let context_did = tcx.require_lang_item(LangItem::Context, None);
+        let context_did = tcx.require_lang_item(LangItem::Context, DUMMY_SP);
         let context_adt_ref = tcx.adt_def(context_did);
         let context_args = tcx.mk_args(&[tcx.lifetimes.re_erased.into()]);
         let context_ty = Ty::new_adt(tcx, context_adt_ref, context_args);
@@ -1549,7 +1549,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
-                    tcx.require_lang_item(hir::LangItem::DiscriminantKind, None),
+                    tcx.require_lang_item(hir::LangItem::DiscriminantKind, DUMMY_SP),
                 );
                 Ty::new_projection_from_args(tcx, assoc_items[0], tcx.mk_args(&[self.into()]))
             }
@@ -1629,7 +1629,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Str | ty::Slice(_) => Ok(tcx.types.usize),
 
             ty::Dynamic(_, _, ty::Dyn) => {
-                let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
+                let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, DUMMY_SP);
                 Ok(tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]))
             }
 
@@ -1683,7 +1683,7 @@ impl<'tcx> Ty<'tcx> {
             match pointee_ty.ptr_metadata_ty_or_tail(tcx, |x| x) {
                 Ok(metadata_ty) => metadata_ty,
                 Err(tail_ty) => {
-                    let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
+                    let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, DUMMY_SP);
                     Ty::new_projection(tcx, metadata_def_id, [tail_ty])
                 }
             }

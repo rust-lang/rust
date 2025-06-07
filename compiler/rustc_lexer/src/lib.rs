@@ -30,13 +30,12 @@ mod cursor;
 #[cfg(test)]
 mod tests;
 
+use LiteralKind::*;
+use TokenKind::*;
+use cursor::EOF_CHAR;
+pub use cursor::{Cursor, FrontmatterAllowed};
 use unicode_properties::UnicodeEmoji;
 pub use unicode_xid::UNICODE_VERSION as UNICODE_XID_VERSION;
-
-use self::LiteralKind::*;
-use self::TokenKind::*;
-use crate::cursor::EOF_CHAR;
-pub use crate::cursor::{Cursor, FrontmatterAllowed};
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,
@@ -372,9 +371,8 @@ pub fn is_ident(string: &str) -> bool {
 impl Cursor<'_> {
     /// Parses a token from the input string.
     pub fn advance_token(&mut self) -> Token {
-        let first_char = match self.bump() {
-            Some(c) => c,
-            None => return Token::new(TokenKind::Eof, 0),
+        let Some(first_char) = self.bump() else {
+            return Token::new(TokenKind::Eof, 0);
         };
 
         let token_kind = match first_char {
@@ -788,7 +786,7 @@ impl Cursor<'_> {
         } else {
             // No base prefix, parse number in the usual way.
             self.eat_decimal_digits();
-        };
+        }
 
         match self.first() {
             // Don't be greedy if this is actually an

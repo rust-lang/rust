@@ -97,7 +97,7 @@ fn allowed_union_or_unsafe_field<'tcx>(
     let def_id = tcx
         .lang_items()
         .get(LangItem::BikeshedGuaranteedNoDrop)
-        .unwrap_or_else(|| tcx.require_lang_item(LangItem::Copy, Some(span)));
+        .unwrap_or_else(|| tcx.require_lang_item(LangItem::Copy, span));
     let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, ty) else {
         tcx.dcx().span_delayed_bug(span, "could not normalize field type");
         return true;
@@ -1142,7 +1142,7 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             return;
         };
 
-        if let Some(second_field) = fields.get(FieldIdx::from_u32(1)) {
+        if let Some(second_field) = fields.get(FieldIdx::ONE) {
             struct_span_code_err!(tcx.dcx(), sp, E0075, "SIMD vector cannot have multiple fields")
                 .with_span_label(tcx.def_span(second_field.did), "excess field")
                 .emit();

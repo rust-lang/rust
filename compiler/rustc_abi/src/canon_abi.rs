@@ -50,18 +50,10 @@ pub enum CanonAbi {
 
 impl fmt::Display for CanonAbi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.to_erased_extern_abi().as_str().fmt(f)
-    }
-}
-
-impl CanonAbi {
-    /// convert to the ExternAbi that *shares a string* with this CanonAbi
-    ///
-    /// A target-insensitive mapping of CanonAbi to ExternAbi, convenient for "forwarding" impls.
-    /// Importantly, the set of CanonAbi values is a logical *subset* of ExternAbi values,
-    /// so this is injective: if you take an ExternAbi to a CanonAbi and back, you have lost data.
-    const fn to_erased_extern_abi(self) -> ExternAbi {
-        match self {
+        // convert to the ExternAbi that *shares a string* with this CanonAbi.
+        // FIXME: ideally we'd avoid printing `CanonAbi`, and preserve `ExternAbi` everywhere
+        // that we need to generate error messages.
+        let erased_abi = match self {
             CanonAbi::C => ExternAbi::C { unwind: false },
             CanonAbi::Rust => ExternAbi::Rust,
             CanonAbi::RustCold => ExternAbi::RustCold,
@@ -87,7 +79,8 @@ impl CanonAbi {
                 X86Call::Vectorcall => ExternAbi::Vectorcall { unwind: false },
                 X86Call::Win64 => ExternAbi::Win64 { unwind: false },
             },
-        }
+        };
+        erased_abi.as_str().fmt(f)
     }
 }
 
