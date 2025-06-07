@@ -17,7 +17,11 @@ pub fn proc_macro_rules(input: TokenStream) -> TokenStream {
             TokenTree::from(single_quote),
             id("label_use"),
         ].iter().cloned().collect();
+        let dollar_crate = id("$crate");
         quote!(
+            use $dollar_crate::proc_macro_rules as _; // OK
+            type A = $dollar_crate::ItemUse; // ERROR
+
             struct $item_def;
             let $local_def = 0;
 
@@ -29,7 +33,8 @@ pub fn proc_macro_rules(input: TokenStream) -> TokenStream {
         let mut dollar_crate = input.into_iter().next().unwrap();
         dollar_crate.set_span(Span::mixed_site());
         quote!(
-            type A = $dollar_crate::ItemUse;
+            use $dollar_crate::proc_macro_rules as _; // OK
+            type A = $dollar_crate::ItemUse; // ERROR
         )
     }
 }
