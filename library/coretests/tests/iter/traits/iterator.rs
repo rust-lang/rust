@@ -1,3 +1,5 @@
+use core::cell::RefCell;
+use core::iter::zip;
 use core::num::NonZero;
 
 /// A wrapper struct that implements `Eq` and `Ord` based on the wrapped
@@ -640,6 +642,26 @@ fn test_collect_for_tuples() {
     assert!(e.0 == b);
     assert!(e.1 == c);
     assert!(e.2 == d);
+}
+
+#[test]
+fn test_extend_for_tuple_side_effects_order() {
+    struct TrackingExtender<'a, T>(&'static str, &'a RefCell<Vec<(&'static str, Vec<T>)>>, Vec<T>);
+    impl<T: Clone> Extend<T> for TrackingExtender<'_, T> {
+        fn extend<I: IntoIterator<Item = T>>(&mut self, i: I) {
+            let items = Vec::from_iter(i);
+            self.1.borrow_mut().push((self.0, items.clone()));
+            self.2.extend(items);
+        }
+    }
+
+    let effects = RefCell::new(vec![]);
+    let l = TrackingExtender("l", &effects, vec![]);
+    let r = TrackingExtender("r", &effects, vec![]);
+    let mut p = ((l, r), ());
+    p.extend(zip([(1, 2), (3, 4)], [(), ()]));
+    let effects = effects.into_inner();
+    assert_eq!(effects, [("l", vec![1]), ("r", vec![2]), ("l", vec![3]), ("r", vec![4])]);
 }
 
 // just tests by whether or not this compiles
