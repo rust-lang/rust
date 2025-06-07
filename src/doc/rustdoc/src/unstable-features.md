@@ -582,6 +582,7 @@ For this rust code:
 ```rust
 /// ```
 /// let x = 12;
+/// Ok(())
 /// ```
 pub trait Trait {}
 ```
@@ -590,10 +591,10 @@ The generated output (formatted) will look like this:
 
 ```json
 {
-  "format_version": 1,
+  "format_version": 2,
   "doctests": [
     {
-      "file": "foo.rs",
+      "file": "src/lib.rs",
       "line": 1,
       "doctest_attributes": {
         "original": "",
@@ -609,9 +610,17 @@ The generated output (formatted) will look like this:
         "added_css_classes": [],
         "unknown": []
       },
-      "original_code": "let x = 12;",
-      "doctest_code": "#![allow(unused)]\nfn main() {\nlet x = 12;\n}",
-      "name": "foo.rs - Trait (line 1)"
+      "original_code": "let x = 12;\nOk(())",
+      "doctest_code": {
+        "crate_level": "#![allow(unused)]\n",
+        "code": "let x = 12;\nOk(())",
+        "wrapper": {
+          "before": "fn main() { fn _inner() -> core::result::Result<(), impl core::fmt::Debug> {\n",
+          "after": "\n} _inner().unwrap() }",
+          "returns_result": true
+        }
+      },
+      "name": "src/lib.rs - (line 1)"
     }
   ]
 }
