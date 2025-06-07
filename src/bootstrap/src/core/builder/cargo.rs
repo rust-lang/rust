@@ -636,6 +636,15 @@ impl Builder<'_> {
         for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
             if restricted_mode.is_none() || *restricted_mode == Some(mode) {
                 rustflags.arg(&check_cfg_arg(name, *values));
+
+                if *name == "bootstrap" {
+                    // Cargo doesn't pass RUSTFLAGS to proc_macros:
+                    // https://github.com/rust-lang/cargo/issues/4423
+                    // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
+                    // We also declare that the flag is expected, which we need to do to not
+                    // get warnings about it being unexpected.
+                    hostflags.arg(check_cfg_arg(name, *values));
+                }
             }
         }
 
@@ -645,13 +654,6 @@ impl Builder<'_> {
         if stage == 0 {
             hostflags.arg("--cfg=bootstrap");
         }
-        // Cargo doesn't pass RUSTFLAGS to proc_macros:
-        // https://github.com/rust-lang/cargo/issues/4423
-        // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
-        // We also declare that the flag is expected, which we need to do to not
-        // get warnings about it being unexpected.
-        hostflags.arg("-Zunstable-options");
-        hostflags.arg("--check-cfg=cfg(bootstrap)");
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See

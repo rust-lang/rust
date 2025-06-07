@@ -9,8 +9,6 @@
 ///
 /// ```
 /// #![feature(iter_macro, coroutines)]
-/// # #[cfg(not(bootstrap))]
-/// # {
 ///
 /// let it = std::iter::iter!{|| {
 ///     yield 1;
@@ -19,11 +17,10 @@
 /// } }();
 /// let v: Vec<_> = it.collect();
 /// assert_eq!(v, [1, 2, 3]);
-/// # }
 /// ```
 #[unstable(feature = "iter_macro", issue = "none", reason = "generators are unstable")]
 #[allow_internal_unstable(coroutines, iter_from_coroutine)]
-#[cfg_attr(not(bootstrap), rustc_builtin_macro)]
+#[rustc_builtin_macro]
 pub macro iter($($t:tt)*) {
     /* compiler-builtin */
 }
