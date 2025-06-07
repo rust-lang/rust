@@ -261,13 +261,24 @@ Consider writing the test as a proper incremental test instead.
 
 | Directive   | Explanation                                                  | Supported test suites                    | Possible values           |
 |-------------|--------------------------------------------------------------|------------------------------------------|---------------------------|
-| `doc-flags` | Flags passed to `rustdoc` when building the test or aux file | `rustdoc`, `rustdoc-js`, `rustdoc-json` | Any valid `rustdoc` flags |
+| `doc-flags` | Flags passed to `rustdoc` when building the test or aux file | `rustdoc`, `rustdoc-js`, `rustdoc-json`  | Any valid `rustdoc` flags |
 
 <!--
 **FIXME(rustdoc)**: what does `check-test-line-numbers-match` do?
 Asked in
 <https://rust-lang.zulipchat.com/#narrow/stream/266220-t-rustdoc/topic/What.20is.20the.20.60check-test-line-numbers-match.60.20directive.3F>.
 -->
+
+#### Test-suite-specific directives
+
+The test suites [`rustdoc`][rustdoc-html-tests], [`rustdoc-js`/`rustdoc-js-std`][rustdoc-js-tests]
+and [`rustdoc-json`][rustdoc-json-tests] each feature an additional set of directives whose basic
+syntax resembles the one of compiletest directives but which are ultimately read and checked by
+separate tools. For more information, please read their respective chapters as linked above.
+
+[rustdoc-html-tests]: ../rustdoc-internals/rustdoc-test-suite.md
+[rustdoc-js-tests]: ../rustdoc-internals/search.html#testing-the-search-engine
+[rustdoc-json-tests]: ../rustdoc-internals/rustdoc-json-test-suite.md
 
 ### Pretty printing
 
