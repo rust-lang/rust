@@ -220,6 +220,45 @@ mod diagnostic_output {
     }
 }
 
+/// Trait functions are represented differently in the HIR. Make sure
+/// we visit them.
+mod trait_functions {
+    #[derive(Copy, Clone)]
+    struct ContainsLifetime<'a>(&'a u8);
+
+    trait TheTrait {
+        fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime;
+        //~^ ERROR lifetime flowing from input to output with different syntax
+
+        fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime;
+        //~^ ERROR lifetime flowing from input to output with different syntax
+    }
+
+    impl TheTrait for &u8 {
+        fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime {
+            //~^ ERROR lifetime flowing from input to output with different syntax
+            ContainsLifetime(v)
+        }
+
+        fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime {
+            //~^ ERROR lifetime flowing from input to output with different syntax
+            ContainsLifetime(self)
+        }
+    }
+}
+
+/// Extern functions are represented differently in the HIR. Make sure
+/// we visit them.
+mod foreign_functions {
+    #[derive(Copy, Clone)]
+    struct ContainsLifetime<'a>(&'a u8);
+
+    extern "Rust" {
+        fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime;
+        //~^ ERROR lifetime flowing from input to output with different syntax
+    }
+}
+
 /// These usages are expected to **not** trigger the lint
 mod acceptable_uses {
     #[derive(Copy, Clone)]

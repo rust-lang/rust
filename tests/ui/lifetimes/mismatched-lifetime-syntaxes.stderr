@@ -469,5 +469,70 @@ help: one option is to consistently use `'a`
 LL |     fn multiple_outputs<'a>(v: &'a u8) -> (&'a u8, &'a u8) {
    |                                             ++      ++
 
-error: aborting due to 34 previous errors
+error: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:230:45
+   |
+LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime;
+   |                                             ^^^     ---------------- the lifetime gets resolved as `'_`
+   |                                             |
+   |                                             this lifetime flows to the output
+   |
+help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   |
+LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime<'_>;
+   |                                                                     ++++
+
+error: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:233:49
+   |
+LL |         fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime;
+   |                                                 ^^^^^     ---------------- the lifetime gets resolved as `'_`
+   |                                                 |
+   |                                                 this lifetime flows to the output
+   |
+help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   |
+LL |         fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime<'_>;
+   |                                                                           ++++
+
+error: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:238:45
+   |
+LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime {
+   |                                             ^^^     ---------------- the lifetime gets resolved as `'_`
+   |                                             |
+   |                                             this lifetime flows to the output
+   |
+help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   |
+LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime<'_> {
+   |                                                                     ++++
+
+error: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:243:49
+   |
+LL |         fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime {
+   |                                                 ^^^^^     ---------------- the lifetime gets resolved as `'_`
+   |                                                 |
+   |                                                 this lifetime flows to the output
+   |
+help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   |
+LL |         fn method_implicit_ref_to_implicit_path(&self) -> ContainsLifetime<'_> {
+   |                                                                           ++++
+
+error: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/mismatched-lifetime-syntaxes.rs:257:45
+   |
+LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime;
+   |                                             ^^^     ---------------- the lifetime gets resolved as `'_`
+   |                                             |
+   |                                             this lifetime flows to the output
+   |
+help: one option is to remove the lifetime for references and use the anonymous lifetime for paths
+   |
+LL |         fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime<'_>;
+   |                                                                     ++++
+
+error: aborting due to 39 previous errors
 
