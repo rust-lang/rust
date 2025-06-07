@@ -30,6 +30,7 @@ ENV SCRIPT \
         python3 ../x.py check && \
         python3 ../x.py clippy ci && \
         python3 ../x.py test --stage 1 core alloc std test proc_macro && \
+        python3 ../x.py doc --stage 0 bootstrap && \
         # Build both public and internal documentation.
         RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc --stage 0 compiler && \
         RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc --stage 1 library && \
