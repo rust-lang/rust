@@ -16,10 +16,9 @@ impl IntoError<Error> for Api {
     type Source = ApiError;
     // CHECK-LABEL: @into_error
     // CHECK: llvm.trap()
-    // Also check the next two instructions to make sure we do not match against `trap`
+    // Also check the next instruction to make sure we do not match against `trap`
     // elsewhere in the code.
-    // CHECK-NEXT: load
-    // CHECK-NEXT: ret
+    // CHECK-NEXT: ret i8 poison
     #[no_mangle]
     fn into_error(self, error: Self::Source) -> Error {
         Error::Api { source: error }

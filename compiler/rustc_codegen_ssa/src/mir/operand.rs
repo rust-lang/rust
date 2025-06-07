@@ -1,9 +1,9 @@
 use std::fmt;
 
-use arrayvec::ArrayVec;
-use either::Either;
 use rustc_abi as abi;
-use rustc_abi::{Align, BackendRepr, FIRST_VARIANT, Primitive, Size, TagEncoding, Variants};
+use rustc_abi::{
+    Align, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, TagEncoding, VariantIdx, Variants,
+};
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::Ty;
@@ -69,31 +69,6 @@ pub enum OperandValue<V> {
 }
 
 impl<V: CodegenObject> OperandValue<V> {
-    /// If this is ZeroSized/Immediate/Pair, return an array of the 0/1/2 values.
-    /// If this is Ref, return the place.
-    #[inline]
-    pub(crate) fn immediates_or_place(self) -> Either<ArrayVec<V, 2>, PlaceValue<V>> {
-        match self {
-            OperandValue::ZeroSized => Either::Left(ArrayVec::new()),
-            OperandValue::Immediate(a) => Either::Left(ArrayVec::from_iter([a])),
-            OperandValue::Pair(a, b) => Either::Left([a, b].into()),
-            OperandValue::Ref(p) => Either::Right(p),
-        }
-    }
-
-    /// Given an array of 0/1/2 immediate values, return ZeroSized/Immediate/Pair.
-    #[inline]
-    pub(crate) fn from_immediates(immediates: ArrayVec<V, 2>) -> Self {
-        let mut it = immediates.into_iter();
-        let Some(a) = it.next() else {
-            return OperandValue::ZeroSized;
-        };
-        let Some(b) = it.next() else {
-            return OperandValue::Immediate(a);
-        };
-        OperandValue::Pair(a, b)
-    }
-
     /// Treat this value as a pointer and return the data pointer and
     /// optional metadata as backend values.
     ///
@@ -595,6 +570,123 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
         }
     }
+
+    pub(crate) fn builder(layout: TyAndLayout<'tcx>) -> OperandRef<'tcx, Result<V, abi::Scalar>> {
+        let val = match layout.backend_repr {
+            BackendRepr::Memory { .. } if layout.is_zst() => OperandValue::ZeroSized,
+            BackendRepr::Scalar(s) => OperandValue::Immediate(Err(s)),
+            BackendRepr::ScalarPair(a, b) => OperandValue::Pair(Err(a), Err(b)),
+            _ => bug!("Cannot use type in operand builder: {layout:?}"),
+        };
+        OperandRef { val, layout }
+    }
+
+    pub(crate) fn supports_builder(layout: TyAndLayout<'tcx>) -> bool {
+        match layout.backend_repr {
+            BackendRepr::Memory { .. } if layout.is_zst() => true,
+            BackendRepr::Scalar(_) | BackendRepr::ScalarPair(_, _) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Result<V, abi::Scalar>> {
+    pub(crate) fn insert_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        &mut self,
+        bx: &mut Bx,
+        v: VariantIdx,
+        f: FieldIdx,
+        operand: OperandRef<'tcx, V>,
+    ) {
+        let (expect_zst, is_zero_offset) = if let abi::FieldsShape::Primitive = self.layout.fields {
+            // Don't ask for field layout for primitives, because that will panic.
+            if !self.layout.uninhabited {
+                // Real primitives only have one variant, but weird types like
+                // `Result<!, !>` turn out to also be "Primitive", and dead code
+                // like `Err(never)` needs to not ICE.
+                assert_eq!(v, FIRST_VARIANT);
+            }
+            let first_field = f == FieldIdx::ZERO;
+            (self.layout.is_zst() || !first_field, first_field)
+        } else {
+            let variant_layout = self.layout.for_variant(bx.cx(), v);
+            let field_layout = variant_layout.field(bx.cx(), f.as_usize());
+            let field_offset = variant_layout.fields.offset(f.as_usize());
+            (field_layout.is_zst(), field_offset == Size::ZERO)
+        };
+
+        let mut update = |tgt: &mut Result<V, abi::Scalar>, src, from_scalar| {
+            let from_bty = bx.cx().type_from_scalar(from_scalar);
+            let to_scalar = tgt.unwrap_err();
+            let to_bty = bx.cx().type_from_scalar(to_scalar);
+            let imm = transmute_immediate(bx, src, from_scalar, from_bty, to_scalar, to_bty);
+            *tgt = Ok(imm);
+        };
+
+        match (operand.val, operand.layout.backend_repr) {
+            (OperandValue::ZeroSized, _) if expect_zst => {}
+            (OperandValue::Immediate(v), BackendRepr::Scalar(from_scalar)) => match &mut self.val {
+                OperandValue::Immediate(val @ Err(_)) if is_zero_offset => {
+                    update(val, v, from_scalar);
+                }
+                OperandValue::Pair(fst @ Err(_), _) if is_zero_offset => {
+                    update(fst, v, from_scalar);
+                }
+                OperandValue::Pair(_, snd @ Err(_)) if !is_zero_offset => {
+                    update(snd, v, from_scalar);
+                }
+                _ => bug!("Tried to insert {operand:?} into {v:?}.{f:?} of {self:?}"),
+            },
+            (OperandValue::Pair(a, b), BackendRepr::ScalarPair(from_sa, from_sb)) => {
+                match &mut self.val {
+                    OperandValue::Pair(fst @ Err(_), snd @ Err(_)) => {
+                        update(fst, a, from_sa);
+                        update(snd, b, from_sb);
+                    }
+                    _ => bug!("Tried to insert {operand:?} into {v:?}.{f:?} of {self:?}"),
+                }
+            }
+            _ => bug!("Unsupported operand {operand:?} inserting into {v:?}.{f:?} of {self:?}"),
+        }
+    }
+
+    pub(super) fn insert_imm(&mut self, f: FieldIdx, imm: V) {
+        let field_offset = self.layout.fields.offset(f.as_usize());
+        let is_zero_offset = field_offset == Size::ZERO;
+        match &mut self.val {
+            OperandValue::Immediate(val @ Err(_)) if is_zero_offset => {
+                *val = Ok(imm);
+            }
+            OperandValue::Pair(fst @ Err(_), _) if is_zero_offset => {
+                *fst = Ok(imm);
+            }
+            OperandValue::Pair(_, snd @ Err(_)) if !is_zero_offset => {
+                *snd = Ok(imm);
+            }
+            _ => bug!("Tried to insert {imm:?} into field {f:?} of {self:?}"),
+        }
+    }
+
+    pub fn finalize(&self, cx: &impl CodegenMethods<'tcx, Value = V>) -> OperandRef<'tcx, V> {
+        let OperandRef { val, layout } = *self;
+
+        let unwrap = |r: Result<V, abi::Scalar>| match r {
+            Ok(v) => v,
+            Err(s) if s.is_uninit_valid() => {
+                let bty = cx.type_from_scalar(s);
+                cx.const_undef(bty)
+            }
+            Err(_) => bug!("OperandRef::finalize called while fields are missing {self:?}"),
+        };
+
+        let val = match val {
+            OperandValue::ZeroSized => OperandValue::ZeroSized,
+            OperandValue::Immediate(v) => OperandValue::Immediate(unwrap(v)),
+            OperandValue::Pair(a, b) => OperandValue::Pair(unwrap(a), unwrap(b)),
+            OperandValue::Ref(_) => bug!(),
+        };
+        OperandRef { val, layout }
+    }
 }
 
 impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
@@ -842,5 +934,95 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.eval_mir_constant_to_operand(bx, constant)
             }
         }
+    }
+}
+
+/// Transmutes one of the immediates from an [`OperandValue::Immediate`]
+/// or an [`OperandValue::Pair`] to an immediate of the target type.
+///
+/// `to_backend_ty` must be the *non*-immediate backend type (so it will be
+/// `i8`, not `i1`, for `bool`-like types.)
+pub(super) fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    mut imm: Bx::Value,
+    from_scalar: abi::Scalar,
+    from_backend_ty: Bx::Type,
+    to_scalar: abi::Scalar,
+    to_backend_ty: Bx::Type,
+) -> Bx::Value {
+    assert_eq!(from_scalar.size(bx.cx()), to_scalar.size(bx.cx()));
+
+    // While optimizations will remove no-op transmutes, they might still be
+    // there in debug or things that aren't no-op in MIR because they change
+    // the Rust type but not the underlying layout/niche.
+    if from_scalar == to_scalar && from_backend_ty == to_backend_ty {
+        return imm;
+    }
+
+    use abi::Primitive::*;
+    imm = bx.from_immediate(imm);
+
+    // If we have a scalar, we must already know its range. Either
+    //
+    // 1) It's a parameter with `range` parameter metadata,
+    // 2) It's something we `load`ed with `!range` metadata, or
+    // 3) After a transmute we `assume`d the range (see below).
+    //
+    // That said, last time we tried removing this, it didn't actually help
+    // the rustc-perf results, so might as well keep doing it
+    // <https://github.com/rust-lang/rust/pull/135610#issuecomment-2599275182>
+    assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
+
+    imm = match (from_scalar.primitive(), to_scalar.primitive()) {
+        (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
+        (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
+        (Int(..), Pointer(..)) => bx.ptradd(bx.const_null(bx.type_ptr()), imm),
+        (Pointer(..), Int(..)) => {
+            // FIXME: this exposes the provenance, which shouldn't be necessary.
+            bx.ptrtoint(imm, to_backend_ty)
+        }
+        (Float(_), Pointer(..)) => {
+            let int_imm = bx.bitcast(imm, bx.cx().type_isize());
+            bx.ptradd(bx.const_null(bx.type_ptr()), int_imm)
+        }
+        (Pointer(..), Float(_)) => {
+            // FIXME: this exposes the provenance, which shouldn't be necessary.
+            let int_imm = bx.ptrtoint(imm, bx.cx().type_isize());
+            bx.bitcast(int_imm, to_backend_ty)
+        }
+    };
+
+    // This `assume` remains important for cases like (a conceptual)
+    //    transmute::<u32, NonZeroU32>(x) == 0
+    // since it's never passed to something with parameter metadata (especially
+    // after MIR inlining) so the only way to tell the backend about the
+    // constraint that the `transmute` introduced is to `assume` it.
+    assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
+
+    imm = bx.to_immediate_scalar(imm, to_scalar);
+    imm
+}
+
+pub(super) fn assume_scalar_range<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    imm: Bx::Value,
+    scalar: abi::Scalar,
+    backend_ty: Bx::Type,
+) {
+    if matches!(bx.cx().sess().opts.optimize, OptLevel::No) || scalar.is_always_valid(bx.cx()) {
+        return;
+    }
+
+    match scalar.primitive() {
+        abi::Primitive::Int(..) => {
+            let range = scalar.valid_range(bx.cx());
+            bx.assume_integer_range(imm, backend_ty, range);
+        }
+        abi::Primitive::Pointer(abi::AddressSpace::DATA)
+            if !scalar.valid_range(bx.cx()).contains(0) =>
+        {
+            bx.assume_nonnull(imm);
+        }
+        abi::Primitive::Pointer(..) | abi::Primitive::Float(..) => {}
     }
 }
