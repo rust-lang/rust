@@ -57,7 +57,7 @@ pub(crate) unsafe fn codegen(
             let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
             let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
 
-            create_wrapper_function(tcx, &cx, &from_name, &to_name, &args, output, false);
+            create_wrapper_function(tcx, &cx, &from_name, Some(&to_name), &args, output, false);
         }
     }
 
@@ -66,7 +66,7 @@ pub(crate) unsafe fn codegen(
         tcx,
         &cx,
         &mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
-        &mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind)),
+        Some(&mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind))),
         &[usize, usize], // size, align
         None,
         true,
@@ -81,11 +81,16 @@ pub(crate) unsafe fn codegen(
         let llval = llvm::LLVMConstInt(i8, val as u64, False);
         llvm::set_initializer(ll_g, llval);
 
-        let name = mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE);
-        let ll_g = cx.declare_global(&name, i8);
-        llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
-        let llval = llvm::LLVMConstInt(i8, 0, False);
-        llvm::set_initializer(ll_g, llval);
+        // __rust_no_alloc_shim_is_unstable_v2
+        create_wrapper_function(
+            tcx,
+            &cx,
+            &mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
+            None,
+            &[],
+            None,
+            false,
+        );
     }
 
     if tcx.sess.opts.debuginfo != DebugInfo::None {
@@ -99,7 +104,7 @@ fn create_wrapper_function(
     tcx: TyCtxt<'_>,
     cx: &SimpleCx<'_>,
     from_name: &str,
-    to_name: &str,
+    to_name: Option<&str>,
     args: &[&Type],
     output: Option<&Type>,
     no_return: bool,
@@ -128,33 +133,38 @@ fn create_wrapper_function(
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
     }
 
-    let callee = declare_simple_fn(
-        &cx,
-        to_name,
-        llvm::CallConv::CCallConv,
-        llvm::UnnamedAddr::Global,
-        llvm::Visibility::Hidden,
-        ty,
-    );
-    if let Some(no_return) = no_return {
-        // -> ! DIFlagNoReturn
-        attributes::apply_to_llfn(callee, llvm::AttributePlace::Function, &[no_return]);
-    }
-    llvm::set_visibility(callee, llvm::Visibility::Hidden);
-
     let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
-
     let mut bx = SBuilder::build(&cx, llbb);
-    let args = args
-        .iter()
-        .enumerate()
-        .map(|(i, _)| llvm::get_param(llfn, i as c_uint))
-        .collect::<Vec<_>>();
-    let ret = bx.call(ty, callee, &args, None);
-    llvm::LLVMSetTailCall(ret, True);
-    if output.is_some() {
-        bx.ret(ret);
+
+    if let Some(to_name) = to_name {
+        let callee = declare_simple_fn(
+            &cx,
+            to_name,
+            llvm::CallConv::CCallConv,
+            llvm::UnnamedAddr::Global,
+            llvm::Visibility::Hidden,
+            ty,
+        );
+        if let Some(no_return) = no_return {
+            // -> ! DIFlagNoReturn
+            attributes::apply_to_llfn(callee, llvm::AttributePlace::Function, &[no_return]);
+        }
+        llvm::set_visibility(callee, llvm::Visibility::Hidden);
+
+        let args = args
+            .iter()
+            .enumerate()
+            .map(|(i, _)| llvm::get_param(llfn, i as c_uint))
+            .collect::<Vec<_>>();
+        let ret = bx.call(ty, callee, &args, None);
+        llvm::LLVMSetTailCall(ret, True);
+        if output.is_some() {
+            bx.ret(ret);
+        } else {
+            bx.ret_void()
+        }
     } else {
+        assert!(output.is_none());
         bx.ret_void()
     }
 }
