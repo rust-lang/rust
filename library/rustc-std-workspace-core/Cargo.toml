@@ -12,3 +12,4 @@ path = "lib.rs"
 
 [dependencies]
 core = { path = "../core" }
+compiler_builtins = { path = "../compiler-builtins/compiler-builtins", features = ["compiler-builtins"] }

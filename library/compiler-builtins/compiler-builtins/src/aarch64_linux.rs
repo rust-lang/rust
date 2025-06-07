@@ -4,7 +4,7 @@
 //! To avoid breaking backwards compat, C toolchains introduced a concept of "outlined atomics",
 //! where atomic operations call into the compiler runtime to dispatch between two depending on
 //! which is supported on the current CPU.
-//! See https://community.arm.com/arm-community-blogs/b/tools-software-ides-blog/posts/making-the-most-of-the-arm-architecture-in-gcc-10#:~:text=out%20of%20line%20atomics for more discussion.
+//! See <https://community.arm.com/arm-community-blogs/b/tools-software-ides-blog/posts/making-the-most-of-the-arm-architecture-in-gcc-10#:~:text=out%20of%20line%20atomics> for more discussion.
 //!
 //! Currently we only support LL/SC, because LSE requires `getauxval` from libc in order to do runtime detection.
 //! Use the `compiler-rt` intrinsics if you want LSE support.
