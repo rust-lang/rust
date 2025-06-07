@@ -30,7 +30,7 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
         StorageDead(_3);
         StorageLive(_5);
         _5 = &mut (*_1)[_2];
-        _0 = Option::<&mut u32>::Some(move _5);
+        _0 = Option::<&mut u32>::Some(copy _5);
         StorageDead(_5);
         goto -> bb3;
     }

@@ -55,7 +55,7 @@ struct WithSliceTail(f64, [i32]);
 fn index_custom(custom: &WithSliceTail, index: usize) -> &i32 {
     // CHECK: bb0:
     // CHECK: [[PTR:_.+]] = &raw const (fake) ((*_1).1: [i32]);
-    // CHECK: [[LEN:_.+]] = PtrMetadata(move [[PTR]]);
+    // CHECK: [[LEN:_.+]] = PtrMetadata(copy [[PTR]]);
     // CHECK: [[LT:_.+]] = Lt(copy _2, copy [[LEN]]);
     // CHECK: assert(move [[LT]], "index out of bounds{{.+}}", move [[LEN]], copy _2) -> [success: bb1,
 
