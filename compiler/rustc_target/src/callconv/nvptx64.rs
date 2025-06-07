@@ -1,6 +1,6 @@
 use rustc_abi::{HasDataLayout, Reg, Size, TyAbiInterface};
 
-use super::{ArgAttribute, ArgAttributes, ArgExtension, CastTarget};
+use super::CastTarget;
 use crate::callconv::{ArgAbi, FnAbi, Uniform};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
@@ -34,16 +34,10 @@ fn classify_aggregate<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     };
 
     if align_bytes == size.bytes() {
-        arg.cast_to(CastTarget {
-            prefix: [Some(reg), None, None, None, None, None, None, None],
-            rest: Uniform::new(Reg::i8(), Size::from_bytes(0)),
-            attrs: ArgAttributes {
-                regular: ArgAttribute::default(),
-                arg_ext: ArgExtension::None,
-                pointee_size: Size::ZERO,
-                pointee_align: None,
-            },
-        });
+        arg.cast_to(CastTarget::prefixed(
+            [Some(reg), None, None, None, None, None, None, None],
+            Uniform::new(Reg::i8(), Size::ZERO),
+        ));
     } else {
         arg.cast_to(Uniform::new(reg, size));
     }
@@ -78,11 +72,10 @@ where
     };
     if arg.layout.size.bytes() / align_bytes == 1 {
         // Make sure we pass the struct as array at the LLVM IR level and not as a single integer.
-        arg.cast_to(CastTarget {
-            prefix: [Some(unit), None, None, None, None, None, None, None],
-            rest: Uniform::new(unit, Size::ZERO),
-            attrs: ArgAttributes::new(),
-        });
+        arg.cast_to(CastTarget::prefixed(
+            [Some(unit), None, None, None, None, None, None, None],
+            Uniform::new(unit, Size::ZERO),
+        ));
     } else {
         arg.cast_to(Uniform::new(unit, arg.layout.size));
     }
