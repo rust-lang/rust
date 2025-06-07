@@ -133,6 +133,7 @@ impl fmt::Debug for SystemTime {
 }
 
 impl From<c::FILETIME> for SystemTime {
+    /// Wrap `c::FILETIME` in `SystemTime`.
     fn from(t: c::FILETIME) -> SystemTime {
         SystemTime { t }
     }
@@ -187,6 +188,7 @@ mod perf_counter {
         }
     }
     impl From<PerformanceCounterInstant> for super::Instant {
+        /// Get `PerformanceCounterInstant`s instant.
         fn from(other: PerformanceCounterInstant) -> Self {
             let freq = frequency() as u64;
             let instant_nsec = mul_div_u64(other.ts as u64, NANOS_PER_SEC, freq);

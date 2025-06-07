@@ -21,6 +21,7 @@ pub struct ExitStatus {
 
 /// Converts a raw `c_int` to a type-safe `ExitStatus` by wrapping it
 impl From<c_int> for ExitStatus {
+    /// Wrap `c_int` in a type-safe `ExitStatus`
     fn from(wait_status: c_int) -> ExitStatus {
         ExitStatus { wait_status }
     }

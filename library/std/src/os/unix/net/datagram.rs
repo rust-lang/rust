@@ -981,6 +981,7 @@ impl From<UnixDatagram> for OwnedFd {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for UnixDatagram {
+    /// Take [`OwnedFd`]'s file descriptor.
     #[inline]
     fn from(owned: OwnedFd) -> Self {
         unsafe { Self::from_raw_fd(owned.into_raw_fd()) }
