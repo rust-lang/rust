@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_moo``
-  --> $DIR/unstable-feature-cross-crate-exact-symbol.rs:11:5
+  --> $DIR/unstable-feature-cross-crate-exact-symbol.rs:16:5
    |
 LL |     Moo::foo();
    |     ^^^ cannot satisfy `unstable feature: `feat_moo``

@@ -1,11 +1,11 @@
 error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_foo``
-  --> $DIR/unstable-impl-require-bound.rs:24:5
+  --> $DIR/unstable-impl-require-bound.rs:26:5
    |
 LL |     Bar::foo();
    |     ^^^ cannot satisfy `unstable feature: `feat_foo``
    |
 note: required for `Bar` to implement `Foo`
-  --> $DIR/unstable-impl-require-bound.rs:19:6
+  --> $DIR/unstable-impl-require-bound.rs:20:6
    |
 LL | #[unstable_feature_bound(feat_foo)]
    | ----------------------------------- unsatisfied trait bound introduced here

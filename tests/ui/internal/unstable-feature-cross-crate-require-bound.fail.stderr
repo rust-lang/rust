@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_bar``
-  --> $DIR/unstable-feature-cross-crate-require-bound.rs:10:5
+  --> $DIR/unstable-feature-cross-crate-require-bound.rs:12:5
    |
 LL |     Bar::foo();
    |     ^^^ cannot satisfy `unstable feature: `feat_bar``

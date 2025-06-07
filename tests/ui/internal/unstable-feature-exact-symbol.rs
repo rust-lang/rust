@@ -1,3 +1,6 @@
+//@ revisions: pass fail 
+//@[pass] check-pass
+
 #![allow(internal_features)]
 #![feature(staged_api)]
 #![feature(impl_stability)]
@@ -6,8 +9,6 @@
 
 /// In staged-api crate, impl that is marked with `feat_moo`
 /// should not be accessible if only `feat_foo` is enabled.
-
-/// FIXME: add one more check pass test with revision?
 
 pub trait Foo {
     fn foo();
@@ -29,11 +30,12 @@ impl Moo for Bar {
     fn moo() {}
 }
 
-#[unstable_feature_bound(feat_foo)]
+#[cfg_attr(fail, unstable_feature_bound(feat_foo))]
+#[cfg_attr(pass, unstable_feature_bound(feat_foo, feat_moo))]
 fn bar() {
     Bar::foo();
     Bar::moo();
-    //~^ ERROR cannot satisfy `unstable feature: `feat_moo``
+    //[fail]~^ ERROR cannot satisfy `unstable feature: `feat_moo``
 }
 
 fn main() {}

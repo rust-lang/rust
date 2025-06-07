@@ -1,13 +1,14 @@
+//@ revisions: pass fail 
+//@[pass] check-pass
+
 #![allow(internal_features)]
 #![feature(staged_api)]
 #![feature(impl_stability)]
 #![allow(dead_code)]
 #![unstable(feature = "feat_foo", issue = "none" )]
 
-// This is testing:
-// 1.  Using an unstable impl requires #[unstable_feature_bound(..)]
-// 2. If only feat_foo is needed to use an impl,
-//    having both `feat_foo` and `feat_bar` will still make it pass.
+/// In staged-api crate, using an unstable impl 
+/// requires #[unstable_feature_bound(..)].
 
 pub trait Foo {
     fn foo();
@@ -20,9 +21,10 @@ impl Foo for Bar {
     fn foo() {}
 }
 
+#[cfg_attr(pass, unstable_feature_bound(feat_foo))]
 fn bar() {
     Bar::foo();
-    //~^ ERROR: cannot satisfy `unstable feature: `feat_foo``
+    //[fail]~^ ERROR: cannot satisfy `unstable feature: `feat_foo``
 }
 
 // With #[unstable_feature_bound(..)], this should pass.
