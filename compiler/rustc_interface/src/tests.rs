@@ -801,6 +801,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(force_unstable_if_unmarked, true);
     tracked!(function_return, FunctionReturn::ThunkExtern);
     tracked!(function_sections, Some(false));
+    tracked!(hotpatch, true);
     tracked!(human_readable_cgu_names, true);
     tracked!(incremental_ignore_spans, true);
     tracked!(inline_mir, Some(true));
