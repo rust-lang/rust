@@ -1441,11 +1441,15 @@ impl Expr {
                 }
             }
 
-            ExprKind::Break(..)
-            | ExprKind::Ret(..)
-            | ExprKind::Yield(..)
-            | ExprKind::Yeet(..)
-            | ExprKind::Become(..) => ExprPrecedence::Jump,
+            ExprKind::Break(_ /*label*/, value)
+            | ExprKind::Ret(value)
+            | ExprKind::Yield(YieldKind::Prefix(value))
+            | ExprKind::Yeet(value) => match value {
+                Some(_) => ExprPrecedence::Jump,
+                None => ExprPrecedence::Unambiguous,
+            },
+
+            ExprKind::Become(_) => ExprPrecedence::Jump,
 
             // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to
             // parse, instead of parsing as `(x .. x) = x`. Giving `Range` a lower precedence
@@ -1502,6 +1506,7 @@ impl Expr {
             | ExprKind::Underscore
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::While(..)
+            | ExprKind::Yield(YieldKind::Postfix(..))
             | ExprKind::Err(_)
             | ExprKind::Dummy => ExprPrecedence::Unambiguous,
         }

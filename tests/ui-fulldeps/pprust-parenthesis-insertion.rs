@@ -63,8 +63,8 @@ static EXPRS: &[&str] = &[
     "(2 += 2) += 2",
     // Return has lower precedence than a binary operator.
     "(return 2) + 2",
-    "2 + (return 2)", // FIXME: no parenthesis needed.
-    "(return) + 2",   // FIXME: no parenthesis needed.
+    "2 + return 2",
+    "return + 2",
     // These mean different things.
     "return - 2",
     "(return) - 2",
