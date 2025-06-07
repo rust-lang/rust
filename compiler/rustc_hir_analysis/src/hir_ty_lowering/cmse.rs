@@ -38,7 +38,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                     dcx,
                     span,
                     E0781,
-                    "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"
+                    "the `\"cmse-nonsecure-call\"` ABI is only allowed on function pointers"
                 )
                 .emit();
                 return;
