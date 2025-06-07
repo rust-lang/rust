@@ -88,14 +88,10 @@ impl<T: ?Sized> UnsafePinned<T> {
 
     /// Get mutable access to the contents of a shared `UnsafePinned`.
     ///
-    /// This can be cast to a pointer of any kind.
-    /// Ensure that the access is unique (no active references, mutable or not)
-    /// when casting to `&mut T`, and ensure that there are no mutations
-    /// or mutable aliases going on when casting to `&T`.
+    /// This can be cast to a pointer of any kind. When creating references, you must uphold the
+    /// aliasing rules; see [`UnsafeCell`] for more discussion and caveats.
     ///
-    /// All the usual caveats around mutation shared state apply, see [`UnsafeCell`].
-    ///
-    /// [`UnsafeCell`]: crate::cell::UnsafeCell
+    /// [`UnsafeCell`]: crate::cell::UnsafeCell#aliasing-rules
     ///
     /// ```rust,no_run
     /// #![feature(unsafe_pinned)]
