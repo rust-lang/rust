@@ -30,7 +30,7 @@ LL | fn c<T = u8()>() {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
+   = note: `#[deny(invalid_type_param_default)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error[E0308]: mismatched types
   --> $DIR/unusual-rib-combinations.rs:5:16
@@ -51,5 +51,5 @@ LL | fn c<T = u8()>() {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
+   = note: `#[deny(invalid_type_param_default)]` (part of `#[deny(future_incompatible)]`) on by default
 
