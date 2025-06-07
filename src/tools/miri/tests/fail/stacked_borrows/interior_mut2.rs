@@ -15,16 +15,17 @@ fn main() {
         // stack: [c: SharedReadWrite, inner_uniq: Unique, inner_shr: SharedReadWrite]
 
         let _val = c.get().read(); // invalidates inner_uniq
-        // stack: [c: SharedReadWrite, inner_uniq: Disabled, inner_shr: SharedReadWrite]
+        // stack: [c: SharedReadWrite]
 
         // We have to be careful not to add any raw pointers above inner_uniq in
         // the stack, hence the use of unsafe_cell_get.
-        let _val = *unsafe_cell_get(inner_shr); // this still works
+        // This used to work, but since we removed the "quirk" it fails here.
+        let _val = *unsafe_cell_get(inner_shr); //~ ERROR: /retag .* tag does not exist in the borrow stack/
 
         *c.get() = UnsafeCell::new(0); // now inner_shr gets invalidated
         // stack: [c: SharedReadWrite]
 
-        // now this does not work any more
-        let _val = *inner_shr.get(); //~ ERROR: /retag .* tag does not exist in the borrow stack/
+        // this definitely should not work
+        let _val = *inner_shr.get();
     }
 }

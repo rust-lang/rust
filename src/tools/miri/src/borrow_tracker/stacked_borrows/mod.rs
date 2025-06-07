@@ -169,13 +169,31 @@ enum ItemInvalidationCause {
 
 /// Core per-location operations: access, dealloc, reborrow.
 impl<'tcx> Stack {
-    /// Find the first write-incompatible item above the given one --
-    /// i.e, find the height to which the stack will be truncated when writing to `granting`.
-    fn find_first_write_incompatible(&self, granting: usize) -> usize {
-        // The SharedReadWrite *just* above us are compatible, to skip those.
-        let mut idx = granting + 1;
+    /// Find the first incompatible item above the given one --
+    /// i.e, find the height to which the stack will be truncated when accessing `granting`.
+    /// `None` means the access used the unknown bottom.
+    fn find_first_incompatible(&self, access: AccessKind, granting: Option<usize>) -> usize {
+        let mut idx = match granting {
+            Some(granting) => {
+                // Start scanning above the granting item.
+                // The granting_idx *might* be approximate, but any lower idx would remove more
+                // things. Even if this is a Unique and the lower idx is an SRW (which removes
+                // less), there is an SRW group boundary here so strictly more would get removed.
+                granting + 1
+            }
+            None => {
+                // If the access uses the unknown bottom, scan the entire stack.
+                0
+            }
+        };
         while let Some(item) = self.get(idx) {
-            if item.perm() == Permission::SharedReadWrite {
+            // SRW is compatible with everything; SRO is compatible with reads.
+            let compatible = match (item.perm(), access) {
+                (Permission::SharedReadWrite, _) => true,
+                (Permission::SharedReadOnly, AccessKind::Read) => true,
+                _ => false,
+            };
+            if compatible {
                 // Go on.
                 idx += 1;
             } else {
@@ -245,48 +263,15 @@ impl<'tcx> Stack {
             self.find_granting(access, tag, exposed_tags).map_err(|()| dcx.access_error(self))?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
-        // items.  Behavior differs for reads and writes.
+        // items. This ensures U2 for all accesses, and F2a on write accesses.
         // In case of wildcards/unknown matches, we remove everything that is *definitely* gone.
-        if access == AccessKind::Write {
-            // Remove everything above the write-compatible items, like a proper stack. This makes sure read-only and unique
-            // pointers become invalid on write accesses (ensures F2a, and ensures U2 for write accesses).
-            let first_incompatible_idx = if let Some(granting_idx) = granting_idx {
-                // The granting_idx *might* be approximate, but any lower idx would remove more
-                // things. Even if this is a Unique and the lower idx is an SRW (which removes
-                // less), there is an SRW group boundary here so strictly more would get removed.
-                self.find_first_write_incompatible(granting_idx)
-            } else {
-                // We are writing to something in the unknown part.
-                // There is a SRW group boundary between the unknown and the known, so everything is incompatible.
-                0
-            };
-            self.pop_items_after(first_incompatible_idx, |item| {
-                Stack::item_invalidated(&item, global, dcx, ItemInvalidationCause::Conflict)?;
-                dcx.log_invalidation(item.tag());
-                interp_ok(())
-            })?;
-        } else {
-            // On a read, *disable* all `Unique` above the granting item.  This ensures U2 for read accesses.
-            // The reason this is not following the stack discipline (by removing the first Unique and
-            // everything on top of it) is that in `let raw = &mut *x as *mut _; let _val = *x;`, the second statement
-            // would pop the `Unique` from the reborrow of the first statement, and subsequently also pop the
-            // `SharedReadWrite` for `raw`.
-            // This pattern occurs a lot in the standard library: create a raw pointer, then also create a shared
-            // reference and use that.
-            // We *disable* instead of removing `Unique` to avoid "connecting" two neighbouring blocks of SRWs.
-            let first_incompatible_idx = if let Some(granting_idx) = granting_idx {
-                // The granting_idx *might* be approximate, but any lower idx would disable more things.
-                granting_idx + 1
-            } else {
-                // We are reading from something in the unknown part. That means *all* `Unique` we know about are dead now.
-                0
-            };
-            self.disable_uniques_starting_at(first_incompatible_idx, |item| {
-                Stack::item_invalidated(&item, global, dcx, ItemInvalidationCause::Conflict)?;
-                dcx.log_invalidation(item.tag());
-                interp_ok(())
-            })?;
-        }
+
+        let first_incompatible_idx = self.find_first_incompatible(access, granting_idx);
+        self.pop_items_after(first_incompatible_idx, |item| {
+            Stack::item_invalidated(&item, global, dcx, ItemInvalidationCause::Conflict)?;
+            dcx.log_invalidation(item.tag());
+            interp_ok(())
+        })?;
 
         // If this was an approximate action, we now collapse everything into an unknown.
         if granting_idx.is_none() || matches!(tag, ProvenanceExtra::Wildcard) {
@@ -393,7 +378,7 @@ impl<'tcx> Stack {
             // access.  Instead of popping the stack, we insert the item at the place the stack would
             // be popped to (i.e., we insert it above all the write-compatible items).
             // This ensures F2b by adding the new item below any potentially existing `SharedReadOnly`.
-            self.find_first_write_incompatible(granting_idx)
+            self.find_first_incompatible(AccessKind::Write, Some(granting_idx))
         };
 
         // Put the new item there.
