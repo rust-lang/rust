@@ -12,14 +12,14 @@ use minicore::*;
 pub struct AlignRelevant(u32);
 
 #[no_mangle]
-pub extern "C-cmse-nonsecure-entry" fn f1(_: u32, _: u32, _: u32, _: u32, _: u32, _: u32) {} //~ ERROR [E0798]
+pub extern "cmse-nonsecure-entry" fn f1(_: u32, _: u32, _: u32, _: u32, _: u32, _: u32) {} //~ ERROR [E0798]
 #[no_mangle]
-pub extern "C-cmse-nonsecure-entry" fn f2(_: u32, _: u32, _: u32, _: u16, _: u16) {} //~ ERROR [E0798]
+pub extern "cmse-nonsecure-entry" fn f2(_: u32, _: u32, _: u32, _: u16, _: u16) {} //~ ERROR [E0798]
 #[no_mangle]
-pub extern "C-cmse-nonsecure-entry" fn f3(_: u32, _: u64, _: u32) {} //~ ERROR [E0798]
+pub extern "cmse-nonsecure-entry" fn f3(_: u32, _: u64, _: u32) {} //~ ERROR [E0798]
 #[no_mangle]
-pub extern "C-cmse-nonsecure-entry" fn f4(_: AlignRelevant, _: u32) {} //~ ERROR [E0798]
+pub extern "cmse-nonsecure-entry" fn f4(_: AlignRelevant, _: u32) {} //~ ERROR [E0798]
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
-pub extern "C-cmse-nonsecure-entry" fn f5(_: [u32; 5]) {} //~ ERROR [E0798]
+pub extern "cmse-nonsecure-entry" fn f5(_: [u32; 5]) {} //~ ERROR [E0798]

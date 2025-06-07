@@ -148,20 +148,20 @@ fn vectorcall_ptr(f: extern "vectorcall" fn()) {
 extern "vectorcall" {}
 //[arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
 
-fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
+fn cmse_call_ptr(f: extern "cmse-nonsecure-call" fn()) {
     //~^ WARN unsupported_fn_ptr_calling_conventions
     //~^^ WARN this was previously accepted
     f()
 }
 
-extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
+extern "cmse-nonsecure-entry" fn cmse_entry() {}
 //~^ ERROR is not a supported ABI
-fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
+fn cmse_entry_ptr(f: extern "cmse-nonsecure-entry" fn()) {
     //~^ WARN unsupported_fn_ptr_calling_conventions
     //~^^ WARN this was previously accepted
     f()
 }
-extern "C-cmse-nonsecure-entry" {}
+extern "cmse-nonsecure-entry" {}
 //~^ ERROR is not a supported ABI
 
 #[cfg(windows)]

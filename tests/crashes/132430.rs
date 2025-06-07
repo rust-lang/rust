@@ -6,5 +6,5 @@
 struct Test;
 
 impl Test {
-    pub async unsafe extern "C-cmse-nonsecure-entry" fn test(val: &str) {}
+    pub async unsafe extern "cmse-nonsecure-entry" fn test(val: &str) {}
 }
