@@ -221,6 +221,18 @@ macro_rules! wrapping_impl {
         forward_ref_binop! { impl Add, add for Wrapping<$t>, Wrapping<$t>,
                 #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
+
+        #[stable(feature = "wrapping_int_impl_int", since = "CURRENT_RUSTC_VERSION")]
+        impl Add<$t> for Wrapping<$t> {
+            type Output = Wrapping<$t>;
+
+            #[inline]
+            fn add(self, other: $t) -> Wrapping<$t> {
+                Wrapping(self.0.wrapping_add(other))
+            }
+        }
+        forward_ref_binop! { impl Add, add for Wrapping<$t>, $t }
+
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl AddAssign for Wrapping<$t> {
             #[inline]
@@ -250,6 +262,17 @@ macro_rules! wrapping_impl {
         }
         forward_ref_binop! { impl Sub, sub for Wrapping<$t>, Wrapping<$t>,
                 #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+
+        #[stable(feature = "wrapping_int_impl_int", since = "CURRENT_RUSTC_VERSION")]
+        impl Sub<$t> for Wrapping<$t> {
+            type Output = Wrapping<$t>;
+
+            #[inline]
+            fn sub(self, other: $t) -> Wrapping<$t> {
+                Wrapping(self.0.wrapping_sub(other))
+            }
+        }
+        forward_ref_binop! { impl Sub, sub for Wrapping<$t>, $t }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl SubAssign for Wrapping<$t> {
@@ -281,6 +304,17 @@ macro_rules! wrapping_impl {
         forward_ref_binop! { impl Mul, mul for Wrapping<$t>, Wrapping<$t>,
                 #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
+        #[stable(feature = "wrapping_int_impl_int", since = "CURRENT_RUSTC_VERSION")]
+        impl Mul<$t> for Wrapping<$t> {
+            type Output = Wrapping<$t>;
+
+            #[inline]
+            fn mul(self, other: $t) -> Wrapping<$t> {
+                Wrapping(self.0.wrapping_mul(other))
+            }
+        }
+        forward_ref_binop! { impl Mul, mul for Wrapping<$t>, $t }
+
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl MulAssign for Wrapping<$t> {
             #[inline]
@@ -311,6 +345,17 @@ macro_rules! wrapping_impl {
         forward_ref_binop! { impl Div, div for Wrapping<$t>, Wrapping<$t>,
                 #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
+        #[stable(feature = "wrapping_int_impl_int", since = "CURRENT_RUSTC_VERSION")]
+        impl Div<$t> for Wrapping<$t> {
+            type Output = Wrapping<$t>;
+
+            #[inline]
+            fn div(self, other: $t) -> Wrapping<$t> {
+                Wrapping(self.0.wrapping_div(other))
+            }
+        }
+        forward_ref_binop! { impl Div, div for Wrapping<$t>, $t }
+
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl DivAssign for Wrapping<$t> {
             #[inline]
@@ -340,6 +385,17 @@ macro_rules! wrapping_impl {
         }
         forward_ref_binop! { impl Rem, rem for Wrapping<$t>, Wrapping<$t>,
                 #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+
+        #[stable(feature = "wrapping_int_impl_int", since = "CURRENT_RUSTC_VERSION")]
+        impl Rem<$t> for Wrapping<$t> {
+            type Output = Wrapping<$t>;
+
+            #[inline]
+            fn rem(self, other: $t) -> Wrapping<$t> {
+                Wrapping(self.0.wrapping_rem(other))
+            }
+        }
+        forward_ref_binop! { impl Rem, rem for Wrapping<$t>, $t }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl RemAssign for Wrapping<$t> {
@@ -383,6 +439,17 @@ macro_rules! wrapping_impl {
         forward_ref_binop! { impl BitXor, bitxor for Wrapping<$t>, Wrapping<$t>,
                 #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
+        #[stable(feature = "wrapping_int_impl_int", since = "CURRENT_RUSTC_VERSION")]
+        impl BitXor<$t> for Wrapping<$t> {
+            type Output = Wrapping<$t>;
+
+            #[inline]
+            fn bitxor(self, other: $t) -> Wrapping<$t> {
+                Wrapping(self.0 ^ other)
+            }
+        }
+        forward_ref_binop! { impl BitXor, bitxor for Wrapping<$t>, $t }
+
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitXorAssign for Wrapping<$t> {
             #[inline]
@@ -413,6 +480,17 @@ macro_rules! wrapping_impl {
         forward_ref_binop! { impl BitOr, bitor for Wrapping<$t>, Wrapping<$t>,
                 #[stable(feature = "wrapping_ref", since = "1.14.0")] }
 
+        #[stable(feature = "wrapping_int_impl_int", since = "CURRENT_RUSTC_VERSION")]
+        impl BitOr<$t> for Wrapping<$t> {
+            type Output = Wrapping<$t>;
+
+            #[inline]
+            fn bitor(self, other: $t) -> Wrapping<$t> {
+                Wrapping(self.0 | other)
+            }
+        }
+        forward_ref_binop! { impl BitOr, bitor for Wrapping<$t>, $t }
+
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitOrAssign for Wrapping<$t> {
             #[inline]
@@ -442,6 +520,17 @@ macro_rules! wrapping_impl {
         }
         forward_ref_binop! { impl BitAnd, bitand for Wrapping<$t>, Wrapping<$t>,
                 #[stable(feature = "wrapping_ref", since = "1.14.0")] }
+
+        #[stable(feature = "wrapping_int_impl_int", since = "CURRENT_RUSTC_VERSION")]
+        impl BitAnd<$t> for Wrapping<$t> {
+            type Output = Wrapping<$t>;
+
+            #[inline]
+            fn bitand(self, other: $t) -> Wrapping<$t> {
+                Wrapping(self.0 & other)
+            }
+        }
+        forward_ref_binop! { impl BitAnd, bitand for Wrapping<$t>, $t }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitAndAssign for Wrapping<$t> {
