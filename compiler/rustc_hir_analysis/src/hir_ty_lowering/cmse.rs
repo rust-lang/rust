@@ -18,7 +18,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
     fn_sig: ty::PolyFnSig<'tcx>,
 ) {
     match abi {
-        ExternAbi::CCmseNonSecureCall => {
+        ExternAbi::CmseNonSecureCall => {
             let hir_node = tcx.hir_node(hir_id);
             let hir::Node::Ty(hir::Ty {
                 span: bare_fn_span,
@@ -38,7 +38,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                     dcx,
                     span,
                     E0781,
-                    "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"
+                    "the `\"cmse-nonsecure-call\"` ABI is only allowed on function pointers"
                 )
                 .emit();
                 return;
@@ -78,7 +78,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 }
             };
         }
-        ExternAbi::CCmseNonSecureEntry => {
+        ExternAbi::CmseNonSecureEntry => {
             let hir_node = tcx.hir_node(hir_id);
             let Some(hir::FnSig { decl, span: fn_sig_span, .. }) = hir_node.fn_sig() else {
                 // might happen when this ABI is used incorrectly. That will be handled elsewhere
@@ -203,11 +203,11 @@ fn should_emit_generic_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError
     match layout_err {
         TooGeneric(ty) => {
             match abi {
-                ExternAbi::CCmseNonSecureCall => {
+                ExternAbi::CmseNonSecureCall => {
                     // prevent double reporting of this error
                     !ty.is_impl_trait()
                 }
-                ExternAbi::CCmseNonSecureEntry => true,
+                ExternAbi::CmseNonSecureEntry => true,
                 _ => bug!("invalid ABI: {abi}"),
             }
         }
