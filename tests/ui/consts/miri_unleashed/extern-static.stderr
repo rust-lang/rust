@@ -2,13 +2,13 @@ error[E0080]: cannot access extern static `DATA`
   --> $DIR/extern-static.rs:11:25
    |
 LL |     unsafe { let _val = DATA; }
-   |                         ^^^^ evaluation of static initializer failed here
+   |                         ^^^^ evaluation of `TEST_READ` failed here
 
 error[E0080]: cannot access extern static `DATA`
   --> $DIR/extern-static.rs:15:14
    |
 LL |     unsafe { DATA = 0; }
-   |              ^^^^^^^^ evaluation of static initializer failed here
+   |              ^^^^^^^^ evaluation of `TEST_WRITE` failed here
 
 error: aborting due to 2 previous errors
 
