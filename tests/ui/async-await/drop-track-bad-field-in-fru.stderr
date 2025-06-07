@@ -10,14 +10,16 @@ error[E0277]: `Option<_>` is not a future
   --> $DIR/drop-track-bad-field-in-fru.rs:6:46
    |
 LL |     None { value: (), ..Default::default() }.await;
-   |                                             -^^^^^
-   |                                             ||
-   |                                             |`Option<_>` is not a future
-   |                                             help: remove the `.await`
+   |                                              ^^^^^ `Option<_>` is not a future
    |
    = help: the trait `Future` is not implemented for `Option<_>`
    = note: Option<_> must be a future or must implement `IntoFuture` to be awaited
    = note: required for `Option<_>` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     None { value: (), ..Default::default() }.await;
+LL +     None { value: (), ..Default::default() };
+   |
 
 error: aborting due to 2 previous errors
 
