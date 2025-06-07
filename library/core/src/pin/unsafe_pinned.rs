@@ -86,11 +86,14 @@ impl<T: ?Sized> UnsafePinned<T> {
         ptr::from_mut(self) as *mut T
     }
 
-    /// Get read-only access to the contents of a shared `UnsafePinned`.
+    /// Get mutable access to the contents of a shared `UnsafePinned`.
     ///
-    /// Note that `&UnsafePinned<T>` is read-only if `&T` is read-only. This means that if there is
-    /// mutation of the `T`, future reads from the `*const T` returned here are UB! Use
-    /// [`UnsafeCell`] if you also need interior mutability.
+    /// This can be cast to a pointer of any kind.
+    /// Ensure that the access is unique (no active references, mutable or not)
+    /// when casting to `&mut T`, and ensure that there are no mutations
+    /// or mutable aliases going on when casting to `&T`.
+    ///
+    /// All the usual caveats around mutation shared state apply, see [`UnsafeCell`].
     ///
     /// [`UnsafeCell`]: crate::cell::UnsafeCell
     ///
@@ -100,16 +103,16 @@ impl<T: ?Sized> UnsafePinned<T> {
     ///
     /// unsafe {
     ///     let mut x = UnsafePinned::new(0);
-    ///     let ptr = x.get(); // read-only pointer, assumes immutability
+    ///     let ptr = x.get();
     ///     x.get_mut_unchecked().write(1);
-    ///     ptr.read(); // UB!
+    ///     assert_eq!(ptr.read(), 1);
     /// }
     /// ```
     #[inline(always)]
     #[must_use]
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
-    pub const fn get(&self) -> *const T {
-        ptr::from_ref(self) as *const T
+    pub const fn get(&self) -> *mut T {
+        self.value.get()
     }
 
     /// Gets an immutable pointer to the wrapped value.
