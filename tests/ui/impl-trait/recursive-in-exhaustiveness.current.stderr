@@ -11,7 +11,7 @@ LL | fn build2<T>(x: T) -> impl Sized {
    |                       ^^^^^^^^^^
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-in-exhaustiveness.rs:39:23
+  --> $DIR/recursive-in-exhaustiveness.rs:40:23
    |
 LL | fn build3<T>(x: T) -> impl Sized {
    |                       ^^^^^^^^^^

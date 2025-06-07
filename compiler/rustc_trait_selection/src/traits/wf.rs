@@ -510,8 +510,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             let obligations = self.nominal_obligations(data.def_id, args);
             self.out.extend(obligations);
         }
-
-        data.args.visit_with(self);
     }
 
     fn add_wf_preds_for_projection_args(&mut self, args: GenericArgsRef<'tcx>) {
@@ -772,13 +770,35 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // Simple cases that are WF if their type args are WF.
             }
 
-            ty::Alias(ty::Projection | ty::Opaque | ty::Free, data) => {
-                let obligations = self.nominal_obligations(data.def_id, data.args);
-                self.out.extend(obligations);
-            }
-            ty::Alias(ty::Inherent, data) => {
-                self.add_wf_preds_for_inherent_projection(data.into());
-                return; // Subtree handled by compute_inherent_projection.
+            ty::Alias(kind, data) => {
+                // The new solver require aliases to normalize successfully.
+                // Adding this `ProjectionPredicate` makes sure that ambiguous or
+                // overflowing aliases cause an error in wf-check.
+                if self.infcx.next_trait_solver() && !data.has_escaping_bound_vars() {
+                    let code = ObligationCauseCode::Misc;
+                    let cause = self.cause(code);
+                    let inf = self.infcx.next_ty_var(cause.span);
+                    let obligation: traits::PredicateObligation<'tcx> =
+                        traits::Obligation::with_depth(
+                            self.tcx(),
+                            cause,
+                            self.recursion_depth,
+                            self.param_env,
+                            ty::ProjectionPredicate {
+                                projection_term: data.into(),
+                                term: inf.into(),
+                            },
+                        );
+                    self.out.push(obligation);
+                }
+
+                match kind {
+                    ty::Projection | ty::Opaque | ty::Free => {
+                        let obligations = self.nominal_obligations(data.def_id, data.args);
+                        self.out.extend(obligations);
+                    }
+                    ty::Inherent => self.add_wf_preds_for_inherent_projection(data.into()),
+                }
             }
 
             ty::Adt(def, args) => {

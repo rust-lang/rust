@@ -1530,12 +1530,14 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             // E.g: `struct Foo<const N: usize, const M: usize = { 1 - 2 }>;`. Here, we should
             // eagerly error but we don't as we have `ConstKind::Unevaluated(.., [N, M])`.
             if !default.has_param() {
-                wfcx.register_wf_obligation(
-                    tcx.def_span(param.def_id),
-                    matches!(param.kind, GenericParamDefKind::Type { .. })
-                        .then(|| WellFormedLoc::Ty(param.def_id.expect_local())),
-                    default.as_term().unwrap(),
-                );
+                let span = tcx.def_span(param.def_id);
+                let wf_loc = matches!(param.kind, GenericParamDefKind::Type { .. })
+                    .then(|| WellFormedLoc::Ty(param.def_id.expect_local()));
+                // We manually normalize the default to detect diverging or ambiguous aliases.
+                // This is not necessary with the new solver as it adds a requirement that
+                // aliases can be normalized when proving the `WellFormed` goal itself.
+                let _ = wfcx.normalize(span, wf_loc, default);
+                wfcx.register_wf_obligation(span, wf_loc, default.as_term().unwrap());
             } else {
                 // If we've got a generic const parameter we still want to check its
                 // type is correct in case both it and the param type are fully concrete.
