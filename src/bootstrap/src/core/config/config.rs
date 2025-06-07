@@ -24,7 +24,7 @@ use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
 use build_helper::exit;
-use build_helper::git::{GitConfig, PathFreshness, check_path_modifications, output_result};
+use build_helper::git::{GitConfig, PathFreshness, check_path_modifications};
 use serde::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
@@ -47,9 +47,10 @@ use crate::core::config::{
 };
 use crate::core::download::is_download_ci_available;
 use crate::utils::channel;
+use crate::utils::exec::command;
 use crate::utils::execution_context::ExecutionContext;
 use crate::utils::helpers::exe;
-use crate::{Command, GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, output, t};
+use crate::{GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, t};
 
 /// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build
@@ -445,7 +446,7 @@ impl Config {
             // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
             cmd.arg("rev-parse").arg("--show-cdup");
             // Discard stderr because we expect this to fail when building from a tarball.
-            let output = cmd.run_capture_stdout_exec_ctx(&config);
+            let output = cmd.allow_failure().run_capture_stdout_exec_ctx(&config);
             if output.is_success() {
                 let git_root_relative = output.stdout();
                 // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
@@ -749,7 +750,12 @@ impl Config {
         };
 
         config.initial_sysroot = t!(PathBuf::from_str(
-            output(Command::new(&config.initial_rustc).args(["--print", "sysroot"])).trim()
+            command(&config.initial_rustc)
+                .args(["--print", "sysroot"])
+                .run_always()
+                .run_capture_stdout_exec_ctx(&config)
+                .stdout()
+                .trim()
         ));
 
         config.initial_cargo_clippy = cargo_clippy;
@@ -1062,7 +1068,7 @@ impl Config {
 
         let mut git = helpers::git(Some(&self.src));
         git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
-        output(git.as_command_mut())
+        git.allow_failure().run_capture_stdout_exec_ctx(self).stdout()
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -1333,16 +1339,20 @@ impl Config {
         };
 
         // Determine commit checked out in submodule.
-        let checked_out_hash = output(submodule_git().args(["rev-parse", "HEAD"]).as_command_mut());
+        let checked_out_hash = submodule_git()
+            .allow_failure()
+            .args(["rev-parse", "HEAD"])
+            .run_capture_stdout_exec_ctx(self)
+            .stdout();
         let checked_out_hash = checked_out_hash.trim_end();
         // Determine commit that the submodule *should* have.
-        let recorded = output(
-            helpers::git(Some(&self.src))
-                .run_always()
-                .args(["ls-tree", "HEAD"])
-                .arg(relative_path)
-                .as_command_mut(),
-        );
+        let recorded = helpers::git(Some(&self.src))
+            .allow_failure()
+            .run_always()
+            .args(["ls-tree", "HEAD"])
+            .arg(relative_path)
+            .run_capture_stdout_exec_ctx(self)
+            .stdout();
 
         let actual_hash = recorded
             .split_whitespace()
@@ -1366,20 +1376,18 @@ impl Config {
         let update = |progress: bool| {
             // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
             // even though that has no relation to the upstream for the submodule.
-            let current_branch = output_result(
-                helpers::git(Some(&self.src))
-                    .allow_failure()
-                    .run_always()
-                    .args(["symbolic-ref", "--short", "HEAD"])
-                    .as_command_mut(),
-            )
-            .map(|b| b.trim().to_owned());
+            let current_branch = helpers::git(Some(&self.src))
+                .allow_failure()
+                .run_always()
+                .args(["symbolic-ref", "--short", "HEAD"])
+                .run_capture_exec_ctx(self);
 
             let mut git = helpers::git(Some(&self.src)).allow_failure();
             git.run_always();
-            if let Ok(branch) = current_branch {
+            if current_branch.is_success() {
                 // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
                 // This syntax isn't accepted by `branch.{branch}`. Strip it.
+                let branch = current_branch.stdout();
                 let branch = branch.strip_prefix("heads/").unwrap_or(&branch);
                 git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
             }
@@ -1425,7 +1433,8 @@ impl Config {
             return;
         }
 
-        let stage0_output = output(Command::new(program_path).arg("--version"));
+        let stage0_output =
+            command(program_path).arg("--version").run_capture_stdout_exec_ctx(self).stdout();
         let mut stage0_output = stage0_output.lines().next().unwrap().split(' ');
 
         let stage0_name = stage0_output.next().unwrap();
