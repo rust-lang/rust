@@ -2671,7 +2671,7 @@ impl str {
     /// assert!(!"Ferrös".eq_ignore_ascii_case("FERRÖS"));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_unstable(feature = "const_eq_ignore_ascii_case", issue = "131719")]
+    #[rustc_const_stable(feature = "const_eq_ignore_ascii_case", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &str) -> bool {
