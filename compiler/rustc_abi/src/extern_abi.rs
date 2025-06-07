@@ -27,6 +27,10 @@ pub enum ExternAbi {
     Cdecl {
         unwind: bool,
     },
+    /// An ABI that rustc does not know how to call or define. Functions with this ABI can
+    /// only be created using `#[naked]` functions or `extern "custom"` blocks, and can only
+    /// be called from inline assembly.
+    Custom,
     Stdcall {
         unwind: bool,
     },
@@ -114,6 +118,7 @@ abi_impls! {
             AvrNonBlockingInterrupt =><= "avr-non-blocking-interrupt",
             Cdecl { unwind: false } =><= "cdecl",
             Cdecl { unwind: true } =><= "cdecl-unwind",
+            Custom =><= "custom",
             EfiApi =><= "efiapi",
             Fastcall { unwind: false } =><= "fastcall",
             Fastcall { unwind: true } =><= "fastcall-unwind",

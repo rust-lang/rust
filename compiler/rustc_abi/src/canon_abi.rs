@@ -28,6 +28,9 @@ pub enum CanonAbi {
     Rust,
     RustCold,
 
+    /// An ABI that rustc does not know how to call or define.
+    Custom,
+
     /// ABIs relevant to 32-bit Arm targets
     Arm(ArmCall),
     /// ABI relevant to GPUs: the entry point for a GPU kernel
@@ -57,6 +60,7 @@ impl fmt::Display for CanonAbi {
             CanonAbi::C => ExternAbi::C { unwind: false },
             CanonAbi::Rust => ExternAbi::Rust,
             CanonAbi::RustCold => ExternAbi::RustCold,
+            CanonAbi::Custom => ExternAbi::Custom,
             CanonAbi::Arm(arm_call) => match arm_call {
                 ArmCall::Aapcs => ExternAbi::Aapcs { unwind: false },
                 ArmCall::CCmseNonSecureCall => ExternAbi::CCmseNonSecureCall,

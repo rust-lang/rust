@@ -1,5 +1,6 @@
 use std::iter;
 
+use rustc_abi::ExternAbi;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
@@ -85,6 +86,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         self.register_predicates(autoderef.into_obligations());
 
+        self.check_call_custom_abi(expr_ty, call_expr.span);
+
         let output = match result {
             None => {
                 // Check all of the arg expressions, but with no expectations
@@ -133,6 +136,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         output
+    }
+
+    /// Functions of type `extern "custom" fn(/* ... */)` cannot be called using `ExprKind::Call`.
+    /// These functions have a calling convention that is unknown to rust, hence it cannot generate
+    /// code for the call. The only way to execute such a function is via inline assembly.
+    fn check_call_custom_abi(&self, callee_ty: Ty<'tcx>, span: Span) {
+        let abi = match callee_ty.kind() {
+            ty::FnDef(def_id, _) => self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi,
+            ty::FnPtr(_, header) => header.abi,
+            _ => return,
+        };
+
+        if let ExternAbi::Custom = abi {
+            self.tcx.dcx().emit_err(errors::AbiCustomCall { span });
+        }
     }
 
     #[instrument(level = "debug", skip(self, call_expr, callee_expr, arg_exprs, autoderef), ret)]

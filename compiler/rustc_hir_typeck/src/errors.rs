@@ -1035,3 +1035,10 @@ pub(crate) struct NakedFunctionsMustNakedAsm {
     #[label]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_abi_custom_call)]
+pub(crate) struct AbiCustomCall {
+    #[primary_span]
+    pub span: Span,
+}

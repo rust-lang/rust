@@ -1,3 +1,7 @@
+hir_typeck_abi_custom_call =
+    functions with the `"custom"` ABI cannot be called
+    .note = an `extern "custom"` function can only be called from within inline assembly
+
 hir_typeck_add_missing_parentheses_in_range = you must surround the range in parentheses to call its `{$func_name}` function
 
 hir_typeck_add_return_type_add = try adding a return type

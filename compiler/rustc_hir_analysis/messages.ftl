@@ -1,3 +1,7 @@
+hir_analysis_abi_custom_clothed_function =
+    functions with the `"custom"` ABI must be naked
+    .suggestion = add the `#[unsafe(naked)]` attribute to this function
+
 hir_analysis_ambiguous_assoc_item = ambiguous associated {$assoc_kind} `{$assoc_ident}` in bounds of `{$qself}`
     .label = ambiguous associated {$assoc_kind} `{$assoc_ident}`
 

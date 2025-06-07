@@ -1,0 +1,117 @@
+error: functions with the `"custom"` ABI must be unsafe
+  --> $DIR/feature-gate-abi-custom.rs:16:5
+   |
+LL |     extern "custom" fn m7();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `unsafe` keyword to this definition
+   |
+LL |     unsafe extern "custom" fn m7();
+   |     ++++++
+
+error: functions with the `"custom"` ABI must be unsafe
+  --> $DIR/feature-gate-abi-custom.rs:20:5
+   |
+LL |     extern "custom" fn dm7() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `unsafe` keyword to this definition
+   |
+LL |     unsafe extern "custom" fn dm7() {
+   |     ++++++
+
+error: functions with the `"custom"` ABI must be unsafe
+  --> $DIR/feature-gate-abi-custom.rs:32:5
+   |
+LL |     extern "custom" fn m7() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `unsafe` keyword to this definition
+   |
+LL |     unsafe extern "custom" fn m7() {
+   |     ++++++
+
+error: functions with the `"custom"` ABI must be unsafe
+  --> $DIR/feature-gate-abi-custom.rs:42:5
+   |
+LL |     extern "custom" fn im7() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `unsafe` keyword to this definition
+   |
+LL |     unsafe extern "custom" fn im7() {
+   |     ++++++
+
+error[E0658]: the extern "custom" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-custom.rs:11:15
+   |
+LL | unsafe extern "custom" fn f7() {
+   |               ^^^^^^^^
+   |
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
+   = help: add `#![feature(abi_custom)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "custom" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-custom.rs:16:12
+   |
+LL |     extern "custom" fn m7();
+   |            ^^^^^^^^
+   |
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
+   = help: add `#![feature(abi_custom)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "custom" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-custom.rs:20:12
+   |
+LL |     extern "custom" fn dm7() {
+   |            ^^^^^^^^
+   |
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
+   = help: add `#![feature(abi_custom)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "custom" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-custom.rs:32:12
+   |
+LL |     extern "custom" fn m7() {
+   |            ^^^^^^^^
+   |
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
+   = help: add `#![feature(abi_custom)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "custom" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-custom.rs:42:12
+   |
+LL |     extern "custom" fn im7() {
+   |            ^^^^^^^^
+   |
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
+   = help: add `#![feature(abi_custom)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "custom" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-custom.rs:49:18
+   |
+LL | type A7 = extern "custom" fn();
+   |                  ^^^^^^^^
+   |
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
+   = help: add `#![feature(abi_custom)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "custom" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-custom.rs:51:8
+   |
+LL | extern "custom" {}
+   |        ^^^^^^^^
+   |
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
+   = help: add `#![feature(abi_custom)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
