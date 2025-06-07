@@ -183,38 +183,6 @@ impl Argument<'_> {
             ArgumentType::Placeholder { .. } => None,
         }
     }
-
-    /// Used by `format_args` when all arguments are gone after inlining,
-    /// when using `&[]` would incorrectly allow for a bigger lifetime.
-    ///
-    /// This fails without format argument inlining, and that shouldn't be different
-    /// when the argument is inlined:
-    ///
-    /// ```compile_fail,E0716
-    /// let f = format_args!("{}", "a");
-    /// println!("{f}");
-    /// ```
-    #[inline]
-    pub const fn none() -> [Self; 0] {
-        []
-    }
-}
-
-/// This struct represents the unsafety of constructing an `Arguments`.
-/// It exists, rather than an unsafe function, in order to simplify the expansion
-/// of `format_args!(..)` and reduce the scope of the `unsafe` block.
-#[lang = "format_unsafe_arg"]
-pub struct UnsafeArg {
-    _private: (),
-}
-
-impl UnsafeArg {
-    /// See documentation where `UnsafeArg` is required to know when it is safe to
-    /// create and use `UnsafeArg`.
-    #[inline]
-    pub const unsafe fn new() -> Self {
-        Self { _private: () }
-    }
 }
 
 /// Used by the format_args!() macro to create a fmt::Arguments object.
@@ -248,8 +216,7 @@ impl<'a> Arguments<'a> {
 
     /// Specifies nonstandard formatting parameters.
     ///
-    /// An `rt::UnsafeArg` is required because the following invariants must be held
-    /// in order for this function to be safe:
+    /// SAFETY: the following invariants must be held:
     /// 1. The `pieces` slice must be at least as long as `fmt`.
     /// 2. Every `rt::Placeholder::position` value within `fmt` must be a valid index of `args`.
     /// 3. Every `rt::Count::Param` within `fmt` must contain a valid index of `args`.
@@ -261,11 +228,10 @@ impl<'a> Arguments<'a> {
     /// const _: () = if false { panic!("a {:1}", "a") };
     /// ```
     #[inline]
-    pub fn new_v1_formatted(
+    pub unsafe fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [rt::Argument<'a>],
         fmt: &'a [rt::Placeholder],
-        _unsafe_arg: rt::UnsafeArg,
     ) -> Arguments<'a> {
         Arguments { pieces, fmt: Some(fmt), args }
     }
