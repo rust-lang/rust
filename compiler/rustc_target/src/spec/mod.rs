@@ -1981,6 +1981,8 @@ supported_targets! {
 
     ("sparc-unknown-none-elf", sparc_unknown_none_elf),
 
+    ("loongarch32-unknown-none", loongarch32_unknown_none),
+    ("loongarch32-unknown-none-softfloat", loongarch32_unknown_none_softfloat),
     ("loongarch64-unknown-none", loongarch64_unknown_none),
     ("loongarch64-unknown-none-softfloat", loongarch64_unknown_none_softfloat),
 
@@ -3502,6 +3504,7 @@ impl Target {
             "msp430" => (Architecture::Msp430, None),
             "hexagon" => (Architecture::Hexagon, None),
             "bpf" => (Architecture::Bpf, None),
+            "loongarch32" => (Architecture::LoongArch32, None),
             "loongarch64" => (Architecture::LoongArch64, None),
             "csky" => (Architecture::Csky, None),
             "arm64ec" => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),

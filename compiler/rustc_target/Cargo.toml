@@ -20,5 +20,5 @@ tracing = "0.1"
 # tidy-alphabetical-start
 default-features = false
 features = ["elf", "macho"]
-version = "0.36.2"
+version = "0.37.0"
 # tidy-alphabetical-end

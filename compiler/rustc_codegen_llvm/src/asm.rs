@@ -251,7 +251,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::Nvptx64 => {}
                 InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {}
                 InlineAsmArch::Hexagon => {}
-                InlineAsmArch::LoongArch64 => {
+                InlineAsmArch::LoongArch32 | InlineAsmArch::LoongArch64 => {
                     constraints.extend_from_slice(&[
                         "~{$fcc0}".to_string(),
                         "~{$fcc1}".to_string(),

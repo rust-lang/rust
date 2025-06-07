@@ -324,6 +324,8 @@ target | std | host | notes
 [`i686-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |   | 32-bit Windows 7 support [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 [`i686-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  | [^x86_32-floats-return-ABI]
 [`loongarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |   | LoongArch64 OpenHarmony
+[`loongarch32-unknown-none`](platform-support/loongarch-none.md) | * | LoongArch32 Bare-metal (ILP32D ABI)
+[`loongarch32-unknown-none-softfloat`](platform-support/loongarch-none.md) | * | LoongArch32 Bare-metal (ILP32S ABI)
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 [`m68k-unknown-none-elf`](platform-support/m68k-unknown-none-elf.md) |  |  | Motorola 680x0
 `mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23)

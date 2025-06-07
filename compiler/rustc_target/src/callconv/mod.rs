@@ -648,7 +648,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
             "avr" => avr::compute_abi_info(self),
-            "loongarch64" => loongarch::compute_abi_info(cx, self),
+            "loongarch32" | "loongarch64" => loongarch::compute_abi_info(cx, self),
             "m68k" => m68k::compute_abi_info(self),
             "csky" => csky::compute_abi_info(self),
             "mips" | "mips32r6" => mips::compute_abi_info(cx, self),
@@ -691,7 +691,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         match &*spec.arch {
             "x86" => x86::compute_rust_abi_info(cx, self),
             "riscv32" | "riscv64" => riscv::compute_rust_abi_info(cx, self),
-            "loongarch64" => loongarch::compute_rust_abi_info(cx, self),
+            "loongarch32" | "loongarch64" => loongarch::compute_rust_abi_info(cx, self),
             "aarch64" => aarch64::compute_rust_abi_info(cx, self),
             _ => {}
         };

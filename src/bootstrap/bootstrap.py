@@ -394,6 +394,7 @@ def default_build_triple(verbose):
         "i686": "i686",
         "i686-AT386": "i686",
         "i786": "i686",
+        "loongarch32": "loongarch32",
         "loongarch64": "loongarch64",
         "m68k": "m68k",
         "csky": "csky",

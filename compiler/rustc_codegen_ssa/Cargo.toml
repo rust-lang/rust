@@ -54,7 +54,7 @@ libc = "0.2.50"
 # tidy-alphabetical-end
 
 [dependencies.object]
-version = "0.36.2"
+version = "0.37.0"
 default-features = false
 features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write", "wasm"]
 

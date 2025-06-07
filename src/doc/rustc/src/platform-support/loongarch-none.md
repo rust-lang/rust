@@ -1,18 +1,18 @@
 # `loongarch*-unknown-none*`
 
-**Tier: 2**
+Freestanding/bare-metal LoongArch binaries in ELF format: firmware, kernels, etc.
 
-Freestanding/bare-metal LoongArch64 binaries in ELF format: firmware, kernels, etc.
-
-| Target | Description |
-|--------|-------------|
-| `loongarch64-unknown-none` | LoongArch 64-bit, LP64D ABI (freestanding, hard-float) |
-| `loongarch64-unknown-none-softfloat` | LoongArch 64-bit, LP64S ABI (freestanding, soft-float) |
+| Target | Description | Tier |
+|--------|-------------|------|
+| `loongarch32-unknown-none` | LoongArch 32-bit, ILP32D ABI (freestanding, hard-float) | Tier 3 |
+| `loongarch32-unknown-none-softfloat` | LoongArch 32-bit, ILP32S ABI (freestanding, soft-float) | Tier 3 |
+| `loongarch64-unknown-none` | LoongArch 64-bit, LP64D ABI (freestanding, hard-float) | Tier 2 |
+| `loongarch64-unknown-none-softfloat` | LoongArch 64-bit, LP64S ABI (freestanding, soft-float) | Tier 2 |
 
 ## Target maintainers
 
-[@heiher](https://github.com/heiher)
-[@xen0n](https://github.com/xen0n)
+- [@heiher](https://github.com/heiher)
+- [@xen0n](https://github.com/xen0n)
 
 ## Requirements
 
@@ -29,13 +29,13 @@ additional CPU features via the `-C target-feature=` codegen options to rustc, o
 via the `#[target_feature]` mechanism within Rust code.
 
 By default, code generated with the soft-float target should run on any
-LoongArch64 hardware, with the hard-float target additionally requiring an FPU;
+LoongArch hardware, with the hard-float target additionally requiring an FPU;
 enabling additional target features may raise this baseline.
 
 Code generated with the targets will use the `medium` code model by default.
 You can change this using the `-C code-model=` option to rustc.
 
-On `loongarch64-unknown-none*`, `extern "C"` uses the [architecture's standard calling convention][lapcs].
+On `loongarch*-unknown-none*`, `extern "C"` uses the [architecture's standard calling convention][lapcs].
 
 [lapcs]: https://github.com/loongson/la-abi-specs/blob/release/lapcs.adoc
 
@@ -52,6 +52,8 @@ list in `bootstrap.toml`:
 [build]
 build-stage = 1
 target = [
+  "loongarch32-unknown-none",
+  "loongarch32-unknown-none-softfloat",
   "loongarch64-unknown-none",
   "loongarch64-unknown-none-softfloat",
 ]
@@ -64,13 +66,28 @@ As the targets support a variety of different environments and do not support
 
 ## Building Rust programs
 
+### loongarch32-unknown-none*
+
+The `loongarch32-unknown-none*` targets are Tier 3, so you must build the Rust
+compiler from source to use them.
+
+```sh
+# target flag may be used with any cargo or rustc command
+cargo build --target loongarch32-unknown-none
+cargo build --target loongarch32-unknown-none-softfloat
+```
+
+### loongarch64-unknown-none*
+
 Starting with Rust 1.74, precompiled artifacts are provided via `rustup`:
 
 ```sh
 # install cross-compile toolchain
 rustup target add loongarch64-unknown-none
+rustup target add loongarch64-unknown-none-softfloat
 # target flag may be used with any cargo or rustc command
 cargo build --target loongarch64-unknown-none
+cargo build --target loongarch64-unknown-none-softfloat
 ```
 
 ## Cross-compilation toolchains and C code
@@ -79,10 +96,10 @@ For cross builds, you will need an appropriate LoongArch C/C++ toolchain for
 linking, or if you want to compile C code along with Rust (such as for Rust
 crates with C dependencies).
 
-Rust *may* be able to use an `loongarch64-unknown-linux-gnu-` toolchain with
+Rust *may* be able to use an `loongarch{32,64}-unknown-linux-{gnu,musl}-` toolchain with
 appropriate standalone flags to build for this toolchain (depending on the assumptions
 of that toolchain, see below), or you may wish to use a separate
-`loongarch64-unknown-none` toolchain.
+`loongarch{32,64}-unknown-none` toolchain.
 
 On some LoongArch hosts that use ELF binaries, you *may* be able to use the host
 C toolchain, if it does not introduce assumptions about the host environment
