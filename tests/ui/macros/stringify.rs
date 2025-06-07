@@ -793,6 +793,16 @@ fn test_vis() {
     // Attributes are not allowed on visibilities.
 }
 
+#[test]
+fn test_impl_restriction() {
+    assert_eq!(stringify!(pub impl(crate) trait Foo {}), "pub impl(crate) trait Foo {}");
+    assert_eq!(stringify!(pub impl(in crate) trait Foo {}), "pub impl(in crate) trait Foo {}");
+    assert_eq!(stringify!(pub impl(super) trait Foo {}), "pub impl(super) trait Foo {}");
+    assert_eq!(stringify!(pub impl(in super) trait Foo {}), "pub impl(in super) trait Foo {}");
+    assert_eq!(stringify!(pub impl(self) trait Foo {}), "pub impl(self) trait Foo {}");
+    assert_eq!(stringify!(pub impl(in self) trait Foo {}), "pub impl(in self) trait Foo {}");
+}
+
 macro_rules! p {
     ([$($tt:tt)*], $s:literal) => {
         assert_eq!(stringify!($($tt)*), $s);

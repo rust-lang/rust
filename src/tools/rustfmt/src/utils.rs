@@ -4,7 +4,7 @@ use rustc_ast::ast::{
     self, Attribute, MetaItem, MetaItemInner, MetaItemKind, NodeId, Path, Visibility,
     VisibilityKind,
 };
-use rustc_ast::{YieldKind, ptr};
+use rustc_ast::{Restriction, RestrictionKind, YieldKind, ptr};
 use rustc_ast_pretty::pprust;
 use rustc_span::{BytePos, LocalExpnId, Span, Symbol, SyntaxContext, sym, symbol};
 use unicode_width::UnicodeWidthStr;
@@ -71,6 +71,35 @@ pub(crate) fn format_visibility(
 
             Cow::from(format!("pub({in_str}{path}) "))
         }
+    }
+}
+
+// Does not allocate in the common (implied) case.
+pub(crate) fn format_restriction(
+    kw: &'static str,
+    context: &RewriteContext<'_>,
+    restriction: &Restriction,
+) -> String {
+    match restriction.kind {
+        RestrictionKind::Unrestricted => format!("{kw} "),
+        RestrictionKind::Restricted {
+            ref path,
+            id: _,
+            shorthand,
+        } => {
+            let Path { ref segments, .. } = **path;
+            let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
+            if path.is_global() && segments_iter.next().is_none() {
+                panic!("non-global path in {kw}(restricted)?");
+            }
+            // FIXME use `segments_iter.intersperse("::").collect::<String>()` once
+            // `#![feature(iter_intersperse)]` is re-stabilized.
+            let path = itertools::join(segments_iter, "::");
+            let in_str = if shorthand { "" } else { "in " };
+
+            format!("{kw}({in_str}{path}) ")
+        }
+        RestrictionKind::Implied => String::new(),
     }
 }
 

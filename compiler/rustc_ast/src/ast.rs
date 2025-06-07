@@ -3357,6 +3357,42 @@ impl VisibilityKind {
     }
 }
 
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Restriction {
+    pub kind: RestrictionKind,
+    pub span: Span,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum RestrictionKind {
+    Unrestricted,
+    Restricted { path: P<Path>, id: NodeId, shorthand: bool },
+    Implied,
+}
+
+impl Restriction {
+    pub fn unrestricted() -> Self {
+        Restriction { kind: RestrictionKind::Unrestricted, span: DUMMY_SP, tokens: None }
+    }
+
+    pub fn restricted(path: P<Path>, id: NodeId, shorthand: bool) -> Self {
+        Restriction {
+            kind: RestrictionKind::Restricted { path, id, shorthand },
+            span: DUMMY_SP,
+            tokens: None,
+        }
+    }
+
+    pub fn implied() -> Self {
+        Restriction { kind: RestrictionKind::Implied, span: DUMMY_SP, tokens: None }
+    }
+
+    pub fn with_span(self, span: Span) -> Self {
+        Restriction { span, ..self }
+    }
+}
+
 /// Field definition in a struct, variant or union.
 ///
 /// E.g., `bar: usize` as in `struct Foo { bar: usize }`.
@@ -3535,6 +3571,7 @@ impl Default for FnHeader {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Trait {
+    pub impl_restriction: Restriction,
     pub safety: Safety,
     pub is_auto: IsAuto,
     pub ident: Ident,
