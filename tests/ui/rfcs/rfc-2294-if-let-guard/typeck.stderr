@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/typeck.rs:9:22
+  --> $DIR/typeck.rs:7:22
    |
 LL |         Ok(x) if let Err(_) = x => {},
    |                      ^^^^^^   - this expression has type `Option<bool>`
@@ -10,7 +10,7 @@ LL |         Ok(x) if let Err(_) = x => {},
               found enum `Result<_, _>`
 
 error[E0308]: mismatched types
-  --> $DIR/typeck.rs:11:22
+  --> $DIR/typeck.rs:9:22
    |
 LL |         Ok(x) if let 0 = x => {},
    |                      ^   - this expression has type `Option<bool>`

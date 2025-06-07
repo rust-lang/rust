@@ -1,9 +1,8 @@
 // Check that borrowck knows that moves in the pattern for if-let guards
 // only happen when the pattern is matched.
 
-//@ build-pass
+//@ check-pass
 
-#![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]
 
 fn same_pattern() {
@@ -36,6 +35,6 @@ fn main() {
 
     match v {
         (1, 2) if let y = x => false,
-        _ => { *x == 1 },
+        _ => *x == 1,
     };
 }

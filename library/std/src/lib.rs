@@ -295,7 +295,6 @@
 #![feature(f16)]
 #![feature(ffi_const)]
 #![feature(formatting_options)]
-#![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]

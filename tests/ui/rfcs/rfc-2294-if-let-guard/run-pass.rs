@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(if_let_guard)]
-
 enum Foo {
     Bar,
     Baz,
