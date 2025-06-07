@@ -42,6 +42,8 @@ pub enum ExternAbi {
     Aapcs {
         unwind: bool,
     },
+    CmseNonSecureCall,
+    CmseNonSecureEntry,
     Win64 {
         unwind: bool,
     },
@@ -57,8 +59,6 @@ pub enum ExternAbi {
     EfiApi,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
-    CCmseNonSecureCall,
-    CCmseNonSecureEntry,
     System {
         unwind: bool,
     },
@@ -104,8 +104,6 @@ macro_rules! abi_impls {
 abi_impls! {
     ExternAbi = {
             C { unwind: false } =><= "C",
-            CCmseNonSecureCall =><= "C-cmse-nonsecure-call",
-            CCmseNonSecureEntry =><= "C-cmse-nonsecure-entry",
             C { unwind: true } =><= "C-unwind",
             Rust =><= "Rust",
             Aapcs { unwind: false } =><= "aapcs",
@@ -114,6 +112,8 @@ abi_impls! {
             AvrNonBlockingInterrupt =><= "avr-non-blocking-interrupt",
             Cdecl { unwind: false } =><= "cdecl",
             Cdecl { unwind: true } =><= "cdecl-unwind",
+            CmseNonSecureCall =><= "cmse-nonsecure-call",
+            CmseNonSecureEntry =><= "cmse-nonsecure-entry",
             EfiApi =><= "efiapi",
             Fastcall { unwind: false } =><= "fastcall",
             Fastcall { unwind: true } =><= "fastcall-unwind",

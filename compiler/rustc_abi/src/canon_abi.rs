@@ -59,8 +59,8 @@ impl fmt::Display for CanonAbi {
             CanonAbi::RustCold => ExternAbi::RustCold,
             CanonAbi::Arm(arm_call) => match arm_call {
                 ArmCall::Aapcs => ExternAbi::Aapcs { unwind: false },
-                ArmCall::CCmseNonSecureCall => ExternAbi::CCmseNonSecureCall,
-                ArmCall::CCmseNonSecureEntry => ExternAbi::CCmseNonSecureEntry,
+                ArmCall::CCmseNonSecureCall => ExternAbi::CmseNonSecureCall,
+                ArmCall::CCmseNonSecureEntry => ExternAbi::CmseNonSecureEntry,
             },
             CanonAbi::GpuKernel => ExternAbi::GpuKernel,
             CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
