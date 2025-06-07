@@ -2,7 +2,7 @@ use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
-use std::{env, iter, thread};
+use std::{env, thread};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -12,7 +12,6 @@ use rustc_metadata::{DylibError, load_symbol_from_dylib};
 use rustc_middle::ty::CurrentGcx;
 use rustc_parse::validate_attr;
 use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, host_tuple};
-use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
 use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
 use rustc_session::{EarlyDiagCtxt, Session, filesearch};
@@ -346,14 +345,10 @@ pub fn rustc_path<'a>() -> Option<&'a Path> {
 }
 
 fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
-    sysroot_candidates().iter().find_map(|sysroot| {
-        let candidate = sysroot.join(bin_path).join(if cfg!(target_os = "windows") {
-            "rustc.exe"
-        } else {
-            "rustc"
-        });
-        candidate.exists().then_some(candidate)
-    })
+    let candidate = filesearch::get_or_default_sysroot()
+        .join(bin_path)
+        .join(if cfg!(target_os = "windows") { "rustc.exe" } else { "rustc" });
+    candidate.exists().then_some(candidate)
 }
 
 #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
@@ -374,10 +369,10 @@ fn get_codegen_sysroot(
     );
 
     let target = host_tuple();
-    let sysroot_candidates = sysroot_candidates();
+    let sysroot_candidates = filesearch::sysroot_with_fallback(&sysroot);
 
-    let sysroot = iter::once(sysroot)
-        .chain(sysroot_candidates.iter().map(<_>::as_ref))
+    let sysroot = sysroot_candidates
+        .iter()
         .map(|sysroot| {
             filesearch::make_target_lib_path(sysroot, target).with_file_name("codegen-backends")
         })
