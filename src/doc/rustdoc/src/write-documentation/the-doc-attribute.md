@@ -143,15 +143,6 @@ But if you include this:
 
 it will not.
 
-### `test(attr(...))`
-
-This form of the `doc` attribute allows you to add arbitrary attributes to all your doctests. For
-example, if you want your doctests to fail if they have dead code, you could add this:
-
-```rust,no_run
-#![doc(test(attr(deny(dead_code))))]
-```
-
 ## At the item level
 
 These forms of the `#[doc]` attribute are used on individual items, to control how
@@ -283,3 +274,26 @@ To get around this limitation, we just add `#[doc(alias = "lib_name_do_something
 on the `do_something` method and then it's all good!
 Users can now look for `lib_name_do_something` in our crate directly and find
 `Obj::do_something`.
+
+### `test(attr(...))`
+
+This form of the `doc` attribute allows you to add arbitrary attributes to all your doctests. For
+example, if you want your doctests to fail if they have dead code, you could add this:
+
+```rust,no_run
+#![doc(test(attr(deny(dead_code))))]
+
+mod my_mod {
+    #![doc(test(attr(allow(dead_code))))] // but allow `dead_code` for this module
+}
+```
+
+`test(attr(..))` attributes are appended to the parent module's, they do not replace the current
+list of attributes. In the previous example, both attributes would be present:
+
+```rust,no_run
+// For every doctest in `my_mod`
+
+#![deny(dead_code)] // from the crate-root
+#![allow(dead_code)] // from `my_mod`
+```

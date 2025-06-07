@@ -1266,13 +1266,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         true
     }
 
-    /// Checks that `doc(test(...))` attribute contains only valid attributes. Returns `true` if
-    /// valid.
-    fn check_test_attr(&self, meta: &MetaItemInner, hir_id: HirId) {
+    /// Checks that `doc(test(...))` attribute contains only valid attributes and are at the right place.
+    fn check_test_attr(&self, attr: &Attribute, meta: &MetaItemInner, hir_id: HirId) {
         if let Some(metas) = meta.meta_item_list() {
             for i_meta in metas {
                 match (i_meta.name(), i_meta.meta_item()) {
-                    (Some(sym::attr | sym::no_crate_inject), _) => {}
+                    (Some(sym::attr), _) => {
+                        // Allowed everywhere like `#[doc]`
+                    }
+                    (Some(sym::no_crate_inject), _) => {
+                        self.check_attr_crate_level(attr, meta, hir_id);
+                    }
                     (_, Some(m)) => {
                         self.tcx.emit_node_span_lint(
                             INVALID_DOC_ATTRIBUTES,
@@ -1359,9 +1363,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
 
                         Some(sym::test) => {
-                            if self.check_attr_crate_level(attr, meta, hir_id) {
-                                self.check_test_attr(meta, hir_id);
-                            }
+                            self.check_test_attr(attr, meta, hir_id);
                         }
 
                         Some(

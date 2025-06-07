@@ -1,5 +1,20 @@
+error: missing fragment specifier
+  --> $DIR/future-incompatible-lint-group.rs:6:19
+   |
+LL | macro_rules! m { ($i) => {} }
+   |                   ^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
+note: the lint level is defined here
+  --> $DIR/future-incompatible-lint-group.rs:3:9
+   |
+LL | #![deny(future_incompatible)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(missing_fragment_specifier)]` implied by `#[deny(future_incompatible)]`
+
 warning: anonymous parameters are deprecated and will be removed in the next edition
-  --> $DIR/future-incompatible-lint-group.rs:7:10
+  --> $DIR/future-incompatible-lint-group.rs:11:10
    |
 LL |     fn f(u8) {}
    |          ^^ help: try naming the parameter or explicitly ignoring it: `_: u8`
@@ -8,14 +23,21 @@ LL |     fn f(u8) {}
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
    = note: `#[warn(anonymous_parameters)]` on by default
 
-error: this attribute can only be applied at the crate level
-  --> $DIR/future-incompatible-lint-group.rs:13:12
-   |
-LL |     #![doc(test(some_test))]
-   |            ^^^^^^^^^^^^^^^
-   |
-   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
-   = note: `#[deny(invalid_doc_attributes)]` on by default
-
 error: aborting due to 1 previous error; 1 warning emitted
+
+Future incompatibility report: Future breakage diagnostic:
+error: missing fragment specifier
+  --> $DIR/future-incompatible-lint-group.rs:6:19
+   |
+LL | macro_rules! m { ($i) => {} }
+   |                   ^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
+note: the lint level is defined here
+  --> $DIR/future-incompatible-lint-group.rs:3:9
+   |
+LL | #![deny(future_incompatible)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(missing_fragment_specifier)]` implied by `#[deny(future_incompatible)]`
 

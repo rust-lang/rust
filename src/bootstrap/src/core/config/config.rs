@@ -28,8 +28,6 @@ use build_helper::git::{GitConfig, PathFreshness, check_path_modifications, outp
 use serde::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
-#[cfg(feature = "tracing")]
-use tracing::{instrument, span};
 
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;

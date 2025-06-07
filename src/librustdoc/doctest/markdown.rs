@@ -31,6 +31,7 @@ impl DocTestVisitor for MdCollector {
             config,
             test,
             DUMMY_SP,
+            Vec::new(),
         ));
     }
 
@@ -96,7 +97,6 @@ pub(crate) fn test(input: &Input, options: Options) -> Result<(), String> {
         crate_name,
         no_crate_inject: true,
         insert_indent_space: false,
-        attrs: vec![],
         args_file,
     };
 
