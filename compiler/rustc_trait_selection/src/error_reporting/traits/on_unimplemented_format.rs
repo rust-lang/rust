@@ -8,7 +8,7 @@ use rustc_parse_format::{
     Alignment, Argument, Count, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece,
     Position,
 };
-use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
+use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_FORMAT_LITERALS;
 use rustc_span::def_id::DefId;
 use rustc_span::{BytePos, Pos, Span, Symbol, kw, sym};
 
@@ -70,7 +70,7 @@ impl FormatWarning {
                 let this = tcx.item_ident(item_def_id);
                 if let Some(item_def_id) = item_def_id.as_local() {
                     tcx.emit_node_span_lint(
-                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                         tcx.local_def_id_to_hir_id(item_def_id),
                         span,
                         UnknownFormatParameterForOnUnimplementedAttr {
@@ -83,7 +83,7 @@ impl FormatWarning {
             FormatWarning::PositionalArgument { span, .. } => {
                 if let Some(item_def_id) = item_def_id.as_local() {
                     tcx.emit_node_span_lint(
-                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                         tcx.local_def_id_to_hir_id(item_def_id),
                         span,
                         DisallowedPositionalArgument,
@@ -93,7 +93,7 @@ impl FormatWarning {
             FormatWarning::InvalidSpecifier { span, .. } => {
                 if let Some(item_def_id) = item_def_id.as_local() {
                     tcx.emit_node_span_lint(
-                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                         tcx.local_def_id_to_hir_id(item_def_id),
                         span,
                         InvalidFormatSpecifier,
