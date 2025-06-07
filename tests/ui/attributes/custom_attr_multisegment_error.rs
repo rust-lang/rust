@@ -1,4 +1,4 @@
-// Unresolved multi-segment attributes are not treated as custom.
+//! Unresolved multi-segment attributes are not treated as custom.
 
 mod existent {}
 

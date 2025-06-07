@@ -1,3 +1,5 @@
+//! Checks error handling for mismatched `--crate-name` and `#![crate_name]` values.
+
 //@ compile-flags: --crate-name foo
 
 #![crate_name = "bar"]

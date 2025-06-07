@@ -1,3 +1,5 @@
+//! Checks deep recursion behavior.
+
 //@ run-pass
 //@ ignore-emscripten apparently blows the stack
 

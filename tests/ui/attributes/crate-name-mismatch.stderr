@@ -1,5 +1,5 @@
 error: `--crate-name` and `#[crate_name]` are required to match, but `foo` != `bar`
-  --> $DIR/crate-name-mismatch.rs:3:1
+  --> $DIR/crate-name-mismatch.rs:5:1
    |
 LL | #![crate_name = "bar"]
    | ^^^^^^^^^^^^^^^^^^^^^^

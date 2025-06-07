@@ -1,3 +1,5 @@
+//! Checks run with a custom test framework and indexed test functions.
+
 //@ compile-flags: --test
 //@ run-pass
 
