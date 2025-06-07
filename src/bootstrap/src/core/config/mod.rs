@@ -39,8 +39,6 @@ pub use toml::BUILDER_CONFIG_FILENAME;
 pub use toml::change_id::ChangeId;
 pub use toml::rust::LldMode;
 pub use toml::target::Target;
-#[cfg(feature = "tracing")]
-use tracing::{instrument, span};
 
 use crate::Display;
 use crate::str::FromStr;
