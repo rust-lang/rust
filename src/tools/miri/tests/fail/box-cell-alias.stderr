@@ -1,31 +1,28 @@
-error: Undefined Behavior: trying to retag from <TAG> for SharedReadWrite permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is weakly protected
   --> tests/fail/box-cell-alias.rs:LL:CC
    |
-LL |     unsafe { (*ptr).set(20) };
-   |              ^^^^^^
-   |              |
-   |              trying to retag from <TAG> for SharedReadWrite permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
-   |              this error occurs as part of retag at ALLOC[0x0..0x1]
+LL |     unsafe { (*ptr).get().write(20) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^ not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is weakly protected
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x1]
   --> tests/fail/box-cell-alias.rs:LL:CC
    |
-LL |     let ptr: *const Cell<u8> = &*val;
-   |                                ^^^^^
-help: <TAG> was later invalidated at offsets [0x0..0x1] by a Unique retag
+LL |     unsafe { (*ptr).get().write(20) };
+   |              ^^^^^^^^^^^^
+help: <TAG> is this argument
   --> tests/fail/box-cell-alias.rs:LL:CC
    |
-LL |     let res = helper(val, ptr);
-   |                      ^^^
+LL | fn helper(val: Box<Cell<u8>>, ptr: *const UnsafeCell<u8>) -> u8 {
+   |           ^^^
    = note: BACKTRACE (of the first span):
    = note: inside `helper` at tests/fail/box-cell-alias.rs:LL:CC
 note: inside `main`
   --> tests/fail/box-cell-alias.rs:LL:CC
    |
-LL |     let res = helper(val, ptr);
-   |               ^^^^^^^^^^^^^^^^
+LL |     let res = helper(val, ptr.cast());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

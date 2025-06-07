@@ -86,15 +86,6 @@ impl NewPermission {
                     }
                 }
             }
-            ty::RawPtr(_, Mutability::Mut) => {
-                assert!(protector.is_none()); // RetagKind can't be both FnEntry and Raw.
-                // Mutable raw pointer. No access, not protected.
-                NewPermission::Uniform {
-                    perm: Permission::SharedReadWrite,
-                    access: None,
-                    protector: None,
-                }
-            }
             ty::Ref(_, _pointee, Mutability::Not) => {
                 // Shared references. If frozen, these get `noalias` and `dereferenceable`; otherwise neither.
                 NewPermission::FreezeSensitive {
@@ -108,17 +99,6 @@ impl NewPermission {
                     nonfreeze_access: None,
                     // We do not protect inside UnsafeCell.
                     // This fixes https://github.com/rust-lang/rust/issues/55005.
-                }
-            }
-            ty::RawPtr(_, Mutability::Not) => {
-                assert!(protector.is_none()); // RetagKind can't be both FnEntry and Raw.
-                // `*const T`, when freshly created, are read-only in the frozen part.
-                NewPermission::FreezeSensitive {
-                    freeze_perm: Permission::SharedReadOnly,
-                    freeze_access: Some(AccessKind::Read),
-                    freeze_protector: None,
-                    nonfreeze_perm: Permission::SharedReadWrite,
-                    nonfreeze_access: None,
                 }
             }
             _ => unreachable!(),
@@ -192,29 +172,18 @@ impl<'tcx> Stack {
     /// Find the first write-incompatible item above the given one --
     /// i.e, find the height to which the stack will be truncated when writing to `granting`.
     fn find_first_write_incompatible(&self, granting: usize) -> usize {
-        let perm = self.get(granting).unwrap().perm();
-        match perm {
-            Permission::SharedReadOnly => bug!("Cannot use SharedReadOnly for writing"),
-            Permission::Disabled => bug!("Cannot use Disabled for anything"),
-            Permission::Unique => {
-                // On a write, everything above us is incompatible.
-                granting + 1
-            }
-            Permission::SharedReadWrite => {
-                // The SharedReadWrite *just* above us are compatible, to skip those.
-                let mut idx = granting + 1;
-                while let Some(item) = self.get(idx) {
-                    if item.perm() == Permission::SharedReadWrite {
-                        // Go on.
-                        idx += 1;
-                    } else {
-                        // Found first incompatible!
-                        break;
-                    }
-                }
-                idx
+        // The SharedReadWrite *just* above us are compatible, to skip those.
+        let mut idx = granting + 1;
+        while let Some(item) = self.get(idx) {
+            if item.perm() == Permission::SharedReadWrite {
+                // Go on.
+                idx += 1;
+            } else {
+                // Found first incompatible!
+                break;
             }
         }
+        idx
     }
 
     /// The given item was invalidated -- check its protectors for whether that will cause UB.
@@ -863,12 +832,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         val: &ImmTy<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
-        let new_perm = NewPermission::from_ref_ty(val.layout.ty, kind, this);
         let cause = match kind {
             RetagKind::TwoPhase => RetagCause::TwoPhase,
             RetagKind::FnEntry => unreachable!(),
-            RetagKind::Raw | RetagKind::Default => RetagCause::Normal,
+            RetagKind::Default => RetagCause::Normal,
+            RetagKind::Raw => return interp_ok(val.clone()), // no raw retags!
         };
+        let new_perm = NewPermission::from_ref_ty(val.layout.ty, kind, this);
         this.sb_retag_reference(val, new_perm, RetagInfo { cause, in_field: false })
     }
 
@@ -942,14 +912,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // Check the type of this value to see what to do with it (retag, or recurse).
                 match place.layout.ty.kind() {
-                    ty::Ref(..) | ty::RawPtr(..) => {
-                        if matches!(place.layout.ty.kind(), ty::Ref(..))
-                            || self.kind == RetagKind::Raw
-                        {
-                            let new_perm =
-                                NewPermission::from_ref_ty(place.layout.ty, self.kind, self.ecx);
-                            self.retag_ptr_inplace(place, new_perm)?;
-                        }
+                    ty::Ref(..) => {
+                        let new_perm =
+                            NewPermission::from_ref_ty(place.layout.ty, self.kind, self.ecx);
+                        self.retag_ptr_inplace(place, new_perm)?;
+                    }
+                    ty::RawPtr(_, _) => {
+                        // We definitely do *not* want to recurse into raw pointers -- wide raw
+                        // pointers have fields, and for dyn Trait pointees those can have reference
+                        // type!
+                        // We also do not want to reborrow them.
                     }
                     ty::Adt(adt, _) if adt.is_box() => {
                         // Recurse for boxes, they require some tricky handling and will end up in `visit_box` above.

@@ -9,11 +9,11 @@ LL |     unsafe { *target2 = 13 };
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
+help: <TAG> was created by a Unique retag at offsets [0x0..0x4]
   --> tests/fail/stacked_borrows/illegal_write2.rs:LL:CC
    |
-LL |     let target2 = target as *mut _;
-   |                   ^^^^^^
+LL |     let target2 = &mut *target as *mut _;
+   |                   ^^^^^^^^^^^^
 help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique retag
   --> tests/fail/stacked_borrows/illegal_write2.rs:LL:CC
    |

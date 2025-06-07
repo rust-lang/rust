@@ -23,7 +23,9 @@ fn main() {
     not_unpin_not_protected();
     write_does_not_invalidate_all_aliases();
     box_into_raw_allows_interior_mutable_alias();
-    cell_inside_struct()
+    cell_inside_struct();
+    direct_mut_to_const_raw();
+    local_addr_of_mut();
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -54,7 +56,7 @@ fn read_does_not_invalidate2() {
 fn mut_raw_then_mut_shr() {
     let mut x = 2;
     let xref = &mut x;
-    let xraw = &mut *xref as *mut _;
+    let xraw = xref as *mut _;
     let xshr = &*xref;
     assert_eq!(*xshr, 2);
     unsafe {
@@ -286,4 +288,23 @@ fn cell_inside_struct() {
 
     // Writing to `field1`, which is reserved, should also be allowed.
     (*a).field1 = 88;
+}
+
+// Casting an `&mut` to a `*const` produces a writeable pointer.
+fn direct_mut_to_const_raw() {
+    let x = &mut 0;
+    let y: *const i32 = x;
+    unsafe { *(y as *mut i32) = 1 };
+    assert_eq!(*x, 1);
+}
+
+// A local variable and a raw pointer to it may be interleaved.
+#[allow(unused_assignments)]
+fn local_addr_of_mut() {
+    let mut local = 0;
+    let ptr = ptr::addr_of_mut!(local);
+    local = 1;
+    unsafe { *ptr = 2 };
+    local = 3;
+    unsafe { *ptr = 4 };
 }

@@ -9,11 +9,11 @@ LL |         let _val = *raw;
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
+help: <TAG> was created by a Unique retag at offsets [0x0..0x4]
   --> tests/fail/stacked_borrows/disable_mut_does_not_merge_srw.rs:LL:CC
    |
-LL |             mutref as *mut i32
-   |             ^^^^^^
+LL |             let mutref = &mut *base;
+   |                          ^^^^^^^^^^
 help: <TAG> was later invalidated at offsets [0x0..0x4] by a write access
   --> tests/fail/stacked_borrows/disable_mut_does_not_merge_srw.rs:LL:CC
    |

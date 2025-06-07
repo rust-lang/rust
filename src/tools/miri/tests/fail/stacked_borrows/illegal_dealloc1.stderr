@@ -6,7 +6,7 @@ LL |         dealloc(ptr2, Layout::from_size_align_unchecked(1, 1));
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x1]
+help: <TAG> was created by a Unique retag at offsets [0x0..0x1]
   --> tests/fail/stacked_borrows/illegal_deALLOC.rs:LL:CC
    |
 LL |         let ptr2 = (&mut *ptr1) as *mut u8;

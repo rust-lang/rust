@@ -628,6 +628,7 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
         &lower_intrinsics::LowerIntrinsics,
+        &lower_slice_len::LowerSliceLenCalls,
         &remove_place_mention::RemovePlaceMention,
         &simplify::SimplifyCfg::PreOptimizations,
     ];
@@ -671,9 +672,6 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &check_null::CheckNull,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
-            // Has to be done before inlining, otherwise actual call will be almost always inlined.
-            // Also simple, so can just do first.
-            &lower_slice_len::LowerSliceLenCalls,
             // Perform instsimplify before inline to eliminate some trivial calls (like clone
             // shims).
             &instsimplify::InstSimplify::BeforeInline,

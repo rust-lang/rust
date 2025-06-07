@@ -6,11 +6,11 @@ LL |     unsafe { *y = 2 };
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
+help: <TAG> was created by a Unique retag at offsets [0x0..0x4]
   --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
    |
-LL |     let p = x as *mut u32;
-   |             ^
+LL |     let x = &mut 0u32;
+   |             ^^^^^^^^^
 help: <TAG> is this argument
   --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
    |
