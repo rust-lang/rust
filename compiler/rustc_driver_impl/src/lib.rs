@@ -1507,6 +1507,17 @@ pub fn init_logger(early_dcx: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
     }
 }
 
+pub fn init_logger_with_additional_layer(
+    early_dcx: &EarlyDiagCtxt,
+    cfg: rustc_log::LoggerConfig,
+    additional_tracing_layer: impl rustc_log::Layer<rustc_log::Registry> + Send + Sync,
+) {
+    if let Err(error) = rustc_log::init_logger_with_additional_layer(cfg, additional_tracing_layer)
+    {
+        early_dcx.early_fatal(error.to_string());
+    }
+}
+
 /// Install our usual `ctrlc` handler, which sets [`rustc_const_eval::CTRL_C_RECEIVED`].
 /// Making this handler optional lets tools can install a different handler, if they wish.
 pub fn install_ctrlc_handler() {
