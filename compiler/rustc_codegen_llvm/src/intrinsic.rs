@@ -1557,6 +1557,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_round_ties_even => ("rint", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_trunc => ("trunc", bx.type_func(&[vec_ty], vec_ty)),
             _ => return_error!(InvalidMonomorphization::UnrecognizedIntrinsic { span, name }),
         };
@@ -1590,6 +1591,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             | sym::simd_fsqrt
             | sym::simd_relaxed_fma
             | sym::simd_round
+            | sym::simd_round_ties_even
             | sym::simd_trunc
     ) {
         return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
@@ -2520,6 +2522,35 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let fn_ty = bx.type_func(&[vec_ty, vec_ty], vec_ty);
         let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
         let v = bx.call(fn_ty, None, None, f, &[lhs, rhs], None, None);
+        return Ok(v);
+    }
+
+    if name == sym::simd_funnel_shr || name == sym::simd_funnel_shl {
+        let a = args[0].immediate();
+        let b = args[1].immediate();
+        let shift = args[2].immediate();
+        let is_left = name == sym::simd_funnel_shl;
+        let ptr_bits = bx.tcx().data_layout.pointer_size.bits();
+
+        let elem_width = match *in_elem.kind() {
+            ty::Int(i) => i.bit_width().unwrap_or(ptr_bits),
+            ty::Uint(i) => i.bit_width().unwrap_or(ptr_bits),
+            _ => return_error!(InvalidMonomorphization::UnsupportedOperation {
+                span,
+                name,
+                in_ty,
+                in_elem
+            }),
+        };
+        let elem_ty = bx.type_ix(elem_width);
+
+        let llvm_intrinsic =
+            &format!("llvm.fsh{}.v{in_len}i{elem_width}", if is_left { 'l' } else { 'r' });
+        let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
+
+        let fn_ty = bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty);
+        let f = bx.declare_cfn(llvm_intrinsic, llvm::UnnamedAddr::No, fn_ty);
+        let v = bx.call(fn_ty, None, None, f, &[a, b, shift], None, None);
         return Ok(v);
     }
 
