@@ -12,8 +12,6 @@ use crate::AbiFromStrErr;
 #[cfg(test)]
 mod tests;
 
-use ExternAbi as Abi;
-
 /// ABI we expect to see within `extern "{abi}"`
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable))]
@@ -253,7 +251,7 @@ pub fn all_names() -> Vec<&'static str> {
 
 impl ExternAbi {
     /// Default ABI chosen for `extern fn` declarations without an explicit ABI.
-    pub const FALLBACK: Abi = Abi::C { unwind: false };
+    pub const FALLBACK: ExternAbi = ExternAbi::C { unwind: false };
 
     pub fn name(self) -> &'static str {
         self.as_str()
