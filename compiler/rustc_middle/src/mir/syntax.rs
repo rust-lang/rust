@@ -1531,8 +1531,6 @@ pub enum CastKind {
     ///
     /// MIR is well-formed if the input and output types have different sizes,
     /// but running a transmute between differently-sized types is UB.
-    ///
-    /// Allowed only in [`MirPhase::Runtime`]; Earlier it's a [`TerminatorKind::Call`].
     Transmute,
 }
 
