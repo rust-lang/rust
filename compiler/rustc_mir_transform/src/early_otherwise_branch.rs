@@ -128,15 +128,10 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
 
             let mut patch = MirPatch::new(body);
 
-            let (second_discriminant_temp, second_operand) = if opt_data.need_hoist_discriminant {
+            let second_operand = if opt_data.need_hoist_discriminant {
                 // create temp to store second discriminant in, `_s` in example above
                 let second_discriminant_temp =
                     patch.new_temp(opt_data.child_ty, opt_data.child_source.span);
-
-                patch.add_statement(
-                    parent_end,
-                    StatementKind::StorageLive(second_discriminant_temp),
-                );
 
                 // create assignment of discriminant
                 patch.add_assign(
@@ -144,12 +139,9 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
                     Place::from(second_discriminant_temp),
                     Rvalue::Discriminant(opt_data.child_place),
                 );
-                (
-                    Some(second_discriminant_temp),
-                    Operand::Move(Place::from(second_discriminant_temp)),
-                )
+                Operand::Move(Place::from(second_discriminant_temp))
             } else {
-                (None, Operand::Copy(opt_data.child_place))
+                Operand::Copy(opt_data.child_place)
             };
 
             // create temp to store inequality comparison between the two discriminants, `_t` in
@@ -157,7 +149,6 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
             let nequal = BinOp::Ne;
             let comp_res_type = nequal.ty(tcx, parent_ty, opt_data.child_ty);
             let comp_temp = patch.new_temp(comp_res_type, opt_data.child_source.span);
-            patch.add_statement(parent_end, StatementKind::StorageLive(comp_temp));
 
             // create inequality comparison
             let comp_rvalue =
@@ -199,23 +190,6 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
                 parent,
                 TerminatorKind::if_(Operand::Move(Place::from(comp_temp)), true_case, false_case),
             );
-
-            if let Some(second_discriminant_temp) = second_discriminant_temp {
-                // generate StorageDead for the second_discriminant_temp not in use anymore
-                patch.add_statement(
-                    parent_end,
-                    StatementKind::StorageDead(second_discriminant_temp),
-                );
-            }
-
-            // Generate a StorageDead for comp_temp in each of the targets, since we moved it into
-            // the switch
-            for bb in [false_case, true_case].iter() {
-                patch.add_statement(
-                    Location { block: *bb, statement_index: 0 },
-                    StatementKind::StorageDead(comp_temp),
-                );
-            }
 
             patch.apply(body);
         }

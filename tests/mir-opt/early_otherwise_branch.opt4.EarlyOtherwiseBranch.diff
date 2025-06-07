@@ -32,16 +32,12 @@
           StorageDead(_4);
           _9 = discriminant((_3.0: Option2<u32>));
 -         switchInt(move _9) -> [0: bb2, 1: bb3, 2: bb4, otherwise: bb9];
-+         StorageLive(_12);
 +         _12 = discriminant((_3.1: Option2<u32>));
-+         StorageLive(_13);
 +         _13 = Ne(copy _9, move _12);
-+         StorageDead(_12);
 +         switchInt(move _13) -> [0: bb7, otherwise: bb1];
       }
   
       bb1: {
-+         StorageDead(_13);
           _0 = const 1_u32;
 -         goto -> bb8;
 +         goto -> bb5;
@@ -100,7 +96,6 @@
 +     }
 + 
 +     bb7: {
-+         StorageDead(_13);
 +         switchInt(copy _9) -> [0: bb4, 1: bb3, 2: bb2, otherwise: bb6];
       }
   }
