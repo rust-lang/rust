@@ -2,7 +2,7 @@ error: deadlock: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
-   |                                                                  ^ the evaluated program deadlocked
+   |                                                                  ^ deadlock occurred here
    |
    = note: BACKTRACE:
    = note: inside `std::sys::pal::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC

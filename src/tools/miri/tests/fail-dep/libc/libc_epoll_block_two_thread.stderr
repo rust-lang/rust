@@ -1,6 +1,6 @@
 error: deadlock: the evaluated program deadlocked
    |
-   = note: the evaluated program deadlocked
+   = note: deadlock occurred here
    = note: (no span available)
    = note: BACKTRACE on thread `unnamed-ID`:
 

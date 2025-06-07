@@ -2,7 +2,7 @@ error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to of
   --> tests/fail/intrinsics/ptr_offset_out_of_bounds.rs:LL:CC
    |
 LL |     let x = unsafe { x.offset(5) };
-   |                      ^^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by 5 bytes, but got ALLOC which is only 4 bytes from the end of the allocation
+   |                      ^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

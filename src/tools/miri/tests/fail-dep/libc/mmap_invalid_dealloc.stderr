@@ -2,7 +2,7 @@ error: Undefined Behavior: deallocating ALLOC, which is mmap memory, using C hea
   --> tests/fail-dep/libc/mmap_invalid_dealloc.rs:LL:CC
    |
 LL |         libc::free(ptr);
-   |         ^^^^^^^^^^^^^^^ deallocating ALLOC, which is mmap memory, using C heap deallocation operation
+   |         ^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -2,7 +2,7 @@ error: unsupported operation: can't call foreign function `foo` on $OS
   --> tests/fail/unsupported_foreign_function.rs:LL:CC
    |
 LL |         foo();
-   |         ^^^^^ can't call foreign function `foo` on $OS
+   |         ^^^^^ unsupported operation occurred here
    |
    = help: this means the program tried to do something Miri does not support; it does not indicate a bug in the program
    = note: BACKTRACE:

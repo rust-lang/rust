@@ -426,11 +426,17 @@ pub fn report_error<'tcx>(
         _ => {}
     }
 
-    msg.insert(0, format_interp_error(ecx.tcx.dcx(), e));
+    let mut primary_msg = String::new();
+    if let Some(title) = title {
+        write!(primary_msg, "{title}: ").unwrap();
+    }
+    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), e)).unwrap();
+
+    msg.insert(0, format!("{} occurred here", title.unwrap_or("error")));
 
     report_msg(
         DiagLevel::Error,
-        if let Some(title) = title { format!("{title}: {}", msg[0]) } else { msg[0].clone() },
+        primary_msg,
         msg,
         vec![],
         helps,

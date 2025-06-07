@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value at .value[0]: encountered 
   --> tests/fail/validity/uninit_integer.rs:LL:CC
    |
 LL |     let _val = unsafe { std::mem::MaybeUninit::<[usize; 1]>::uninit().assume_init() };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .value[0]: encountered uninitialized memory, but expected an integer
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -12,7 +12,7 @@ error: abnormal termination: the program aborted execution
   --> RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
    |
 LL | ABORT()
-   | ^ the program aborted execution
+   | ^ abnormal termination occurred here
    |
    = note: BACKTRACE:
    = note: inside `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC

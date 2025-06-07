@@ -2,7 +2,7 @@ error: multiple definitions of symbol `foo`
   --> tests/fail/function_calls/exported_symbol_clashing.rs:LL:CC
    |
 LL |     unsafe { foo() }
-   |              ^^^^^ multiple definitions of symbol `foo`
+   |              ^^^^^ error occurred here
    |
 help: it's first defined here, in crate `exported_symbol_clashing`
   --> tests/fail/function_calls/exported_symbol_clashing.rs:LL:CC

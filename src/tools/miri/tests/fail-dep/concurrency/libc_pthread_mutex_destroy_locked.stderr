@@ -2,7 +2,7 @@ error: Undefined Behavior: destroyed a locked mutex
   --> tests/fail-dep/concurrency/libc_pthread_mutex_destroy_locked.rs:LL:CC
    |
 LL |         libc::pthread_mutex_destroy(&mut mutex as *mut _);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ destroyed a locked mutex
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

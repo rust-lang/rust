@@ -2,7 +2,7 @@ error: Undefined Behavior: Data race detected between (1) creating a new allocat
   --> tests/fail/data_race/local_variable_alloc_race.rs:LL:CC
    |
 LL |             *ptr = 127;
-   |             ^^^^^^^^^^ Data race detected between (1) creating a new allocation on thread `main` and (2) non-atomic write on thread `unnamed-ID` at ALLOC. (2) just happened here
+   |             ^^^^^^^^^^ Undefined Behavior occurred here
    |
 help: and (1) occurred earlier here
   --> tests/fail/data_race/local_variable_alloc_race.rs:LL:CC
