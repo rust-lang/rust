@@ -431,7 +431,7 @@ declare_features! (
     (unstable, closure_lifetime_binder, "1.64.0", Some(97362)),
     /// Allows `#[track_caller]` on closures and coroutines.
     (unstable, closure_track_caller, "1.57.0", Some(87417)),
-    /// Allows `extern "C-cmse-nonsecure-entry" fn()`.
+    /// Allows `extern "cmse-nonsecure-entry" fn()`.
     (unstable, cmse_nonsecure_entry, "1.48.0", Some(75835)),
     /// Allows `async {}` expressions in const contexts.
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
