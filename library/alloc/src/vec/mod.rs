@@ -3024,6 +3024,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let reshaped: Vec<[[[u8; 8]; 8]; 8]> = flat.into_chunks().into_chunks().into_chunks();
     /// assert_eq!(reshaped.len(), 1);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "vec_into_chunks", issue = "142137")]
     pub fn into_chunks<const N: usize>(mut self) -> Vec<[T; N], A> {
         const {
