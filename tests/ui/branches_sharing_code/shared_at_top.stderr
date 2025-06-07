@@ -125,5 +125,20 @@ note: the lint level is defined here
 LL | #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: all if blocks contain the same code at the start
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:148:9
+   |
+LL | /         if false {
+LL | |
+LL | |             let x = 1;
+   | |______________________^
+   |
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
+   |
+LL ~         let x = 1;
+LL +         if false {
+   |
+
+error: aborting due to 8 previous errors
 

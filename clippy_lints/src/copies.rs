@@ -425,7 +425,9 @@ fn scan_block_for_eq<'tcx>(
             modifies_any_local(cx, stmt, &cond_locals)
                 || !eq_stmts(stmt, blocks, |b| b.stmts.get(i), &mut eq, &mut moved_locals)
         })
-        .map_or(block.stmts.len(), |(i, _)| i);
+        .map_or(block.stmts.len(), |(i, stmt)| {
+            adjust_by_closest_callsite(i, stmt, block.stmts[..i].iter().enumerate().rev())
+        });
 
     if local_needs_ordered_drop {
         return BlockEq {
@@ -467,7 +469,9 @@ fn scan_block_for_eq<'tcx>(
                     .is_none_or(|s| hash != hash_stmt(cx, s))
             })
         })
-        .map_or(block.stmts.len() - start_end_eq, |(i, _)| i);
+        .map_or(block.stmts.len() - start_end_eq, |(i, stmt)| {
+            adjust_by_closest_callsite(i, stmt, (0..i).rev().zip(block.stmts[(block.stmts.len() - i)..].iter()))
+        });
 
     let moved_locals_at_start = moved_locals.len();
     let mut i = end_search_start;
@@ -520,6 +524,49 @@ fn scan_block_for_eq<'tcx>(
         end_begin_eq: Some(end_begin_eq),
         moved_locals,
     }
+}
+
+/// Adjusts the index for which the statements begin to differ to the closest macro callsite. This
+/// avoids giving suggestions that requires splitting a macro call in half, when only a part of the
+/// macro expansion is equal.
+///
+/// For example, for the following macro:
+/// ```rust,ignore
+/// macro_rules! foo {
+///    ($x:expr) => {
+///        let y = 42;
+///        $x;
+///    };
+/// }
+/// ```
+/// If the macro is called like this:
+/// ```rust,ignore
+/// if false {
+///    let z = 42;
+///    foo!(println!("Hello"));
+/// } else {
+///    let z = 42;
+///    foo!(println!("World"));
+/// }
+/// ```
+/// Although the expanded `let y = 42;` is equal, the macro call should not be included in the
+/// suggestion.
+fn adjust_by_closest_callsite<'tcx>(
+    i: usize,
+    stmt: &'tcx Stmt<'tcx>,
+    mut iter: impl Iterator<Item = (usize, &'tcx Stmt<'tcx>)>,
+) -> usize {
+    let Some((_, first)) = iter.next() else {
+        return 0;
+    };
+
+    // If it is already at the boundary of a macro call, then just return.
+    if first.span.source_callsite() != stmt.span.source_callsite() {
+        return i;
+    }
+
+    iter.find(|(_, stmt)| stmt.span.source_callsite() != first.span.source_callsite())
+        .map_or(0, |(i, _)| i + 1)
 }
 
 fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbol)], if_expr: &Expr<'_>) -> bool {
