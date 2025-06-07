@@ -29,58 +29,45 @@ pub enum ParseMode {
     Format,
     /// An inline assembly template string for `asm!`.
     InlineAsm,
+    /// A format string for use in diagnostic attributes.
+    ///
+    /// Similar to `format_args!`, however only named ("captured") arguments
+    /// are allowed, and no format modifiers are permitted.
+    Diagnostic,
 }
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Piece<'a> {
+pub enum Piece<'input> {
     /// A literal string which should directly be emitted
-    Lit(&'a str),
+    Lit(&'input str),
     /// This describes that formatting should process the next argument (as
     /// specified inside) for emission.
-    NextArgument(Box<Argument<'a>>),
+    NextArgument(Box<Argument<'input>>),
 }
 
 /// Representation of an argument specification.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Argument<'a> {
+pub struct Argument<'input> {
     /// Where to find this argument
-    pub position: Position<'a>,
+    pub position: Position<'input>,
     /// The span of the position indicator. Includes any whitespace in implicit
     /// positions (`{  }`).
     pub position_span: Range<usize>,
     /// How to format the argument
-    pub format: FormatSpec<'a>,
+    pub format: FormatSpec<'input>,
 }
 
-impl<'a> Argument<'a> {
+impl<'input> Argument<'input> {
     pub fn is_identifier(&self) -> bool {
-        matches!(self.position, Position::ArgumentNamed(_))
-            && matches!(
-                self.format,
-                FormatSpec {
-                    fill: None,
-                    fill_span: None,
-                    align: AlignUnknown,
-                    sign: None,
-                    alternate: false,
-                    zero_pad: false,
-                    debug_hex: None,
-                    precision: CountImplied,
-                    precision_span: None,
-                    width: CountImplied,
-                    width_span: None,
-                    ty: "",
-                    ty_span: None,
-                },
-            )
+        matches!(self.position, Position::ArgumentNamed(_)) && self.format == FormatSpec::default()
     }
 }
 
 /// Specification for the formatting of an argument in the format string.
-#[derive(Clone, Debug, PartialEq)]
-pub struct FormatSpec<'a> {
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct FormatSpec<'input> {
     /// Optionally specified character to fill alignment with.
     pub fill: Option<char>,
     /// Span of the optionally specified fill character.
@@ -96,30 +83,30 @@ pub struct FormatSpec<'a> {
     /// The `x` or `X` flag. (Only for `Debug`.)
     pub debug_hex: Option<DebugHex>,
     /// The integer precision to use.
-    pub precision: Count<'a>,
+    pub precision: Count<'input>,
     /// The span of the precision formatting flag (for diagnostics).
     pub precision_span: Option<Range<usize>>,
     /// The string width requested for the resulting format.
-    pub width: Count<'a>,
+    pub width: Count<'input>,
     /// The span of the width formatting flag (for diagnostics).
     pub width_span: Option<Range<usize>>,
     /// The descriptor string representing the name of the format desired for
     /// this argument, this can be empty or any number of characters, although
     /// it is required to be one word.
-    pub ty: &'a str,
+    pub ty: &'input str,
     /// The span of the descriptor string (for diagnostics).
     pub ty_span: Option<Range<usize>>,
 }
 
 /// Enum describing where an argument for a format can be located.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Position<'a> {
+pub enum Position<'input> {
     /// The argument is implied to be located at an index
     ArgumentImplicitlyIs(usize),
     /// The argument is located at a specific index given in the format,
     ArgumentIs(usize),
     /// The argument has a name.
-    ArgumentNamed(&'a str),
+    ArgumentNamed(&'input str),
 }
 
 impl Position<'_> {
@@ -132,7 +119,7 @@ impl Position<'_> {
 }
 
 /// Enum of alignments which are supported.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
 pub enum Alignment {
     /// The value will be aligned to the left.
     AlignLeft,
@@ -141,6 +128,7 @@ pub enum Alignment {
     /// The value will be aligned in the center.
     AlignCenter,
     /// The value will take on a default alignment.
+    #[default]
     AlignUnknown,
 }
 
@@ -164,17 +152,18 @@ pub enum DebugHex {
 
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Count<'a> {
+#[derive(Clone, Debug, PartialEq, Default)]
+pub enum Count<'input> {
     /// The count is specified explicitly.
     CountIs(u16),
     /// The count is specified by the argument with the given name.
-    CountIsName(&'a str, Range<usize>),
+    CountIsName(&'input str, Range<usize>),
     /// The count is specified by the argument at the given index.
     CountIsParam(usize),
     /// The count is specified by a star (like in `{:.*}`) that refers to the argument at the given index.
     CountIsStar(usize),
     /// The count is implied and cannot be explicitly specified.
+    #[default]
     CountImplied,
 }
 
@@ -208,10 +197,10 @@ pub enum Suggestion {
 ///
 /// This is a recursive-descent parser for the sake of simplicity, and if
 /// necessary there's probably lots of room for improvement performance-wise.
-pub struct Parser<'a> {
+pub struct Parser<'input> {
     mode: ParseMode,
     /// Input to be parsed
-    input: &'a str,
+    input: &'input str,
     /// Tuples of the span in the code snippet (input as written before being unescaped), the pos in input, and the char in input
     input_vec: Vec<(Range<usize>, usize, char)>,
     /// Index into input_vec
@@ -237,15 +226,15 @@ pub struct Parser<'a> {
     pub line_spans: Vec<Range<usize>>,
 }
 
-impl<'a> Iterator for Parser<'a> {
-    type Item = Piece<'a>;
+impl<'input> Iterator for Parser<'input> {
+    type Item = Piece<'input>;
 
-    fn next(&mut self) -> Option<Piece<'a>> {
-        if let Some(&(Range { start, end }, idx, ch)) = self.input_vec.get(self.input_vec_index) {
+    fn next(&mut self) -> Option<Piece<'input>> {
+        if let Some((Range { start, end }, idx, ch)) = self.peek() {
             match ch {
                 '{' => {
                     self.input_vec_index += 1;
-                    if let Some(&(_, i, '{')) = self.input_vec.get(self.input_vec_index) {
+                    if let Some((_, i, '{')) = self.peek() {
                         self.input_vec_index += 1;
                         // double open brace escape: "{{"
                         // next state after this is either end-of-input or seen-a-brace
@@ -254,25 +243,21 @@ impl<'a> Iterator for Parser<'a> {
                         // single open brace
                         self.last_open_brace = Some(start..end);
                         let arg = self.argument();
-                        if let Some(close_brace_range) = self.consume_closing_brace(&arg) {
+                        self.ws();
+                        if let Some((close_brace_range, _)) = self.consume_pos('}') {
                             if self.is_source_literal {
                                 self.arg_places.push(start..close_brace_range.end);
                             }
-                        } else if let Some(&(_, _, c)) = self.input_vec.get(self.input_vec_index) {
-                            match c {
-                                '?' => self.suggest_format_debug(),
-                                '<' | '^' | '>' => self.suggest_format_align(c),
-                                _ => {
-                                    self.suggest_positional_arg_instead_of_captured_arg(arg.clone())
-                                }
-                            }
+                        } else {
+                            self.missing_closing_brace(&arg);
                         }
+
                         Some(Piece::NextArgument(Box::new(arg)))
                     }
                 }
                 '}' => {
                     self.input_vec_index += 1;
-                    if let Some(&(_, i, '}')) = self.input_vec.get(self.input_vec_index) {
+                    if let Some((_, i, '}')) = self.peek() {
                         self.input_vec_index += 1;
                         // double close brace escape: "}}"
                         // next state after this is either end-of-input or start
@@ -307,14 +292,14 @@ impl<'a> Iterator for Parser<'a> {
     }
 }
 
-impl<'a> Parser<'a> {
+impl<'input> Parser<'input> {
     /// Creates a new parser for the given unescaped input string and
     /// optional code snippet (the input as written before being unescaped),
     /// where `style` is `Some(nr_hashes)` when the snippet is a raw string with that many hashes.
     /// If the input comes via `println` or `panic`, then it has a newline already appended,
     /// which is reflected in the `appended_newline` parameter.
     pub fn new(
-        input: &'a str,
+        input: &'input str,
         style: Option<usize>,
         snippet: Option<String>,
         appended_newline: bool,
@@ -406,6 +391,16 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Peeks at the current position, without incrementing the pointer.
+    pub fn peek(&self) -> Option<(Range<usize>, usize, char)> {
+        self.input_vec.get(self.input_vec_index).cloned()
+    }
+
+    /// Peeks at the current position + 1, without incrementing the pointer.
+    pub fn peek_ahead(&self) -> Option<(Range<usize>, usize, char)> {
+        self.input_vec.get(self.input_vec_index + 1).cloned()
+    }
+
     /// Optionally consumes the specified character. If the character is not at
     /// the current position, then the current iterator isn't moved and `false` is
     /// returned, otherwise the character is consumed and `true` is returned.
@@ -418,27 +413,19 @@ impl<'a> Parser<'a> {
     /// returned, otherwise the character is consumed and the current position is
     /// returned.
     fn consume_pos(&mut self, ch: char) -> Option<(Range<usize>, usize)> {
-        if let Some((r, i, c)) = self.input_vec.get(self.input_vec_index) {
-            if ch == *c {
-                self.input_vec_index += 1;
-                return Some((r.clone(), *i));
-            }
+        if let Some((r, i, c)) = self.peek()
+            && ch == c
+        {
+            self.input_vec_index += 1;
+            return Some((r, i));
         }
+
         None
     }
 
-    /// Forces consumption of the specified character. If the character is not
-    /// found, an error is emitted.
-    fn consume_closing_brace(&mut self, arg: &Argument<'_>) -> Option<Range<usize>> {
-        self.ws();
-
-        let (range, description) = if let Some((r, _, c)) = self.input_vec.get(self.input_vec_index)
-        {
-            if *c == '}' {
-                self.input_vec_index += 1;
-                return Some(r.clone());
-            }
-            // or r.clone()?
+    /// Called if a closing brace was not found.
+    fn missing_closing_brace(&mut self, arg: &Argument<'_>) {
+        let (range, description) = if let Some((r, _, c)) = self.peek() {
             (r.start..r.start, format!("expected `}}`, found `{}`", c.escape_debug()))
         } else {
             (
@@ -471,7 +458,13 @@ impl<'a> Parser<'a> {
             suggestion: Suggestion::None,
         });
 
-        None
+        if let Some((_, _, c)) = self.peek() {
+            match c {
+                '?' => self.suggest_format_debug(),
+                '<' | '^' | '>' => self.suggest_format_align(c),
+                _ => self.suggest_positional_arg_instead_of_captured_arg(arg),
+            }
+        }
     }
 
     /// Consumes all whitespace characters until the first non-whitespace character
@@ -483,11 +476,11 @@ impl<'a> Parser<'a> {
 
     /// Parses all of a string which is to be considered a "raw literal" in a
     /// format string. This is everything outside of the braces.
-    fn string(&mut self, start: usize) -> &'a str {
-        while let Some((r, i, c)) = self.input_vec.get(self.input_vec_index) {
+    fn string(&mut self, start: usize) -> &'input str {
+        while let Some((r, i, c)) = self.peek() {
             match c {
                 '{' | '}' => {
-                    return &self.input[start..*i];
+                    return &self.input[start..i];
                 }
                 '\n' if self.is_source_literal => {
                     self.input_vec_index += 1;
@@ -507,7 +500,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `Argument` structure, or what's contained within braces inside the format string.
-    fn argument(&mut self) -> Argument<'a> {
+    fn argument(&mut self) -> Argument<'input> {
         let start_idx = self.input_vec_index;
 
         let position = self.position();
@@ -518,6 +511,7 @@ impl<'a> Parser<'a> {
         let format = match self.mode {
             ParseMode::Format => self.format(),
             ParseMode::InlineAsm => self.inline_asm(),
+            ParseMode::Diagnostic => self.diagnostic(),
         };
 
         // Resolve position after parsing format spec.
@@ -536,31 +530,27 @@ impl<'a> Parser<'a> {
     /// integer index of an argument, a named argument, or a blank string.
     /// Returns `Some(parsed_position)` if the position is not implicitly
     /// consuming a macro argument, `None` if it's the case.
-    fn position(&mut self) -> Option<Position<'a>> {
+    fn position(&mut self) -> Option<Position<'input>> {
         if let Some(i) = self.integer() {
             Some(ArgumentIs(i.into()))
         } else {
-            match self.input_vec.get(self.input_vec_index) {
-                Some((range, _, c)) if rustc_lexer::is_id_start(*c) => {
+            match self.peek() {
+                Some((range, _, c)) if rustc_lexer::is_id_start(c) => {
                     let start = range.start;
                     let word = self.word();
 
                     // Recover from `r#ident` in format strings.
-                    // FIXME: use a let chain
-                    if word == "r" {
-                        if let Some((r, _, '#')) = self.input_vec.get(self.input_vec_index) {
-                            if self
-                                .input_vec
-                                .get(self.input_vec_index + 1)
-                                .is_some_and(|(_, _, c)| rustc_lexer::is_id_start(*c))
-                            {
-                                self.input_vec_index += 1;
-                                let prefix_end = r.end;
-                                let word = self.word();
-                                let prefix_span = start..prefix_end;
-                                let full_span =
-                                    start..self.input_vec_index2range(self.input_vec_index).start;
-                                self.errors.insert(0, ParseError {
+                    if word == "r"
+                        && let Some((r, _, '#')) = self.peek()
+                        && self.peek_ahead().is_some_and(|(_, _, c)| rustc_lexer::is_id_start(c))
+                    {
+                        self.input_vec_index += 1;
+                        let prefix_end = r.end;
+                        let word = self.word();
+                        let prefix_span = start..prefix_end;
+                        let full_span =
+                            start..self.input_vec_index2range(self.input_vec_index).start;
+                        self.errors.insert(0, ParseError {
                                     description: "raw identifiers are not supported".to_owned(),
                                     note: Some("identifiers in format strings can be keywords and don't need to be prefixed with `r#`".to_string()),
                                     label: "raw identifier used here".to_owned(),
@@ -568,9 +558,7 @@ impl<'a> Parser<'a> {
                                     secondary_label: None,
                                     suggestion: Suggestion::RemoveRawIdent(prefix_span),
                                 });
-                                return Some(ArgumentNamed(word));
-                            }
-                        }
+                        return Some(ArgumentNamed(word));
                     }
 
                     Some(ArgumentNamed(word))
@@ -584,7 +572,7 @@ impl<'a> Parser<'a> {
     }
 
     fn input_vec_index2pos(&self, index: usize) -> usize {
-        if let Some(&(_, pos, _)) = self.input_vec.get(index) { pos } else { self.input.len() }
+        if let Some((_, pos, _)) = self.input_vec.get(index) { *pos } else { self.input.len() }
     }
 
     fn input_vec_index2range(&self, index: usize) -> Range<usize> {
@@ -597,33 +585,18 @@ impl<'a> Parser<'a> {
 
     /// Parses a format specifier at the current position, returning all of the
     /// relevant information in the `FormatSpec` struct.
-    fn format(&mut self) -> FormatSpec<'a> {
-        let mut spec = FormatSpec {
-            fill: None,
-            fill_span: None,
-            align: AlignUnknown,
-            sign: None,
-            alternate: false,
-            zero_pad: false,
-            debug_hex: None,
-            precision: CountImplied,
-            precision_span: None,
-            width: CountImplied,
-            width_span: None,
-            ty: &self.input[..0],
-            ty_span: None,
-        };
+    fn format(&mut self) -> FormatSpec<'input> {
+        let mut spec = FormatSpec::default();
+
         if !self.consume(':') {
             return spec;
         }
 
         // fill character
-        if let Some(&(ref r, _, c)) = self.input_vec.get(self.input_vec_index) {
-            if let Some((_, _, '>' | '<' | '^')) = self.input_vec.get(self.input_vec_index + 1) {
-                self.input_vec_index += 1;
-                spec.fill = Some(c);
-                spec.fill_span = Some(r.clone());
-            }
+        if let (Some((r, _, c)), Some((_, _, '>' | '<' | '^'))) = (self.peek(), self.peek_ahead()) {
+            self.input_vec_index += 1;
+            spec.fill = Some(c);
+            spec.fill_span = Some(r);
         }
         // Alignment
         if self.consume('<') {
@@ -701,24 +674,21 @@ impl<'a> Parser<'a> {
             }
         } else if let Some((range, _)) = self.consume_pos('?') {
             spec.ty = "?";
-            if let Some((r, _, c)) = self.input_vec.get(self.input_vec_index) {
-                match c {
-                    '#' | 'x' | 'X' => self.errors.insert(
-                        0,
-                        ParseError {
-                            description: format!("expected `}}`, found `{c}`"),
-                            note: None,
-                            label: "expected `'}'`".into(),
-                            span: r.clone(),
-                            secondary_label: None,
-                            suggestion: Suggestion::ReorderFormatParameter(
-                                range.start..r.end,
-                                format!("{c}?"),
-                            ),
-                        },
-                    ),
-                    _ => (),
-                }
+            if let Some((r, _, c @ ('#' | 'x' | 'X'))) = self.peek() {
+                self.errors.insert(
+                    0,
+                    ParseError {
+                        description: format!("expected `}}`, found `{c}`"),
+                        note: None,
+                        label: "expected `'}'`".into(),
+                        span: r.clone(),
+                        secondary_label: None,
+                        suggestion: Suggestion::ReorderFormatParameter(
+                            range.start..r.end,
+                            format!("{c}?"),
+                        ),
+                    },
+                );
             }
         } else {
             spec.ty = self.word();
@@ -733,22 +703,9 @@ impl<'a> Parser<'a> {
 
     /// Parses an inline assembly template modifier at the current position, returning the modifier
     /// in the `ty` field of the `FormatSpec` struct.
-    fn inline_asm(&mut self) -> FormatSpec<'a> {
-        let mut spec = FormatSpec {
-            fill: None,
-            fill_span: None,
-            align: AlignUnknown,
-            sign: None,
-            alternate: false,
-            zero_pad: false,
-            debug_hex: None,
-            precision: CountImplied,
-            precision_span: None,
-            width: CountImplied,
-            width_span: None,
-            ty: &self.input[..0],
-            ty_span: None,
-        };
+    fn inline_asm(&mut self) -> FormatSpec<'input> {
+        let mut spec = FormatSpec::default();
+
         if !self.consume(':') {
             return spec;
         }
@@ -764,10 +721,26 @@ impl<'a> Parser<'a> {
         spec
     }
 
+    /// Always returns an empty `FormatSpec`
+    fn diagnostic(&mut self) -> FormatSpec<'input> {
+        let mut spec = FormatSpec::default();
+
+        let Some((Range { start, .. }, start_idx)) = self.consume_pos(':') else {
+            return spec;
+        };
+
+        spec.ty = self.string(start_idx);
+        spec.ty_span = {
+            let end = self.input_vec_index2range(self.input_vec_index).start;
+            Some(start..end)
+        };
+        spec
+    }
+
     /// Parses a `Count` parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
-    fn count(&mut self) -> Count<'a> {
+    fn count(&mut self) -> Count<'input> {
         if let Some(i) = self.integer() {
             if self.consume('$') { CountIsParam(i.into()) } else { CountIs(i) }
         } else {
@@ -786,10 +759,10 @@ impl<'a> Parser<'a> {
 
     /// Parses a word starting at the current position. A word is the same as a
     /// Rust identifier, except that it can't start with `_` character.
-    fn word(&mut self) -> &'a str {
+    fn word(&mut self) -> &'input str {
         let index = self.input_vec_index;
-        match self.input_vec.get(self.input_vec_index) {
-            Some(&(ref r, i, c)) if rustc_lexer::is_id_start(c) => {
+        match self.peek() {
+            Some((ref r, i, c)) if rustc_lexer::is_id_start(c) => {
                 self.input_vec_index += 1;
                 (r.start, i)
             }
@@ -798,7 +771,7 @@ impl<'a> Parser<'a> {
             }
         };
         let (err_end, end): (usize, usize) = loop {
-            if let Some(&(ref r, i, c)) = self.input_vec.get(self.input_vec_index) {
+            if let Some((ref r, i, c)) = self.peek() {
                 if rustc_lexer::is_id_continue(c) {
                     self.input_vec_index += 1;
                 } else {
@@ -828,7 +801,7 @@ impl<'a> Parser<'a> {
         let mut found = false;
         let mut overflow = false;
         let start_index = self.input_vec_index;
-        while let Some(&(_, _, c)) = self.input_vec.get(self.input_vec_index) {
+        while let Some((_, _, c)) = self.peek() {
             if let Some(i) = c.to_digit(10) {
                 self.input_vec_index += 1;
                 let (tmp, mul_overflow) = cur.overflowing_mul(10);
@@ -897,7 +870,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn suggest_positional_arg_instead_of_captured_arg(&mut self, arg: Argument<'a>) {
+    fn suggest_positional_arg_instead_of_captured_arg(&mut self, arg: &Argument<'_>) {
         // If the argument is not an identifier, it is not a field access.
         if !arg.is_identifier() {
             return;

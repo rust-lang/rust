@@ -810,7 +810,8 @@ impl<'tcx> OnUnimplementedFormatString {
 
         let mut result = Ok(());
 
-        match FormatString::parse(self.symbol, self.span, &ctx) {
+        let snippet = tcx.sess.source_map().span_to_snippet(self.span).ok();
+        match FormatString::parse(self.symbol, snippet, self.span, &ctx) {
             // Warnings about format specifiers, deprecated parameters, wrong parameters etc.
             // In other words we'd like to let the author know, but we can still try to format the string later
             Ok(FormatString { warnings, .. }) => {
@@ -848,34 +849,27 @@ impl<'tcx> OnUnimplementedFormatString {
                     }
                 }
             }
-            // Errors from the underlying `rustc_parse_format::Parser`
-            Err(errors) => {
+            // Error from the underlying `rustc_parse_format::Parser`
+            Err(e) => {
                 // we cannot return errors from processing the format string as hard error here
                 // as the diagnostic namespace guarantees that malformed input cannot cause an error
                 //
                 // if we encounter any error while processing we nevertheless want to show it as warning
                 // so that users are aware that something is not correct
-                for e in errors {
-                    if self.is_diagnostic_namespace_variant {
-                        if let Some(trait_def_id) = trait_def_id.as_local() {
-                            tcx.emit_node_span_lint(
-                                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                                tcx.local_def_id_to_hir_id(trait_def_id),
-                                self.span,
-                                WrappedParserError { description: e.description, label: e.label },
-                            );
-                        }
-                    } else {
-                        let reported = struct_span_code_err!(
-                            tcx.dcx(),
+                if self.is_diagnostic_namespace_variant {
+                    if let Some(trait_def_id) = trait_def_id.as_local() {
+                        tcx.emit_node_span_lint(
+                            UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                            tcx.local_def_id_to_hir_id(trait_def_id),
                             self.span,
-                            E0231,
-                            "{}",
-                            e.description,
-                        )
-                        .emit();
-                        result = Err(reported);
+                            WrappedParserError { description: e.description, label: e.label },
+                        );
                     }
+                } else {
+                    let reported =
+                        struct_span_code_err!(tcx.dcx(), self.span, E0231, "{}", e.description,)
+                            .emit();
+                    result = Err(reported);
                 }
             }
         }
@@ -896,7 +890,8 @@ impl<'tcx> OnUnimplementedFormatString {
             Ctx::RustcOnUnimplemented { tcx, trait_def_id }
         };
 
-        if let Ok(s) = FormatString::parse(self.symbol, self.span, &ctx) {
+        // No point passing a snippet here, we already did that in `verify`
+        if let Ok(s) = FormatString::parse(self.symbol, None, self.span, &ctx) {
             s.format(args)
         } else {
             // we cannot return errors from processing the format string as hard error here
