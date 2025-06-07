@@ -23,7 +23,8 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_macros::LintDiagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_metadata::{
-    NativeLibSearchFallback, find_native_static_library, walk_native_lib_search_dirs,
+    EncodedMetadata, NativeLibSearchFallback, find_native_static_library,
+    walk_native_lib_search_dirs,
 };
 use rustc_middle::bug;
 use rustc_middle::lint::lint_level;
@@ -91,6 +92,7 @@ pub fn link_binary(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: CodegenResults,
+    metadata: EncodedMetadata,
     outputs: &OutputFilenames,
 ) {
     let _timer = sess.timer("link_binary");
@@ -142,6 +144,7 @@ pub fn link_binary(
                         sess,
                         archive_builder_builder,
                         &codegen_results,
+                        &metadata,
                         RlibFlavor::Normal,
                         &path,
                     )
@@ -152,6 +155,7 @@ pub fn link_binary(
                         sess,
                         archive_builder_builder,
                         &codegen_results,
+                        &metadata,
                         &out_filename,
                         &path,
                     );
@@ -163,6 +167,7 @@ pub fn link_binary(
                         crate_type,
                         &out_filename,
                         &codegen_results,
+                        &metadata,
                         path.as_ref(),
                     );
                 }
@@ -226,11 +231,7 @@ pub fn link_binary(
         let remove_temps_from_module =
             |module: &CompiledModule| maybe_remove_temps_from_module(false, false, module);
 
-        // Otherwise, always remove the metadata and allocator module temporaries.
-        if let Some(ref metadata_module) = codegen_results.metadata_module {
-            remove_temps_from_module(metadata_module);
-        }
-
+        // Otherwise, always remove the allocator module temporaries.
         if let Some(ref allocator_module) = codegen_results.allocator_module {
             remove_temps_from_module(allocator_module);
         }
@@ -312,6 +313,7 @@ fn link_rlib<'a>(
     sess: &'a Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
+    metadata: &EncodedMetadata,
     flavor: RlibFlavor,
     tmpdir: &MaybeTempDir,
 ) -> Box<dyn ArchiveBuilder + 'a> {
@@ -319,12 +321,9 @@ fn link_rlib<'a>(
 
     let trailing_metadata = match flavor {
         RlibFlavor::Normal => {
-            let (metadata, metadata_position) = create_wrapper_file(
-                sess,
-                ".rmeta".to_string(),
-                codegen_results.metadata.stub_or_full(),
-            );
-            let metadata = emit_wrapper_file(sess, &metadata, tmpdir, METADATA_FILENAME);
+            let (metadata, metadata_position) =
+                create_wrapper_file(sess, ".rmeta".to_string(), metadata.stub_or_full());
+            let metadata = emit_wrapper_file(sess, &metadata, tmpdir.as_ref(), METADATA_FILENAME);
             match metadata_position {
                 MetadataPosition::First => {
                     // Most of the time metadata in rlib files is wrapped in a "dummy" object
@@ -392,7 +391,7 @@ fn link_rlib<'a>(
             let src = read(path)
                 .unwrap_or_else(|e| sess.dcx().emit_fatal(errors::ReadFileError { message: e }));
             let (data, _) = create_wrapper_file(sess, ".bundled_lib".to_string(), &src);
-            let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
+            let wrapper_file = emit_wrapper_file(sess, &data, tmpdir.as_ref(), filename.as_str());
             packed_bundled_libs.push(wrapper_file);
         } else {
             let path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
@@ -473,6 +472,7 @@ fn link_staticlib(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
+    metadata: &EncodedMetadata,
     out_filename: &Path,
     tempdir: &MaybeTempDir,
 ) {
@@ -481,6 +481,7 @@ fn link_staticlib(
         sess,
         archive_builder_builder,
         codegen_results,
+        metadata,
         RlibFlavor::StaticlibBase,
         tempdir,
     );
@@ -694,6 +695,7 @@ fn link_natively(
     crate_type: CrateType,
     out_filename: &Path,
     codegen_results: &CodegenResults,
+    metadata: &EncodedMetadata,
     tmpdir: &Path,
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
@@ -718,6 +720,7 @@ fn link_natively(
         tmpdir,
         temp_filename,
         codegen_results,
+        metadata,
         self_contained_components,
     );
 
@@ -2095,17 +2098,25 @@ fn add_local_crate_allocator_objects(cmd: &mut dyn Linker, codegen_results: &Cod
 /// Add object files containing metadata for the current crate.
 fn add_local_crate_metadata_objects(
     cmd: &mut dyn Linker,
+    sess: &Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
     crate_type: CrateType,
+    tmpdir: &Path,
     codegen_results: &CodegenResults,
+    metadata: &EncodedMetadata,
 ) {
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
-    // object file, so we link that in here.
-    if matches!(crate_type, CrateType::Dylib | CrateType::ProcMacro)
-        && let Some(m) = &codegen_results.metadata_module
-        && let Some(obj) = &m.object
-    {
-        cmd.add_object(obj);
+    // object file, so we create and link it in here.
+    if matches!(crate_type, CrateType::Dylib | CrateType::ProcMacro) {
+        let data = archive_builder_builder.create_dylib_metadata_wrapper(
+            sess,
+            &metadata,
+            &codegen_results.crate_info.metadata_symbol,
+        );
+        let obj = emit_wrapper_file(sess, &data, tmpdir, "rmeta.o");
+
+        cmd.add_object(&obj);
     }
 }
 
@@ -2195,6 +2206,7 @@ fn linker_with_args(
     tmpdir: &Path,
     out_filename: &Path,
     codegen_results: &CodegenResults,
+    metadata: &EncodedMetadata,
     self_contained_components: LinkSelfContainedComponents,
 ) -> Command {
     let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
@@ -2269,7 +2281,15 @@ fn linker_with_args(
     // in this DAG so far because they can only depend on other native libraries
     // and such dependencies are also required to be specified.
     add_local_crate_regular_objects(cmd, codegen_results);
-    add_local_crate_metadata_objects(cmd, crate_type, codegen_results);
+    add_local_crate_metadata_objects(
+        cmd,
+        sess,
+        archive_builder_builder,
+        crate_type,
+        tmpdir,
+        codegen_results,
+        metadata,
+    );
     add_local_crate_allocator_objects(cmd, codegen_results);
 
     // Avoid linking to dynamic libraries unless they satisfy some undefined symbols

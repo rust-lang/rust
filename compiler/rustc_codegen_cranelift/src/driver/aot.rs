@@ -11,7 +11,6 @@ use std::thread::JoinHandle;
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use rustc_codegen_ssa::assert_module_sources::CguReuse;
 use rustc_codegen_ssa::back::link::ensure_removed;
-use rustc_codegen_ssa::back::metadata::create_compressed_metadata_file;
 use rustc_codegen_ssa::base::determine_cgu_reuse;
 use rustc_codegen_ssa::{
     CodegenResults, CompiledModule, CrateInfo, ModuleKind, errors as ssa_errors,
@@ -19,7 +18,6 @@ use rustc_codegen_ssa::{
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
-use rustc_metadata::EncodedMetadata;
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -61,8 +59,6 @@ impl<HCX> HashStable<HCX> for OngoingModuleCodegen {
 pub(crate) struct OngoingCodegen {
     modules: Vec<OngoingModuleCodegen>,
     allocator_module: Option<CompiledModule>,
-    metadata_module: Option<CompiledModule>,
-    metadata: EncodedMetadata,
     crate_info: CrateInfo,
     concurrency_limiter: ConcurrencyLimiter,
 }
@@ -134,8 +130,6 @@ impl OngoingCodegen {
         let codegen_results = CodegenResults {
             modules,
             allocator_module: self.allocator_module,
-            metadata_module: self.metadata_module,
-            metadata: self.metadata,
             crate_info: self.crate_info,
         };
 
@@ -646,42 +640,6 @@ fn module_codegen(
     }))
 }
 
-fn emit_metadata_module(tcx: TyCtxt<'_>, metadata: &EncodedMetadata) -> CompiledModule {
-    use rustc_middle::mir::mono::CodegenUnitNameBuilder;
-
-    let _timer = tcx.sess.timer("write compressed metadata");
-
-    let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
-    let metadata_cgu_name = cgu_name_builder
-        .build_cgu_name(LOCAL_CRATE, ["crate"], Some("metadata"))
-        .as_str()
-        .to_string();
-
-    let tmp_file = tcx.output_filenames(()).temp_path_for_cgu(
-        OutputType::Metadata,
-        &metadata_cgu_name,
-        tcx.sess.invocation_temp.as_deref(),
-    );
-
-    let symbol_name = rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx);
-    let obj = create_compressed_metadata_file(tcx.sess, metadata, &symbol_name);
-
-    if let Err(err) = std::fs::write(&tmp_file, obj) {
-        tcx.dcx().fatal(format!("error writing metadata object file: {}", err));
-    }
-
-    CompiledModule {
-        name: metadata_cgu_name,
-        kind: ModuleKind::Metadata,
-        object: Some(tmp_file),
-        dwarf_object: None,
-        bytecode: None,
-        assembly: None,
-        llvm_ir: None,
-        links_from_incr_cache: Vec::new(),
-    }
-}
-
 fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
     let mut allocator_module = make_module(tcx.sess, "allocator_shim".to_string());
     let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
@@ -706,11 +664,7 @@ fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
     }
 }
 
-pub(crate) fn run_aot(
-    tcx: TyCtxt<'_>,
-    metadata: EncodedMetadata,
-    need_metadata_module: bool,
-) -> Box<OngoingCodegen> {
+pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
     // FIXME handle `-Ctarget-cpu=native`
     let target_cpu = match tcx.sess.opts.cg.target_cpu {
         Some(ref name) => name,
@@ -726,8 +680,6 @@ pub(crate) fn run_aot(
         return Box::new(OngoingCodegen {
             modules: vec![],
             allocator_module: None,
-            metadata_module: None,
-            metadata,
             crate_info: CrateInfo::new(tcx, target_cpu),
             concurrency_limiter: ConcurrencyLimiter::new(0),
         });
@@ -787,14 +739,9 @@ pub(crate) fn run_aot(
 
     let allocator_module = emit_allocator_module(tcx);
 
-    let metadata_module =
-        if need_metadata_module { Some(emit_metadata_module(tcx, &metadata)) } else { None };
-
     Box::new(OngoingCodegen {
         modules,
         allocator_module,
-        metadata_module,
-        metadata,
         crate_info: CrateInfo::new(tcx, target_cpu),
         concurrency_limiter: concurrency_limiter.0,
     })

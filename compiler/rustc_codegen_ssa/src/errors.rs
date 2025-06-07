@@ -778,12 +778,6 @@ pub(crate) struct MultipleMainFunctions {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_metadata_object_file_write)]
-pub(crate) struct MetadataObjectFileWrite {
-    pub error: Error,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_invalid_windows_subsystem)]
 pub(crate) struct InvalidWindowsSubsystem {
     pub subsystem: Symbol,
