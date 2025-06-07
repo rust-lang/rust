@@ -9,7 +9,7 @@ use crate::{io, net};
 /// Os-specific extensions for [`TcpStream`]
 ///
 /// [`TcpStream`]: net::TcpStream
-#[unstable(feature = "tcp_quickack", issue = "96256")]
+#[stable(feature = "tcp_quickack", since = "CURRENT_RUSTC_VERSION")]
 pub trait TcpStreamExt: Sealed {
     /// Enable or disable `TCP_QUICKACK`.
     ///
@@ -23,7 +23,6 @@ pub trait TcpStreamExt: Sealed {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(tcp_quickack)]
     /// use std::net::TcpStream;
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::TcpStreamExt;
@@ -34,7 +33,7 @@ pub trait TcpStreamExt: Sealed {
     ///         .expect("Couldn't connect to the server...");
     /// stream.set_quickack(true).expect("set_quickack call failed");
     /// ```
-    #[unstable(feature = "tcp_quickack", issue = "96256")]
+    #[stable(feature = "tcp_quickack", since = "CURRENT_RUSTC_VERSION")]
     fn set_quickack(&self, quickack: bool) -> io::Result<()>;
 
     /// Gets the value of the `TCP_QUICKACK` option on this socket.
@@ -44,7 +43,6 @@ pub trait TcpStreamExt: Sealed {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(tcp_quickack)]
     /// use std::net::TcpStream;
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::TcpStreamExt;
@@ -56,7 +54,7 @@ pub trait TcpStreamExt: Sealed {
     /// stream.set_quickack(true).expect("set_quickack call failed");
     /// assert_eq!(stream.quickack().unwrap_or(false), true);
     /// ```
-    #[unstable(feature = "tcp_quickack", issue = "96256")]
+    #[stable(feature = "tcp_quickack", since = "CURRENT_RUSTC_VERSION")]
     fn quickack(&self) -> io::Result<bool>;
 
     /// A socket listener will be awakened solely when data arrives.
@@ -105,10 +103,10 @@ pub trait TcpStreamExt: Sealed {
     fn deferaccept(&self) -> io::Result<u32>;
 }
 
-#[unstable(feature = "tcp_quickack", issue = "96256")]
+#[stable(feature = "tcp_quickack", since = "CURRENT_RUSTC_VERSION")]
 impl Sealed for net::TcpStream {}
 
-#[unstable(feature = "tcp_quickack", issue = "96256")]
+#[stable(feature = "tcp_quickack", since = "CURRENT_RUSTC_VERSION")]
 impl TcpStreamExt for net::TcpStream {
     fn set_quickack(&self, quickack: bool) -> io::Result<()> {
         self.as_inner().as_inner().set_quickack(quickack)
