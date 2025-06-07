@@ -31,7 +31,7 @@ fn main() -> () {
         StorageLive(_2);
         StorageLive(_3);
         _3 = &raw const _1;
-        _2 = move _3 as *const ! (PtrToPtr);
+        _2 = copy _3 as *const ! (PtrToPtr);
         StorageDead(_3);
         StorageDead(_2);
         StorageDead(_1);
@@ -40,7 +40,7 @@ fn main() -> () {
         StorageLive(_5);
         StorageLive(_6);
         _6 = &raw const _4;
-        _5 = move _6 as *const ! (PtrToPtr);
+        _5 = copy _6 as *const ! (PtrToPtr);
         StorageDead(_6);
         StorageDead(_5);
         StorageDead(_4);
