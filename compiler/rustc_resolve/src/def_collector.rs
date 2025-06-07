@@ -147,7 +147,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 DefKind::Macro(macro_kind)
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
-            ItemKind::Use(..) => return visit::walk_item(self, i),
+            ItemKind::Use(use_tree) => {
+                self.create_def(i.id, None, DefKind::Use, use_tree.span);
+                return visit::walk_item(self, i);
+            }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
                 return self.visit_macro_invoc(i.id);
             }
@@ -232,9 +235,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
-    fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
+    fn visit_nested_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId) {
         self.create_def(id, None, DefKind::Use, use_tree.span);
-        visit::walk_use_tree(self, use_tree, id);
+        visit::walk_use_tree(self, use_tree);
     }
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {

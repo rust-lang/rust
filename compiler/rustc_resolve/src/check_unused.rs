@@ -100,6 +100,21 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
         }
     }
 
+    fn check_use_tree(&mut self, use_tree: &'a ast::UseTree, id: ast::NodeId) {
+        if self.r.effective_visibilities.is_exported(self.r.local_def_id(id)) {
+            self.check_import_as_underscore(use_tree, id);
+            return;
+        }
+
+        if let ast::UseTreeKind::Nested { ref items, .. } = use_tree.kind {
+            if items.is_empty() {
+                self.unused_import(self.base_id).add(id);
+            }
+        } else {
+            self.check_import(id);
+        }
+    }
+
     fn unused_import(&mut self, id: ast::NodeId) -> &mut UnusedImport {
         let use_tree_id = self.base_id;
         let use_tree = self.base_use_tree.unwrap().clone();
@@ -225,13 +240,21 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
 
 impl<'a, 'ra, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
     fn visit_item(&mut self, item: &'a ast::Item) {
-        match item.kind {
+        self.item_span = item.span_with_attributes();
+        match &item.kind {
             // Ignore is_public import statements because there's no way to be sure
             // whether they're used or not. Also ignore imports with a dummy span
             // because this means that they were generated in some fashion by the
             // compiler and we don't need to consider them.
             ast::ItemKind::Use(..) if item.span.is_dummy() => return,
-            ast::ItemKind::ExternCrate(orig_name, ident) => {
+            // Use the base UseTree's NodeId as the item id
+            // This allows the grouping of all the lints in the same item
+            ast::ItemKind::Use(use_tree) => {
+                self.base_id = item.id;
+                self.base_use_tree = Some(use_tree);
+                self.check_use_tree(use_tree, item.id);
+            }
+            &ast::ItemKind::ExternCrate(orig_name, ident) => {
                 self.extern_crate_items.push(ExternCrateToLint {
                     id: item.id,
                     span: item.span,
@@ -245,32 +268,12 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
             _ => {}
         }
 
-        self.item_span = item.span_with_attributes();
         visit::walk_item(self, item);
     }
 
-    fn visit_use_tree(&mut self, use_tree: &'a ast::UseTree, id: ast::NodeId, nested: bool) {
-        // Use the base UseTree's NodeId as the item id
-        // This allows the grouping of all the lints in the same item
-        if !nested {
-            self.base_id = id;
-            self.base_use_tree = Some(use_tree);
-        }
-
-        if self.r.effective_visibilities.is_exported(self.r.local_def_id(id)) {
-            self.check_import_as_underscore(use_tree, id);
-            return;
-        }
-
-        if let ast::UseTreeKind::Nested { ref items, .. } = use_tree.kind {
-            if items.is_empty() {
-                self.unused_import(self.base_id).add(id);
-            }
-        } else {
-            self.check_import(id);
-        }
-
-        visit::walk_use_tree(self, use_tree, id);
+    fn visit_nested_use_tree(&mut self, use_tree: &'a ast::UseTree, id: ast::NodeId) {
+        self.check_use_tree(use_tree, id);
+        visit::walk_use_tree(self, use_tree);
     }
 }
 

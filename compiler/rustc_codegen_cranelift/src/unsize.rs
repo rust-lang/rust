@@ -240,7 +240,7 @@ pub(crate) fn size_and_align_of<'tcx>(
                 })
             });
 
-            codegen_panic_nounwind(fx, &msg_str, None);
+            codegen_panic_nounwind(fx, &msg_str, fx.mir.span);
 
             fx.bcx.switch_to_block(next_block);
 

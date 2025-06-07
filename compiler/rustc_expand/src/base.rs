@@ -167,7 +167,7 @@ impl Annotatable {
 
     pub fn expect_stmt(self) -> ast::Stmt {
         match self {
-            Annotatable::Stmt(stmt) => stmt.into_inner(),
+            Annotatable::Stmt(stmt) => *stmt,
             _ => panic!("expected statement"),
         }
     }

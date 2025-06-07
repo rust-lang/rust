@@ -835,7 +835,7 @@ impl<'tcx> BinOp {
             &BinOp::Cmp => {
                 // these should be integer-like types of the same size.
                 assert_eq!(lhs_ty, rhs_ty);
-                tcx.ty_ordering_enum(None)
+                tcx.ty_ordering_enum(DUMMY_SP)
             }
         }
     }

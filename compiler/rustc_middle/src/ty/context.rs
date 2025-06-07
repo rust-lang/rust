@@ -458,7 +458,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn require_lang_item(self, lang_item: TraitSolverLangItem) -> DefId {
-        self.require_lang_item(trait_lang_item_to_lang_item(lang_item), None)
+        self.require_lang_item(trait_lang_item_to_lang_item(lang_item), DUMMY_SP)
     }
 
     fn is_lang_item(self, def_id: DefId, lang_item: TraitSolverLangItem) -> bool {
@@ -1710,7 +1710,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Gets a `Ty` representing the [`LangItem::OrderingEnum`]
     #[track_caller]
-    pub fn ty_ordering_enum(self, span: Option<Span>) -> Ty<'tcx> {
+    pub fn ty_ordering_enum(self, span: Span) -> Ty<'tcx> {
         let ordering_enum = self.require_lang_item(hir::LangItem::OrderingEnum, span);
         self.type_of(ordering_enum).no_bound_vars().unwrap()
     }
@@ -2253,7 +2253,7 @@ impl<'tcx> TyCtxt<'tcx> {
         Ty::new_imm_ref(
             self,
             self.lifetimes.re_static,
-            self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
+            self.type_of(self.require_lang_item(LangItem::PanicLocation, DUMMY_SP))
                 .instantiate(self, self.mk_args(&[self.lifetimes.re_static.into()])),
         )
     }
@@ -2712,7 +2712,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
         let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind() else { return false };
-        let future_trait = self.require_lang_item(LangItem::Future, None);
+        let future_trait = self.require_lang_item(LangItem::Future, DUMMY_SP);
 
         self.explicit_item_self_bounds(def_id).skip_binder().iter().any(|&(predicate, _)| {
             let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() else {
