@@ -785,7 +785,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                             }
                         })
                     });
-                    crate::base::codegen_panic_nounwind(fx, &msg_str, Some(source_info.span));
+                    crate::base::codegen_panic_nounwind(fx, &msg_str, source_info.span);
                     return Ok(());
                 }
             }
@@ -884,7 +884,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                         crate::base::codegen_panic_nounwind(
                             fx,
                             "128bit atomics not yet supported",
-                            None,
+                            source_info.span,
                         );
                         return Ok(());
                     } else {
@@ -919,7 +919,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                         crate::base::codegen_panic_nounwind(
                             fx,
                             "128bit atomics not yet supported",
-                            None,
+                            source_info.span,
                         );
                         return Ok(());
                     } else {
