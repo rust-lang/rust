@@ -9,6 +9,8 @@ use std::path::{Path, PathBuf};
 use std::{env, fs, iter};
 
 use clap_complete::shells;
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
 use crate::core::build_steps::compile::run_cargo;
 use crate::core::build_steps::doc::DocumentationFormat;
@@ -30,7 +32,7 @@ use crate::utils::helpers::{
     linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, DocTests, GitRepo, Mode, PathSet, envify};
+use crate::{CLang, DocTests, GitRepo, Mode, PathSet, debug, envify};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
@@ -2489,6 +2491,18 @@ impl Step for CrateLibrustc {
 /// Given a `cargo test` subcommand, add the appropriate flags and run it.
 ///
 /// Returns whether the test succeeded.
+#[cfg_attr(
+    feature = "tracing",
+    instrument(
+        level = "debug",
+        name = "test::run_cargo_test",
+        fields(
+            crates = ?crates,
+            target = ?target,
+        ),
+        skip_all,
+    ),
+)]
 fn run_cargo_test<'a>(
     cargo: builder::Cargo,
     libtest_args: &[&str],
@@ -2497,6 +2511,8 @@ fn run_cargo_test<'a>(
     target: TargetSelection,
     builder: &Builder<'_>,
 ) -> bool {
+    debug!("cargo envs: {:#?}", cargo.cmd().get_envs().collect::<Vec<_>>());
+
     let compiler = cargo.compiler();
     let mut cargo = prepare_cargo_test(cargo, libtest_args, crates, target, builder);
     let _time = helpers::timeit(builder);
@@ -2706,7 +2722,18 @@ impl Step for Crate {
                         .arg("--manifest-path")
                         .arg(builder.src.join("library/sysroot/Cargo.toml"));
                 } else {
+                    debug!(
+                        ?target,
+                        stage = compiler.stage,
+                        "test::Crate::run: Mode::Std && builder.kind != Kind::Miri: configuring using `compile::std_cargo`",
+                    );
+
                     compile::std_cargo(builder, target, compiler.stage, &mut cargo);
+
+                    debug!(
+                        "test::Crate::run: Mode::Std && builder.kind != Kind::Miri: cargo.envs: {:#?}",
+                        cargo.cmd().get_envs()
+                    );
                 }
             }
             Mode::Rustc => {

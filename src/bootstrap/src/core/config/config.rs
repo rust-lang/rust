@@ -28,8 +28,6 @@ use build_helper::git::{GitConfig, PathFreshness, check_path_modifications, outp
 use serde::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
-#[cfg(feature = "tracing")]
-use tracing::{instrument, span};
 
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
@@ -66,6 +64,7 @@ use crate::{Command, GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers,
 #[rustfmt::skip] // We don't want rustfmt to oneline this list
 pub const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
     ":!library",
+    ":!src/bootstrap", // DO NOT MERGE, for testing purposes to "force" CI rustc
     ":!src/tools",
     ":!src/librustdoc",
     ":!src/rustdoc-json-types",

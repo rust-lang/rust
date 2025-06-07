@@ -482,6 +482,7 @@ auto:
 
   - name: aarch64-apple
     env:
+      BOOTSTRAP_TRACING: debug
       SCRIPT: >
         ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin &&
         ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin src/tools/cargo
