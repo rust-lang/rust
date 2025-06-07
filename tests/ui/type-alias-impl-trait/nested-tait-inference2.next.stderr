@@ -1,9 +1,9 @@
-error[E0284]: type annotations needed: cannot satisfy `impl Foo<FooX> == ()`
+error[E0282]: type annotations needed
   --> $DIR/nested-tait-inference2.rs:20:5
    |
 LL |     ()
-   |     ^^ cannot satisfy `impl Foo<FooX> == ()`
+   |     ^^ cannot infer type
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0282`.

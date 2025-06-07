@@ -1,8 +1,8 @@
-error[E0284]: type annotations needed: cannot satisfy `impl Sized == _`
-  --> $DIR/recursive-in-exhaustiveness.rs:19:17
+error[E0284]: type annotations needed: cannot normalize `build<_>::{opaque#0}`
+  --> $DIR/recursive-in-exhaustiveness.rs:20:5
    |
-LL |     let (x,) = (build(x),);
-   |                 ^^^^^^^^ cannot satisfy `impl Sized == _`
+LL |     build(x)
+   |     ^^^^^^^^ cannot normalize `build<_>::{opaque#0}`
 
 error[E0271]: type mismatch resolving `build2<(_,)>::{opaque#0} normalizes-to _`
   --> $DIR/recursive-in-exhaustiveness.rs:30:6
