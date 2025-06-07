@@ -907,6 +907,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.map_err(stringify), Err("error code: 13".to_string()));
     /// ```
     #[inline]
+    #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn map_err<F, O: FnOnce(E) -> F>(self, op: O) -> Result<T, F> {
         match self {
