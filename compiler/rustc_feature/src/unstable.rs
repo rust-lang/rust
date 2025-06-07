@@ -401,6 +401,8 @@ declare_features! (
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.
     (unstable, cfg_contract_checks, "1.86.0", Some(128044)),
+    /// Allow conditional compilation depending on target platform version.
+    (unstable, cfg_os_version_min, "CURRENT_RUSTC_VERSION", Some(136866)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
     (unstable, cfg_overflow_checks, "1.71.0", Some(111466)),
     /// Provides the relocation model information as cfg entry
