@@ -3028,7 +3028,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "vec_into_chunks", issue = "142137")]
     pub fn into_chunks<const N: usize>(mut self) -> Vec<[T; N], A> {
         const {
-            assert!(N != 0, "chunk size should be greater than zero");
+            assert!(N != 0, "chunk size must be greater than zero");
         }
 
         let (len, cap) = (self.len(), self.capacity());
