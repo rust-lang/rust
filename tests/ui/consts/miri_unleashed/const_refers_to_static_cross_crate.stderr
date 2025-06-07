@@ -35,7 +35,7 @@ error[E0080]: constant accesses mutable global memory
   --> $DIR/const_refers_to_static_cross_crate.rs:30:15
    |
 LL |         match static_cross_crate::OPT_ZERO {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `U8_MUT3` failed here
 
 error: aborting due to 4 previous errors
 

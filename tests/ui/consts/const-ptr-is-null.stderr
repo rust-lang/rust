@@ -2,7 +2,7 @@ error[E0080]: evaluation panicked: null-ness of this pointer cannot be determine
   --> $DIR/const-ptr-is-null.rs:22:14
    |
 LL |     assert!(!ptr.wrapping_sub(512).is_null());
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MAYBE_NULL` failed inside this call
    |
 note: inside `std::ptr::const_ptr::<impl *const i32>::is_null`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL

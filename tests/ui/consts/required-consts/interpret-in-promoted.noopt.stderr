@@ -2,7 +2,7 @@ error[E0080]: entering unreachable code
   --> $DIR/interpret-in-promoted.rs:15:28
    |
 LL |     let _x: &'static () = &ub();
-   |                            ^^^^ evaluation of constant value failed here
+   |                            ^^^^ evaluation of `FOO` failed inside this call
    |
 note: inside `ub`
   --> $DIR/interpret-in-promoted.rs:9:5

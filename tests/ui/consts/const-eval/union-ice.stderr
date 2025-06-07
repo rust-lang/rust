@@ -2,19 +2,19 @@ error[E0080]: using uninitialized data, but this operation requires initialized 
   --> $DIR/union-ice.rs:14:33
    |
 LL | const FIELD3: Field3 = unsafe { UNION.field3 };
-   |                                 ^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                 ^^^^^^^^^^^^ evaluation of `FIELD3` failed here
 
 error[E0080]: using uninitialized data, but this operation requires initialized memory
   --> $DIR/union-ice.rs:19:17
    |
 LL |     b: unsafe { UNION.field3 },
-   |                 ^^^^^^^^^^^^ evaluation of constant value failed here
+   |                 ^^^^^^^^^^^^ evaluation of `FIELD_PATH` failed here
 
 error[E0080]: using uninitialized data, but this operation requires initialized memory
   --> $DIR/union-ice.rs:31:18
    |
 LL |         unsafe { UNION.field3 },
-   |                  ^^^^^^^^^^^^ evaluation of constant value failed here
+   |                  ^^^^^^^^^^^^ evaluation of `FIELD_PATH2` failed here
 
 error: aborting due to 3 previous errors
 

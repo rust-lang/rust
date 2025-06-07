@@ -2,7 +2,7 @@ error[E0080]: index out of bounds: the length is 3 but the index is 5
   --> $DIR/const-slice-oob.rs:2:18
    |
 LL | const BAR: u32 = FOO[5];
-   |                  ^^^^^^ evaluation of constant value failed here
+   |                  ^^^^^^ evaluation of `BAR` failed here
 
 error: aborting due to 1 previous error
 

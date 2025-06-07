@@ -13,7 +13,7 @@ error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer 
   --> $DIR/ub-nonnull.rs:22:29
    |
 LL |     let out_of_bounds_ptr = &ptr[255];
-   |                             ^^^^^^^^^ evaluation of constant value failed here
+   |                             ^^^^^^^^^ evaluation of `OUT_OF_BOUNDS_PTR` failed here
 
 error[E0080]: constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
   --> $DIR/ub-nonnull.rs:26:1
@@ -41,7 +41,7 @@ error[E0080]: using uninitialized data, but this operation requires initialized 
   --> $DIR/ub-nonnull.rs:36:38
    |
 LL | const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNINIT` failed here
 
 error[E0080]: constructing invalid value: encountered 42, but expected something in the range 10..=30
   --> $DIR/ub-nonnull.rs:44:1

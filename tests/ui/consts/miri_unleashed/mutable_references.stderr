@@ -113,7 +113,7 @@ error[E0080]: constant accesses mutable global memory
   --> $DIR/mutable_references.rs:70:43
    |
 LL | const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
-   |                                           ^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                           ^^^^^^^^^^^^^ evaluation of `POINTS_TO_MUTABLE2` failed here
 
 error: encountered mutable pointer in final value of constant
   --> $DIR/mutable_references.rs:73:1

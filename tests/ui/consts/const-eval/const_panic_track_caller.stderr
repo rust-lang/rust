@@ -2,7 +2,7 @@ error[E0080]: evaluation panicked: hey
   --> $DIR/const_panic_track_caller.rs:19:16
    |
 LL | const X: u32 = c();
-   |                ^^^ evaluation of constant value failed here
+   |                ^^^ evaluation of `X` failed inside this call
    |
 note: inside `c`
   --> $DIR/const_panic_track_caller.rs:15:5

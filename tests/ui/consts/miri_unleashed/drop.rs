@@ -13,7 +13,7 @@ static TEST_OK: () = {
 // The actual error is tested by the error-pattern above.
 static TEST_BAD: () = {
     let _v: Vec<i32> = Vec::new();
-}; //~ NOTE evaluation of static initializer failed here
+}; //~ NOTE failed inside this call
    //~| ERROR calling non-const function `<Vec<i32> as Drop>::drop`
    //~| NOTE inside `drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
 

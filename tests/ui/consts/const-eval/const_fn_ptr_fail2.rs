@@ -14,10 +14,10 @@ const fn bar(x: fn(usize) -> usize, y: usize) -> usize {
 }
 
 const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
-//~^ NOTE evaluation of constant value failed
+//~^ NOTE failed inside this call
 //~| ERROR calling non-const function `double`
 const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
-//~^ NOTE evaluation of constant value failed
+//~^ NOTE failed inside this call
 //~| ERROR calling non-const function `double`
 
 fn main() {

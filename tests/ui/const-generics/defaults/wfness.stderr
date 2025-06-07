@@ -2,7 +2,7 @@ error[E0080]: attempt to compute `u8::MAX + 1_u8`, which would overflow
   --> $DIR/wfness.rs:1:33
    |
 LL | struct Ooopsies<const N: u8 = { u8::MAX + 1 }>;
-   |                                 ^^^^^^^^^^^ evaluation of constant value failed here
+   |                                 ^^^^^^^^^^^ evaluation of `Ooopsies::{constant#0}` failed here
 
 error[E0277]: the trait bound `(): Trait<2>` is not satisfied
   --> $DIR/wfness.rs:8:9

@@ -2,7 +2,7 @@ error[E0080]: using uninitialized data, but this operation requires initialized 
   --> $DIR/invalid-patterns.rs:40:32
    |
 LL |   get_flag::<false, { unsafe { char_raw.character } }>();
-   |                                ^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                ^^^^^^^^^^^^^^^^^^ evaluation of `main::{constant#7}` failed here
 
 error[E0080]: constructing invalid value: encountered 0x42, but expected a boolean
   --> $DIR/invalid-patterns.rs:42:14
@@ -30,7 +30,7 @@ error[E0080]: using uninitialized data, but this operation requires initialized 
   --> $DIR/invalid-patterns.rs:44:58
    |
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
-   |                                                          ^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                                          ^^^^^^^^^^^^^^^^^^ evaluation of `main::{constant#11}` failed here
 
 error[E0308]: mismatched types
   --> $DIR/invalid-patterns.rs:31:21

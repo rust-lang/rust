@@ -2,7 +2,7 @@ error[E0080]: evaluation panicked: from_ascii_radix: radix must lie in the range
   --> $DIR/parse_ints.rs:5:24
    |
 LL | const _TOO_LOW: () = { u64::from_str_radix("12345ABCD", 1); };
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_TOO_LOW` failed inside this call
    |
 note: inside `core::num::<impl u64>::from_str_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
@@ -14,7 +14,7 @@ error[E0080]: evaluation panicked: from_ascii_radix: radix must lie in the range
   --> $DIR/parse_ints.rs:6:25
    |
 LL | const _TOO_HIGH: () = { u64::from_str_radix("12345ABCD", 37); };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_TOO_HIGH` failed inside this call
    |
 note: inside `core::num::<impl u64>::from_str_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL

@@ -2,7 +2,7 @@ error[E0080]: evaluation panicked: foo
   --> $DIR/issue-32829.rs:1:22
    |
 LL | static S : u64 = { { panic!("foo"); 0 } };
-   |                      ^^^^^^^^^^^^^ evaluation of static initializer failed here
+   |                      ^^^^^^^^^^^^^ evaluation of `S` failed here
 
 error: aborting due to 1 previous error
 

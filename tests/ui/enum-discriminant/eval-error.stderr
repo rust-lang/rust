@@ -49,7 +49,7 @@ error[E0080]: the type `Foo` has an unknown layout
   --> $DIR/eval-error.rs:9:30
    |
 LL |         let _: Option<Foo> = None;
-   |                              ^^^^ evaluation of constant value failed here
+   |                              ^^^^ evaluation of `Bar::Boo::{constant#0}` failed here
 
 error: aborting due to 5 previous errors
 

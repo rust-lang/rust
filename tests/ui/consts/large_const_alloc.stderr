@@ -2,13 +2,13 @@ error[E0080]: tried to allocate more memory than available to compiler
   --> $DIR/large_const_alloc.rs:11:13
    |
 LL |     let x = [0_u8; (1 << 47) - 1];
-   |             ^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |             ^^^^^^^^^^^^^^^^^^^^^ evaluation of `FOO` failed here
 
 error[E0080]: tried to allocate more memory than available to compiler
   --> $DIR/large_const_alloc.rs:16:13
    |
 LL |     let x = [0_u8; (1 << 47) - 1];
-   |             ^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
+   |             ^^^^^^^^^^^^^^^^^^^^^ evaluation of `FOO2` failed here
 
 error: aborting due to 2 previous errors
 

@@ -24,7 +24,7 @@ error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-wide-ptr.rs:44:1
    |
 LL | const STR_LENGTH_PTR: &str = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `STR_LENGTH_PTR` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -33,7 +33,7 @@ error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-wide-ptr.rs:47:1
    |
 LL | const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MY_STR_LENGTH_PTR` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -75,7 +75,7 @@ error[E0080]: using uninitialized data, but this operation requires initialized 
   --> $DIR/ub-wide-ptr.rs:63:1
    |
 LL | const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_LENGTH_UNINIT` failed here
 
 error[E0080]: constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
   --> $DIR/ub-wide-ptr.rs:69:1
@@ -103,7 +103,7 @@ error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-wide-ptr.rs:75:1
    |
 LL | const SLICE_LENGTH_PTR: &[u8] = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_LENGTH_PTR` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -123,7 +123,7 @@ error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-wide-ptr.rs:81:1
    |
 LL | const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SLICE_LENGTH_PTR_BOX` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -183,7 +183,7 @@ error[E0080]: using uninitialized data, but this operation requires initialized 
   --> $DIR/ub-wide-ptr.rs:101:1
    |
 LL | const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_SLICE_LENGTH_UNINIT` failed here
 
 error[E0080]: constructing invalid value at .0: encountered ALLOC12<imm>, but expected a vtable pointer
   --> $DIR/ub-wide-ptr.rs:109:1

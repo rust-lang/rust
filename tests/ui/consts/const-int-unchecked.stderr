@@ -2,295 +2,295 @@ error[E0080]: overflowing shift by 8 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:14:29
    |
 LL | const SHL_U8: u8 = unsafe { intrinsics::unchecked_shl(5_u8, 8) };
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_U8` failed here
 
 error[E0080]: overflowing shift by 16 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:16:31
    |
 LL | const SHL_U16: u16 = unsafe { intrinsics::unchecked_shl(5_u16, 16) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_U16` failed here
 
 error[E0080]: overflowing shift by 32 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:18:31
    |
 LL | const SHL_U32: u32 = unsafe { intrinsics::unchecked_shl(5_u32, 32) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_U32` failed here
 
 error[E0080]: overflowing shift by 64 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:20:31
    |
 LL | const SHL_U64: u64 = unsafe { intrinsics::unchecked_shl(5_u64, 64) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_U64` failed here
 
 error[E0080]: overflowing shift by 128 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:22:33
    |
 LL | const SHL_U128: u128 = unsafe { intrinsics::unchecked_shl(5_u128, 128) };
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_U128` failed here
 
 error[E0080]: overflowing shift by 8 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:27:29
    |
 LL | const SHL_I8: i8 = unsafe { intrinsics::unchecked_shl(5_i8, 8) };
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I8` failed here
 
 error[E0080]: overflowing shift by 16 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:29:31
    |
 LL | const SHL_I16: i16 = unsafe { intrinsics::unchecked_shl(5_i16, 16) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I16` failed here
 
 error[E0080]: overflowing shift by 32 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:31:31
    |
 LL | const SHL_I32: i32 = unsafe { intrinsics::unchecked_shl(5_i32, 32) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I32` failed here
 
 error[E0080]: overflowing shift by 64 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:33:31
    |
 LL | const SHL_I64: i64 = unsafe { intrinsics::unchecked_shl(5_i64, 64) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I64` failed here
 
 error[E0080]: overflowing shift by 128 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:35:33
    |
 LL | const SHL_I128: i128 = unsafe { intrinsics::unchecked_shl(5_i128, 128) };
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I128` failed here
 
 error[E0080]: overflowing shift by -1 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:40:33
    |
 LL | const SHL_I8_NEG: i8 = unsafe { intrinsics::unchecked_shl(5_i8, -1) };
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I8_NEG` failed here
 
 error[E0080]: overflowing shift by -1 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:42:35
    |
 LL | const SHL_I16_NEG: i16 = unsafe { intrinsics::unchecked_shl(5_i16, -1) };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I16_NEG` failed here
 
 error[E0080]: overflowing shift by -1 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:44:35
    |
 LL | const SHL_I32_NEG: i32 = unsafe { intrinsics::unchecked_shl(5_i32, -1) };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I32_NEG` failed here
 
 error[E0080]: overflowing shift by -1 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:46:35
    |
 LL | const SHL_I64_NEG: i64 = unsafe { intrinsics::unchecked_shl(5_i64, -1) };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I64_NEG` failed here
 
 error[E0080]: overflowing shift by -1 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:48:37
    |
 LL | const SHL_I128_NEG: i128 = unsafe { intrinsics::unchecked_shl(5_i128, -1) };
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I128_NEG` failed here
 
 error[E0080]: overflowing shift by -6 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:54:40
    |
 LL | const SHL_I8_NEG_RANDOM: i8 = unsafe { intrinsics::unchecked_shl(5_i8, -6) };
-   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I8_NEG_RANDOM` failed here
 
 error[E0080]: overflowing shift by -13 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:56:42
    |
 LL | const SHL_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shl(5_i16, -13) };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I16_NEG_RANDOM` failed here
 
 error[E0080]: overflowing shift by -25 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:58:42
    |
 LL | const SHL_I32_NEG_RANDOM: i32 = unsafe { intrinsics::unchecked_shl(5_i32, -25) };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I32_NEG_RANDOM` failed here
 
 error[E0080]: overflowing shift by -30 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:60:42
    |
 LL | const SHL_I64_NEG_RANDOM: i64 = unsafe { intrinsics::unchecked_shl(5_i64, -30) };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I64_NEG_RANDOM` failed here
 
 error[E0080]: overflowing shift by -93 in `unchecked_shl`
   --> $DIR/const-int-unchecked.rs:62:44
    |
 LL | const SHL_I128_NEG_RANDOM: i128 = unsafe { intrinsics::unchecked_shl(5_i128, -93) };
-   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHL_I128_NEG_RANDOM` failed here
 
 error[E0080]: overflowing shift by 8 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:69:29
    |
 LL | const SHR_U8: u8 = unsafe { intrinsics::unchecked_shr(5_u8, 8) };
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_U8` failed here
 
 error[E0080]: overflowing shift by 16 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:71:31
    |
 LL | const SHR_U16: u16 = unsafe { intrinsics::unchecked_shr(5_u16, 16) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_U16` failed here
 
 error[E0080]: overflowing shift by 32 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:73:31
    |
 LL | const SHR_U32: u32 = unsafe { intrinsics::unchecked_shr(5_u32, 32) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_U32` failed here
 
 error[E0080]: overflowing shift by 64 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:75:31
    |
 LL | const SHR_U64: u64 = unsafe { intrinsics::unchecked_shr(5_u64, 64) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_U64` failed here
 
 error[E0080]: overflowing shift by 128 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:77:33
    |
 LL | const SHR_U128: u128 = unsafe { intrinsics::unchecked_shr(5_u128, 128) };
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_U128` failed here
 
 error[E0080]: overflowing shift by 8 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:82:29
    |
 LL | const SHR_I8: i8 = unsafe { intrinsics::unchecked_shr(5_i8, 8) };
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I8` failed here
 
 error[E0080]: overflowing shift by 16 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:84:31
    |
 LL | const SHR_I16: i16 = unsafe { intrinsics::unchecked_shr(5_i16, 16) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I16` failed here
 
 error[E0080]: overflowing shift by 32 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:86:31
    |
 LL | const SHR_I32: i32 = unsafe { intrinsics::unchecked_shr(5_i32, 32) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I32` failed here
 
 error[E0080]: overflowing shift by 64 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:88:31
    |
 LL | const SHR_I64: i64 = unsafe { intrinsics::unchecked_shr(5_i64, 64) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I64` failed here
 
 error[E0080]: overflowing shift by 128 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:90:33
    |
 LL | const SHR_I128: i128 = unsafe { intrinsics::unchecked_shr(5_i128, 128) };
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I128` failed here
 
 error[E0080]: overflowing shift by -1 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:95:33
    |
 LL | const SHR_I8_NEG: i8 = unsafe { intrinsics::unchecked_shr(5_i8, -1) };
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I8_NEG` failed here
 
 error[E0080]: overflowing shift by -1 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:97:35
    |
 LL | const SHR_I16_NEG: i16 = unsafe { intrinsics::unchecked_shr(5_i16, -1) };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I16_NEG` failed here
 
 error[E0080]: overflowing shift by -1 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:99:35
    |
 LL | const SHR_I32_NEG: i32 = unsafe { intrinsics::unchecked_shr(5_i32, -1) };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I32_NEG` failed here
 
 error[E0080]: overflowing shift by -1 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:101:35
    |
 LL | const SHR_I64_NEG: i64 = unsafe { intrinsics::unchecked_shr(5_i64, -1) };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I64_NEG` failed here
 
 error[E0080]: overflowing shift by -1 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:103:37
    |
 LL | const SHR_I128_NEG: i128 = unsafe { intrinsics::unchecked_shr(5_i128, -1) };
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I128_NEG` failed here
 
 error[E0080]: overflowing shift by -6 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:109:40
    |
 LL | const SHR_I8_NEG_RANDOM: i8 = unsafe { intrinsics::unchecked_shr(5_i8, -6) };
-   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I8_NEG_RANDOM` failed here
 
 error[E0080]: overflowing shift by -13 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:111:42
    |
 LL | const SHR_I16_NEG_RANDOM: i16 = unsafe { intrinsics::unchecked_shr(5_i16, -13) };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I16_NEG_RANDOM` failed here
 
 error[E0080]: overflowing shift by -25 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:113:42
    |
 LL | const SHR_I32_NEG_RANDOM: i32 = unsafe { intrinsics::unchecked_shr(5_i32, -25) };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I32_NEG_RANDOM` failed here
 
 error[E0080]: overflowing shift by -30 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:115:42
    |
 LL | const SHR_I64_NEG_RANDOM: i64 = unsafe { intrinsics::unchecked_shr(5_i64, -30) };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I64_NEG_RANDOM` failed here
 
 error[E0080]: overflowing shift by -93 in `unchecked_shr`
   --> $DIR/const-int-unchecked.rs:117:44
    |
 LL | const SHR_I128_NEG_RANDOM: i128 = unsafe { intrinsics::unchecked_shr(5_i128, -93) };
-   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SHR_I128_NEG_RANDOM` failed here
 
 error[E0080]: arithmetic overflow in `unchecked_add`
   --> $DIR/const-int-unchecked.rs:122:25
    |
 LL | const _: u16 = unsafe { std::intrinsics::unchecked_add(40000u16, 30000) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 
 error[E0080]: arithmetic overflow in `unchecked_sub`
   --> $DIR/const-int-unchecked.rs:125:25
    |
 LL | const _: u32 = unsafe { std::intrinsics::unchecked_sub(14u32, 22) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 
 error[E0080]: arithmetic overflow in `unchecked_mul`
   --> $DIR/const-int-unchecked.rs:128:25
    |
 LL | const _: u16 = unsafe { std::intrinsics::unchecked_mul(300u16, 250u16) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 
 error[E0080]: dividing by zero
   --> $DIR/const-int-unchecked.rs:131:25
    |
 LL | const _: i32 = unsafe { std::intrinsics::unchecked_div(1, 0) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 
 error[E0080]: overflow in signed division (dividing MIN by -1)
   --> $DIR/const-int-unchecked.rs:133:25
    |
 LL | const _: i32 = unsafe { std::intrinsics::unchecked_div(i32::MIN, -1) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 
 error[E0080]: calculating the remainder with a divisor of zero
   --> $DIR/const-int-unchecked.rs:136:25
    |
 LL | const _: i32 = unsafe { std::intrinsics::unchecked_rem(1, 0) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 
 error[E0080]: overflow in signed remainder (dividing MIN by -1)
   --> $DIR/const-int-unchecked.rs:138:25
    |
 LL | const _: i32 = unsafe { std::intrinsics::unchecked_rem(i32::MIN, -1) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 
 error[E0080]: `ctlz_nonzero` called on 0
   --> $DIR/const-int-unchecked.rs:143:25
    |
 LL | const _: u32 = unsafe { std::intrinsics::ctlz_nonzero(0) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 
 error[E0080]: `cttz_nonzero` called on 0
   --> $DIR/const-int-unchecked.rs:145:25
    |
 LL | const _: u32 = unsafe { std::intrinsics::cttz_nonzero(0) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 
 error: aborting due to 49 previous errors
 

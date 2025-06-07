@@ -2,7 +2,7 @@ error[E0080]: evaluation panicked: explicit panic
   --> $DIR/issue-88434-removal-index-should-be-less.rs:5:24
    |
 LL | const _CONST: &[u8] = &f(&[], |_| {});
-   |                        ^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                        ^^^^^^^^^^^^^^ evaluation of `_CONST` failed inside this call
    |
 note: inside `f::<{closure@$DIR/issue-88434-removal-index-should-be-less.rs:5:31: 5:34}>`
   --> $DIR/issue-88434-removal-index-should-be-less.rs:12:5

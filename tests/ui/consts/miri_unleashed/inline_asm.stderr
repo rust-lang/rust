@@ -2,7 +2,7 @@ error[E0080]: inline assembly is not supported
   --> $DIR/inline_asm.rs:10:14
    |
 LL |     unsafe { asm!("nop"); }
-   |              ^^^^^^^^^^^ evaluation of static initializer failed here
+   |              ^^^^^^^^^^^ evaluation of `TEST_BAD` failed here
 
 warning: skipping const checks
    |
