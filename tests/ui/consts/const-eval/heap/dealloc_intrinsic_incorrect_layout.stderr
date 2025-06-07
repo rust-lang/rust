@@ -2,25 +2,25 @@ error[E0080]: incorrect layout on deallocation: ALLOC0 has size 4 and alignment 
   --> $DIR/dealloc_intrinsic_incorrect_layout.rs:8:5
    |
 LL |     intrinsics::const_deallocate(ptr, 4, 2);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_X` failed here
 
 error[E0080]: incorrect layout on deallocation: ALLOC1 has size 4 and alignment 4, but gave size 2 and alignment 4
   --> $DIR/dealloc_intrinsic_incorrect_layout.rs:13:5
    |
 LL |     intrinsics::const_deallocate(ptr, 2, 4);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_Y` failed here
 
 error[E0080]: incorrect layout on deallocation: ALLOC2 has size 4 and alignment 4, but gave size 3 and alignment 4
   --> $DIR/dealloc_intrinsic_incorrect_layout.rs:19:5
    |
 LL |     intrinsics::const_deallocate(ptr, 3, 4);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_Z` failed here
 
 error[E0080]: invalid align passed to `const_deallocate`: 3 is not a power of 2
   --> $DIR/dealloc_intrinsic_incorrect_layout.rs:25:5
    |
 LL |     intrinsics::const_deallocate(ptr, 4, 3);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_W` failed here
 
 error: aborting due to 4 previous errors
 

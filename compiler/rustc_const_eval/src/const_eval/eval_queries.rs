@@ -430,20 +430,7 @@ fn report_eval_error<'tcx>(
     let (error, backtrace) = error.into_parts();
     backtrace.print_backtrace();
 
-    let (kind, instance) = if ecx.tcx.is_static(cid.instance.def_id()) {
-        ("static", String::new())
-    } else {
-        // If the current item has generics, we'd like to enrich the message with the
-        // instance and its args: to show the actual compile-time values, in addition to
-        // the expression, leading to the const eval error.
-        let instance = &cid.instance;
-        if !instance.args.is_empty() {
-            let instance = with_no_trimmed_paths!(instance.to_string());
-            ("const_with_path", instance)
-        } else {
-            ("const", String::new())
-        }
-    };
+    let instance = with_no_trimmed_paths!(cid.instance.to_string());
 
     super::report(
         *ecx.tcx,
@@ -451,6 +438,7 @@ fn report_eval_error<'tcx>(
         DUMMY_SP,
         || super::get_span_and_frames(ecx.tcx, ecx.stack()),
         |diag, span, frames| {
+            let num_frames = frames.len();
             // FIXME(oli-obk): figure out how to use structured diagnostics again.
             diag.code(E0080);
             diag.span_label(span, crate::fluent_generated::const_eval_error);
@@ -459,7 +447,7 @@ fn report_eval_error<'tcx>(
             }
             // Add after the frame rendering above, as it adds its own `instance` args.
             diag.arg("instance", instance);
-            diag.arg("error_kind", kind);
+            diag.arg("num_frames", num_frames);
         },
     )
 }
