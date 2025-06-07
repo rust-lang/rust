@@ -4,8 +4,6 @@
 
 /* eslint-disable */
 declare global {
-    /** Map from crate name to directory structure, for source view */
-    declare var srcIndex: Map<string, rustdoc.Dir>;
     /** Defined and documented in `storage.js` */
     declare function nonnull(x: T|null, msg: string|undefined);
     /** Defined and documented in `storage.js` */
@@ -64,7 +62,7 @@ declare global {
          * create's the sidebar in source code view.
          * called in generated `src-files.js`.
          */
-        createSrcSidebar?: function(),
+        createSrcSidebar?: function(string),
         /**
          * Set up event listeners for a scraped source example.
          */
@@ -129,7 +127,7 @@ declare namespace rustdoc {
 
     /**
      * A single parsed "atom" in a search query. For example,
-     * 
+     *
      *     std::fmt::Formatter, Write -> Result<()>
      *     ┏━━━━━━━━━━━━━━━━━━  ┌────    ┏━━━━━┅┅┅┅┄┄┄┄┄┄┄┄┄┄┄┄┄┄┐
      *     ┃                    │        ┗ QueryElement {        ┊
