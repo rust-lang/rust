@@ -1,0 +1,73 @@
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:16:8
+   |
+LL | extern "gpu-kernel" fn f1(_: ()) {}
+   |        ^^^^^^^^^^^^
+   |
+   = note: see issue #135467 <https://github.com/rust-lang/rust/issues/135467> for more information
+   = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:21:12
+   |
+LL |     extern "gpu-kernel" fn m1(_: ());
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #135467 <https://github.com/rust-lang/rust/issues/135467> for more information
+   = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:24:12
+   |
+LL |     extern "gpu-kernel" fn dm1(_: ()) {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #135467 <https://github.com/rust-lang/rust/issues/135467> for more information
+   = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:32:12
+   |
+LL |     extern "gpu-kernel" fn m1(_: ()) {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #135467 <https://github.com/rust-lang/rust/issues/135467> for more information
+   = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:38:12
+   |
+LL |     extern "gpu-kernel" fn im1(_: ()) {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #135467 <https://github.com/rust-lang/rust/issues/135467> for more information
+   = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:43:18
+   |
+LL | type A1 = extern "gpu-kernel" fn(_: ());
+   |                  ^^^^^^^^^^^^
+   |
+   = note: see issue #135467 <https://github.com/rust-lang/rust/issues/135467> for more information
+   = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:47:8
+   |
+LL | extern "gpu-kernel" {}
+   |        ^^^^^^^^^^^^
+   |
+   = note: see issue #135467 <https://github.com/rust-lang/rust/issues/135467> for more information
+   = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

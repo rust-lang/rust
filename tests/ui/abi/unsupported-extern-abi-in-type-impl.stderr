@@ -1,0 +1,9 @@
+error[E0570]: `"gpu-kernel"` is not a supported ABI for the current target
+  --> $DIR/unsupported-extern-abi-in-type-impl.rs:7:16
+   |
+LL |     pub extern "gpu-kernel" fn test(val: &str) {}
+   |                ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0570`.

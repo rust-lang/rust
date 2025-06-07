@@ -1,6 +1,7 @@
 use std::fmt;
 
 use rustc_abi::ExternAbi;
+use rustc_errors::{E0570, struct_span_code_err};
 use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
@@ -19,10 +20,10 @@ pub(crate) fn extern_abi_enabled(
     features: &rustc_feature::Features,
     span: Span,
     abi: ExternAbi,
-) -> Result<(), UnstableAbi> {
+) -> Result<ExternAbi, UnstableAbi> {
     extern_abi_stability(abi).or_else(|unstable @ UnstableAbi { feature, .. }| {
         if features.enabled(feature) || span.allows_unstable(feature) {
-            Ok(())
+            Ok(abi)
         } else {
             Err(unstable)
         }
@@ -31,13 +32,28 @@ pub(crate) fn extern_abi_enabled(
 
 #[allow(rustc::untranslatable_diagnostic)]
 pub(crate) fn gate_unstable_abi(sess: &Session, features: &Features, span: Span, abi: ExternAbi) {
-    match extern_abi_enabled(features, span, abi) {
-        Ok(_) => (),
-        Err(unstable_abi) => {
-            let explain = unstable_abi.to_string();
-            feature_err(sess, unstable_abi.feature, span, explain).emit();
-        }
+    let Err(unstable) = extern_abi_stability(abi) else { return };
+    // what are we doing here? this is mixing target support with stability?
+    // well, unfortunately we allowed some ABIs to be used via fn pointers and such on stable,
+    // so we can't simply error any time someone uses certain ABIs as we want to let the FCW ride.
+    // however, for a number of *unstable* ABIs, we can simply fix them because they're unstable!
+    // otherwise it's the same idea as checking during lowering at all: because `extern "ABI"` has to
+    // be visible during lowering of some crate, we can easily nail use of certain ABIs before we
+    // get to e.g. attempting to do invalid codegen for the target.
+    if !sess.target.is_abi_supported(unstable.abi) {
+        struct_span_code_err!(
+            sess.dcx(),
+            span,
+            E0570,
+            "`{abi}` is not a supported ABI for the current target",
+        )
+        .emit();
     }
+    if features.enabled(unstable.feature) || span.allows_unstable(unstable.feature) {
+        return;
+    }
+    let explain = unstable.to_string();
+    feature_err(sess, unstable.feature, span, explain).emit();
 }
 
 pub struct UnstableAbi {
@@ -65,7 +81,7 @@ impl fmt::Display for UnstableAbi {
     }
 }
 
-pub fn extern_abi_stability(abi: ExternAbi) -> Result<(), UnstableAbi> {
+pub fn extern_abi_stability(abi: ExternAbi) -> Result<ExternAbi, UnstableAbi> {
     match abi {
         // stable ABIs
         ExternAbi::Rust
@@ -78,7 +94,7 @@ pub fn extern_abi_stability(abi: ExternAbi) -> Result<(), UnstableAbi> {
         | ExternAbi::Win64 { .. }
         | ExternAbi::SysV64 { .. }
         | ExternAbi::System { .. }
-        | ExternAbi::EfiApi => Ok(()),
+        | ExternAbi::EfiApi => Ok(abi),
         ExternAbi::Unadjusted => {
             Err(UnstableAbi { abi, feature: sym::abi_unadjusted, explain: GateReason::ImplDetail })
         }

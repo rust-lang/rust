@@ -3773,6 +3773,7 @@ dependencies = [
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
+ "rustc_ast_lowering",
  "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_errors",
