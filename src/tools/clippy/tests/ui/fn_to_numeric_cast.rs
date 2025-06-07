@@ -3,6 +3,7 @@
 //@[64bit]ignore-bitwidth: 32
 //@no-rustfix
 #![warn(clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation)]
+#![allow(function_casts_as_integer)]
 
 fn foo() -> String {
     String::new()

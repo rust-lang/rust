@@ -1,6 +1,6 @@
 //@ run-pass
 
-#![allow(dead_code)]
+#![allow(dead_code, function_casts_as_integer)]
 
 use std::vec;
 

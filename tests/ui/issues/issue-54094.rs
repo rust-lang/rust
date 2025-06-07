@@ -1,4 +1,7 @@
 //@ check-pass
+
+#![allow(function_casts_as_integer)]
+
 trait Zoo {
     type X;
 }
