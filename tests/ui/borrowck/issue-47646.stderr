@@ -11,7 +11,7 @@ LL |             println!("{:?}", heap);
    |                              ^^^^ immutable borrow occurs here
 ...
 LL |     };
-   |      - ... and the mutable borrow might be used here, when that temporary is dropped and runs the destructor for type `(Option<PeekMut<'_, i32>>, ())`
+   |      - ... and the mutable borrow might be used here, when that temporary is dropped and runs the destructor for type `(Option<std::collections::binary_heap::PeekMut<'_, i32>>, ())`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
