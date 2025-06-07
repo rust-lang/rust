@@ -28,11 +28,10 @@ use rustc_errors::{
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt, walk_generics};
+use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_generics};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
-use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMode, fold_regions};
@@ -148,10 +147,6 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
     }
 }
 
-pub(crate) struct CollectItemTypesVisitor<'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-}
-
 /// If there are any placeholder types (`_`), emit an error explaining that this is not allowed
 /// and suggest adding type parameters in the appropriate place, taking into consideration any and
 /// all already existing generic type parameters to avoid suggesting a name that is already in use.
@@ -243,7 +238,7 @@ pub(crate) fn placeholder_type_error_diag<'cx, 'tcx>(
     err
 }
 
-fn reject_placeholder_type_signatures_in_item<'tcx>(
+pub(super) fn reject_placeholder_type_signatures_in_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &'tcx hir::Item<'tcx>,
 ) {
@@ -272,81 +267,6 @@ fn reject_placeholder_type_signatures_in_item<'tcx>(
         None,
         item.kind.descr(),
     );
-}
-
-impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
-    type NestedFilter = nested_filter::OnlyBodies;
-
-    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
-        self.tcx
-    }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        lower_item(self.tcx, item.item_id());
-        reject_placeholder_type_signatures_in_item(self.tcx, item);
-        intravisit::walk_item(self, item);
-    }
-
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
-        for param in generics.params {
-            match param.kind {
-                hir::GenericParamKind::Lifetime { .. } => {}
-                hir::GenericParamKind::Type { default: Some(_), .. } => {
-                    self.tcx.ensure_ok().type_of(param.def_id);
-                }
-                hir::GenericParamKind::Type { .. } => {}
-                hir::GenericParamKind::Const { default, .. } => {
-                    self.tcx.ensure_ok().type_of(param.def_id);
-                    if let Some(default) = default {
-                        // need to store default and type of default
-                        self.tcx.ensure_ok().const_param_default(param.def_id);
-                        if let hir::ConstArgKind::Anon(ac) = default.kind {
-                            self.tcx.ensure_ok().type_of(ac.def_id);
-                        }
-                    }
-                }
-            }
-        }
-        intravisit::walk_generics(self, generics);
-    }
-
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure(closure) = expr.kind {
-            self.tcx.ensure_ok().generics_of(closure.def_id);
-            self.tcx.ensure_ok().codegen_fn_attrs(closure.def_id);
-            // We do not call `type_of` for closures here as that
-            // depends on typecheck and would therefore hide
-            // any further errors in case one typeck fails.
-        }
-        intravisit::walk_expr(self, expr);
-    }
-
-    /// Don't call `type_of` on opaque types, since that depends on type checking function bodies.
-    /// `check_item_type` ensures that it's called instead.
-    fn visit_opaque_ty(&mut self, opaque: &'tcx hir::OpaqueTy<'tcx>) {
-        let def_id = opaque.def_id;
-        self.tcx.ensure_ok().generics_of(def_id);
-        self.tcx.ensure_ok().predicates_of(def_id);
-        self.tcx.ensure_ok().explicit_item_bounds(def_id);
-        self.tcx.ensure_ok().explicit_item_self_bounds(def_id);
-        self.tcx.ensure_ok().item_bounds(def_id);
-        self.tcx.ensure_ok().item_self_bounds(def_id);
-        if self.tcx.is_conditionally_const(def_id) {
-            self.tcx.ensure_ok().explicit_implied_const_bounds(def_id);
-            self.tcx.ensure_ok().const_conditions(def_id);
-        }
-        intravisit::walk_opaque_ty(self, opaque);
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        lower_trait_item(self.tcx, trait_item.trait_item_id());
-        intravisit::walk_trait_item(self, trait_item);
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        lower_impl_item(self.tcx, impl_item.impl_item_id());
-        intravisit::walk_impl_item(self, impl_item);
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -669,7 +589,7 @@ fn get_new_lifetime_name<'tcx>(
 }
 
 #[instrument(level = "debug", skip_all)]
-fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
+pub(super) fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
     let it = tcx.hir_item(item_id);
     debug!(item = ?it.kind.ident(), id = %it.hir_id());
     let def_id = item_id.owner_id.def_id;
@@ -790,7 +710,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
     }
 }
 
-fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
+pub(crate) fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
     let trait_item = tcx.hir_trait_item(trait_item_id);
     let def_id = trait_item_id.owner_id;
     tcx.ensure_ok().generics_of(def_id);
@@ -861,7 +781,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
     tcx.ensure_ok().predicates_of(def_id);
 }
 
-fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
+pub(super) fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
     let def_id = impl_item_id.owner_id;
     tcx.ensure_ok().generics_of(def_id);
     tcx.ensure_ok().type_of(def_id);

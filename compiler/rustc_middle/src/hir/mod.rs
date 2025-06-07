@@ -71,12 +71,21 @@ impl ModuleItems {
         self.opaques.iter().copied()
     }
 
+    /// Closures and inline consts
     pub fn nested_bodies(&self) -> impl Iterator<Item = LocalDefId> {
         self.nested_bodies.iter().copied()
     }
 
     pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> {
         self.owners().map(|id| id.def_id)
+    }
+
+    /// Closures and inline consts
+    pub fn par_nested_bodies(
+        &self,
+        f: impl Fn(LocalDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+    ) -> Result<(), ErrorGuaranteed> {
+        try_par_for_each_in(&self.nested_bodies[..], |&&id| f(id))
     }
 
     pub fn par_items(

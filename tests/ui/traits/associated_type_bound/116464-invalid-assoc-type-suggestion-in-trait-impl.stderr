@@ -49,23 +49,6 @@ LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), Assoc = i32> {
    |                                                        +++++++
 
 error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:19:46
-   |
-LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), i32> {
-   |                                              ^^^^^ expected 1 generic argument
-   |
-note: trait defined here, with 1 generic parameter: `T`
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:5:11
-   |
-LL | pub trait Trait<T> {
-   |           ^^^^^ -
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: replace the generic bound with the associated type
-   |
-LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), Assoc = i32> {
-   |                                                        +++++++
-
-error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:26:18
    |
 LL | struct Struct<T: Trait<u32, String>> {
@@ -126,6 +109,23 @@ note: struct defined here, with 1 generic parameter: `T`
    |
 LL | struct Struct<T: Trait<u32, String>> {
    |        ^^^^^^ -
+
+error[E0107]: trait takes 1 generic argument but 2 generic arguments were supplied
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:19:46
+   |
+LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), i32> {
+   |                                              ^^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `T`
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:5:11
+   |
+LL | pub trait Trait<T> {
+   |           ^^^^^ -
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: replace the generic bound with the associated type
+   |
+LL | fn func<T: Trait<u32, String>>(t: T) -> impl Trait<(), Assoc = i32> {
+   |                                                        +++++++
 
 error: aborting due to 9 previous errors
 

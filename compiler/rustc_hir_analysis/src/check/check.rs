@@ -702,6 +702,29 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 }
 
 pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    let generics = tcx.generics_of(def_id);
+
+    for param in &generics.own_params {
+        match param.kind {
+            ty::GenericParamDefKind::Lifetime { .. } => {}
+            ty::GenericParamDefKind::Type { has_default, .. } => {
+                if has_default {
+                    tcx.ensure_ok().type_of(param.def_id);
+                }
+            }
+            ty::GenericParamDefKind::Const { has_default, .. } => {
+                tcx.ensure_ok().type_of(param.def_id);
+                if has_default {
+                    // need to store default and type of default
+                    let ct = tcx.const_param_default(param.def_id).skip_binder();
+                    if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
+                        tcx.ensure_ok().type_of(uv.def);
+                    }
+                }
+            }
+        }
+    }
+
     match tcx.def_kind(def_id) {
         DefKind::Static { .. } => {
             check_static_inhabited(tcx, def_id);
@@ -770,6 +793,16 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             } else {
                 check_opaque(tcx, def_id);
             }
+
+            tcx.ensure_ok().predicates_of(def_id);
+            tcx.ensure_ok().explicit_item_bounds(def_id);
+            tcx.ensure_ok().explicit_item_self_bounds(def_id);
+            tcx.ensure_ok().item_bounds(def_id);
+            tcx.ensure_ok().item_self_bounds(def_id);
+            if tcx.is_conditionally_const(def_id) {
+                tcx.ensure_ok().explicit_implied_const_bounds(def_id);
+                tcx.ensure_ok().const_conditions(def_id);
+            }
         }
         DefKind::TyAlias => {
             check_type_alias_type_params_are_used(tcx, def_id);
@@ -826,6 +859,15 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     _ => {}
                 }
             }
+        }
+        DefKind::Closure => {
+            // This is guaranteed to be called by metadata encoding,
+            // we still call it in wfcheck eagerly to ensure errors in codegen
+            // attrs prevent lints from spamming the output.
+            tcx.ensure_ok().codegen_fn_attrs(def_id);
+            // We do not call `type_of` for closures here as that
+            // depends on typecheck and would therefore hide
+            // any further errors in case one typeck fails.
         }
         _ => {}
     }
