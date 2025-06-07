@@ -1172,7 +1172,7 @@ impl String {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows [`usize`].
+    /// Panics if the new capacity exceeds [`isize::MAX`] bytes.
     ///
     /// # Examples
     ///
@@ -1222,7 +1222,7 @@ impl String {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows [`usize`].
+    /// Panics if the new capacity exceeds [`isize::MAX`] bytes.
     ///
     /// # Examples
     ///
