@@ -12,66 +12,93 @@ use crate::AbiFromStrErr;
 #[cfg(test)]
 mod tests;
 
-use ExternAbi as Abi;
-
+/// ABI we expect to see within `extern "{abi}"`
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable))]
 pub enum ExternAbi {
-    // Some of the ABIs come first because every time we add a new ABI, we have to re-bless all the
-    // hashing tests. These are used in many places, so giving them stable values reduces test
-    // churn. The specific values are meaningless.
-    Rust,
+    /* universal */
+    /// presumed C ABI for the platform
     C {
         unwind: bool,
     },
+    /// ABI of the "system" interface, e.g. the Win32 API, always "aliasing"
+    System {
+        unwind: bool,
+    },
+
+    /// that's us!
+    Rust,
+    /// the mostly-unused `unboxed_closures` ABI, effectively now an impl detail unless someone
+    /// puts in the work to make it viable again... but would we need a special ABI?
+    RustCall,
+    /// For things unlikely to be called, where reducing register pressure in
+    /// `extern "Rust"` callers is worth paying extra cost in the callee.
+    /// Stronger than just `#[cold]` because `fn` pointers might be incompatible.
+    RustCold,
+
+    /// Unstable impl detail that directly uses Rust types to describe the ABI to LLVM.
+    /// Even normally-compatible Rust types can become ABI-incompatible with this ABI!
+    Unadjusted,
+
+    /// UEFI ABI, usually an alias of C, but sometimes an arch-specific alias
+    /// and only valid on platforms that have a UEFI standard
+    EfiApi,
+
+    /* arm */
+    /// Arm Architecture Procedure Call Standard, sometimes `ExternAbi::C` is an alias for this
+    Aapcs {
+        unwind: bool,
+    },
+    /// extremely constrained barely-C ABI for TrustZone
+    CCmseNonSecureCall,
+    /// extremely constrained barely-C ABI for TrustZone
+    CCmseNonSecureEntry,
+
+    /* gpu */
+    /// An entry-point function called by the GPU's host
+    // FIXME: should not be callable from Rust on GPU targets, is for host's use only
+    GpuKernel,
+    /// An entry-point function called by the GPU's host
+    // FIXME: why do we have two of these?
+    PtxKernel,
+
+    /* interrupt */
+    AvrInterrupt,
+    AvrNonBlockingInterrupt,
+    Msp430Interrupt,
+    RiscvInterruptM,
+    RiscvInterruptS,
+    X86Interrupt,
+
+    /* x86 */
+    /// `ExternAbi::C` but spelled funny because x86
     Cdecl {
         unwind: bool,
     },
+    /// gnu-stdcall on "unix" and win-stdcall on "windows"
     Stdcall {
         unwind: bool,
     },
+    /// gnu-fastcall on "unix" and win-fastcall on "windows"
     Fastcall {
         unwind: bool,
     },
-    Vectorcall {
-        unwind: bool,
-    },
+    /// windows C++ ABI
     Thiscall {
         unwind: bool,
     },
-    Aapcs {
+    /// uses AVX and stuff
+    Vectorcall {
+        unwind: bool,
+    },
+
+    /* x86_64 */
+    SysV64 {
         unwind: bool,
     },
     Win64 {
         unwind: bool,
     },
-    SysV64 {
-        unwind: bool,
-    },
-    PtxKernel,
-    Msp430Interrupt,
-    X86Interrupt,
-    /// An entry-point function called by the GPU's host
-    // FIXME: should not be callable from Rust on GPU targets, is for host's use only
-    GpuKernel,
-    EfiApi,
-    AvrInterrupt,
-    AvrNonBlockingInterrupt,
-    CCmseNonSecureCall,
-    CCmseNonSecureEntry,
-    System {
-        unwind: bool,
-    },
-    RustCall,
-    /// *Not* a stable ABI, just directly use the Rust types to describe the ABI for LLVM. Even
-    /// normally ABI-compatible Rust types can become ABI-incompatible with this ABI!
-    Unadjusted,
-    /// For things unlikely to be called, where reducing register pressure in
-    /// `extern "Rust"` callers is worth paying extra cost in the callee.
-    /// Stronger than just `#[cold]` because `fn` pointers might be incompatible.
-    RustCold,
-    RiscvInterruptM,
-    RiscvInterruptS,
 }
 
 macro_rules! abi_impls {
@@ -224,7 +251,7 @@ pub fn all_names() -> Vec<&'static str> {
 
 impl ExternAbi {
     /// Default ABI chosen for `extern fn` declarations without an explicit ABI.
-    pub const FALLBACK: Abi = Abi::C { unwind: false };
+    pub const FALLBACK: ExternAbi = ExternAbi::C { unwind: false };
 
     pub fn name(self) -> &'static str {
         self.as_str()
