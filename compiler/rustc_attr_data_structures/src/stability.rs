@@ -132,6 +132,7 @@ pub enum StabilityLevel {
         /// fn foobar() {}
         /// ```
         implied_by: Option<Symbol>,
+        old_name: Option<Symbol>,
     },
     /// `#[stable]`
     Stable {

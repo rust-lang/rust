@@ -299,6 +299,7 @@ pub(crate) fn parse_unstability(
     let mut issue_num = None;
     let mut is_soft = false;
     let mut implied_by = None;
+    let mut old_name = None;
     for param in args.list()?.mixed() {
         let Some(param) = param.meta_item() else {
             cx.emit_err(session_diagnostics::UnsupportedLiteral {
@@ -346,11 +347,12 @@ pub(crate) fn parse_unstability(
             Some(sym::implied_by) => {
                 insert_value_into_option_or_error(cx, &param, &mut implied_by)?
             }
+            Some(sym::old_name) => insert_value_into_option_or_error(cx, &param, &mut old_name)?,
             _ => {
                 cx.emit_err(session_diagnostics::UnknownMetaItem {
                     span: param.span(),
                     item: param.path().to_string(),
-                    expected: &["feature", "reason", "issue", "soft", "implied_by"],
+                    expected: &["feature", "reason", "issue", "soft", "implied_by", "old_name"],
                 });
                 return None;
             }
@@ -375,6 +377,7 @@ pub(crate) fn parse_unstability(
                 issue: issue_num,
                 is_soft,
                 implied_by,
+                old_name,
             };
             Some((feature, level))
         }

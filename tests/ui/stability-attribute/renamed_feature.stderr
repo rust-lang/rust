@@ -1,4 +1,4 @@
-error[E0635]: unknown feature `try_trait`
+error[E0635]: feature `try_trait` has been renamed to `try_trait_v2`
   --> $DIR/renamed_feature.rs:1:12
    |
 LL | #![feature(try_trait)]
