@@ -57,14 +57,6 @@ impl OptimizeAttr {
     }
 }
 
-#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic, PrintAttribute)]
-pub enum DiagnosticAttribute {
-    // tidy-alphabetical-start
-    DoNotRecommend,
-    OnUnimplemented,
-    // tidy-alphabetical-end
-}
-
 #[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone, HashStable_Generic, PrintAttribute)]
 pub enum ReprAttr {
     ReprInt(IntType),
@@ -160,40 +152,52 @@ impl Deprecation {
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum AttributeKind {
     // tidy-alphabetical-start
+    /// Represents `#[rustc_allow_const_fn_unstable]`.
     AllowConstFnUnstable(ThinVec<Symbol>),
+
+    /// Represents `#[allow_internal_unstable]`.
     AllowInternalUnstable(ThinVec<(Symbol, Span)>),
+
+    /// Represents `#[rustc_default_body_unstable]`.
     BodyStability {
         stability: DefaultBodyStability,
         /// Span of the `#[rustc_default_body_unstable(...)]` attribute
         span: Span,
     },
+
+    /// Represents `#[rustc_confusables]`.
     Confusables {
         symbols: ThinVec<Symbol>,
         // FIXME(jdonszelmann): remove when target validation code is moved
         first_span: Span,
     },
+
+    /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
     ConstStability {
         stability: PartialConstStability,
         /// Span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]` attribute
         span: Span,
     },
+
+    /// Represents `#[rustc_const_stable_indirect]`.
     ConstStabilityIndirect,
-    Deprecation {
-        deprecation: Deprecation,
-        span: Span,
-    },
-    Diagnostic(DiagnosticAttribute),
-    DocComment {
-        style: AttrStyle,
-        kind: CommentKind,
-        span: Span,
-        comment: Symbol,
-    },
+
+    /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
+    Deprecation { deprecation: Deprecation, span: Span },
+
+    /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
+    DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
+
+    /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
+
+    /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr(ThinVec<(ReprAttr, Span)>),
+
+    /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {
         stability: Stability,
-        /// Span of the `#[stable(...)]` or `#[unstable(...)]` attribute
+        /// Span of the attribute.
         span: Span,
     },
     // tidy-alphabetical-end
