@@ -445,14 +445,9 @@ impl Config {
             // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
             cmd.arg("rev-parse").arg("--show-cdup");
             // Discard stderr because we expect this to fail when building from a tarball.
-            let output = cmd
-                .as_command_mut()
-                .stderr(std::process::Stdio::null())
-                .output()
-                .ok()
-                .and_then(|output| if output.status.success() { Some(output) } else { None });
-            if let Some(output) = output {
-                let git_root_relative = String::from_utf8(output.stdout).unwrap();
+            let output = cmd.run_capture_stdout_exec_ctx(&config);
+            if output.is_success() {
+                let git_root_relative = output.stdout();
                 // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
                 // and to resolve any relative components.
                 let git_root = env::current_dir()
