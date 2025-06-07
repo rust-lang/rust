@@ -3,7 +3,6 @@
     path_add_extension,
     path_file_prefix,
     maybe_uninit_slice,
-    os_string_pathbuf_leak,
     normalize_lexically
 )]
 
