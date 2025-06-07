@@ -1195,13 +1195,12 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }
 
         // `compiler_builtins` is not yet in the graph; inject it. Error on resolution failure.
-        let Some(cnum) = self.resolve_crate(
+        let Ok(cnum) = self.maybe_resolve_crate(
             sym::compiler_builtins,
-            krate.spans.inner_span.shrink_to_lo(),
             CrateDepKind::Explicit,
             CrateOrigin::Injected,
         ) else {
-            info!("`compiler_builtins` not resolved");
+            info!("`compiler_builtins` failed to resolve; skipping");
             return;
         };
 

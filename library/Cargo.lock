@@ -51,11 +51,9 @@ dependencies = [
 
 [[package]]
 name = "cfg-if"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+version = "1.0.1"
+source = "git+https://github.com/tgross35/cfg-if.git?branch=no-compiler-builtins#91c07fb51b83c24c65383d82a2f7a46e55b4ce39"
 dependencies = [
- "compiler_builtins",
  "rustc-std-workspace-core",
 ]
 
