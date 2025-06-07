@@ -4746,8 +4746,6 @@ impl<T> [T] {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// #![feature(substr_range)]
-    ///
     /// let nums: &[u32] = &[1, 7, 1, 1];
     /// let num = &nums[2];
     ///
@@ -4756,8 +4754,6 @@ impl<T> [T] {
     /// ```
     /// Returning `None` with an unaligned element:
     /// ```
-    /// #![feature(substr_range)]
-    ///
     /// let arr: &[[u32; 2]] = &[[0, 1], [2, 3]];
     /// let flat_arr: &[u32] = arr.as_flattened();
     ///
@@ -4771,7 +4767,7 @@ impl<T> [T] {
     /// assert_eq!(arr.element_offset(weird_elm), None); // Points between element 0 and 1
     /// ```
     #[must_use]
-    #[unstable(feature = "substr_range", issue = "126769")]
+    #[stable(feature = "substr_range", since = "CURRENT_RUSTC_VERSION")]
     pub fn element_offset(&self, element: &T) -> Option<usize> {
         if T::IS_ZST {
             panic!("elements are zero-sized");
@@ -4811,8 +4807,6 @@ impl<T> [T] {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// #![feature(substr_range)]
-    ///
     /// let nums = &[0, 5, 10, 0, 0, 5];
     ///
     /// let mut iter = nums
@@ -4825,7 +4819,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(5..6));
     /// ```
     #[must_use]
-    #[unstable(feature = "substr_range", issue = "126769")]
+    #[stable(feature = "substr_range", since = "CURRENT_RUSTC_VERSION")]
     pub fn subslice_range(&self, subslice: &[T]) -> Option<Range<usize>> {
         if T::IS_ZST {
             panic!("elements are zero-sized");
