@@ -285,14 +285,18 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
     type T = stable_mir::mir::NullOp;
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::NullOp::*;
+        use rustc_middle::mir::RuntimeChecks::*;
         match self {
             SizeOf => stable_mir::mir::NullOp::SizeOf,
             AlignOf => stable_mir::mir::NullOp::AlignOf,
             OffsetOf(indices) => stable_mir::mir::NullOp::OffsetOf(
                 indices.iter().map(|idx| idx.stable(tables)).collect(),
             ),
-            UbChecks => stable_mir::mir::NullOp::UbChecks,
-            ContractChecks => stable_mir::mir::NullOp::ContractChecks,
+            RuntimeChecks(kind) => stable_mir::mir::NullOp::RuntimeChecks(match kind {
+                UbChecks => stable_mir::mir::RuntimeChecks::UbChecks,
+                ContractChecks => stable_mir::mir::RuntimeChecks::ContractChecks,
+                OverflowChecks => stable_mir::mir::RuntimeChecks::OverflowChecks,
+            }),
         }
     }
 }
