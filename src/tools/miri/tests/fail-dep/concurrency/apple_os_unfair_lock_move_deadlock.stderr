@@ -1,8 +1,8 @@
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> tests/fail-dep/concurrency/apple_os_unfair_lock_move_deadlock.rs:LL:CC
    |
 LL |     unsafe { libc::os_unfair_lock_lock(lock.get()) };
-   |                                                  ^ the evaluated program deadlocked
+   |                                                  ^ this thread got stuck here
    |
    = note: BACKTRACE:
    = note: inside `main` at tests/fail-dep/concurrency/apple_os_unfair_lock_move_deadlock.rs:LL:CC
