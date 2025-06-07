@@ -133,45 +133,25 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
     /// Instantiate the nested goals for the candidate without rolling back their
     /// inference constraints. This function modifies the state of the `infcx`.
     ///
-    /// See [`Self::instantiate_nested_goals_and_opt_impl_args`] if you need the impl args too.
-    pub fn instantiate_nested_goals(&self, span: Span) -> Vec<InspectGoal<'a, 'tcx>> {
-        self.instantiate_nested_goals_and_opt_impl_args(span).0
-    }
-
-    /// Instantiate the nested goals for the candidate without rolling back their
-    /// inference constraints, and optionally the args of an impl if this candidate
-    /// came from a `CandidateSource::Impl`. This function modifies the state of the
-    /// `infcx`.
+    /// See [`Self::instantiate_impl_args`] if you need the impl args too.
     #[instrument(
         level = "debug",
         skip_all,
         fields(goal = ?self.goal.goal, steps = ?self.steps)
     )]
-    pub fn instantiate_nested_goals_and_opt_impl_args(
-        &self,
-        span: Span,
-    ) -> (Vec<InspectGoal<'a, 'tcx>>, Option<ty::GenericArgsRef<'tcx>>) {
+    pub fn instantiate_nested_goals(&self, span: Span) -> Vec<InspectGoal<'a, 'tcx>> {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
         let mut orig_values = self.goal.orig_values.to_vec();
 
         let mut instantiated_goals = vec![];
-        let mut opt_impl_args = None;
         for step in &self.steps {
             match **step {
                 inspect::ProbeStep::AddGoal(source, goal) => instantiated_goals.push((
                     source,
                     instantiate_canonical_state(infcx, span, param_env, &mut orig_values, goal),
                 )),
-                inspect::ProbeStep::RecordImplArgs { impl_args } => {
-                    opt_impl_args = Some(instantiate_canonical_state(
-                        infcx,
-                        span,
-                        param_env,
-                        &mut orig_values,
-                        impl_args,
-                    ));
-                }
+                inspect::ProbeStep::RecordImplArgs { .. } => {}
                 inspect::ProbeStep::MakeCanonicalResponse { .. }
                 | inspect::ProbeStep::NestedProbe(_) => unreachable!(),
             }
@@ -187,14 +167,59 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
             let _ = term_hack.constrain(infcx, span, param_env);
         }
 
-        let opt_impl_args = opt_impl_args.map(|impl_args| eager_resolve_vars(infcx, impl_args));
-
-        let goals = instantiated_goals
+        instantiated_goals
             .into_iter()
             .map(|(source, goal)| self.instantiate_proof_tree_for_nested_goal(source, goal, span))
-            .collect();
+            .collect()
+    }
 
-        (goals, opt_impl_args)
+    /// Instantiate the args of an impl if this candidate came from a
+    /// `CandidateSource::Impl`. This function modifies the state of the
+    /// `infcx`.
+    #[instrument(
+        level = "debug",
+        skip_all,
+        fields(goal = ?self.goal.goal, steps = ?self.steps)
+    )]
+    pub fn instantiate_impl_args(&self, span: Span) -> ty::GenericArgsRef<'tcx> {
+        let infcx = self.goal.infcx;
+        let param_env = self.goal.goal.param_env;
+        let mut orig_values = self.goal.orig_values.to_vec();
+
+        for step in &self.steps {
+            match **step {
+                inspect::ProbeStep::RecordImplArgs { impl_args } => {
+                    let impl_args = instantiate_canonical_state(
+                        infcx,
+                        span,
+                        param_env,
+                        &mut orig_values,
+                        impl_args,
+                    );
+
+                    let () = instantiate_canonical_state(
+                        infcx,
+                        span,
+                        param_env,
+                        &mut orig_values,
+                        self.final_state,
+                    );
+
+                    // No reason we couldn't support this, but we don't need to for select.
+                    assert!(
+                        self.goal.normalizes_to_term_hack.is_none(),
+                        "cannot use `instantiate_impl_args` with a `NormalizesTo` goal"
+                    );
+
+                    return eager_resolve_vars(infcx, impl_args);
+                }
+                inspect::ProbeStep::AddGoal(..) => {}
+                inspect::ProbeStep::MakeCanonicalResponse { .. }
+                | inspect::ProbeStep::NestedProbe(_) => unreachable!(),
+            }
+        }
+
+        bug!("expected impl args probe step for `instantiate_impl_args`");
     }
 
     pub fn instantiate_proof_tree_for_nested_goal(
