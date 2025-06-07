@@ -88,6 +88,44 @@ impl Tcp4 {
         }
     }
 
+    pub(crate) fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        let evt = unsafe { self.create_evt() }?;
+        let completion_token =
+            tcp4::CompletionToken { event: evt.as_ptr(), status: Status::SUCCESS };
+        let data_len = crate::cmp::min(u32::MAX as u64, buf.len() as u64) as u32;
+
+        let fragment = tcp4::FragmentData {
+            fragment_length: data_len,
+            fragment_buffer: buf.as_ptr() as *mut _,
+        };
+        let mut tx_data = tcp4::TransmitData {
+            push: r_efi::efi::Boolean::FALSE,
+            urgent: r_efi::efi::Boolean::FALSE,
+            data_length: data_len,
+            fragment_count: 1,
+            fragment_table: [fragment],
+        };
+
+        let protocol = self.protocol.as_ptr();
+        let mut token = tcp4::IoToken {
+            completion_token,
+            packet: tcp4::IoTokenPacket { tx_data: &mut tx_data as *mut _ as *mut _ },
+        };
+
+        let r = unsafe { ((*protocol).transmit)(protocol, &mut token) };
+        if r.is_error() {
+            return Err(io::Error::from_raw_os_error(r.as_usize()));
+        }
+
+        self.wait_for_flag();
+
+        if completion_token.status.is_error() {
+            Err(io::Error::from_raw_os_error(completion_token.status.as_usize()))
+        } else {
+            Ok(data_len as usize)
+        }
+    }
+
     unsafe fn create_evt(&self) -> io::Result<helpers::OwnedEvent> {
         self.flag.store(false, Ordering::Relaxed);
         helpers::OwnedEvent::new(
