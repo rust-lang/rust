@@ -58,18 +58,6 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_invalid_minimum_alignment_not_power_of_two)]
-pub(crate) struct InvalidMinimumAlignmentNotPowerOfTwo {
-    pub align: u64,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_invalid_minimum_alignment_too_large)]
-pub(crate) struct InvalidMinimumAlignmentTooLarge {
-    pub align: u64,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_sanitizer_memtag_requires_mte)]
 pub(crate) struct SanitizerMemtagRequiresMte;
 

@@ -19,12 +19,6 @@ codegen_llvm_from_llvm_diag = {$message}
 
 codegen_llvm_from_llvm_optimization_diag = {$filename}:{$line}:{$column} {$pass_name} ({$kind}): {$message}
 
-codegen_llvm_invalid_minimum_alignment_not_power_of_two =
-    invalid minimum global alignment: {$align} is not power of 2
-
-codegen_llvm_invalid_minimum_alignment_too_large =
-    invalid minimum global alignment: {$align} is too large
-
 codegen_llvm_load_bitcode = failed to load bitcode of module "{$name}"
 codegen_llvm_load_bitcode_with_llvm_err = failed to load bitcode of module "{$name}": {$llvm_err}
 
