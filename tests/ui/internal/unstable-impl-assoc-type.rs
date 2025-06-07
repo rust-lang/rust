@@ -1,4 +1,4 @@
-//@ revisions: pass fail 
+//@ revisions: pass fail
 //@[pass] check-pass
 
 #![allow(internal_features)]

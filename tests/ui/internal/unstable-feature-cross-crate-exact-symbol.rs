@@ -1,5 +1,5 @@
 //@ aux-build:unstable_feature.rs
-//@ revisions: pass fail 
+//@ revisions: pass fail
 //@[pass] check-pass
 
 #![cfg_attr(pass, feature(feat_bar, feat_moo))]

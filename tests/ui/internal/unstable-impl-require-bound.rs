@@ -1,4 +1,4 @@
-//@ revisions: pass fail 
+//@ revisions: pass fail
 //@[pass] check-pass
 
 #![allow(internal_features)]
@@ -7,7 +7,7 @@
 #![allow(dead_code)]
 #![unstable(feature = "feat_foo", issue = "none" )]
 
-/// In staged-api crate, using an unstable impl 
+/// In staged-api crate, using an unstable impl
 /// requires #[unstable_feature_bound(..)].
 
 pub trait Foo {
