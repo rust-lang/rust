@@ -334,7 +334,7 @@ fn order_of_clippy_rules() {
 
     let actual = match config.cmd.clone() {
         crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
-            let cfg = LintConfig { allow, deny, warn, forbid };
+            let cfg = LintConfig { allow, deny, warn, forbid, clippy_cfg_path: None };
             get_clippy_rules_in_order(&args, &cfg)
         }
         _ => panic!("invalid subcommand"),
@@ -358,7 +358,7 @@ fn clippy_rule_separate_prefix() {
 
     let actual = match config.cmd.clone() {
         crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
-            let cfg = LintConfig { allow, deny, warn, forbid };
+            let cfg = LintConfig { allow, deny, warn, forbid, clippy_cfg_path: None };
             get_clippy_rules_in_order(&args, &cfg)
         }
         _ => panic!("invalid subcommand"),
