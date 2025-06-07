@@ -1264,6 +1264,21 @@ impl<'ll> CodegenCx<'ll, '_> {
         self.eh_catch_typeinfo.set(Some(eh_catch_typeinfo));
         eh_catch_typeinfo
     }
+
+    pub(crate) fn intrinsic_type(
+        &self,
+        intrinsic: llvm::Intrinsic,
+        type_params: &[&'ll Type],
+    ) -> &'ll Type {
+        unsafe {
+            llvm::LLVMIntrinsicGetType(
+                self.llcx(),
+                intrinsic.id(),
+                type_params.as_ptr(),
+                type_params.len(),
+            )
+        }
+    }
 }
 
 impl CodegenCx<'_, '_> {

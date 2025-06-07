@@ -187,7 +187,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
-        let fn_ty = bx.fn_decl_backend_type(fn_abi);
+        let fn_ty = bx.fn_decl_backend_type(fn_abi, fn_ptr);
 
         let fn_attrs = if bx.tcx().def_kind(fx.instance.def_id()).has_codegen_attrs() {
             Some(bx.tcx().codegen_fn_attrs(fx.instance.def_id()))
@@ -1835,7 +1835,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if is_call_from_compiler_builtins_to_upstream_monomorphization(bx.tcx(), instance) {
             bx.abort();
         } else {
-            let fn_ty = bx.fn_decl_backend_type(fn_abi);
+            let fn_ty = bx.fn_decl_backend_type(fn_abi, fn_ptr);
 
             let llret = bx.call(fn_ty, None, Some(fn_abi), fn_ptr, &[], funclet.as_ref(), None);
             bx.apply_attrs_to_cleanup_callsite(llret);
