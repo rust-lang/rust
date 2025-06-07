@@ -166,26 +166,6 @@ LL |     let _a: A = ptr::read_unaligned(ptr::null_mut());
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
   --> $DIR/invalid_null_args.rs:61:17
    |
-LL |     let _a: A = ptr::read_volatile(ptr::null());
-   |                 ^^^^^^^^^^^^^^^^^^^-----------^
-   |                                    |
-   |                                    null pointer originates from here
-   |
-   = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
-
-error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:63:17
-   |
-LL |     let _a: A = ptr::read_volatile(ptr::null_mut());
-   |                 ^^^^^^^^^^^^^^^^^^^---------------^
-   |                                    |
-   |                                    null pointer originates from here
-   |
-   = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
-
-error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:66:17
-   |
 LL |     let _a: A = ptr::replace(ptr::null_mut(), v);
    |                 ^^^^^^^^^^^^^---------------^^^^
    |                              |
@@ -194,7 +174,7 @@ LL |     let _a: A = ptr::replace(ptr::null_mut(), v);
    = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:69:5
+  --> $DIR/invalid_null_args.rs:64:5
    |
 LL |     ptr::swap::<A>(ptr::null_mut(), &mut v);
    |     ^^^^^^^^^^^^^^^---------------^^^^^^^^^
@@ -204,7 +184,7 @@ LL |     ptr::swap::<A>(ptr::null_mut(), &mut v);
    = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:71:5
+  --> $DIR/invalid_null_args.rs:66:5
    |
 LL |     ptr::swap::<A>(&mut v, ptr::null_mut());
    |     ^^^^^^^^^^^^^^^^^^^^^^^---------------^
@@ -214,7 +194,7 @@ LL |     ptr::swap::<A>(&mut v, ptr::null_mut());
    = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:74:5
+  --> $DIR/invalid_null_args.rs:69:5
    |
 LL |     ptr::swap_nonoverlapping::<A>(ptr::null_mut(), &mut v, 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^^^^^^^^^^^^
@@ -224,7 +204,7 @@ LL |     ptr::swap_nonoverlapping::<A>(ptr::null_mut(), &mut v, 0);
    = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:76:5
+  --> $DIR/invalid_null_args.rs:71:5
    |
 LL |     ptr::swap_nonoverlapping::<A>(&mut v, ptr::null_mut(), 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^^^^
@@ -234,7 +214,7 @@ LL |     ptr::swap_nonoverlapping::<A>(&mut v, ptr::null_mut(), 0);
    = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:79:5
+  --> $DIR/invalid_null_args.rs:74:5
    |
 LL |     ptr::write(ptr::null_mut(), v);
    |     ^^^^^^^^^^^---------------^^^^
@@ -244,7 +224,7 @@ LL |     ptr::write(ptr::null_mut(), v);
    = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:82:5
+  --> $DIR/invalid_null_args.rs:77:5
    |
 LL |     ptr::write_unaligned(ptr::null_mut(), v);
    |     ^^^^^^^^^^^^^^^^^^^^^---------------^^^^
@@ -254,27 +234,7 @@ LL |     ptr::write_unaligned(ptr::null_mut(), v);
    = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:85:5
-   |
-LL |     ptr::write_volatile(ptr::null_mut(), v);
-   |     ^^^^^^^^^^^^^^^^^^^^---------------^^^^
-   |                         |
-   |                         null pointer originates from here
-   |
-   = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
-
-error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:88:5
-   |
-LL |     ptr::write_bytes::<usize>(ptr::null_mut(), 42, 0);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^^^^^^^^
-   |                               |
-   |                               null pointer originates from here
-   |
-   = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
-
-error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:93:18
+  --> $DIR/invalid_null_args.rs:82:18
    |
 LL |     let _a: u8 = ptr::read(const_ptr);
    |                  ^^^^^^^^^^^^^^^^^^^^
@@ -287,7 +247,7 @@ LL |     let null_ptr = ptr::null_mut();
    |                    ^^^^^^^^^^^^^^^
 
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:100:5
+  --> $DIR/invalid_null_args.rs:89:5
    |
 LL |     std::slice::from_raw_parts::<()>(ptr::null(), 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^
@@ -297,7 +257,7 @@ LL |     std::slice::from_raw_parts::<()>(ptr::null(), 0);
    = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:102:5
+  --> $DIR/invalid_null_args.rs:91:5
    |
 LL |     std::slice::from_raw_parts::<Zst>(ptr::null(), 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^
@@ -307,7 +267,7 @@ LL |     std::slice::from_raw_parts::<Zst>(ptr::null(), 0);
    = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:104:5
+  --> $DIR/invalid_null_args.rs:93:5
    |
 LL |     std::slice::from_raw_parts_mut::<()>(ptr::null_mut(), 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^^^^
@@ -317,7 +277,7 @@ LL |     std::slice::from_raw_parts_mut::<()>(ptr::null_mut(), 0);
    = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
 error: calling this function with a null pointer is undefined behavior, even if the result of the function is unused
-  --> $DIR/invalid_null_args.rs:106:5
+  --> $DIR/invalid_null_args.rs:95:5
    |
 LL |     std::slice::from_raw_parts_mut::<Zst>(ptr::null_mut(), 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^^^^
@@ -326,5 +286,5 @@ LL |     std::slice::from_raw_parts_mut::<Zst>(ptr::null_mut(), 0);
    |
    = help: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html> and <https://doc.rust-lang.org/reference/behavior-considered-undefined.html>
 
-error: aborting due to 31 previous errors
+error: aborting due to 27 previous errors
 
