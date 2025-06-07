@@ -162,15 +162,6 @@ pub(crate) enum AssocItemNotFoundSugg<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_unrecognized_atomic_operation, code = E0092)]
-pub(crate) struct UnrecognizedAtomicOperation<'a> {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub op: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_wrong_number_of_generic_arguments_to_intrinsic, code = E0094)]
 pub(crate) struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
     #[primary_span]
