@@ -196,7 +196,8 @@ declare_lint! {
     /// same address after being merged together.
     UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
     Warn,
-    "detects unpredictable function pointer comparisons"
+    "detects unpredictable function pointer comparisons",
+    report_in_external_macro
 }
 
 #[derive(Copy, Clone, Default)]
