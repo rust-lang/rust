@@ -4,12 +4,13 @@ use std::collections::BTreeSet;
 use std::env;
 use std::fs::{self, write};
 use std::path::Path;
+use std::process::Command;
 
-use tidy::features::{Features, collect_lang_features, collect_lib_features};
+use tidy::features::{Feature, Features, Status, collect_lang_features, collect_lib_features};
 use tidy::t;
 use tidy::unstable_book::{
-    LANG_FEATURES_DIR, LIB_FEATURES_DIR, PATH_STR, collect_unstable_book_section_file_names,
-    collect_unstable_feature_names,
+    COMPILER_FLAGS_DIR, LANG_FEATURES_DIR, LIB_FEATURES_DIR, PATH_STR,
+    collect_unstable_book_section_file_names, collect_unstable_feature_names,
 };
 
 fn generate_stub_issue(path: &Path, name: &str, issue: u32, description: &str) {
@@ -33,8 +34,15 @@ fn set_to_summary_str(set: &BTreeSet<String>, dir: &str) -> String {
         .fold("".to_owned(), |s, a| s + &a + "\n")
 }
 
-fn generate_summary(path: &Path, lang_features: &Features, lib_features: &Features) {
-    let compiler_flags = collect_unstable_book_section_file_names(&path.join("src/compiler-flags"));
+fn generate_summary(
+    path: &Path,
+    lang_features: &Features,
+    lib_features: &Features,
+    compiler_flags: &Features,
+) {
+    let compiler_flags =
+        &collect_unstable_book_section_file_names(&path.join("src/compiler-flags"))
+            | &collect_unstable_feature_names(&compiler_flags);
     let compiler_env_vars =
         collect_unstable_book_section_file_names(&path.join("src/compiler-environment-variables"));
 
@@ -97,14 +105,47 @@ fn copy_recursive(from: &Path, to: &Path) {
     }
 }
 
+fn collect_compiler_flags(rustc_path: impl AsRef<Path>) -> Features {
+    let mut rustc = Command::new(rustc_path.as_ref());
+    rustc.arg("-Zhelp");
+
+    let output = t!(rustc.output());
+    let help_str = t!(String::from_utf8(output.stdout));
+    let parts = help_str.split("\n    -Z").collect::<Vec<_>>();
+
+    let mut features = Features::new();
+    for part in parts.into_iter().skip(1) {
+        let (name, description) =
+            part.split_once("--").expect("name and description should be delimited by '--'");
+        let name = name.trim().trim_end_matches("=val");
+        let description = description.trim();
+
+        features.insert(
+            name.replace('-', "_"),
+            Feature {
+                level: Status::Unstable,
+                since: None,
+                has_gate_test: false,
+                tracking_issue: None,
+                file: "".into(),
+                line: 0,
+                description: Some(description.to_owned()),
+            },
+        );
+    }
+    features
+}
+
 fn main() {
     let library_path_str = env::args_os().nth(1).expect("library/ path required");
     let compiler_path_str = env::args_os().nth(2).expect("compiler/ path required");
     let src_path_str = env::args_os().nth(3).expect("src/ path required");
-    let dest_path_str = env::args_os().nth(4).expect("destination path required");
+    let rustc_path_str = env::args_os().nth(4).expect("rustc path required");
+    let dest_path_str = env::args_os().nth(5).expect("destination path required");
     let library_path = Path::new(&library_path_str);
     let compiler_path = Path::new(&compiler_path_str);
     let src_path = Path::new(&src_path_str);
+    let rustc_path = Path::new(&rustc_path_str);
     let dest_path = Path::new(&dest_path_str);
 
     let lang_features = collect_lang_features(compiler_path, &mut false);
@@ -112,6 +153,7 @@ fn main() {
         .into_iter()
         .filter(|&(ref name, _)| !lang_features.contains_key(name))
         .collect();
+    let compiler_flags = collect_compiler_flags(rustc_path);
 
     let doc_src_path = src_path.join(PATH_STR);
 
@@ -127,8 +169,13 @@ fn main() {
         &dest_path.join(LIB_FEATURES_DIR),
         &lib_features,
     );
+    generate_unstable_book_files(
+        &doc_src_path.join(COMPILER_FLAGS_DIR),
+        &dest_path.join(COMPILER_FLAGS_DIR),
+        &compiler_flags,
+    );
 
     copy_recursive(&doc_src_path, &dest_path);
 
-    generate_summary(&dest_path, &lang_features, &lib_features);
+    generate_summary(&dest_path, &lang_features, &lib_features, &compiler_flags);
 }
