@@ -12,7 +12,6 @@ use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
 
 use super::execution_context::ExecutionContext;
-use crate::Build;
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]
@@ -140,46 +139,23 @@ impl BootstrapCommand {
         self
     }
 
+    /// Run the command, while printing stdout and stderr.
+    /// Returns true if the command has succeeded.
     #[track_caller]
-    pub fn run_exec_ctx(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> bool {
+    pub fn run(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> bool {
         exec_ctx.as_ref().run(self, OutputMode::Print, OutputMode::Print).is_success()
     }
 
     /// Run the command, while capturing and returning all its output.
     #[track_caller]
-    pub fn run_capture_exec_ctx(
-        &mut self,
-        exec_ctx: impl AsRef<ExecutionContext>,
-    ) -> CommandOutput {
+    pub fn run_capture(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
         exec_ctx.as_ref().run(self, OutputMode::Capture, OutputMode::Capture)
     }
 
     /// Run the command, while capturing and returning stdout, and printing stderr.
     #[track_caller]
-    pub fn run_capture_stdout_exec_ctx(
-        &mut self,
-        exec_ctx: impl AsRef<ExecutionContext>,
-    ) -> CommandOutput {
+    pub fn run_capture_stdout(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
         exec_ctx.as_ref().run(self, OutputMode::Capture, OutputMode::Print)
-    }
-
-    /// Run the command, while printing stdout and stderr.
-    /// Returns true if the command has succeeded.
-    #[track_caller]
-    pub fn run(&mut self, builder: &Build) -> bool {
-        builder.run(self, OutputMode::Print, OutputMode::Print).is_success()
-    }
-
-    /// Run the command, while capturing and returning all its output.
-    #[track_caller]
-    pub fn run_capture(&mut self, builder: &Build) -> CommandOutput {
-        builder.run(self, OutputMode::Capture, OutputMode::Capture)
-    }
-
-    /// Run the command, while capturing and returning stdout, and printing stderr.
-    #[track_caller]
-    pub fn run_capture_stdout(&mut self, builder: &Build) -> CommandOutput {
-        builder.run(self, OutputMode::Capture, OutputMode::Print)
     }
 
     /// Provides access to the stdlib Command inside.

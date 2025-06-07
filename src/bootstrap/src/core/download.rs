@@ -27,7 +27,7 @@ fn extract_curl_version(out: String) -> semver::Version {
 fn curl_version(config: &Config) -> semver::Version {
     let mut curl = command("curl");
     curl.arg("-V");
-    let curl = curl.run_capture_stdout_exec_ctx(config);
+    let curl = curl.run_capture_stdout(config);
     if curl.is_failure() {
         return semver::Version::new(1, 0, 0);
     }
@@ -80,7 +80,7 @@ impl Config {
     /// on NixOS
     fn should_fix_bins_and_dylibs(&self) -> bool {
         let val = *SHOULD_FIX_BINS_AND_DYLIBS.get_or_init(|| {
-            let uname = command("uname").arg("-s").run_capture_stdout_exec_ctx(self);
+            let uname = command("uname").arg("-s").run_capture_stdout(self);
             if uname.is_failure() {
                 return false;
             }
@@ -165,7 +165,7 @@ impl Config {
             nix_build_succeeded = command("nix-build")
                 .allow_failure()
                 .args([Path::new("-E"), Path::new(NIX_EXPR), Path::new("-o"), &nix_deps_dir])
-                .run_capture_stdout_exec_ctx(self)
+                .run_capture_stdout(self)
                 .is_success();
             nix_deps_dir
         });
@@ -185,7 +185,7 @@ impl Config {
             patchelf.args(["--set-interpreter", dynamic_linker.trim_end()]);
         }
         patchelf.arg(fname);
-        let _ = patchelf.run_capture_stdout_exec_ctx(self);
+        let _ = patchelf.run_capture_stdout(self);
     }
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
@@ -267,7 +267,7 @@ impl Config {
                             "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
                             url, tempfile.to_str().expect("invalid UTF-8 not supported with powershell downloads"),
                         ),
-                    ]).run_capture_stdout_exec_ctx(self);
+                    ]).run_capture_stdout(self);
 
                     if powershell.is_failure() {
                         return;

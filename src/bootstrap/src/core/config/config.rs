@@ -446,7 +446,7 @@ impl Config {
             // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
             cmd.arg("rev-parse").arg("--show-cdup");
             // Discard stderr because we expect this to fail when building from a tarball.
-            let output = cmd.allow_failure().run_capture_stdout_exec_ctx(&config);
+            let output = cmd.allow_failure().run_capture_stdout(&config);
             if output.is_success() {
                 let git_root_relative = output.stdout();
                 // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
@@ -753,7 +753,7 @@ impl Config {
             command(&config.initial_rustc)
                 .args(["--print", "sysroot"])
                 .run_always()
-                .run_capture_stdout_exec_ctx(&config)
+                .run_capture_stdout(&config)
                 .stdout()
                 .trim()
         ));
@@ -1068,7 +1068,7 @@ impl Config {
 
         let mut git = helpers::git(Some(&self.src));
         git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
-        git.allow_failure().run_capture_stdout_exec_ctx(self).stdout()
+        git.allow_failure().run_capture_stdout(self).stdout()
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -1342,7 +1342,7 @@ impl Config {
         let checked_out_hash = submodule_git()
             .allow_failure()
             .args(["rev-parse", "HEAD"])
-            .run_capture_stdout_exec_ctx(self)
+            .run_capture_stdout(self)
             .stdout();
         let checked_out_hash = checked_out_hash.trim_end();
         // Determine commit that the submodule *should* have.
@@ -1351,7 +1351,7 @@ impl Config {
             .run_always()
             .args(["ls-tree", "HEAD"])
             .arg(relative_path)
-            .run_capture_stdout_exec_ctx(self)
+            .run_capture_stdout(self)
             .stdout();
 
         let actual_hash = recorded
@@ -1380,7 +1380,7 @@ impl Config {
                 .allow_failure()
                 .run_always()
                 .args(["symbolic-ref", "--short", "HEAD"])
-                .run_capture_exec_ctx(self);
+                .run_capture(self);
 
             let mut git = helpers::git(Some(&self.src)).allow_failure();
             git.run_always();
@@ -1434,7 +1434,7 @@ impl Config {
         }
 
         let stage0_output =
-            command(program_path).arg("--version").run_capture_stdout_exec_ctx(self).stdout();
+            command(program_path).arg("--version").run_capture_stdout(self).stdout();
         let mut stage0_output = stage0_output.lines().next().unwrap().split(' ');
 
         let stage0_name = stage0_output.next().unwrap();
