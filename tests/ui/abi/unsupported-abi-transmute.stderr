@@ -1,0 +1,9 @@
+error[E0570]: `"gpu-kernel"` is not a supported ABI for the current target
+  --> $DIR/unsupported-abi-transmute.rs:5:59
+   |
+LL |     let a = unsafe { core::mem::transmute::<usize, extern "gpu-kernel" fn(i32)>(4) }(2);
+   |                                                           ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0570`.

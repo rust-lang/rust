@@ -49,7 +49,6 @@ use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_e
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, HirIdMap, Node};
-use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::query::Providers;
@@ -149,8 +148,6 @@ fn typeck_with_inspect<'tcx>(
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
         };
-
-        check_abi(tcx, span, fn_sig.abi());
 
         // Compute the function signature from point of view of inside the fn.
         let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);

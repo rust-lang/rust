@@ -10,9 +10,7 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{LangItem, Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
-use rustc_lint_defs::builtin::{
-    REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS, UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
-};
+use rustc_lint_defs::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
@@ -34,28 +32,6 @@ use {rustc_attr_data_structures as attrs, rustc_hir as hir};
 
 use super::compare_impl_item::check_type_bounds;
 use super::*;
-
-pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: ExternAbi) {
-    if !tcx.sess.target.is_abi_supported(abi) {
-        struct_span_code_err!(
-            tcx.dcx(),
-            span,
-            E0570,
-            "`{abi}` is not a supported ABI for the current target",
-        )
-        .emit();
-    }
-}
-
-pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
-    if !tcx.sess.target.is_abi_supported(abi) {
-        tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
-            lint.primary_message(format!(
-                "the calling convention {abi} is not supported on this target"
-            ));
-        });
-    }
-}
 
 fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
@@ -779,7 +755,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
                 return;
             };
-            check_abi(tcx, it.span, abi);
 
             for item in items {
                 let def_id = item.id.owner_id.def_id;

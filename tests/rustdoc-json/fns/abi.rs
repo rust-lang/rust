@@ -1,4 +1,4 @@
-#![feature(abi_vectorcall)]
+#![feature(rust_cold_cc)]
 
 //@ is "$.index[?(@.name=='abi_rust')].inner.function.header.abi" \"Rust\"
 pub fn abi_rust() {}
@@ -15,8 +15,5 @@ pub extern "C-unwind" fn abi_c_unwind() {}
 //@ is "$.index[?(@.name=='abi_system_unwind')].inner.function.header.abi" '{"System": {"unwind": true}}'
 pub extern "system-unwind" fn abi_system_unwind() {}
 
-//@ is "$.index[?(@.name=='abi_vectorcall')].inner.function.header.abi.Other" '"\"vectorcall\""'
-pub extern "vectorcall" fn abi_vectorcall() {}
-
-//@ is "$.index[?(@.name=='abi_vectorcall_unwind')].inner.function.header.abi.Other" '"\"vectorcall-unwind\""'
-pub extern "vectorcall-unwind" fn abi_vectorcall_unwind() {}
+//@ is "$.index[?(@.name=='abi_rust_cold')].inner.function.header.abi.Other" '"\"rust-cold\""'
+pub extern "rust-cold" fn abi_rust_cold() {}
