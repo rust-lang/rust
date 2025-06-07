@@ -10,6 +10,8 @@ pub struct Stage0 {
 
 #[derive(Default, Clone)]
 pub struct VersionMetadata {
+    pub channel_manifest_hash: String,
+    pub git_commit_hash: String,
     pub date: String,
     pub version: String,
 }
@@ -50,9 +52,21 @@ pub fn parse_stage0_file() -> Stage0 {
             "git_merge_commit_email" => stage0.config.git_merge_commit_email = value.to_owned(),
             "nightly_branch" => stage0.config.nightly_branch = value.to_owned(),
 
+            "compiler_channel_manifest_hash" => {
+                stage0.compiler.channel_manifest_hash = value.to_owned()
+            }
+            "compiler_git_commit_hash" => stage0.compiler.git_commit_hash = value.to_owned(),
             "compiler_date" => stage0.compiler.date = value.to_owned(),
             "compiler_version" => stage0.compiler.version = value.to_owned(),
 
+            "rustfmt_channel_manifest_hash" => {
+                stage0.rustfmt.get_or_insert(VersionMetadata::default()).channel_manifest_hash =
+                    value.to_owned();
+            }
+            "rustfmt_git_commit_hash" => {
+                stage0.rustfmt.get_or_insert(VersionMetadata::default()).git_commit_hash =
+                    value.to_owned();
+            }
             "rustfmt_date" => {
                 stage0.rustfmt.get_or_insert(VersionMetadata::default()).date = value.to_owned();
             }
