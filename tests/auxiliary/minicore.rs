@@ -25,7 +25,8 @@
     f16,
     f128,
     asm_experimental_arch,
-    unboxed_closures
+    unboxed_closures,
+    intrinsics
 )]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 #![no_std]
@@ -190,3 +191,59 @@ impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b 
 trait Drop {
     fn drop(&mut self);
 }
+
+#[lang = "panic"]
+pub fn panic(_msg: &'static str) {}
+
+#[lang = "panic_const_neg_overflow"]
+pub fn panic_const_neg_overflow() {}
+
+#[lang = "neg"]
+trait Neg {
+    type Output;
+
+    fn neg(self) -> Self::Output;
+}
+
+impl Neg for i8 {
+    type Output = i8;
+
+    fn neg(self) -> Self::Output {
+        -self
+    }
+}
+
+#[lang = "Ordering"]
+#[repr(i8)]
+pub enum Ordering {
+    Less = -1,
+    Equal = 0,
+    Greater = 1,
+}
+
+#[rustc_intrinsic]
+pub fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering;
+
+#[rustc_intrinsic]
+pub unsafe fn simd_bitmask<V, B>(mask: V) -> B;
+
+#[rustc_intrinsic]
+pub unsafe fn simd_gather<V, M, P>(values: V, mask: M, pointer: P) -> V;
+
+#[rustc_intrinsic]
+pub unsafe fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
+
+#[rustc_intrinsic]
+pub unsafe fn simd_reduce_all<T>(x: T) -> bool;
+
+#[rustc_intrinsic]
+pub unsafe fn simd_reduce_any<T>(x: T) -> bool;
+
+#[rustc_intrinsic]
+pub unsafe fn simd_masked_store<M, P, T>(mask: M, pointer: P, values: T);
+
+#[rustc_intrinsic]
+pub unsafe fn simd_scatter<V, P, M>(values: V, pointer: P, mask: M);
+
+#[rustc_intrinsic]
+pub unsafe fn simd_select<M, V>(mask: M, a: V, b: V) -> V;
