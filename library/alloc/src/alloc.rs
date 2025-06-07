@@ -31,8 +31,9 @@ unsafe extern "Rust" {
     #[rustc_std_internal_symbol]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
 
+    #[rustc_nounwind]
     #[rustc_std_internal_symbol]
-    static __rust_no_alloc_shim_is_unstable: u8;
+    fn __rust_no_alloc_shim_is_unstable_v2();
 }
 
 /// The global memory allocator.
@@ -88,7 +89,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     unsafe {
         // Make sure we don't accidentally allow omitting the allocator shim in
         // stable code until it is actually stabilized.
-        core::ptr::read_volatile(&__rust_no_alloc_shim_is_unstable);
+        __rust_no_alloc_shim_is_unstable_v2();
 
         __rust_alloc(layout.size(), layout.align())
     }
@@ -171,7 +172,7 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
     unsafe {
         // Make sure we don't accidentally allow omitting the allocator shim in
         // stable code until it is actually stabilized.
-        core::ptr::read_volatile(&__rust_no_alloc_shim_is_unstable);
+        __rust_no_alloc_shim_is_unstable_v2();
 
         __rust_alloc_zeroed(layout.size(), layout.align())
     }
