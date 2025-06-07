@@ -151,7 +151,7 @@ Here are some details that are relevant to this test suite specifically:
 * While you can use both `//@ compile-flags` and `//@ doc-flags` to pass flags to `rustdoc`,
   prefer to user the latter to show intent. The former is meant for `rustc`.
 * Add `//@ build-aux-docs` to the test file that has auxiliary crates to not only compile the
-  auxiliaries with `rustc` but to also document them with `rustdoc`
+  auxiliaries with `rustc` but to also document them with `rustdoc`.
 
 ## Caveats
 
@@ -161,8 +161,9 @@ It's not unusual that the *shape* of the generated HTML document tree changes fr
 This includes for example renamings of CSS classes.
 
 Whenever that happens, *positive* checks will either continue to match the intended element /
-attribute / text if their XPath expression is general / loose enough and thus test the correct thing
-or they won't in which case they would fail forcing the author of the change tolook at them.
+attribute / text (if their XPath expression is general / loose enough) and
+thus continue to test the correct thing or they won't in which case they would fail thereby
+forcing the author of the change to look at them.
 
 Compare that to *negative* checks (e.g., `//@ !has PATH XPATH PATTERN`) which won't fail if their
 XPath expression "no longer" matches. The author who changed "the shape" thus won't get notified and
