@@ -1,11 +1,5 @@
-//@ revisions: OPT2 OPT3 OPT3_S390X
+//@ revisions: OPT2
 //@[OPT2] compile-flags: -Copt-level=2
-//@[OPT3] compile-flags: -C opt-level=3
-// some targets don't do the opt we are looking for
-//@[OPT3] only-64bit
-//@[OPT3] ignore-s390x
-//@[OPT3_S390X] compile-flags: -C opt-level=3 -C target-cpu=z13
-//@[OPT3_S390X] only-s390x
 
 #![crate_type = "lib"]
 #![no_std]
@@ -13,17 +7,25 @@
 // The code is from https://github.com/rust-lang/rust/issues/122805.
 // Ensure we do not generate the shufflevector instruction
 // to avoid complicating the code.
+
 // CHECK-LABEL: define{{.*}}void @convert(
 // CHECK-NOT: shufflevector
-// On higher opt levels, this should just be a bswap:
-// OPT3: load <8 x i16>
-// OPT3-NEXT: call <8 x i16> @llvm.bswap
-// OPT3-NEXT: store <8 x i16>
-// OPT3-NEXT: ret void
-// OPT3_S390X: load <8 x i16>
-// OPT3_S390X-NEXT: call <8 x i16> @llvm.bswap
-// OPT3_S390X-NEXT: store <8 x i16>
-// OPT3_S390X-NEXT: ret void
+
+// CHECK: store i16
+// CHECK-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 2
+// CHECK-NEXT: store i16
+// CHECK-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 4
+// CHECK-NEXT: store i16
+// CHECK-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 6
+// CHECK-NEXT: store i16
+// CHECK-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 8
+// CHECK-NEXT: store i16
+// CHECK-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 10
+// CHECK-NEXT: store i16
+// CHECK-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 12
+// CHECK-NEXT: store i16
+// CHECK-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 14
+// CHECK-NEXT: store i16
 #[no_mangle]
 pub fn convert(value: [u16; 8]) -> [u8; 16] {
     #[cfg(target_endian = "little")]
