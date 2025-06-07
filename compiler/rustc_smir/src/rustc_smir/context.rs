@@ -16,7 +16,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{mir, ty};
 use rustc_span::def_id::LOCAL_CRATE;
-use stable_mir::abi::{FnAbi, Layout, LayoutShape};
+use stable_mir::abi::{FnAbi, Layout, LayoutShape, ReprOptions};
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::mono::{InstanceDef, StaticDef};
 use stable_mir::mir::{BinOp, Body, Place, UnOp};
@@ -395,6 +395,13 @@ impl<'tcx> SmirCtxt<'tcx> {
         let tcx = tables.tcx;
         let def_id = def.0.internal(&mut *tables, tcx);
         tables.tcx.is_lang_item(def_id, LangItem::CStr)
+    }
+
+    /// Returns the representation options for this ADT
+    pub fn adt_repr(&self, def: AdtDef) -> ReprOptions {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        def.internal(&mut *tables, tcx).repr().stable(&mut *tables)
     }
 
     /// Retrieve the function signature for the given generic arguments.
