@@ -1,5 +1,6 @@
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_query_system::ich::StableHashingContext;
+use rustc_query_system::query::DefIdInfo;
 use rustc_session::Session;
 
 use crate::ty::print::with_reduced_queries;
@@ -79,6 +80,11 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     #[inline(always)]
     fn sess(&self) -> &Session {
         self.sess
+    }
+
+    fn create_def(&self, &DefIdInfo { parent, data, disambiguator: index, hash }: &DefIdInfo) {
+        let (_, h) = self.untracked().definitions.write().create_def(parent, data, index);
+        assert_eq!(hash, h);
     }
 
     #[inline]
