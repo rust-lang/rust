@@ -300,15 +300,8 @@ pub struct NoLinkModOverride {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_unsupported_abi_i686)]
-pub struct UnsupportedAbiI686 {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(metadata_unsupported_abi)]
-pub struct UnsupportedAbi {
+#[diag(metadata_raw_dylib_unsupported_abi)]
+pub struct RawDylibUnsupportedAbi {
     #[primary_span]
     pub span: Span,
 }

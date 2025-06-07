@@ -652,7 +652,13 @@ impl<'tcx> Collector<'tcx> {
     ) -> DllImport {
         let span = self.tcx.def_span(item);
 
-        // this logic is similar to `Target::adjust_abi` (in rustc_target/src/spec/mod.rs) but errors on unsupported inputs
+        // This `extern` block should have been checked for general ABI support before, but let's
+        // double-check that.
+        assert!(self.tcx.sess.target.is_abi_supported(abi));
+
+        // This logic is similar to `AbiMap::canonize_abi` (in rustc_target/src/spec/abi_map.rs) but
+        // we need more detail than those adjustments, and we can't support all ABIs that are
+        // generally supported.
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
                 ExternAbi::C { .. } | ExternAbi::Cdecl { .. } => DllCallingConvention::C,
@@ -679,7 +685,7 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::Vectorcall(self.i686_arg_list_size(item))
                 }
                 _ => {
-                    self.tcx.dcx().emit_fatal(errors::UnsupportedAbiI686 { span });
+                    self.tcx.dcx().emit_fatal(errors::RawDylibUnsupportedAbi { span });
                 }
             }
         } else {
@@ -688,7 +694,7 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::C
                 }
                 _ => {
-                    self.tcx.dcx().emit_fatal(errors::UnsupportedAbi { span });
+                    self.tcx.dcx().emit_fatal(errors::RawDylibUnsupportedAbi { span });
                 }
             }
         };

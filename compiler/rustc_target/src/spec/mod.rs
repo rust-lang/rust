@@ -62,7 +62,7 @@ mod abi_map;
 mod base;
 mod json;
 
-pub use abi_map::AbiMap;
+pub use abi_map::{AbiMap, AbiMapping};
 pub use base::apple;
 pub use base::avr::ef_avr_arch;
 
