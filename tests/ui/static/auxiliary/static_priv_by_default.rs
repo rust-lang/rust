@@ -31,11 +31,11 @@ mod foo {
 }
 
 pub mod bar {
-    pub use foo::reexported_a as e;
-    pub use foo::reexported_b as f;
-    pub use foo::reexported_c as g;
-    pub use foo::reexported_d as h;
-    pub use foo::reexported_e as i;
+    pub use crate::foo::reexported_a as e;
+    pub use crate::foo::reexported_b as f;
+    pub use crate::foo::reexported_c as g;
+    pub use crate::foo::reexported_d as h;
+    pub use crate::foo::reexported_e as i;
 }
 
 pub static a: isize = 0;

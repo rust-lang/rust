@@ -1,23 +1,23 @@
 error[E0577]: expected module, found enum `E`
-  --> $DIR/resolve-bad-visibility.rs:4:8
+  --> $DIR/resolve-bad-visibility.rs:5:8
    |
 LL | pub(in E) struct S;
    |        ^ not a module
 
 error[E0577]: expected module, found trait `Tr`
-  --> $DIR/resolve-bad-visibility.rs:5:8
+  --> $DIR/resolve-bad-visibility.rs:6:8
    |
 LL | pub(in Tr) struct Z;
    |        ^^ not a module
 
 error[E0742]: visibilities can only be restricted to ancestor modules
-  --> $DIR/resolve-bad-visibility.rs:6:8
+  --> $DIR/resolve-bad-visibility.rs:7:8
    |
 LL | pub(in std::vec) struct F;
    |        ^^^^^^^^
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistent`
-  --> $DIR/resolve-bad-visibility.rs:7:8
+  --> $DIR/resolve-bad-visibility.rs:8:8
    |
 LL | pub(in nonexistent) struct G;
    |        ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistent`
@@ -28,7 +28,7 @@ LL + extern crate nonexistent;
    |
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `too_soon`
-  --> $DIR/resolve-bad-visibility.rs:8:8
+  --> $DIR/resolve-bad-visibility.rs:9:8
    |
 LL | pub(in too_soon) struct H;
    |        ^^^^^^^^ use of unresolved module or unlinked crate `too_soon`

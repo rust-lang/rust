@@ -1,7 +1,7 @@
 // Check that unresolved imports do not create additional errors and ICEs
 
 mod m {
-    pub use unresolved; //~ ERROR unresolved import `unresolved`
+    pub use crate::unresolved; //~ ERROR unresolved import `crate::unresolved`
 
     fn f() {
         let unresolved = 0; // OK

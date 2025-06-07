@@ -15,13 +15,13 @@ mod b {
     // that `a` and `b` don't go into the same compilation unit.
     fn pad() -> usize { 0 }
 
-    pub static THREE: usize = ::ONE + ::a::TWO;
+    pub static THREE: usize = crate::ONE + crate::a::TWO;
 }
 
 mod a {
     fn pad() -> usize { 0 }
 
-    pub const TWO: usize = ::ONE + ::ONE;
+    pub const TWO: usize = crate::ONE + crate::ONE;
 }
 
 fn main() {

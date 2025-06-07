@@ -16,13 +16,13 @@ fn call1() -> usize {
 
 mod a {
     pub fn call2() -> usize {
-        unsafe { ::foo() }
+        unsafe { crate::foo() }
     }
 }
 
 mod b {
     pub fn call3() -> usize {
-        unsafe { ::foo() }
+        unsafe { crate::foo() }
     }
 }
 

@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `extern_prelude`
-  --> $DIR/extern-prelude-fail.rs:7:9
+  --> $DIR/extern-prelude-fail.rs:8:9
    |
 LL |     use extern_prelude::S;
    |         ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `extern_prelude`
@@ -10,7 +10,7 @@ LL + extern crate extern_prelude;
    |
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `extern_prelude`
-  --> $DIR/extern-prelude-fail.rs:8:15
+  --> $DIR/extern-prelude-fail.rs:9:15
    |
 LL |     let s = ::extern_prelude::S;
    |               ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `extern_prelude`

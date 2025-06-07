@@ -1,3 +1,4 @@
+//@ edition: 2015
 //@ aux-build:edition-lint-paths.rs
 //@ run-rustfix
 

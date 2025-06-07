@@ -7,13 +7,13 @@ fn one() -> usize {
 
 pub mod a {
     pub fn two() -> usize {
-        ::one() + ::one()
+        crate::one() + crate::one()
     }
 }
 
 pub mod b {
     pub fn three() -> usize {
-        ::one() + ::a::two()
+        crate::one() + crate::a::two()
     }
 }
 

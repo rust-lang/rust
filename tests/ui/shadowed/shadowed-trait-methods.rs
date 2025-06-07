@@ -5,7 +5,7 @@ mod foo {
     impl T for () {}
 }
 
-mod bar { pub use foo::T; }
+mod bar { pub use crate::foo::T; }
 
 fn main() {
     pub use bar::*;

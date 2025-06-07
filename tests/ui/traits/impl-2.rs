@@ -10,7 +10,7 @@ pub mod Foo {
 }
 
 mod Bar {
-    impl<'a> dyn (::Foo::Trait) + 'a {
+    impl<'a> dyn (crate::Foo::Trait) + 'a {
         fn bar(&self) { self.foo() }
     }
 }

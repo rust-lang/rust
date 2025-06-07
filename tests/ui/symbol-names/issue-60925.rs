@@ -17,7 +17,7 @@ mod llvm {
 mod foo {
     pub(crate) struct Foo<T>(T);
 
-    impl Foo<::llvm::Foo> {
+    impl Foo<crate::llvm::Foo> {
         #[rustc_symbol_name]
         //[legacy]~^ ERROR symbol-name(_ZN11issue_609253foo37Foo$LT$issue_60925..llv$u6d$..Foo$GT$3foo
         //[legacy]~| ERROR demangling(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo
@@ -27,10 +27,10 @@ mod foo {
             //[v0]~| ERROR demangling-alt(<issue_60925::foo::Foo<issue_60925::llvm::Foo>>::foo)
         pub(crate) fn foo() {
             for _ in 0..0 {
-                for _ in &[::dummy()] {
-                    ::dummy();
-                    ::dummy();
-                    ::dummy();
+                for _ in &[crate::dummy()] {
+                    crate::dummy();
+                    crate::dummy();
+                    crate::dummy();
                 }
             }
         }
