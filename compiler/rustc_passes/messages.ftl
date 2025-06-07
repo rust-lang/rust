@@ -501,6 +501,10 @@ passes_repr_align_should_be_align =
     `#[repr(align(...))]` is not supported on {$item}
     .help = use `#[rustc_align(...)]` instead
 
+passes_repr_align_should_be_align_static =
+    `#[repr(align(...))]` is not supported on {$item}
+    .help = use `#[rustc_align_static(...)]` instead
+
 passes_repr_conflicting =
     conflicting representation hints
 
