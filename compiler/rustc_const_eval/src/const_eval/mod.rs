@@ -1,6 +1,6 @@
 // Not in interpret to make sure we do not use private implementation details
 
-use rustc_abi::VariantIdx;
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_middle::query::Key;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -60,7 +60,7 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
 
     let fields_iter = (0..field_count)
         .map(|i| {
-            let field_op = ecx.project_field(&down, i).discard_err()?;
+            let field_op = ecx.project_field(&down, FieldIdx::from_usize(i)).discard_err()?;
             let val = op_to_const(&ecx, &field_op, /* for diagnostics */ true);
             Some((val, field_op.layout.ty))
         })

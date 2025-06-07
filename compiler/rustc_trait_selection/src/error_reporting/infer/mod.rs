@@ -73,7 +73,7 @@ use rustc_middle::ty::{
     TypeVisitableExt,
 };
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{BytePos, DesugaringKind, Pos, Span, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
 use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
@@ -194,7 +194,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => return None,
         };
 
-        let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
+        let future_trait = self.tcx.require_lang_item(LangItem::Future, DUMMY_SP);
         let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
         self.tcx

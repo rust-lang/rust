@@ -39,7 +39,7 @@ pub use rustc_session::lint::builtin::*;
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
-use rustc_span::{BytePos, Ident, InnerSpan, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, InnerSpan, Span, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
@@ -635,7 +635,8 @@ fn type_implements_negative_copy_modulo_regions<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
 ) -> bool {
     let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-    let trait_ref = ty::TraitRef::new(tcx, tcx.require_lang_item(hir::LangItem::Copy, None), [ty]);
+    let trait_ref =
+        ty::TraitRef::new(tcx, tcx.require_lang_item(hir::LangItem::Copy, DUMMY_SP), [ty]);
     let pred = ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Negative };
     let obligation = traits::Obligation {
         cause: traits::ObligationCause::dummy(),

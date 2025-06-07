@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/cleanup-rvalue-scopes-cf.rs:26:19
+  --> $DIR/rvalue-borrow-scope-error.rs:30:19
    |
 LL |     let x1 = arg(&AddFlags(1));
    |                   ^^^^^^^^^^^ - temporary value is freed at the end of this statement
@@ -16,7 +16,7 @@ LL ~     let x1 = arg(&binding);
    |
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/cleanup-rvalue-scopes-cf.rs:27:14
+  --> $DIR/rvalue-borrow-scope-error.rs:31:14
    |
 LL |     let x2 = AddFlags(1).get();
    |              ^^^^^^^^^^^      - temporary value is freed at the end of this statement
@@ -33,7 +33,7 @@ LL ~     let x2 = binding.get();
    |
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/cleanup-rvalue-scopes-cf.rs:28:21
+  --> $DIR/rvalue-borrow-scope-error.rs:32:21
    |
 LL |     let x3 = &*arg(&AddFlags(1));
    |                     ^^^^^^^^^^^ - temporary value is freed at the end of this statement
@@ -50,7 +50,7 @@ LL ~     let x3 = &*arg(&binding);
    |
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/cleanup-rvalue-scopes-cf.rs:29:24
+  --> $DIR/rvalue-borrow-scope-error.rs:33:24
    |
 LL |     let ref x4 = *arg(&AddFlags(1));
    |                        ^^^^^^^^^^^ - temporary value is freed at the end of this statement
@@ -67,7 +67,7 @@ LL ~     let ref x4 = *arg(&binding);
    |
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/cleanup-rvalue-scopes-cf.rs:30:24
+  --> $DIR/rvalue-borrow-scope-error.rs:34:24
    |
 LL |     let &ref x5 = arg(&AddFlags(1));
    |                        ^^^^^^^^^^^ - temporary value is freed at the end of this statement
@@ -84,7 +84,7 @@ LL ~     let &ref x5 = arg(&binding);
    |
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/cleanup-rvalue-scopes-cf.rs:31:14
+  --> $DIR/rvalue-borrow-scope-error.rs:35:14
    |
 LL |     let x6 = AddFlags(1).get();
    |              ^^^^^^^^^^^      - temporary value is freed at the end of this statement
@@ -101,7 +101,7 @@ LL ~     let x6 = binding.get();
    |
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/cleanup-rvalue-scopes-cf.rs:32:44
+  --> $DIR/rvalue-borrow-scope-error.rs:36:44
    |
 LL |     let StackBox { f: x7 } = StackBox { f: AddFlags(1).get() };
    |                                            ^^^^^^^^^^^        - temporary value is freed at the end of this statement

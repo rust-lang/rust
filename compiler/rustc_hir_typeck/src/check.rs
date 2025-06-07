@@ -57,7 +57,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     // (as it's created inside the body itself, not passed in from outside).
     let maybe_va_list = fn_sig.c_variadic.then(|| {
         let span = body.params.last().unwrap().span;
-        let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(span));
+        let va_list_did = tcx.require_lang_item(LangItem::VaList, span);
         let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
 
         tcx.type_of(va_list_did).instantiate(tcx, &[region.into()])
@@ -178,7 +178,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
         tcx.dcx().span_err(span, "should have no const parameters");
     }
 
-    let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, Some(span));
+    let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, span);
 
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
     let panic_info_ty = tcx.type_of(panic_info_did).instantiate(

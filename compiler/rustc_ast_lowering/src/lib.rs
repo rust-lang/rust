@@ -732,7 +732,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         args: Option<&'hir hir::GenericArgs<'hir>>,
     ) -> &'hir hir::Path<'hir> {
-        let def_id = self.tcx.require_lang_item(lang_item, Some(span));
+        let def_id = self.tcx.require_lang_item(lang_item, span);
         let def_kind = self.tcx.def_kind(def_id);
         let res = Res::Def(def_kind, def_id);
         self.arena.alloc(hir::Path {

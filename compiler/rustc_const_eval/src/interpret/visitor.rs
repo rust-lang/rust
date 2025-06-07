@@ -112,8 +112,10 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 // So we transmute it to a raw pointer.
                 let raw_ptr_ty = Ty::new_mut_ptr(*self.ecx().tcx, self.ecx().tcx.types.unit);
                 let raw_ptr_ty = self.ecx().layout_of(raw_ptr_ty)?;
-                let vtable_field =
-                    self.ecx().project_field(v, 1)?.transmute(raw_ptr_ty, self.ecx())?;
+                let vtable_field = self
+                    .ecx()
+                    .project_field(v, FieldIdx::ONE)?
+                    .transmute(raw_ptr_ty, self.ecx())?;
                 self.visit_field(v, 1, &vtable_field)?;
 
                 // Then unpack the first field, and continue.
@@ -140,14 +142,16 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
 
                 // `Box` has two fields: the pointer we care about, and the allocator.
                 assert_eq!(v.layout().fields.count(), 2, "`Box` must have exactly 2 fields");
-                let (unique_ptr, alloc) =
-                    (self.ecx().project_field(v, 0)?, self.ecx().project_field(v, 1)?);
+                let (unique_ptr, alloc) = (
+                    self.ecx().project_field(v, FieldIdx::ZERO)?,
+                    self.ecx().project_field(v, FieldIdx::ONE)?,
+                );
                 // Unfortunately there is some type junk in the way here: `unique_ptr` is a `Unique`...
                 // (which means another 2 fields, the second of which is a `PhantomData`)
                 assert_eq!(unique_ptr.layout().fields.count(), 2);
                 let (nonnull_ptr, phantom) = (
-                    self.ecx().project_field(&unique_ptr, 0)?,
-                    self.ecx().project_field(&unique_ptr, 1)?,
+                    self.ecx().project_field(&unique_ptr, FieldIdx::ZERO)?,
+                    self.ecx().project_field(&unique_ptr, FieldIdx::ONE)?,
                 );
                 assert!(
                     phantom.layout().ty.ty_adt_def().is_some_and(|adt| adt.is_phantom_data()),
@@ -156,7 +160,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 );
                 // ... that contains a `NonNull`... (gladly, only a single field here)
                 assert_eq!(nonnull_ptr.layout().fields.count(), 1);
-                let raw_ptr = self.ecx().project_field(&nonnull_ptr, 0)?; // the actual raw ptr
+                let raw_ptr = self.ecx().project_field(&nonnull_ptr, FieldIdx::ZERO)?; // the actual raw ptr
                 // ... whose only field finally is a raw ptr we can dereference.
                 self.visit_box(ty, &raw_ptr)?;
 
@@ -188,9 +192,8 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
             }
             FieldsShape::Arbitrary { memory_index, .. } => {
                 for idx in Self::aggregate_field_iter(memory_index) {
-                    let idx = idx.as_usize();
                     let field = self.ecx().project_field(v, idx)?;
-                    self.visit_field(v, idx, &field)?;
+                    self.visit_field(v, idx.as_usize(), &field)?;
                 }
             }
             FieldsShape::Array { .. } => {

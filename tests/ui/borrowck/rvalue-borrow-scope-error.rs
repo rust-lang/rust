@@ -1,15 +1,19 @@
-// Test that the borrow checker prevents pointers to temporaries
-// with statement lifetimes from escaping.
+//! Test that the borrow checker prevents pointers to temporaries
+//! with statement lifetimes from escaping.
 
 use std::ops::Drop;
 
 static mut FLAGS: u64 = 0;
 
-struct StackBox<T> { f: T }
-struct AddFlags { bits: u64 }
+struct StackBox<T> {
+    f: T,
+}
+struct AddFlags {
+    bits: u64,
+}
 
 fn AddFlags(bits: u64) -> AddFlags {
-    AddFlags { bits: bits }
+    AddFlags { bits }
 }
 
 fn arg(x: &AddFlags) -> &AddFlags {
