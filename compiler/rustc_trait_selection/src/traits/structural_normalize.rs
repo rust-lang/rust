@@ -39,10 +39,7 @@ impl<'tcx> At<'_, 'tcx> {
                 return Ok(term);
             }
 
-            let new_infer = match term.kind() {
-                ty::TermKind::Ty(_) => self.infcx.next_ty_var(self.cause.span).into(),
-                ty::TermKind::Const(_) => self.infcx.next_const_var(self.cause.span).into(),
-            };
+            let new_infer = self.infcx.next_term_var_of_kind(term, self.cause.span);
 
             // We simply emit an `alias-eq` goal here, since that will take care of
             // normalizing the LHS of the projection until it is a rigid projection

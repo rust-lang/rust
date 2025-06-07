@@ -823,6 +823,13 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::Region::new_var(self.tcx, region_var)
     }
 
+    pub fn next_term_var_of_kind(&self, term: ty::Term<'tcx>, span: Span) -> ty::Term<'tcx> {
+        match term.kind() {
+            ty::TermKind::Ty(_) => self.next_ty_var(span).into(),
+            ty::TermKind::Const(_) => self.next_const_var(span).into(),
+        }
+    }
+
     /// Return the universe that the region `r` was created in. For
     /// most regions (e.g., `'static`, named regions from the user,
     /// etc) this is the root universe U0. For inference variables or

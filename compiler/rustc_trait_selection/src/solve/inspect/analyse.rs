@@ -231,10 +231,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         let infcx = self.goal.infcx;
         match goal.predicate.kind().no_bound_vars() {
             Some(ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })) => {
-                let unconstrained_term = match term.kind() {
-                    ty::TermKind::Ty(_) => infcx.next_ty_var(span).into(),
-                    ty::TermKind::Const(_) => infcx.next_const_var(span).into(),
-                };
+                let unconstrained_term = infcx.next_term_var_of_kind(term, span);
                 let goal =
                     goal.with(infcx.tcx, ty::NormalizesTo { alias, term: unconstrained_term });
                 // We have to use a `probe` here as evaluating a `NormalizesTo` can constrain the
