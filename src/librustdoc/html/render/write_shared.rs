@@ -426,6 +426,7 @@ impl CratesIndexPart {
     fn blank(cx: &Context<'_>) -> SortedTemplate<<Self as CciPart>::FileFormat> {
         let page = layout::Page {
             title: "Index of crates",
+            short_title: "Crates",
             css_class: "mod sys",
             root_path: "./",
             static_root_path: cx.shared.static_root_path.as_deref(),
