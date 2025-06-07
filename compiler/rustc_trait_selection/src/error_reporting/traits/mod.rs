@@ -21,7 +21,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{ErrorGuaranteed, ExpnKind, Span};
+use rustc_span::{ErrorGuaranteed, ExpnKind, Span, sym};
 use tracing::{info, instrument};
 
 pub use self::overflow::*;
@@ -136,6 +136,15 @@ pub enum DefIdOrName {
     Name(&'static str),
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum ErrorSortKey {
+    SubtypeFormat(usize, usize),
+    OtherKind,
+    ClauseTraitSized,
+    Coerce,
+    ClauseWellFormed,
+}
+
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(
         &self,
@@ -162,15 +171,36 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Ensure `T: Sized` and `T: WF` obligations come last. This lets us display diagnostics
         // with more relevant type information and hide redundant E0282 errors.
-        errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
-                if self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) =>
-            {
-                1
+        errors.sort_by_key(|e| {
+            let span = e.obligation.cause.span;
+            let outer_expn_data = span.ctxt().outer_expn_data();
+            let source_span = outer_expn_data.call_site.source_callsite();
+            let source_map = self.tcx.sess.source_map();
+
+            match e.obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Subtype(_)
+                    if let Some(def_id) = outer_expn_data.macro_def_id
+                        && let (Some(span_file), row, col, ..) =
+                            source_map.span_to_location_info(span)
+                        && let (Some(source_file), ..) =
+                            source_map.span_to_location_info(source_span)
+                        && (self.tcx.is_diagnostic_item(sym::format_args_nl_macro, def_id)
+                            || self.tcx.is_diagnostic_item(sym::format_args_macro, def_id))
+                        && span_file.src_hash == source_file.src_hash =>
+                {
+                    ErrorSortKey::SubtypeFormat(row, col)
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
+                    if self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) =>
+                {
+                    ErrorSortKey::ClauseTraitSized
+                }
+                ty::PredicateKind::Coerce(_) => ErrorSortKey::Coerce,
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
+                    ErrorSortKey::ClauseWellFormed
+                }
+                _ => ErrorSortKey::OtherKind,
             }
-            ty::PredicateKind::Coerce(_) => 2,
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
-            _ => 0,
         });
 
         for (index, error) in errors.iter().enumerate() {
