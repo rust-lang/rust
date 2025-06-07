@@ -1098,22 +1098,20 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             self.r.potentially_unused_imports.push(import);
             module.for_each_child(self, |this, ident, ns, binding| {
                 if ns == MacroNS {
-                    let imported_binding =
-                        if this.r.is_accessible_from(binding.vis, this.parent_scope.module) {
-                            this.r.import(binding, import)
-                        } else if !this.r.is_builtin_macro(binding.res())
-                            && !this.r.macro_use_prelude.contains_key(&ident.name)
-                        {
-                            // - `!r.is_builtin_macro(res)` excluding the built-in macros such as `Debug` or `Hash`.
-                            // - `!r.macro_use_prelude.contains_key(name)` excluding macros defined in other extern
-                            //    crates such as `std`.
-                            // FIXME: This branch should eventually be removed.
-                            let import = macro_use_import(this, span, true);
-                            this.r.import(binding, import)
-                        } else {
+                    let import = if this.r.is_accessible_from(binding.vis, this.parent_scope.module)
+                    {
+                        import
+                    } else {
+                        // FIXME: This branch is used for reporting the `private_macro_use` lint
+                        // and should eventually be removed.
+                        if this.r.macro_use_prelude.contains_key(&ident.name) {
+                            // Do not override already existing entries with compatibility entries.
                             return;
-                        };
-                    this.add_macro_use_binding(ident.name, imported_binding, span, allow_shadowing);
+                        }
+                        macro_use_import(this, span, true)
+                    };
+                    let import_binding = this.r.import(binding, import);
+                    this.add_macro_use_binding(ident.name, import_binding, span, allow_shadowing);
                 }
             });
         } else {

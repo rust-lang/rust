@@ -133,7 +133,9 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
                 .field("target", target)
                 .field("id", id)
                 .finish(),
-            MacroUse { .. } => f.debug_struct("MacroUse").finish(),
+            MacroUse { warn_private } => {
+                f.debug_struct("MacroUse").field("warn_private", warn_private).finish()
+            }
             MacroExport => f.debug_struct("MacroExport").finish(),
         }
     }
