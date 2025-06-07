@@ -472,6 +472,10 @@ pub(crate) struct FunctionReturnRequiresX86OrX8664;
 pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
 
 #[derive(Diagnostic)]
+#[diag(session_indirect_branch_cs_prefix_requires_x86_or_x86_64)]
+pub(crate) struct IndirectBranchCsPrefixRequiresX86OrX8664;
+
+#[derive(Diagnostic)]
 #[diag(session_unsupported_regparm)]
 pub(crate) struct UnsupportedRegparm {
     pub(crate) regparm: u32,
