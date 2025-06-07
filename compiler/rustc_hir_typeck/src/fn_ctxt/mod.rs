@@ -412,9 +412,10 @@ pub(crate) struct LoweredTy<'tcx> {
 
 impl<'tcx> LoweredTy<'tcx> {
     fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
-        // FIXME(-Znext-solver): We're still figuring out how to best handle
-        // normalization and this doesn't feel too great. We should look at this
-        // code again before stabilizing it.
+        // FIXME(-Znext-solver=no): This is easier than requiring all uses of `LoweredTy`
+        // to call `try_structurally_resolve_type` instead. This seems like a lot of
+        // effort, especially as we're still supporting the old solver. We may revisit
+        // this in the future.
         let normalized = if fcx.next_trait_solver() {
             fcx.try_structurally_resolve_type(span, raw)
         } else {

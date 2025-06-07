@@ -32,6 +32,10 @@ pub trait Interner:
     + IrPrint<ty::FnSig<Self>>
     + IrPrint<ty::PatternKind<Self>>
 {
+    fn next_trait_solver_globally(self) -> bool {
+        true
+    }
+
     type DefId: DefId<Self>;
     type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
     type Span: Span<Self>;

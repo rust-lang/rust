@@ -805,7 +805,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity })
                 });
                 let bound = (bound.upcast(tcx), span);
-                // FIXME(-Znext-solver): We can likely remove this hack once the new trait solver lands.
+                // FIXME(-Znext-solver): We can likely remove this hack once the
+                // new trait solver lands. This fixed an overflow in the old solver.
+                // This may have performance implications, so please check perf when
+                // removing it.
+                // This was added in <https://github.com/rust-lang/rust/pull/123302>.
                 if tcx.is_lang_item(trait_def_id, rustc_hir::LangItem::Sized) {
                     bounds.insert(0, bound);
                 } else {

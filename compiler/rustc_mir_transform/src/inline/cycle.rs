@@ -138,7 +138,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
         }
         false
     }
-    // FIXME(-Znext-solver): Remove this hack when trait solver overflow can return an error.
+    // FIXME(-Znext-solver=no): Remove this hack when trait solver overflow can return an error.
     // In code like that pointed out in #128887, the type complexity we ask the solver to deal with
     // grows as we recurse into the call graph. If we use the same recursion limit here and in the
     // solver, the solver hits the limit first and emits a fatal error. But if we use a reduced

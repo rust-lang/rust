@@ -86,6 +86,10 @@ use crate::ty::{
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
+    fn next_trait_solver_globally(self) -> bool {
+        self.next_trait_solver_globally()
+    }
+
     type DefId = DefId;
     type LocalDefId = LocalDefId;
     type Span = Span;

@@ -260,7 +260,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         allow_two_phase: AllowTwoPhase,
     ) -> Result<Ty<'tcx>, Diag<'a>> {
-        let expected = self.resolve_vars_with_obligations(expected);
+        let expected = if self.next_trait_solver() {
+            expected
+        } else {
+            self.resolve_vars_with_obligations(expected)
+        };
 
         let e = match self.coerce(expr, checked_ty, expected, allow_two_phase, None) {
             Ok(ty) => return Ok(ty),
