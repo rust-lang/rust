@@ -2503,6 +2503,104 @@ impl<T, A: Allocator> Vec<T, A> {
         Ok(())
     }
 
+    /// Appends an element to the back of a collection, returning a reference to it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(push_mut)]
+    ///
+    /// # #[allow(unused)]
+    /// #[derive(PartialEq, Eq, Debug)]
+    /// struct Item { identifier: &'static str, count: usize }
+    ///
+    /// impl Default for Item {
+    ///     fn default() -> Self {
+    ///         return Self { identifier: "stone", count: 64 }
+    ///     }
+    /// }
+    ///
+    /// let mut items = vec![];
+    ///
+    /// // We can mutate the just-pushed value without having to fetch it again
+    /// for count in [15, 35, 61] {
+    ///     let item = items.push_mut(Item::default());
+    ///     item.count = count;
+    /// }
+    ///
+    /// assert_eq!(
+    ///     items,
+    ///     [Item { identifier: "stone", count: 15 }, Item { identifier: "stone", count: 35 }, Item { identifier: "stone", count: 61 }]
+    /// );
+    /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes amortized *O*(1) time. If the vector's length would exceed its
+    /// capacity after the push, *O*(*capacity*) time is taken to copy the
+    /// vector's elements to a larger allocation. This expensive operation is
+    /// offset by the *capacity* *O*(1) insertions it allows.
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    #[unstable(feature = "push_mut", issue = "135974")]
+    #[track_caller]
+    #[must_use = "if you don't need a reference to the value, use Vec::push instead"]
+    pub fn push_mut(&mut self, value: T) -> &mut T {
+        // Inform codegen that the length does not change across grow_one().
+        let len = self.len;
+        // This will panic or abort if we would allocate > isize::MAX bytes
+        // or if the length increment would overflow for zero-sized types.
+        if len == self.buf.capacity() {
+            self.buf.grow_one();
+        }
+        unsafe {
+            let end = self.as_mut_ptr().add(len);
+            ptr::write(end, value);
+            self.len = len + 1;
+            // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
+            &mut *end
+        }
+    }
+
+    /// Appends an element and returns a reference to it if there is sufficient spare capacity, otherwise an error is returned
+    /// with the element.
+    ///
+    /// Unlike [`push_mut`] this method will not reallocate when there's insufficient capacity.
+    /// The caller should use [`reserve`] or [`try_reserve`] to ensure that there is enough capacity.
+    ///
+    /// [`push_mut`]: Vec::push_mut
+    /// [`reserve`]: Vec::reserve
+    /// [`try_reserve`]: Vec::try_reserve
+    ///
+    /// # Time complexity
+    ///
+    /// Takes *O*(1) time.
+    //
+    // Since there's currently no way to have multiple unstable attributes on the same item, I compromised.
+    // Uncomment/delete the respective attribute when its respective issue stabilizes, since this falls under both.
+    //
+    #[unstable(feature = "push_mut", issue = "135974")]
+    // #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
+    //
+    #[inline]
+    #[must_use = "if you don't need a reference to the value, use Vec::push_within_capacity instead"]
+    pub fn push_mut_within_capacity(&mut self, value: T) -> Result<&mut T, T> {
+        if self.len == self.buf.capacity() {
+            return Err(value);
+        }
+        unsafe {
+            let end = self.as_mut_ptr().add(self.len);
+            ptr::write(end, value);
+            self.len += 1;
+            // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
+            Ok(&mut *end)
+        }
+    }
+
     /// Removes the last element from a vector and returns it, or [`None`] if it
     /// is empty.
     ///
