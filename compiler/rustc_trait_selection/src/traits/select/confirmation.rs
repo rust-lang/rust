@@ -318,7 +318,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let make_freeze_obl = |ty| {
                 let trait_ref = ty::TraitRef::new(
                     tcx,
-                    tcx.require_lang_item(LangItem::Freeze, None),
+                    tcx.require_lang_item(LangItem::Freeze, obligation.cause.span),
                     [ty::GenericArg::from(ty)],
                 );
                 Obligation::with_depth(
@@ -657,7 +657,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
         let tr = ty::TraitRef::new(
             self.tcx(),
-            self.tcx().require_lang_item(LangItem::Sized, Some(cause.span)),
+            self.tcx().require_lang_item(LangItem::Sized, cause.span),
             [output_ty],
         );
         nested.push(Obligation::new(self.infcx.tcx, cause, obligation.param_env, tr));
@@ -877,14 +877,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 });
 
                 // We must additionally check that the return type impls `Future + Sized`.
-                let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+                let future_trait_def_id =
+                    tcx.require_lang_item(LangItem::Future, obligation.cause.span);
                 nested.push(obligation.with(
                     tcx,
                     sig.output().map_bound(|output_ty| {
                         ty::TraitRef::new(tcx, future_trait_def_id, [output_ty])
                     }),
                 ));
-                let sized_trait_def_id = tcx.require_lang_item(LangItem::Sized, None);
+                let sized_trait_def_id =
+                    tcx.require_lang_item(LangItem::Sized, obligation.cause.span);
                 nested.push(obligation.with(
                     tcx,
                     sig.output().map_bound(|output_ty| {
@@ -906,13 +908,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 });
 
                 // We must additionally check that the return type impls `Future + Sized`.
-                let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+                let future_trait_def_id =
+                    tcx.require_lang_item(LangItem::Future, obligation.cause.span);
                 let placeholder_output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
                 nested.push(obligation.with(
                     tcx,
                     ty::TraitRef::new(tcx, future_trait_def_id, [placeholder_output_ty]),
                 ));
-                let sized_trait_def_id = tcx.require_lang_item(LangItem::Sized, None);
+                let sized_trait_def_id =
+                    tcx.require_lang_item(LangItem::Sized, obligation.cause.span);
                 nested.push(obligation.with(
                     tcx,
                     sig.output().map_bound(|output_ty| {
@@ -946,10 +950,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.param_env,
                 ty::TraitRef::new(
                     self.tcx(),
-                    self.tcx().require_lang_item(
-                        LangItem::AsyncFnKindHelper,
-                        Some(obligation.cause.span),
-                    ),
+                    self.tcx()
+                        .require_lang_item(LangItem::AsyncFnKindHelper, obligation.cause.span),
                     [kind_ty, Ty::from_closure_kind(self.tcx(), goal_kind)],
                 ),
             ));
@@ -1165,7 +1167,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // We can only make objects from sized types.
                 let tr = ty::TraitRef::new(
                     tcx,
-                    tcx.require_lang_item(LangItem::Sized, Some(obligation.cause.span)),
+                    tcx.require_lang_item(LangItem::Sized, obligation.cause.span),
                     [source],
                 );
                 nested.push(predicate_to_obligation(tr.upcast(tcx)));
@@ -1359,7 +1361,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self_ty.map_bound(|ty| {
                         ty::TraitRef::new(
                             tcx,
-                            tcx.require_lang_item(LangItem::Copy, Some(obligation.cause.span)),
+                            tcx.require_lang_item(LangItem::Copy, obligation.cause.span),
                             [ty],
                         )
                     }),
@@ -1411,7 +1413,7 @@ fn pointer_like_goal_for_rpitit<'tcx>(
     ty::Binder::bind_with_vars(
         ty::TraitRef::new(
             tcx,
-            tcx.require_lang_item(LangItem::PointerLike, Some(cause.span)),
+            tcx.require_lang_item(LangItem::PointerLike, cause.span),
             [Ty::new_projection_from_args(tcx, rpitit_item, args)],
         ),
         tcx.mk_bound_variable_kinds(&bound_vars),

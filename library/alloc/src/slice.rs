@@ -493,8 +493,6 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// assert_eq!([1, 2].repeat(3), vec![1, 2, 1, 2, 1, 2]);
     /// ```

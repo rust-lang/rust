@@ -2679,7 +2679,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut sugg_sp = sp;
                     if let hir::ExprKind::MethodCall(segment, receiver, args, _) = expr.kind {
                         let clone_trait =
-                            self.tcx.require_lang_item(LangItem::Clone, Some(segment.ident.span));
+                            self.tcx.require_lang_item(LangItem::Clone, segment.ident.span);
                         if args.is_empty()
                             && self
                                 .typeck_results

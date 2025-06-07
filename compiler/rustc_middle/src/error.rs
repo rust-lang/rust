@@ -95,7 +95,7 @@ pub(crate) struct StrictCoherenceNeedsNegativeCoherence {
 #[diag(middle_requires_lang_item)]
 pub(crate) struct RequiresLangItem {
     #[primary_span]
-    pub span: Option<Span>,
+    pub span: Span,
     pub name: Symbol,
 }
 

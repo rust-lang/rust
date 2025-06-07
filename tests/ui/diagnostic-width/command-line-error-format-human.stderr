@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/command-line-diagnostics.rs:6:5
+  --> $DIR/command-line-error-format-human.rs:7:5
    |
 LL |     let x = 42;
    |         - first assignment to `x`

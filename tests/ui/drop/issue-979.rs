@@ -1,22 +1,19 @@
 //@ run-pass
-#![allow(non_camel_case_types)]
 
 use std::cell::Cell;
 
-struct r<'a> {
+struct R<'a> {
     b: &'a Cell<isize>,
 }
 
-impl<'a> Drop for r<'a> {
+impl<'a> Drop for R<'a> {
     fn drop(&mut self) {
         self.b.set(self.b.get() + 1);
     }
 }
 
-fn r(b: &Cell<isize>) -> r<'_> {
-    r {
-        b: b
-    }
+fn r(b: &Cell<isize>) -> R<'_> {
+    R { b }
 }
 
 pub fn main() {

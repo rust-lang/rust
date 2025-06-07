@@ -15,7 +15,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{mir, span_bug};
 use rustc_span::def_id::DefId;
-use rustc_span::{Span, sym};
+use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::traits::ObligationCause;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument, trace};
@@ -480,8 +480,9 @@ fn type_has_partial_eq_impl<'tcx>(
     // (If there isn't, then we can safely issue a hard
     // error, because that's never worked, due to compiler
     // using `PartialEq::eq` in this scenario in the past.)
-    let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, None);
-    let structural_partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::StructuralPeq, None);
+    let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, DUMMY_SP);
+    let structural_partial_eq_trait_id =
+        tcx.require_lang_item(hir::LangItem::StructuralPeq, DUMMY_SP);
 
     let partial_eq_obligation = Obligation::new(
         tcx,

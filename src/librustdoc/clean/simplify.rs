@@ -46,11 +46,8 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVe
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates.
     equalities.retain(|(lhs, rhs)| {
-        let Some((ty, trait_did, name)) = lhs.projection() else {
-            return true;
-        };
-        let Some((bounds, _)) = tybounds.get_mut(ty) else { return true };
-        merge_bounds(cx, bounds, trait_did, name, rhs)
+        let Some((bounds, _)) = tybounds.get_mut(&lhs.self_type) else { return true };
+        merge_bounds(cx, bounds, lhs.trait_.as_ref().unwrap().def_id(), lhs.assoc.clone(), rhs)
     });
 
     // And finally, let's reassemble everything

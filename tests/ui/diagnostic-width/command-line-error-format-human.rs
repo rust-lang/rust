@@ -1,4 +1,5 @@
-// This test checks the output format without the intermediate json representation
+//! This test checks the output format without the intermediate json representation
+
 //@ compile-flags: --error-format=human
 
 pub fn main() {

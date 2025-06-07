@@ -14,7 +14,7 @@ use rustc_middle::ty::{
     TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
 };
 use rustc_span::def_id::DefId;
-use rustc_span::sym;
+use rustc_span::{DUMMY_SP, sym};
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 
@@ -414,7 +414,7 @@ pub(crate) fn transform_instance<'tcx>(
                 }
                 ty::Coroutine(..) => match tcx.coroutine_kind(instance.def_id()).unwrap() {
                     hir::CoroutineKind::Coroutine(..) => (
-                        tcx.require_lang_item(LangItem::Coroutine, None),
+                        tcx.require_lang_item(LangItem::Coroutine, DUMMY_SP),
                         Some(instance.args.as_coroutine().resume_ty()),
                     ),
                     hir::CoroutineKind::Desugared(desugaring, _) => {
@@ -423,11 +423,11 @@ pub(crate) fn transform_instance<'tcx>(
                             hir::CoroutineDesugaring::AsyncGen => LangItem::AsyncIterator,
                             hir::CoroutineDesugaring::Gen => LangItem::Iterator,
                         };
-                        (tcx.require_lang_item(lang_item, None), None)
+                        (tcx.require_lang_item(lang_item, DUMMY_SP), None)
                     }
                 },
                 ty::CoroutineClosure(..) => (
-                    tcx.require_lang_item(LangItem::FnOnce, None),
+                    tcx.require_lang_item(LangItem::FnOnce, DUMMY_SP),
                     Some(
                         tcx.instantiate_bound_regions_with_erased(
                             instance.args.as_coroutine_closure().coroutine_closure_sig(),

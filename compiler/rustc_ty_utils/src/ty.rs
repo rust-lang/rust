@@ -104,7 +104,7 @@ fn adt_sized_constraint<'tcx>(
 
     // perf hack: if there is a `constraint_ty: Sized` bound, then we know
     // that the type is sized and do not need to check it on the impl.
-    let sized_trait_def_id = tcx.require_lang_item(LangItem::Sized, None);
+    let sized_trait_def_id = tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
     let predicates = tcx.predicates_of(def.did()).predicates;
     if predicates.iter().any(|(p, _)| {
         p.as_trait_clause().is_some_and(|trait_pred| {
