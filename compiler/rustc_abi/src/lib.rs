@@ -93,6 +93,9 @@ bitflags! {
         // Other flags can still inhibit reordering and thus randomization.
         // The seed stored in `ReprOptions.field_shuffle_seed`.
         const RANDOMIZE_LAYOUT   = 1 << 4;
+        // If true, the type is always passed indirectly in C-like ABIs.
+        // Currently only used for `VaList`s.
+        const PASS_INDIRECTLY    = 1 << 5;
         // Any of these flags being set prevent field reordering optimisation.
         const FIELD_ORDER_UNOPTIMIZABLE   = ReprFlags::IS_C.bits()
                                  | ReprFlags::IS_SIMD.bits()
