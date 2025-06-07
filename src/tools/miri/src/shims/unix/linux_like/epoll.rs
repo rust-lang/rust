@@ -4,6 +4,8 @@ use std::io;
 use std::rc::{Rc, Weak};
 use std::time::Duration;
 
+use rustc_abi::FieldIdx;
+
 use crate::concurrency::VClock;
 use crate::shims::files::{
     DynFileDescriptionRef, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
@@ -284,8 +286,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if op == epoll_ctl_add || op == epoll_ctl_mod {
             // Read event bitmask and data from epoll_event passed by caller.
-            let mut events = this.read_scalar(&this.project_field(&event, 0)?)?.to_u32()?;
-            let data = this.read_scalar(&this.project_field(&event, 1)?)?.to_u64()?;
+            let mut events = this.read_scalar(&this.project_field(&event, FieldIdx::ZERO)?)?.to_u32()?;
+            let data = this.read_scalar(&this.project_field(&event, FieldIdx::ONE)?)?.to_u64()?;
 
             // Unset the flag we support to discover if any unsupported flags are used.
             let mut flags = events;

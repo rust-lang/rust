@@ -408,7 +408,7 @@ impl<'a> Parser<'a> {
         })?;
 
         if ts.len() == 1 && matches!(trailing, Trailing::No) {
-            let ty = ts.into_iter().next().unwrap().into_inner();
+            let ty = ts.into_iter().next().unwrap();
             let maybe_bounds = allow_plus == AllowPlus::Yes && self.token.is_like_plus();
             match ty.kind {
                 // `(TY_BOUND_NOPAREN) + BOUND + ...`.
@@ -424,7 +424,7 @@ impl<'a> Parser<'a> {
                     self.parse_remaining_bounds(bounds, true)
                 }
                 // `(TYPE)`
-                _ => Ok(TyKind::Paren(P(ty))),
+                _ => Ok(TyKind::Paren(ty)),
             }
         } else {
             Ok(TyKind::Tup(ts))
@@ -1299,7 +1299,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, ()> {
         let fn_path_segment = fn_path.segments.last_mut().unwrap();
         let generic_args = if let Some(p_args) = &fn_path_segment.args {
-            p_args.clone().into_inner()
+            *p_args.clone()
         } else {
             // Normally it wouldn't come here because the upstream should have parsed
             // generic parameters (otherwise it's impossible to call this function).
