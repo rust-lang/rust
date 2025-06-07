@@ -5,7 +5,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable_Generic;
 
 use crate::{
-    AbiAndPrefAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
+    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
     PointeeInfo, Primitive, Scalar, Size, TargetDataLayout, Variants,
 };
 
@@ -100,7 +100,7 @@ impl<'a> Layout<'a> {
         self.0.0.largest_niche
     }
 
-    pub fn align(self) -> AbiAndPrefAlign {
+    pub fn align(self) -> AbiAlign {
         self.0.0.align
     }
 

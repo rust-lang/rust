@@ -50,13 +50,6 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             ensure_monomorphic_enough(tcx, tp_ty)?;
             ConstValue::from_bool(tp_ty.needs_drop(tcx, typing_env))
         }
-        sym::pref_align_of => {
-            // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
-            let layout = tcx
-                .layout_of(typing_env.as_query_input(tp_ty))
-                .map_err(|e| err_inval!(Layout(*e)))?;
-            ConstValue::from_target_usize(layout.align.pref.bytes(), &tcx)
-        }
         sym::type_id => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
             ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128())
@@ -144,14 +137,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(result, self), dest)?;
             }
 
-            sym::pref_align_of
-            | sym::needs_drop
-            | sym::type_id
-            | sym::type_name
-            | sym::variant_count => {
+            sym::needs_drop | sym::type_id | sym::type_name | sym::variant_count => {
                 let gid = GlobalId { instance, promoted: None };
                 let ty = match intrinsic_name {
-                    sym::pref_align_of | sym::variant_count => self.tcx.types.usize,
+                    sym::variant_count => self.tcx.types.usize,
                     sym::needs_drop => self.tcx.types.bool,
                     sym::type_id => self.tcx.types.u128,
                     sym::type_name => Ty::new_static_str(self.tcx.tcx),
