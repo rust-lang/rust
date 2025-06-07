@@ -10,6 +10,7 @@ use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::hir_id::HirId;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
+use rustc_middle::ty::Binder;
 use rustc_span::Symbol;
 
 use super::{ITER_ON_EMPTY_COLLECTIONS, ITER_ON_SINGLE_ITEMS};
@@ -38,7 +39,7 @@ fn is_arg_ty_unified_in_fn<'tcx>(
     is_method: bool,
 ) -> bool {
     let arg_id_in_args = args.into_iter().position(|e| e.hir_id == arg_id).unwrap();
-    let Some(arg_ty_in_args) = fn_sig.input(arg_id_in_args).map(|binder| binder.skip_binder()) else {
+    let Some(arg_ty_in_args) = fn_sig.input(arg_id_in_args).map(Binder::skip_binder) else {
         return false;
     };
 
@@ -97,7 +98,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method
             | ExprKind::Break(_, _) => true,
             _ => false,
         },
-        Some((Node::Stmt(_) | Node::LetStmt(_), _)) => false,
+        Some((Node::LetStmt(let_stmt), _)) => let_stmt.ty.is_some(),
+        Some((Node::Stmt(_), _)) => false,
         _ => true,
     };
 
