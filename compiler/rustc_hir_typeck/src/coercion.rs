@@ -1662,9 +1662,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             blk_id,
                             expression,
                         );
-                        if !fcx.tcx.features().unsized_locals() {
-                            unsized_return = self.is_return_ty_definitely_unsized(fcx);
-                        }
+                        unsized_return = self.is_return_ty_definitely_unsized(fcx);
                     }
                     ObligationCauseCode::ReturnValue(return_expr_id) => {
                         err = self.report_return_mismatched_types(
@@ -1676,9 +1674,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             return_expr_id,
                             expression,
                         );
-                        if !fcx.tcx.features().unsized_locals() {
-                            unsized_return = self.is_return_ty_definitely_unsized(fcx);
-                        }
+                        unsized_return = self.is_return_ty_definitely_unsized(fcx);
                     }
                     ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                         arm_span,

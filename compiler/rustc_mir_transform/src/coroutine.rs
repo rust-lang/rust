@@ -1417,9 +1417,9 @@ fn check_field_tys_sized<'tcx>(
     coroutine_layout: &CoroutineLayout<'tcx>,
     def_id: LocalDefId,
 ) {
-    // No need to check if unsized_locals/unsized_fn_params is disabled,
+    // No need to check if unsized_fn_params is disabled,
     // since we will error during typeck.
-    if !tcx.features().unsized_locals() && !tcx.features().unsized_fn_params() {
+    if !tcx.features().unsized_fn_params() {
         return;
     }
 

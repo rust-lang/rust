@@ -1,86 +1,87 @@
-warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/double-move.rs:1:12
-   |
-LL | #![feature(unsized_locals, unsized_fn_params)]
-   |            ^^^^^^^^^^^^^^
-   |
-   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
-error[E0382]: use of moved value: `y`
-  --> $DIR/double-move.rs:21:22
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:18:13
    |
 LL |         let y = *x;
-   |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
-LL |         drop_unsized(y);
-   |                      - value moved here
-LL |         drop_unsized(y);
-   |                      ^ value used here after move
+   |             ^ doesn't have a size known at compile-time
    |
-note: consider changing this parameter type in function `drop_unsized` to borrow instead if owning the value isn't necessary
-  --> $DIR/double-move.rs:14:31
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
    |
-LL | fn drop_unsized<T: ?Sized>(_: T) {}
-   |    ------------               ^ this parameter takes ownership of the value
-   |    |
-   |    in this function
+LL -         let y = *x;
+LL +         let y = x;
+   |
 
-error[E0382]: use of moved value: `x`
-  --> $DIR/double-move.rs:27:22
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:25:13
    |
 LL |         let _y = *x;
-   |                  -- value moved here
-LL |         drop_unsized(x);
-   |                      ^ value used here after move
+   |             ^^ doesn't have a size known at compile-time
    |
-   = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -         let _y = *x;
+LL +         let _y = x;
+   |
 
-error[E0382]: use of moved value: `*x`
-  --> $DIR/double-move.rs:33:18
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:32:13
    |
-LL |         let x = "hello".to_owned().into_boxed_str();
-   |             - move occurs because `x` has type `Box<str>`, which does not implement the `Copy` trait
-LL |         drop_unsized(x);
-   |                      - value moved here
 LL |         let _y = *x;
-   |                  ^^ value used here after move
+   |             ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -         let _y = *x;
+LL +         let _y = x;
+   |
 
-error[E0382]: use of moved value: `y`
-  --> $DIR/double-move.rs:40:9
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:37:13
    |
 LL |         let y = *x;
-   |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
-LL |         y.foo();
-   |           ----- `y` moved due to this method call
-LL |         y.foo();
-   |         ^ value used here after move
+   |             ^ doesn't have a size known at compile-time
    |
-note: `Foo::foo` takes ownership of the receiver `self`, which moves `y`
-  --> $DIR/double-move.rs:5:12
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
    |
-LL |     fn foo(self) -> String;
-   |            ^^^^
+LL -         let y = *x;
+LL +         let y = x;
+   |
 
-error[E0382]: use of moved value: `x`
-  --> $DIR/double-move.rs:46:9
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:44:13
    |
 LL |         let _y = *x;
-   |                  -- value moved here
-LL |         x.foo();
-   |         ^ value used here after move
+   |             ^^ doesn't have a size known at compile-time
    |
-   = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -         let _y = *x;
+LL +         let _y = x;
+   |
 
-error[E0382]: use of moved value: `*x`
-  --> $DIR/double-move.rs:52:18
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/double-move.rs:51:13
    |
-LL |         let x = "hello".to_owned().into_boxed_str();
-   |             - move occurs because `x` has type `Box<str>`, which does not implement the `Copy` trait
-LL |         x.foo();
-   |         - value moved here
 LL |         let _y = *x;
-   |                  ^^ value used here after move
+   |             ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -         let _y = *x;
+LL +         let _y = x;
+   |
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0382`.
+For more information about this error, try `rustc --explain E0277`.

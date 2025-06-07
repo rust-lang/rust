@@ -1,8 +1,8 @@
 //@ compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]
-#![allow(incomplete_features)]
-#![feature(unsized_locals, unsized_fn_params)]
+#![allow(internal_features)]
+#![feature(unsized_fn_params)]
 
 use std::cell::Cell;
 use std::hint;

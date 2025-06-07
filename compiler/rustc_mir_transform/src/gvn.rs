@@ -240,8 +240,6 @@ struct VnState<'body, 'tcx> {
     next_opaque: usize,
     /// Cache the deref values.
     derefs: Vec<VnIndex>,
-    /// Cache the value of the `unsized_locals` features, to avoid fetching it repeatedly in a loop.
-    feature_unsized_locals: bool,
     ssa: &'body SsaLocals,
     dominators: Dominators<BasicBlock>,
     reused_locals: DenseBitSet<Local>,
@@ -273,7 +271,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             evaluated: IndexVec::with_capacity(num_values),
             next_opaque: 1,
             derefs: Vec::new(),
-            feature_unsized_locals: tcx.features().unsized_locals(),
             ssa,
             dominators,
             reused_locals: DenseBitSet::new_empty(local_decls.len()),
@@ -329,13 +326,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     fn assign(&mut self, local: Local, value: VnIndex) {
         debug_assert!(self.ssa.is_ssa(local));
         self.locals[local] = Some(value);
-
-        // Only register the value if its type is `Sized`, as we will emit copies of it.
-        let is_sized = !self.feature_unsized_locals
-            || self.local_decls[local].ty.is_sized(self.tcx, self.typing_env());
-        if is_sized {
-            self.rev_locals[value].push(local);
-        }
+        self.rev_locals[value].push(local);
     }
 
     fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {

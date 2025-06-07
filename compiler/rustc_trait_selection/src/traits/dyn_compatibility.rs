@@ -414,8 +414,8 @@ fn virtual_call_violations_for_method<'tcx>(
 
     let receiver_ty = tcx.liberate_late_bound_regions(method.def_id, sig.input(0));
 
-    // Until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
-    // However, this is already considered dyn compatible. We allow it as a special case here.
+    // `self: Self` can't be dispatched on.
+    // However, this is considered dyn compatible. We allow it as a special case here.
     // FIXME(mikeyhew) get rid of this `if` statement once `receiver_is_dispatchable` allows
     // `Receiver: Unsize<Receiver[Self => dyn Trait]>`.
     if receiver_ty != tcx.types.self_param {

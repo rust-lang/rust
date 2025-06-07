@@ -2995,9 +2995,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if local {
                     err.note("all local variables must have a statically known size");
                 }
-                if !tcx.features().unsized_locals() {
-                    err.help("unsized locals are gated as an unstable feature");
-                }
             }
             ObligationCauseCode::SizedArgumentType(hir_id) => {
                 let mut ty = None;

@@ -202,7 +202,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                         ),
                     );
                 }
-            } else if !self.fcx.tcx.features().unsized_locals() {
+            } else {
                 self.fcx.require_type_is_sized(
                     var_ty,
                     p.span,

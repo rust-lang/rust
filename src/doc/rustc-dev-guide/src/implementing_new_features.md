@@ -156,8 +156,8 @@ a new unstable feature:
    [`incomplete_features` lint]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#incomplete-features
 
    ```rust ignore
-   /// Allows unsized rvalues at arguments and parameters.
-   (incomplete, unsized_locals, "CURRENT_RUSTC_VERSION", Some(48055), None),
+   /// Allows deref patterns.
+   (incomplete, deref_patterns, "CURRENT_RUSTC_VERSION", Some(87121), None),
    ```
 
    To avoid [semantic merge conflicts], please use `CURRENT_RUSTC_VERSION` instead of `1.70` or

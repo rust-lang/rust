@@ -79,7 +79,7 @@ pub enum InstanceKind<'tcx> {
     Intrinsic(DefId),
 
     /// `<T as Trait>::method` where `method` receives unsizeable `self: Self` (part of the
-    /// `unsized_locals` feature).
+    /// `unsized_fn_params` feature).
     ///
     /// The generated shim will take `Self` via `*mut Self` - conceptually this is `&owned Self` -
     /// and dereference the argument to call the original function.

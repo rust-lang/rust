@@ -16,7 +16,6 @@ LL |     let some_generated_vec = (0..10).collect();
    |
    = help: the trait `Sized` is not implemented for `[i32]`
    = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
 
 error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
   --> $DIR/collect-into-slice.rs:6:38

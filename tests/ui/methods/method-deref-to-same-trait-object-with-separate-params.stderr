@@ -1,14 +1,5 @@
-warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:4:12
-   |
-LL | #![feature(unsized_locals, unsized_fn_params)]
-   |            ^^^^^^^^^^^^^^
-   |
-   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0308]: mismatched types
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:89:24
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:88:24
    |
 LL |     let _seetype: () = z;
    |                   --   ^ expected `()`, found `u32`
@@ -16,7 +7,7 @@ LL |     let _seetype: () = z;
    |                   expected due to this
 
 error[E0308]: mismatched types
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:106:24
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:105:24
    |
 LL |     let _seetype: () = z;
    |                   --   ^ expected `()`, found `u64`
@@ -24,23 +15,23 @@ LL |     let _seetype: () = z;
    |                   expected due to this
 
 error[E0034]: multiple applicable items in scope
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:124:15
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:123:15
    |
 LL |     let z = x.foo();
    |               ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in the trait `FinalFoo`
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:61:5
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:60:5
    |
 LL |     fn foo(&self) -> u8;
    |     ^^^^^^^^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `NuisanceFoo` for the type `T`
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:74:9
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:73:9
    |
 LL |         fn foo(self) {}
    |         ^^^^^^^^^^^^
 note: candidate #3 is defined in an impl of the trait `X` for the type `T`
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:47:9
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:46:9
    |
 LL |         fn foo(self: Smaht<Self, u64>) -> u64 {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +52,7 @@ LL +     let z = X::foo(x);
    |
 
 error[E0308]: mismatched types
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:141:24
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:140:24
    |
 LL |     let _seetype: () = z;
    |                   --   ^ expected `()`, found `u8`
@@ -69,7 +60,7 @@ LL |     let _seetype: () = z;
    |                   expected due to this
 
 error[E0308]: mismatched types
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:159:24
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:158:24
    |
 LL |     let _seetype: () = z;
    |                   --   ^ expected `()`, found `u32`
@@ -77,14 +68,14 @@ LL |     let _seetype: () = z;
    |                   expected due to this
 
 error[E0308]: mismatched types
-  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:176:24
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:175:24
    |
 LL |     let _seetype: () = z;
    |                   --   ^ expected `()`, found `u32`
    |                   |
    |                   expected due to this
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0034, E0308.
 For more information about an error, try `rustc --explain E0034`.
