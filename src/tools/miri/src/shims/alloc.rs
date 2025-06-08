@@ -13,10 +13,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // alignment requirement and size less than or equal to the size requested."
         // So first we need to figure out what the limits are for "fundamental alignment".
         // This is given by `alignof(max_align_t)`. The following list is taken from
-        // `library/std/src/sys/pal/common/alloc.rs` (where this is called `MIN_ALIGN`) and should
+        // `library/std/src/sys/alloc/mod.rs` (where this is called `MIN_ALIGN`) and should
         // be kept in sync.
         let max_fundamental_align = match this.tcx.sess.target.arch.as_ref() {
-            "x86" | "arm" | "mips" | "mips32r6" | "powerpc" | "powerpc64" | "wasm32" => 8,
+            "x86" | "arm" | "loongarch32" | "mips" | "mips32r6" | "powerpc" | "powerpc64"
+            | "wasm32" => 8,
             "x86_64" | "aarch64" | "mips64" | "mips64r6" | "s390x" | "sparc64" | "loongarch64" =>
                 16,
             arch => bug!("unsupported target architecture for malloc: `{}`", arch),

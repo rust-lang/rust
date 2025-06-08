@@ -495,6 +495,7 @@ impl Config {
             "arm64ec",
             "riscv32",
             "riscv64",
+            "loongarch32",
             "loongarch64",
             "s390x",
             // These targets require an additional asm_experimental_arch feature.

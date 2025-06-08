@@ -178,7 +178,7 @@
 //!
 //! | `target_arch` | Size limit |
 //! |---------------|---------|
-//! | `x86`, `arm`, `mips`, `mips32r6`, `powerpc`, `riscv32`, `sparc`, `hexagon` | 4 bytes |
+//! | `x86`, `arm`, `loongarch32`, `mips`, `mips32r6`, `powerpc`, `riscv32`, `sparc`, `hexagon` | 4 bytes |
 //! | `x86_64`, `aarch64`, `loongarch64`, `mips64`, `mips64r6`, `powerpc64`, `riscv64`, `sparc64`, `s390x` | 8 bytes |
 //!
 //! Atomics loads that are larger than this limit as well as atomic loads with ordering other
@@ -350,8 +350,12 @@ pub type Atomic<T> = <T as AtomicPrimitive>::AtomicInner;
 // This list should only contain architectures which have word-sized atomic-or/
 // atomic-and instructions but don't natively support byte-sized atomics.
 #[cfg(target_has_atomic = "8")]
-const EMULATE_ATOMIC_BOOL: bool =
-    cfg!(any(target_arch = "riscv32", target_arch = "riscv64", target_arch = "loongarch64"));
+const EMULATE_ATOMIC_BOOL: bool = cfg!(any(
+    target_arch = "riscv32",
+    target_arch = "riscv64",
+    target_arch = "loongarch32",
+    target_arch = "loongarch64"
+));
 
 /// A boolean type which can be safely shared between threads.
 ///
