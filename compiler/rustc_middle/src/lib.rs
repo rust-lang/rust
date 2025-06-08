@@ -51,6 +51,7 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(ptr_alignment_type)]
+#![feature(round_char_boundary)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(trusted_len)]
