@@ -51,11 +51,6 @@ impl GitInfo {
         if output.is_failure() {
             return GitInfo::Absent;
         }
-        // Make sure git commands work
-        // match helpers::git(Some(dir)).arg("rev-parse").as_command_mut().output() {
-        //     Ok(ref out) if out.status.success() => {}
-        //     _ => return GitInfo::Absent,
-        // }
 
         // If we're ignoring the git info, we don't actually need to collect it, just make sure this
         // was a git repo in the first place.

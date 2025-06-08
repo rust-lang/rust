@@ -1025,10 +1025,7 @@ impl Config {
     }
 
     pub fn dry_run(&self) -> bool {
-        match self.dry_run {
-            DryRun::Disabled => false,
-            DryRun::SelfCheck | DryRun::UserSelected => true,
-        }
+        self.exec_ctx.dry_run()
     }
 
     pub fn is_explicit_stage(&self) -> bool {
@@ -1256,9 +1253,7 @@ impl Config {
 
     /// Runs a function if verbosity is greater than 0
     pub fn verbose(&self, f: impl Fn()) {
-        if self.is_verbose() {
-            f()
-        }
+        self.exec_ctx.verbose(f);
     }
 
     pub fn any_sanitizers_to_build(&self) -> bool {

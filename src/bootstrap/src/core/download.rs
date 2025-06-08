@@ -38,7 +38,7 @@ fn curl_version(config: &Config) -> semver::Version {
 /// Generic helpers that are useful anywhere in bootstrap.
 impl Config {
     pub fn is_verbose(&self) -> bool {
-        self.verbose > 0
+        self.exec_ctx.is_verbose()
     }
 
     pub(crate) fn create<P: AsRef<Path>>(&self, path: P, s: &str) {

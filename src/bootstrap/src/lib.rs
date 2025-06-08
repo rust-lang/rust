@@ -673,6 +673,7 @@ impl Build {
                 let _sanity_check_span =
                     span!(tracing::Level::DEBUG, "(1) executing dry-run sanity-check").entered();
                 self.config.dry_run = DryRun::SelfCheck;
+                self.config.exec_ctx.set_dry_run(DryRun::SelfCheck);
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
             }
@@ -683,6 +684,7 @@ impl Build {
                 let _actual_run_span =
                     span!(tracing::Level::DEBUG, "(2) executing actual run").entered();
                 self.config.dry_run = DryRun::Disabled;
+                self.config.exec_ctx.set_dry_run(DryRun::Disabled);
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
             }
