@@ -547,7 +547,7 @@ impl Config {
             build.cargo = build.cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
         }
 
-        if GitInfo::new(false, &config.src).is_from_tarball() && toml.profile.is_none() {
+        if config.git_info(false, &config.src).is_from_tarball() && toml.profile.is_none() {
             toml.profile = Some("dist".into());
         }
 
@@ -850,19 +850,21 @@ impl Config {
         let default = config.channel == "dev";
         config.omit_git_hash = toml.rust.as_ref().and_then(|r| r.omit_git_hash).unwrap_or(default);
 
-        config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
-        config.cargo_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/cargo"));
+        config.rust_info = config.git_info(config.omit_git_hash, &config.src);
+        config.cargo_info =
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/cargo"));
         config.rust_analyzer_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rust-analyzer"));
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/rust-analyzer"));
         config.clippy_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/clippy"));
-        config.miri_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/miri"));
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/clippy"));
+        config.miri_info =
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/miri"));
         config.rustfmt_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
         config.enzyme_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
-        config.in_tree_llvm_info = GitInfo::new(false, &config.src.join("src/llvm-project"));
-        config.in_tree_gcc_info = GitInfo::new(false, &config.src.join("src/gcc"));
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
+        config.in_tree_llvm_info = config.git_info(false, &config.src.join("src/llvm-project"));
+        config.in_tree_gcc_info = config.git_info(false, &config.src.join("src/gcc"));
 
         config.vendor = vendor.unwrap_or(
             config.rust_info.is_from_tarball()
@@ -1329,7 +1331,7 @@ impl Config {
 
         // NOTE: The check for the empty directory is here because when running x.py the first time,
         // the submodule won't be checked out. Check it out now so we can build it.
-        if !GitInfo::new(false, &absolute_path).is_managed_git_subrepository()
+        if !self.git_info(false, &absolute_path).is_managed_git_subrepository()
             && !helpers::dir_is_empty(&absolute_path)
         {
             return;

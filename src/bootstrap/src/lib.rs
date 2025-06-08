@@ -32,6 +32,7 @@ use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
+use utils::execution_context::ExecutionContext;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
@@ -616,7 +617,7 @@ impl Build {
             return;
         }
 
-        if GitInfo::new(false, Path::new(submodule)).is_managed_git_subrepository() {
+        if config.git_info(false, Path::new(submodule)).is_managed_git_subrepository() {
             config.update_submodule(submodule);
         }
     }
@@ -2014,6 +2015,16 @@ to download LLVM rather than building it.
         let result = f(&mut stream);
         stream.reset().unwrap();
         result
+    }
+
+    pub fn exec_ctx(&self) -> &ExecutionContext {
+        &self.config.exec_ctx
+    }
+}
+
+impl AsRef<ExecutionContext> for Build {
+    fn as_ref(&self) -> &ExecutionContext {
+        &self.config.exec_ctx
     }
 }
 
