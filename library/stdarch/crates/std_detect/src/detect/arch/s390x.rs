@@ -7,6 +7,9 @@ features! {
     @MACRO_ATTRS:
     /// Checks if `s390x` feature is enabled.
     #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] concurrent_functions: "concurrent-functions";
+    /// s390x concurrent-functions facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
     @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] deflate_conversion: "deflate-conversion";
     /// s390x deflate-conversion facility
     #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
@@ -18,6 +21,12 @@ features! {
     #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
     @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] high_word: "high-word";
     /// s390x high-word facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] message_security_assist_extension12: "message-security-assist-extension12";
+    /// s390x message-security-assist-extension12 facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] miscellaneous_extensions_4: "miscellaneous-extensions-4";
+    /// s390x miscellaneous-extensions-4 facility
     #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
     @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] nnp_assist: "nnp-assist";
     /// s390x nnp-assist facility
@@ -34,6 +43,9 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] vector_enhancements_2: "vector-enhancements-2";
     /// s390x vector-enhancements-2 facility
     #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] vector_enhancements_3: "vector-enhancements-3";
+    /// s390x vector-enhancements-3 facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
     @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] vector_packed_decimal: "vector-packed-decimal";
     /// s390x vector-packed-decimal facility
     #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
@@ -42,4 +54,7 @@ features! {
     #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
     @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] vector_packed_decimal_enhancement_2: "vector-packed-decimal-enhancement-2";
     /// s390x vector-packed-decimal-enhancement-2 facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] vector_packed_decimal_enhancement_3: "vector-packed-decimal-enhancement-3";
+    /// s390x vector-packed-decimal-enhancement-3 facility
 }
