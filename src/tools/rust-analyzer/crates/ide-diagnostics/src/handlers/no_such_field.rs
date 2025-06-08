@@ -1,5 +1,4 @@
 use either::Either;
-use hir::{Field, HasCrate};
 use hir::{HasSource, HirDisplay, Semantics, VariantId, db::ExpandDatabase};
 use ide_db::text_edit::TextEdit;
 use ide_db::{EditionedFileId, RootDatabase, source_change::SourceChange};
@@ -8,7 +7,10 @@ use syntax::{
     ast::{self, edit::IndentLevel, make},
 };
 
-use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
+use crate::{
+    Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, fix,
+    handlers::private_field::field_is_private_fixes,
+};
 
 // Diagnostic: no-such-field
 //
@@ -37,8 +39,8 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Option<Vec<Assis
                 field_is_private_fixes(
                     &ctx.sema,
                     d.field.file_id.original_file(ctx.sema.db),
-                    node,
                     private_field,
+                    ctx.sema.original_range(node.syntax()).range,
                 )
             } else {
                 missing_record_expr_field_fixes(
@@ -50,31 +52,6 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Option<Vec<Assis
         }
         _ => None,
     }
-}
-
-fn field_is_private_fixes(
-    sema: &Semantics<'_, RootDatabase>,
-    usage_file_id: EditionedFileId,
-    record_expr_field: &ast::RecordExprField,
-    private_field: Field,
-) -> Option<Vec<Assist>> {
-    let def_crate = private_field.krate(sema.db);
-    let usage_crate = sema.file_to_module_def(usage_file_id.file_id(sema.db))?.krate();
-    let visibility = if usage_crate == def_crate { "pub(crate) " } else { "pub " };
-
-    let source = private_field.source(sema.db)?;
-    let (range, _) = source.syntax().original_file_range_opt(sema.db)?;
-    let source_change = SourceChange::from_text_edit(
-        range.file_id.file_id(sema.db),
-        TextEdit::insert(range.range.start(), visibility.into()),
-    );
-
-    Some(vec![fix(
-        "increase_field_visibility",
-        "Increase field visibility",
-        source_change,
-        sema.original_range(record_expr_field.syntax()).range,
-    )])
 }
 
 fn missing_record_expr_field_fixes(
