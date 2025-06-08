@@ -280,7 +280,7 @@ impl<'tcx> MirPatch<'tcx> {
             let source_info = Self::source_info_for_index(&body[loc.block], loc);
             body[loc.block]
                 .statements
-                .insert(loc.statement_index, Statement { source_info, kind: stmt });
+                .insert(loc.statement_index, Statement::new(source_info, stmt));
             delta += 1;
         }
     }

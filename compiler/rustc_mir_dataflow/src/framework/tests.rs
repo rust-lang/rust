@@ -17,7 +17,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
 
     let mut blocks = IndexVec::new();
     let mut block = |n, kind| {
-        let nop = mir::Statement { source_info, kind: mir::StatementKind::Nop };
+        let nop = mir::Statement::new(source_info, mir::StatementKind::Nop);
 
         blocks.push(mir::BasicBlockData {
             statements: std::iter::repeat(&nop).cloned().take(n).collect(),

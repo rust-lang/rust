@@ -252,10 +252,10 @@ impl<'tcx> TransformVisitor<'tcx> {
             }
         };
 
-        let statements = vec![Statement {
-            kind: StatementKind::Assign(Box::new((Place::return_place(), none_value))),
+        let statements = vec![Statement::new(
             source_info,
-        }];
+            StatementKind::Assign(Box::new((Place::return_place(), none_value))),
+        )];
 
         body.basic_blocks_mut().push(BasicBlockData {
             statements,
@@ -342,10 +342,10 @@ impl<'tcx> TransformVisitor<'tcx> {
             }
         };
 
-        statements.push(Statement {
-            kind: StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
+        statements.push(Statement::new(
             source_info,
-        });
+            StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
+        ));
     }
 
     // Create a Place referencing a coroutine struct field
@@ -361,13 +361,13 @@ impl<'tcx> TransformVisitor<'tcx> {
     // Create a statement which changes the discriminant
     fn set_discr(&self, state_disc: VariantIdx, source_info: SourceInfo) -> Statement<'tcx> {
         let self_place = Place::from(SELF_ARG);
-        Statement {
+        Statement::new(
             source_info,
-            kind: StatementKind::SetDiscriminant {
+            StatementKind::SetDiscriminant {
                 place: Box::new(self_place),
                 variant_index: state_disc,
             },
-        }
+        )
     }
 
     // Create a statement which reads the discriminant into a temporary
@@ -377,10 +377,10 @@ impl<'tcx> TransformVisitor<'tcx> {
         let temp = Place::from(local_decls_len);
 
         let self_place = Place::from(SELF_ARG);
-        let assign = Statement {
-            source_info: SourceInfo::outermost(body.span),
-            kind: StatementKind::Assign(Box::new((temp, Rvalue::Discriminant(self_place)))),
-        };
+        let assign = Statement::new(
+            SourceInfo::outermost(body.span),
+            StatementKind::Assign(Box::new((temp, Rvalue::Discriminant(self_place)))),
+        );
         (assign, temp)
     }
 }
@@ -450,7 +450,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                         && !self.always_live_locals.contains(l);
                     if needs_storage_dead {
                         data.statements
-                            .push(Statement { source_info, kind: StatementKind::StorageDead(l) });
+                            .push(Statement::new(source_info, StatementKind::StorageDead(l)));
                     }
                 }
 
@@ -596,10 +596,8 @@ fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local
     let local = arg.node.place().unwrap().local;
 
     let arg = Rvalue::Use(arg.node);
-    let assign = Statement {
-        source_info: terminator.source_info,
-        kind: StatementKind::Assign(Box::new((destination, arg))),
-    };
+    let assign =
+        Statement::new(terminator.source_info, StatementKind::Assign(Box::new((destination, arg))));
     bb_data.statements.push(assign);
     bb_data.terminator = Some(Terminator {
         source_info: terminator.source_info,
@@ -1109,10 +1107,7 @@ fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) ->
         Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(0), args, None, None)),
         IndexVec::from_raw(vec![val]),
     );
-    Statement {
-        kind: StatementKind::Assign(Box::new((Place::return_place(), ready_val))),
-        source_info,
-    }
+    Statement::new(source_info, StatementKind::Assign(Box::new((Place::return_place(), ready_val))))
 }
 
 fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> BasicBlock {
@@ -1345,21 +1340,20 @@ fn create_cases<'tcx>(
                         && !transform.remap.contains(l)
                         && !transform.always_live_locals.contains(l);
                     if needs_storage_live {
-                        statements
-                            .push(Statement { source_info, kind: StatementKind::StorageLive(l) });
+                        statements.push(Statement::new(source_info, StatementKind::StorageLive(l)));
                     }
                 }
 
                 if operation == Operation::Resume {
                     // Move the resume argument to the destination place of the `Yield` terminator
                     let resume_arg = CTX_ARG;
-                    statements.push(Statement {
+                    statements.push(Statement::new(
                         source_info,
-                        kind: StatementKind::Assign(Box::new((
+                        StatementKind::Assign(Box::new((
                             point.resume_arg,
                             Rvalue::Use(Operand::Move(resume_arg.into())),
                         ))),
-                    });
+                    ));
                 }
 
                 // Then jump to the real target
@@ -1540,13 +1534,13 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         let stmts = &mut body.basic_blocks_mut()[START_BLOCK].statements;
         stmts.insert(
             0,
-            Statement {
+            Statement::new(
                 source_info,
-                kind: StatementKind::Assign(Box::new((
+                StatementKind::Assign(Box::new((
                     old_resume_local.into(),
                     Rvalue::Use(Operand::Move(resume_local.into())),
                 ))),
-            },
+            ),
         );
 
         let always_live_locals = always_storage_live_locals(body);

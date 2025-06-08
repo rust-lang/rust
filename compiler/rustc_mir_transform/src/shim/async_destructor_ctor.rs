@@ -133,7 +133,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
         dropee_ptr,
         Rvalue::Use(Operand::Move(coroutine_layout_dropee)),
     )));
-    body.basic_blocks_mut()[START_BLOCK].statements.push(Statement { source_info, kind: st_kind });
+    body.basic_blocks_mut()[START_BLOCK].statements.push(Statement::new(source_info, st_kind));
     dropee_ptr = dropee_emit_retag(tcx, &mut body, dropee_ptr, span);
 
     let dropline = body.basic_blocks.last_index();
@@ -240,13 +240,13 @@ fn build_adrop_for_coroutine_shim<'tcx>(
             .project_deeper(&[PlaceElem::Field(FieldIdx::ZERO, proxy_ref)], tcx);
         body.basic_blocks_mut()[START_BLOCK].statements.insert(
             idx,
-            Statement {
+            Statement::new(
                 source_info,
-                kind: StatementKind::Assign(Box::new((
+                StatementKind::Assign(Box::new((
                     Place::from(proxy_ref_local),
                     Rvalue::CopyForDeref(proxy_ref_place),
                 ))),
-            },
+            ),
         );
         idx += 1;
         let mut cor_ptr_local = proxy_ref_local;
@@ -261,13 +261,13 @@ fn build_adrop_for_coroutine_shim<'tcx>(
                 // _cor_ptr = _proxy.0.0 (... .0)
                 body.basic_blocks_mut()[START_BLOCK].statements.insert(
                     idx,
-                    Statement {
+                    Statement::new(
                         source_info,
-                        kind: StatementKind::Assign(Box::new((
+                        StatementKind::Assign(Box::new((
                             Place::from(cor_ptr_local),
                             Rvalue::CopyForDeref(impl_ptr_place),
                         ))),
-                    },
+                    ),
                 );
                 idx += 1;
             }
@@ -281,10 +281,10 @@ fn build_adrop_for_coroutine_shim<'tcx>(
         );
         body.basic_blocks_mut()[START_BLOCK].statements.insert(
             idx,
-            Statement {
+            Statement::new(
                 source_info,
-                kind: StatementKind::Assign(Box::new((Place::from(cor_ref_local), reborrow))),
-            },
+                StatementKind::Assign(Box::new((Place::from(cor_ref_local), reborrow))),
+            ),
         );
     }
     body
@@ -334,13 +334,13 @@ fn build_adrop_for_adrop_shim<'tcx>(
 
     let mut statements = Vec::new();
 
-    statements.push(Statement {
+    statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             Place::from(proxy_ref_local),
             Rvalue::CopyForDeref(proxy_ref_place),
         ))),
-    });
+    ));
 
     let mut cor_ptr_local = proxy_ref_local;
     proxy_ty.find_async_drop_impl_coroutine(tcx, |ty| {
@@ -350,13 +350,13 @@ fn build_adrop_for_adrop_shim<'tcx>(
                 .project_deeper(&[PlaceElem::Deref, PlaceElem::Field(FieldIdx::ZERO, ty_ptr)], tcx);
             cor_ptr_local = locals.push(LocalDecl::new(ty_ptr, span));
             // _cor_ptr = _proxy.0.0 (... .0)
-            statements.push(Statement {
+            statements.push(Statement::new(
                 source_info,
-                kind: StatementKind::Assign(Box::new((
+                StatementKind::Assign(Box::new((
                     Place::from(cor_ptr_local),
                     Rvalue::CopyForDeref(impl_ptr_place),
                 ))),
-            });
+            ));
         }
     });
 
@@ -367,10 +367,10 @@ fn build_adrop_for_adrop_shim<'tcx>(
         tcx.mk_place_deref(Place::from(cor_ptr_local)),
     );
     let cor_ref_place = Place::from(locals.push(LocalDecl::new(cor_ref, span)));
-    statements.push(Statement {
+    statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((cor_ref_place, reborrow))),
-    });
+        StatementKind::Assign(Box::new((cor_ref_place, reborrow))),
+    ));
 
     // cor_pin_ty = `Pin<&mut cor_ref>`
     let cor_pin_ty = Ty::new_adt(tcx, pin_adt_ref, tcx.mk_args(&[cor_ref.into()]));
