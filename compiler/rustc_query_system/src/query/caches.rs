@@ -26,9 +26,14 @@ pub trait QueryCache: Sized {
 
     /// Start the job.
     ///
-    /// After the first call to `get_index_or_start`, the returned index is guaranteed to be
-    /// uniquely bound to `key` until either `complete` is called or `self` is dropped.
-    fn get_index_or_start(&self, key: &Self::Key) -> usize;
+    /// After the first call to `to_unique_index`, the returned index is guaranteed to be
+    /// uniquely bound to `key` until earlier of `drop(self)` or `complete(key, ...)`.
+    fn to_unique_index(&self, key: &Self::Key) -> usize;
+
+    /// Reverse the mapping of to_unique_index to a key.
+    ///
+    /// Will panic if called with an index that's not currently available.
+    fn to_key(&self, idx: usize) -> Self::Key;
 
     /// Adds a key/value entry to this cache.
     ///
@@ -43,6 +48,7 @@ pub trait QueryCache: Sized {
 /// more specialized kinds of cache. Backed by a sharded hashmap.
 pub struct DefaultCache<K, V> {
     cache: ShardedHashMap<K, (V, DepNodeIndex)>,
+    // FIXME: if perf is bad, try pushing this into `cache` with Option<V> or so.
     active: ShardedHashMap<K, u32>,
 }
 
@@ -65,7 +71,7 @@ where
         self.cache.get(key)
     }
 
-    fn get_index_or_start(&self, key: &Self::Key) -> usize {
+    fn to_unique_index(&self, key: &Self::Key) -> usize {
         static ACTIVE_INDEX: AtomicU32 = AtomicU32::new(0);
         self.active
             .get_or_insert_with(*key, || {
@@ -75,11 +81,26 @@ where
             .unwrap()
     }
 
+    fn to_key(&self, idx: usize) -> Self::Key {
+        for shard in self.active.lock_shards() {
+            for (k, v) in shard.iter() {
+                if (*v as usize) == idx {
+                    return *k;
+                }
+            }
+        }
+
+        unreachable!("index not currently mapped")
+    }
+
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
         // We may be overwriting another value. This is all right, since the dep-graph
         // will check that the fingerprint matches.
         self.cache.insert(key, (value, index));
+
+        // Make sure to do this second -- this ensures lookups return success prior to active
+        // getting removed, helping avoiding assignment of multiple indices per logical key.
         self.active.remove(key);
     }
 
@@ -121,9 +142,13 @@ where
         self.cache.set((value, index)).ok();
     }
 
-    fn get_index_or_start(&self, _: &Self::Key) -> usize {
+    fn to_unique_index(&self, _: &Self::Key) -> usize {
         // SingleCache has a single key, so we can map directly to a constant.
         0
+    }
+
+    fn to_key(&self, _: usize) -> Self::Key {
+        ()
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
@@ -166,20 +191,29 @@ where
         }
     }
 
-    fn get_index_or_start(&self, key: &Self::Key) -> usize {
+    fn to_unique_index(&self, key: &Self::Key) -> usize {
         if key.krate == LOCAL_CRATE {
             // The local cache assigns keys based on allocated addresses in the backing VecCache.
             //
             // Those addresses are always at least 4-aligned (due to DepNodeIndex), so the low bit
             // can't be set. This means these don't overlap with the other cache given we |1 those
             // IDs. We check this with the assertion.
-            let local_idx = self.local.get_index_or_start(&key.index);
+            let local_idx = self.local.to_unique_index(&key.index);
             assert!(local_idx & 1 == 0);
             local_idx
         } else {
             // Shifting is safe because DefaultCache uses only u32 for its indices, so we won't
             // overflow here.
-            (self.foreign.get_index_or_start(key) << 1) | 1
+            (self.foreign.to_unique_index(key) << 1) | 1
+        }
+    }
+
+    fn to_key(&self, idx: usize) -> Self::Key {
+        if idx & 1 == 0 {
+            // local
+            DefId::local(self.local.to_key(idx))
+        } else {
+            self.foreign.to_key(idx >> 1)
         }
     }
 
@@ -222,7 +256,11 @@ where
         self.iter(f)
     }
 
-    fn get_index_or_start(&self, key: &Self::Key) -> usize {
+    fn to_unique_index(&self, key: &Self::Key) -> usize {
         self.to_slot_address(key)
+    }
+
+    fn to_key(&self, idx: usize) -> Self::Key {
+        self.to_key(idx)
     }
 }

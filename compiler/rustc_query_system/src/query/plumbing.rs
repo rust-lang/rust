@@ -9,7 +9,7 @@ use std::mem;
 
 use hashbrown::hash_table::Entry;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::sharded::{self, Sharded};
+use rustc_data_structures::sharded::{self, ShardedHashMap, make_hash};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::{outline, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
@@ -29,8 +29,8 @@ fn equivalent_key<K: Eq, V>(k: &K) -> impl Fn(&(K, V)) -> bool + '_ {
     move |x| x.0 == *k
 }
 
-pub struct QueryState<K, I> {
-    active: Sharded<hashbrown::HashTable<(K, QueryResult<I>)>>,
+pub struct QueryState<I> {
+    active: ShardedHashMap<usize, QueryResult<I>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
@@ -55,10 +55,7 @@ impl<I> QueryResult<I> {
     }
 }
 
-impl<K, I> QueryState<K, I>
-where
-    K: Eq + Hash + Copy + Debug,
-{
+impl<I> QueryState<I> {
     pub fn all_inactive(&self) -> bool {
         self.active.lock_shards().all(|shard| shard.is_empty())
     }
@@ -66,7 +63,7 @@ where
     pub fn try_collect_active_jobs<Qcx: Copy>(
         &self,
         qcx: Qcx,
-        make_query: fn(Qcx, K) -> QueryStackFrame<I>,
+        make_query: fn(Qcx, usize) -> QueryStackFrame<I>,
         jobs: &mut QueryMap<I>,
     ) -> Option<()> {
         let mut active = Vec::new();
@@ -92,8 +89,8 @@ where
     }
 }
 
-impl<K, I> Default for QueryState<K, I> {
-    fn default() -> QueryState<K, I> {
+impl<I> Default for QueryState<I> {
+    fn default() -> QueryState<I> {
         QueryState { active: Default::default() }
     }
 }
@@ -104,8 +101,9 @@ struct JobOwner<'tcx, K, I>
 where
     K: Eq + Hash + Copy,
 {
-    state: &'tcx QueryState<K, I>,
+    state: &'tcx QueryState<I>,
     key: K,
+    unique_idx: usize,
 }
 
 #[cold]
@@ -163,30 +161,30 @@ where
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
-    fn complete<C>(self, cache: &C, key_hash: u64, result: C::Value, dep_node_index: DepNodeIndex)
+    fn complete<C>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
     where
         C: QueryCache<Key = K>,
     {
         let key = self.key;
+        let unique_idx = self.unique_idx;
         let state = self.state;
 
         // Forget ourself so our destructor won't poison the query
         mem::forget(self);
 
+        let idx_hash = sharded::make_hash(&unique_idx);
+
+        // Lock shard before cache.complete as otherwise a distinct index might be assigned to a
+        // concurrently starting query.
+        let mut shard = state.active.lock_shard_by_hash(idx_hash);
+
         // Mark as complete before we remove the job from the active state
         // so no other thread can re-execute this query.
         cache.complete(key, result, dep_node_index);
 
-        let job = {
-            // don't keep the lock during the `unwrap()` of the retrieved value, or we taint the
-            // underlying shard.
-            // since unwinding also wants to look at this map, this can also prevent a double
-            // panic.
-            let mut shard = state.active.lock_shard_by_hash(key_hash);
-            match shard.find_entry(key_hash, equivalent_key(&key)) {
-                Err(_) => None,
-                Ok(occupied) => Some(occupied.remove().0.1),
-            }
+        let job = match shard.entry(idx_hash, equivalent_key(&unique_idx), |(k, _)| make_hash(k)) {
+            Entry::Occupied(e) => Some(e.remove().0.1),
+            Entry::Vacant(_) => None,
         };
         let job = job.expect("active query job entry").expect_job();
 
@@ -204,9 +202,9 @@ where
         // Poison the query so jobs waiting on it panic.
         let state = self.state;
         let job = {
-            let key_hash = sharded::make_hash(&self.key);
-            let mut shard = state.active.lock_shard_by_hash(key_hash);
-            match shard.find_entry(key_hash, equivalent_key(&self.key)) {
+            let idx_hash = sharded::make_hash(&self.unique_idx);
+            let mut shard = state.active.lock_shard_by_hash(idx_hash);
+            match shard.find_entry(idx_hash, equivalent_key(&self.unique_idx)) {
                 Err(_) => panic!(),
                 Ok(occupied) => {
                     let ((key, value), vacant) = occupied.remove();
@@ -305,9 +303,10 @@ where
                 outline(|| {
                     // We didn't find the query result in the query cache. Check if it was
                     // poisoned due to a panic instead.
-                    let key_hash = sharded::make_hash(&key);
-                    let shard = query.query_state(qcx).active.lock_shard_by_hash(key_hash);
-                    match shard.find(key_hash, equivalent_key(&key)) {
+                    let unique_idx = query.query_cache(qcx).to_unique_index(&key);
+                    let idx_hash = sharded::make_hash(&unique_idx);
+                    let shard = query.query_state(qcx).active.lock_shard_by_hash(idx_hash);
+                    match shard.find(idx_hash, equivalent_key(&unique_idx)) {
                         // The query we waited on panicked. Continue unwinding here.
                         Some((_, QueryResult::Poisoned)) => FatalError.raise(),
                         _ => panic!(
@@ -340,8 +339,9 @@ where
     Qcx: QueryContext,
 {
     let state = query.query_state(qcx);
-    let key_hash = sharded::make_hash(&key);
-    let mut state_lock = state.active.lock_shard_by_hash(key_hash);
+    let unique_idx = query.query_cache(qcx).to_unique_index(&key);
+    let idx_hash = sharded::make_hash(&unique_idx);
+    let mut state_lock = state.active.lock_shard_by_hash(idx_hash);
 
     // For the parallel compiler we need to check both the query cache and query state structures
     // while holding the state lock to ensure that 1) the query has not yet completed and 2) the
@@ -357,19 +357,18 @@ where
     }
 
     let current_job_id = qcx.current_query_job();
-
-    match state_lock.entry(key_hash, equivalent_key(&key), |(k, _)| sharded::make_hash(k)) {
+    match state_lock.entry(idx_hash, equivalent_key(&unique_idx), |(k, _)| sharded::make_hash(k)) {
         Entry::Vacant(entry) => {
             // Nothing has computed or is computing the query, so we start a new job and insert it in the
             // state map.
             let id = qcx.next_job_id();
             let job = QueryJob::new(id, span, current_job_id);
-            entry.insert((key, QueryResult::Started(job)));
+            entry.insert((unique_idx, QueryResult::Started(job)));
 
             // Drop the lock before we start executing the query
             drop(state_lock);
 
-            execute_job::<_, _, INCR>(query, qcx, state, key, key_hash, id, dep_node)
+            execute_job::<_, _, INCR>(query, qcx, state, key, id, dep_node)
         }
         Entry::Occupied(mut entry) => {
             match &mut entry.get_mut().1 {
@@ -401,9 +400,8 @@ where
 fn execute_job<Q, Qcx, const INCR: bool>(
     query: Q,
     qcx: Qcx,
-    state: &QueryState<Q::Key, Qcx::QueryInfo>,
+    state: &QueryState<Qcx::QueryInfo>,
     key: Q::Key,
-    key_hash: u64,
     id: QueryJobId,
     dep_node: Option<DepNode>,
 ) -> (Q::Value, Option<DepNodeIndex>)
@@ -412,7 +410,8 @@ where
     Qcx: QueryContext,
 {
     // Use `JobOwner` so the query will be poisoned if executing it panics.
-    let job_owner = JobOwner { state, key };
+    let unique_idx = query.query_cache(qcx).to_unique_index(&key);
+    let job_owner = JobOwner { state, key, unique_idx };
 
     debug_assert_eq!(qcx.dep_context().dep_graph().is_fully_enabled(), INCR);
 
@@ -464,7 +463,7 @@ where
             }
         }
     }
-    job_owner.complete(cache, key_hash, result, dep_node_index);
+    job_owner.complete(cache, result, dep_node_index);
 
     (result, Some(dep_node_index))
 }

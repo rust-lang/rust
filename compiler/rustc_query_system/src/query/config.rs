@@ -28,7 +28,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn format_value(self) -> fn(&Self::Value) -> String;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Self::Key, Qcx::QueryInfo>
+    fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Qcx::QueryInfo>
     where
         Qcx: 'a;
 

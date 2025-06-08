@@ -8,6 +8,7 @@
 
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::ptr::NonNull;
 use std::sync::atomic::{AtomicPtr, AtomicU32, AtomicUsize, Ordering};
 
 use rustc_index::Idx;
@@ -56,6 +57,8 @@ const ENTRIES_BY_BUCKET: [usize; 21] = {
     entries
 };
 
+const FIRST_BUCKET_SHIFT: usize = 12;
+
 impl SlotIndex {
     // This unpacks a flat u32 index into identifying which bucket it belongs to and the offset
     // within that bucket. As noted in the VecCache docs, buckets double in size with each index.
@@ -68,7 +71,6 @@ impl SlotIndex {
     // slots (see `slot_index_exhaustive` in tests).
     #[inline]
     const fn from_index(idx: u32) -> Self {
-        const FIRST_BUCKET_SHIFT: usize = 12;
         if idx < (1 << FIRST_BUCKET_SHIFT) {
             return SlotIndex {
                 bucket_idx: 0,
@@ -84,6 +86,15 @@ impl SlotIndex {
             entries,
             index_in_bucket: idx as usize - entries,
         }
+    }
+
+    fn to_key<K: Idx>(&self) -> K {
+        let idx = if self.bucket_idx == 0 {
+            self.index_in_bucket
+        } else {
+            (1 << (self.bucket_idx + FIRST_BUCKET_SHIFT - 1)) + self.index_in_bucket
+        };
+        K::new(idx)
     }
 
     // SAFETY: Buckets must be managed solely by functions here (i.e., get/put on SlotIndex) and
@@ -353,6 +364,30 @@ where
         let slot_idx = SlotIndex::from_index(key);
         // SAFETY: Same safety as lookup.
         unsafe { slot_idx.addr(&self.buckets) }
+    }
+
+    pub fn to_key(&self, slot_addr: usize) -> K {
+        for (bucket_idx, bucket) in self.buckets.iter().enumerate() {
+            let Some(bucket_ptr) = NonNull::new(bucket.load(Ordering::Acquire)) else {
+                continue;
+            };
+            let entries = ENTRIES_BY_BUCKET[bucket_idx];
+
+            // Are we in this bucket?
+            if !(bucket_ptr.as_ptr().addr() <= slot_addr
+                && slot_addr <= bucket_ptr.as_ptr().wrapping_add(entries).addr())
+            {
+                continue;
+            }
+
+            let index_in_bucket =
+                (slot_addr - bucket_ptr.as_ptr().addr()) / std::mem::size_of::<Slot<V>>();
+            let slot_idx = SlotIndex { bucket_idx, entries, index_in_bucket };
+
+            return slot_idx.to_key::<K>();
+        }
+
+        unreachable!()
     }
 }
 

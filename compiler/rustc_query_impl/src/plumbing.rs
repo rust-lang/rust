@@ -735,9 +735,10 @@ macro_rules! define_queries {
                 tcx: TyCtxt<'tcx>,
                 qmap: &mut QueryMap<QueryStackDeferred<'tcx>>,
             ) -> Option<()> {
-                let make_query = |tcx, key| {
+                let make_query = |tcx: TyCtxt<'tcx>, key| {
                     let kind = rustc_middle::dep_graph::dep_kinds::$name;
                     let name = stringify!($name);
+                    let key = tcx.query_system.caches.$name.to_key(key);
                     $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
                 };
                 let res = tcx.query_system.states.$name.try_collect_active_jobs(

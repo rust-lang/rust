@@ -83,10 +83,7 @@ where
     }
 
     #[inline(always)]
-    fn query_state<'a>(
-        self,
-        qcx: QueryCtxt<'tcx>,
-    ) -> &'a QueryState<Self::Key, QueryStackDeferred<'tcx>>
+    fn query_state<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a QueryState<QueryStackDeferred<'tcx>>
     where
         QueryCtxt<'tcx>: 'a,
     {
@@ -95,7 +92,7 @@ where
         unsafe {
             &*(&qcx.tcx.query_system.states as *const QueryStates<'tcx>)
                 .byte_add(self.dynamic.query_state)
-                .cast::<QueryState<Self::Key, QueryStackDeferred<'tcx>>>()
+                .cast::<QueryState<QueryStackDeferred<'tcx>>>()
         }
     }
 
