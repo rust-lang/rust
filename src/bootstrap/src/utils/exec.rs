@@ -11,6 +11,7 @@ use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio}
 use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
 
+use super::execution_context::ExecutionContext;
 use crate::Build;
 
 /// What should be done when the command fails.
@@ -125,7 +126,6 @@ impl BootstrapCommand {
         Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
     }
 
-    #[expect(dead_code)]
     pub fn fail_fast(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::Exit, ..self }
     }
@@ -138,6 +138,29 @@ impl BootstrapCommand {
     pub fn run_always(&mut self) -> &mut Self {
         self.run_always = true;
         self
+    }
+
+    #[track_caller]
+    pub fn run_exec_ctx(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> bool {
+        exec_ctx.as_ref().run(self, OutputMode::Print, OutputMode::Print).is_success()
+    }
+
+    /// Run the command, while capturing and returning all its output.
+    #[track_caller]
+    pub fn run_capture_exec_ctx(
+        &mut self,
+        exec_ctx: impl AsRef<ExecutionContext>,
+    ) -> CommandOutput {
+        exec_ctx.as_ref().run(self, OutputMode::Capture, OutputMode::Capture)
+    }
+
+    /// Run the command, while capturing and returning stdout, and printing stderr.
+    #[track_caller]
+    pub fn run_capture_stdout_exec_ctx(
+        &mut self,
+        exec_ctx: impl AsRef<ExecutionContext>,
+    ) -> CommandOutput {
+        exec_ctx.as_ref().run(self, OutputMode::Capture, OutputMode::Print)
     }
 
     /// Run the command, while printing stdout and stderr.
@@ -280,7 +303,6 @@ impl CommandOutput {
         !self.is_success()
     }
 
-    #[expect(dead_code)]
     pub fn status(&self) -> Option<ExitStatus> {
         match self.status {
             CommandStatus::Finished(status) => Some(status),
