@@ -199,6 +199,17 @@ impl<K: Eq + Hash, V> ShardedHashMap<K, V> {
             }
         }
     }
+
+    #[inline]
+    pub fn remove(&self, key: K) -> Option<V> {
+        let hash = make_hash(&key);
+        let mut shard = self.lock_shard_by_hash(hash);
+
+        match table_entry(&mut shard, hash, &key) {
+            Entry::Occupied(e) => Some(e.remove().0.1),
+            Entry::Vacant(_) => None,
+        }
+    }
 }
 
 impl<K: Eq + Hash + Copy> ShardedHashMap<K, ()> {

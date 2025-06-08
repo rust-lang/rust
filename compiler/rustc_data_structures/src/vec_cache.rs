@@ -124,6 +124,22 @@ impl SlotIndex {
         Some((value, index))
     }
 
+    // SAFETY: Buckets must be managed solely by functions here (i.e., get/put on SlotIndex) and
+    // `self` comes from SlotIndex::from_index
+    #[inline]
+    unsafe fn addr<V>(&self, buckets: &[AtomicPtr<Slot<V>>; 21]) -> usize {
+        // SAFETY: `bucket_idx` is ilog2(u32).saturating_sub(11), which is at most 21, i.e.,
+        // in-bounds of buckets. See `from_index` for computation.
+        let bucket = unsafe { buckets.get_unchecked(self.bucket_idx) };
+        let ptr = self.bucket_ptr(bucket);
+        assert!(self.index_in_bucket < self.entries);
+        // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
+        // must be inbounds.
+        let slot = unsafe { ptr.add(self.index_in_bucket) };
+
+        slot.addr()
+    }
+
     fn bucket_ptr<V>(&self, bucket: &AtomicPtr<Slot<V>>) -> *mut Slot<V> {
         let ptr = bucket.load(Ordering::Acquire);
         if ptr.is_null() { self.initialize_bucket(bucket) } else { ptr }
@@ -330,6 +346,13 @@ where
                 }
             }
         }
+    }
+
+    pub fn to_slot_address(&self, key: &K) -> usize {
+        let key = u32::try_from(key.index()).unwrap();
+        let slot_idx = SlotIndex::from_index(key);
+        // SAFETY: Same safety as lookup.
+        unsafe { slot_idx.addr(&self.buckets) }
     }
 }
 

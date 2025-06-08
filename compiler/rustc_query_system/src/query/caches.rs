@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::OnceLock;
+use std::sync::atomic::AtomicU32;
 
 use rustc_data_structures::sharded::ShardedHashMap;
 pub use rustc_data_structures::vec_cache::VecCache;
@@ -23,6 +24,12 @@ pub trait QueryCache: Sized {
     /// given key, if it is present in the cache.
     fn lookup(&self, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
 
+    /// Start the job.
+    ///
+    /// After the first call to `get_index_or_start`, the returned index is guaranteed to be
+    /// uniquely bound to `key` until either `complete` is called or `self` is dropped.
+    fn get_index_or_start(&self, key: &Self::Key) -> usize;
+
     /// Adds a key/value entry to this cache.
     ///
     /// Called by some part of the query system, after having obtained the
@@ -36,11 +43,12 @@ pub trait QueryCache: Sized {
 /// more specialized kinds of cache. Backed by a sharded hashmap.
 pub struct DefaultCache<K, V> {
     cache: ShardedHashMap<K, (V, DepNodeIndex)>,
+    active: ShardedHashMap<K, u32>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
     fn default() -> Self {
-        DefaultCache { cache: Default::default() }
+        DefaultCache { cache: Default::default(), active: Default::default() }
     }
 }
 
@@ -57,11 +65,22 @@ where
         self.cache.get(key)
     }
 
+    fn get_index_or_start(&self, key: &Self::Key) -> usize {
+        static ACTIVE_INDEX: AtomicU32 = AtomicU32::new(0);
+        self.active
+            .get_or_insert_with(*key, || {
+                ACTIVE_INDEX.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            })
+            .try_into()
+            .unwrap()
+    }
+
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
         // We may be overwriting another value. This is all right, since the dep-graph
         // will check that the fingerprint matches.
         self.cache.insert(key, (value, index));
+        self.active.remove(key);
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
@@ -100,6 +119,11 @@ where
     #[inline]
     fn complete(&self, _key: (), value: V, index: DepNodeIndex) {
         self.cache.set((value, index)).ok();
+    }
+
+    fn get_index_or_start(&self, _: &Self::Key) -> usize {
+        // SingleCache has a single key, so we can map directly to a constant.
+        0
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
@@ -142,6 +166,23 @@ where
         }
     }
 
+    fn get_index_or_start(&self, key: &Self::Key) -> usize {
+        if key.krate == LOCAL_CRATE {
+            // The local cache assigns keys based on allocated addresses in the backing VecCache.
+            //
+            // Those addresses are always at least 4-aligned (due to DepNodeIndex), so the low bit
+            // can't be set. This means these don't overlap with the other cache given we |1 those
+            // IDs. We check this with the assertion.
+            let local_idx = self.local.get_index_or_start(&key.index);
+            assert!(local_idx & 1 == 0);
+            local_idx
+        } else {
+            // Shifting is safe because DefaultCache uses only u32 for its indices, so we won't
+            // overflow here.
+            (self.foreign.get_index_or_start(key) << 1) | 1
+        }
+    }
+
     #[inline]
     fn complete(&self, key: DefId, value: V, index: DepNodeIndex) {
         if key.krate == LOCAL_CRATE {
@@ -179,5 +220,9 @@ where
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
         self.iter(f)
+    }
+
+    fn get_index_or_start(&self, key: &Self::Key) -> usize {
+        self.to_slot_address(key)
     }
 }
