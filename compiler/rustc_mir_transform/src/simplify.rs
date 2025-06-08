@@ -36,7 +36,9 @@
 
 use itertools::Itertools as _;
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{
+    MutVisitor, MutatingUseContext, NonUseContext, PlaceContext, Visitor,
+};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::DUMMY_SP;
@@ -303,7 +305,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     fn strip_nops(&mut self) {
         for blk in self.basic_blocks.iter_mut() {
-            blk.statements.retain(|stmt| !matches!(stmt.kind, StatementKind::Nop))
+            blk.retain_statements(|stmt| !matches!(stmt.kind, StatementKind::Nop))
         }
     }
 }
@@ -539,12 +541,20 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
                 self.super_statement(statement, location);
             }
 
-            StatementKind::ConstEvalCounter | StatementKind::Nop => {}
-
-            StatementKind::StorageLive(_local) | StatementKind::StorageDead(_local) => {}
+            StatementKind::ConstEvalCounter
+            | StatementKind::Nop
+            | StatementKind::StorageLive(..)
+            | StatementKind::StorageDead(..) => {
+                for debuginfo in statement.debuginfos.iter() {
+                    self.visit_statement_debuginfo(debuginfo, location);
+                }
+            }
 
             StatementKind::Assign(box (ref place, ref rvalue)) => {
                 if rvalue.is_safe_to_remove() {
+                    for debuginfo in statement.debuginfos.iter() {
+                        self.visit_statement_debuginfo(debuginfo, location);
+                    }
                     self.visit_lhs(place, location);
                     self.visit_rvalue(rvalue, location);
                 } else {
@@ -555,15 +565,18 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             StatementKind::SetDiscriminant { ref place, variant_index: _ }
             | StatementKind::Deinit(ref place)
             | StatementKind::BackwardIncompatibleDropHint { ref place, reason: _ } => {
+                for debuginfo in statement.debuginfos.iter() {
+                    self.visit_statement_debuginfo(debuginfo, location);
+                }
                 self.visit_lhs(place, location);
             }
         }
     }
 
-    fn visit_local(&mut self, local: Local, _ctx: PlaceContext, _location: Location) {
+    fn visit_local(&mut self, local: Local, ctx: PlaceContext, _location: Location) {
         if self.increment {
             self.use_count[local] += 1;
-        } else {
+        } else if ctx != PlaceContext::NonUse(NonUseContext::VarDebugInfo) {
             assert_ne!(self.use_count[local], 0);
             self.use_count[local] -= 1;
         }
@@ -583,7 +596,7 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
 
         for data in body.basic_blocks.as_mut_preserves_cfg() {
             // Remove unnecessary StorageLive and StorageDead annotations.
-            data.statements.retain(|statement| {
+            data.retain_statements(|statement| {
                 let keep = match &statement.kind {
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                         used_locals.is_used(*local)

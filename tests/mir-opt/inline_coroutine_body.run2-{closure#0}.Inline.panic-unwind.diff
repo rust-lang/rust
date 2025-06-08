@@ -245,12 +245,12 @@
 +         StorageLive(_43);
 +         StorageLive(_44);
 +         StorageLive(_45);
-+         _47 = &mut _19;
++         // DBG: _47 = &_19;
 +         StorageLive(_48);
-+         _48 = &mut (_19.0: &mut std::future::Ready<()>);
++         // DBG: _48 = &(_19.0: &mut std::future::Ready<()>);
 +         _46 = copy (_19.0: &mut std::future::Ready<()>);
 +         StorageDead(_48);
-+         _45 = &mut ((*_46).0: std::option::Option<()>);
++         // DBG: _45 = &((*_46).0: std::option::Option<()>);
 +         StorageLive(_49);
 +         _49 = Option::<()>::None;
 +         _44 = copy ((*_46).0: std::option::Option<()>);

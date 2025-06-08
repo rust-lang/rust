@@ -8,9 +8,10 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
             let _2: std::ptr::NonNull<[T]>;
             let mut _3: *mut [T];
             let mut _4: *const [T];
-            let _11: ();
+            let _12: ();
+            let mut _13: &std::alloc::Layout;
             scope 3 {
-                let _8: std::ptr::alignment::AlignmentEnum;
+                let _8: std::alloc::Layout;
                 scope 4 {
                     scope 12 (inlined Layout::size) {
                     }
@@ -26,15 +27,19 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                     }
                     scope 18 (inlined <std::alloc::Global as Allocator>::deallocate) {
                         let mut _9: *mut u8;
+                        let mut _14: &std::alloc::Layout;
                         scope 19 (inlined Layout::size) {
                         }
                         scope 20 (inlined NonNull::<u8>::as_ptr) {
                         }
                         scope 21 (inlined std::alloc::dealloc) {
-                            let mut _10: usize;
+                            let mut _11: usize;
+                            let mut _15: &std::alloc::Layout;
+                            let mut _16: &std::alloc::Layout;
                             scope 22 (inlined Layout::size) {
                             }
                             scope 23 (inlined Layout::align) {
+                                let mut _10: std::ptr::alignment::AlignmentEnum;
                                 scope 24 (inlined std::ptr::Alignment::as_usize) {
                                 }
                             }
@@ -63,6 +68,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     }
 
     bb0: {
+        StorageLive(_8);
         StorageLive(_2);
         _2 = copy (((*_1).0: std::ptr::Unique<[T]>).0: std::ptr::NonNull<[T]>);
         StorageLive(_4);
@@ -74,31 +80,45 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
 
     bb1: {
         _6 = AlignOf(T);
-        StorageLive(_7);
         _7 = copy _6 as std::ptr::Alignment (Transmute);
-        _8 = move (_7.0: std::ptr::alignment::AlignmentEnum);
-        StorageDead(_7);
+        _8 = Layout { size: copy _5, align: copy _7 };
         StorageDead(_6);
         StorageDead(_4);
+        StorageLive(_13);
+        // DBG: _13 = &_8;
+        StorageDead(_13);
         switchInt(copy _5) -> [0: bb4, otherwise: bb2];
     }
 
     bb2: {
+        StorageLive(_14);
+        // DBG: _14 = &_8;
+        StorageDead(_14);
         StorageLive(_9);
         _9 = copy _3 as *mut u8 (PtrToPtr);
+        StorageLive(_15);
+        // DBG: _15 = &_8;
+        StorageDead(_15);
+        StorageLive(_11);
+        StorageLive(_16);
+        // DBG: _16 = &_8;
         StorageLive(_10);
-        _10 = discriminant(_8);
-        _11 = alloc::alloc::__rust_dealloc(move _9, move _5, move _10) -> [return: bb3, unwind unreachable];
+        _10 = copy (_7.0: std::ptr::alignment::AlignmentEnum);
+        _11 = discriminant(_10);
+        StorageDead(_10);
+        StorageDead(_16);
+        _12 = alloc::alloc::__rust_dealloc(move _9, move _5, move _11) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
-        StorageDead(_10);
+        StorageDead(_11);
         StorageDead(_9);
         goto -> bb4;
     }
 
     bb4: {
         StorageDead(_2);
+        StorageDead(_8);
         return;
     }
 }

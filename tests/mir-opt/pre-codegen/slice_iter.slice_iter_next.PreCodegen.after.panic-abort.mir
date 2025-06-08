@@ -10,6 +10,9 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
         let mut _10: std::ptr::NonNull<T>;
         let mut _12: usize;
         let _14: &T;
+        let mut _15: &std::ptr::NonNull<T>;
+        let mut _16: &std::ptr::NonNull<T>;
+        let mut _17: &std::ptr::NonNull<T>;
         scope 2 {
             let _3: *const T;
             scope 3 {
@@ -67,7 +70,11 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
 
     bb1: {
         StorageLive(_7);
+        StorageLive(_15);
+        // DBG: _15 = &_2;
+        StorageLive(_16);
         _4 = copy _3 as std::ptr::NonNull<T> (Transmute);
+        // DBG: _16 = &_4;
         StorageLive(_5);
         _5 = copy _2 as *mut T (Transmute);
         StorageLive(_6);
@@ -79,6 +86,8 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb2: {
+        StorageDead(_16);
+        StorageDead(_15);
         StorageDead(_7);
         StorageLive(_10);
         StorageLive(_9);
@@ -94,6 +103,8 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb3: {
+        StorageDead(_16);
+        StorageDead(_15);
         _0 = const {transmute(0x0000000000000000): Option<&T>};
         StorageDead(_7);
         goto -> bb8;
@@ -116,10 +127,13 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb7: {
+        StorageLive(_17);
+        // DBG: _17 = &_2;
         StorageLive(_13);
         _13 = copy _2 as *const T (Transmute);
         _14 = &(*_13);
         StorageDead(_13);
+        StorageDead(_17);
         _0 = Option::<&T>::Some(copy _14);
         goto -> bb8;
     }
