@@ -1,3 +1,5 @@
+//! Test error for explicit destructor method calls via UFCS
+
 //@ run-rustfix
 
 #![allow(dropping_references)]
