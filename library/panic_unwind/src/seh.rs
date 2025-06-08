@@ -325,6 +325,7 @@ pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
     unsafe {
+        #[allow(function_casts_as_integer)]
         atomic_store_seqcst(
             (&raw mut THROW_INFO.pmfnUnwind).cast(),
             ptr_t::new(exception_cleanup as *mut u8).raw(),
@@ -341,6 +342,7 @@ pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
             (&raw mut CATCHABLE_TYPE.pType).cast(),
             ptr_t::new((&raw mut TYPE_DESCRIPTOR).cast()).raw(),
         );
+        #[allow(function_casts_as_integer)]
         atomic_store_seqcst(
             (&raw mut CATCHABLE_TYPE.copyFunction).cast(),
             ptr_t::new(exception_copy as *mut u8).raw(),
