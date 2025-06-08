@@ -2,7 +2,7 @@ error[E0080]: the type `<() as Project>::Assoc` has an unknown layout
   --> $DIR/unknown-when-no-type-parameter.rs:11:10
    |
 LL |     [(); size_of::<<() as Project>::Assoc>()];
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `foo::{constant#0}` failed inside this call
    |
 note: inside `std::mem::size_of::<<() as Project>::Assoc>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
