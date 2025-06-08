@@ -2,7 +2,7 @@ error[E0080]: calling non-const function `double`
   --> $DIR/const_fn_ptr_fail2.rs:16:18
    |
 LL | const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
-   |                  ^^^^^^^^^ evaluation of constant value failed here
+   |                  ^^^^^^^^^ evaluation of `Y` failed inside this call
    |
 note: inside `bar`
   --> $DIR/const_fn_ptr_fail2.rs:9:5
@@ -14,7 +14,7 @@ error[E0080]: calling non-const function `double`
   --> $DIR/const_fn_ptr_fail2.rs:19:18
    |
 LL | const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
-   |                  ^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                  ^^^^^^^^^^^^^^ evaluation of `Z` failed inside this call
    |
 note: inside `bar`
   --> $DIR/const_fn_ptr_fail2.rs:9:5

@@ -2,7 +2,7 @@ error[E0080]: calling non-const function `<Vec<i32> as Drop>::drop`
   --> $DIR/drop.rs:16:1
    |
 LL | };
-   | ^ evaluation of static initializer failed here
+   | ^ evaluation of `TEST_BAD` failed inside this call
    |
 note: inside `drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
