@@ -291,7 +291,7 @@ cfg_if::cfg_if! {
 }
 
 pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
-    use core::intrinsics::atomic_store_seqcst;
+    use core::intrinsics::{AtomicOrdering, atomic_store};
 
     // _CxxThrowException executes entirely on this stack frame, so there's no
     // need to otherwise transfer `data` to the heap. We just pass a stack
@@ -325,23 +325,23 @@ pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
     unsafe {
-        atomic_store_seqcst(
+        atomic_store::<_, { AtomicOrdering::SeqCst }>(
             (&raw mut THROW_INFO.pmfnUnwind).cast(),
             ptr_t::new(exception_cleanup as *mut u8).raw(),
         );
-        atomic_store_seqcst(
+        atomic_store::<_, { AtomicOrdering::SeqCst }>(
             (&raw mut THROW_INFO.pCatchableTypeArray).cast(),
             ptr_t::new((&raw mut CATCHABLE_TYPE_ARRAY).cast()).raw(),
         );
-        atomic_store_seqcst(
+        atomic_store::<_, { AtomicOrdering::SeqCst }>(
             (&raw mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
             ptr_t::new((&raw mut CATCHABLE_TYPE).cast()).raw(),
         );
-        atomic_store_seqcst(
+        atomic_store::<_, { AtomicOrdering::SeqCst }>(
             (&raw mut CATCHABLE_TYPE.pType).cast(),
             ptr_t::new((&raw mut TYPE_DESCRIPTOR).cast()).raw(),
         );
-        atomic_store_seqcst(
+        atomic_store::<_, { AtomicOrdering::SeqCst }>(
             (&raw mut CATCHABLE_TYPE.copyFunction).cast(),
             ptr_t::new(exception_copy as *mut u8).raw(),
         );
