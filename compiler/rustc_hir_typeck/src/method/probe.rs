@@ -1807,9 +1807,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
             let mut result = ProbeResult::Match;
             let cause = &self.misc(self.span);
-            let ocx = ObligationCtxt::new_with_diagnostics(self);
+            let ocx = ObligationCtxt::new(self);
 
-            let mut trait_predicate = None;
             let (mut xform_self_ty, mut xform_ret_ty);
 
             match probe.kind {
@@ -1932,8 +1931,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             }
                         }
                     }
-
-                    trait_predicate = Some(trait_ref.upcast(self.tcx));
                 }
                 ObjectCandidate(poly_trait_ref) | WhereClauseCandidate(poly_trait_ref) => {
                     let trait_ref = self.instantiate_binder_with_fresh_vars(
@@ -1978,23 +1975,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
 
             // Evaluate those obligations to see if they might possibly hold.
-            for error in ocx.select_where_possible() {
+            for _error in ocx.select_where_possible() {
                 result = ProbeResult::NoMatch;
-                let nested_predicate = self.resolve_vars_if_possible(error.obligation.predicate);
-                if let Some(trait_predicate) = trait_predicate
-                    && nested_predicate == self.resolve_vars_if_possible(trait_predicate)
-                {
-                    // Don't report possibly unsatisfied predicates if the root
-                    // trait obligation from a `TraitCandidate` is unsatisfied.
-                    // That just means the candidate doesn't hold.
-                } else {
-                    possibly_unsatisfied_predicates.push((
-                        nested_predicate,
-                        Some(self.resolve_vars_if_possible(error.root_obligation.predicate))
-                            .filter(|root_predicate| *root_predicate != nested_predicate),
-                        Some(error.obligation.cause),
-                    ));
-                }
             }
 
             if let ProbeResult::Match = result
@@ -2018,14 +2000,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
 
                 // Evaluate those obligations to see if they might possibly hold.
-                for error in ocx.select_where_possible() {
+                for _error in ocx.select_where_possible() {
                     result = ProbeResult::NoMatch;
-                    possibly_unsatisfied_predicates.push((
-                        error.obligation.predicate,
-                        Some(error.root_obligation.predicate)
-                            .filter(|predicate| *predicate != error.obligation.predicate),
-                        Some(error.root_obligation.cause),
-                    ));
                 }
             }
 
