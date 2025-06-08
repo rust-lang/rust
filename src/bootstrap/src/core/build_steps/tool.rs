@@ -1313,10 +1313,8 @@ impl Builder<'_> {
         //
         // Notably this munges the dynamic library lookup path to point to the
         // right location to run `compiler`.
-        let mut lib_paths: Vec<PathBuf> = vec![
-            self.build.rustc_snapshot_libdir(),
-            self.cargo_out(compiler, Mode::ToolBootstrap, *host).join("deps"),
-        ];
+        let mut lib_paths: Vec<PathBuf> =
+            vec![self.cargo_out(compiler, Mode::ToolBootstrap, *host).join("deps")];
 
         // On MSVC a tool may invoke a C compiler (e.g., compiletest in run-make
         // mode) and that C compiler may need some extra PATH modification. Do

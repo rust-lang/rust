@@ -58,10 +58,13 @@ error[E0604]: only `u8` can be cast as `char`, not `u32`
   --> $DIR/error-festival.rs:27:5
    |
 LL |     0u32 as char;
-   |     ^^^^^^^^^^^^
-   |     |
-   |     invalid cast
-   |     help: try `char::from_u32` instead: `char::from_u32(0u32)`
+   |     ^^^^^^^^^^^^ invalid cast
+   |
+help: consider using `char::from_u32` instead
+   |
+LL -     0u32 as char;
+LL +     char::from_u32(0u32);
+   |
 
 error[E0605]: non-primitive cast: `u8` as `Vec<u8>`
   --> $DIR/error-festival.rs:31:5

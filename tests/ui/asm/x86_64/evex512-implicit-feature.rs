@@ -2,8 +2,6 @@
 //@ only-x86_64
 //@ compile-flags: --crate-type=lib -C target-cpu=skylake
 
-#![feature(stdarch_x86_avx512)]
-
 use std::arch::x86_64::*;
 
 #[target_feature(enable = "avx512f")]
