@@ -2,7 +2,7 @@ error[E0080]: calling non-const function `foo`
   --> $DIR/non_const_fn.rs:7:16
    |
 LL | static C: () = foo();
-   |                ^^^^^ evaluation of static initializer failed here
+   |                ^^^^^ evaluation of `C` failed here
 
 warning: skipping const checks
    |
