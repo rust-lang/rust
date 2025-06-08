@@ -8,3 +8,13 @@ edition = "2021"
 [dependencies]
 serde = "1"
 serde_derive = "1"
+
+[features]
+default = ["ci", "drop_bomb", "fs", "git", "metrics", "stage0_parser", "util"]
+ci = []
+drop_bomb = []
+fs = []
+git = []
+metrics = []
+stage0_parser = []
+util = []

@@ -1,11 +1,18 @@
 //! Types and functions shared across tools in this workspace.
 
+#[cfg(feature = "ci")]
 pub mod ci;
+#[cfg(feature = "drop_bomb")]
 pub mod drop_bomb;
+#[cfg(feature = "fs")]
 pub mod fs;
+#[cfg(feature = "git")]
 pub mod git;
+#[cfg(feature = "metrics")]
 pub mod metrics;
+#[cfg(feature = "stage0_parser")]
 pub mod stage0_parser;
+#[cfg(feature = "util")]
 pub mod util;
 
 /// The default set of crates for opt-dist to collect LLVM profiles.

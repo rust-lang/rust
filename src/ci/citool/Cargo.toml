@@ -15,7 +15,7 @@ serde_yaml = "0.9"
 serde_json = "1"
 ureq = { version = "3", default-features = false, features = ["json", "gzip", "native-tls"] }
 
-build_helper = { path = "../../build_helper" }
+build_helper = { path = "../../build_helper", default-features = false, features = ["metrics"] }
 
 [dev-dependencies]
 insta = "1"
