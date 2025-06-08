@@ -2,13 +2,13 @@ error[E0080]: reading memory at ALLOC0[0x0..0x4], but memory is uninitialized at
   --> $DIR/intrinsic-raw_eq-const-bad.rs:4:5
    |
 LL |     std::intrinsics::raw_eq(&(1_u8, 2_u16), &(1_u8, 2_u16))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_EQ_PADDING` failed here
 
 error[E0080]: unable to turn pointer into integer
   --> $DIR/intrinsic-raw_eq-const-bad.rs:9:5
    |
 LL |     std::intrinsics::raw_eq(&(&0), &(&1))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_EQ_PTR` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -17,7 +17,7 @@ error[E0080]: accessing memory with alignment 1, but alignment 4 is required
   --> $DIR/intrinsic-raw_eq-const-bad.rs:16:5
    |
 LL |     std::intrinsics::raw_eq(aref, aref)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_EQ_NOT_ALIGNED` failed here
 
 error: aborting due to 3 previous errors
 

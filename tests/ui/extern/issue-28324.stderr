@@ -2,7 +2,7 @@ error[E0080]: cannot access extern static `error_message_count`
   --> $DIR/issue-28324.rs:5:23
    |
 LL | pub static BAZ: u32 = *&error_message_count;
-   |                       ^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
+   |                       ^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAZ` failed here
 
 error[E0133]: use of extern static is unsafe and requires unsafe function or block
   --> $DIR/issue-28324.rs:5:25

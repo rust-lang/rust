@@ -360,7 +360,7 @@ error[E0080]: evaluation panicked: exclusive range end at minimum value of type
   --> $DIR/range_patterns.rs:25:37
    |
 LL | type WRAP = pattern_type!(u32 is 1..0);
-   |                                     ^ evaluation of constant value failed here
+   |                                     ^ evaluation of `WRAP::{constant#1}` failed here
 
 error: the type has an unknown layout
   --> $DIR/range_patterns.rs:25:1
