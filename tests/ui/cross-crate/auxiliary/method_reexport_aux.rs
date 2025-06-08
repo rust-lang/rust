@@ -1,4 +1,6 @@
-#![crate_name="crate_method_reexport_grrrrrrr2"]
+//! Used by `tests/ui/cross-crate/cross-crate-method-reexport.rs`
+
+#![crate_name="method_reexport_aux"]
 
 pub use name_pool::add;
 
