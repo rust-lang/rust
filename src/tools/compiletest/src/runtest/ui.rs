@@ -127,7 +127,7 @@ impl TestCx<'_> {
             );
         }
 
-        let (output_to_check, proc_res) = if let WillExecute::Yes = should_run {
+        let (output_to_check, proc_res_to_report) = if let WillExecute::Yes = should_run {
             let new_proc_res = self.exec_compiled_test();
             let run_output_errors = if self.props.check_run_results {
                 self.load_compare_outputs(&proc_res, TestOutput::Run, explicit)
@@ -156,7 +156,10 @@ impl TestCx<'_> {
         debug!(
             "run_ui_test: explicit={:?} config.compare_mode={:?} \
                proc_res.status={:?} props.error_patterns={:?}",
-            explicit, self.config.compare_mode, proc_res.status, self.props.error_patterns
+            explicit,
+            self.config.compare_mode,
+            proc_res_to_report.status,
+            self.props.error_patterns
         );
 
         self.check_expected_errors(&proc_res);
