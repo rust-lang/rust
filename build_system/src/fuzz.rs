@@ -129,7 +129,7 @@ fn fuzz_range(start: u64, end: u64, threads: usize) {
                         // ... if that new file still produces the issue, copy it to `fuzz{seed}.rs`..
                         out_path.push(&format!("fuzz{next}.rs"));
                         std::fs::copy(tmp_print_err, &out_path).unwrap();
-                        // ... and start reducing it, using some propierites of `rustlantis` to speed up the process.
+                        // ... and start reducing it, using some properties of `rustlantis` to speed up the process.
                         reduce::reduce(&out_path);
                     }
                     // If the test passed, do nothing
@@ -225,7 +225,7 @@ fn release_gcc(path: &std::path::Path) -> Result<Vec<u8>, String> {
     res.extend(output.stderr);
     Ok(res)
 }
-
+type ResultCache = Option<(Vec<u8>, Vec<u8>)>;
 /// Generates a new rustlantis file, & compares the result of running it with GCC and LLVM.
 fn test(seed: u64, print_tmp_vars: bool) -> Result<Result<(), std::path::PathBuf>, String> {
     // Generate a Rust source...
@@ -237,17 +237,17 @@ fn test(seed: u64, print_tmp_vars: bool) -> Result<Result<(), std::path::PathBuf
 fn test_cached(
     source_file: &Path,
     remove_tmps: bool,
-    cache: &mut Option<Vec<u8>>,
+    cache: &mut ResultCache,
 ) -> Result<Result<(), std::path::PathBuf>, String> {
-    if let None = cache {
-        // Test `source_file` with debug LLVM ...
-        *cache = Some(debug_llvm(&source_file)?);
-    }
-    let llvm_res = cache.as_ref().unwrap();
-    // ... test it with release GCC ...
+    //  Test `source_file` with release GCC ...
     let gcc_res = release_gcc(&source_file)?;
+    if cache.is_none() {
+        // ...test `source_file` with debug LLVM ...
+        *cache = Some((debug_llvm(&source_file)?, gcc_res.clone()));
+    }
+    let (llvm_res, old_gcc) = cache.as_ref().unwrap();
     // ... compare the results ...
-    if *llvm_res != gcc_res {
+    if *llvm_res != gcc_res && gcc_res == *old_gcc {
         // .. if they don't match, report an error.
         Ok(Err(source_file.to_path_buf()))
     } else {

@@ -1,36 +1,43 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
-fn save_reduction(lines: &[String], path: &PathBuf, ext: &str) {
+
+use super::ResultCache;
+
+/// Saves a reduced file for a given `stage`
+fn save_reduction(lines: &[String], path: &PathBuf, stage: &str) {
     let mut path = path.clone();
-    path.set_extension(&format!("rs.{ext}"));
+    path.set_extension(&format!("rs.{stage}"));
     let mut file = std::fs::File::create(&path).expect("Could not create the reduced example file");
     for line in lines {
         file.write_all(line.as_bytes()).expect("Could not save the reduced example");
     }
 }
+
 /// Checks if a given reduction is valid.
-fn test_reduction(lines: &[String], path: &PathBuf, cache: &mut Option<Vec<u8>>) -> bool {
+fn test_reduction(lines: &[String], path: &PathBuf, cache: &mut ResultCache) -> bool {
     let mut path = path.clone();
     path.set_extension("rs_reduced");
     let mut file = std::fs::File::create(&path).expect("Could not create the reduced example file");
     for line in lines {
         file.write_all(line.as_bytes()).expect("Could not save the reduced example");
     }
-    let Ok(Err(_)) = super::test_cached(&path, false, cache) else {
+    let res = super::test_cached(&path, false, cache);
+    let Ok(Err(_)) = res else {
         return false;
     };
     return true;
 }
-/// Removes duplicate assigements in bulk.
+
+/// Removes duplicate assignments in bulk.
 /// If a line A = B is followed directly by A = C,
-/// then removing the second line ought to be fully sound,
+/// then removing the first line ought to be fully sound,
 /// and not change the behaviour of the program at all. Detect & remove such lines.
 fn remove_dup_assign(
     file: &mut Vec<String>,
     path: &PathBuf,
     starts: usize,
     ends: usize,
-    cache: &mut Option<Vec<u8>>,
+    cache: &mut ResultCache,
 ) {
     let mut curr = 0;
     let mut file_copy = file.clone();
@@ -43,34 +50,52 @@ fn remove_dup_assign(
         let Some((prefix, _)) = file_copy[index].split_once('=') else {
             continue;
         };
-        let Some((prefix2, _)) = file_copy[index + 1].split_once('=') else {
+        let Some((prefix2, postifx2)) = file_copy[index + 1].split_once('=') else {
             continue;
         };
         let prefix = prefix.trim();
         let prefix2 = prefix2.trim();
-
-        if prefix == prefix2 {
+        // FIXME: Right now, remove_dup_assign cares about assignments to the exact same place.
+        // However, given an assigemnt like this:
+        // ```
+        // A.0 = 1_u32;
+        // A = (2_u32, 3.0);
+        // ```
+        // The first assignment could be safely omitted.
+        // Additionally, we try to check if the second assignment could depend on the first one.
+        // In such cases, the result is likely to change, so we bail.
+        if prefix == prefix2 && !postifx2.contains(prefix) {
             file_copy[index] = "".into();
             reduction_count += 1;
         }
     }
+    // We have removed no lines - no point in testing.
     if reduction_count == 0 {
         return;
     }
+    // Check if the removed lines affected the execution result in any way, shape or form.
     if test_reduction(&file_copy, &path, cache) {
-        eprintln!("Reduced {path:?} by {} lines `remove_dup_assign`", reduction_count);
+        println!("Reduced {path:?} by {} lines `remove_dup_assign`", reduction_count);
         *file = file_copy;
     } else {
+        // The execution result changed.
+        // This can occur if the second assignment depended on the first one.
+        // Eg.
+        // ```
+        // a = b + c;
+        // a = a + d;
+        // ```
         remove_dup_assign(file, path, starts, (starts + ends) / 2, cache);
         remove_dup_assign(file, path, (starts + ends) / 2, ends, cache);
     }
     save_reduction(file, path, "remove_dup_assign");
 }
+
 /// Removes all the unneeded calls to `dump_var`. This is not something tools like `cvise` can do,
 /// but it greately speeds up MIR interpretation + native execution.
 fn remove_dump_var(file: &mut Vec<String>, path: &PathBuf) {
     let mut curr = 0;
-    // ... try disabling `dump_vars` one by one, until only the neccesarry ones are left.
+    // ... try disabling `dump_vars` one by one, until only the necessary ones are left.
     while curr < file.len() {
         let Some(line) = file[curr..].iter().position(|line| line.contains("dump_var")) else {
             // No more `dump_var`s to remove - exit early.
@@ -87,7 +112,7 @@ fn remove_dump_var(file: &mut Vec<String>, path: &PathBuf) {
         let mut uncached = None;
         // Check if this reduction is valid.
         if test_reduction(&file_copy, &path, &mut uncached) {
-            eprintln!("Reduced {path:?} by 3 lines `remove_dump_var`");
+            println!("Reduced {path:?} by 3 lines `remove_dump_var`");
             *file = file_copy;
             curr = line;
         } else {
@@ -96,13 +121,14 @@ fn remove_dump_var(file: &mut Vec<String>, path: &PathBuf) {
     }
     save_reduction(file, path, "remove_dump_var");
 }
+
 /// Replaces matches with gotos where possible.
 /// This exploits some properties of rustlantis(match arm order),
 /// and is only soundly applicable to MIR generated by it.
 /// Still, it is not something `cvise` can do, but it simplifies the code a ton.
-fn match_to_goto(file: &mut Vec<String>, path: &PathBuf) {
-    let mut cache = None;
+fn match_to_goto(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache) {
     let mut curr = 0;
+
     while curr < file.len() {
         let Some(match_starts) = file[curr..].iter().position(|line| line.contains("match")) else {
             // No more `match`es to remove - exit early.
@@ -135,8 +161,8 @@ fn match_to_goto(file: &mut Vec<String>, path: &PathBuf) {
             file_copy.remove(match_starts);
         }
         file_copy.insert(match_starts, format!("Goto(bb{bb_ident})\n"));
-        if test_reduction(&file_copy, &path, &mut cache) {
-            eprintln!("Reduced {path:?} by {} lines `match_to_goto`", match_ends - match_starts);
+        if test_reduction(&file_copy, &path, cache) {
+            println!("Reduced {path:?} by {} lines `match_to_goto`", match_ends - match_starts);
             *file = file_copy;
             curr = match_starts;
         } else {
@@ -145,12 +171,12 @@ fn match_to_goto(file: &mut Vec<String>, path: &PathBuf) {
     }
     save_reduction(file, path, "match_to_goto");
 }
+
 /// At this point, we can try "killing" blocks, by replacing their bodies with calls to `abort`.
 /// This is always sound(the program aborts, so no UB can occur after the block),
 /// and allows us to safely remove *a lot* of unneeded blocks.
-fn block_abort(file: &mut Vec<String>, path: &PathBuf) {
+fn block_abort(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache) {
     let mut curr = 0;
-    let mut cache = None;
     while curr < file.len() {
         let Some(block_starts) = file[curr..]
             .iter()
@@ -182,8 +208,8 @@ fn block_abort(file: &mut Vec<String>, path: &PathBuf) {
         );
         file_copy.insert(block_starts, format!("let tmp = ();\n"));
 
-        if test_reduction(&file_copy, &path, &mut cache) {
-            eprintln!("Reduced {path:?} by {} lines `block_abort`", block_ends - block_starts - 2);
+        if test_reduction(&file_copy, &path, cache) {
+            println!("Reduced {path:?} by {} lines `block_abort`", block_ends - block_starts - 2);
             *file = file_copy;
             curr = block_starts;
         } else {
@@ -192,10 +218,11 @@ fn block_abort(file: &mut Vec<String>, path: &PathBuf) {
     }
     save_reduction(file, path, "block_abort");
 }
+
 /// Removes unreachable basic blocks
-fn remove_block(file: &mut Vec<String>, path: &PathBuf) {
+fn remove_block(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache) {
     let mut curr = 0;
-    let mut cache = None;
+
     // Next, we try to outright remove blocks.
     while curr < file.len() {
         let Some(block_starts) = file[curr..]
@@ -215,15 +242,15 @@ fn remove_block(file: &mut Vec<String>, path: &PathBuf) {
             break;
         };
         let block_ends = block_starts + block_ends + 1;
-        // Large blocks are likely to be neccsarry.
+        // Large blocks are likely to be necessary.
         if block_ends - block_starts > 6 {
             curr = block_starts + 1;
             continue;
         }
         let mut file_copy = file.clone();
         file_copy.drain(block_starts..block_ends);
-        if test_reduction(&file_copy, &path, &mut cache) {
-            eprintln!("Reduced {path:?} by {} lines `remove_blocks`", block_ends - block_starts);
+        if test_reduction(&file_copy, &path, cache) {
+            println!("Reduced {path:?} by {} lines `remove_blocks`", block_ends - block_starts);
             *file = file_copy;
             curr = block_starts;
         } else {
@@ -232,10 +259,11 @@ fn remove_block(file: &mut Vec<String>, path: &PathBuf) {
     }
     save_reduction(file, path, "remove_block");
 }
+
 /// Merges blocks ending with unconditional jumps.
-fn linearize_cf(file: &mut Vec<String>, path: &PathBuf) {
+fn linearize_cf(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache) {
     let mut curr = 0;
-    let mut cache = None;
+
     // Next, we try to linearize the control flow. What the does that mean?
     // Given a sequence like this:
     // Goto(bb22)
@@ -268,8 +296,8 @@ fn linearize_cf(file: &mut Vec<String>, path: &PathBuf) {
         file_copy.remove(block_starts - 2);
         file_copy.remove(block_starts - 2);
         // Check if this reduction is valid.
-        if test_reduction(&file_copy, &path, &mut cache) {
-            eprintln!("Reduced {path:?} by 3 lines `linearize_cf`");
+        if test_reduction(&file_copy, &path, cache) {
+            println!("Reduced {path:?} by 3 lines `linearize_cf`");
             *file = file_copy;
             curr = block_starts;
         } else {
@@ -278,6 +306,93 @@ fn linearize_cf(file: &mut Vec<String>, path: &PathBuf) {
     }
     save_reduction(file, path, "linearize_cf");
 }
+
+/// Replaces a call to a given function with a 0 assignment to the destination place, and a Goto.
+/// This is always sound, because:
+/// 1. All the functions arguments are always initialized
+/// 2. and point to initialized  memory(the operand of &raw must be an initialized place in rustlantis).
+fn remove_fn_calls(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache) {
+    let mut curr = 0;
+
+    while curr < file.len() {
+        let Some(fn_call) =
+            file[curr..].iter().position(|line| line.contains("Call(") && line.contains(" = fn"))
+        else {
+            // No more calls to remove - exit early.
+            break;
+        };
+        let fn_call = fn_call + curr;
+        let line = file[fn_call].trim();
+        // Skip the Call(
+        let line = &line["Call(".len()..];
+        // Extract the destination place
+        let Some((place, line)) = line.split_once('=') else {
+            curr = fn_call + 1;
+            continue;
+        };
+        // Skip till the return block id.
+        let Some((_, line)) = line.split_once("ReturnTo(") else {
+            curr = fn_call + 1;
+            continue;
+        };
+        // Extract the full return block
+        let Some((block, _)) = line.split_once(')') else {
+            curr = fn_call + 1;
+            continue;
+        };
+        let mut file_copy = file.clone();
+        // Remove the call.
+        file_copy.remove(fn_call);
+        file_copy.insert(fn_call, format!("Goto({block})\n"));
+        file_copy.insert(fn_call, format!("{place} = 0;\n"));
+        // Check if this reduction is valid.
+        if test_reduction(&file_copy, &path, cache) {
+            println!("Reduced {path:?} using `remove_fn_calls` {cache:?}");
+            *file = file_copy;
+            curr = fn_call;
+        } else {
+            curr = fn_call + 1;
+        }
+    }
+    save_reduction(file, path, "remove_fn_calls");
+}
+
+/// Fully removes unreachable functions.
+fn remove_fns(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache) {
+    let mut curr = 0;
+
+    while curr < file.len() {
+        // Find a function start
+        let Some(fn_start) = file[curr..].iter().position(|line| {
+            line.contains("#[custom_mir(dialect = \"runtime\", phase = \"initial\")]")
+        }) else {
+            // No more functions to remove - exit early.
+            break;
+        };
+        // Find the next function(and use that to find the end of this one).
+        // FIXME: this check is flawed: it will never remove the very last function(the one before main).
+        // The other checks will turn that function into a single call to abort, but it is still annoying that it is kept.
+        let fn_start = fn_start + curr;
+        let Some(fn_end) = file[(fn_start + 3)..].iter().position(|line| line.contains("fn fn"))
+        else {
+            // No more functions to remove - exit early.
+            break;
+        };
+        let fn_end = fn_start + 2 + fn_end;
+        let mut file_copy = file.clone();
+        // Remove the function.\\
+        file_copy.drain(fn_start..fn_end);
+        // Check if this reduction is valid.
+        if test_reduction(&file_copy, &path, cache) {
+            println!("Reduced {path:?} by {} lines `remove_fns`", fn_end - fn_start);
+            *file = file_copy;
+        } else {
+            curr = fn_start + 1;
+        }
+    }
+    save_reduction(file, path, "remove_fns");
+}
+
 pub(super) fn reduce(path: impl AsRef<Path>) {
     let path = path.as_ref().to_owned();
     // ... read the file to a buffer ..
@@ -285,21 +400,32 @@ pub(super) fn reduce(path: impl AsRef<Path>) {
     let mut file: Vec<_> = file.split_inclusive('\n').map(|s| s.to_string()).collect();
 
     // ... and run reduction passes.
-    eprintln!("running `remove_dump_var` on {path:?}.");
+    println!("running `remove_dump_var` on {path:?}.");
     remove_dump_var(&mut file, &path);
-    let len = file.len();
+    // After `dump_var`, the execution results ought not to change. Cache them.
     let mut cache = None;
-    eprintln!("running `remove_dup_assign` on {path:?}.");
+    // Fill the cache
+    assert!(
+        test_reduction(&file, &path, &mut cache),
+        "Reduction error: check that the input file is a valid reproducer."
+    );
+    println!("cache:{cache:?}");
+    println!("running `remove_fn_calls` on {path:?}.");
+    remove_fn_calls(&mut file, &path, &mut cache);
+    println!("running `remove_fns` on {path:?}.");
+    remove_fns(&mut file, &path, &mut cache);
+    let len = file.len();
+    println!("running `remove_dup_assign` on {path:?}.");
     remove_dup_assign(&mut file, &path, 0, len, &mut cache);
     file.retain(|line| !line.is_empty());
-    eprintln!("running `match_to_goto` on {path:?}.");
-    match_to_goto(&mut file, &path);
-    eprintln!("running `block_abort` on {path:?}.");
-    block_abort(&mut file, &path);
-    eprintln!("running `remove_block` on {path:?}.");
-    remove_block(&mut file, &path);
-    eprintln!("running `linearize_cf` on {path:?}.");
-    linearize_cf(&mut file, &path);
+    println!("running `match_to_goto` on {path:?}.");
+    match_to_goto(&mut file, &path, &mut cache);
+    println!("running `block_abort` on {path:?}.");
+    block_abort(&mut file, &path, &mut cache);
+    println!("running `remove_block` on {path:?}.");
+    remove_block(&mut file, &path, &mut cache);
+    println!("running `linearize_cf` on {path:?}.");
+    linearize_cf(&mut file, &path, &mut cache);
     let mut out = std::fs::File::create(&path).expect("Could not save the reduction result.");
     for line in file {
         out.write_all(line.as_bytes());
