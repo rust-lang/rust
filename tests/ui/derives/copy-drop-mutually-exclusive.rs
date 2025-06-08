@@ -1,4 +1,4 @@
-// issue #20126
+//! Regression test for issue #20126: Copy and Drop traits are mutually exclusive
 
 #[derive(Copy, Clone)] //~ ERROR the trait `Copy` cannot be implemented
 struct Foo;
