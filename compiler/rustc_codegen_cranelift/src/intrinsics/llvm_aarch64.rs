@@ -264,14 +264,6 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             simd_reduce(fx, v, None, ret, &|fx, _ty, a, b| fx.bcx.ins().fadd(a, b));
         }
 
-        _ if intrinsic.starts_with("llvm.aarch64.neon.frintn.v") => {
-            intrinsic_args!(fx, args => (v); intrinsic);
-
-            simd_for_each_lane(fx, v, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
-                fx.bcx.ins().nearest(lane)
-            });
-        }
-
         _ if intrinsic.starts_with("llvm.aarch64.neon.smaxv.i") => {
             intrinsic_args!(fx, args => (v); intrinsic);
 

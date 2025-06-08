@@ -1,4 +1,4 @@
-warning: implicit autoref creates a reference to the dereference of a raw pointer
+error: implicit autoref creates a reference to the dereference of a raw pointer
   --> $DIR/implicit_autorefs.rs:10:13
    |
 LL |     let _ = (*ptr)[..16];
@@ -12,13 +12,13 @@ note: autoref is being applied to this expression, resulting in: `&[u8]`
    |
 LL |     let _ = (*ptr)[..16];
    |             ^^^^^^
-   = note: `#[warn(dangerous_implicit_autorefs)]` on by default
+   = note: `#[deny(dangerous_implicit_autorefs)]` on by default
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     let _ = (&(*ptr))[..16];
    |             ++      +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
+error: implicit autoref creates a reference to the dereference of a raw pointer
   --> $DIR/implicit_autorefs.rs:19:13
    |
 LL |     let l = (*ptr).field.len();
@@ -39,7 +39,7 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let l = (&(*ptr).field).len();
    |             ++            +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
+error: implicit autoref creates a reference to the dereference of a raw pointer
   --> $DIR/implicit_autorefs.rs:22:16
    |
 LL |     &raw const (*ptr).field[..l - 1]
@@ -58,7 +58,7 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     &raw const (&(*ptr).field)[..l - 1]
    |                ++            +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
+error: implicit autoref creates a reference to the dereference of a raw pointer
   --> $DIR/implicit_autorefs.rs:27:9
    |
 LL |     _ = (*a)[0].len();
@@ -79,7 +79,7 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     _ = (&(*a)[0]).len();
    |         ++       +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
+error: implicit autoref creates a reference to the dereference of a raw pointer
   --> $DIR/implicit_autorefs.rs:30:9
    |
 LL |     _ = (*a)[..1][0].len();
@@ -100,7 +100,7 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     _ = (&(*a)[..1][0]).len();
    |         ++            +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
+error: implicit autoref creates a reference to the dereference of a raw pointer
   --> $DIR/implicit_autorefs.rs:30:9
    |
 LL |     _ = (*a)[..1][0].len();
@@ -119,7 +119,7 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     _ = (&(*a))[..1][0].len();
    |         ++    +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
+error: implicit autoref creates a reference to the dereference of a raw pointer
   --> $DIR/implicit_autorefs.rs:36:13
    |
 LL |     let _ = (*ptr).field;
@@ -134,7 +134,7 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = (&(*ptr)).field;
    |             ++      +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
+error: implicit autoref creates a reference to the dereference of a raw pointer
   --> $DIR/implicit_autorefs.rs:38:24
    |
 LL |     let _ = &raw const (*ptr).field;
@@ -149,7 +149,7 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = &raw const (&(*ptr)).field;
    |                        ++      +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
+error: implicit autoref creates a reference to the dereference of a raw pointer
   --> $DIR/implicit_autorefs.rs:43:13
    |
 LL |     let _ = (*ptr).field;
@@ -164,7 +164,7 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = (&(*ptr)).field;
    |             ++      +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
+error: implicit autoref creates a reference to the dereference of a raw pointer
   --> $DIR/implicit_autorefs.rs:48:13
    |
 LL |     let _ = (*ptr).field;
@@ -179,8 +179,8 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = (&(*ptr)).field;
    |             ++      +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
-  --> $DIR/implicit_autorefs.rs:62:26
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:64:26
    |
 LL |     let _p: *const i32 = &raw const **w;
    |                          ^^^^^^^^^^^^^-
@@ -189,7 +189,7 @@ LL |     let _p: *const i32 = &raw const **w;
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
 note: autoref is being applied to this expression, resulting in: `&W<i32>`
-  --> $DIR/implicit_autorefs.rs:62:38
+  --> $DIR/implicit_autorefs.rs:64:38
    |
 LL |     let _p: *const i32 = &raw const **w;
    |                                      ^^
@@ -198,8 +198,8 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _p: *const i32 = &raw const *(&**w);
    |                                      +++  +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
-  --> $DIR/implicit_autorefs.rs:72:14
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:74:14
    |
 LL |     unsafe { (*ptr).field.len() }
    |              ^^---^^^^^^^^^^^^^
@@ -208,7 +208,7 @@ LL |     unsafe { (*ptr).field.len() }
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
 note: autoref is being applied to this expression, resulting in: `&[u8]`
-  --> $DIR/implicit_autorefs.rs:72:14
+  --> $DIR/implicit_autorefs.rs:74:14
    |
 LL |     unsafe { (*ptr).field.len() }
    |              ^^^^^^^^^^^^
@@ -219,8 +219,8 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     unsafe { (&(*ptr).field).len() }
    |              ++            +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
-  --> $DIR/implicit_autorefs.rs:82:13
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:85:13
    |
 LL |     let _ = (*ptr).get(0);
    |             ^^---^^^^^^^^
@@ -229,7 +229,7 @@ LL |     let _ = (*ptr).get(0);
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
 note: autoref is being applied to this expression, resulting in: `&[u8]`
-  --> $DIR/implicit_autorefs.rs:82:13
+  --> $DIR/implicit_autorefs.rs:85:13
    |
 LL |     let _ = (*ptr).get(0);
    |             ^^^^^^
@@ -240,8 +240,8 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = (&(*ptr)).get(0);
    |             ++      +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
-  --> $DIR/implicit_autorefs.rs:84:13
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:87:13
    |
 LL |     let _ = (*ptr).get_unchecked(0);
    |             ^^---^^^^^^^^^^^^^^^^^^
@@ -250,7 +250,7 @@ LL |     let _ = (*ptr).get_unchecked(0);
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
 note: autoref is being applied to this expression, resulting in: `&[u8]`
-  --> $DIR/implicit_autorefs.rs:84:13
+  --> $DIR/implicit_autorefs.rs:87:13
    |
 LL |     let _ = (*ptr).get_unchecked(0);
    |             ^^^^^^
@@ -261,8 +261,8 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = (&(*ptr)).get_unchecked(0);
    |             ++      +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
-  --> $DIR/implicit_autorefs.rs:86:13
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:89:13
    |
 LL |     let _ = (*ptr).get_mut(0);
    |             ^^---^^^^^^^^^^^^
@@ -271,7 +271,7 @@ LL |     let _ = (*ptr).get_mut(0);
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
 note: autoref is being applied to this expression, resulting in: `&mut [u8]`
-  --> $DIR/implicit_autorefs.rs:86:13
+  --> $DIR/implicit_autorefs.rs:89:13
    |
 LL |     let _ = (*ptr).get_mut(0);
    |             ^^^^^^
@@ -282,8 +282,8 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = (&mut (*ptr)).get_mut(0);
    |             +++++       +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
-  --> $DIR/implicit_autorefs.rs:88:13
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:91:13
    |
 LL |     let _ = (*ptr).get_unchecked_mut(0);
    |             ^^---^^^^^^^^^^^^^^^^^^^^^^
@@ -292,7 +292,7 @@ LL |     let _ = (*ptr).get_unchecked_mut(0);
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
 note: autoref is being applied to this expression, resulting in: `&mut [u8]`
-  --> $DIR/implicit_autorefs.rs:88:13
+  --> $DIR/implicit_autorefs.rs:91:13
    |
 LL |     let _ = (*ptr).get_unchecked_mut(0);
    |             ^^^^^^
@@ -303,8 +303,8 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = (&mut (*ptr)).get_unchecked_mut(0);
    |             +++++       +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
-  --> $DIR/implicit_autorefs.rs:93:13
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:96:13
    |
 LL |     let _ = (*ptr).len();
    |             ^^---^^^^^^^
@@ -313,7 +313,7 @@ LL |     let _ = (*ptr).len();
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
 note: autoref is being applied to this expression, resulting in: `&String`
-  --> $DIR/implicit_autorefs.rs:93:13
+  --> $DIR/implicit_autorefs.rs:96:13
    |
 LL |     let _ = (*ptr).len();
    |             ^^^^^^
@@ -324,8 +324,8 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = (&(*ptr)).len();
    |             ++      +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
-  --> $DIR/implicit_autorefs.rs:95:13
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:98:13
    |
 LL |     let _ = (*ptr).is_empty();
    |             ^^---^^^^^^^^^^^^
@@ -334,7 +334,7 @@ LL |     let _ = (*ptr).is_empty();
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
 note: autoref is being applied to this expression, resulting in: `&String`
-  --> $DIR/implicit_autorefs.rs:95:13
+  --> $DIR/implicit_autorefs.rs:98:13
    |
 LL |     let _ = (*ptr).is_empty();
    |             ^^^^^^
@@ -345,8 +345,8 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = (&(*ptr)).is_empty();
    |             ++      +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
-  --> $DIR/implicit_autorefs.rs:100:13
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:103:13
    |
 LL |     let _ = (*slice)[..].len();
    |             ^^-----^^^^^^^^^^^
@@ -355,7 +355,7 @@ LL |     let _ = (*slice)[..].len();
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
 note: autoref is being applied to this expression, resulting in: `&[T]`
-  --> $DIR/implicit_autorefs.rs:100:13
+  --> $DIR/implicit_autorefs.rs:103:13
    |
 LL |     let _ = (*slice)[..].len();
    |             ^^^^^^^^^^^^
@@ -366,8 +366,8 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = (&(*slice)[..]).len();
    |             ++            +
 
-warning: implicit autoref creates a reference to the dereference of a raw pointer
-  --> $DIR/implicit_autorefs.rs:100:13
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:103:13
    |
 LL |     let _ = (*slice)[..].len();
    |             ^^-----^^^^^
@@ -376,7 +376,7 @@ LL |     let _ = (*slice)[..].len();
    |
    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
 note: autoref is being applied to this expression, resulting in: `&[T]`
-  --> $DIR/implicit_autorefs.rs:100:13
+  --> $DIR/implicit_autorefs.rs:103:13
    |
 LL |     let _ = (*slice)[..].len();
    |             ^^^^^^^^
@@ -385,5 +385,5 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     let _ = (&(*slice))[..].len();
    |             ++        +
 
-warning: 20 warnings emitted
+error: aborting due to 20 previous errors
 

@@ -15,7 +15,8 @@ fi
 branch=$(git branch --show-current || echo)
 
 if [ -n "$branch" ]; then
-    branch="${branch}-"
+    # Strip automation/bors/ prefix if present
+    branch="${branch#automation/bors/}-"
 fi
 
 if [ "${GITHUB_EVENT_NAME:=none}" = "pull_request" ]; then
