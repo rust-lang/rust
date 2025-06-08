@@ -1697,6 +1697,12 @@ impl ToJson for BinaryFormat {
     }
 }
 
+impl ToJson for Align {
+    fn to_json(&self) -> Json {
+        self.bits().to_json()
+    }
+}
+
 macro_rules! supported_targets {
     ( $(($tuple:literal, $module:ident),)+ ) => {
         mod targets {
@@ -2515,7 +2521,7 @@ pub struct TargetOptions {
     pub stack_probes: StackProbeType,
 
     /// The minimum alignment for global symbols.
-    pub min_global_align: Option<u64>,
+    pub min_global_align: Option<Align>,
 
     /// Default number of codegen units to use in debug mode
     pub default_codegen_units: Option<u64>,
