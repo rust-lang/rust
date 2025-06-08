@@ -1,8 +1,6 @@
 use std::ops::Range;
 
-use rustc_abi::{
-    Align, AlignFromBytesError, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
-};
+use rustc_abi::{Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
 use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::LangItem;
@@ -20,9 +18,7 @@ use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument, trace};
 
 use crate::common::{AsCCharPtr, CodegenCx};
-use crate::errors::{
-    InvalidMinimumAlignmentNotPowerOfTwo, InvalidMinimumAlignmentTooLarge, SymbolAlreadyDefined,
-};
+use crate::errors::SymbolAlreadyDefined;
 use crate::llvm::{self, True};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -149,22 +145,10 @@ fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align:
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller. Rust doesn't support this yet.
-    if let Some(min) = cx.sess().target.min_global_align {
-        match Align::from_bits(min) {
-            Ok(min) => align = align.max(min),
-            Err(err) => match err {
-                AlignFromBytesError::NotPowerOfTwo(align) => {
-                    cx.sess().dcx().emit_err(InvalidMinimumAlignmentNotPowerOfTwo { align });
-                }
-                AlignFromBytesError::TooLarge(align) => {
-                    cx.sess().dcx().emit_err(InvalidMinimumAlignmentTooLarge { align });
-                }
-            },
-        }
+    if let Some(min_global) = cx.sess().target.min_global_align {
+        align = Ord::max(align, min_global);
     }
-    unsafe {
-        llvm::LLVMSetAlignment(gv, align.bytes() as u32);
-    }
+    llvm::set_alignment(gv, align);
 }
 
 fn check_and_apply_linkage<'ll, 'tcx>(
