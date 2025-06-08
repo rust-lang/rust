@@ -16,7 +16,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// unsafe fn fun(ptr: *mut [u8]) -> *mut [u8] {
     ///     unsafe { &raw mut (*ptr)[..16] }
     ///     //                      ^^^^^^ this calls `IndexMut::index_mut(&mut ..., ..16)`,
@@ -51,7 +51,7 @@ declare_lint! {
     /// }
     /// ```
     pub DANGEROUS_IMPLICIT_AUTOREFS,
-    Warn,
+    Deny,
     "implicit reference to a dereference of a raw pointer",
     report_in_external_macro
 }

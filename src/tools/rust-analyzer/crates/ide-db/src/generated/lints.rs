@@ -4458,20 +4458,6 @@ The tracking issue for this feature is: [#133214]
         deny_since: None,
     },
     Lint {
-        label: "const_eq_ignore_ascii_case",
-        description: r##"# `const_eq_ignore_ascii_case`
-
-The tracking issue for this feature is: [#131719]
-
-[#131719]: https://github.com/rust-lang/rust/issues/131719
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "const_eval_select",
         description: r##"# `const_eval_select`
 
