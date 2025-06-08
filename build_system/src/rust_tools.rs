@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 
 use crate::config::ConfigInfo;
-use crate::utils::{
-    get_toolchain, run_command_with_output_and_env_no_err, rustc_toolchain_version_info,
-    rustc_version_info,
-};
+use crate::utils::{get_toolchain, rustc_toolchain_version_info, rustc_version_info};
 
 fn args(command: &str) -> Result<Option<Vec<String>>, String> {
     // We skip the binary and the "cargo"/"rustc" option.
@@ -97,6 +96,26 @@ impl RustcTools {
     }
 }
 
+fn exec(input: &[&dyn AsRef<OsStr>], env: &HashMap<String, String>) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        // We use `exec` to call the `execvp` syscall instead of creating a new process where the
+        // command will be executed because very few signals can actually kill a current process,
+        // so if segmentation fault (SIGSEGV signal) happens and we raise to the current process,
+        // it will simply do nothing and we won't have the nice error message for the shell.
+        let error = crate::utils::get_command_inner(input, None, Some(env)).exec();
+        eprintln!("execvp syscall failed: {error:?}");
+        std::process::exit(1);
+    }
+    #[cfg(not(unix))]
+    {
+        if crate::utils::run_command_with_output_and_env_no_err(input, None, Some(env)).is_err() {
+            std::process::exit(1);
+        }
+        Ok(())
+    }
+}
+
 pub fn run_cargo() -> Result<(), String> {
     let Some(mut tools) = RustcTools::new("cargo")? else { return Ok(()) };
     let rustflags = tools.env.get("RUSTFLAGS").cloned().unwrap_or_default();
@@ -105,11 +124,7 @@ pub fn run_cargo() -> Result<(), String> {
     for arg in &tools.args {
         command.push(arg);
     }
-    if run_command_with_output_and_env_no_err(&command, None, Some(&tools.env)).is_err() {
-        std::process::exit(1);
-    }
-
-    Ok(())
+    exec(&command, &tools.env)
 }
 
 pub fn run_rustc() -> Result<(), String> {
@@ -118,8 +133,5 @@ pub fn run_rustc() -> Result<(), String> {
     for arg in &tools.args {
         command.push(arg);
     }
-    if run_command_with_output_and_env_no_err(&command, None, Some(&tools.env)).is_err() {
-        std::process::exit(1);
-    }
-    Ok(())
+    exec(&command, &tools.env)
 }
