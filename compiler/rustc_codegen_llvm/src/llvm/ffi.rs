@@ -1139,6 +1139,11 @@ unsafe extern "C" {
         Count: c_uint,
         Packed: Bool,
     ) -> &'a Value;
+    pub(crate) fn LLVMConstNamedStruct<'a>(
+        StructTy: &'a Type,
+        ConstantVals: *const &'a Value,
+        Count: c_uint,
+    ) -> &'a Value;
     pub(crate) fn LLVMConstVector(ScalarConstantVals: *const &Value, Size: c_uint) -> &Value;
 
     // Constant expressions
