@@ -99,6 +99,10 @@ impl RustcTools {
 fn exec(input: &[&dyn AsRef<OsStr>], env: &HashMap<String, String>) -> Result<(), String> {
     #[cfg(unix)]
     {
+        // We use `exec` to call the `execvp` syscall instead of creating a new process where the
+        // command will be executed because very few signals can actually kill a current process,
+        // so if segmentation fault (SIGSEGV signal) happens and we raise to the current process,
+        // it will simply do nothing and we won't have the nice error message for the shell.
         let error = crate::utils::get_command_inner(input, None, Some(env)).exec();
         eprintln!("execvp syscall failed: {error:?}");
         std::process::exit(1);
