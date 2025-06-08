@@ -188,3 +188,19 @@ fn issue14634() {
     let id!(_a) = dbg!(b + 1);
     //~^^^ match_single_binding
 }
+
+mod issue14991 {
+    struct AnnoConstWOBlock {
+        inner: [(); {
+            let _n = 1;
+            42
+        }],
+    }
+
+    struct AnnoConstWBlock {
+        inner: [(); {
+            let _n = 1;
+            42
+        }],
+    }
+}
