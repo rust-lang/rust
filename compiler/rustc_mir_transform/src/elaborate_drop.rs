@@ -366,10 +366,8 @@ where
             call_statements.push(self.assign(obj_ptr_place, addr));
             obj_ptr_place
         };
-        call_statements.push(Statement {
-            source_info: self.source_info,
-            kind: StatementKind::StorageLive(fut.local),
-        });
+        call_statements
+            .push(Statement::new(self.source_info, StatementKind::StorageLive(fut.local)));
 
         let call_drop_bb = self.new_block_with_statements(
             unwind,
@@ -1467,9 +1465,6 @@ where
     }
 
     fn assign(&self, lhs: Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
-        Statement {
-            source_info: self.source_info,
-            kind: StatementKind::Assign(Box::new((lhs, rhs))),
-        }
+        Statement::new(self.source_info, StatementKind::Assign(Box::new((lhs, rhs))))
     }
 }

@@ -16,11 +16,15 @@ pub struct Statement<'tcx> {
     pub kind: StatementKind<'tcx>,
 }
 
-impl Statement<'_> {
+impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
     pub fn make_nop(&mut self) {
         self.kind = StatementKind::Nop
+    }
+
+    pub fn new(source_info: SourceInfo, kind: StatementKind<'tcx>) -> Self {
+        Statement { source_info, kind }
     }
 }
 

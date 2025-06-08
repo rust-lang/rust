@@ -411,13 +411,13 @@ impl DropTree {
                     cfg.terminate(block, drop_node.data.source_info, terminator);
                 }
                 DropKind::ForLint => {
-                    let stmt = Statement {
-                        source_info: drop_node.data.source_info,
-                        kind: StatementKind::BackwardIncompatibleDropHint {
+                    let stmt = Statement::new(
+                        drop_node.data.source_info,
+                        StatementKind::BackwardIncompatibleDropHint {
                             place: Box::new(drop_node.data.local.into()),
                             reason: BackwardIncompatibleDropReason::Edition2024,
                         },
-                    };
+                    );
                     cfg.push(block, stmt);
                     let target = blocks[drop_node.next].unwrap();
                     if target != block {
@@ -434,10 +434,10 @@ impl DropTree {
                 // Root nodes don't correspond to a drop.
                 DropKind::Storage if drop_idx == ROOT_NODE => {}
                 DropKind::Storage => {
-                    let stmt = Statement {
-                        source_info: drop_node.data.source_info,
-                        kind: StatementKind::StorageDead(drop_node.data.local),
-                    };
+                    let stmt = Statement::new(
+                        drop_node.data.source_info,
+                        StatementKind::StorageDead(drop_node.data.local),
+                    );
                     cfg.push(block, stmt);
                     let target = blocks[drop_node.next].unwrap();
                     if target != block {
@@ -866,13 +866,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     DropKind::ForLint => {
                         self.cfg.push(
                             block,
-                            Statement {
+                            Statement::new(
                                 source_info,
-                                kind: StatementKind::BackwardIncompatibleDropHint {
+                                StatementKind::BackwardIncompatibleDropHint {
                                     place: Box::new(local.into()),
                                     reason: BackwardIncompatibleDropReason::Edition2024,
                                 },
-                            },
+                            ),
                         );
                     }
                     DropKind::Storage => {
@@ -880,7 +880,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         assert!(local.index() > self.arg_count);
                         self.cfg.push(
                             block,
-                            Statement { source_info, kind: StatementKind::StorageDead(local) },
+                            Statement::new(source_info, StatementKind::StorageDead(local)),
                         );
                     }
                 }
@@ -1622,13 +1622,13 @@ where
 
                 cfg.push(
                     block,
-                    Statement {
+                    Statement::new(
                         source_info,
-                        kind: StatementKind::BackwardIncompatibleDropHint {
+                        StatementKind::BackwardIncompatibleDropHint {
                             place: Box::new(local.into()),
                             reason: BackwardIncompatibleDropReason::Edition2024,
                         },
-                    },
+                    ),
                 );
             }
             DropKind::Storage => {
@@ -1652,7 +1652,7 @@ where
                 }
                 // Only temps and vars need their storage dead.
                 assert!(local.index() > arg_count);
-                cfg.push(block, Statement { source_info, kind: StatementKind::StorageDead(local) });
+                cfg.push(block, Statement::new(source_info, StatementKind::StorageDead(local)));
             }
         }
     }
