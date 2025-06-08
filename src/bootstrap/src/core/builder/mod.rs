@@ -22,6 +22,7 @@ use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, command};
+use crate::utils::execution_context::ExecutionContext;
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
 use crate::{Build, Crate, trace};
 
@@ -1632,5 +1633,15 @@ impl<'a> Builder<'a> {
         if let Err(err) = opener::open(path) {
             self.info(&format!("{err}\n"));
         }
+    }
+
+    pub fn exec_ctx(&self) -> &ExecutionContext {
+        &self.config.exec_ctx
+    }
+}
+
+impl<'a> AsRef<ExecutionContext> for Builder<'a> {
+    fn as_ref(&self) -> &ExecutionContext {
+        self.exec_ctx()
     }
 }

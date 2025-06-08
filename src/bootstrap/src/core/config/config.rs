@@ -47,6 +47,7 @@ use crate::core::config::{
 };
 use crate::core::download::is_download_ci_available;
 use crate::utils::channel;
+use crate::utils::execution_context::ExecutionContext;
 use crate::utils::helpers::exe;
 use crate::{Command, GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, output, t};
 
@@ -304,6 +305,8 @@ pub struct Config {
     /// This is mostly for RA as building the stage1 compiler to check the library tree
     /// on each code change might be too much for some computers.
     pub skip_std_check_if_no_download_rustc: bool,
+
+    pub exec_ctx: ExecutionContext,
 }
 
 impl Config {
@@ -364,8 +367,8 @@ impl Config {
         feature = "tracing",
         instrument(target = "CONFIG_HANDLING", level = "trace", name = "Config::parse", skip_all)
     )]
-    pub fn parse(flags: Flags) -> Config {
-        Self::parse_inner(flags, Self::get_toml)
+    pub fn parse(flags: Flags, exec_ctx: ExecutionContext) -> Config {
+        Self::parse_inner(flags, Self::get_toml, exec_ctx)
     }
 
     #[cfg_attr(
@@ -380,8 +383,10 @@ impl Config {
     pub(crate) fn parse_inner(
         mut flags: Flags,
         get_toml: impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
+        exec_ctx: ExecutionContext,
     ) -> Config {
         let mut config = Config::default_opts();
+        config.exec_ctx = exec_ctx;
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
@@ -1740,5 +1745,19 @@ impl Config {
             // This only has our patches if it's downloaded from CI or built from source.
             _ => !self.is_system_llvm(target),
         }
+    }
+
+    pub fn exec_ctx(&self) -> &ExecutionContext {
+        &self.exec_ctx
+    }
+
+    pub fn git_info(&self, omit_git_hash: bool, dir: &Path) -> GitInfo {
+        GitInfo::new(omit_git_hash, dir, self)
+    }
+}
+
+impl AsRef<ExecutionContext> for Config {
+    fn as_ref(&self) -> &ExecutionContext {
+        &self.exec_ctx
     }
 }

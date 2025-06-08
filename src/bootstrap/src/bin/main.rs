@@ -29,9 +29,9 @@ fn main() {
     }
 
     debug!("parsing flags");
-    let flags = Flags::parse(&args);
+    let (flags, exec_ctx) = Flags::parse(&args);
     debug!("parsing config based on flags");
-    let config = Config::parse(flags);
+    let config = Config::parse(flags, exec_ctx);
 
     let mut build_lock;
     let _build_lock_guard;
