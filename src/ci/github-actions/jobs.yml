@@ -305,6 +305,10 @@ auto:
   - name: mingw-check-2
     <<: *job-linux-4c
 
+  - name: mingw-check-tidy
+    free_disk: false
+    <<: *job-linux-4c
+
   - name: test-various
     <<: *job-linux-4c
 
