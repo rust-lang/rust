@@ -33,10 +33,9 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     // If the user requests complete debuginfo, mark the locals that appear in it as live, so
     // we don't remove assignments to them.
-    let mut always_live = debuginfo_locals(body);
-    always_live.union(&borrowed_locals);
+    let debuginfo_locals = debuginfo_locals(body);
 
-    let mut live = MaybeTransitiveLiveLocals::new(&always_live)
+    let mut live = MaybeTransitiveLiveLocals::new(&borrowed_locals, &debuginfo_locals)
         .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
@@ -75,35 +74,23 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         }
 
         for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
-            let loc = Location { block: bb, statement_index };
-            if let StatementKind::Assign(assign) = &statement.kind {
-                if !assign.1.is_safe_to_remove() {
-                    continue;
-                }
-            }
-            match &statement.kind {
-                StatementKind::Assign(box (place, _))
-                | StatementKind::SetDiscriminant { place: box place, .. }
-                | StatementKind::Deinit(box place) => {
-                    if !place.is_indirect() && !always_live.contains(place.local) {
-                        live.seek_before_primary_effect(loc);
-                        if !live.get().contains(place.local) {
-                            patch.push(loc);
-                        }
-                    }
-                }
-                StatementKind::Retag(_, _)
-                | StatementKind::StorageLive(_)
-                | StatementKind::StorageDead(_)
-                | StatementKind::Coverage(_)
-                | StatementKind::Intrinsic(_)
-                | StatementKind::ConstEvalCounter
-                | StatementKind::PlaceMention(_)
-                | StatementKind::BackwardIncompatibleDropHint { .. }
-                | StatementKind::Nop => {}
-
-                StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
-                    bug!("{:?} not found in this MIR phase!", statement.kind)
+            if let Some(destination) = MaybeTransitiveLiveLocals::can_be_removed_if_dead(
+                &statement.kind,
+                &borrowed_locals,
+                &debuginfo_locals,
+            ) {
+                let loc = Location { block: bb, statement_index };
+                live.seek_before_primary_effect(loc);
+                if !live.get().contains(destination.local) {
+                    let drop_debuginfo = !debuginfo_locals.contains(destination.local);
+                    // When eliminating a dead statement, we need to address
+                    // the debug information for that statement.
+                    assert!(
+                        drop_debuginfo || statement.kind.as_debuginfo().is_some(),
+                        "don't know how to retain the debug information for {:?}",
+                        statement.kind
+                    );
+                    patch.push((loc, drop_debuginfo));
                 }
             }
         }
@@ -114,8 +101,8 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     }
 
     let bbs = body.basic_blocks.as_mut_preserves_cfg();
-    for Location { block, statement_index } in patch {
-        bbs[block].statements[statement_index].make_nop();
+    for (Location { block, statement_index }, drop_debuginfo) in patch {
+        bbs[block].statements[statement_index].make_nop(drop_debuginfo);
     }
     for (block, argument_index) in call_operands_to_move {
         let TerminatorKind::Call { ref mut args, .. } = bbs[block].terminator_mut().kind else {

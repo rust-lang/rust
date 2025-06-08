@@ -6,6 +6,7 @@ fn num_to_digit(_1: char) -> u32 {
     let mut _4: std::option::Option<u32>;
     scope 1 (inlined char::methods::<impl char>::is_digit) {
         let _2: std::option::Option<u32>;
+        let mut _7: &std::option::Option<u32>;
         scope 2 (inlined Option::<u32>::is_some) {
             let mut _3: isize;
             scope 3 {
@@ -20,14 +21,17 @@ fn num_to_digit(_1: char) -> u32 {
     }
 
     bb0: {
+        StorageLive(_7);
         StorageLive(_2);
         _2 = char::methods::<impl char>::to_digit(copy _1, const 8_u32) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
+        // DBG: _7 = &_2;
         StorageLive(_3);
         _3 = discriminant(_2);
         StorageDead(_2);
+        StorageDead(_7);
         switchInt(move _3) -> [1: bb2, otherwise: bb7];
     }
 
