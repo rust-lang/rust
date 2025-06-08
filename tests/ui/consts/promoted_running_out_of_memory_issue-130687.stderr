@@ -2,7 +2,7 @@ error[E0080]: tried to allocate more memory than available to compiler
   --> $DIR/promoted_running_out_of_memory_issue-130687.rs:13:32
    |
 LL | const _: &'static Data = &Data([0; (1 << 47) - 1]);
-   |                                ^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                ^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 
 error: aborting due to 1 previous error
 
