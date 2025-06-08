@@ -2,7 +2,6 @@
 #![allow(internal_features)]
 #![feature(assert_matches)]
 #![feature(core_intrinsics)]
-#![feature(dropck_eyepatch)]
 #![feature(min_specialization)]
 // tidy-alphabetical-end
 
