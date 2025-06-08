@@ -6,6 +6,8 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
     scope 1 (inlined <std::slice::Iter<'_, T> as ExactSizeIterator>::is_empty) {
         let mut _2: *const T;
         let mut _7: *const T;
+        let mut _9: &std::ptr::NonNull<T>;
+        let mut _10: &std::ptr::NonNull<T>;
         scope 2 {
             let _3: std::ptr::NonNull<T>;
             let _8: usize;
@@ -41,6 +43,10 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
         _2 = copy ((*_1).1: *const T);
         _3 = copy _2 as std::ptr::NonNull<T> (Transmute);
         StorageDead(_2);
+        StorageLive(_9);
+        // DBG: _9 = &((*_1).0: std::ptr::NonNull<T>);
+        StorageLive(_10);
+        // DBG: _10 = &_3;
         StorageLive(_5);
         StorageLive(_4);
         _4 = copy ((*_1).0: std::ptr::NonNull<T>);
@@ -51,6 +57,8 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
         _0 = Eq(copy _5, copy _6);
         StorageDead(_6);
         StorageDead(_5);
+        StorageDead(_10);
+        StorageDead(_9);
         goto -> bb3;
     }
 

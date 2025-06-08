@@ -51,6 +51,9 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                 let mut _16: bool;
                 let mut _20: usize;
                 let _22: &T;
+                let mut _34: &std::ptr::NonNull<T>;
+                let mut _35: &std::ptr::NonNull<T>;
+                let mut _36: &std::ptr::NonNull<T>;
                 scope 29 {
                     let _12: *const T;
                     scope 30 {
@@ -186,7 +189,11 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb5: {
         StorageLive(_16);
+        StorageLive(_34);
+        // DBG: _34 = &_11;
+        StorageLive(_35);
         _13 = copy _12 as std::ptr::NonNull<T> (Transmute);
+        // DBG: _35 = &_13;
         StorageLive(_14);
         _14 = copy _11 as *mut T (Transmute);
         StorageLive(_15);
@@ -198,6 +205,8 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb6: {
+        StorageDead(_35);
+        StorageDead(_34);
         StorageDead(_16);
         StorageLive(_18);
         StorageLive(_17);
@@ -210,6 +219,8 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb7: {
+        StorageDead(_35);
+        StorageDead(_34);
         StorageDead(_16);
         StorageDead(_22);
         StorageDead(_13);
@@ -255,10 +266,13 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb13: {
+        StorageLive(_36);
+        // DBG: _36 = &_11;
         StorageLive(_21);
         _21 = copy _11 as *const T (Transmute);
         _22 = &(*_21);
         StorageDead(_21);
+        StorageDead(_36);
         _23 = Option::<&T>::Some(copy _22);
         StorageDead(_22);
         StorageDead(_13);
