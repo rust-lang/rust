@@ -268,6 +268,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                 (false, false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_paren(),
                 _ => return check_ptr_eq(cx, expr, op.node, l, r),
             };
+            let invert = if op.node == BinOpKind::Eq { "" } else { "!" };
 
             span_lint_and_sugg(
                 cx,
@@ -275,7 +276,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                 expr.span,
                 "comparing with null is better expressed by the `.is_null()` method",
                 "try",
-                format!("{non_null_path_snippet}.is_null()"),
+                format!("{invert}{non_null_path_snippet}.is_null()",),
                 Applicability::MachineApplicable,
             );
         }
