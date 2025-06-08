@@ -157,6 +157,8 @@ test = true
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = [
+    # #[cfg(bootstrap)] loongarch32
+    'cfg(target_arch, values("loongarch32"))',
     # std use #[path] imports to portable-simd `std_float` crate
     # and to the `backtrace` crate which messes-up with Cargo list
     # of declared features, we therefor expect any feature cfg
