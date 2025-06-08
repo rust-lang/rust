@@ -4426,7 +4426,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// use std::io::{BufReader, Read};
     /// use std::fs::File;
-    /// let file = BufReader::new(std::fs::File::open("./bytes.txt").unwrap());
+    /// let file = BufReader::new(File::open("./bytes.txt").unwrap());
     /// file.bytes();
     /// ```
     #[clippy::version = "1.87.0"]
