@@ -1,3 +1,7 @@
+//! Check that the default global Rust allocator produces non-null Box allocations for ZSTs.
+//!
+//! See https://github.com/rust-lang/rust/issues/11998
+
 //@ run-pass
 
 pub fn main() {
