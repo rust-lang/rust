@@ -1,0 +1,84 @@
+error[E0382]: use of moved value: `name1`
+  --> $DIR/suggest-move-expr-out-of-loop-issue-141880.rs:18:17
+   |
+LL |     let name1 = String::from("foo");
+   |         ----- move occurs because `name1` has type `String`, which does not implement the `Copy` trait
+LL |     for _ in 0..3 {
+   |     ------------- inside of this loop
+LL |         let mut foo = Foo::default();
+LL |         foo.foo(name1);
+   |                 ^^^^^ value moved here, in previous iteration of loop
+   |
+note: consider changing this parameter type in method `foo` to borrow instead if owning the value isn't necessary
+  --> $DIR/suggest-move-expr-out-of-loop-issue-141880.rs:7:29
+   |
+LL |     fn foo(&mut self, name: String) {
+   |        --- in this method   ^^^^^^ this parameter takes ownership of the value
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~     let mut value = foo.foo(name1);
+LL ~     for _ in 0..3 {
+LL |         let mut foo = Foo::default();
+LL ~         value;
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         foo.foo(name1.clone());
+   |                      ++++++++
+
+error[E0382]: use of moved value: `name2`
+  --> $DIR/suggest-move-expr-out-of-loop-issue-141880.rs:24:17
+   |
+LL |     let name2 = String::from("bar");
+   |         ----- move occurs because `name2` has type `String`, which does not implement the `Copy` trait
+LL |     for mut foo in [1,2,3].iter_mut().map(|m|  Foo::default()) {
+   |     ---------------------------------------------------------- inside of this loop
+LL |         foo.foo(name2);
+   |                 ^^^^^ value moved here, in previous iteration of loop
+   |
+note: consider changing this parameter type in method `foo` to borrow instead if owning the value isn't necessary
+  --> $DIR/suggest-move-expr-out-of-loop-issue-141880.rs:7:29
+   |
+LL |     fn foo(&mut self, name: String) {
+   |        --- in this method   ^^^^^^ this parameter takes ownership of the value
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~     let mut value = foo.foo(name2);
+LL ~     for mut foo in [1,2,3].iter_mut().map(|m|  Foo::default()) {
+LL ~         value;
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         foo.foo(name2.clone());
+   |                      ++++++++
+
+error[E0382]: use of moved value: `name3`
+  --> $DIR/suggest-move-expr-out-of-loop-issue-141880.rs:32:17
+   |
+LL |     let name3 = String::from("baz");
+   |         ----- move occurs because `name3` has type `String`, which does not implement the `Copy` trait
+LL |     let mut foo = Foo::default();
+LL |     for _ in 0..10 {
+   |     -------------- inside of this loop
+LL |         foo.foo(name3);
+   |                 ^^^^^ value moved here, in previous iteration of loop
+   |
+note: consider changing this parameter type in method `foo` to borrow instead if owning the value isn't necessary
+  --> $DIR/suggest-move-expr-out-of-loop-issue-141880.rs:7:29
+   |
+LL |     fn foo(&mut self, name: String) {
+   |        --- in this method   ^^^^^^ this parameter takes ownership of the value
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~     let mut value = foo.foo(name3);
+LL ~     for _ in 0..10 {
+LL ~         value;
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         foo.foo(name3.clone());
+   |                      ++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.
