@@ -287,6 +287,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         scope_expr_id: HirId,
         candidate_filter: impl Fn(&ty::AssocItem) -> bool,
     ) -> Vec<ty::AssocItem> {
+        if true {
+            span_bug!(span, "this should not be called on the good path!");
+        }
+
         let method_names = self
             .probe_op(
                 span,
@@ -1741,6 +1745,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
+        // FIXME:
+        if self.next_trait_solver() {
+            return Ok(None);
+        }
+
         let obligation =
             traits::Obligation::new(self.tcx, self.misc(self.span), self.param_env, trait_ref);
         traits::SelectionContext::new(self).select(&obligation)
