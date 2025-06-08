@@ -381,7 +381,8 @@ macro_rules! make_mir_visitor {
                 statement: & $($mutability)? Statement<'tcx>,
                 location: Location
             ) {
-                let Statement { source_info, kind } = statement;
+                // TODO: visit debuginfo
+                let Statement { source_info, kind, .. } = statement;
 
                 self.visit_source_info(source_info);
                 match kind {
