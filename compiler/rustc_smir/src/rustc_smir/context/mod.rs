@@ -21,12 +21,12 @@ pub use traits::*;
 /// The [`crate::stable_mir::compiler_interface::SmirInterface`] must go through
 /// this context to obtain rustc-level information.
 pub struct SmirCtxt<'tcx, B: Bridge> {
-    pub(crate) tcx: TyCtxt<'tcx>,
+    pub tcx: TyCtxt<'tcx>,
     _marker: PhantomData<B>,
 }
 
 impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self { tcx, _marker: Default::default() }
     }
 }

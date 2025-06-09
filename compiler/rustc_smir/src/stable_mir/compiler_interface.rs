@@ -6,6 +6,7 @@
 use std::cell::Cell;
 
 use rustc_hir::def::DefKind;
+use rustc_smir::context::SmirCtxt;
 use rustc_smir::{Bridge, SmirContainer};
 use stable_mir::abi::{FnAbi, Layout, LayoutShape, ReprOptions};
 use stable_mir::convert::{RustcInternal, Stable};
@@ -327,16 +328,15 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     /// Check whether the body of a function is available.
     fn has_body(&self, item: DefId) -> bool {
         let mut tables = self.tables.borrow_mut();
-        let tables_ref = &mut *tables;
         let cx = &*self.cx.borrow();
-        let def = item.internal(tables_ref, cx);
+        let def = item.internal(&mut *tables, cx.tcx);
         cx.has_body(def)
     }
 
     fn foreign_modules(&self, crate_num: CrateNum) -> Vec<ForeignModuleDef> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        cx.foreign_modules(crate_num.internal(&mut *tables, cx))
+        cx.foreign_modules(crate_num.internal(&mut *tables, cx.tcx))
             .iter()
             .map(|did| tables.foreign_module_def(*did))
             .collect()
@@ -346,7 +346,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn crate_functions(&self, crate_num: CrateNum) -> Vec<FnDef> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let krate = crate_num.internal(&mut *tables, cx);
+        let krate = crate_num.internal(&mut *tables, cx.tcx);
         cx.crate_functions(krate).iter().map(|did| tables.fn_def(*did)).collect()
     }
 
@@ -354,7 +354,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let krate = crate_num.internal(&mut *tables, cx);
+        let krate = crate_num.internal(&mut *tables, cx.tcx);
         cx.crate_statics(krate).iter().map(|did| tables.static_def(*did)).collect()
     }
 
@@ -381,7 +381,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn trait_decls(&self, crate_num: CrateNum) -> TraitDecls {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let krate = crate_num.internal(&mut *tables, cx);
+        let krate = crate_num.internal(&mut *tables, cx.tcx);
         cx.trait_decls(krate).iter().map(|did| tables.trait_def(*did)).collect()
     }
 
@@ -401,7 +401,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn trait_impls(&self, crate_num: CrateNum) -> ImplTraitDecls {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let krate = crate_num.internal(&mut *tables, cx);
+        let krate = crate_num.internal(&mut *tables, cx.tcx);
         cx.trait_impls(krate).iter().map(|did| tables.impl_def(*did)).collect()
     }
 
@@ -461,19 +461,19 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     /// Get information about the local crate.
     fn local_crate(&self) -> Crate {
         let cx = &*self.cx.borrow();
-        self.smir_crate(cx.local_crate_num())
+        smir_crate(cx, cx.local_crate_num())
     }
 
     /// Retrieve a list of all external crates.
     fn external_crates(&self) -> Vec<Crate> {
         let cx = &*self.cx.borrow();
-        cx.external_crates().iter().map(|crate_num| self.smir_crate(*crate_num)).collect()
+        cx.external_crates().iter().map(|crate_num| smir_crate(cx, *crate_num)).collect()
     }
 
     /// Find a crate with the given name.
     fn find_crates(&self, name: &str) -> Vec<Crate> {
         let cx = &*self.cx.borrow();
-        cx.find_crates(name).iter().map(|crate_num| self.smir_crate(*crate_num)).collect()
+        cx.find_crates(name).iter().map(|crate_num| smir_crate(cx, *crate_num)).collect()
     }
 
     /// Returns the name of given `DefId`.
@@ -574,28 +574,28 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn adt_kind(&self, def: AdtDef) -> AdtKind {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        cx.adt_kind(def.internal(&mut *tables, cx)).stable(&mut *tables, cx)
+        cx.adt_kind(def.internal(&mut *tables, cx.tcx)).stable(&mut *tables, cx)
     }
 
     /// Returns if the ADT is a box.
     fn adt_is_box(&self, def: AdtDef) -> bool {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        cx.adt_is_box(def.internal(&mut *tables, cx))
+        cx.adt_is_box(def.internal(&mut *tables, cx.tcx))
     }
 
     /// Returns whether this ADT is simd.
     fn adt_is_simd(&self, def: AdtDef) -> bool {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        cx.adt_is_simd(def.internal(&mut *tables, cx))
+        cx.adt_is_simd(def.internal(&mut *tables, cx.tcx))
     }
 
     /// Returns whether this definition is a C string.
     fn adt_is_cstr(&self, def: AdtDef) -> bool {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        cx.adt_is_cstr(def.0.internal(&mut *tables, cx))
+        cx.adt_is_cstr(def.0.internal(&mut *tables, cx.tcx))
     }
 
     /// Returns the representation options for this ADT
@@ -607,8 +607,8 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let def_id = def.0.internal(&mut *tables, cx);
-        let args_ref = args.internal(&mut *tables, cx);
+        let def_id = def.0.internal(&mut *tables, cx.tcx);
+        let args_ref = args.internal(&mut *tables, cx.tcx);
         cx.fn_sig(def_id, args_ref).stable(&mut *tables, cx)
     }
 
@@ -616,7 +616,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn intrinsic(&self, item: DefId) -> Option<IntrinsicDef> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let def_id = item.internal(&mut *tables, cx);
+        let def_id = item.internal(&mut *tables, cx.tcx);
         cx.intrinsic(def_id).map(|_| IntrinsicDef(item))
     }
 
@@ -624,7 +624,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn intrinsic_name(&self, def: IntrinsicDef) -> Symbol {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let def_id = def.0.internal(&mut *tables, cx);
+        let def_id = def.0.internal(&mut *tables, cx.tcx);
         cx.intrinsic_name(def_id)
     }
 
@@ -632,7 +632,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn closure_sig(&self, args: &GenericArgs) -> PolyFnSig {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let args_ref = args.internal(&mut *tables, cx);
+        let args_ref = args.internal(&mut *tables, cx.tcx);
         cx.closure_sig(args_ref).stable(&mut *tables, cx)
     }
 
@@ -640,7 +640,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn adt_variants_len(&self, def: AdtDef) -> usize {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        cx.adt_variants_len(def.internal(&mut *tables, cx))
+        cx.adt_variants_len(def.internal(&mut *tables, cx.tcx))
     }
 
     /// Discriminant for a given variant index of AdtDef
@@ -662,27 +662,31 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn variant_name(&self, def: VariantDef) -> Symbol {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        cx.variant_name(def.internal(&mut *tables, cx))
+        cx.variant_name(def.internal(&mut *tables, cx.tcx))
     }
 
     fn variant_fields(&self, def: VariantDef) -> Vec<FieldDef> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        def.internal(&mut *tables, cx).fields.iter().map(|f| f.stable(&mut *tables, cx)).collect()
+        def.internal(&mut *tables, cx.tcx)
+            .fields
+            .iter()
+            .map(|f| f.stable(&mut *tables, cx))
+            .collect()
     }
 
     /// Evaluate constant as a target usize.
     fn eval_target_usize(&self, mir_const: &MirConst) -> Result<u64, Error> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let cnst = mir_const.internal(&mut *tables, cx);
+        let cnst = mir_const.internal(&mut *tables, cx.tcx);
         cx.eval_target_usize(cnst)
     }
 
     fn eval_target_usize_ty(&self, ty_const: &TyConst) -> Result<u64, Error> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let cnst = ty_const.internal(&mut *tables, cx);
+        let cnst = ty_const.internal(&mut *tables, cx.tcx);
         cx.eval_target_usize_ty(cnst)
     }
 
@@ -690,7 +694,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn try_new_const_zst(&self, ty: Ty) -> Result<MirConst, Error> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let ty_internal = ty.internal(&mut *tables, cx);
+        let ty_internal = ty.internal(&mut *tables, cx.tcx);
         cx.try_new_const_zst(ty_internal).map(|cnst| cnst.stable(&mut *tables, cx))
     }
 
@@ -712,14 +716,14 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn try_new_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<MirConst, Error> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let ty = cx.ty_new_uint(uint_ty.internal(&mut *tables, cx));
+        let ty = cx.ty_new_uint(uint_ty.internal(&mut *tables, cx.tcx));
         cx.try_new_const_uint(value, ty).map(|cnst| cnst.stable(&mut *tables, cx))
     }
 
     fn try_new_ty_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<TyConst, Error> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let ty = cx.ty_new_uint(uint_ty.internal(&mut *tables, cx));
+        let ty = cx.ty_new_uint(uint_ty.internal(&mut *tables, cx.tcx));
         cx.try_new_ty_const_uint(value, ty).map(|cnst| cnst.stable(&mut *tables, cx))
     }
 
@@ -727,7 +731,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn new_rigid_ty(&self, kind: RigidTy) -> Ty {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let internal_kind = kind.internal(&mut *tables, cx);
+        let internal_kind = kind.internal(&mut *tables, cx.tcx);
         cx.new_rigid_ty(internal_kind).stable(&mut *tables, cx)
     }
 
@@ -735,7 +739,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn new_box_ty(&self, ty: Ty) -> Ty {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let inner = ty.internal(&mut *tables, cx);
+        let inner = ty.internal(&mut *tables, cx.tcx);
         cx.new_box_ty(inner).stable(&mut *tables, cx)
     }
 
@@ -743,7 +747,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn def_ty(&self, item: DefId) -> Ty {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let inner = item.internal(&mut *tables, cx);
+        let inner = item.internal(&mut *tables, cx.tcx);
         cx.def_ty(inner).stable(&mut *tables, cx)
     }
 
@@ -751,8 +755,8 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn def_ty_with_args(&self, item: DefId, args: &GenericArgs) -> Ty {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let inner = item.internal(&mut *tables, cx);
-        let args_ref = args.internal(&mut *tables, cx);
+        let inner = item.internal(&mut *tables, cx.tcx);
+        let args_ref = args.internal(&mut *tables, cx.tcx);
         cx.def_ty_with_args(inner, args_ref).stable(&mut *tables, cx)
     }
 
@@ -760,7 +764,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn mir_const_pretty(&self, cnst: &MirConst) -> String {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        cnst.internal(&mut *tables, cx).to_string()
+        cnst.internal(&mut *tables, cx.tcx).to_string()
     }
 
     /// `Span` of an item.
@@ -795,7 +799,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn rigid_ty_discriminant_ty(&self, ty: &RigidTy) -> Ty {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let internal_kind = ty.internal(&mut *tables, cx);
+        let internal_kind = ty.internal(&mut *tables, cx.tcx);
         cx.rigid_ty_discriminant_ty(internal_kind).stable(&mut *tables, cx)
     }
 
@@ -868,8 +872,8 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn resolve_instance(&self, def: FnDef, args: &GenericArgs) -> Option<Instance> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let def_id = def.0.internal(&mut *tables, cx);
-        let args_ref = args.internal(&mut *tables, cx);
+        let def_id = def.0.internal(&mut *tables, cx.tcx);
+        let args_ref = args.internal(&mut *tables, cx.tcx);
         cx.resolve_instance(def_id, args_ref).map(|inst| inst.stable(&mut *tables, cx))
     }
 
@@ -877,7 +881,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn resolve_drop_in_place(&self, ty: Ty) -> Instance {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let internal_ty = ty.internal(&mut *tables, cx);
+        let internal_ty = ty.internal(&mut *tables, cx.tcx);
 
         cx.resolve_drop_in_place(internal_ty).stable(&mut *tables, cx)
     }
@@ -886,8 +890,8 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn resolve_for_fn_ptr(&self, def: FnDef, args: &GenericArgs) -> Option<Instance> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let def_id = def.0.internal(&mut *tables, cx);
-        let args_ref = args.internal(&mut *tables, cx);
+        let def_id = def.0.internal(&mut *tables, cx.tcx);
+        let args_ref = args.internal(&mut *tables, cx.tcx);
         cx.resolve_for_fn_ptr(def_id, args_ref).stable(&mut *tables, cx)
     }
 
@@ -900,9 +904,9 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     ) -> Option<Instance> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let def_id = def.0.internal(&mut *tables, cx);
-        let args_ref = args.internal(&mut *tables, cx);
-        let closure_kind = kind.internal(&mut *tables, cx);
+        let def_id = def.0.internal(&mut *tables, cx.tcx);
+        let args_ref = args.internal(&mut *tables, cx.tcx);
+        let closure_kind = kind.internal(&mut *tables, cx.tcx);
         cx.resolve_closure(def_id, args_ref, closure_kind).map(|inst| inst.stable(&mut *tables, cx))
     }
 
@@ -910,7 +914,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn eval_static_initializer(&self, def: StaticDef) -> Result<Allocation, Error> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let def_id = def.0.internal(&mut *tables, cx);
+        let def_id = def.0.internal(&mut *tables, cx.tcx);
 
         cx.eval_static_initializer(def_id).stable(&mut *tables, cx)
     }
@@ -920,7 +924,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         let mut tables = self.tables.borrow_mut();
         let instance = tables.instances[def];
         let cx = &*self.cx.borrow();
-        let const_ty = const_ty.internal(&mut *tables, cx);
+        let const_ty = const_ty.internal(&mut *tables, cx.tcx);
         cx.eval_instance(instance)
             .map(|const_val| alloc::try_new_allocation(const_ty, const_val, &mut *tables, cx))
             .map_err(|e| e.stable(&mut *tables, cx))?
@@ -930,7 +934,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn global_alloc(&self, id: AllocId) -> GlobalAlloc {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let alloc_id = id.internal(&mut *tables, cx);
+        let alloc_id = id.internal(&mut *tables, cx.tcx);
         cx.global_alloc(alloc_id).stable(&mut *tables, cx)
     }
 
@@ -941,15 +945,16 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
             return None;
         };
         let cx = &*self.cx.borrow();
-        let ty = ty.internal(&mut *tables, cx);
-        let trait_ref = trait_ref.internal(&mut *tables, cx);
+        let ty = ty.internal(&mut *tables, cx.tcx);
+        let trait_ref = trait_ref.internal(&mut *tables, cx.tcx);
         let alloc_id = cx.vtable_allocation(ty, trait_ref);
         Some(alloc_id.stable(&mut *tables, cx))
     }
 
     fn krate(&self, def_id: DefId) -> Crate {
         let tables = self.tables.borrow();
-        self.smir_crate(tables[def_id].krate)
+        let cx = &*self.cx.borrow();
+        smir_crate(cx, tables[def_id].krate)
     }
 
     fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol {
@@ -981,7 +986,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn fn_ptr_abi(&self, fn_ptr: PolyFnSig) -> Result<FnAbi, Error> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let sig = fn_ptr.internal(&mut *tables, cx);
+        let sig = fn_ptr.internal(&mut *tables, cx.tcx);
         cx.fn_ptr_abi(sig).map(|fn_abi| fn_abi.stable(&mut *tables, cx))
     }
 
@@ -989,7 +994,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn ty_layout(&self, ty: Ty) -> Result<Layout, Error> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let internal_ty = ty.internal(&mut *tables, cx);
+        let internal_ty = ty.internal(&mut *tables, cx.tcx);
         cx.ty_layout(internal_ty).map(|layout| layout.stable(&mut *tables, cx))
     }
 
@@ -997,7 +1002,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn layout_shape(&self, id: Layout) -> LayoutShape {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        id.internal(&mut *tables, cx).0.stable(&mut *tables, cx)
+        id.internal(&mut *tables, cx.tcx).0.stable(&mut *tables, cx)
     }
 
     /// Get a debug string representation of a place.
@@ -1005,16 +1010,16 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
 
-        format!("{:?}", place.internal(&mut *tables, cx))
+        format!("{:?}", place.internal(&mut *tables, cx.tcx))
     }
 
     /// Get the resulting type of binary operation.
     fn binop_ty(&self, bin_op: BinOp, rhs: Ty, lhs: Ty) -> Ty {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let rhs_internal = rhs.internal(&mut *tables, cx);
-        let lhs_internal = lhs.internal(&mut *tables, cx);
-        let bin_op_internal = bin_op.internal(&mut *tables, cx);
+        let rhs_internal = rhs.internal(&mut *tables, cx.tcx);
+        let lhs_internal = lhs.internal(&mut *tables, cx.tcx);
+        let bin_op_internal = bin_op.internal(&mut *tables, cx.tcx);
         cx.binop_ty(bin_op_internal, rhs_internal, lhs_internal).stable(&mut *tables, cx)
     }
 
@@ -1022,8 +1027,8 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn unop_ty(&self, un_op: UnOp, arg: Ty) -> Ty {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let un_op = un_op.internal(&mut *tables, cx);
-        let arg = arg.internal(&mut *tables, cx);
+        let un_op = un_op.internal(&mut *tables, cx.tcx);
+        let arg = arg.internal(&mut *tables, cx.tcx);
         cx.unop_ty(un_op, arg).stable(&mut *tables, cx)
     }
 
@@ -1034,21 +1039,6 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         let did = tables[def_id];
         cx.associated_items(did).iter().map(|assoc| assoc.stable(&mut *tables, cx)).collect()
     }
-}
-
-impl<'tcx> Helper for SmirContainer<'tcx, BridgeTys> {
-    fn smir_crate(&self, crate_num: rustc_span::def_id::CrateNum) -> Crate {
-        let cx = &*self.cx.borrow();
-        let name = cx.crate_name(crate_num);
-        let is_local = cx.crate_is_local(crate_num);
-        let id = cx.crate_num_id(crate_num);
-        debug!(?name, ?crate_num, "smir_crate");
-        Crate { id, name, is_local }
-    }
-}
-
-trait Helper {
-    fn smir_crate(&self, crate_num: rustc_span::def_id::CrateNum) -> Crate;
 }
 
 // A thread local variable that stores a pointer to [`SmirInterface`].
@@ -1077,4 +1067,15 @@ pub(crate) fn with<R>(f: impl FnOnce(&dyn SmirInterface) -> R) -> R {
         assert!(!ptr.is_null());
         f(unsafe { *(ptr as *const &dyn SmirInterface) })
     })
+}
+
+fn smir_crate<'tcx>(
+    cx: &SmirCtxt<'tcx, BridgeTys>,
+    crate_num: rustc_span::def_id::CrateNum,
+) -> Crate {
+    let name = cx.crate_name(crate_num);
+    let is_local = cx.crate_is_local(crate_num);
+    let id = cx.crate_num_id(crate_num);
+    debug!(?name, ?crate_num, "smir_crate");
+    Crate { id, name, is_local }
 }

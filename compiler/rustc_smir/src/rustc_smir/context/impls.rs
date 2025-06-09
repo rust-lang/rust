@@ -25,43 +25,9 @@ use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::{FileNameDisplayPreference, Span, Symbol};
 use rustc_target::callconv::FnAbi;
 
-use super::{
-    SmirAllocRange, SmirCtxt, SmirExistentialProjection, SmirExistentialTraitRef, SmirRegion,
-    SmirTraitRef, SmirTy, SmirTypingEnv,
-};
+use super::{SmirAllocRange, SmirCtxt, SmirTy, SmirTypingEnv};
 use crate::rustc_smir::builder::BodyBuilder;
 use crate::rustc_smir::{Bridge, SmirError, Tables, filter_def_ids};
-
-impl<'tcx, B: Bridge> SmirExistentialProjection<'tcx> for SmirCtxt<'tcx, B> {
-    fn new_from_args(
-        &self,
-        def_id: rustc_span::def_id::DefId,
-        args: ty::GenericArgsRef<'tcx>,
-        term: ty::Term<'tcx>,
-    ) -> ty::ExistentialProjection<'tcx> {
-        ty::ExistentialProjection::new_from_args(self.tcx, def_id, args, term)
-    }
-}
-
-impl<'tcx, B: Bridge> SmirExistentialTraitRef<'tcx> for SmirCtxt<'tcx, B> {
-    fn new_from_args(
-        &self,
-        trait_def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> ty::ExistentialTraitRef<'tcx> {
-        ty::ExistentialTraitRef::new_from_args(self.tcx, trait_def_id, args)
-    }
-}
-
-impl<'tcx, B: Bridge> SmirTraitRef<'tcx> for SmirCtxt<'tcx, B> {
-    fn new_from_args(
-        &self,
-        trait_def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> ty::TraitRef<'tcx> {
-        ty::TraitRef::new_from_args(self.tcx, trait_def_id, args)
-    }
-}
 
 impl<'tcx, B: Bridge> SmirTy<'tcx> for SmirCtxt<'tcx, B> {
     fn new_foreign(&self, def_id: DefId) -> ty::Ty<'tcx> {
@@ -85,50 +51,9 @@ impl<'tcx, B: Bridge> SmirAllocRange<'tcx> for SmirCtxt<'tcx, B> {
     }
 }
 
-impl<'tcx, B: Bridge> SmirRegion<'tcx> for SmirCtxt<'tcx, B> {
-    fn lifetimes_re_erased(&self) -> ty::Region<'tcx> {
-        self.tcx.lifetimes.re_erased
-    }
-}
-
 impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
     pub fn lift<T: ty::Lift<TyCtxt<'tcx>>>(&self, value: T) -> Option<T::Lifted> {
         self.tcx.lift(value)
-    }
-
-    pub fn mk_args_from_iter<I, T>(&self, iter: I) -> T::Output
-    where
-        I: Iterator<Item = T>,
-        T: ty::CollectAndApply<ty::GenericArg<'tcx>, ty::GenericArgsRef<'tcx>>,
-    {
-        self.tcx.mk_args_from_iter(iter)
-    }
-
-    pub fn mk_pat(&self, v: ty::PatternKind<'tcx>) -> ty::Pattern<'tcx> {
-        self.tcx.mk_pat(v)
-    }
-
-    pub fn mk_poly_existential_predicates(
-        &self,
-        eps: &[ty::PolyExistentialPredicate<'tcx>],
-    ) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
-        self.tcx.mk_poly_existential_predicates(eps)
-    }
-
-    pub fn mk_type_list(&self, v: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>> {
-        self.tcx.mk_type_list(v)
-    }
-
-    pub fn mk_bound_variable_kinds_from_iter<I, T>(&self, iter: I) -> T::Output
-    where
-        I: Iterator<Item = T>,
-        T: ty::CollectAndApply<ty::BoundVariableKind, &'tcx List<ty::BoundVariableKind>>,
-    {
-        self.tcx.mk_bound_variable_kinds_from_iter(iter)
-    }
-
-    pub fn mk_place_elems(&self, v: &[mir::PlaceElem<'tcx>]) -> &'tcx List<mir::PlaceElem<'tcx>> {
-        self.tcx.mk_place_elems(v)
     }
 
     pub fn adt_def(&self, def_id: DefId) -> AdtDef<'tcx> {
