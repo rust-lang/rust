@@ -4455,7 +4455,8 @@ class DocSearch {
             }
 
             results.max_dist = Math.max(results.max_dist || 0, tfpDist);
-            addIntoResults(results, row.id, pos, 0, tfpDist, 0, Number.MAX_VALUE);
+            // @ts-expect-error
+            addIntoResults(results, row.id.toString(), pos, 0, tfpDist, 0, Number.MAX_VALUE);
         }
 
         /**
