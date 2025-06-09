@@ -630,53 +630,7 @@ fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
     llvm::set_rust_rules(true);
 }
 
-pub(crate) fn run_pass_manager(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
-    dcx: DiagCtxtHandle<'_>,
-    module: &mut ModuleCodegen<ModuleLlvm>,
-    thin: bool,
-) -> Result<(), FatalError> {
-    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_lto_optimize", &*module.name);
-    let config = cgcx.config(module.kind);
-
-    // Now we have one massive module inside of llmod. Time to run the
-    // LTO-specific optimization passes that LLVM provides.
-    //
-    // This code is based off the code found in llvm's LTO code generator:
-    //      llvm/lib/LTO/LTOCodeGenerator.cpp
-    debug!("running the pass manager");
-    let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
-    let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
-
-    // The PostAD behavior is the same that we would have if no autodiff was used.
-    // It will run the default optimization pipeline. If AD is enabled we select
-    // the DuringAD stage, which will disable vectorization and loop unrolling, and
-    // schedule two autodiff optimization + differentiation passes.
-    // We then run the llvm_optimize function a second time, to optimize the code which we generated
-    // in the enzyme differentiation pass.
-    let enable_ad = config.autodiff.contains(&config::AutoDiff::Enable);
-    let enable_gpu = true;//config.offload.contains(&config::Offload::Enable);
-    let stage = if thin {
-        write::AutodiffStage::PreAD
-    } else {
-        if enable_ad { write::AutodiffStage::DuringAD } else { write::AutodiffStage::PostAD }
-    };
-
-    if enable_ad {
-        enable_autodiff_settings(&config.autodiff);
-    }
-
-    unsafe {
-        write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
-    }
-
-    if cfg!(llvm_enzyme) && enable_gpu && !thin {
-        // first we need to add all the fun to the host module
-        // %struct.__tgt_offload_entry = type { i64, i16, i16, i32, ptr, ptr, i64, i64, ptr }
-        // %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
-        let cx =
-            SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
-        if cx.get_function("gen_tgt_offload").is_some() {
+fn gen_globals<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Type {
             let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
             let kernel_arguments_ty = cx.type_named_struct("struct.__tgt_kernel_arguments");
             let tptr = cx.type_ptr();
@@ -685,6 +639,23 @@ pub(crate) fn run_pass_manager(
             let ti16 = cx.type_i16();
             let ti8 = cx.type_i8();
             let tarr = cx.type_array(ti32, 3);
+
+    // @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
+    let unknown_txt = ";unknown;unknown;0;0;;";
+    let c_entry_name = CString::new(unknown_txt).unwrap();
+    let c_val = c_entry_name.as_bytes_with_nul();
+    let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
+    let at_zero = add_unnamed_global(&cx, &"", initializer, PrivateLinkage);
+    llvm::set_alignment(at_zero, rustc_abi::Align::ONE);
+
+    // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
+    let struct_ident_ty = cx.type_named_struct("struct.ident_t");
+    let struct_elems: Vec<&llvm::Value> = vec![cx.get_const_i32(0), cx.get_const_i32(2), cx.get_const_i32(0), cx.get_const_i32(22), at_zero];
+    let struct_elems_ty: Vec<_> = struct_elems.iter().map(|&x| cx.val_ty(x)).collect();
+    let initializer = crate::common::named_struct(struct_ident_ty, &struct_elems);
+    cx.set_struct_body(struct_ident_ty, &struct_elems_ty, false);
+    let at_one = add_unnamed_global(&cx, &"", initializer, PrivateLinkage);
+    llvm::set_alignment(at_one, rustc_abi::Align::EIGHT);
 
             // coppied from LLVM
             // typedef struct {
@@ -735,38 +706,38 @@ pub(crate) fn run_pass_manager(
             attributes::apply_to_llfn(bar, Function, &[nounwind]);
             attributes::apply_to_llfn(baz, Function, &[nounwind]);
 
-            dbg!("created struct");
-            for num in 0..9 {
-                if !cx.get_function(&format!("kernel_{num}")).is_some() {
-                    continue;
-                }
+            offload_entry_ty
+}
 
-                fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'ll llvm::Value{
-                    let ti64 = cx.type_i64();
-                    let size_ty = cx.type_array(ti64, vals.len() as u64);
-                    let mut size_val = Vec::with_capacity(vals.len());
-                    for &val in vals {
-                        size_val.push(cx.get_const_i64(val));
-                    }
-                    let initializer = cx.const_array(ti64, &size_val);
-                    add_unnamed_global(cx, name, initializer, PrivateLinkage)
-                }
+fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'ll llvm::Value{
+    let ti64 = cx.type_i64();
+    let size_ty = cx.type_array(ti64, vals.len() as u64);
+    let mut size_val = Vec::with_capacity(vals.len());
+    for &val in vals {
+        size_val.push(cx.get_const_i64(val));
+    }
+    let initializer = cx.const_array(ti64, &size_val);
+    add_unnamed_global(cx, name, initializer, PrivateLinkage)
+}
 
-                fn add_global<'ll>(cx: &SimpleCx<'ll>, name: &str, initializer: &'ll llvm::Value, l: Linkage) -> &'ll llvm::Value {
-                    let c_name = CString::new(name).unwrap();
-                    let llglobal: &'ll llvm::Value = llvm::add_global(cx.llmod, cx.val_ty(initializer), &c_name);
-                    llvm::set_global_constant(llglobal, true);
-                    llvm::set_linkage(llglobal, l);
-                    llvm::set_initializer(llglobal, initializer);
-                    llglobal
-                }
+fn add_unnamed_global<'ll>(cx: &SimpleCx<'ll>, name: &str, initializer: &'ll llvm::Value, l: Linkage) -> &'ll llvm::Value {
+    let llglobal = add_global(cx, name, initializer, l);
+    unsafe {llvm::LLVMSetUnnamedAddress(llglobal, llvm::UnnamedAddr::Global)};
+    llglobal
+}
 
-                fn add_unnamed_global<'ll>(cx: &SimpleCx<'ll>, name: &str, initializer: &'ll llvm::Value, l: Linkage) -> &'ll llvm::Value {
-                    let llglobal = add_global(cx, name, initializer, l);
-                    unsafe {llvm::LLVMSetUnnamedAddress(llglobal, llvm::UnnamedAddr::Global)};
-                    llglobal
-                }
+fn add_global<'ll>(cx: &SimpleCx<'ll>, name: &str, initializer: &'ll llvm::Value, l: Linkage) -> &'ll llvm::Value {
+    let c_name = CString::new(name).unwrap();
+    let llglobal: &'ll llvm::Value = llvm::add_global(cx.llmod, cx.val_ty(initializer), &c_name);
+    llvm::set_global_constant(llglobal, true);
+    llvm::set_linkage(llglobal, l);
+    llvm::set_initializer(llglobal, initializer);
+    llglobal
+}
 
+
+
+fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, offload_entry_ty: &'ll llvm::Type, num: i64) {
                 // We add a pair of sizes and maptypes per offloadable function.
                 // @.offload_maptypes = private unnamed_addr constant [4 x i64] [i64 800, i64 544, i64 547, i64 544]
                 let o_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{num}"), &vec![8u64,0,16,0]);
@@ -822,7 +793,77 @@ pub(crate) fn run_pass_manager(
                 // 3. @.__omp_offloading_<hash>_fnc_name_<hash> = weak constant i8 0
                 // 4. @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
                 // 5. @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
+}
+
+fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>) {
+            // call void @__tgt_target_data_begin_mapper(ptr @1, i64 -1, i32 3, ptr %27, ptr %28, ptr %29, ptr @.offload_maptypes, ptr null, ptr null)
+            // call void @__tgt_target_data_update_mapper(ptr @1, i64 -1, i32 2, ptr %46, ptr %47, ptr %48, ptr @.offload_maptypes.1, ptr null, ptr null)
+            // call void @__tgt_target_data_end_mapper(ptr @1, i64 -1, i32 3, ptr %49, ptr %50, ptr %51, ptr @.offload_maptypes, ptr null, ptr null)
+    // What is @1? Random but fixed:
+    // @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
+    // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
+
+}
+
+pub(crate) fn run_pass_manager(
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    dcx: DiagCtxtHandle<'_>,
+    module: &mut ModuleCodegen<ModuleLlvm>,
+    thin: bool,
+) -> Result<(), FatalError> {
+    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_lto_optimize", &*module.name);
+    let config = cgcx.config(module.kind);
+
+    // Now we have one massive module inside of llmod. Time to run the
+    // LTO-specific optimization passes that LLVM provides.
+    //
+    // This code is based off the code found in llvm's LTO code generator:
+    //      llvm/lib/LTO/LTOCodeGenerator.cpp
+    debug!("running the pass manager");
+    let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
+    let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
+
+    // The PostAD behavior is the same that we would have if no autodiff was used.
+    // It will run the default optimization pipeline. If AD is enabled we select
+    // the DuringAD stage, which will disable vectorization and loop unrolling, and
+    // schedule two autodiff optimization + differentiation passes.
+    // We then run the llvm_optimize function a second time, to optimize the code which we generated
+    // in the enzyme differentiation pass.
+    let enable_ad = config.autodiff.contains(&config::AutoDiff::Enable);
+    let enable_gpu = true;//config.offload.contains(&config::Offload::Enable);
+    let stage = if thin {
+        write::AutodiffStage::PreAD
+    } else {
+        if enable_ad { write::AutodiffStage::DuringAD } else { write::AutodiffStage::PostAD }
+    };
+
+    if enable_ad {
+        enable_autodiff_settings(&config.autodiff);
+    }
+
+    unsafe {
+        write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
+    }
+
+    if cfg!(llvm_enzyme) && enable_gpu && !thin {
+        // first we need to add all the fun to the host module
+        // %struct.__tgt_offload_entry = type { i64, i16, i16, i32, ptr, ptr, i64, i64, ptr }
+        // %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
+        let cx =
+            SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
+        if cx.get_function("gen_tgt_offload").is_some() {
+
+            let offload_entry_ty = gen_globals(&cx);
+
+            dbg!("created struct");
+            for num in 0..9 {
+                if !cx.get_function(&format!("kernel_{num}")).is_some() {
+                    continue;
+                }
+                // TODO: replace num by proper fn name
+                gen_define_handling(&cx, offload_entry_ty, num);
             }
+            gen_call_handling(&cx);
         } else {
             dbg!("no marker found");
         }
