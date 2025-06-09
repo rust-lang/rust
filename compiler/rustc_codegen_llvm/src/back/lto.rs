@@ -730,7 +730,10 @@ pub(crate) fn run_pass_manager(
             let foo = crate::declare::declare_simple_fn(&cx, &mapper_begin, llvm::CallConv::CCallConv, llvm::UnnamedAddr::No, llvm::Visibility::Default, mapper_fn_ty);
             let bar = crate::declare::declare_simple_fn(&cx, &mapper_update, llvm::CallConv::CCallConv, llvm::UnnamedAddr::No, llvm::Visibility::Default, mapper_fn_ty);
             let baz = crate::declare::declare_simple_fn(&cx, &mapper_end, llvm::CallConv::CCallConv, llvm::UnnamedAddr::No, llvm::Visibility::Default, mapper_fn_ty);
-            // TODO: add nounwind
+            let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
+            attributes::apply_to_llfn(foo, Function, &[nounwind]);
+            attributes::apply_to_llfn(bar, Function, &[nounwind]);
+            attributes::apply_to_llfn(baz, Function, &[nounwind]);
 
             dbg!("created struct");
             for num in 0..9 {
