@@ -40,7 +40,6 @@ declare_lint_pass! {
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
-        ELIDED_NAMED_LIFETIMES,
         EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
         EXPORTED_PRIVATE_DEPENDENCIES,
         FFI_UNWIND_CALLS,
@@ -178,8 +177,9 @@ declare_lint! {
     Warn,
     "applying forbid to lint-groups",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #81670 <https://github.com/rust-lang/rust/issues/81670>",
+        report_in_deps: true,
     };
 }
 
@@ -214,7 +214,7 @@ declare_lint! {
     Deny,
     "ill-formed attribute inputs that were previously accepted and used in practice",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
     };
     crate_level_only
@@ -251,8 +251,9 @@ declare_lint! {
     Deny,
     "conflicts between `#[repr(..)]` hints that were previously accepted and used in practice",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #68585 <https://github.com/rust-lang/rust/issues/68585>",
+        report_in_deps: true,
     };
 }
 
@@ -1240,8 +1241,9 @@ declare_lint! {
     Deny,
     "detect public re-exports of private extern crates",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #127909 <https://github.com/rust-lang/rust/issues/127909>",
+        report_in_deps: true,
     };
 }
 
@@ -1270,8 +1272,9 @@ declare_lint! {
     Deny,
     "type parameter default erroneously allowed in invalid location",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #36887 <https://github.com/rust-lang/rust/issues/36887>",
+        report_in_deps: true,
     };
 }
 
@@ -1409,7 +1412,7 @@ declare_lint! {
     Deny,
     "patterns in functions without body were erroneously allowed",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
     };
 }
@@ -1453,8 +1456,9 @@ declare_lint! {
     Deny,
     "detects missing fragment specifiers in unused `macro_rules!` patterns",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
+        report_in_deps: true,
     };
 }
 
@@ -1495,7 +1499,7 @@ declare_lint! {
     Warn,
     "detects generic lifetime arguments in path segments with late bound lifetime parameters",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #42868 <https://github.com/rust-lang/rust/issues/42868>",
     };
 }
@@ -1828,38 +1832,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `elided_named_lifetimes` lint detects when an elided
-    /// lifetime ends up being a named lifetime, such as `'static`
-    /// or some lifetime parameter `'a`.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(elided_named_lifetimes)]
-    /// struct Foo;
-    /// impl Foo {
-    ///     pub fn get_mut(&'static self, x: &mut u8) -> &mut u8 {
-    ///         unsafe { &mut *(x as *mut _) }
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Lifetime elision is quite useful, because it frees you from having
-    /// to give each lifetime its own name, but sometimes it can produce
-    /// somewhat surprising resolutions. In safe code, it is mostly okay,
-    /// because the borrow checker prevents any unsoundness, so the worst
-    /// case scenario is you get a confusing error message in some other place.
-    /// But with `unsafe` code, such unexpected resolutions may lead to unsound code.
-    pub ELIDED_NAMED_LIFETIMES,
-    Warn,
-    "detects when an elided lifetime gets resolved to be `'static` or some named parameter"
-}
-
-declare_lint! {
     /// The `bare_trait_objects` lint suggests using `dyn Trait` for trait
     /// objects.
     ///
@@ -2122,8 +2094,9 @@ declare_lint! {
     Deny,
     "detects proc macro derives using inaccessible names from parent modules",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #83583 <https://github.com/rust-lang/rust/issues/83583>",
+        report_in_deps: true,
     };
 }
 
@@ -2225,7 +2198,7 @@ declare_lint! {
     "macro-expanded `macro_export` macros from the current crate \
      cannot be referred to by absolute paths",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #52234 <https://github.com/rust-lang/rust/issues/52234>",
     };
     crate_level_only
@@ -2346,7 +2319,7 @@ declare_lint! {
     Deny,
     "ambiguous associated items",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #57644 <https://github.com/rust-lang/rust/issues/57644>",
     };
 }
@@ -2362,8 +2335,9 @@ declare_lint! {
     Deny,
     "a feature gate that doesn't break dependent crates",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #64266 <https://github.com/rust-lang/rust/issues/64266>",
+        report_in_deps: true,
     };
 }
 
@@ -2674,7 +2648,7 @@ declare_lint! {
     Warn,
     "detects a generic constant is used in a type without a emitting a warning",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #76200 <https://github.com/rust-lang/rust/issues/76200>",
     };
 }
@@ -2733,7 +2707,7 @@ declare_lint! {
     Warn,
     "uninhabited static",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #74840 <https://github.com/rust-lang/rust/issues/74840>",
     };
 }
@@ -2866,7 +2840,7 @@ declare_lint! {
     Warn,
     "detect unsupported use of `Self` from outer item",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #124186 <https://github.com/rust-lang/rust/issues/124186>",
     };
 }
@@ -2912,8 +2886,9 @@ declare_lint! {
     Warn,
     "trailing semicolon in macro body used as expression",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #79813 <https://github.com/rust-lang/rust/issues/79813>",
+        report_in_deps: true,
     };
 }
 
@@ -2959,7 +2934,7 @@ declare_lint! {
     Warn,
     "detects derive helper attributes that are used before they are introduced",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #79202 <https://github.com/rust-lang/rust/issues/79202>",
     };
 }
@@ -3126,7 +3101,7 @@ declare_lint! {
     Warn,
     "transparent type contains an external ZST that is marked #[non_exhaustive] or contains private fields",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #78586 <https://github.com/rust-lang/rust/issues/78586>",
     };
 }
@@ -3177,7 +3152,7 @@ declare_lint! {
     Warn,
     "unstable syntax can change at any point in the future, causing a hard error!",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #65860 <https://github.com/rust-lang/rust/issues/65860>",
     };
 }
@@ -3685,8 +3660,9 @@ declare_lint! {
     Warn,
     "use of unsupported calling convention for function pointer",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #130260 <https://github.com/rust-lang/rust/issues/130260>",
+        report_in_deps: true,
     };
 }
 
@@ -4368,7 +4344,7 @@ declare_lint! {
     Warn,
     "detects certain glob imports that require reporting an ambiguity error",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #114095 <https://github.com/rust-lang/rust/issues/114095>",
     };
 }
@@ -4523,7 +4499,7 @@ declare_lint! {
     Deny,
     "elided lifetimes cannot be used in associated constants in impls",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #115010 <https://github.com/rust-lang/rust/issues/115010>",
     };
 }
@@ -4570,7 +4546,7 @@ declare_lint! {
     Warn,
     "detects certain macro bindings that should not be re-exported",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #120192 <https://github.com/rust-lang/rust/issues/120192>",
     };
 }
@@ -4635,7 +4611,7 @@ declare_lint! {
     Warn,
     "impl contains type parameters that are not covered",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #124559 <https://github.com/rust-lang/rust/issues/124559>",
     };
 }
@@ -4799,7 +4775,7 @@ declare_lint! {
     Warn,
     "detects out of scope calls to `macro_rules` in key-value attributes",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #124535 <https://github.com/rust-lang/rust/issues/124535>",
     };
 }
@@ -5040,8 +5016,9 @@ declare_lint! {
     Warn,
     "detects code relying on rustc's non-spec-compliant wasm C ABI",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #138762 <https://github.com/rust-lang/rust/issues/138762>",
+        report_in_deps: true,
     };
 }
 
@@ -5081,7 +5058,8 @@ declare_lint! {
     Warn,
     "detects code that could be affected by ABI issues on aarch64 softfloat targets",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #134375 <https://github.com/rust-lang/rust/issues/134375>",
+        report_in_deps: true,
     };
 }

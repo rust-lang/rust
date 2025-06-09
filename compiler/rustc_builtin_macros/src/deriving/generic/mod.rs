@@ -284,6 +284,7 @@ pub(crate) struct FieldInfo {
     /// The expressions corresponding to references to this field in
     /// the other selflike arguments.
     pub other_selflike_exprs: Vec<P<Expr>>,
+    pub maybe_scalar: bool,
 }
 
 #[derive(Copy, Clone)]
@@ -1220,7 +1221,8 @@ impl<'a> MethodDef<'a> {
 
             let self_expr = discr_exprs.remove(0);
             let other_selflike_exprs = discr_exprs;
-            let discr_field = FieldInfo { span, name: None, self_expr, other_selflike_exprs };
+            let discr_field =
+                FieldInfo { span, name: None, self_expr, other_selflike_exprs, maybe_scalar: true };
 
             let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
@@ -1533,6 +1535,7 @@ impl<'a> TraitDef<'a> {
                     name: struct_field.ident,
                     self_expr,
                     other_selflike_exprs,
+                    maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
                 }
             })
             .collect()

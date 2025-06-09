@@ -8,8 +8,8 @@ const unsafe fn foo(x: bool) -> bool {
 }
 
 const BAR: bool = unsafe { foo(false) };
-//~^ ERROR evaluation of constant value failed
-//~| NOTE entering unreachable code
+//~^ NOTE failed inside this call
+//~| ERROR entering unreachable code
 
 fn main() {
     assert_eq!(BAR, true);

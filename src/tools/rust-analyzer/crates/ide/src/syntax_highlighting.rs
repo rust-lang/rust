@@ -542,7 +542,7 @@ fn descend_token(
 
     let mut t = None;
     let mut r = 0;
-    sema.descend_into_macros_breakable(token.clone(), |tok, _ctx| {
+    sema.descend_into_macros_breakable(token.clone().into(), |tok, _ctx| {
         // FIXME: Consider checking ctx transparency for being opaque?
         let my_rank = ranker.rank_token(&tok.value);
 

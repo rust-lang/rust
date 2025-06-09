@@ -1,12 +1,12 @@
 //@ check-pass
 
 mod foo {
-    pub use bar::*;
-    pub use main as f;
+    pub use crate::bar::*;
+    pub use crate::main as f;
 }
 
 mod bar {
-    pub use foo::*;
+    pub use crate::foo::*;
 }
 
 pub use foo::*;

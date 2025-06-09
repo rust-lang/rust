@@ -14,6 +14,7 @@ pub fn filter_dirs(path: &Path) -> bool {
         "compiler/rustc_codegen_gcc",
         "src/llvm-project",
         "library/backtrace",
+        "library/compiler-builtins",
         "library/portable-simd",
         "library/stdarch",
         "src/tools/cargo",

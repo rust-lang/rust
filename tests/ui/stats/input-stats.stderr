@@ -1,120 +1,63 @@
-ast-stats-1 PRE EXPANSION AST STATS
-ast-stats-1 Name                Accumulated Size         Count     Item Size
-ast-stats-1 ----------------------------------------------------------------
-ast-stats-1 Crate                     40 (NN.N%)             1            40
-ast-stats-1 GenericArgs               40 (NN.N%)             1            40
-ast-stats-1 - AngleBracketed            40 (NN.N%)             1
-ast-stats-1 ExprField                 48 (NN.N%)             1            48
-ast-stats-1 Attribute                 64 (NN.N%)             2            32
-ast-stats-1 - DocComment                32 (NN.N%)             1
-ast-stats-1 - Normal                    32 (NN.N%)             1
-ast-stats-1 WherePredicate            72 (NN.N%)             1            72
-ast-stats-1 - BoundPredicate            72 (NN.N%)             1
-ast-stats-1 ForeignItem               80 (NN.N%)             1            80
-ast-stats-1 - Fn                        80 (NN.N%)             1
-ast-stats-1 Arm                       96 (NN.N%)             2            48
-ast-stats-1 Local                     96 (NN.N%)             1            96
-ast-stats-1 FnDecl                   120 (NN.N%)             5            24
-ast-stats-1 Param                    160 (NN.N%)             4            40
-ast-stats-1 Stmt                     160 (NN.N%)             5            32
-ast-stats-1 - Let                       32 (NN.N%)             1
-ast-stats-1 - MacCall                   32 (NN.N%)             1
-ast-stats-1 - Expr                      96 (NN.N%)             3
-ast-stats-1 Block                    192 (NN.N%)             6            32
-ast-stats-1 FieldDef                 208 (NN.N%)             2           104
-ast-stats-1 Variant                  208 (NN.N%)             2           104
-ast-stats-1 AssocItem                320 (NN.N%)             4            80
-ast-stats-1 - Fn                       160 (NN.N%)             2
-ast-stats-1 - Type                     160 (NN.N%)             2
-ast-stats-1 GenericBound             352 (NN.N%)             4            88
-ast-stats-1 - Trait                    352 (NN.N%)             4
-ast-stats-1 GenericParam             480 (NN.N%)             5            96
-ast-stats-1 Pat                      504 (NN.N%)             7            72
-ast-stats-1 - Struct                    72 (NN.N%)             1
-ast-stats-1 - Wild                      72 (NN.N%)             1
-ast-stats-1 - Ident                    360 (NN.N%)             5
-ast-stats-1 Expr                     576 (NN.N%)             8            72
-ast-stats-1 - Match                     72 (NN.N%)             1
-ast-stats-1 - Path                      72 (NN.N%)             1
-ast-stats-1 - Struct                    72 (NN.N%)             1
-ast-stats-1 - Lit                      144 (NN.N%)             2
-ast-stats-1 - Block                    216 (NN.N%)             3
-ast-stats-1 PathSegment              744 (NN.N%)            31            24
-ast-stats-1 Ty                       896 (NN.N%)            14            64
-ast-stats-1 - Ptr                       64 (NN.N%)             1
-ast-stats-1 - Ref                       64 (NN.N%)             1
-ast-stats-1 - ImplicitSelf             128 (NN.N%)             2
-ast-stats-1 - Path                     640 (NN.N%)            10
-ast-stats-1 Item                   1_296 (NN.N%)             9           144
-ast-stats-1 - Enum                     144 (NN.N%)             1
-ast-stats-1 - ForeignMod               144 (NN.N%)             1
-ast-stats-1 - Impl                     144 (NN.N%)             1
-ast-stats-1 - Trait                    144 (NN.N%)             1
-ast-stats-1 - Fn                       288 (NN.N%)             2
-ast-stats-1 - Use                      432 (NN.N%)             3
-ast-stats-1 ----------------------------------------------------------------
-ast-stats-1 Total                  6_752                   116
-ast-stats-1
-ast-stats-2 POST EXPANSION AST STATS
-ast-stats-2 Name                Accumulated Size         Count     Item Size
-ast-stats-2 ----------------------------------------------------------------
-ast-stats-2 Crate                     40 (NN.N%)             1            40
-ast-stats-2 GenericArgs               40 (NN.N%)             1            40
-ast-stats-2 - AngleBracketed            40 (NN.N%)             1
-ast-stats-2 ExprField                 48 (NN.N%)             1            48
-ast-stats-2 WherePredicate            72 (NN.N%)             1            72
-ast-stats-2 - BoundPredicate            72 (NN.N%)             1
-ast-stats-2 ForeignItem               80 (NN.N%)             1            80
-ast-stats-2 - Fn                        80 (NN.N%)             1
-ast-stats-2 Arm                       96 (NN.N%)             2            48
-ast-stats-2 Local                     96 (NN.N%)             1            96
-ast-stats-2 FnDecl                   120 (NN.N%)             5            24
-ast-stats-2 InlineAsm                120 (NN.N%)             1           120
-ast-stats-2 Attribute                128 (NN.N%)             4            32
-ast-stats-2 - DocComment                32 (NN.N%)             1
-ast-stats-2 - Normal                    96 (NN.N%)             3
-ast-stats-2 Param                    160 (NN.N%)             4            40
-ast-stats-2 Stmt                     160 (NN.N%)             5            32
-ast-stats-2 - Let                       32 (NN.N%)             1
-ast-stats-2 - Semi                      32 (NN.N%)             1
-ast-stats-2 - Expr                      96 (NN.N%)             3
-ast-stats-2 Block                    192 (NN.N%)             6            32
-ast-stats-2 FieldDef                 208 (NN.N%)             2           104
-ast-stats-2 Variant                  208 (NN.N%)             2           104
-ast-stats-2 AssocItem                320 (NN.N%)             4            80
-ast-stats-2 - Fn                       160 (NN.N%)             2
-ast-stats-2 - Type                     160 (NN.N%)             2
-ast-stats-2 GenericBound             352 (NN.N%)             4            88
-ast-stats-2 - Trait                    352 (NN.N%)             4
-ast-stats-2 GenericParam             480 (NN.N%)             5            96
-ast-stats-2 Pat                      504 (NN.N%)             7            72
-ast-stats-2 - Struct                    72 (NN.N%)             1
-ast-stats-2 - Wild                      72 (NN.N%)             1
-ast-stats-2 - Ident                    360 (NN.N%)             5
-ast-stats-2 Expr                     648 (NN.N%)             9            72
-ast-stats-2 - InlineAsm                 72 (NN.N%)             1
-ast-stats-2 - Match                     72 (NN.N%)             1
-ast-stats-2 - Path                      72 (NN.N%)             1
-ast-stats-2 - Struct                    72 (NN.N%)             1
-ast-stats-2 - Lit                      144 (NN.N%)             2
-ast-stats-2 - Block                    216 (NN.N%)             3
-ast-stats-2 PathSegment              864 (NN.N%)            36            24
-ast-stats-2 Ty                       896 (NN.N%)            14            64
-ast-stats-2 - Ptr                       64 (NN.N%)             1
-ast-stats-2 - Ref                       64 (NN.N%)             1
-ast-stats-2 - ImplicitSelf             128 (NN.N%)             2
-ast-stats-2 - Path                     640 (NN.N%)            10
-ast-stats-2 Item                   1_584 (NN.N%)            11           144
-ast-stats-2 - Enum                     144 (NN.N%)             1
-ast-stats-2 - ExternCrate              144 (NN.N%)             1
-ast-stats-2 - ForeignMod               144 (NN.N%)             1
-ast-stats-2 - Impl                     144 (NN.N%)             1
-ast-stats-2 - Trait                    144 (NN.N%)             1
-ast-stats-2 - Fn                       288 (NN.N%)             2
-ast-stats-2 - Use                      576 (NN.N%)             4
-ast-stats-2 ----------------------------------------------------------------
-ast-stats-2 Total                  7_416                   127
-ast-stats-2
+ast-stats POST EXPANSION AST STATS
+ast-stats Name                Accumulated Size         Count     Item Size
+ast-stats ----------------------------------------------------------------
+ast-stats Crate                     40 (NN.N%)             1            40
+ast-stats GenericArgs               40 (NN.N%)             1            40
+ast-stats - AngleBracketed            40 (NN.N%)             1
+ast-stats ExprField                 48 (NN.N%)             1            48
+ast-stats WherePredicate            72 (NN.N%)             1            72
+ast-stats - BoundPredicate            72 (NN.N%)             1
+ast-stats ForeignItem               80 (NN.N%)             1            80
+ast-stats - Fn                        80 (NN.N%)             1
+ast-stats Arm                       96 (NN.N%)             2            48
+ast-stats Local                     96 (NN.N%)             1            96
+ast-stats FnDecl                   120 (NN.N%)             5            24
+ast-stats InlineAsm                120 (NN.N%)             1           120
+ast-stats Attribute                128 (NN.N%)             4            32
+ast-stats - DocComment                32 (NN.N%)             1
+ast-stats - Normal                    96 (NN.N%)             3
+ast-stats Param                    160 (NN.N%)             4            40
+ast-stats Stmt                     160 (NN.N%)             5            32
+ast-stats - Let                       32 (NN.N%)             1
+ast-stats - Semi                      32 (NN.N%)             1
+ast-stats - Expr                      96 (NN.N%)             3
+ast-stats Block                    192 (NN.N%)             6            32
+ast-stats FieldDef                 208 (NN.N%)             2           104
+ast-stats Variant                  208 (NN.N%)             2           104
+ast-stats AssocItem                320 (NN.N%)             4            80
+ast-stats - Fn                       160 (NN.N%)             2
+ast-stats - Type                     160 (NN.N%)             2
+ast-stats GenericBound             352 (NN.N%)             4            88
+ast-stats - Trait                    352 (NN.N%)             4
+ast-stats GenericParam             480 (NN.N%)             5            96
+ast-stats Pat                      504 (NN.N%)             7            72
+ast-stats - Struct                    72 (NN.N%)             1
+ast-stats - Wild                      72 (NN.N%)             1
+ast-stats - Ident                    360 (NN.N%)             5
+ast-stats Expr                     648 (NN.N%)             9            72
+ast-stats - InlineAsm                 72 (NN.N%)             1
+ast-stats - Match                     72 (NN.N%)             1
+ast-stats - Path                      72 (NN.N%)             1
+ast-stats - Struct                    72 (NN.N%)             1
+ast-stats - Lit                      144 (NN.N%)             2
+ast-stats - Block                    216 (NN.N%)             3
+ast-stats PathSegment              864 (NN.N%)            36            24
+ast-stats Ty                       896 (NN.N%)            14            64
+ast-stats - Ptr                       64 (NN.N%)             1
+ast-stats - Ref                       64 (NN.N%)             1
+ast-stats - ImplicitSelf             128 (NN.N%)             2
+ast-stats - Path                     640 (NN.N%)            10
+ast-stats Item                   1_584 (NN.N%)            11           144
+ast-stats - Enum                     144 (NN.N%)             1
+ast-stats - ExternCrate              144 (NN.N%)             1
+ast-stats - ForeignMod               144 (NN.N%)             1
+ast-stats - Impl                     144 (NN.N%)             1
+ast-stats - Trait                    144 (NN.N%)             1
+ast-stats - Fn                       288 (NN.N%)             2
+ast-stats - Use                      576 (NN.N%)             4
+ast-stats ----------------------------------------------------------------
+ast-stats Total                  7_416                   127
+ast-stats
 hir-stats HIR STATS
 hir-stats Name                Accumulated Size         Count     Item Size
 hir-stats ----------------------------------------------------------------

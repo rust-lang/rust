@@ -189,7 +189,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
             // (as it's created inside the body itself, not passed in from outside).
             let ty = if fn_decl.c_variadic && index == fn_decl.inputs.len() {
-                let va_list_did = self.tcx.require_lang_item(LangItem::VaList, Some(param.span));
+                let va_list_did = self.tcx.require_lang_item(LangItem::VaList, param.span);
 
                 self.tcx
                     .type_of(va_list_did)

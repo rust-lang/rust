@@ -514,7 +514,6 @@ impl Analysis {
         self.with_db(|db| goto_type_definition::goto_type_definition(db, position))
     }
 
-    /// Finds all usages of the reference at point.
     pub fn find_all_refs(
         &self,
         position: FilePosition,

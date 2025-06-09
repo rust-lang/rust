@@ -12,7 +12,9 @@ Rust for Solaris operating system.
 
 ## Requirements
 
-Binary built for this target is expected to run on sparcv9 or x86_64, and Solaris 11.4.
+The `sparcv9-sun-solaris` and `x86_64-pc-solaris` targets are Tier 2 with host tools.
+
+Binary built for these targets are expected to run on sparcv9 or x86_64, and Solaris 11.4.
 
 ## Testing
 

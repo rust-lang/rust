@@ -678,8 +678,8 @@ impl fmt::Display for i128 {
 /// It also has to handle 1 last item, as 10^40 > 2^128 > 10^39, whereas
 /// 10^20 > 2^64 > 10^19.
 fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    // 2^128 is about 3*10^38, so 39 gives an extra byte of space
-    let mut buf = [MaybeUninit::<u8>::uninit(); 39];
+    const MAX_DEC_N: usize = u128::MAX.ilog(10) as usize + 1;
+    let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
     let mut curr = buf.len();
 
     let (n, rem) = udiv_1e19(n);

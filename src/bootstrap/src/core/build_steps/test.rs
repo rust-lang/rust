@@ -2707,16 +2707,6 @@ impl Step for Crate {
                         .arg(builder.src.join("library/sysroot/Cargo.toml"));
                 } else {
                     compile::std_cargo(builder, target, compiler.stage, &mut cargo);
-                    // `std_cargo` actually does the wrong thing: it passes `--sysroot build/host/stage2`,
-                    // but we want to use the force-recompile std we just built in `build/host/stage2-test-sysroot`.
-                    // Override it.
-                    if builder.download_rustc() && compiler.stage > 0 {
-                        let sysroot = builder
-                            .out
-                            .join(compiler.host)
-                            .join(format!("stage{}-test-sysroot", compiler.stage));
-                        cargo.env("RUSTC_SYSROOT", sysroot);
-                    }
                 }
             }
             Mode::Rustc => {
@@ -3544,7 +3534,7 @@ impl Step for CodegenGCC {
 }
 
 /// Test step that does two things:
-/// - Runs `cargo test` for the `src/etc/test-float-parse` tool.
+/// - Runs `cargo test` for the `src/tools/test-float-parse` tool.
 /// - Invokes the `test-float-parse` tool to test the standard library's
 ///   float parsing routines.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3559,7 +3549,7 @@ impl Step for TestFloatParse {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/etc/test-float-parse")
+        run.path("src/tools/test-float-parse")
     }
 
     fn make_run(run: RunConfig<'_>) {

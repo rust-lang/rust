@@ -8,20 +8,19 @@ use std::sync::atomic::Ordering;
 
 const MUTATE_INTERIOR_MUT: usize = {
     static FOO: AtomicUsize = AtomicUsize::new(0);
-    FOO.fetch_add(1, Ordering::Relaxed) //~ERROR evaluation of constant value failed
+    FOO.fetch_add(1, Ordering::Relaxed) //~ERROR calling non-const function `AtomicUsize::fetch_add`
 };
 
 const READ_INTERIOR_MUT: usize = {
     static FOO: AtomicUsize = AtomicUsize::new(0);
-    unsafe { *(&FOO as *const _ as *const usize) } //~ERROR evaluation of constant value failed
+    unsafe { *(&FOO as *const _ as *const usize) } //~ERROR constant accesses mutable global memory
 };
 
 static mut MUTABLE: u32 = 0;
-const READ_MUT: u32 = unsafe { MUTABLE }; //~ERROR evaluation of constant value failed
+const READ_MUT: u32 = unsafe { MUTABLE }; //~ERROR constant accesses mutable global memory
 
 // Evaluating this does not read anything mutable, but validation does, so this should error.
-const REF_INTERIOR_MUT: &usize = { //~ ERROR undefined behavior
-    //~| NOTE encountered reference to mutable memory
+const REF_INTERIOR_MUT: &usize = { //~ ERROR encountered reference to mutable memory
     static FOO: AtomicUsize = AtomicUsize::new(0);
     unsafe { &*(&FOO as *const _ as *const usize) }
 };

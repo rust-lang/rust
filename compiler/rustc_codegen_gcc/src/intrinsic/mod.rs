@@ -524,11 +524,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         cond
     }
 
-    fn type_test(&mut self, _pointer: Self::Value, _typeid: Self::Value) -> Self::Value {
-        // Unsupported.
-        self.context.new_rvalue_from_int(self.int_type, 0)
-    }
-
     fn type_checked_load(
         &mut self,
         _llvtable: Self::Value,

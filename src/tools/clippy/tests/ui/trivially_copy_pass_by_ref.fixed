@@ -41,6 +41,7 @@ fn good_return_explicit_lt_ref<'a>(foo: &'a Foo) -> &'a u32 {
     &foo.0
 }
 
+#[allow(mismatched_lifetime_syntaxes)]
 fn good_return_implicit_lt_struct(foo: &Foo) -> FooRef {
     FooRef { foo }
 }

@@ -158,7 +158,7 @@ pub(super) fn layout<
     // Build a prefix layout, including "promoting" all ineligible
     // locals as part of the prefix. We compute the layout of all of
     // these fields at once to get optimal packing.
-    let tag_index = prefix_layouts.len();
+    let tag_index = prefix_layouts.next_index();
 
     // `variant_fields` already accounts for the reserved variants, so no need to add them.
     let max_discr = (variant_fields.len() - 1) as u128;
@@ -187,7 +187,7 @@ pub(super) fn layout<
 
             // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
             // "outer" and "promoted" fields respectively.
-            let b_start = FieldIdx::new(tag_index + 1);
+            let b_start = tag_index.plus(1);
             let offsets_b = IndexVec::from_raw(offsets.raw.split_off(b_start.index()));
             let offsets_a = offsets;
 

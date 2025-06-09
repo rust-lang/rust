@@ -1104,8 +1104,15 @@ Executed at: {executed_at}"#,
         &self,
         what: impl Display,
         target: impl Into<Option<TargetSelection>>,
+        custom_stage: Option<u32>,
     ) -> Option<gha::Group> {
-        self.msg(Kind::Check, self.config.stage, what, self.config.build, target)
+        self.msg(
+            Kind::Check,
+            custom_stage.unwrap_or(self.config.stage),
+            what,
+            self.config.build,
+            target,
+        )
     }
 
     #[must_use = "Groups should not be dropped until the Step finishes running"]
@@ -1788,11 +1795,12 @@ Executed at: {executed_at}"#,
             let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
             let _ = fs::rename(dst, format!("{}-{}", dst.display(), now.as_nanos()));
         }
-        let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
+        let mut metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {
             if dereference_symlinks {
                 src = t!(fs::canonicalize(src));
+                metadata = t!(fs::metadata(&src), format!("target = {}", src.display()));
             } else {
                 let link = t!(fs::read_link(src));
                 t!(self.symlink_file(link, dst));

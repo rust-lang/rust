@@ -1,3 +1,5 @@
+//@ edition: 2015
+
 trait Trait {}
 
 fn test(_: &for<'a> dyn Trait) {}

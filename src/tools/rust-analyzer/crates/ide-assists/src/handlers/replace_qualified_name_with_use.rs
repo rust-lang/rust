@@ -81,11 +81,7 @@ pub(crate) fn replace_qualified_name_with_use(
         |builder| {
             // Now that we've brought the name into scope, re-qualify all paths that could be
             // affected (that is, all paths inside the node we added the `use` to).
-            let scope = match scope {
-                ImportScope::File(it) => ImportScope::File(builder.make_mut(it)),
-                ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
-                ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
-            };
+            let scope = builder.make_import_scope_mut(scope);
             shorten_paths(scope.as_syntax_node(), &original_path);
             let path = drop_generic_args(&original_path);
             let edition = ctx

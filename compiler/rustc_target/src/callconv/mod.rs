@@ -1,14 +1,13 @@
-use std::fmt::Display;
-use std::str::FromStr;
 use std::{fmt, iter};
 
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, ExternAbi, HasDataLayout, Primitive, Reg, RegKind, Scalar,
-    Size, TyAbiInterface, TyAndLayout,
+    AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, HasDataLayout, Primitive, Reg, RegKind,
+    Scalar, Size, TyAbiInterface, TyAndLayout,
 };
 use rustc_macros::HashStable_Generic;
 
-use crate::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, RustcAbi, WasmCAbi};
+pub use crate::spec::AbiMap;
+use crate::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
 
 mod aarch64;
 mod amdgpu;
@@ -530,41 +529,6 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub enum Conv {
-    // General language calling conventions, for which every target
-    // should have its own backend (e.g. LLVM) support.
-    C,
-    Rust,
-
-    Cold,
-    PreserveMost,
-    PreserveAll,
-
-    // Target-specific calling conventions.
-    ArmAapcs,
-    CCmseNonSecureCall,
-    CCmseNonSecureEntry,
-
-    Msp430Intr,
-
-    GpuKernel,
-
-    X86Fastcall,
-    X86Intr,
-    X86Stdcall,
-    X86ThisCall,
-    X86VectorCall,
-
-    X86_64SysV,
-    X86_64Win64,
-
-    AvrInterrupt,
-    AvrNonBlockingInterrupt,
-
-    RiscvInterrupt { kind: RiscvInterruptKind },
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum RiscvInterruptKind {
     Machine,
     Supervisor,
@@ -605,7 +569,7 @@ pub struct FnAbi<'a, Ty> {
     /// This can be used to know whether an argument is variadic or not.
     pub fixed_count: u32,
     /// The calling convention of this function.
-    pub conv: Conv,
+    pub conv: CanonAbi,
     /// Indicates if an unwind may happen across a call to this function.
     pub can_unwind: bool,
 }
@@ -696,7 +660,6 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                let abi = cx.target_spec().adjust_abi(abi, self.c_variadic);
                 if abi == ExternAbi::PtxKernel || abi == ExternAbi::GpuKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
@@ -731,24 +694,6 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "loongarch64" => loongarch::compute_rust_abi_info(cx, self),
             "aarch64" => aarch64::compute_rust_abi_info(cx, self),
             _ => {}
-        };
-
-        // Decides whether we can pass the given SIMD argument via `PassMode::Direct`.
-        // May only return `true` if the target will always pass those arguments the same way,
-        // no matter what the user does with `-Ctarget-feature`! In other words, whatever
-        // target features are required to pass a SIMD value in registers must be listed in
-        // the `abi_required_features` for the current target and ABI.
-        let can_pass_simd_directly = |arg: &ArgAbi<'_, Ty>| match &*spec.arch {
-            // On x86, if we have SSE2 (which we have by default for x86_64), we can always pass up
-            // to 128-bit-sized vectors.
-            "x86" if spec.rustc_abi == Some(RustcAbi::X86Sse2) => arg.layout.size.bits() <= 128,
-            "x86_64" if spec.rustc_abi != Some(RustcAbi::X86Softfloat) => {
-                // FIXME once https://github.com/bytecodealliance/wasmtime/issues/10254 is fixed
-                // accept vectors up to 128bit rather than vectors of exactly 128bit.
-                arg.layout.size.bits() == 128
-            }
-            // So far, we haven't implemented this logic for any other target.
-            _ => false,
         };
 
         for (arg_idx, arg) in self
@@ -850,9 +795,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     // target feature sets. Some more information about this
                     // issue can be found in #44367.
                     //
-                    // Note that the intrinsic ABI is exempt here as those are not
-                    // real functions anyway, and the backend expects very specific types.
-                    if spec.simd_types_indirect && !can_pass_simd_directly(arg) {
+                    // We *could* do better in some cases, e.g. on x86_64 targets where SSE2 is
+                    // required. However, it turns out that that makes LLVM worse at optimizing this
+                    // code, so we pass things indirectly even there. See #139029 for more on that.
+                    if spec.simd_types_indirect {
                         arg.make_indirect();
                     }
                 }
@@ -860,70 +806,6 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 _ => {}
             }
         }
-    }
-}
-
-impl FromStr for Conv {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "C" => Ok(Conv::C),
-            "Rust" => Ok(Conv::Rust),
-            "RustCold" => Ok(Conv::Rust),
-            "ArmAapcs" => Ok(Conv::ArmAapcs),
-            "CCmseNonSecureCall" => Ok(Conv::CCmseNonSecureCall),
-            "CCmseNonSecureEntry" => Ok(Conv::CCmseNonSecureEntry),
-            "Msp430Intr" => Ok(Conv::Msp430Intr),
-            "X86Fastcall" => Ok(Conv::X86Fastcall),
-            "X86Intr" => Ok(Conv::X86Intr),
-            "X86Stdcall" => Ok(Conv::X86Stdcall),
-            "X86ThisCall" => Ok(Conv::X86ThisCall),
-            "X86VectorCall" => Ok(Conv::X86VectorCall),
-            "X86_64SysV" => Ok(Conv::X86_64SysV),
-            "X86_64Win64" => Ok(Conv::X86_64Win64),
-            "GpuKernel" => Ok(Conv::GpuKernel),
-            "AvrInterrupt" => Ok(Conv::AvrInterrupt),
-            "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
-            "RiscvInterrupt(machine)" => {
-                Ok(Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine })
-            }
-            "RiscvInterrupt(supervisor)" => {
-                Ok(Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor })
-            }
-            _ => Err(format!("'{s}' is not a valid value for entry function call convention.")),
-        }
-    }
-}
-
-fn conv_to_externabi(conv: &Conv) -> ExternAbi {
-    match conv {
-        Conv::C => ExternAbi::C { unwind: false },
-        Conv::Rust => ExternAbi::Rust,
-        Conv::PreserveMost => ExternAbi::RustCold,
-        Conv::ArmAapcs => ExternAbi::Aapcs { unwind: false },
-        Conv::CCmseNonSecureCall => ExternAbi::CCmseNonSecureCall,
-        Conv::CCmseNonSecureEntry => ExternAbi::CCmseNonSecureEntry,
-        Conv::Msp430Intr => ExternAbi::Msp430Interrupt,
-        Conv::GpuKernel => ExternAbi::GpuKernel,
-        Conv::X86Fastcall => ExternAbi::Fastcall { unwind: false },
-        Conv::X86Intr => ExternAbi::X86Interrupt,
-        Conv::X86Stdcall => ExternAbi::Stdcall { unwind: false },
-        Conv::X86ThisCall => ExternAbi::Thiscall { unwind: false },
-        Conv::X86VectorCall => ExternAbi::Vectorcall { unwind: false },
-        Conv::X86_64SysV => ExternAbi::SysV64 { unwind: false },
-        Conv::X86_64Win64 => ExternAbi::Win64 { unwind: false },
-        Conv::AvrInterrupt => ExternAbi::AvrInterrupt,
-        Conv::AvrNonBlockingInterrupt => ExternAbi::AvrNonBlockingInterrupt,
-        Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine } => ExternAbi::RiscvInterruptM,
-        Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor } => ExternAbi::RiscvInterruptS,
-        Conv::Cold | Conv::PreserveAll => unreachable!(),
-    }
-}
-
-impl Display for Conv {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", conv_to_externabi(self))
     }
 }
 

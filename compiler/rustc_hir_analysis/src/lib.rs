@@ -182,9 +182,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         // what we are intending to discard, to help future type-based refactoring.
         type R = Result<(), ErrorGuaranteed>;
 
-        tcx.par_hir_for_each_module(|module| {
-            let _: R = tcx.ensure_ok().check_mod_type_wf(module);
-        });
+        let _: R = tcx.ensure_ok().check_type_wf(());
 
         for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
             let _: R = tcx.ensure_ok().coherent_trait(trait_def_id);
@@ -194,10 +192,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         let _: R = tcx.ensure_ok().crate_inherent_impls_overlap_check(());
     });
 
-    // Make sure we evaluate all static and (non-associated) const items, even if unused.
-    // If any of these fail to evaluate, we do not want this crate to pass compilation.
     tcx.par_hir_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);
+        // Make sure we evaluate all static and (non-associated) const items, even if unused.
+        // If any of these fail to evaluate, we do not want this crate to pass compilation.
         match def_kind {
             DefKind::Static { .. } => {
                 tcx.ensure_ok().eval_static_initializer(item_def_id);
@@ -216,6 +214,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         // Skip `AnonConst`s because we feed their `type_of`.
         if !matches!(def_kind, DefKind::AnonConst) {
             tcx.ensure_ok().typeck(item_def_id);
+        }
+        // Ensure we generate the new `DefId` before finishing `check_crate`.
+        // Afterwards we freeze the list of `DefId`s.
+        if tcx.needs_coroutine_by_move_body_def_id(item_def_id.to_def_id()) {
+            tcx.ensure_done().coroutine_by_move_body_def_id(item_def_id);
         }
     });
 
