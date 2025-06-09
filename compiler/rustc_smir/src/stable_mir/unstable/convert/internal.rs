@@ -10,7 +10,6 @@ use rustc_smir::Tables;
 use rustc_span::Symbol;
 use stable_mir::abi::Layout;
 use stable_mir::compiler_interface::BridgeTys;
-use stable_mir::unstable::{RustcInternal, InternalCx};
 use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
 use stable_mir::mir::{BinOp, Mutability, Place, ProjectionElem, RawPtrKind, Safety, UnOp};
@@ -20,10 +19,10 @@ use stable_mir::ty::{
     GenericArgKind, GenericArgs, IntTy, MirConst, Movability, Pattern, Region, RigidTy, Span,
     TermKind, TraitRef, Ty, TyConst, UintTy, VariantDef, VariantIdx,
 };
+use stable_mir::unstable::{InternalCx, RustcInternal};
 use stable_mir::{CrateItem, CrateNum, DefId, IndexedVal};
 
 use crate::{rustc_smir, stable_mir};
-
 
 impl RustcInternal for CrateItem {
     type T<'tcx> = rustc_span::def_id::DefId;
@@ -447,9 +446,10 @@ impl RustcInternal for BoundVariableKind {
         match self {
             BoundVariableKind::Ty(kind) => rustc_ty::BoundVariableKind::Ty(match kind {
                 BoundTyKind::Anon => rustc_ty::BoundTyKind::Anon,
-                BoundTyKind::Param(def, symbol) => {
-                    rustc_ty::BoundTyKind::Param(def.0.internal(tables, tcx), Symbol::intern(symbol))
-                }
+                BoundTyKind::Param(def, symbol) => rustc_ty::BoundTyKind::Param(
+                    def.0.internal(tables, tcx),
+                    Symbol::intern(symbol),
+                ),
             }),
             BoundVariableKind::Region(kind) => rustc_ty::BoundVariableKind::Region(match kind {
                 BoundRegionKind::BrAnon => rustc_ty::BoundRegionKind::Anon,
@@ -541,7 +541,10 @@ impl RustcInternal for ExistentialTraitRef {
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
         use rustc_smir::context::SmirExistentialTraitRef;
-        tcx.new_from_args(self.def_id.0.internal(tables, tcx), self.generic_args.internal(tables, tcx))
+        tcx.new_from_args(
+            self.def_id.0.internal(tables, tcx),
+            self.generic_args.internal(tables, tcx),
+        )
     }
 }
 

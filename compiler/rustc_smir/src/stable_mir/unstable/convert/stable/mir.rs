@@ -6,10 +6,10 @@ use rustc_smir::Tables;
 use rustc_smir::bridge::SmirError;
 use rustc_smir::context::SmirCtxt;
 use stable_mir::compiler_interface::BridgeTys;
-use stable_mir::unstable::Stable;
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::{ConstOperand, Statement, UserTypeProjection, VarDebugInfoFragment};
 use stable_mir::ty::{Allocation, ConstantKind, MirConst};
+use stable_mir::unstable::Stable;
 use stable_mir::{Error, alloc, opaque};
 
 use crate::{rustc_smir, stable_mir};
@@ -847,7 +847,11 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
 
 impl<'tcx> Stable<'tcx> for mir::interpret::AllocId {
     type T = stable_mir::mir::alloc::AllocId;
-    fn stable<'cx>(&self, tables: &mut Tables<'cx, BridgeTys>, _: &SmirCtxt<'cx, BridgeTys>) -> Self::T {
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        _: &SmirCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
         tables.create_alloc_id(*self)
     }
 }

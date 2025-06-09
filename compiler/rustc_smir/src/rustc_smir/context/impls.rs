@@ -15,9 +15,9 @@ use rustc_middle::mir::{BinOp, Body, Const as MirConst, ConstValue, UnOp};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    AdtDef, AdtKind, AssocItem, ClosureKind, GenericArgsRef, GenericPredicates, Instance,
-    InstanceKind, IntrinsicDef, List, PolyFnSig, ScalarInt, TraitDef, Ty, TyCtxt, TyKind,
-    TypeVisitableExt, UintTy, ValTree, VariantDef,
+    AdtDef, AdtKind, AssocItem, ClosureKind, GenericArgsRef, Instance, InstanceKind, IntrinsicDef,
+    List, PolyFnSig, ScalarInt, TraitDef, Ty, TyCtxt, TyKind, TypeVisitableExt, UintTy, ValTree,
+    VariantDef,
 };
 use rustc_middle::{mir, ty};
 use rustc_session::cstore::ForeignModule;
@@ -197,12 +197,32 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
         self.tcx.generics_of(def_id)
     }
 
-    pub fn predicates_of(&self, def_id: DefId) -> GenericPredicates<'tcx> {
-        self.tcx.predicates_of(def_id)
+    pub fn predicates_of(
+        &self,
+        def_id: DefId,
+    ) -> (Option<DefId>, Vec<(ty::PredicateKind<'tcx>, Span)>) {
+        let ty::GenericPredicates { parent, predicates } = self.tcx.predicates_of(def_id);
+        (
+            parent,
+            predicates
+                .iter()
+                .map(|(clause, span)| (clause.as_predicate().kind().skip_binder(), *span))
+                .collect(),
+        )
     }
 
-    pub fn explicit_predicates_of(&self, def_id: DefId) -> GenericPredicates<'tcx> {
-        self.tcx.explicit_predicates_of(def_id)
+    pub fn explicit_predicates_of(
+        &self,
+        def_id: DefId,
+    ) -> (Option<DefId>, Vec<(ty::PredicateKind<'tcx>, Span)>) {
+        let ty::GenericPredicates { parent, predicates } = self.tcx.explicit_predicates_of(def_id);
+        (
+            parent,
+            predicates
+                .iter()
+                .map(|(clause, span)| (clause.as_predicate().kind().skip_binder(), *span))
+                .collect(),
+        )
     }
 
     pub fn crate_name(&self, crate_num: CrateNum) -> String {

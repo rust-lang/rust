@@ -6,10 +6,10 @@ use rustc_smir::Tables;
 use rustc_smir::context::SmirCtxt;
 use stable_mir::alloc;
 use stable_mir::compiler_interface::BridgeTys;
-use stable_mir::unstable::Stable;
 use stable_mir::ty::{
     AdtKind, FloatTy, GenericArgs, GenericParamDef, IntTy, Region, RigidTy, TyKind, UintTy,
 };
+use stable_mir::unstable::Stable;
 
 use crate::{rustc_smir, stable_mir};
 
@@ -288,7 +288,11 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
     type T = stable_mir::ty::BoundTyKind;
 
-    fn stable<'cx>(&self, tables: &mut Tables<'cx, BridgeTys>, _: &SmirCtxt<'cx, BridgeTys>) -> Self::T {
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        _: &SmirCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
         use stable_mir::ty::BoundTyKind;
 
         match self {
@@ -303,7 +307,11 @@ impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
 impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
     type T = stable_mir::ty::BoundRegionKind;
 
-    fn stable<'cx>(&self, tables: &mut Tables<'cx, BridgeTys>, _: &SmirCtxt<'cx, BridgeTys>) -> Self::T {
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        _: &SmirCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
         use stable_mir::ty::BoundRegionKind;
 
         match self {
@@ -1108,7 +1116,11 @@ impl<'tcx> Stable<'tcx> for ty::AssocItem {
 impl<'tcx> Stable<'tcx> for ty::ImplTraitInTraitData {
     type T = stable_mir::ty::ImplTraitInTraitData;
 
-    fn stable<'cx>(&self, tables: &mut Tables<'cx, BridgeTys>, _: &SmirCtxt<'cx, BridgeTys>) -> Self::T {
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        _: &SmirCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
         use stable_mir::ty::ImplTraitInTraitData;
         match self {
             ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id } => {

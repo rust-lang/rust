@@ -86,7 +86,11 @@ impl<'tcx> Stable<'tcx> for rustc_span::Symbol {
 impl<'tcx> Stable<'tcx> for rustc_span::Span {
     type T = stable_mir::ty::Span;
 
-    fn stable<'cx>(&self, tables: &mut Tables<'cx, BridgeTys>, _: &SmirCtxt<'cx, BridgeTys>) -> Self::T {
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        _: &SmirCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
         tables.create_span(*self)
     }
 }

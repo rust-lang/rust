@@ -423,17 +423,12 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
         let did = tables[def_id];
-        let rustc_middle::ty::GenericPredicates { parent, predicates } = cx.predicates_of(did);
+        let (parent, kinds) = cx.predicates_of(did);
         stable_mir::ty::GenericPredicates {
             parent: parent.map(|did| tables.trait_def(did)),
-            predicates: predicates
+            predicates: kinds
                 .iter()
-                .map(|(clause, span)| {
-                    (
-                        clause.as_predicate().kind().skip_binder().stable(&mut *tables, cx),
-                        span.stable(&mut *tables, cx),
-                    )
-                })
+                .map(|(kind, span)| (kind.stable(&mut *tables, cx), span.stable(&mut *tables, cx)))
                 .collect(),
         }
     }
@@ -442,18 +437,12 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
         let did = tables[def_id];
-        let rustc_middle::ty::GenericPredicates { parent, predicates } =
-            cx.explicit_predicates_of(did);
+        let (parent, kinds) = cx.explicit_predicates_of(did);
         stable_mir::ty::GenericPredicates {
             parent: parent.map(|did| tables.trait_def(did)),
-            predicates: predicates
+            predicates: kinds
                 .iter()
-                .map(|(clause, span)| {
-                    (
-                        clause.as_predicate().kind().skip_binder().stable(&mut *tables, cx),
-                        span.stable(&mut *tables, cx),
-                    )
-                })
+                .map(|(kind, span)| (kind.stable(&mut *tables, cx), span.stable(&mut *tables, cx)))
                 .collect(),
         }
     }
