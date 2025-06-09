@@ -8,8 +8,7 @@ pub use self::plumbing::*;
 
 mod job;
 pub use self::job::{
-    QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryMap, break_query_cycles, print_query_stack,
-    report_cycle,
+    QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryMap, print_query_stack, report_cycle,
 };
 
 mod caches;

@@ -4330,7 +4330,6 @@ version = "0.0.0"
 dependencies = [
  "hashbrown",
  "parking_lot",
- "rustc-rayon-core",
  "rustc_abi",
  "rustc_ast",
  "rustc_attr_data_structures",
