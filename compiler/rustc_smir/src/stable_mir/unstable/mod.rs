@@ -1,20 +1,20 @@
 //! Module that collects the things that have no stability guarantees.
 //!
-//! We want to keep StableMIR definitions and logic separate from 
-//! any sort of conversion and usage of internal rustc code. So we 
+//! We want to keep StableMIR definitions and logic separate from
+//! any sort of conversion and usage of internal rustc code. So we
 //! restrict the usage of internal items to be inside this module.
 
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::{List, Ty, TyCtxt};
 use rustc_middle::{mir, ty};
 use rustc_smir::Tables;
-use rustc_smir::context::{SmirCtxt, SmirExistentialProjection, SmirExistentialTraitRef, SmirTraitRef};
-
+use rustc_smir::context::{
+    SmirCtxt, SmirExistentialProjection, SmirExistentialTraitRef, SmirTraitRef,
+};
 use stable_mir::{CtorKind, ItemKind};
 
-use crate::{rustc_smir, stable_mir};
-
 use super::compiler_interface::BridgeTys;
+use crate::{rustc_smir, stable_mir};
 
 pub(crate) mod convert;
 
@@ -84,7 +84,7 @@ impl<'tcx> InternalCx<'tcx> for TyCtxt<'tcx> {
     fn lifetimes_re_erased(self) -> ty::Region<'tcx> {
         self.lifetimes.re_erased
     }
-    
+
     fn mk_bound_variable_kinds_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -92,7 +92,7 @@ impl<'tcx> InternalCx<'tcx> for TyCtxt<'tcx> {
     {
         TyCtxt::mk_bound_variable_kinds_from_iter(self, iter)
     }
-    
+
     fn mk_place_elems(self, v: &[mir::PlaceElem<'tcx>]) -> &'tcx List<mir::PlaceElem<'tcx>> {
         TyCtxt::mk_place_elems(self, v)
     }
@@ -103,10 +103,10 @@ impl<'tcx> InternalCx<'tcx> for TyCtxt<'tcx> {
 }
 
 /// Trait that defines the methods that are fine to call from [`RustcInternal`].
-/// 
+///
 /// This trait is only for [`RustcInternal`]. Any other other access to rustc's internals
 /// should go through [`crate::rustc_smir::context::SmirCtxt`].
-pub trait InternalCx<'tcx> : Copy + Clone {
+pub trait InternalCx<'tcx>: Copy + Clone {
     fn tcx(self) -> TyCtxt<'tcx>;
 
     fn lift<T: ty::Lift<TyCtxt<'tcx>>>(self, value: T) -> Option<T::Lifted>;
