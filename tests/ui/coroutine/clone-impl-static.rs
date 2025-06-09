@@ -7,13 +7,13 @@
 #![feature(coroutines, coroutine_clone, stmt_expr_attributes)]
 
 fn main() {
-    let gen = #[coroutine]
+    let generator = #[coroutine]
     static move || {
         yield;
     };
-    check_copy(&gen);
+    check_copy(&generator);
     //~^ ERROR Copy` is not satisfied
-    check_clone(&gen);
+    check_clone(&generator);
     //~^ ERROR Clone` is not satisfied
 }
 
