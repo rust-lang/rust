@@ -48,6 +48,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     let aes = _sysctlbyname(c"hw.optional.arm.FEAT_AES");
     let bf16 = _sysctlbyname(c"hw.optional.arm.FEAT_BF16");
     let bti = _sysctlbyname(c"hw.optional.arm.FEAT_BTI");
+    let cssc = _sysctlbyname(c"hw.optional.arm.FEAT_CSSC");
     let dit = _sysctlbyname(c"hw.optional.arm.FEAT_DIT");
     let dpb = _sysctlbyname(c"hw.optional.arm.FEAT_DPB");
     let dpb2 = _sysctlbyname(c"hw.optional.arm.FEAT_DPB2");
@@ -59,6 +60,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     let frintts = _sysctlbyname(c"hw.optional.arm.FEAT_FRINTTS");
     let flagm = _sysctlbyname(c"hw.optional.arm.FEAT_FlagM");
     let flagm2 = _sysctlbyname(c"hw.optional.arm.FEAT_FlagM2");
+    let hbc = _sysctlbyname(c"hw.optional.arm.FEAT_HBC");
     let i8mm = _sysctlbyname(c"hw.optional.arm.FEAT_I8MM");
     let jsconv = _sysctlbyname(c"hw.optional.arm.FEAT_JSCVT");
     let rcpc = _sysctlbyname(c"hw.optional.arm.FEAT_LRCPC");
@@ -87,10 +89,14 @@ pub(crate) fn detect_features() -> cache::Initializer {
     let afp = _sysctlbyname(c"hw.optional.arm.FEAT_AFP");
     let csv2 = _sysctlbyname(c"hw.optional.arm.FEAT_CSV2");
     let csv3 = _sysctlbyname(c"hw.optional.arm.FEAT_CSV3");
+    let ebf16 = _sysctlbyname(c"hw.optional.arm.FEAT_EBF16");
     let fpac = _sysctlbyname(c"hw.optional.arm.FEAT_FPAC");
+    let fpaccombine = _sysctlbyname(c"hw.optional.arm.FEAT_FPACCOMBINE");
+    let pacimp = _sysctlbyname(c"hw.optional.arm.FEAT_PACIMP");
     let pauth2 = _sysctlbyname(c"hw.optional.arm.FEAT_PAuth2");
     let rpres = _sysctlbyname(c"hw.optional.arm.FEAT_RPRES");
     let specres = _sysctlbyname(c"hw.optional.arm.FEAT_SPECRES");
+    let specres2 = _sysctlbyname(c"hw.optional.arm.FEAT_SPECRES2");
      */
 
     // The following "features" are reported by `sysctl` but are mandatory parts
@@ -111,6 +117,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::bf16, bf16);
     enable_feature(Feature::bti, bti);
     enable_feature(Feature::crc, crc);
+    enable_feature(Feature::cssc, cssc);
     enable_feature(Feature::dit, dit);
     enable_feature(Feature::dotprod, dotprod);
     enable_feature(Feature::dpb, dpb);
@@ -123,6 +130,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::fp, fp);
     enable_feature(Feature::fp16, fp16);
     enable_feature(Feature::frintts, frintts);
+    enable_feature(Feature::hbc, hbc);
     enable_feature(Feature::i8mm, i8mm);
     enable_feature(Feature::jsconv, jsconv);
     enable_feature(Feature::lse, lse);
