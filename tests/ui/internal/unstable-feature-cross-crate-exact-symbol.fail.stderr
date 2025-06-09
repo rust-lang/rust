@@ -1,0 +1,11 @@
+error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_moo``
+  --> $DIR/unstable-feature-cross-crate-exact-symbol.rs:16:5
+   |
+LL |     Moo::foo();
+   |     ^^^ cannot satisfy `unstable feature: `feat_moo``
+   |
+   = note: required for `Moo` to implement `Foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.

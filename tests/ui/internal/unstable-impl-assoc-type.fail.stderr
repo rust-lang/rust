@@ -1,0 +1,22 @@
+error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_foo``
+  --> $DIR/unstable-impl-assoc-type.rs:24:16
+   |
+LL |   type Assoc = Self;
+   |                ^^^^ cannot satisfy `unstable feature: `feat_foo``
+   |
+note: required for `Foo` to implement `Bar`
+  --> $DIR/unstable-impl-assoc-type.rs:20:6
+   |
+LL | #[unstable_feature_bound(feat_foo)]
+   | ----------------------------------- unsatisfied trait bound introduced here
+LL | impl Bar for Foo {}
+   |      ^^^     ^^^
+note: required by a bound in `Trait::Assoc`
+  --> $DIR/unstable-impl-assoc-type.rs:14:17
+   |
+LL |     type Assoc: Bar;
+   |                 ^^^ required by this bound in `Trait::Assoc`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.
