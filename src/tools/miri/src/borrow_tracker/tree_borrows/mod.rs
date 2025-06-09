@@ -312,8 +312,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let span = this.machine.current_span();
-        let alloc_extra = this.get_alloc_extra(alloc_id)?;
-        let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
 
         // Store initial permissions and their corresponding range.
         let mut perms_map: RangeMap<LocationState> = RangeMap::new(
@@ -342,36 +340,83 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         assert!(new_perm.freeze_access);
 
         let protected = new_perm.protector.is_some();
-        this.visit_freeze_sensitive(place, ptr_size, |range, frozen| {
-            has_unsafe_cell = has_unsafe_cell || !frozen;
+        let precise_interior_mut = this
+            .machine
+            .borrow_tracker
+            .as_mut()
+            .unwrap()
+            .get_mut()
+            .borrow_tracker_method
+            .get_tree_borrows_params()
+            .precise_interior_mut;
 
-            // We are only ever `Frozen` inside the frozen bits.
-            let (perm, access) = if frozen {
+        let default_perm = if !precise_interior_mut {
+            // NOTE: Using `ty_is_freeze` doesn't give the same result as going through the range
+            // and computing `has_unsafe_cell`.  This is because of zero-sized `UnsafeCell`, for which
+            // `has_unsafe_cell` is false, but `!ty_is_freeze` is true.
+            let ty_is_freeze = place.layout.ty.is_freeze(*this.tcx, this.typing_env());
+            let (perm, access) = if ty_is_freeze {
                 (new_perm.freeze_perm, new_perm.freeze_access)
             } else {
                 (new_perm.nonfreeze_perm, new_perm.nonfreeze_access)
             };
+            let sifa = perm.strongest_idempotent_foreign_access(protected);
+            let new_loc = if access {
+                LocationState::new_accessed(perm, sifa)
+            } else {
+                LocationState::new_non_accessed(perm, sifa)
+            };
 
-            // Store initial permissions.
-            for (_loc_range, loc) in perms_map.iter_mut(range.start, range.size) {
+            for (_loc_range, loc) in perms_map.iter_mut_all() {
+                *loc = new_loc;
+            }
+
+            perm
+        } else {
+            this.visit_freeze_sensitive(place, ptr_size, |range, frozen| {
+                has_unsafe_cell = has_unsafe_cell || !frozen;
+
+                // We are only ever `Frozen` inside the frozen bits.
+                let (perm, access) = if frozen {
+                    (new_perm.freeze_perm, new_perm.freeze_access)
+                } else {
+                    (new_perm.nonfreeze_perm, new_perm.nonfreeze_access)
+                };
                 let sifa = perm.strongest_idempotent_foreign_access(protected);
                 // NOTE: Currently, `access` is false if and only if `perm` is Cell, so this `if`
                 // doesn't not change whether any code is UB or not. We could just always use
                 // `new_accessed` and everything would stay the same. But that seems conceptually
                 // odd, so we keep the initial "accessed" bit of the `LocationState` in sync with whether
                 // a read access is performed below.
-                if access {
-                    *loc = LocationState::new_accessed(perm, sifa);
+                let new_loc = if access {
+                    LocationState::new_accessed(perm, sifa)
                 } else {
-                    *loc = LocationState::new_non_accessed(perm, sifa);
-                }
-            }
+                    LocationState::new_non_accessed(perm, sifa)
+                };
 
-            // Some reborrows incur a read access to the parent.
-            if access {
+                // Store initial permissions.
+                for (_loc_range, loc) in perms_map.iter_mut(range.start, range.size) {
+                    *loc = new_loc;
+                }
+
+                interp_ok(())
+            })?;
+
+            // Allow lazily writing to surrounding data if we found an `UnsafeCell`.
+            if has_unsafe_cell { new_perm.nonfreeze_perm } else { new_perm.freeze_perm }
+        };
+
+        let alloc_extra = this.get_alloc_extra(alloc_id)?;
+        let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
+
+        for (perm_range, perm) in perms_map.iter_mut_all() {
+            if perm.is_accessed() {
+                // Some reborrows incur a read access to the parent.
                 // Adjust range to be relative to allocation start (rather than to `place`).
-                let mut range_in_alloc = range;
-                range_in_alloc.start += base_offset;
+                let range_in_alloc = AllocRange {
+                    start: Size::from_bytes(perm_range.start) + base_offset,
+                    size: Size::from_bytes(perm_range.end - perm_range.start),
+                };
 
                 tree_borrows.perform_access(
                     orig_tag,
@@ -382,7 +427,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
 
                 // Also inform the data race model (but only if any bytes are actually affected).
-                if range.size.bytes() > 0 {
+                if range_in_alloc.size.bytes() > 0 {
                     if let Some(data_race) = alloc_extra.data_race.as_vclocks_ref() {
                         data_race.read(
                             alloc_id,
@@ -394,8 +439,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                 }
             }
-            interp_ok(())
-        })?;
+        }
 
         // Record the parent-child pair in the tree.
         tree_borrows.new_child(
@@ -403,8 +447,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             orig_tag,
             new_tag,
             perms_map,
-            // Allow lazily writing to surrounding data if we found an `UnsafeCell`.
-            if has_unsafe_cell { new_perm.nonfreeze_perm } else { new_perm.freeze_perm },
+            default_perm,
             protected,
             span,
         )?;

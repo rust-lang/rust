@@ -682,7 +682,10 @@ impl<'tcx> MiriMachine<'tcx> {
                     ),
                 ];
                 if self.borrow_tracker.as_ref().is_some_and(|b| {
-                    matches!(b.borrow().borrow_tracker_method(), BorrowTrackerMethod::TreeBorrows)
+                    matches!(
+                        b.borrow().borrow_tracker_method(),
+                        BorrowTrackerMethod::TreeBorrows { .. }
+                    )
                 }) {
                     v.push(
                         note!("Tree Borrows does not support integer-to-pointer casts, so the program is likely to go wrong when this pointer gets used")
