@@ -50,26 +50,39 @@ use crate::utils::channel;
 use crate::utils::helpers::exe;
 use crate::{Command, GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, output, t};
 
-/// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
+/// Each path from this function is considered "allowed" in the `download-rustc="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build
 /// when "if-unchanged" is set.
-///
-/// NOTE: Paths must have the ":!" prefix to tell git to ignore changes in those paths during
-/// the diff check.
-///
-/// WARNING: Be cautious when adding paths to this list. If a path that influences the compiler build
-/// is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
-/// For example, "src/bootstrap" should never be included in this list as it plays a crucial role in the
-/// final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
-#[rustfmt::skip] // We don't want rustfmt to oneline this list
-pub const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
-    ":!library",
-    ":!src/tools",
-    ":!src/librustdoc",
-    ":!src/rustdoc-json-types",
-    ":!tests",
-    ":!triagebot.toml",
-];
+pub fn rustc_if_unchanged_allowed_paths() -> Vec<&'static str> {
+    // NOTE: Paths must have the ":!" prefix to tell git to ignore changes in those paths during
+    // the diff check.
+    //
+    // WARNING: Be cautious when adding paths to this list. If a path that influences the compiler build
+    // is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
+    // For example, "src/bootstrap" should never be included in this list as it plays a crucial role in the
+    // final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
+    let mut paths = vec![
+        ":!library",
+        ":!src/tools",
+        ":!src/librustdoc",
+        ":!src/rustdoc-json-types",
+        ":!tests",
+        ":!triagebot.toml",
+    ];
+
+    if !CiEnv::is_ci() {
+        // When a dependency is added/updated/removed in the library tree (or in some tools),
+        // `Cargo.lock` will be updated by `cargo`. This update will incorrectly invalidate the
+        // `download-rustc=if-unchanged` cache.
+        //
+        // To prevent this, add `Cargo.lock` to the list of allowed paths when not running on CI.
+        // This is generally safe because changes to dependencies typically involve modifying
+        // `Cargo.toml`, which would already invalidate the CI-rustc cache on non-allowed paths.
+        paths.push(":!Cargo.lock");
+    }
+
+    paths
+}
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -1503,7 +1516,7 @@ impl Config {
         let commit = if self.rust_info.is_managed_git_subrepository() {
             // Look for a version to compare to based on the current commit.
             // Only commits merged by bors will have CI artifacts.
-            let freshness = self.check_path_modifications(RUSTC_IF_UNCHANGED_ALLOWED_PATHS);
+            let freshness = self.check_path_modifications(&rustc_if_unchanged_allowed_paths());
             self.verbose(|| {
                 eprintln!("rustc freshness: {freshness:?}");
             });
