@@ -1,0 +1,17 @@
+error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_moo``
+  --> $DIR/unstable-feature-exact-symbol.rs:38:5
+   |
+LL |     Bar::moo();
+   |     ^^^ cannot satisfy `unstable feature: `feat_moo``
+   |
+note: required for `Bar` to implement `Moo`
+  --> $DIR/unstable-feature-exact-symbol.rs:30:6
+   |
+LL | #[unstable_feature_bound(feat_moo)]
+   | ----------------------------------- unsatisfied trait bound introduced here
+LL | impl Moo for Bar {
+   |      ^^^     ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.
