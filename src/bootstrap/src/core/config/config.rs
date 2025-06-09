@@ -368,7 +368,11 @@ impl Config {
         feature = "tracing",
         instrument(target = "CONFIG_HANDLING", level = "trace", name = "Config::parse", skip_all)
     )]
-    pub fn parse(flags: Flags, exec_ctx: ExecutionContext) -> Config {
+    pub fn parse(flags: Flags) -> Config {
+        let mut exec_ctx = ExecutionContext::new();
+        exec_ctx.set_dry_run(if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled });
+        exec_ctx.set_verbose(flags.verbose);
+        exec_ctx.set_fail_fast(flags.cmd.fail_fast());
         Self::parse_inner(flags, Self::get_toml, exec_ctx)
     }
 
@@ -1065,7 +1069,7 @@ impl Config {
 
         let mut git = helpers::git(Some(&self.src));
         git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
-        git.allow_failure().run_capture_stdout(self).stdout()
+        git.run_capture_stdout(self).stdout()
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -1334,15 +1338,11 @@ impl Config {
         };
 
         // Determine commit checked out in submodule.
-        let checked_out_hash = submodule_git()
-            .allow_failure()
-            .args(["rev-parse", "HEAD"])
-            .run_capture_stdout(self)
-            .stdout();
+        let checked_out_hash =
+            submodule_git().args(["rev-parse", "HEAD"]).run_capture_stdout(self).stdout();
         let checked_out_hash = checked_out_hash.trim_end();
         // Determine commit that the submodule *should* have.
         let recorded = helpers::git(Some(&self.src))
-            .allow_failure()
             .run_always()
             .args(["ls-tree", "HEAD"])
             .arg(relative_path)

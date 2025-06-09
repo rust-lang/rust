@@ -80,7 +80,7 @@ impl Config {
     /// on NixOS
     fn should_fix_bins_and_dylibs(&self) -> bool {
         let val = *SHOULD_FIX_BINS_AND_DYLIBS.get_or_init(|| {
-            let uname = command("uname").arg("-s").run_capture_stdout(self);
+            let uname = command("uname").allow_failure().arg("-s").run_capture_stdout(self);
             if uname.is_failure() {
                 return false;
             }
@@ -185,7 +185,7 @@ impl Config {
             patchelf.args(["--set-interpreter", dynamic_linker.trim_end()]);
         }
         patchelf.arg(fname);
-        let _ = patchelf.run_capture_stdout(self);
+        let _ = patchelf.allow_failure().run_capture_stdout(self);
     }
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
@@ -259,7 +259,7 @@ impl Config {
             if self.build.contains("windows-msvc") {
                 eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {
-                    let powershell = command("PowerShell.exe").args([
+                    let powershell = command("PowerShell.exe").allow_failure().args([
                         "/nologo",
                         "-Command",
                         "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",

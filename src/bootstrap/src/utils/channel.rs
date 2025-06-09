@@ -46,7 +46,7 @@ impl GitInfo {
 
         let mut git_command = helpers::git(Some(dir));
         git_command.arg("rev-parse");
-        let output = git_command.allow_failure().run_capture_stdout(exec_ctx);
+        let output = git_command.allow_failure().run_capture(exec_ctx);
 
         if output.is_failure() {
             return GitInfo::Absent;
