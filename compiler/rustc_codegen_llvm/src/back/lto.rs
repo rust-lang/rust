@@ -22,14 +22,18 @@ use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel
 use rustc_session::config::{self, CrateType, Lto};
 use tracing::{debug, info};
 
+use llvm::Linkage::*;
+
 use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
 };
+use crate::builder::SBuilder;
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
+use crate::common::AsCCharPtr;
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, build_string};
+use crate::llvm::{self, build_string, Linkage};
 use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
 
 /// We keep track of the computed LTO cache keys from the previous
@@ -39,11 +43,11 @@ const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
         CrateType::Executable
-        | CrateType::Dylib
-        | CrateType::Staticlib
-        | CrateType::Cdylib
-        | CrateType::ProcMacro
-        | CrateType::Sdylib => true,
+            | CrateType::Dylib
+            | CrateType::Staticlib
+            | CrateType::Cdylib
+            | CrateType::ProcMacro
+            | CrateType::Sdylib => true,
         CrateType::Rlib => false,
     }
 }
@@ -113,7 +117,7 @@ fn prepare_lto(
                     cgcx.prof.generic_activity("LLVM_lto_generate_symbols_below_threshold");
                 symbols_below_threshold
                     .extend(exported_symbols[&cnum].iter().filter_map(symbol_filter));
-            }
+                }
 
             let archive_data = unsafe {
                 Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
@@ -127,7 +131,7 @@ fn prepare_lto(
                         std::str::from_utf8(c.name()).ok().map(|name| (name.trim(), c))
                     })
                 })
-                .filter(|&(name, _)| looks_like_rust_object_file(name));
+            .filter(|&(name, _)| looks_like_rust_object_file(name));
             for (name, child) in obj_files {
                 info!("adding bitcode from {}", name);
                 match get_bitcode_slice_from_object_data(
@@ -295,7 +299,7 @@ fn fat_lto(
             let cost = unsafe { llvm::LLVMRustModuleCost(module.module_llvm.llmod()) };
             (cost, i)
         })
-        .max();
+    .max();
 
     // If we found a costliest module, we're good to go. Otherwise all our
     // inputs were serialized which could happen in the case, for example, that
@@ -506,7 +510,7 @@ fn thin_lto(
             symbols_below_threshold.as_ptr(),
             symbols_below_threshold.len(),
         )
-        .ok_or_else(|| write::llvm_err(dcx, LlvmError::PrepareThinLtoContext))?;
+            .ok_or_else(|| write::llvm_err(dcx, LlvmError::PrepareThinLtoContext))?;
 
         let data = ThinData(data);
 
@@ -628,6 +632,218 @@ fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
     llvm::set_rust_rules(true);
 }
 
+fn gen_globals<'ll>(cx: &'ll SimpleCx<'_>) -> (&'ll llvm::Type, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Type) {
+    let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
+    let kernel_arguments_ty = cx.type_named_struct("struct.__tgt_kernel_arguments");
+    let tptr = cx.type_ptr();
+    let ti64 = cx.type_i64();
+    let ti32 = cx.type_i32();
+    let ti16 = cx.type_i16();
+    let ti8 = cx.type_i8();
+    let tarr = cx.type_array(ti32, 3);
+
+    // @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
+    let unknown_txt = ";unknown;unknown;0;0;;";
+    let c_entry_name = CString::new(unknown_txt).unwrap();
+    let c_val = c_entry_name.as_bytes_with_nul();
+    let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
+    let at_zero = add_unnamed_global(&cx, &"", initializer, PrivateLinkage);
+    llvm::set_alignment(at_zero, rustc_abi::Align::ONE);
+
+    // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
+    let struct_ident_ty = cx.type_named_struct("struct.ident_t");
+    let struct_elems: Vec<&llvm::Value> = vec![cx.get_const_i32(0), cx.get_const_i32(2), cx.get_const_i32(0), cx.get_const_i32(22), at_zero];
+    let struct_elems_ty: Vec<_> = struct_elems.iter().map(|&x| cx.val_ty(x)).collect();
+    let initializer = crate::common::named_struct(struct_ident_ty, &struct_elems);
+    cx.set_struct_body(struct_ident_ty, &struct_elems_ty, false);
+    let at_one = add_unnamed_global(&cx, &"", initializer, PrivateLinkage);
+    llvm::set_alignment(at_one, rustc_abi::Align::EIGHT);
+
+    // coppied from LLVM
+    // typedef struct {
+    //   uint64_t Reserved;
+    //   uint16_t Version;
+    //   uint16_t Kind;
+    //   uint32_t Flags;
+    //   void *Address;
+    //   char *SymbolName;
+    //   uint64_t Size;
+    //   uint64_t Data;
+    //   void *AuxAddr;
+    // } __tgt_offload_entry;
+    let entry_elements = vec![ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
+    let kernel_elements = vec![ti32, ti32, tptr, tptr, tptr, tptr, tptr, tptr, ti64, ti64, tarr, tarr, ti32];
+
+    cx.set_struct_body(offload_entry_ty, &entry_elements, false);
+    cx.set_struct_body(kernel_arguments_ty, &kernel_elements, false);
+    let global = cx.declare_global("my_struct_global", offload_entry_ty);
+    let global = cx.declare_global("my_struct_global2", kernel_arguments_ty);
+    //@my_struct_global = external global %struct.__tgt_offload_entry
+    //@my_struct_global2 = external global %struct.__tgt_kernel_arguments
+    dbg!(&offload_entry_ty);
+    dbg!(&kernel_arguments_ty);
+    //LLVMTypeRef elements[9] = {i64Ty, i16Ty, i16Ty, i32Ty, ptrTy, ptrTy, i64Ty, i64Ty, ptrTy};
+    //LLVMStructSetBody(structTy, elements, 9, 0);
+
+    // New, to test memtransfer
+    // ; Function Attrs: nounwind
+    // declare void @__tgt_target_data_begin_mapper(ptr, i64, i32, ptr, ptr, ptr, ptr, ptr, ptr) #3
+    //
+    // ; Function Attrs: nounwind
+    // declare void @__tgt_target_data_update_mapper(ptr, i64, i32, ptr, ptr, ptr, ptr, ptr, ptr) #3
+    //
+    // ; Function Attrs: nounwind
+    // declare void @__tgt_target_data_end_mapper(ptr, i64, i32, ptr, ptr, ptr, ptr, ptr, ptr) #3
+
+    let mapper_begin = "__tgt_target_data_begin_mapper";
+    let mapper_update = String::from("__tgt_target_data_update_mapper");
+    let mapper_end = String::from("__tgt_target_data_end_mapper");
+    let args = vec![tptr, ti64, ti32, tptr, tptr, tptr, tptr, tptr, tptr];
+    let mapper_fn_ty = cx.type_func(&args, cx.type_void());
+    let foo = crate::declare::declare_simple_fn(&cx, &mapper_begin, llvm::CallConv::CCallConv, llvm::UnnamedAddr::No, llvm::Visibility::Default, mapper_fn_ty);
+    let bar = crate::declare::declare_simple_fn(&cx, &mapper_update, llvm::CallConv::CCallConv, llvm::UnnamedAddr::No, llvm::Visibility::Default, mapper_fn_ty);
+    let baz = crate::declare::declare_simple_fn(&cx, &mapper_end, llvm::CallConv::CCallConv, llvm::UnnamedAddr::No, llvm::Visibility::Default, mapper_fn_ty);
+    let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
+    attributes::apply_to_llfn(foo, Function, &[nounwind]);
+    attributes::apply_to_llfn(bar, Function, &[nounwind]);
+    attributes::apply_to_llfn(baz, Function, &[nounwind]);
+
+    (offload_entry_ty, at_one, foo, bar, baz, mapper_fn_ty)
+}
+
+fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'ll llvm::Value{
+    let ti64 = cx.type_i64();
+    let size_ty = cx.type_array(ti64, vals.len() as u64);
+    let mut size_val = Vec::with_capacity(vals.len());
+    for &val in vals {
+        size_val.push(cx.get_const_i64(val));
+    }
+    let initializer = cx.const_array(ti64, &size_val);
+    add_unnamed_global(cx, name, initializer, PrivateLinkage)
+}
+
+fn add_unnamed_global<'ll>(cx: &SimpleCx<'ll>, name: &str, initializer: &'ll llvm::Value, l: Linkage) -> &'ll llvm::Value {
+    let llglobal = add_global(cx, name, initializer, l);
+    unsafe {llvm::LLVMSetUnnamedAddress(llglobal, llvm::UnnamedAddr::Global)};
+    llglobal
+}
+
+fn add_global<'ll>(cx: &SimpleCx<'ll>, name: &str, initializer: &'ll llvm::Value, l: Linkage) -> &'ll llvm::Value {
+    let c_name = CString::new(name).unwrap();
+    let llglobal: &'ll llvm::Value = llvm::add_global(cx.llmod, cx.val_ty(initializer), &c_name);
+    llvm::set_global_constant(llglobal, true);
+    llvm::set_linkage(llglobal, l);
+    llvm::set_initializer(llglobal, initializer);
+    llglobal
+}
+
+
+
+fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, offload_entry_ty: &'ll llvm::Type, num: i64) {
+    // We add a pair of sizes and maptypes per offloadable function.
+    // @.offload_maptypes = private unnamed_addr constant [4 x i64] [i64 800, i64 544, i64 547, i64 544]
+    let o_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{num}"), &vec![8u64,0,16,0]);
+    let o_types = add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{num}"), &vec![800u64, 544, 547, 544]);
+    // TODO: We should add another pair per call to offloadable functions
+    // @.offload_sizes.5 = private unnamed_addr constant [2 x i64] [i64 16384, i64 16384]
+    // @.offload_maptypes.6 = private unnamed_addr constant [2 x i64] [i64 1, i64 3]
+
+    // Next: For each function, generate these three entries. A weak constant,
+    // the llvm.rodata entry name, and  the omp_offloading_entries value
+
+    // @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id = weak constant i8 0
+    // @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
+    let name = format!(".kernel_{num}.region_id");
+    let initializer = cx.get_const_i8(0);
+    let region_id = add_unnamed_global(&cx, &name, initializer, WeakAnyLinkage);
+
+    let c_entry_name = CString::new(format!("kernel_{num}")).unwrap();
+    let c_val = c_entry_name.as_bytes_with_nul();
+    let foo = format!(".offloading.entry_name.{num}");
+
+    let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
+    let llglobal = add_unnamed_global(&cx, &foo, initializer, InternalLinkage);
+    llvm::set_alignment(llglobal, rustc_abi::Align::ONE);
+    let c_section_name = CString::new(".llvm.rodata.offloading").unwrap();
+    llvm::set_section(llglobal, &c_section_name);
+
+
+    // Not actively used yet, for calling real kernels
+    let name = format!(".offloading.entry.kernel_{num}");
+    let ci64_0 = cx.get_const_i64(0);
+    let ci16_1 = cx.get_const_i16(1);
+    let elems: Vec<&llvm::Value> = vec![ci64_0, ci16_1, ci16_1, cx.get_const_i32(0), region_id, llglobal, ci64_0, ci64_0, cx.const_null(cx.type_ptr())];
+
+    let initializer = crate::common::named_struct(offload_entry_ty, &elems);
+    let c_name = CString::new(name).unwrap();
+    let llglobal = llvm::add_global(cx.llmod, offload_entry_ty, &c_name);
+    llvm::set_global_constant(llglobal, true);
+    llvm::set_linkage(llglobal, WeakAnyLinkage);
+    llvm::set_initializer(llglobal, initializer);
+    llvm::set_alignment(llglobal, rustc_abi::Align::ONE);
+    let c_section_name = CString::new(".omp_offloading_entries").unwrap();
+    llvm::set_section(llglobal, &c_section_name);
+    // rustc
+    // @.offloading.entry.kernel_3 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.kernel_3.region_id, ptr @.offloading.entry_name.3, i64 0, i64 0, ptr null }, section ".omp_offloading_entries", align 1
+    // clang
+    // @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
+
+
+    //
+    // 1. @.offload_sizes.{num} = private unnamed_addr constant [4 x i64] [i64 8, i64 0, i64 16, i64 0]
+    // 2. @.offload_maptypes
+    // 3. @.__omp_offloading_<hash>_fnc_name_<hash> = weak constant i8 0
+    // 4. @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
+    // 5. @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
+}
+
+fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, s_ident_t: &'ll llvm::Value, begin: &'ll llvm::Value, update: &'ll llvm::Value, end: &'ll llvm::Value, fn_ty: &'ll llvm::Type) {
+
+    let main_fn = cx.get_function("main");
+    if let Some(main_fn) = main_fn {
+        let kernel_name = "kernel_1";//name.as_c_char_ptr(), name.len)
+        let call = unsafe {llvm::LLVMRustGetFunctionCall(main_fn, kernel_name.as_c_char_ptr(), kernel_name.len())};
+        let kernel_call = if call.is_some() {
+            dbg!("found kernel call");
+            call.unwrap()
+        } else {
+            return;
+        };
+        let kernel_call_bb = unsafe {llvm::LLVMGetInstructionParent(kernel_call)};
+        let mut builder = SBuilder::build(cx, kernel_call_bb);
+        unsafe {llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call)};
+        dbg!("positioned builder, ready");
+
+        let nullptr = cx.const_null(cx.type_ptr());
+        let args = vec![s_ident_t, cx.get_const_i64(u64::MAX), cx.get_const_i32(3), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr];
+        dbg!(&fn_ty);
+        dbg!(&begin);
+        dbg!(&args);
+        builder.call(fn_ty, begin, &args, None);
+        dbg!("called begin");
+        //llty: &'ll Type,
+        //llfn: &'ll Value,
+        //args: &[&'ll Value],
+        //funclet: Option<&Funclet<'ll>>,
+
+        // 1. set insert point before kernel call.
+        // 2. generate all the GEPS and stores.
+        // 3. generate __tgt_target_data calls.
+        //
+        // unchanged: keep kernel call.
+        //
+        // 4. generate all the GEPS and stores.
+        // 5. generate __tgt_target_data calls
+
+        // call void @__tgt_target_data_begin_mapper(ptr @1, i64 -1, i32 3, ptr %27, ptr %28, ptr %29, ptr @.offload_maptypes, ptr null, ptr null)
+        // call void @__tgt_target_data_update_mapper(ptr @1, i64 -1, i32 2, ptr %46, ptr %47, ptr %48, ptr @.offload_maptypes.1, ptr null, ptr null)
+        // call void @__tgt_target_data_end_mapper(ptr @1, i64 -1, i32 3, ptr %49, ptr %50, ptr %51, ptr @.offload_maptypes, ptr null, ptr null)
+        // What is @1? Random but fixed:
+        // @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
+        // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
+    }
+}
+
 pub(crate) fn run_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
@@ -653,6 +869,7 @@ pub(crate) fn run_pass_manager(
     // We then run the llvm_optimize function a second time, to optimize the code which we generated
     // in the enzyme differentiation pass.
     let enable_ad = config.autodiff.contains(&config::AutoDiff::Enable);
+    let enable_gpu = true;//config.offload.contains(&config::Offload::Enable);
     let stage = if thin {
         write::AutodiffStage::PreAD
     } else {
@@ -665,6 +882,32 @@ pub(crate) fn run_pass_manager(
 
     unsafe {
         write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
+    }
+
+    if cfg!(llvm_enzyme) && enable_gpu && !thin {
+        // first we need to add all the fun to the host module
+        // %struct.__tgt_offload_entry = type { i64, i16, i16, i32, ptr, ptr, i64, i64, ptr }
+        // %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
+        let cx =
+            SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
+        if cx.get_function("gen_tgt_offload").is_some() {
+
+            let (offload_entry_ty, at_one, foo, bar, baz, fn_ty) = gen_globals(&cx);
+
+            dbg!("created struct");
+            for num in 0..9 {
+                if !cx.get_function(&format!("kernel_{num}")).is_some() {
+                    continue;
+                }
+                // TODO: replace num by proper fn name
+                gen_define_handling(&cx, offload_entry_ty, num);
+            }
+            gen_call_handling(&cx, at_one, foo, bar, baz, fn_ty);
+        } else {
+            dbg!("no marker found");
+        }
+    } else {
+        dbg!("Not creating struct");
     }
 
     if cfg!(llvm_enzyme) && enable_ad && !thin {
@@ -935,7 +1178,7 @@ impl ThinLTOKeysMap {
                 .expect("Invalid ThinLTO module key");
                 (module_name_to_str(name).to_string(), key)
             })
-            .collect();
+        .collect();
         Self { keys }
     }
 }

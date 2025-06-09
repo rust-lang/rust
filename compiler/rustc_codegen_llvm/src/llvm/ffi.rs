@@ -1139,6 +1139,11 @@ unsafe extern "C" {
         Count: c_uint,
         Packed: Bool,
     ) -> &'a Value;
+    pub(crate) fn LLVMConstNamedStruct<'a>(
+        StructTy: &'a Type,
+        ConstantVals: *const &'a Value,
+        Count: c_uint,
+    ) -> &'a Value;
     pub(crate) fn LLVMConstVector(ScalarConstantVals: *const &Value, Size: c_uint) -> &Value;
 
     // Constant expressions
@@ -1209,6 +1214,7 @@ unsafe extern "C" {
     ) -> &'a BasicBlock;
 
     // Operations on instructions
+    pub(crate) fn LLVMGetInstructionParent(Inst: &Value) -> &BasicBlock;
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;

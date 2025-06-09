@@ -99,14 +99,14 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
     type DIVariable = &'ll llvm::debuginfo::DIVariable;
 }
 
-impl<'ll> CodegenCx<'ll, '_> {
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
         let len = u64::try_from(elts.len()).expect("LLVMConstArray2 elements len overflow");
         unsafe { llvm::LLVMConstArray2(ty, elts.as_ptr(), len) }
     }
 
     pub(crate) fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
-        bytes_in_context(self.llcx, bytes)
+        bytes_in_context(self.llcx(), bytes)
     }
 
     pub(crate) fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
@@ -118,6 +118,10 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             r
         }
+    }
+
+    pub(crate) fn const_null(&self, t: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMConstNull(t) }
     }
 }
 
@@ -371,6 +375,14 @@ pub(crate) fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &
         let ptr = bytes.as_ptr() as *const c_char;
         llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), True)
     }
+}
+
+pub(crate) fn named_struct<'ll>(
+    ty: &'ll Type,
+    elts: &[&'ll Value],
+) -> &'ll Value {
+    let len = c_uint::try_from(elts.len()).expect("LLVMConstStructInContext elements len overflow");
+    unsafe { llvm::LLVMConstNamedStruct(ty, elts.as_ptr(), len) }
 }
 
 fn struct_in_context<'ll>(
