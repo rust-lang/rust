@@ -460,6 +460,10 @@ to Miri failing to detect cases of undefined behavior in a program.
   This is much less likely with Stacked Borrows.
   Using Tree Borrows currently implies `-Zmiri-strict-provenance` because integer-to-pointer
   casts are not supported in this mode, but that may change in the future.
+* `-Zmiri-tree-borrows-no-precise-interior-mut` makes Tree Borrows
+  track interior mutable data on the level of references instead of on the
+  byte-level as is done by default.  Therefore, with this flag, Tree
+  Borrows will be more permissive.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
 
