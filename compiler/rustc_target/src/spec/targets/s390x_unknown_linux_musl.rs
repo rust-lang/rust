@@ -1,4 +1,4 @@
-use rustc_abi::Endian;
+use rustc_abi::{Align, Endian};
 
 use crate::spec::{SanitizerSet, StackProbeType, Target, TargetMetadata, base};
 
@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
     // z10 is the oldest CPU supported by LLVM
     base.cpu = "z10".into();
     base.max_atomic_width = Some(128);
-    base.min_global_align = Some(16);
+    base.min_global_align = Some(Align::from_bits(16).unwrap());
     base.static_position_independent_executables = true;
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers =
