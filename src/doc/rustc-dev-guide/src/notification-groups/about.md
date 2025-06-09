@@ -21,9 +21,7 @@ search for existing issues that haven't been claimed yet.
 Here's the list of the notification groups:
 - [Apple](./apple.md)
 - [ARM](./arm.md)
-- [Cleanup Crew](./cleanup-crew.md)
 - [Emscripten](./emscripten.md)
-- [LLVM Icebreakers](./llvm.md)
 - [RISC-V](./risc-v.md)
 - [WASI](./wasi.md)
 - [WebAssembly](./wasm.md)
@@ -64,9 +62,7 @@ Example PRs:
 
 * [Example of adding yourself to the Apple group.](https://github.com/rust-lang/team/pull/1434)
 * [Example of adding yourself to the ARM group.](https://github.com/rust-lang/team/pull/358)
-* [Example of adding yourself to the Cleanup Crew.](https://github.com/rust-lang/team/pull/221)
 * [Example of adding yourself to the Emscripten group.](https://github.com/rust-lang/team/pull/1579)
-* [Example of adding yourself to the LLVM group.](https://github.com/rust-lang/team/pull/140)
 * [Example of adding yourself to the RISC-V group.](https://github.com/rust-lang/team/pull/394)
 * [Example of adding yourself to the WASI group.](https://github.com/rust-lang/team/pull/1580)
 * [Example of adding yourself to the WebAssembly group.](https://github.com/rust-lang/team/pull/1581)
@@ -81,9 +77,7 @@ group. For example:
 ```text
 @rustbot ping apple
 @rustbot ping arm
-@rustbot ping cleanup-crew
 @rustbot ping emscripten
-@rustbot ping icebreakers-llvm
 @rustbot ping risc-v
 @rustbot ping wasi
 @rustbot ping wasm
@@ -92,12 +86,12 @@ group. For example:
 
 To make some commands shorter and easier to remember, there are aliases,
 defined in the [`triagebot.toml`] file. For example, all of these commands
-are equivalent and will ping the Cleanup Crew:
+are equivalent and will ping the Apple group:
 
 ```text
-@rustbot ping cleanup
-@rustbot ping bisect
-@rustbot ping reduce
+@rustbot ping apple
+@rustbot ping macos
+@rustbot ping ios
 ```
 
 Keep in mind that these aliases are meant to make humans' life easier.
