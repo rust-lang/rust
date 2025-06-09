@@ -3130,11 +3130,12 @@ dependencies = [
 
 [[package]]
 name = "rustc-build-sysroot"
-version = "0.5.7"
+version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10edc2e4393515193bd766e2f6c050b0536a68e56f2b6d56c07ababfdc114ff0"
+checksum = "16d115ad7e26e0d1337f64ae6598f758194696afc2e9f34c8a6f24582529c3dc"
 dependencies = [
  "anyhow",
+ "regex",
  "rustc_version",
  "tempfile",
  "walkdir",

@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_session::lint::{self, LintExpectationId};
-use rustc_span::{Symbol, sym};
+use rustc_span::{Symbol, kw, sym};
 
 use crate::errors::{
     ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,
@@ -792,6 +792,17 @@ fn check_item<'tcx>(
         DefKind::GlobalAsm => {
             // global_asm! is always live.
             worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
+        }
+        DefKind::Const => {
+            let item = tcx.hir_item(id);
+            if let hir::ItemKind::Const(ident, ..) = item.kind
+                && ident.name == kw::Underscore
+            {
+                // `const _` is always live, as that syntax only exists for the side effects
+                // of type checking and evaluating the constant expression, and marking them
+                // as dead code would defeat that purpose.
+                worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
+            }
         }
         _ => {}
     }
