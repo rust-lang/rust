@@ -79,6 +79,7 @@ impl Foo {
     pub fn warning2() {}
 }
 
+/// <a href="#implementations"><code id="trait-impl-link-in-summary">A collapsible trait impl with a link</code></a>
 impl AsRef<str> for Foo {
     fn as_ref(&self) -> &str {
         "hello"

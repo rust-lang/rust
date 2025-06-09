@@ -13,7 +13,7 @@ use crate::utils::load_env_var;
 #[derive(serde::Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Job {
-    /// Name of the job, e.g. mingw-check
+    /// Name of the job, e.g. mingw-check-1
     pub name: String,
     /// GitHub runner on which the job should be executed
     pub os: String,
@@ -85,14 +85,20 @@ impl JobDatabase {
 }
 
 pub fn load_job_db(db: &str) -> anyhow::Result<JobDatabase> {
-    let mut db: Value = serde_yaml::from_str(db)?;
+    let mut db: Value = serde_yaml::from_str(db).context("failed to parse YAML content")?;
 
     // We need to expand merge keys (<<), because serde_yaml can't deal with them
     // `apply_merge` only applies the merge once, so do it a few times to unwrap nested merges.
-    db.apply_merge()?;
-    db.apply_merge()?;
 
-    let db: JobDatabase = serde_yaml::from_value(db)?;
+    let apply_merge = |db: &mut Value| -> anyhow::Result<()> {
+        db.apply_merge().context("failed to apply merge keys")
+    };
+
+    // Apply merge twice to handle nested merges
+    apply_merge(&mut db)?;
+    apply_merge(&mut db)?;
+
+    let db: JobDatabase = serde_yaml::from_value(db).context("failed to parse job database")?;
     Ok(db)
 }
 

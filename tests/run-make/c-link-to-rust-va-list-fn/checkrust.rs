@@ -30,9 +30,9 @@ pub unsafe extern "C" fn check_list_0(mut ap: VaList) -> usize {
 #[no_mangle]
 pub unsafe extern "C" fn check_list_1(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_int>() == -1);
-    continue_if!(ap.arg::<c_char>() == 'A' as c_char);
-    continue_if!(ap.arg::<c_char>() == '4' as c_char);
-    continue_if!(ap.arg::<c_char>() == ';' as c_char);
+    continue_if!(ap.arg::<c_int>() == 'A' as c_int);
+    continue_if!(ap.arg::<c_int>() == '4' as c_int);
+    continue_if!(ap.arg::<c_int>() == ';' as c_int);
     continue_if!(ap.arg::<c_int>() == 0x32);
     continue_if!(ap.arg::<c_int>() == 0x10000001);
     continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Valid!"));
@@ -43,7 +43,7 @@ pub unsafe extern "C" fn check_list_1(mut ap: VaList) -> usize {
 pub unsafe extern "C" fn check_list_2(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_double>().floor() == 3.14f64.floor());
     continue_if!(ap.arg::<c_long>() == 12);
-    continue_if!(ap.arg::<c_char>() == 'a' as c_char);
+    continue_if!(ap.arg::<c_int>() == 'a' as c_int);
     continue_if!(ap.arg::<c_double>().floor() == 6.18f64.floor());
     continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Hello"));
     continue_if!(ap.arg::<c_int>() == 42);
@@ -55,7 +55,7 @@ pub unsafe extern "C" fn check_list_2(mut ap: VaList) -> usize {
 pub unsafe extern "C" fn check_list_copy_0(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_double>().floor() == 6.28f64.floor());
     continue_if!(ap.arg::<c_int>() == 16);
-    continue_if!(ap.arg::<c_char>() == 'A' as c_char);
+    continue_if!(ap.arg::<c_int>() == 'A' as c_int);
     continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Skip Me!"));
     ap.with_copy(
         |mut ap| {
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn check_varargs_0(_: c_int, mut ap: ...) -> usize {
 pub unsafe extern "C" fn check_varargs_1(_: c_int, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_double>().floor() == 3.14f64.floor());
     continue_if!(ap.arg::<c_long>() == 12);
-    continue_if!(ap.arg::<c_char>() == 'A' as c_char);
+    continue_if!(ap.arg::<c_int>() == 'A' as c_int);
     continue_if!(ap.arg::<c_longlong>() == 1);
     0
 }
@@ -112,6 +112,9 @@ pub unsafe extern "C" fn check_varargs_4(_: c_double, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_double>() == 8.0);
     continue_if!(ap.arg::<c_double>() == 9.0);
     continue_if!(ap.arg::<c_double>() == 10.0);
+    continue_if!(ap.arg::<c_double>() == 11.0);
+    continue_if!(ap.arg::<c_double>() == 12.0);
+    continue_if!(ap.arg::<c_double>() == 13.0);
     0
 }
 
@@ -137,5 +140,11 @@ pub unsafe extern "C" fn check_varargs_5(_: c_int, mut ap: ...) -> usize {
     continue_if!(ap.arg::<c_double>() == 9.0);
     continue_if!(ap.arg::<c_int>() == 10);
     continue_if!(ap.arg::<c_double>() == 10.0);
+    continue_if!(ap.arg::<c_int>() == 11);
+    continue_if!(ap.arg::<c_double>() == 11.0);
+    continue_if!(ap.arg::<c_int>() == 12);
+    continue_if!(ap.arg::<c_double>() == 12.0);
+    continue_if!(ap.arg::<c_int>() == 13);
+    continue_if!(ap.arg::<c_double>() == 13.0);
     0
 }

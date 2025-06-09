@@ -607,68 +607,68 @@ impl TypeAliasPart {
         let cx = type_impl_collector.cx;
         let aliased_types = type_impl_collector.aliased_types;
         for aliased_type in aliased_types.values() {
-            let impls = aliased_type
-                .impl_
-                .values()
-                .flat_map(|AliasedTypeImpl { impl_, type_aliases }| {
-                    let mut ret = Vec::new();
-                    let trait_ = impl_
-                        .inner_impl()
-                        .trait_
-                        .as_ref()
-                        .map(|trait_| format!("{:#}", trait_.print(cx)));
+            let impls = aliased_type.impl_.values().filter_map(
+                |AliasedTypeImpl { impl_, type_aliases }| {
+                    let mut ret: Option<AliasSerializableImpl> = None;
                     // render_impl will filter out "impossible-to-call" methods
                     // to make that functionality work here, it needs to be called with
                     // each type alias, and if it gives a different result, split the impl
                     for &(type_alias_fqp, type_alias_item) in type_aliases {
                         cx.id_map.borrow_mut().clear();
                         cx.deref_id_map.borrow_mut().clear();
-                        let target_did = impl_
-                            .inner_impl()
-                            .trait_
-                            .as_ref()
-                            .map(|trait_| trait_.def_id())
-                            .or_else(|| impl_.inner_impl().for_.def_id(&cx.shared.cache));
-                        let provided_methods;
-                        let assoc_link = if let Some(target_did) = target_did {
-                            provided_methods = impl_.inner_impl().provided_trait_methods(cx.tcx());
-                            AssocItemLink::GotoSource(ItemId::DefId(target_did), &provided_methods)
-                        } else {
-                            AssocItemLink::Anchor(None)
-                        };
-                        let text = super::render_impl(
-                            cx,
-                            impl_,
-                            type_alias_item,
-                            assoc_link,
-                            RenderMode::Normal,
-                            None,
-                            &[],
-                            ImplRenderingParameters {
-                                show_def_docs: true,
-                                show_default_items: true,
-                                show_non_assoc_items: true,
-                                toggle_open_by_default: true,
-                            },
-                        )
-                        .to_string();
                         let type_alias_fqp = (*type_alias_fqp).iter().join("::");
-                        if Some(&text) == ret.last().map(|s: &AliasSerializableImpl| &s.text) {
-                            ret.last_mut()
-                                .expect("already established that ret.last() is Some()")
-                                .aliases
-                                .push(type_alias_fqp);
+                        if let Some(ret) = &mut ret {
+                            ret.aliases.push(type_alias_fqp);
                         } else {
-                            ret.push(AliasSerializableImpl {
+                            let target_did = impl_
+                                .inner_impl()
+                                .trait_
+                                .as_ref()
+                                .map(|trait_| trait_.def_id())
+                                .or_else(|| impl_.inner_impl().for_.def_id(&cx.shared.cache));
+                            let provided_methods;
+                            let assoc_link = if let Some(target_did) = target_did {
+                                provided_methods =
+                                    impl_.inner_impl().provided_trait_methods(cx.tcx());
+                                AssocItemLink::GotoSource(
+                                    ItemId::DefId(target_did),
+                                    &provided_methods,
+                                )
+                            } else {
+                                AssocItemLink::Anchor(None)
+                            };
+                            let text = super::render_impl(
+                                cx,
+                                impl_,
+                                type_alias_item,
+                                assoc_link,
+                                RenderMode::Normal,
+                                None,
+                                &[],
+                                ImplRenderingParameters {
+                                    show_def_docs: true,
+                                    show_default_items: true,
+                                    show_non_assoc_items: true,
+                                    toggle_open_by_default: true,
+                                },
+                            )
+                            .to_string();
+                            // The alternate display prints it as plaintext instead of HTML.
+                            let trait_ = impl_
+                                .inner_impl()
+                                .trait_
+                                .as_ref()
+                                .map(|trait_| format!("{:#}", trait_.print(cx)));
+                            ret = Some(AliasSerializableImpl {
                                 text,
-                                trait_: trait_.clone(),
+                                trait_,
                                 aliases: vec![type_alias_fqp],
                             })
                         }
                     }
                     ret
-                })
-                .collect::<Vec<_>>();
+                },
+            );
 
             let mut path = PathBuf::from("type.impl");
             for component in &aliased_type.target_fqp[..aliased_type.target_fqp.len() - 1] {
@@ -681,7 +681,7 @@ impl TypeAliasPart {
             ));
 
             let part = OrderedJson::array_sorted(
-                impls.iter().map(OrderedJson::serialize).collect::<Result<Vec<_>, _>>().unwrap(),
+                impls.map(|impl_| OrderedJson::serialize(impl_).unwrap()),
             );
             path_parts.push(path, OrderedJson::array_unsorted([crate_name_json, &part]));
         }
@@ -759,7 +759,7 @@ impl TraitAliasPart {
                         Some(Implementor {
                             text: imp.inner_impl().print(false, cx).to_string(),
                             synthetic: imp.inner_impl().kind.is_auto(),
-                            types: collect_paths_for_type(imp.inner_impl().for_.clone(), cache),
+                            types: collect_paths_for_type(&imp.inner_impl().for_, cache),
                         })
                     }
                 })

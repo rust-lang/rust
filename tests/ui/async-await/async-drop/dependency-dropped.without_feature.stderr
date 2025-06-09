@@ -1,4 +1,4 @@
-warning: found async drop types in dependecy `async_drop_dep`, but async_drop feature is disabled for `dependency_dropped`
+warning: found async drop types in dependency `async_drop_dep`, but async_drop feature is disabled for `dependency_dropped`
   --> $DIR/dependency-dropped.rs:7:1
    |
 LL | #![cfg_attr(with_feature, feature(async_drop))]

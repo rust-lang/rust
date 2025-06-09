@@ -6,6 +6,9 @@
 #![cfg_attr(doc, feature(rustdoc_internals))]
 // Note: please avoid adding other feature gates where possible
 #![feature(rustc_private)]
+// Only used to define intrinsics in `compiler_builtins.rs`.
+#![feature(f16)]
+#![feature(f128)]
 // Note: please avoid adding other feature gates where possible
 #![warn(rust_2018_idioms)]
 #![warn(unreachable_pub)]
@@ -57,6 +60,7 @@ mod allocator;
 mod analyze;
 mod base;
 mod cast;
+mod codegen_f16_f128;
 mod codegen_i128;
 mod common;
 mod compiler_builtins;
@@ -76,7 +80,6 @@ mod optimize;
 mod pointer;
 mod pretty_clif;
 mod toolchain;
-mod trap;
 mod unsize;
 mod unwind_module;
 mod value_and_place;
@@ -198,14 +201,36 @@ impl CodegenBackend for CraneliftCodegenBackend {
         // FIXME do `unstable_target_features` properly
         let unstable_target_features = target_features.clone();
 
+        // FIXME(f16_f128): LLVM 20 (currently used by `rustc`) passes `f128` in XMM registers on
+        // Windows, whereas LLVM 21+ and Cranelift pass it indirectly. This means that `f128` won't
+        // work when linking against a LLVM-built sysroot.
+        let has_reliable_f128 = !sess.target.is_like_windows;
+        let has_reliable_f16 = match &*sess.target.arch {
+            // FIXME(f16_f128): LLVM 20 does not support `f16` on s390x, meaning the required
+            // builtins are not available in `compiler-builtins`.
+            "s390x" => false,
+            // FIXME(f16_f128): `rustc_codegen_llvm` currently disables support on Windows GNU
+            // targets due to GCC using a different ABI than LLVM. Therefore `f16` won't be
+            // available when using a LLVM-built sysroot.
+            "x86_64"
+                if sess.target.os == "windows"
+                    && sess.target.env == "gnu"
+                    && sess.target.abi != "llvm" =>
+            {
+                false
+            }
+            _ => true,
+        };
+
         TargetConfig {
             target_features,
             unstable_target_features,
-            // Cranelift does not yet support f16 or f128
-            has_reliable_f16: false,
-            has_reliable_f16_math: false,
-            has_reliable_f128: false,
-            has_reliable_f128_math: false,
+            // `rustc_codegen_cranelift` polyfills functionality not yet
+            // available in Cranelift.
+            has_reliable_f16,
+            has_reliable_f16_math: has_reliable_f16,
+            has_reliable_f128,
+            has_reliable_f128_math: has_reliable_f128,
         }
     }
 
@@ -289,6 +314,12 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
     flags_builder.set("tls_model", tls_model).unwrap();
 
     flags_builder.set("enable_llvm_abi_extensions", "true").unwrap();
+
+    if let Some(align) = sess.opts.unstable_opts.min_function_alignment {
+        flags_builder
+            .set("log2_min_function_alignment", &align.bytes().ilog2().to_string())
+            .unwrap();
+    }
 
     use rustc_session::config::OptLevel;
     match sess.opts.optimize {

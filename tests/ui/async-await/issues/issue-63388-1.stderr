@@ -1,14 +1,3 @@
-warning: elided lifetime has a name
-  --> $DIR/issue-63388-1.rs:12:10
-   |
-LL |     async fn do_sth<'a>(
-   |                     -- lifetime `'a` declared here
-LL |         &'a self, foo: &dyn Foo
-LL |     ) -> &dyn Foo
-   |          ^ this elided lifetime gets resolved as `'a`
-   |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
-
 error[E0621]: explicit lifetime required in the type of `foo`
   --> $DIR/issue-63388-1.rs:14:9
    |
@@ -18,6 +7,6 @@ LL |         &'a self, foo: &dyn Foo
 LL |         foo
    |         ^^^ lifetime `'a` required
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0621`.

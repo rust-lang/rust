@@ -284,6 +284,7 @@ pub(crate) struct FieldInfo {
     /// The expressions corresponding to references to this field in
     /// the other selflike arguments.
     pub other_selflike_exprs: Vec<P<Expr>>,
+    pub maybe_scalar: bool,
 }
 
 #[derive(Copy, Clone)]
@@ -488,7 +489,7 @@ impl<'a> TraitDef<'a> {
                 );
 
                 let newitem = match &item.kind {
-                    ast::ItemKind::Struct(ident, struct_def, generics) => self.expand_struct_def(
+                    ast::ItemKind::Struct(ident, generics, struct_def) => self.expand_struct_def(
                         cx,
                         struct_def,
                         *ident,
@@ -496,7 +497,7 @@ impl<'a> TraitDef<'a> {
                         from_scratch,
                         is_packed,
                     ),
-                    ast::ItemKind::Enum(ident, enum_def, generics) => {
+                    ast::ItemKind::Enum(ident, generics, enum_def) => {
                         // We ignore `is_packed` here, because `repr(packed)`
                         // enums cause an error later on.
                         //
@@ -504,7 +505,7 @@ impl<'a> TraitDef<'a> {
                         // downstream in blatantly illegal code, so it is fine.
                         self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
                     }
-                    ast::ItemKind::Union(ident, struct_def, generics) => {
+                    ast::ItemKind::Union(ident, generics, struct_def) => {
                         if self.supports_unions {
                             self.expand_struct_def(
                                 cx,
@@ -1220,7 +1221,8 @@ impl<'a> MethodDef<'a> {
 
             let self_expr = discr_exprs.remove(0);
             let other_selflike_exprs = discr_exprs;
-            let discr_field = FieldInfo { span, name: None, self_expr, other_selflike_exprs };
+            let discr_field =
+                FieldInfo { span, name: None, self_expr, other_selflike_exprs, maybe_scalar: true };
 
             let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
@@ -1533,6 +1535,7 @@ impl<'a> TraitDef<'a> {
                     name: struct_field.ident,
                     self_expr,
                     other_selflike_exprs,
+                    maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
                 }
             })
             .collect()

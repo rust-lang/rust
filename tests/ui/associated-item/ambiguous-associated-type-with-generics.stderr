@@ -2,7 +2,12 @@ error[E0223]: ambiguous associated type
   --> $DIR/ambiguous-associated-type-with-generics.rs:13:13
    |
 LL |     let _x: <dyn Trait<i32>>::Ty;
-   |             ^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<dyn Trait<i32> as Assoc>::Ty`
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL |     let _x: <dyn Trait<i32> as Assoc>::Ty;
+   |                             ++++++++
 
 error: aborting due to 1 previous error
 

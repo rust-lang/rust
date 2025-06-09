@@ -24,17 +24,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   mingw-w64 \
   && rm -rf /var/lib/apt/lists/*
 
+COPY scripts/nodejs.sh /scripts/
+RUN sh /scripts/nodejs.sh /node
+ENV PATH="/node/bin:${PATH}"
+
+# Install eslint
+COPY host-x86_64/mingw-check-tidy/eslint.version /tmp/
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-COPY host-x86_64/mingw-check/reuse-requirements.txt /tmp/
+COPY host-x86_64/mingw-check-1/reuse-requirements.txt /tmp/
 RUN pip3 install --no-deps --no-cache-dir --require-hashes -r /tmp/reuse-requirements.txt \
     && pip3 install virtualenv
 
-COPY host-x86_64/mingw-check/validate-toolstate.sh /scripts/
-COPY host-x86_64/mingw-check/validate-error-codes.sh /scripts/
+COPY host-x86_64/mingw-check-1/validate-toolstate.sh /scripts/
+COPY host-x86_64/mingw-check-1/validate-error-codes.sh /scripts/
 
 # NOTE: intentionally uses python2 for x.py so we can test it still works.
 # validate-toolstate only runs in our CI, so it's ok for it to only support python3.
-ENV SCRIPT TIDY_PRINT_DIFF=1 python2.7 ../x.py test \
-           --stage 0 src/tools/tidy tidyselftest --extra-checks=py,cpp
+ENV SCRIPT TIDY_PRINT_DIFF=1 npm install eslint@$(head -n 1 /tmp/eslint.version) && \
+ python2.7 ../x.py test --stage 0 src/tools/tidy tidyselftest --extra-checks=py,cpp

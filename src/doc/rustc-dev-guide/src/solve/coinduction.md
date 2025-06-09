@@ -237,14 +237,14 @@ Alternatively, we could simply always treat the equate branch of `normalizes_to`
 Any cycles should result in infinite types, which aren't supported anyways and would only
 result in overflow when deeply normalizing for codegen.
 
-experimentation and examples: https://hackmd.io/-8p0AHnzSq2VAE6HE_wX-w?view
+experimentation and examples: <https://hackmd.io/-8p0AHnzSq2VAE6HE_wX-w?view>
 
 Another attempt at a summary.
 - in projection eq, we must make progress with constraining the rhs
 - a cycle is only ok if while equating we have a rigid ty on the lhs after norm at least once
 - cycles outside of the recursive `eq` call of `normalizes_to` are always fine
 
-[^1]: related: https://coq.inria.fr/refman/language/core/coinductive.html#top-level-definitions-of-corecursive-functions
+[^1]: related: <https://coq.inria.fr/refman/language/core/coinductive.html#top-level-definitions-of-corecursive-functions>
 
 [perfect derive]: https://smallcultfollowing.com/babysteps/blog/2022/04/12/implied-bounds-and-perfect-derive
 [ex1]: https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=0a9c3830b93a2380e6978d6328df8f72

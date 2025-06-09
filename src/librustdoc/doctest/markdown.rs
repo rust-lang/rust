@@ -4,7 +4,7 @@ use std::fs::read_to_string;
 use std::sync::{Arc, Mutex};
 
 use rustc_session::config::Input;
-use rustc_span::FileName;
+use rustc_span::{DUMMY_SP, FileName};
 use tempfile::tempdir;
 
 use super::{
@@ -24,7 +24,15 @@ impl DocTestVisitor for MdCollector {
         let filename = self.filename.clone();
         // First line of Markdown is line 1.
         let line = 1 + rel_line.offset();
-        self.tests.push(ScrapedDocTest::new(filename, line, self.cur_path.clone(), config, test));
+        self.tests.push(ScrapedDocTest::new(
+            filename,
+            line,
+            self.cur_path.clone(),
+            config,
+            test,
+            DUMMY_SP,
+            Vec::new(),
+        ));
     }
 
     fn visit_header(&mut self, name: &str, level: u32) {
@@ -89,7 +97,6 @@ pub(crate) fn test(input: &Input, options: Options) -> Result<(), String> {
         crate_name,
         no_crate_inject: true,
         insert_indent_space: false,
-        attrs: vec![],
         args_file,
     };
 
@@ -107,7 +114,7 @@ pub(crate) fn test(input: &Input, options: Options) -> Result<(), String> {
     find_testable_code(&input_str, &mut md_collector, codes, None);
 
     let mut collector = CreateRunnableDocTests::new(options.clone(), opts);
-    md_collector.tests.into_iter().for_each(|t| collector.add_test(t));
+    md_collector.tests.into_iter().for_each(|t| collector.add_test(t, None));
     let CreateRunnableDocTests { opts, rustdoc_options, standalone_tests, mergeable_tests, .. } =
         collector;
     crate::doctest::run_tests(

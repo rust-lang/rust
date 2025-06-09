@@ -477,10 +477,10 @@ impl<'a> State<'a> {
             hir::ForeignItemKind::Fn(sig, arg_idents, generics) => {
                 let (cb, ib) = self.head("");
                 self.print_fn(
-                    sig.decl,
                     sig.header,
                     Some(item.ident.name),
                     generics,
+                    sig.decl,
                     arg_idents,
                     None,
                 );
@@ -593,7 +593,7 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.end(cb);
             }
-            hir::ItemKind::Static(ident, ty, m, expr) => {
+            hir::ItemKind::Static(m, ident, ty, expr) => {
                 let (cb, ib) = self.head("static");
                 if m.is_mut() {
                     self.word_space("mut");
@@ -609,7 +609,7 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(cb);
             }
-            hir::ItemKind::Const(ident, ty, generics, expr) => {
+            hir::ItemKind::Const(ident, generics, ty, expr) => {
                 let (cb, ib) = self.head("const");
                 self.print_ident(ident);
                 self.print_generic_params(generics.params);
@@ -626,7 +626,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Fn { ident, sig, generics, body, .. } => {
                 let (cb, ib) = self.head("");
-                self.print_fn(sig.decl, sig.header, Some(ident.name), generics, &[], Some(body));
+                self.print_fn(sig.header, Some(ident.name), generics, sig.decl, &[], Some(body));
                 self.word(" ");
                 self.end(ib);
                 self.end(cb);
@@ -660,7 +660,7 @@ impl<'a> State<'a> {
                 self.end(cb);
                 self.end(ib);
             }
-            hir::ItemKind::TyAlias(ident, ty, generics) => {
+            hir::ItemKind::TyAlias(ident, generics, ty) => {
                 let (cb, ib) = self.head("type");
                 self.print_ident(ident);
                 self.print_generic_params(generics.params);
@@ -673,16 +673,16 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(cb);
             }
-            hir::ItemKind::Enum(ident, ref enum_definition, params) => {
-                self.print_enum_def(enum_definition, params, ident.name, item.span);
+            hir::ItemKind::Enum(ident, generics, ref enum_def) => {
+                self.print_enum_def(ident.name, generics, enum_def, item.span);
             }
-            hir::ItemKind::Struct(ident, ref struct_def, generics) => {
+            hir::ItemKind::Struct(ident, generics, ref struct_def) => {
                 let (cb, ib) = self.head("struct");
-                self.print_struct(struct_def, generics, ident.name, item.span, true, cb, ib);
+                self.print_struct(ident.name, generics, struct_def, item.span, true, cb, ib);
             }
-            hir::ItemKind::Union(ident, ref struct_def, generics) => {
+            hir::ItemKind::Union(ident, generics, ref struct_def) => {
                 let (cb, ib) = self.head("union");
-                self.print_struct(struct_def, generics, ident.name, item.span, true, cb, ib);
+                self.print_struct(ident.name, generics, struct_def, item.span, true, cb, ib);
             }
             hir::ItemKind::Impl(&hir::Impl {
                 constness,
@@ -791,9 +791,9 @@ impl<'a> State<'a> {
 
     fn print_enum_def(
         &mut self,
-        enum_definition: &hir::EnumDef<'_>,
-        generics: &hir::Generics<'_>,
         name: Symbol,
+        generics: &hir::Generics<'_>,
+        enum_def: &hir::EnumDef<'_>,
         span: rustc_span::Span,
     ) {
         let (cb, ib) = self.head("enum");
@@ -801,7 +801,7 @@ impl<'a> State<'a> {
         self.print_generic_params(generics.params);
         self.print_where_clause(generics);
         self.space();
-        self.print_variants(enum_definition.variants, span, cb, ib);
+        self.print_variants(enum_def.variants, span, cb, ib);
     }
 
     fn print_variants(
@@ -834,9 +834,9 @@ impl<'a> State<'a> {
 
     fn print_struct(
         &mut self,
-        struct_def: &hir::VariantData<'_>,
-        generics: &hir::Generics<'_>,
         name: Symbol,
+        generics: &hir::Generics<'_>,
+        struct_def: &hir::VariantData<'_>,
         span: rustc_span::Span,
         print_finalizer: bool,
         cb: BoxMarker,
@@ -886,7 +886,7 @@ impl<'a> State<'a> {
     pub fn print_variant(&mut self, v: &hir::Variant<'_>) {
         let (cb, ib) = self.head("");
         let generics = hir::Generics::empty();
-        self.print_struct(&v.data, generics, v.ident.name, v.span, false, cb, ib);
+        self.print_struct(v.ident.name, generics, &v.data, v.span, false, cb, ib);
         if let Some(ref d) = v.disr_expr {
             self.space();
             self.word_space("=");
@@ -902,7 +902,7 @@ impl<'a> State<'a> {
         arg_idents: &[Option<Ident>],
         body_id: Option<hir::BodyId>,
     ) {
-        self.print_fn(m.decl, m.header, Some(ident.name), generics, arg_idents, body_id);
+        self.print_fn(m.header, Some(ident.name), generics, m.decl, arg_idents, body_id);
     }
 
     fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
@@ -2141,10 +2141,10 @@ impl<'a> State<'a> {
 
     fn print_fn(
         &mut self,
-        decl: &hir::FnDecl<'_>,
         header: hir::FnHeader,
         name: Option<Symbol>,
         generics: &hir::Generics<'_>,
+        decl: &hir::FnDecl<'_>,
         arg_idents: &[Option<Ident>],
         body_id: Option<hir::BodyId>,
     ) {
@@ -2483,7 +2483,6 @@ impl<'a> State<'a> {
         self.print_formal_generic_params(generic_params);
         let generics = hir::Generics::empty();
         self.print_fn(
-            decl,
             hir::FnHeader {
                 safety: safety.into(),
                 abi,
@@ -2492,6 +2491,7 @@ impl<'a> State<'a> {
             },
             name,
             generics,
+            decl,
             arg_idents,
             None,
         );

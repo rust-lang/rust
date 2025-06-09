@@ -44,8 +44,6 @@ remove_labels = ["S-waiting-on-author"]
 # Those labels are added when PR author requests a review from an assignee
 add_labels = ["S-waiting-on-review"]
 
-[glacier]
-
 [ping.icebreakers-llvm]
 message = """\
 Hey LLVM ICE-breakers! This bug has been identified as a good
@@ -252,6 +250,11 @@ trigger_files = [
     "compiler/rustc_passes/src/check_attr.rs",
     "compiler/rustc_attr_parsing",
     "compiler/rustc_attr_data_structures",
+]
+
+[autolabel."A-compiler-builtins"]
+trigger_files = [
+    "library/compiler-builtins",
 ]
 
 [autolabel."F-autodiff"]
@@ -595,6 +598,13 @@ trigger_files = [
     "src/doc/rustc-dev-guide",
 ]
 
+[autolabel."A-LLVM"]
+trigger_files = [
+    "src/llvm-project",
+    "compiler/rustc_llvm",
+    "compiler/rustc_codegen_llvm",
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/prioritization/alerts
 topic = "#{number} {title}"
@@ -851,6 +861,15 @@ cc = ["@Urgau"]
 message = "Some changes occurred in check-cfg diagnostics"
 cc = ["@Urgau"]
 
+[mentions."library/compiler-builtins"]
+message = """
+`compiler-builtins` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/compiler-builtins](https://github.com/rust-lang/compiler-builtins) \
+instead.
+"""
+cc = ["@tgross35"]
+
 [mentions."library/core/src/intrinsics/simd.rs"]
 message = """
 Some changes occurred to the platform-builtins intrinsics. Make sure the
@@ -887,6 +906,7 @@ message = "Some changes occurred in HTML/CSS/JS."
 cc = [
     "@GuillaumeGomez",
     "@jsha",
+    "@lolbinarycat",
 ]
 
 [mentions."tests/rustdoc-gui/"]
@@ -1168,11 +1188,6 @@ cc = ["@m-ou-se"]
 [assign]
 warn_non_default_branch.enable = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
-users_on_vacation = [
-    "fmease",
-    "jyn514",
-    "spastorino",
-]
 
 [[assign.warn_non_default_branch.exceptions]]
 title = "[beta"
@@ -1191,9 +1206,11 @@ compiler = [
     "@BoxyUwU",
     "@compiler-errors",
     "@davidtwco",
+    "@eholk",
     "@fee1-dead",
     "@fmease",
     "@jieyouxu",
+    "@jdonszelmann",
     "@lcnr",
     "@Nadrieril",
     "@nnethercote",
@@ -1410,8 +1427,10 @@ compiletest = [
 "/src/tools/rustdoc-gui-test" =                          ["bootstrap", "@onur-ozkan"]
 "/src/tools/libcxx-version" =                            ["@onur-ozkan"]
 
-# Enable tracking of PR review assignment
-# Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment-tracking.html
+# Enable review queue tracking
+# Documentation at: https://forge.rust-lang.org/triagebot/review-queue-tracking.html
+[assign.review_prefs]
+
 [pr-tracking]
 
 # Enable issue transfers within the org
@@ -1424,3 +1443,17 @@ compiletest = [
 
 [behind-upstream]
 days-threshold = 14
+
+# Canonicalize issue numbers to avoid closing the wrong issue
+# when commits are included in subtrees, as well as warning links in commits.
+# Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
+[issue-links]
+
+# Prevents mentions in commits to avoid users being spammed
+# Documentation at: https://forge.rust-lang.org/triagebot/no-mentions.html
+[no-mentions]
+
+# Allow members to formally register concerns (`@rustbot concern my concern`)
+# Documentation at: https://forge.rust-lang.org/triagebot/concern.html
+[concern]
+labels = ["S-waiting-on-concerns"]

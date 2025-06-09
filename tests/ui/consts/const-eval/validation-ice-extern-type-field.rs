@@ -10,6 +10,6 @@ struct ThinDst {
 }
 
 const C1: &ThinDst = unsafe { std::mem::transmute(b"d".as_ptr()) };
-//~^ERROR: evaluation of constant value failed
+//~^ERROR: `extern type` field does not have a known offset
 
 fn main() {}

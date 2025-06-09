@@ -1,8 +1,8 @@
 error[E0428]: the name `Foo` is defined multiple times
   --> $DIR/issue-6936.rs:5:5
    |
-LL |     type Foo = ::T;
-   |     --------------- previous definition of the type `Foo` here
+LL |     type Foo = crate::T;
+   |     -------------------- previous definition of the type `Foo` here
 LL |     mod Foo {}
    |     ^^^^^^^ `Foo` redefined here
    |
@@ -11,8 +11,8 @@ LL |     mod Foo {}
 error[E0428]: the name `Foo` is defined multiple times
   --> $DIR/issue-6936.rs:10:5
    |
-LL |     type Foo = ::T;
-   |     --------------- previous definition of the type `Foo` here
+LL |     type Foo = crate::T;
+   |     -------------------- previous definition of the type `Foo` here
 LL |     struct Foo;
    |     ^^^^^^^^^^^ `Foo` redefined here
    |
@@ -21,8 +21,8 @@ LL |     struct Foo;
 error[E0428]: the name `Foo` is defined multiple times
   --> $DIR/issue-6936.rs:15:5
    |
-LL |     type Foo = ::T;
-   |     --------------- previous definition of the type `Foo` here
+LL |     type Foo = crate::T;
+   |     -------------------- previous definition of the type `Foo` here
 LL |     enum Foo {}
    |     ^^^^^^^^ `Foo` redefined here
    |

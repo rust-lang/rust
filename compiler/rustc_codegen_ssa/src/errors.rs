@@ -797,22 +797,6 @@ pub(crate) struct ShuffleIndicesEvaluation {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_missing_memory_ordering)]
-pub(crate) struct MissingMemoryOrdering;
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_unknown_atomic_ordering)]
-pub(crate) struct UnknownAtomicOrdering;
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_atomic_compare_exchange)]
-pub(crate) struct AtomicCompareExchange;
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_unknown_atomic_operation)]
-pub(crate) struct UnknownAtomicOperation;
-
-#[derive(Diagnostic)]
 pub enum InvalidMonomorphization<'tcx> {
     #[diag(codegen_ssa_invalid_monomorphization_basic_integer_type, code = E0511)]
     BasicIntegerType {
@@ -1316,3 +1300,7 @@ pub(crate) struct XcrunSdkPathWarning {
     pub sdk_name: &'static str,
     pub stderr: String,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(codegen_ssa_aarch64_softfloat_neon)]
+pub(crate) struct Aarch64SoftfloatNeon;

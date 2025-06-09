@@ -8,17 +8,17 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
     EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
 };
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{self as hir, MissingLifetimeKind};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::AmbiguityErrorDiag;
 use rustc_span::edition::Edition;
-use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, kw, sym};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
 
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
 use crate::errors::{OverruledAttributeSub, RequestedLevel};
@@ -1782,11 +1782,18 @@ pub(crate) enum InvalidNanComparisonsSuggestion {
 #[derive(LintDiagnostic)]
 pub(crate) enum AmbiguousWidePointerComparisons<'a> {
     #[diag(lint_ambiguous_wide_pointer_comparisons)]
-    Spanful {
+    SpanfulEq {
         #[subdiagnostic]
         addr_suggestion: AmbiguousWidePointerComparisonsAddrSuggestion<'a>,
         #[subdiagnostic]
         addr_metadata_suggestion: Option<AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a>>,
+    },
+    #[diag(lint_ambiguous_wide_pointer_comparisons)]
+    SpanfulCmp {
+        #[subdiagnostic]
+        cast_suggestion: AmbiguousWidePointerComparisonsCastSuggestion<'a>,
+        #[subdiagnostic]
+        expect_suggestion: AmbiguousWidePointerComparisonsExpectSuggestion<'a>,
     },
     #[diag(lint_ambiguous_wide_pointer_comparisons)]
     #[help(lint_addr_metadata_suggestion)]
@@ -1816,48 +1823,67 @@ pub(crate) struct AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a> {
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
-    #[multipart_suggestion(
-        lint_addr_suggestion,
-        style = "verbose",
-        // FIXME(#53934): make machine-applicable again
-        applicability = "maybe-incorrect"
+#[multipart_suggestion(
+    lint_addr_suggestion,
+    style = "verbose",
+    // FIXME(#53934): make machine-applicable again
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
+    pub(crate) ne: &'a str,
+    pub(crate) deref_left: &'a str,
+    pub(crate) deref_right: &'a str,
+    pub(crate) l_modifiers: &'a str,
+    pub(crate) r_modifiers: &'a str,
+    #[suggestion_part(code = "{ne}std::ptr::addr_eq({deref_left}")]
+    pub(crate) left: Span,
+    #[suggestion_part(code = "{l_modifiers}, {deref_right}")]
+    pub(crate) middle: Span,
+    #[suggestion_part(code = "{r_modifiers})")]
+    pub(crate) right: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    lint_cast_suggestion,
+    style = "verbose",
+    // FIXME(#53934): make machine-applicable again
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct AmbiguousWidePointerComparisonsCastSuggestion<'a> {
+    pub(crate) deref_left: &'a str,
+    pub(crate) deref_right: &'a str,
+    pub(crate) paren_left: &'a str,
+    pub(crate) paren_right: &'a str,
+    pub(crate) l_modifiers: &'a str,
+    pub(crate) r_modifiers: &'a str,
+    #[suggestion_part(code = "({deref_left}")]
+    pub(crate) left_before: Option<Span>,
+    #[suggestion_part(code = "{l_modifiers}{paren_left}.cast::<()>()")]
+    pub(crate) left_after: Span,
+    #[suggestion_part(code = "({deref_right}")]
+    pub(crate) right_before: Option<Span>,
+    #[suggestion_part(code = "{r_modifiers}{paren_right}.cast::<()>()")]
+    pub(crate) right_after: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    lint_expect_suggestion,
+    style = "verbose",
+    // FIXME(#53934): make machine-applicable again
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct AmbiguousWidePointerComparisonsExpectSuggestion<'a> {
+    pub(crate) paren_left: &'a str,
+    pub(crate) paren_right: &'a str,
+    // FIXME(#127436): Adjust once resolved
+    #[suggestion_part(
+        code = r#"{{ #[expect(ambiguous_wide_pointer_comparisons, reason = "...")] {paren_left}"#
     )]
-    AddrEq {
-        ne: &'a str,
-        deref_left: &'a str,
-        deref_right: &'a str,
-        l_modifiers: &'a str,
-        r_modifiers: &'a str,
-        #[suggestion_part(code = "{ne}std::ptr::addr_eq({deref_left}")]
-        left: Span,
-        #[suggestion_part(code = "{l_modifiers}, {deref_right}")]
-        middle: Span,
-        #[suggestion_part(code = "{r_modifiers})")]
-        right: Span,
-    },
-    #[multipart_suggestion(
-        lint_addr_suggestion,
-        style = "verbose",
-        // FIXME(#53934): make machine-applicable again
-        applicability = "maybe-incorrect"
-    )]
-    Cast {
-        deref_left: &'a str,
-        deref_right: &'a str,
-        paren_left: &'a str,
-        paren_right: &'a str,
-        l_modifiers: &'a str,
-        r_modifiers: &'a str,
-        #[suggestion_part(code = "({deref_left}")]
-        left_before: Option<Span>,
-        #[suggestion_part(code = "{l_modifiers}{paren_left}.cast::<()>()")]
-        left_after: Span,
-        #[suggestion_part(code = "({deref_right}")]
-        right_before: Option<Span>,
-        #[suggestion_part(code = "{r_modifiers}{paren_right}.cast::<()>()")]
-        right_after: Span,
-    },
+    pub(crate) before: Span,
+    #[suggestion_part(code = "{paren_right} }}")]
+    pub(crate) after: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -2273,6 +2299,16 @@ pub(crate) mod unexpected_cfg_name {
     pub(crate) enum CodeSuggestion {
         #[help(lint_unexpected_cfg_define_features)]
         DefineFeatures,
+        #[multipart_suggestion(
+            lint_unexpected_cfg_name_version_syntax,
+            applicability = "machine-applicable"
+        )]
+        VersionSyntax {
+            #[suggestion_part(code = "(")]
+            between_name_and_value: Span,
+            #[suggestion_part(code = ")")]
+            after_value: Span,
+        },
         #[suggestion(
             lint_unexpected_cfg_name_similar_name_value,
             applicability = "maybe-incorrect",
@@ -2716,58 +2752,6 @@ pub(crate) struct ElidedLifetimesInPaths {
     pub subdiag: ElidedLifetimeInPathSubdiag,
 }
 
-pub(crate) struct ElidedNamedLifetime {
-    pub span: Span,
-    pub kind: MissingLifetimeKind,
-    pub name: Symbol,
-    pub declaration: Option<Span>,
-}
-
-impl<G: EmissionGuarantee> LintDiagnostic<'_, G> for ElidedNamedLifetime {
-    fn decorate_lint(self, diag: &mut rustc_errors::Diag<'_, G>) {
-        let Self { span, kind, name, declaration } = self;
-        diag.primary_message(fluent::lint_elided_named_lifetime);
-        diag.arg("name", name);
-        diag.span_label(span, fluent::lint_label_elided);
-        if let Some(declaration) = declaration {
-            diag.span_label(declaration, fluent::lint_label_named);
-        }
-        // FIXME(GrigorenkoPV): this `if` and `return` should be removed,
-        //  but currently this lint's suggestions can conflict with those of `clippy::needless_lifetimes`:
-        //  https://github.com/rust-lang/rust/pull/129840#issuecomment-2323349119
-        // HACK: `'static` suggestions will never sonflict, emit only those for now.
-        if name != kw::StaticLifetime {
-            return;
-        }
-        match kind {
-            MissingLifetimeKind::Underscore => diag.span_suggestion_verbose(
-                span,
-                fluent::lint_suggestion,
-                format!("{name}"),
-                Applicability::MachineApplicable,
-            ),
-            MissingLifetimeKind::Ampersand => diag.span_suggestion_verbose(
-                span.shrink_to_hi(),
-                fluent::lint_suggestion,
-                format!("{name} "),
-                Applicability::MachineApplicable,
-            ),
-            MissingLifetimeKind::Comma => diag.span_suggestion_verbose(
-                span.shrink_to_hi(),
-                fluent::lint_suggestion,
-                format!("{name}, "),
-                Applicability::MachineApplicable,
-            ),
-            MissingLifetimeKind::Brackets => diag.span_suggestion_verbose(
-                span.shrink_to_hi(),
-                fluent::lint_suggestion,
-                format!("<{name}>"),
-                Applicability::MachineApplicable,
-            ),
-        };
-    }
-}
-
 #[derive(LintDiagnostic)]
 #[diag(lint_invalid_crate_type_value)]
 pub(crate) struct UnknownCrateTypes {
@@ -3041,7 +3025,9 @@ pub(crate) struct ByteSliceInPackedStructWithDerive {
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_extern_crate)]
 pub(crate) struct UnusedExternCrate {
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[label]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub removal_span: Span,
 }
 
@@ -3202,4 +3188,129 @@ pub(crate) struct ReservedString {
 pub(crate) struct ReservedMultihash {
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
+}
+
+#[derive(Debug)]
+pub(crate) struct MismatchedLifetimeSyntaxes {
+    pub lifetime_name: String,
+    pub inputs: Vec<Span>,
+    pub outputs: Vec<Span>,
+
+    pub suggestions: Vec<MismatchedLifetimeSyntaxesSuggestion>,
+}
+
+impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for MismatchedLifetimeSyntaxes {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
+        diag.primary_message(fluent::lint_mismatched_lifetime_syntaxes);
+
+        diag.arg("lifetime_name", self.lifetime_name);
+
+        diag.arg("n_inputs", self.inputs.len());
+        for input in self.inputs {
+            let a = diag.eagerly_translate(fluent::lint_label_mismatched_lifetime_syntaxes_inputs);
+            diag.span_label(input, a);
+        }
+
+        diag.arg("n_outputs", self.outputs.len());
+        for output in self.outputs {
+            let a = diag.eagerly_translate(fluent::lint_label_mismatched_lifetime_syntaxes_outputs);
+            diag.span_label(output, a);
+        }
+
+        let mut suggestions = self.suggestions.into_iter();
+        if let Some(s) = suggestions.next() {
+            diag.subdiagnostic(s);
+
+            for mut s in suggestions {
+                s.make_tool_only();
+                diag.subdiagnostic(s);
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum MismatchedLifetimeSyntaxesSuggestion {
+    Implicit {
+        suggestions: Vec<Span>,
+        tool_only: bool,
+    },
+
+    Mixed {
+        implicit_suggestions: Vec<Span>,
+        explicit_anonymous_suggestions: Vec<(Span, String)>,
+        tool_only: bool,
+    },
+
+    Explicit {
+        lifetime_name: String,
+        suggestions: Vec<(Span, String)>,
+        tool_only: bool,
+    },
+}
+
+impl MismatchedLifetimeSyntaxesSuggestion {
+    fn make_tool_only(&mut self) {
+        use MismatchedLifetimeSyntaxesSuggestion::*;
+
+        let tool_only = match self {
+            Implicit { tool_only, .. } | Mixed { tool_only, .. } | Explicit { tool_only, .. } => {
+                tool_only
+            }
+        };
+
+        *tool_only = true;
+    }
+}
+
+impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        use MismatchedLifetimeSyntaxesSuggestion::*;
+
+        let style = |tool_only| {
+            if tool_only { SuggestionStyle::CompletelyHidden } else { SuggestionStyle::ShowAlways }
+        };
+
+        match self {
+            Implicit { suggestions, tool_only } => {
+                let suggestions = suggestions.into_iter().map(|s| (s, String::new())).collect();
+                diag.multipart_suggestion_with_style(
+                    fluent::lint_mismatched_lifetime_syntaxes_suggestion_implicit,
+                    suggestions,
+                    Applicability::MachineApplicable,
+                    style(tool_only),
+                );
+            }
+
+            Mixed { implicit_suggestions, explicit_anonymous_suggestions, tool_only } => {
+                let implicit_suggestions =
+                    implicit_suggestions.into_iter().map(|s| (s, String::new()));
+
+                let suggestions =
+                    implicit_suggestions.chain(explicit_anonymous_suggestions).collect();
+
+                diag.multipart_suggestion_with_style(
+                    fluent::lint_mismatched_lifetime_syntaxes_suggestion_mixed,
+                    suggestions,
+                    Applicability::MachineApplicable,
+                    style(tool_only),
+                );
+            }
+
+            Explicit { lifetime_name, suggestions, tool_only } => {
+                diag.arg("lifetime_name", lifetime_name);
+
+                let msg = diag.eagerly_translate(
+                    fluent::lint_mismatched_lifetime_syntaxes_suggestion_explicit,
+                );
+
+                diag.multipart_suggestion_with_style(
+                    msg,
+                    suggestions,
+                    Applicability::MachineApplicable,
+                    style(tool_only),
+                );
+            }
+        }
+    }
 }

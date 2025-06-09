@@ -192,7 +192,7 @@ They have several forms, but generally are a comment with the diagnostic level
 to write out the entire message, just make sure to include the important part of
 the message to make it self-documenting.
 
-The error annotation needs to match with the line of the diagnostic. There are
+Most error annotations need to match with the line of the diagnostic. There are
 several ways to match the message with the line (see the examples below):
 
 * `~`: Associates the error level and message with the *current* line
@@ -205,9 +205,6 @@ several ways to match the message with the line (see the examples below):
 * `~v`: Associates the error level and message with the *next* error
   annotation line. Each symbol (`v`) that you add adds a line to this, so `~vvv`
   is three lines below the error annotation line.
-* `~?`: Used to match error levels and messages with errors not having line
-  information. These can be placed on any line in the test file, but are
-  conventionally placed at the end.
 
 Example:
 
@@ -221,6 +218,10 @@ fn meow(_: [u8]) {}
 The space character between `//~` (or other variants) and the subsequent text is
 negligible (i.e. there is no semantic difference between `//~ ERROR` and
 `//~ERROR` although the former is more common in the codebase).
+
+`~? <diagnostic kind>` (example being `~? ERROR`)
+is used to match diagnostics without line information.
+These can be placed on any line in the test file, but are conventionally placed at the end.
 
 ### Error annotation examples
 

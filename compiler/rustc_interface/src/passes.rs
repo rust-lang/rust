@@ -45,7 +45,7 @@ use crate::interface::Compiler;
 use crate::{errors, limits, proc_macro_decls, util};
 
 pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
-    let krate = sess
+    let mut krate = sess
         .time("parse_crate", || {
             let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
                 Input::File(file) => new_parser_from_file(&sess.psess, file, None),
@@ -60,9 +60,11 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
             guar.raise_fatal();
         });
 
-    if sess.opts.unstable_opts.input_stats {
-        input_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
-    }
+    rustc_builtin_macros::cmdline_attrs::inject(
+        &mut krate,
+        &sess.psess,
+        &sess.opts.unstable_opts.crate_attr,
+    );
 
     krate
 }
@@ -292,7 +294,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
-        input_stats::print_ast_stats(krate, "POST EXPANSION AST STATS", "ast-stats-2");
+        input_stats::print_ast_stats(krate, "POST EXPANSION AST STATS", "ast-stats");
     }
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
@@ -805,16 +807,10 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
 
 pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     compiler: &Compiler,
-    mut krate: rustc_ast::Crate,
+    krate: rustc_ast::Crate,
     f: F,
 ) -> T {
     let sess = &compiler.sess;
-
-    rustc_builtin_macros::cmdline_attrs::inject(
-        &mut krate,
-        &sess.psess,
-        &sess.opts.unstable_opts.crate_attr,
-    );
 
     let pre_configured_attrs = rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
 
@@ -960,7 +956,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 tcx.par_hir_for_each_module(|module| {
                     tcx.ensure_ok().check_mod_loops(module);
                     tcx.ensure_ok().check_mod_attrs(module);
-                    tcx.ensure_ok().check_mod_naked_functions(module);
                     tcx.ensure_ok().check_mod_unstable_api_usage(module);
                 });
             },
@@ -981,13 +976,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     });
 
     rustc_hir_analysis::check_crate(tcx);
-    sess.time("MIR_coroutine_by_move_body", || {
-        tcx.par_hir_body_owners(|def_id| {
-            if tcx.needs_coroutine_by_move_body_def_id(def_id.to_def_id()) {
-                tcx.ensure_done().coroutine_by_move_body_def_id(def_id);
-            }
-        });
-    });
     // Freeze definitions as we don't add new ones at this point.
     // We need to wait until now since we synthesize a by-move body
     // for all coroutine-closures.
@@ -1012,10 +1000,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             {
                 tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
             }
-        });
-    });
-    sess.time("coroutine_obligations", || {
-        tcx.par_hir_body_owners(|def_id| {
             if tcx.is_coroutine(def_id.to_def_id()) {
                 tcx.ensure_ok().mir_coroutine_witnesses(def_id);
                 let _ = tcx.ensure_ok().check_coroutine_obligations(

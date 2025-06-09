@@ -90,7 +90,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
                 "`cargo miri` supports the following subcommands: `run`, `test`, `nextest`, `clean`, and `setup`."
             ),
     };
-    let verbose = num_arg_flag("-v");
+    let verbose = num_arg_flag("-v") + num_arg_flag("--verbose");
     let quiet = has_arg_flag("-q") || has_arg_flag("--quiet");
 
     // Determine the involved architectures.

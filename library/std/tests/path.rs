@@ -3,7 +3,7 @@
     path_add_extension,
     path_file_prefix,
     maybe_uninit_slice,
-    os_string_pathbuf_leak
+    normalize_lexically
 )]
 
 use std::clone::CloneToUninit;
@@ -1975,4 +1975,88 @@ fn clone_to_uninit() {
     assert_ne!(a, &*b);
     unsafe { a.clone_to_uninit(ptr::from_mut::<Path>(&mut b).cast()) };
     assert_eq!(a, &*b);
+}
+
+// Test: Only separators (e.g., "/" or "\\")
+// This test checks how Path handles a string that consists only of path separators.
+// It should recognize the root and not treat it as a normal component.
+#[test]
+fn test_only_separators() {
+    let path = Path::new("/////");
+    assert!(path.has_root());
+    assert_eq!(path.iter().count(), 1);
+    assert_eq!(path.parent(), None);
+}
+
+// Test: Non-ASCII/Unicode
+// This test verifies that Path can handle Unicode and non-ASCII characters in the path.
+// It ensures that such paths are not rejected or misinterpreted.
+#[test]
+fn test_non_ascii_unicode() {
+    let path = Path::new("/tmp/❤/🚀/file.txt");
+    assert!(path.to_str().is_some());
+    assert_eq!(path.file_name(), Some(OsStr::new("file.txt")));
+}
+
+// Test: Embedded newlines
+// This test verifies that newlines within path components are preserved and do not break path parsing.
+// It ensures that Path treats newlines as normal characters.
+#[test]
+fn test_embedded_newline() {
+    let path = Path::new("foo\nbar");
+    assert_eq!(path.file_name(), Some(OsStr::new("foo\nbar")));
+    assert_eq!(path.to_str(), Some("foo\nbar"));
+}
+
+#[test]
+fn normalize_lexically() {
+    #[track_caller]
+    fn check_ok(a: &str, b: &str) {
+        assert_eq!(Path::new(a).normalize_lexically().unwrap(), PathBuf::from(b));
+    }
+
+    #[track_caller]
+    fn check_err(a: &str) {
+        assert!(Path::new(a).normalize_lexically().is_err());
+    }
+
+    // Relative paths
+    check_ok("a", "a");
+    check_ok("./a", "./a");
+    check_ok("a/b/c", "a/b/c");
+    check_ok("a/././b/./c/.", "a/b/c");
+    check_ok("a/../c", "c");
+    check_ok("./a/b", "./a/b");
+    check_ok("a/../b/c/..", "b");
+
+    check_err("..");
+    check_err("../..");
+    check_err("a/../..");
+    check_err("a/../../b");
+    check_err("a/../../b/c");
+    check_err("a/../b/../..");
+
+    // Check we don't escape the root or prefix
+    #[cfg(unix)]
+    {
+        check_err("/..");
+        check_err("/a/../..");
+    }
+    #[cfg(windows)]
+    {
+        check_err(r"C:\..");
+        check_err(r"C:\a\..\..");
+
+        check_err(r"C:..");
+        check_err(r"C:a\..\..");
+
+        check_err(r"\\server\share\..");
+        check_err(r"\\server\share\a\..\..");
+
+        check_err(r"\..");
+        check_err(r"\a\..\..");
+
+        check_err(r"\\?\UNC\server\share\..");
+        check_err(r"\\?\UNC\server\share\a\..\..");
+    }
 }

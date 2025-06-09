@@ -150,7 +150,7 @@ pub struct InferCtxtInner<'tcx> {
     /// for each body-id in this map, which will process the
     /// obligations within. This is expected to be done 'late enough'
     /// that all type inference variables have been bound and so forth.
-    region_obligations: Vec<RegionObligation<'tcx>>,
+    region_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
 
     /// Caches for opaque type inference.
     opaque_type_storage: OpaqueTypeStorage<'tcx>,
@@ -173,7 +173,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    pub fn region_obligations(&self) -> &[RegionObligation<'tcx>] {
+    pub fn region_obligations(&self) -> &[TypeOutlivesConstraint<'tcx>] {
         &self.region_obligations
     }
 
@@ -488,7 +488,7 @@ impl fmt::Display for FixupError {
 
 /// See the `region_obligations` field for more information.
 #[derive(Clone, Debug)]
-pub struct RegionObligation<'tcx> {
+pub struct TypeOutlivesConstraint<'tcx> {
     pub sub_region: ty::Region<'tcx>,
     pub sup_type: Ty<'tcx>,
     pub origin: SubregionOrigin<'tcx>,
@@ -738,19 +738,6 @@ impl<'tcx> InferCtxt<'tcx> {
         })
     }
 
-    pub fn region_outlives_predicate(
-        &self,
-        cause: &traits::ObligationCause<'tcx>,
-        predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
-    ) {
-        self.enter_forall(predicate, |ty::OutlivesPredicate(r_a, r_b)| {
-            let origin = SubregionOrigin::from_obligation_cause(cause, || {
-                RelateRegionParamBound(cause.span, None)
-            });
-            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-        })
-    }
-
     /// Number of type variables created so far.
     pub fn num_ty_vars(&self) -> usize {
         self.inner.borrow_mut().type_variables().num_vars()
@@ -834,6 +821,13 @@ impl<'tcx> InferCtxt<'tcx> {
         let region_var =
             self.inner.borrow_mut().unwrap_region_constraints().new_region_var(universe, origin);
         ty::Region::new_var(self.tcx, region_var)
+    }
+
+    pub fn next_term_var_of_kind(&self, term: ty::Term<'tcx>, span: Span) -> ty::Term<'tcx> {
+        match term.kind() {
+            ty::TermKind::Ty(_) => self.next_ty_var(span).into(),
+            ty::TermKind::Const(_) => self.next_const_var(span).into(),
+        }
     }
 
     /// Return the universe that the region `r` was created in. For
@@ -1385,7 +1379,7 @@ impl<'tcx> TyOrConstInferVar {
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
     pub fn maybe_from_generic_arg(arg: GenericArg<'tcx>) -> Option<Self> {
-        match arg.unpack() {
+        match arg.kind() {
             GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
             GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
             GenericArgKind::Lifetime(_) => None,
@@ -1396,7 +1390,7 @@ impl<'tcx> TyOrConstInferVar {
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
     pub fn maybe_from_term(term: Term<'tcx>) -> Option<Self> {
-        match term.unpack() {
+        match term.kind() {
             TermKind::Ty(ty) => Self::maybe_from_ty(ty),
             TermKind::Const(ct) => Self::maybe_from_const(ct),
         }

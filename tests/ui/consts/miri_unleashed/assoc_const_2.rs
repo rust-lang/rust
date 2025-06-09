@@ -8,7 +8,7 @@ trait Foo {
 }
 
 trait Bar<U: Foo> {
-    const F: u32 = 100 / U::X; //~ ERROR evaluation of `<std::string::String as Bar<std::string::String>>::F` failed
+    const F: u32 = 100 / U::X; //~ ERROR attempt to divide `100_u32` by zero
 }
 
 impl Foo for () {

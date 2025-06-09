@@ -77,3 +77,7 @@ pub enum AlignedExplicitRepr {
 pub enum ReorderedAlignedExplicitRepr {
     First,
 }
+
+//@ is "$.index[?(@.name=='Transparent')].attrs" '["#[repr(transparent)]"]'
+#[repr(transparent)]
+pub struct Transparent(i64);

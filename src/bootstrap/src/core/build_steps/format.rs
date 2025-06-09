@@ -318,10 +318,10 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                     // `into_path` produces an absolute path. Try to strip `cwd` to get a shorter
                     // relative path.
                     let mut path = entry.clone().into_path();
-                    if let Ok(cwd) = cwd {
-                        if let Ok(path2) = path.strip_prefix(cwd) {
-                            path = path2.to_path_buf();
-                        }
+                    if let Ok(cwd) = cwd
+                        && let Ok(path2) = path.strip_prefix(cwd)
+                    {
+                        path = path2.to_path_buf();
                     }
                     path.display().to_string()
                 });

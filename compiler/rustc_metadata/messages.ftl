@@ -2,7 +2,7 @@ metadata_as_needed_compatibility =
     linking modifier `as-needed` is only compatible with `dylib` and `framework` linking kinds
 
 metadata_async_drop_types_in_dependency =
-    found async drop types in dependecy `{$extern_crate}`, but async_drop feature is disabled for `{$local_crate}`
+    found async drop types in dependency `{$extern_crate}`, but async_drop feature is disabled for `{$local_crate}`
     .help = if async drop type will be dropped in a crate without `feature(async_drop)`, sync Drop will be used
 
 metadata_bad_panic_strategy =
@@ -272,6 +272,9 @@ metadata_raw_dylib_no_nul =
 metadata_raw_dylib_only_windows =
     link kind `raw-dylib` is only supported on Windows targets
 
+metadata_raw_dylib_unsupported_abi =
+    ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
+
 metadata_renaming_no_link =
     renaming of the library `{$lib_name}` was specified, however this crate contains no `#[link(...)]` attributes referencing this library
 
@@ -318,12 +321,6 @@ metadata_unknown_link_modifier =
     unknown linking modifier `{$modifier}`, expected one of: bundle, verbatim, whole-archive, as-needed
 
 metadata_unknown_target_modifier_unsafe_allowed = unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`
-
-metadata_unsupported_abi =
-    ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
-
-metadata_unsupported_abi_i686 =
-    ABI not supported by `#[link(kind = "raw-dylib")]` on i686
 
 metadata_wasm_c_abi =
     older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; please update to `wasm-bindgen` v0.2.88

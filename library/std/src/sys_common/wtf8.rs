@@ -209,7 +209,7 @@ impl Wtf8Buf {
     ///
     /// Since WTF-8 is a superset of UTF-8, this always succeeds.
     #[inline]
-    pub fn from_string(string: String) -> Wtf8Buf {
+    pub const fn from_string(string: String) -> Wtf8Buf {
         Wtf8Buf { bytes: string.into_bytes(), is_known_utf8: true }
     }
 

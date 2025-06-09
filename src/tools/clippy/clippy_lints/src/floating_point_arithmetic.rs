@@ -294,8 +294,8 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
         && let Some(parent) = get_parent_expr(cx, expr)
     {
         if let Some(grandparent) = get_parent_expr(cx, parent)
-            && let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, receiver, ..) = grandparent.kind
-            && method_name.as_str() == "sqrt"
+            && let ExprKind::MethodCall(PathSegment { ident: method, .. }, receiver, ..) = grandparent.kind
+            && method.name == sym::sqrt
             && detect_hypot(cx, receiver).is_some()
         {
             return;
@@ -375,24 +375,10 @@ fn detect_hypot(cx: &LateContext<'_>, receiver: &Expr<'_>) -> Option<String> {
         }
 
         // check if expression of the form x.powi(2) + y.powi(2)
-        if let ExprKind::MethodCall(
-            PathSegment {
-                ident: lmethod_name, ..
-            },
-            largs_0,
-            [largs_1, ..],
-            _,
-        ) = &add_lhs.kind
-            && let ExprKind::MethodCall(
-                PathSegment {
-                    ident: rmethod_name, ..
-                },
-                rargs_0,
-                [rargs_1, ..],
-                _,
-            ) = &add_rhs.kind
-            && lmethod_name.as_str() == "powi"
-            && rmethod_name.as_str() == "powi"
+        if let ExprKind::MethodCall(PathSegment { ident: lmethod, .. }, largs_0, [largs_1, ..], _) = &add_lhs.kind
+            && let ExprKind::MethodCall(PathSegment { ident: rmethod, .. }, rargs_0, [rargs_1, ..], _) = &add_rhs.kind
+            && lmethod.name == sym::powi
+            && rmethod.name == sym::powi
             && let ecx = ConstEvalCtxt::new(cx)
             && let Some(lvalue) = ecx.eval(largs_1)
             && let Some(rvalue) = ecx.eval(rargs_1)
@@ -482,8 +468,8 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
     ) = &expr.kind
     {
         if let Some(parent) = get_parent_expr(cx, expr)
-            && let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, receiver, ..) = parent.kind
-            && method_name.as_str() == "sqrt"
+            && let ExprKind::MethodCall(PathSegment { ident: method, .. }, receiver, ..) = parent.kind
+            && method.name == sym::sqrt
             && detect_hypot(cx, receiver).is_some()
         {
             return;
@@ -623,27 +609,13 @@ fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
 }
 
 fn are_same_base_logs(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>) -> bool {
-    if let ExprKind::MethodCall(
-        PathSegment {
-            ident: method_name_a, ..
-        },
-        _,
-        args_a,
-        _,
-    ) = expr_a.kind
-        && let ExprKind::MethodCall(
-            PathSegment {
-                ident: method_name_b, ..
-            },
-            _,
-            args_b,
-            _,
-        ) = expr_b.kind
+    if let ExprKind::MethodCall(PathSegment { ident: method_a, .. }, _, args_a, _) = expr_a.kind
+        && let ExprKind::MethodCall(PathSegment { ident: method_b, .. }, _, args_b, _) = expr_b.kind
     {
-        return method_name_a.as_str() == method_name_b.as_str()
+        return method_a.name == method_b.name
             && args_a.len() == args_b.len()
-            && (["ln", "log2", "log10"].contains(&method_name_a.as_str())
-                || method_name_a.as_str() == "log" && args_a.len() == 1 && eq_expr_value(cx, &args_a[0], &args_b[0]));
+            && (matches!(method_a.name, sym::ln | sym::log2 | sym::log10)
+                || method_a.name == sym::log && args_a.len() == 1 && eq_expr_value(cx, &args_a[0], &args_b[0]));
     }
 
     false

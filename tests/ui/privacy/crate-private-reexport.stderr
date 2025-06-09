@@ -1,82 +1,82 @@
 error[E0364]: `f1` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:8:13
    |
-LL |     pub use ::f1;
-   |             ^^^^
+LL |     pub use crate::f1;
+   |             ^^^^^^^^^
    |
 note: consider marking `f1` as `pub` in the imported module
   --> $DIR/crate-private-reexport.rs:8:13
    |
-LL |     pub use ::f1;
-   |             ^^^^
+LL |     pub use crate::f1;
+   |             ^^^^^^^^^
 
 error[E0365]: `S1` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:9:13
    |
-LL |     pub use ::S1;
-   |             ^^^^ re-export of crate public `S1`
+LL |     pub use crate::S1;
+   |             ^^^^^^^^^ re-export of crate public `S1`
    |
    = note: consider declaring type or module `S1` with `pub`
 
 error[E0365]: `E1` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:10:13
    |
-LL |     pub use ::E1;
-   |             ^^^^ re-export of crate public `E1`
+LL |     pub use crate::E1;
+   |             ^^^^^^^^^ re-export of crate public `E1`
    |
    = note: consider declaring type or module `E1` with `pub`
 
 error[E0364]: `V` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:11:13
    |
-LL |     pub use ::E1::V;
-   |             ^^^^^^^
+LL |     pub use crate::E1::V;
+   |             ^^^^^^^^^^^^
    |
 note: consider marking `V` as `pub` in the imported module
   --> $DIR/crate-private-reexport.rs:11:13
    |
-LL |     pub use ::E1::V;
-   |             ^^^^^^^
+LL |     pub use crate::E1::V;
+   |             ^^^^^^^^^^^^
 
 error[E0364]: `f2` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:23:13
    |
-LL |     pub use ::f2;
-   |             ^^^^
+LL |     pub use crate::f2;
+   |             ^^^^^^^^^
    |
 note: consider marking `f2` as `pub` in the imported module
   --> $DIR/crate-private-reexport.rs:23:13
    |
-LL |     pub use ::f2;
-   |             ^^^^
+LL |     pub use crate::f2;
+   |             ^^^^^^^^^
 
 error[E0365]: `S2` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:24:13
    |
-LL |     pub use ::S2;
-   |             ^^^^ re-export of crate public `S2`
+LL |     pub use crate::S2;
+   |             ^^^^^^^^^ re-export of crate public `S2`
    |
    = note: consider declaring type or module `S2` with `pub`
 
 error[E0365]: `E2` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:25:13
    |
-LL |     pub use ::E2;
-   |             ^^^^ re-export of crate public `E2`
+LL |     pub use crate::E2;
+   |             ^^^^^^^^^ re-export of crate public `E2`
    |
    = note: consider declaring type or module `E2` with `pub`
 
 error[E0364]: `V` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:26:13
    |
-LL |     pub use ::E2::V;
-   |             ^^^^^^^
+LL |     pub use crate::E2::V;
+   |             ^^^^^^^^^^^^
    |
 note: consider marking `V` as `pub` in the imported module
   --> $DIR/crate-private-reexport.rs:26:13
    |
-LL |     pub use ::E2::V;
-   |             ^^^^^^^
+LL |     pub use crate::E2::V;
+   |             ^^^^^^^^^^^^
 
 error[E0364]: `f3` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:39:9
@@ -121,14 +121,14 @@ LL | pub use m3::E3::V;
 error[E0364]: `f4` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:45:9
    |
-LL | pub use ::f4 as f5;
-   |         ^^^^^^^^^^
+LL | pub use crate::f4 as f5;
+   |         ^^^^^^^^^^^^^^^
    |
 note: consider marking `f4` as `pub` in the imported module
   --> $DIR/crate-private-reexport.rs:45:9
    |
-LL | pub use ::f4 as f5;
-   |         ^^^^^^^^^^
+LL | pub use crate::f4 as f5;
+   |         ^^^^^^^^^^^^^^^
 
 error[E0364]: `f6` is private, and cannot be re-exported
   --> $DIR/crate-private-reexport.rs:53:13

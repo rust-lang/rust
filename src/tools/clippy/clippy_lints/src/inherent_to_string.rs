@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             // Check if return type is String
             && is_type_lang_item(cx, return_ty(cx, impl_item.owner_id), LangItem::String)
             // Filters instances of to_string which are required by a trait
-            && trait_ref_of_method(cx, impl_item.owner_id.def_id).is_none()
+            && trait_ref_of_method(cx, impl_item.owner_id).is_none()
         {
             show_lint(cx, impl_item);
         }

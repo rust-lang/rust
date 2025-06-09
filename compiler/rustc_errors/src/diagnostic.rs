@@ -1325,7 +1325,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             ));
             self.note("consider using `--verbose` to print the full type name to the console");
         }
-        Box::into_inner(self.diag.take().unwrap())
+        *self.diag.take().unwrap()
     }
 
     /// This method allows us to access the path of the file where "long types" are written to.

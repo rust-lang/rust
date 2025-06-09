@@ -446,13 +446,7 @@ impl<'a> SelfResolver<'a> {
 }
 
 impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a> {
-    fn visit_path(&mut self, path: &'ast Path, id: NodeId) {
+    fn visit_id(&mut self, id: NodeId) {
         self.try_replace_id(id);
-        visit::walk_path(self, path);
-    }
-
-    fn visit_path_segment(&mut self, seg: &'ast PathSegment) {
-        self.try_replace_id(seg.id);
-        visit::walk_path_segment(self, seg);
     }
 }

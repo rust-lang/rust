@@ -5,14 +5,9 @@ LL |     not_stably_const();
    |     ^^^^^^^^^^^^^^^^^^
    |
    = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
-help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | pub const fn expose_on_stable() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(rustc_private)]
 LL | pub const fn expose_on_stable() {
    |
 
@@ -22,14 +17,9 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     let _x = async { 15 };
    |              ^^^^^^^^^^^^
    |
-help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | pub const fn expose_on_stable() {
-   |
-help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
-   |
-LL + #[rustc_allow_const_fn_unstable(const_async_blocks)]
 LL | pub const fn expose_on_stable() {
    |
 

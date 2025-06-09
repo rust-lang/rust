@@ -15,7 +15,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{mir, span_bug};
 use rustc_span::def_id::DefId;
-use rustc_span::{Span, sym};
+use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::traits::ObligationCause;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument, trace};
@@ -131,7 +131,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     .dcx()
                     .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
                 for arg in uv.args {
-                    if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                    if let ty::GenericArgKind::Type(ty) = arg.kind()
                         && let ty::Param(param_ty) = ty.kind()
                     {
                         let def_id = self.tcx.hir_enclosing_body_owner(self.id);
@@ -382,6 +382,9 @@ fn extend_type_not_partial_eq<'tcx>(
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
             match ty.kind() {
                 ty::Dynamic(..) => return ControlFlow::Break(()),
+                // Unsafe binders never implement `PartialEq`, so avoid walking into them
+                // which would require instantiating its binder with placeholders too.
+                ty::UnsafeBinder(..) => return ControlFlow::Break(()),
                 ty::FnPtr(..) => return ControlFlow::Continue(()),
                 ty::Adt(def, _args) => {
                     let ty_def_id = def.did();
@@ -477,8 +480,9 @@ fn type_has_partial_eq_impl<'tcx>(
     // (If there isn't, then we can safely issue a hard
     // error, because that's never worked, due to compiler
     // using `PartialEq::eq` in this scenario in the past.)
-    let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, None);
-    let structural_partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::StructuralPeq, None);
+    let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, DUMMY_SP);
+    let structural_partial_eq_trait_id =
+        tcx.require_lang_item(hir::LangItem::StructuralPeq, DUMMY_SP);
 
     let partial_eq_obligation = Obligation::new(
         tcx,

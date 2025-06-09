@@ -20,6 +20,16 @@ use crate::*;
 /// be configured in the real system.
 const MAX_SOCKETPAIR_BUFFER_CAPACITY: usize = 212992;
 
+#[derive(Debug, PartialEq)]
+enum AnonSocketType {
+    // Either end of the socketpair fd.
+    Socketpair,
+    // Read end of the pipe.
+    PipeRead,
+    // Write end of the pipe.
+    PipeWrite,
+}
+
 /// One end of a pair of connected unnamed sockets.
 #[derive(Debug)]
 struct AnonSocket {
@@ -40,7 +50,10 @@ struct AnonSocket {
     /// A list of thread ids blocked because the buffer was full.
     /// Once another thread reads some bytes, these threads will be unblocked.
     blocked_write_tid: RefCell<Vec<ThreadId>>,
-    is_nonblock: bool,
+    /// Whether this fd is non-blocking or not.
+    is_nonblock: Cell<bool>,
+    // Differentiate between different AnonSocket fd types.
+    fd_type: AnonSocketType,
 }
 
 #[derive(Debug)]
@@ -63,7 +76,10 @@ impl AnonSocket {
 
 impl FileDescription for AnonSocket {
     fn name(&self) -> &'static str {
-        "socketpair"
+        match self.fd_type {
+            AnonSocketType::Socketpair => "socketpair",
+            AnonSocketType::PipeRead | AnonSocketType::PipeWrite => "pipe",
+        }
     }
 
     fn close<'tcx>(
@@ -110,6 +126,66 @@ impl FileDescription for AnonSocket {
     fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
         self
     }
+
+    fn get_flags<'tcx>(&self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let mut flags = 0;
+
+        // Get flag for file access mode.
+        // The flag for both socketpair and pipe will remain the same even when the peer
+        // fd is closed, so we need to look at the original type of this socket, not at whether
+        // the peer socket still exists.
+        match self.fd_type {
+            AnonSocketType::Socketpair => {
+                flags |= ecx.eval_libc_i32("O_RDWR");
+            }
+            AnonSocketType::PipeRead => {
+                flags |= ecx.eval_libc_i32("O_RDONLY");
+            }
+            AnonSocketType::PipeWrite => {
+                flags |= ecx.eval_libc_i32("O_WRONLY");
+            }
+        }
+
+        // Get flag for blocking status.
+        if self.is_nonblock.get() {
+            flags |= ecx.eval_libc_i32("O_NONBLOCK");
+        }
+
+        interp_ok(Scalar::from_i32(flags))
+    }
+
+    fn set_flags<'tcx>(
+        &self,
+        mut flag: i32,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        // FIXME: File creation flags should be ignored.
+
+        let o_nonblock = ecx.eval_libc_i32("O_NONBLOCK");
+        let o_rdonly = ecx.eval_libc_i32("O_RDONLY");
+        let o_wronly = ecx.eval_libc_i32("O_WRONLY");
+        let o_rdwr = ecx.eval_libc_i32("O_RDWR");
+
+        // O_NONBLOCK flag can be set / unset by user.
+        if flag & o_nonblock == o_nonblock {
+            self.is_nonblock.set(true);
+            flag &= !o_nonblock;
+        } else {
+            self.is_nonblock.set(false);
+        }
+
+        // Ignore all file access mode flags.
+        flag &= !(o_rdonly | o_wronly | o_rdwr);
+
+        // Throw error if there is any unsupported flag.
+        if flag != 0 {
+            throw_unsup_format!(
+                "fcntl: only O_NONBLOCK is supported for F_SETFL on socketpairs and pipes"
+            )
+        }
+
+        interp_ok(Scalar::from_i32(0))
+    }
 }
 
 /// Write to AnonSocket based on the space available and return the written byte size.
@@ -141,7 +217,7 @@ fn anonsocket_write<'tcx>(
     // Let's see if we can write.
     let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(writebuf.borrow().buf.len());
     if available_space == 0 {
-        if self_ref.is_nonblock {
+        if self_ref.is_nonblock.get() {
             // Non-blocking socketpair with a full buffer.
             return finish.call(ecx, Err(ErrorKind::WouldBlock.into()));
         } else {
@@ -223,7 +299,7 @@ fn anonsocket_read<'tcx>(
             // Socketpair with no peer and empty buffer.
             // 0 bytes successfully read indicates end-of-file.
             return finish.call(ecx, Ok(0));
-        } else if self_ref.is_nonblock {
+        } else if self_ref.is_nonblock.get() {
             // Non-blocking socketpair with writer and empty buffer.
             // https://linux.die.net/man/2/read
             // EAGAIN or EWOULDBLOCK can be returned for socket,
@@ -407,7 +483,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             peer_lost_data: Cell::new(false),
             blocked_read_tid: RefCell::new(Vec::new()),
             blocked_write_tid: RefCell::new(Vec::new()),
-            is_nonblock: is_sock_nonblock,
+            is_nonblock: Cell::new(is_sock_nonblock),
+            fd_type: AnonSocketType::Socketpair,
         });
         let fd1 = fds.new_ref(AnonSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
@@ -415,7 +492,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             peer_lost_data: Cell::new(false),
             blocked_read_tid: RefCell::new(Vec::new()),
             blocked_write_tid: RefCell::new(Vec::new()),
-            is_nonblock: is_sock_nonblock,
+            is_nonblock: Cell::new(is_sock_nonblock),
+            fd_type: AnonSocketType::Socketpair,
         });
 
         // Make the file descriptions point to each other.
@@ -475,7 +553,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             peer_lost_data: Cell::new(false),
             blocked_read_tid: RefCell::new(Vec::new()),
             blocked_write_tid: RefCell::new(Vec::new()),
-            is_nonblock,
+            is_nonblock: Cell::new(is_nonblock),
+            fd_type: AnonSocketType::PipeRead,
         });
         let fd1 = fds.new_ref(AnonSocket {
             readbuf: None,
@@ -483,7 +562,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             peer_lost_data: Cell::new(false),
             blocked_read_tid: RefCell::new(Vec::new()),
             blocked_write_tid: RefCell::new(Vec::new()),
-            is_nonblock,
+            is_nonblock: Cell::new(is_nonblock),
+            fd_type: AnonSocketType::PipeWrite,
         });
 
         // Make the file descriptions point to each other.

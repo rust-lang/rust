@@ -6,7 +6,7 @@ use crate::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use crate::back::write::{CodegenContext, FatLtoInput, ModuleConfig};
 use crate::{CompiledModule, ModuleCodegen};
 
-pub trait WriteBackendMethods: 'static + Sized + Clone {
+pub trait WriteBackendMethods: Clone + 'static {
     type Module: Send + Sync;
     type TargetMachine;
     type TargetMachineError;
@@ -37,7 +37,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError>;
     fn print_pass_timings(&self);
     fn print_statistics(&self);
-    unsafe fn optimize(
+    fn optimize(
         cgcx: &CodegenContext<Self>,
         dcx: DiagCtxtHandle<'_>,
         module: &mut ModuleCodegen<Self::Module>,
@@ -47,11 +47,11 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         cgcx: &CodegenContext<Self>,
         llmod: &mut ModuleCodegen<Self::Module>,
     ) -> Result<(), FatalError>;
-    unsafe fn optimize_thin(
+    fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
-    unsafe fn codegen(
+    fn codegen(
         cgcx: &CodegenContext<Self>,
         dcx: DiagCtxtHandle<'_>,
         module: ModuleCodegen<Self::Module>,

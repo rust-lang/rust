@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/dependence_lint.rs:14:32
+  --> $DIR/dependence_lint.rs:15:32
    |
 LL |     let _: [u8; size_of::<*mut T>()]; // error on stable, error with gce
    |                                ^ cannot perform const operation using `T`
@@ -8,7 +8,7 @@ LL |     let _: [u8; size_of::<*mut T>()]; // error on stable, error with gce
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/dependence_lint.rs:21:37
+  --> $DIR/dependence_lint.rs:22:37
    |
 LL |     let _: [u8; if true { size_of::<T>() } else { 3 }]; // error on stable, error with gce
    |                                     ^ cannot perform const operation using `T`
@@ -27,7 +27,7 @@ LL |     [0; size_of::<*mut T>()]; // lint on stable, error with `generic_const_
    = note: `#[warn(const_evaluatable_unchecked)]` on by default
 
 warning: cannot use constants which depend on generic parameters in types
-  --> $DIR/dependence_lint.rs:17:9
+  --> $DIR/dependence_lint.rs:18:9
    |
 LL |     [0; if false { size_of::<T>() } else { 3 }]; // lint on stable, error with gce
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

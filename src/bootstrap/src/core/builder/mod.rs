@@ -945,7 +945,6 @@ impl<'a> Builder<'a> {
                 clippy::CI,
             ),
             Kind::Check | Kind::Fix => describe!(
-                check::Std,
                 check::Rustc,
                 check::Rustdoc,
                 check::CodegenBackend,
@@ -961,6 +960,13 @@ impl<'a> Builder<'a> {
                 check::Compiletest,
                 check::FeaturesStatusDump,
                 check::CoverageDump,
+                // This has special staging logic, it may run on stage 1 while others run on stage 0.
+                // It takes quite some time to build stage 1, so put this at the end.
+                //
+                // FIXME: This also helps bootstrap to not interfere with stage 0 builds. We should probably fix
+                // that issue somewhere else, but we still want to keep `check::Std` at the end so that the
+                // quicker steps run before this.
+                check::Std,
             ),
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,

@@ -7,6 +7,7 @@ use rustc_ast::{
     Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
     TyKind, UnsafeBinderTy,
 };
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -104,14 +105,17 @@ fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
 impl<'a> Parser<'a> {
     /// Parses a type.
     pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(
-            AllowPlus::Yes,
-            AllowCVariadic::No,
-            RecoverQPath::Yes,
-            RecoverReturnSign::Yes,
-            None,
-            RecoverQuestionMark::Yes,
-        )
+        // Make sure deeply nested types don't overflow the stack.
+        ensure_sufficient_stack(|| {
+            self.parse_ty_common(
+                AllowPlus::Yes,
+                AllowCVariadic::No,
+                RecoverQPath::Yes,
+                RecoverReturnSign::Yes,
+                None,
+                RecoverQuestionMark::Yes,
+            )
+        })
     }
 
     pub(super) fn parse_ty_with_generics_recovery(
@@ -404,7 +408,7 @@ impl<'a> Parser<'a> {
         })?;
 
         if ts.len() == 1 && matches!(trailing, Trailing::No) {
-            let ty = ts.into_iter().next().unwrap().into_inner();
+            let ty = ts.into_iter().next().unwrap();
             let maybe_bounds = allow_plus == AllowPlus::Yes && self.token.is_like_plus();
             match ty.kind {
                 // `(TY_BOUND_NOPAREN) + BOUND + ...`.
@@ -420,7 +424,7 @@ impl<'a> Parser<'a> {
                     self.parse_remaining_bounds(bounds, true)
                 }
                 // `(TYPE)`
-                _ => Ok(TyKind::Paren(P(ty))),
+                _ => Ok(TyKind::Paren(ty)),
             }
         } else {
             Ok(TyKind::Tup(ts))
@@ -1295,7 +1299,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, ()> {
         let fn_path_segment = fn_path.segments.last_mut().unwrap();
         let generic_args = if let Some(p_args) = &fn_path_segment.args {
-            p_args.clone().into_inner()
+            *p_args.clone()
         } else {
             // Normally it wouldn't come here because the upstream should have parsed
             // generic parameters (otherwise it's impossible to call this function).

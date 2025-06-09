@@ -1,39 +1,7 @@
 error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:1:7
+  --> $DIR/feature-gate-cfg-version.rs:5:7
    |
-LL | #[cfg(version(42))]
-   |       ^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error: expected a version literal
-  --> $DIR/feature-gate-cfg-version.rs:1:15
-   |
-LL | #[cfg(version(42))]
-   |               ^^
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:4:7
-   |
-LL | #[cfg(version(1.20))]
-   |       ^^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error: expected a version literal
-  --> $DIR/feature-gate-cfg-version.rs:4:15
-   |
-LL | #[cfg(version(1.20))]
-   |               ^^^^
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:7:7
-   |
-LL | #[cfg(version("1.44"))]
+LL | #[cfg(version("1.42"))]
    |       ^^^^^^^^^^^^^^^
    |
    = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
@@ -41,171 +9,7 @@ LL | #[cfg(version("1.44"))]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:10:11
-   |
-LL | #[cfg(not(version("1.44")))]
-   |           ^^^^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:14:7
-   |
-LL | #[cfg(version("1.43", "1.44", "1.45"))]
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error: expected single version literal
-  --> $DIR/feature-gate-cfg-version.rs:14:7
-   |
-LL | #[cfg(version("1.43", "1.44", "1.45"))]
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:17:7
-   |
-LL | #[cfg(version(false))]
-   |       ^^^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error: expected a version literal
-  --> $DIR/feature-gate-cfg-version.rs:17:15
-   |
-LL | #[cfg(version(false))]
-   |               ^^^^^
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:20:7
-   |
-LL | #[cfg(version("foo"))]
-   |       ^^^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-warning: unknown version literal format, assuming it refers to a future version
-  --> $DIR/feature-gate-cfg-version.rs:20:15
-   |
-LL | #[cfg(version("foo"))]
-   |               ^^^^^
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:23:7
-   |
-LL | #[cfg(version("999"))]
-   |       ^^^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-warning: unknown version literal format, assuming it refers to a future version
-  --> $DIR/feature-gate-cfg-version.rs:23:15
-   |
-LL | #[cfg(version("999"))]
-   |               ^^^^^
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:26:7
-   |
-LL | #[cfg(version("-1"))]
-   |       ^^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-warning: unknown version literal format, assuming it refers to a future version
-  --> $DIR/feature-gate-cfg-version.rs:26:15
-   |
-LL | #[cfg(version("-1"))]
-   |               ^^^^
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:29:7
-   |
-LL | #[cfg(version("65536"))]
-   |       ^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-warning: unknown version literal format, assuming it refers to a future version
-  --> $DIR/feature-gate-cfg-version.rs:29:15
-   |
-LL | #[cfg(version("65536"))]
-   |               ^^^^^^^
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:32:7
-   |
-LL | #[cfg(version("0"))]
-   |       ^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-warning: unknown version literal format, assuming it refers to a future version
-  --> $DIR/feature-gate-cfg-version.rs:32:15
-   |
-LL | #[cfg(version("0"))]
-   |               ^^^
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:35:7
-   |
-LL | #[cfg(version("1.0"))]
-   |       ^^^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:38:7
-   |
-LL | #[cfg(version("1.65536.2"))]
-   |       ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-warning: unknown version literal format, assuming it refers to a future version
-  --> $DIR/feature-gate-cfg-version.rs:38:15
-   |
-LL | #[cfg(version("1.65536.2"))]
-   |               ^^^^^^^^^^^
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:41:7
-   |
-LL | #[cfg(version("1.20.0-stable"))]
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
-   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-warning: unknown version literal format, assuming it refers to a future version
-  --> $DIR/feature-gate-cfg-version.rs:41:15
-   |
-LL | #[cfg(version("1.20.0-stable"))]
-   |               ^^^^^^^^^^^^^^^
-
-error[E0658]: `cfg(version)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-version.rs:48:18
+  --> $DIR/feature-gate-cfg-version.rs:10:18
    |
 LL |     assert!(cfg!(version("1.42")));
    |                  ^^^^^^^^^^^^^^^
@@ -214,6 +18,6 @@ LL |     assert!(cfg!(version("1.42")));
    = help: add `#![feature(cfg_version)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 19 previous errors; 7 warnings emitted
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

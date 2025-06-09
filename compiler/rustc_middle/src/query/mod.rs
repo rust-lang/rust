@@ -535,7 +535,8 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Fetch the THIR for a given body.
+    /// Fetch the THIR for a given body. The THIR body gets stolen by unsafety checking unless
+    /// `-Zno-steal-thir` is on.
     query thir_body(key: LocalDefId) -> Result<(&'tcx Steal<thir::Thir<'tcx>>, thir::ExprId), ErrorGuaranteed> {
         // Perf tests revealed that hashing THIR is inefficient (see #85729).
         no_hash
@@ -922,6 +923,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query coroutine_hidden_types(
+        def_id: DefId
+    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, ty::CoroutineWitnessTypes<TyCtxt<'tcx>>>> {
+        desc { "looking up the hidden types stored across await points in a coroutine" }
+    }
+
     /// Gets a map with the variances of every item in the local crate.
     ///
     /// <div class="warning">
@@ -1113,10 +1120,6 @@ rustc_queries! {
         desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_naked_functions(key: LocalModDefId) {
-        desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
-    }
-
     query check_mod_privacy(key: LocalModDefId) {
         desc { |tcx| "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }
@@ -1131,7 +1134,7 @@ rustc_queries! {
     /// their respective impl (i.e., part of the derive macro)
     query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx (
         LocalDefIdSet,
-        LocalDefIdMap<Vec<(DefId, DefId)>>
+        LocalDefIdMap<FxIndexSet<(DefId, DefId)>>
     ) {
         arena_cache
         desc { "finding live symbols in crate" }
@@ -1141,8 +1144,8 @@ rustc_queries! {
         desc { |tcx| "checking deathness of variables in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_type_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
-        desc { |tcx| "checking that types are well-formed in {}", describe_as_module(key, tcx) }
+    query check_type_wf(key: ()) -> Result<(), ErrorGuaranteed> {
+        desc { "checking that types are well-formed" }
         return_result_from_ensure_ok
     }
 
@@ -2585,6 +2588,11 @@ rustc_queries! {
     query size_estimate(key: ty::Instance<'tcx>) -> usize {
         desc { "estimating codegen size of `{}`", key }
         cache_on_disk_if { true }
+    }
+
+    query anon_const_kind(def_id: DefId) -> ty::AnonConstKind {
+        desc { |tcx| "looking up anon const kind of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 }
 

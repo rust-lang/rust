@@ -1,6 +1,6 @@
 use std::assert_matches::assert_matches;
 
-use rustc_abi::Integer;
+use rustc_abi::{FieldIdx, Integer};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::CastKind;
@@ -484,6 +484,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let mut found_cast_field = false;
                 for i in 0..src.layout.fields.count() {
                     let cast_ty_field = cast_ty.field(self, i);
+                    let i = FieldIdx::from_usize(i);
                     let src_field = self.project_field(src, i)?;
                     let dst_field = self.project_field(dest, i)?;
                     if src_field.layout.is_1zst() && cast_ty_field.is_1zst() {

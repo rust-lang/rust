@@ -174,7 +174,8 @@ As mentioned previously, the distinction between early and late bound parameters
 - When naming a function (early)
 - When calling a function (late)
 
-There currently is no syntax for explicitly specifying generic arguments for late bound parameters as part of the call step, only specifying generic arguments when naming a function. The syntax `foo::<'static>();`, despite being part of a function call, behaves as `(foo::<'static>)();` and instantiates the early bound generic parameters on the function item type.
+There is currently no syntax for explicitly specifying generic arguments for late bound parameters during the call step; generic arguments can only be specified for early bound parameters when naming a function.
+The syntax `foo::<'static>();`, despite being part of a function call, behaves as `(foo::<'static>)();` and instantiates the early bound generic parameters on the function item type.
 
 See the following example:
 ```rust

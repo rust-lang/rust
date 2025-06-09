@@ -1,5 +1,6 @@
+#![cfg_attr(bootstrap, feature(cfg_match))]
+#![cfg_attr(not(bootstrap), feature(cfg_select))]
 #![feature(rustc_private)]
-#![feature(cfg_match)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
 #![feature(map_try_insert)]
@@ -11,6 +12,7 @@
 #![feature(nonzero_ops)]
 #![feature(strict_overflow_ops)]
 #![feature(pointer_is_aligned_to)]
+#![feature(ptr_metadata)]
 #![feature(unqualified_local_imports)]
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
@@ -41,14 +43,7 @@
     rustc::potential_query_instability,
     rustc::untranslatable_diagnostic,
 )]
-#![warn(
-    rust_2018_idioms,
-    unqualified_local_imports,
-    clippy::cast_possible_wrap, // unsigned -> signed
-    clippy::cast_sign_loss, // signed -> unsigned
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-)]
+#![warn(rust_2018_idioms, unqualified_local_imports, clippy::as_conversions)]
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
@@ -76,8 +71,8 @@ extern crate rustc_target;
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 
+mod alloc;
 mod alloc_addresses;
-mod alloc_bytes;
 mod borrow_tracker;
 mod clock;
 mod concurrency;
@@ -112,8 +107,8 @@ pub type OpTy<'tcx> = interpret::OpTy<'tcx, machine::Provenance>;
 pub type PlaceTy<'tcx> = interpret::PlaceTy<'tcx, machine::Provenance>;
 pub type MPlaceTy<'tcx> = interpret::MPlaceTy<'tcx, machine::Provenance>;
 
+pub use crate::alloc::MiriAllocBytes;
 pub use crate::alloc_addresses::{EvalContextExt as _, ProvenanceMode};
-pub use crate::alloc_bytes::MiriAllocBytes;
 pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,
 };
@@ -140,7 +135,7 @@ pub use crate::eval::{
     AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, MiriEntryFnType, RejectOpWith,
     ValidationMode, create_ecx, eval_entry,
 };
-pub use crate::helpers::{AccessKind, EvalContextExt as _};
+pub use crate::helpers::{AccessKind, EvalContextExt as _, ToU64 as _, ToUsize as _};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
     AllocExtra, DynMachineCallback, FrameExtra, MachineCallback, MemoryKind, MiriInterpCx,

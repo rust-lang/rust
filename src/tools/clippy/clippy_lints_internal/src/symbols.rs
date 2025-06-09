@@ -6,10 +6,9 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, Lit, Node, Pat, PatExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_lint_defs::declare_tool_lint;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
 

@@ -16,7 +16,7 @@ bench = false
 
 [dependencies]
 core = { path = "../core", public = true }
-compiler_builtins = { version = "=0.1.159", features = ['rustc-dep-of-std'] }
+compiler_builtins = { version = "=0.1.160", features = ['rustc-dep-of-std'] }
 
 [features]
 compiler-builtins-mem = ['compiler_builtins/mem']
@@ -32,7 +32,6 @@ optimize_for_size = ["core/optimize_for_size"]
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = [
-    'cfg(bootstrap)',
     'cfg(no_global_oom_handling)',
     'cfg(no_rc)',
     'cfg(no_sync)',

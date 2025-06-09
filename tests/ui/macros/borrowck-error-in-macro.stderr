@@ -1,0 +1,19 @@
+error[E0596]: cannot borrow value as mutable, as it is not declared as mutable
+  --> $DIR/borrowck-error-in-macro.rs:7:1
+   |
+LL | a::ice! {}
+   | ^^^^^^^^^^
+   | |
+   | cannot borrow as mutable
+   | a call in this macro requires a mutable binding due to mutable borrow of `d`
+   |
+   = note: this error originates in the macro `a::ice` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider changing this to be mutable
+  --> $DIR/auxiliary/borrowck-error-in-macro.rs:6:17
+   |
+LL |             let mut c = || *d += 1;
+   |                 +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

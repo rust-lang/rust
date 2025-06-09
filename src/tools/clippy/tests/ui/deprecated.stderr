@@ -1,8 +1,8 @@
-error: lint `clippy::should_assert_eq` has been removed: `assert!(a == b)` can now print the values the same way `assert_eq!(a, b) can
+error: lint `clippy::assign_ops` has been removed: compound operators are harmless and linting on them is not in scope for clippy
   --> tests/ui/deprecated.rs:5:9
    |
-LL | #![warn(clippy::should_assert_eq)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![warn(clippy::assign_ops)]
+   |         ^^^^^^^^^^^^^^^^^^
    |
    = note: `-D renamed-and-removed-lints` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(renamed_and_removed_lints)]`
@@ -13,83 +13,83 @@ error: lint `clippy::extend_from_slice` has been removed: `Vec::extend_from_slic
 LL | #![warn(clippy::extend_from_slice)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::range_step_by_zero` has been removed: `Iterator::step_by(0)` now panics and is no longer an infinite iterator
+error: lint `clippy::match_on_vec_items` has been removed: `clippy::indexing_slicing` covers indexing and slicing on `Vec<_>`
   --> tests/ui/deprecated.rs:7:9
    |
-LL | #![warn(clippy::range_step_by_zero)]
+LL | #![warn(clippy::match_on_vec_items)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::unstable_as_slice` has been removed: `Vec::as_slice` is now stable
-  --> tests/ui/deprecated.rs:8:9
-   |
-LL | #![warn(clippy::unstable_as_slice)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: lint `clippy::unstable_as_mut_slice` has been removed: `Vec::as_mut_slice` is now stable
-  --> tests/ui/deprecated.rs:9:9
-   |
-LL | #![warn(clippy::unstable_as_mut_slice)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: lint `clippy::misaligned_transmute` has been removed: split into `clippy::cast_ptr_alignment` and `clippy::transmute_ptr_to_ptr`
-  --> tests/ui/deprecated.rs:10:9
+  --> tests/ui/deprecated.rs:8:9
    |
 LL | #![warn(clippy::misaligned_transmute)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::assign_ops` has been removed: compound operators are harmless and linting on them is not in scope for clippy
-  --> tests/ui/deprecated.rs:11:9
-   |
-LL | #![warn(clippy::assign_ops)]
-   |         ^^^^^^^^^^^^^^^^^^
-
-error: lint `clippy::unsafe_vector_initialization` has been removed: the suggested alternative could be substantially slower
-  --> tests/ui/deprecated.rs:12:9
-   |
-LL | #![warn(clippy::unsafe_vector_initialization)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: lint `clippy::unused_collect` has been removed: `Iterator::collect` is now marked as `#[must_use]`
-  --> tests/ui/deprecated.rs:13:9
-   |
-LL | #![warn(clippy::unused_collect)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^
-
-error: lint `clippy::replace_consts` has been removed: `min_value` and `max_value` are now deprecated
-  --> tests/ui/deprecated.rs:14:9
-   |
-LL | #![warn(clippy::replace_consts)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^
-
-error: lint `clippy::regex_macro` has been removed: the `regex!` macro was removed from the regex crate in 2018
-  --> tests/ui/deprecated.rs:15:9
-   |
-LL | #![warn(clippy::regex_macro)]
-   |         ^^^^^^^^^^^^^^^^^^^
-
-error: lint `clippy::pub_enum_variant_names` has been removed: `clippy::enum_variant_names` now covers this case via the `avoid-breaking-exported-api` config
-  --> tests/ui/deprecated.rs:16:9
-   |
-LL | #![warn(clippy::pub_enum_variant_names)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: lint `clippy::wrong_pub_self_convention` has been removed: `clippy::wrong_self_convention` now covers this case via the `avoid-breaking-exported-api` config
-  --> tests/ui/deprecated.rs:17:9
-   |
-LL | #![warn(clippy::wrong_pub_self_convention)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: lint `clippy::option_map_or_err_ok` has been removed: `clippy::manual_ok_or` covers this case
-  --> tests/ui/deprecated.rs:18:9
+  --> tests/ui/deprecated.rs:9:9
    |
 LL | #![warn(clippy::option_map_or_err_ok)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::match_on_vec_items` has been removed: `clippy::indexing_slicing` covers indexing and slicing on `Vec<_>`
+error: lint `clippy::pub_enum_variant_names` has been removed: `clippy::enum_variant_names` now covers this case via the `avoid-breaking-exported-api` config
+  --> tests/ui/deprecated.rs:10:9
+   |
+LL | #![warn(clippy::pub_enum_variant_names)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::range_step_by_zero` has been removed: `Iterator::step_by(0)` now panics and is no longer an infinite iterator
+  --> tests/ui/deprecated.rs:11:9
+   |
+LL | #![warn(clippy::range_step_by_zero)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::regex_macro` has been removed: the `regex!` macro was removed from the regex crate in 2018
+  --> tests/ui/deprecated.rs:12:9
+   |
+LL | #![warn(clippy::regex_macro)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::replace_consts` has been removed: `min_value` and `max_value` are now deprecated
+  --> tests/ui/deprecated.rs:13:9
+   |
+LL | #![warn(clippy::replace_consts)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::should_assert_eq` has been removed: `assert!(a == b)` can now print the values the same way `assert_eq!(a, b) can
+  --> tests/ui/deprecated.rs:14:9
+   |
+LL | #![warn(clippy::should_assert_eq)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::unsafe_vector_initialization` has been removed: the suggested alternative could be substantially slower
+  --> tests/ui/deprecated.rs:15:9
+   |
+LL | #![warn(clippy::unsafe_vector_initialization)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::unstable_as_mut_slice` has been removed: `Vec::as_mut_slice` is now stable
+  --> tests/ui/deprecated.rs:16:9
+   |
+LL | #![warn(clippy::unstable_as_mut_slice)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::unstable_as_slice` has been removed: `Vec::as_slice` is now stable
+  --> tests/ui/deprecated.rs:17:9
+   |
+LL | #![warn(clippy::unstable_as_slice)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::unused_collect` has been removed: `Iterator::collect` is now marked as `#[must_use]`
+  --> tests/ui/deprecated.rs:18:9
+   |
+LL | #![warn(clippy::unused_collect)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::wrong_pub_self_convention` has been removed: `clippy::wrong_self_convention` now covers this case via the `avoid-breaking-exported-api` config
   --> tests/ui/deprecated.rs:19:9
    |
-LL | #![warn(clippy::match_on_vec_items)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![warn(clippy::wrong_pub_self_convention)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 15 previous errors
 
