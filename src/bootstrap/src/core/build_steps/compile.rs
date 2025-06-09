@@ -195,8 +195,6 @@ impl Step for Std {
             return;
         }
 
-        builder.require_submodule("library/stdarch", None);
-
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);

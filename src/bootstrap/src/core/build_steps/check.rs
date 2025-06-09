@@ -84,8 +84,6 @@ impl Step for Std {
             return;
         }
 
-        builder.require_submodule("library/stdarch", None);
-
         let stage = self.custom_stage.unwrap_or(builder.top_stage);
 
         let target = self.target;
