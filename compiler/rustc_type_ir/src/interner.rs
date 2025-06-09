@@ -106,6 +106,7 @@ pub trait Interner:
     type ParamTy: Copy + Debug + Hash + Eq + ParamLike;
     type BoundTy: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
     type PlaceholderTy: PlaceholderLike;
+    type Symbol: Copy + Hash + PartialEq + Eq + TypeFoldable<Self> + TypeVisitable<Self>;
 
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;

@@ -583,6 +583,10 @@ pub trait Features<I: Interner>: Copy {
     fn coroutine_clone(self) -> bool;
 
     fn associated_const_equality(self) -> bool;
+
+    fn impl_stability(self) -> bool;
+
+    fn enabled(self, symbol: I::Symbol) -> bool;
 }
 
 pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
