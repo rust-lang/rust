@@ -69,7 +69,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
         "rep movsb",
         "sub $7, %rsi",
         "sub $7, %rdi",
-        "mov {qword_count}, %rcx",
+        "mov {qword_count:r}, %rcx",
         "rep movsq",
         "test {pre_byte_count:e}, {pre_byte_count:e}",
         "add $7, %rsi",
@@ -212,7 +212,7 @@ pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
     let x = {
         let r;
         asm!(
-            "movdqa ({addr}), {dest}",
+            "movdqa ({addr:r}), {dest}",
             addr = in(reg) s,
             dest = out(xmm_reg) r,
             options(att_syntax, nostack),
@@ -232,7 +232,7 @@ pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
         let x = {
             let r;
             asm!(
-                "movdqa ({addr}), {dest}",
+                "movdqa ({addr:r}), {dest}",
                 addr = in(reg) s,
                 dest = out(xmm_reg) r,
                 options(att_syntax, nostack),
