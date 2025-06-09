@@ -2,7 +2,7 @@ error: internal compiler error[E0080]: attempt to compute `0_u32 - 1_u32`, which
   --> $DIR/err.rs:9:21
    |
 LL | pub static C: u32 = 0 - 1;
-   |                     ^^^^^ evaluation of static initializer failed here
+   |                     ^^^^^ evaluation of `C` failed here
 
 
 error: the compiler unexpectedly panicked. this is a bug.

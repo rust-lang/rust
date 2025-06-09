@@ -13,7 +13,7 @@ error[E0080]: using uninitialized data, but this operation requires initialized 
   --> $DIR/union-ub.rs:35:36
    |
 LL | const UNINIT_BOOL: bool = unsafe { DummyUnion { unit: () }.bool };
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNINIT_BOOL` failed here
 
 error: aborting due to 2 previous errors
 

@@ -2,7 +2,7 @@ error[E0080]: reached the configured maximum number of stack frames
   --> $DIR/ctfe-id-unlimited.rs:28:20
    |
 LL | const ID_ED: u32 = rec_id(ORIGINAL);
-   |                    ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                    ^^^^^^^^^^^^^^^^ evaluation of `ID_ED` failed inside this call
    |
 note: inside `rec_id`
   --> $DIR/ctfe-id-unlimited.rs:21:5
