@@ -27,8 +27,7 @@
 use std::fmt::Debug;
 use std::{fmt, io};
 
-use rustc_hir::def::DefKind;
-use rustc_smir::IndexedVal;
+pub(crate) use rustc_smir::IndexedVal;
 use serde::Serialize;
 use stable_mir::compiler_interface::with;
 pub use stable_mir::crate_def::{CrateDef, CrateDefItems, CrateDefType, DefId};
@@ -41,7 +40,7 @@ use crate::{rustc_smir, stable_mir};
 
 pub mod abi;
 mod alloc;
-pub(crate) mod convert;
+pub(crate) mod unstable;
 #[macro_use]
 pub mod crate_def;
 pub mod compiler_interface;
@@ -220,43 +219,6 @@ pub fn all_trait_decls() -> TraitDecls {
 
 pub fn all_trait_impls() -> ImplTraitDecls {
     with(|cx| cx.all_trait_impls())
-}
-
-pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
-    match kind {
-        DefKind::Mod
-        | DefKind::Struct
-        | DefKind::Union
-        | DefKind::Enum
-        | DefKind::Variant
-        | DefKind::Trait
-        | DefKind::TyAlias
-        | DefKind::ForeignTy
-        | DefKind::TraitAlias
-        | DefKind::AssocTy
-        | DefKind::TyParam
-        | DefKind::ConstParam
-        | DefKind::Macro(_)
-        | DefKind::ExternCrate
-        | DefKind::Use
-        | DefKind::ForeignMod
-        | DefKind::OpaqueTy
-        | DefKind::Field
-        | DefKind::LifetimeParam
-        | DefKind::Impl { .. }
-        | DefKind::GlobalAsm => {
-            unreachable!("Not a valid item kind: {kind:?}");
-        }
-        DefKind::Closure | DefKind::AssocFn | DefKind::Fn | DefKind::SyntheticCoroutineBody => {
-            ItemKind::Fn
-        }
-        DefKind::Const | DefKind::InlineConst | DefKind::AssocConst | DefKind::AnonConst => {
-            ItemKind::Const
-        }
-        DefKind::Static { .. } => ItemKind::Static,
-        DefKind::Ctor(_, rustc_hir::def::CtorKind::Const) => ItemKind::Ctor(CtorKind::Const),
-        DefKind::Ctor(_, rustc_hir::def::CtorKind::Fn) => ItemKind::Ctor(CtorKind::Fn),
-    }
 }
 
 /// A type that provides internal information but that can still be used for debug purpose.

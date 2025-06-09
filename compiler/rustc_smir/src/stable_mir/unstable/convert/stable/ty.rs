@@ -6,7 +6,7 @@ use rustc_smir::Tables;
 use rustc_smir::context::SmirCtxt;
 use stable_mir::alloc;
 use stable_mir::compiler_interface::BridgeTys;
-use stable_mir::convert::Stable;
+use stable_mir::unstable::Stable;
 use stable_mir::ty::{
     AdtKind, FloatTy, GenericArgs, GenericParamDef, IntTy, Region, RigidTy, TyKind, UintTy,
 };
@@ -15,7 +15,7 @@ use crate::{rustc_smir, stable_mir};
 
 impl<'tcx> Stable<'tcx> for ty::AliasTyKind {
     type T = stable_mir::ty::AliasKind;
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             ty::Projection => stable_mir::ty::AliasKind::Projection,
             ty::Inherent => stable_mir::ty::AliasKind::Inherent,
@@ -27,10 +27,10 @@ impl<'tcx> Stable<'tcx> for ty::AliasTyKind {
 
 impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
     type T = stable_mir::ty::AliasTy;
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::AliasTy { args, def_id, .. } = self;
         stable_mir::ty::AliasTy { def_id: tables.alias_def(*def_id), args: args.stable(tables, cx) }
@@ -39,10 +39,10 @@ impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
 
 impl<'tcx> Stable<'tcx> for ty::AliasTerm<'tcx> {
     type T = stable_mir::ty::AliasTerm;
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::AliasTerm { args, def_id, .. } = self;
         stable_mir::ty::AliasTerm {
@@ -55,7 +55,7 @@ impl<'tcx> Stable<'tcx> for ty::AliasTerm<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::DynKind {
     type T = stable_mir::ty::DynKind;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             ty::Dyn => stable_mir::ty::DynKind::Dyn,
             ty::DynStar => stable_mir::ty::DynKind::DynStar,
@@ -66,10 +66,10 @@ impl<'tcx> Stable<'tcx> for ty::DynKind {
 impl<'tcx> Stable<'tcx> for ty::ExistentialPredicate<'tcx> {
     type T = stable_mir::ty::ExistentialPredicate;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::ExistentialPredicate::*;
         match self {
@@ -87,10 +87,10 @@ impl<'tcx> Stable<'tcx> for ty::ExistentialPredicate<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::ExistentialTraitRef<'tcx> {
     type T = stable_mir::ty::ExistentialTraitRef;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::ExistentialTraitRef { def_id, args, .. } = self;
         stable_mir::ty::ExistentialTraitRef {
@@ -103,10 +103,10 @@ impl<'tcx> Stable<'tcx> for ty::ExistentialTraitRef<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::TermKind<'tcx> {
     type T = stable_mir::ty::TermKind;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::TermKind;
         match self {
@@ -122,10 +122,10 @@ impl<'tcx> Stable<'tcx> for ty::TermKind<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::ExistentialProjection<'tcx> {
     type T = stable_mir::ty::ExistentialProjection;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::ExistentialProjection { def_id, args, term, .. } = self;
         stable_mir::ty::ExistentialProjection {
@@ -138,10 +138,10 @@ impl<'tcx> Stable<'tcx> for ty::ExistentialProjection<'tcx> {
 
 impl<'tcx> Stable<'tcx> for ty::adjustment::PointerCoercion {
     type T = stable_mir::mir::PointerCoercion;
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use rustc_middle::ty::adjustment::PointerCoercion;
         match self {
@@ -162,7 +162,7 @@ impl<'tcx> Stable<'tcx> for ty::adjustment::PointerCoercion {
 
 impl<'tcx> Stable<'tcx> for ty::UserTypeAnnotationIndex {
     type T = usize;
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         self.as_usize()
     }
 }
@@ -170,7 +170,7 @@ impl<'tcx> Stable<'tcx> for ty::UserTypeAnnotationIndex {
 impl<'tcx> Stable<'tcx> for ty::AdtKind {
     type T = AdtKind;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             ty::AdtKind::Struct => AdtKind::Struct,
             ty::AdtKind::Union => AdtKind::Union,
@@ -182,10 +182,10 @@ impl<'tcx> Stable<'tcx> for ty::AdtKind {
 impl<'tcx> Stable<'tcx> for ty::FieldDef {
     type T = stable_mir::ty::FieldDef;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         stable_mir::ty::FieldDef {
             def: tables.create_def_id(self.did),
@@ -196,10 +196,10 @@ impl<'tcx> Stable<'tcx> for ty::FieldDef {
 
 impl<'tcx> Stable<'tcx> for ty::GenericArgs<'tcx> {
     type T = stable_mir::ty::GenericArgs;
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         GenericArgs(self.iter().map(|arg| arg.kind().stable(tables, cx)).collect())
     }
@@ -208,10 +208,10 @@ impl<'tcx> Stable<'tcx> for ty::GenericArgs<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::GenericArgKind<'tcx> {
     type T = stable_mir::ty::GenericArgKind;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::GenericArgKind;
         match self {
@@ -230,10 +230,10 @@ where
 {
     type T = stable_mir::ty::Binder<V>;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::Binder;
 
@@ -254,10 +254,10 @@ where
 {
     type T = stable_mir::ty::EarlyBinder<V>;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::EarlyBinder;
 
@@ -267,10 +267,10 @@ where
 
 impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
     type T = stable_mir::ty::FnSig;
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::FnSig;
 
@@ -290,11 +290,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
     type T = stable_mir::ty::BoundTyKind;
 
-    fn stable(
-        &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        _: &SmirCtxt<'tcx, BridgeTys>,
-    ) -> Self::T {
+    fn stable<'cx>(&self, tables: &mut Tables<'cx, BridgeTys>, _: &SmirCtxt<'cx, BridgeTys>) -> Self::T {
         use stable_mir::ty::BoundTyKind;
 
         match self {
@@ -309,11 +305,7 @@ impl<'tcx> Stable<'tcx> for ty::BoundTyKind {
 impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
     type T = stable_mir::ty::BoundRegionKind;
 
-    fn stable(
-        &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        _: &SmirCtxt<'tcx, BridgeTys>,
-    ) -> Self::T {
+    fn stable<'cx>(&self, tables: &mut Tables<'cx, BridgeTys>, _: &SmirCtxt<'cx, BridgeTys>) -> Self::T {
         use stable_mir::ty::BoundRegionKind;
 
         match self {
@@ -329,10 +321,10 @@ impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
 impl<'tcx> Stable<'tcx> for ty::BoundVariableKind {
     type T = stable_mir::ty::BoundVariableKind;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::BoundVariableKind;
 
@@ -351,7 +343,7 @@ impl<'tcx> Stable<'tcx> for ty::BoundVariableKind {
 impl<'tcx> Stable<'tcx> for ty::IntTy {
     type T = IntTy;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             ty::IntTy::Isize => IntTy::Isize,
             ty::IntTy::I8 => IntTy::I8,
@@ -366,7 +358,7 @@ impl<'tcx> Stable<'tcx> for ty::IntTy {
 impl<'tcx> Stable<'tcx> for ty::UintTy {
     type T = UintTy;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             ty::UintTy::Usize => UintTy::Usize,
             ty::UintTy::U8 => UintTy::U8,
@@ -381,7 +373,7 @@ impl<'tcx> Stable<'tcx> for ty::UintTy {
 impl<'tcx> Stable<'tcx> for ty::FloatTy {
     type T = FloatTy;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             ty::FloatTy::F16 => FloatTy::F16,
             ty::FloatTy::F32 => FloatTy::F32,
@@ -393,10 +385,10 @@ impl<'tcx> Stable<'tcx> for ty::FloatTy {
 
 impl<'tcx> Stable<'tcx> for Ty<'tcx> {
     type T = stable_mir::ty::Ty;
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         tables.intern_ty(cx.lift(*self).unwrap())
     }
@@ -404,10 +396,10 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
 
 impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
     type T = stable_mir::ty::TyKind;
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match self {
             ty::Bool => TyKind::RigidTy(RigidTy::Bool),
@@ -490,10 +482,10 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
     type T = stable_mir::ty::Pattern;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match **self {
             ty::PatternKind::Range { start, end } => stable_mir::ty::Pattern::Range {
@@ -510,10 +502,10 @@ impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
     type T = stable_mir::ty::TyConst;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ct = cx.lift(*self).unwrap();
         let kind = match ct.kind() {
@@ -548,7 +540,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
 
 impl<'tcx> Stable<'tcx> for ty::ParamConst {
     type T = stable_mir::ty::ParamConst;
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         use stable_mir::ty::ParamConst;
         ParamConst { index: self.index, name: self.name.to_string() }
     }
@@ -556,7 +548,7 @@ impl<'tcx> Stable<'tcx> for ty::ParamConst {
 
 impl<'tcx> Stable<'tcx> for ty::ParamTy {
     type T = stable_mir::ty::ParamTy;
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         use stable_mir::ty::ParamTy;
         ParamTy { index: self.index, name: self.name.to_string() }
     }
@@ -564,10 +556,10 @@ impl<'tcx> Stable<'tcx> for ty::ParamTy {
 
 impl<'tcx> Stable<'tcx> for ty::BoundTy {
     type T = stable_mir::ty::BoundTy;
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::BoundTy;
         BoundTy { var: self.var.as_usize(), kind: self.kind.stable(tables, cx) }
@@ -576,7 +568,7 @@ impl<'tcx> Stable<'tcx> for ty::BoundTy {
 
 impl<'tcx> Stable<'tcx> for ty::trait_def::TraitSpecializationKind {
     type T = stable_mir::ty::TraitSpecializationKind;
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         use stable_mir::ty::TraitSpecializationKind;
 
         match self {
@@ -591,10 +583,10 @@ impl<'tcx> Stable<'tcx> for ty::trait_def::TraitSpecializationKind {
 
 impl<'tcx> Stable<'tcx> for ty::TraitDef {
     type T = stable_mir::ty::TraitDecl;
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::opaque;
         use stable_mir::ty::TraitDecl;
@@ -621,10 +613,10 @@ impl<'tcx> Stable<'tcx> for ty::TraitDef {
 
 impl<'tcx> Stable<'tcx> for ty::TraitRef<'tcx> {
     type T = stable_mir::ty::TraitRef;
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::TraitRef;
 
@@ -635,10 +627,10 @@ impl<'tcx> Stable<'tcx> for ty::TraitRef<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::Generics {
     type T = stable_mir::ty::Generics;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::Generics;
 
@@ -663,7 +655,7 @@ impl<'tcx> Stable<'tcx> for ty::Generics {
 impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDefKind {
     type T = stable_mir::ty::GenericParamDefKind;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         use stable_mir::ty::GenericParamDefKind;
         match self {
             ty::GenericParamDefKind::Lifetime => GenericParamDefKind::Lifetime,
@@ -680,10 +672,10 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDefKind {
 impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDef {
     type T = stable_mir::ty::GenericParamDef;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         GenericParamDef {
             name: self.name.to_string(),
@@ -698,10 +690,10 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDef {
 impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
     type T = stable_mir::ty::PredicateKind;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use rustc_middle::ty::PredicateKind;
         match self {
@@ -737,10 +729,10 @@ impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
     type T = stable_mir::ty::ClauseKind;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use rustc_middle::ty::ClauseKind;
         match *self {
@@ -780,7 +772,7 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::ClosureKind {
     type T = stable_mir::ty::ClosureKind;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         use rustc_middle::ty::ClosureKind::*;
         match self {
             Fn => stable_mir::ty::ClosureKind::Fn,
@@ -793,10 +785,10 @@ impl<'tcx> Stable<'tcx> for ty::ClosureKind {
 impl<'tcx> Stable<'tcx> for ty::SubtypePredicate<'tcx> {
     type T = stable_mir::ty::SubtypePredicate;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::SubtypePredicate { a, b, a_is_expected: _ } = self;
         stable_mir::ty::SubtypePredicate { a: a.stable(tables, cx), b: b.stable(tables, cx) }
@@ -806,10 +798,10 @@ impl<'tcx> Stable<'tcx> for ty::SubtypePredicate<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::CoercePredicate<'tcx> {
     type T = stable_mir::ty::CoercePredicate;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::CoercePredicate { a, b } = self;
         stable_mir::ty::CoercePredicate { a: a.stable(tables, cx), b: b.stable(tables, cx) }
@@ -819,7 +811,7 @@ impl<'tcx> Stable<'tcx> for ty::CoercePredicate<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::AliasRelationDirection {
     type T = stable_mir::ty::AliasRelationDirection;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         use rustc_middle::ty::AliasRelationDirection::*;
         match self {
             Equate => stable_mir::ty::AliasRelationDirection::Equate,
@@ -831,10 +823,10 @@ impl<'tcx> Stable<'tcx> for ty::AliasRelationDirection {
 impl<'tcx> Stable<'tcx> for ty::TraitPredicate<'tcx> {
     type T = stable_mir::ty::TraitPredicate;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::TraitPredicate { trait_ref, polarity } = self;
         stable_mir::ty::TraitPredicate {
@@ -850,10 +842,10 @@ where
 {
     type T = stable_mir::ty::OutlivesPredicate<T::T, Region>;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::OutlivesPredicate(a, b) = self;
         stable_mir::ty::OutlivesPredicate(a.stable(tables, cx), b.stable(tables, cx))
@@ -863,10 +855,10 @@ where
 impl<'tcx> Stable<'tcx> for ty::ProjectionPredicate<'tcx> {
     type T = stable_mir::ty::ProjectionPredicate;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::ProjectionPredicate { projection_term, term } = self;
         stable_mir::ty::ProjectionPredicate {
@@ -879,7 +871,7 @@ impl<'tcx> Stable<'tcx> for ty::ProjectionPredicate<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::ImplPolarity {
     type T = stable_mir::ty::ImplPolarity;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         use rustc_middle::ty::ImplPolarity::*;
         match self {
             Positive => stable_mir::ty::ImplPolarity::Positive,
@@ -892,7 +884,7 @@ impl<'tcx> Stable<'tcx> for ty::ImplPolarity {
 impl<'tcx> Stable<'tcx> for ty::PredicatePolarity {
     type T = stable_mir::ty::PredicatePolarity;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         use rustc_middle::ty::PredicatePolarity::*;
         match self {
             Positive => stable_mir::ty::PredicatePolarity::Positive,
@@ -904,10 +896,10 @@ impl<'tcx> Stable<'tcx> for ty::PredicatePolarity {
 impl<'tcx> Stable<'tcx> for ty::Region<'tcx> {
     type T = stable_mir::ty::Region;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         Region { kind: self.kind().stable(tables, cx) }
     }
@@ -916,10 +908,10 @@ impl<'tcx> Stable<'tcx> for ty::Region<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
     type T = stable_mir::ty::RegionKind;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::{BoundRegion, EarlyParamRegion, RegionKind};
         match self {
@@ -953,10 +945,10 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
     type T = stable_mir::mir::mono::Instance;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let def = tables.instance_def(cx.lift(*self).unwrap());
         let kind = match self.def {
@@ -986,7 +978,7 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
 
 impl<'tcx> Stable<'tcx> for ty::Variance {
     type T = stable_mir::mir::Variance;
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             ty::Bivariant => stable_mir::mir::Variance::Bivariant,
             ty::Contravariant => stable_mir::mir::Variance::Contravariant,
@@ -999,7 +991,7 @@ impl<'tcx> Stable<'tcx> for ty::Variance {
 impl<'tcx> Stable<'tcx> for ty::Movability {
     type T = stable_mir::ty::Movability;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             ty::Movability::Static => stable_mir::ty::Movability::Static,
             ty::Movability::Movable => stable_mir::ty::Movability::Movable,
@@ -1010,7 +1002,7 @@ impl<'tcx> Stable<'tcx> for ty::Movability {
 impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
     type T = stable_mir::ty::Abi;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         use rustc_abi::ExternAbi;
         use stable_mir::ty::Abi;
         match *self {
@@ -1047,10 +1039,10 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
 impl<'tcx> Stable<'tcx> for rustc_session::cstore::ForeignModule {
     type T = stable_mir::ty::ForeignModule;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         stable_mir::ty::ForeignModule {
             def_id: tables.foreign_module_def(self.def_id),
@@ -1062,10 +1054,10 @@ impl<'tcx> Stable<'tcx> for rustc_session::cstore::ForeignModule {
 impl<'tcx> Stable<'tcx> for ty::AssocKind {
     type T = stable_mir::ty::AssocKind;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use stable_mir::ty::{AssocKind, AssocTypeData};
         match *self {
@@ -1088,7 +1080,7 @@ impl<'tcx> Stable<'tcx> for ty::AssocKind {
 impl<'tcx> Stable<'tcx> for ty::AssocItemContainer {
     type T = stable_mir::ty::AssocItemContainer;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         use stable_mir::ty::AssocItemContainer;
         match self {
             ty::AssocItemContainer::Trait => AssocItemContainer::Trait,
@@ -1100,10 +1092,10 @@ impl<'tcx> Stable<'tcx> for ty::AssocItemContainer {
 impl<'tcx> Stable<'tcx> for ty::AssocItem {
     type T = stable_mir::ty::AssocItem;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         stable_mir::ty::AssocItem {
             def_id: tables.assoc_def(self.def_id),
@@ -1117,11 +1109,7 @@ impl<'tcx> Stable<'tcx> for ty::AssocItem {
 impl<'tcx> Stable<'tcx> for ty::ImplTraitInTraitData {
     type T = stable_mir::ty::ImplTraitInTraitData;
 
-    fn stable(
-        &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        _: &SmirCtxt<'tcx, BridgeTys>,
-    ) -> Self::T {
+    fn stable<'cx>(&self, tables: &mut Tables<'cx, BridgeTys>, _: &SmirCtxt<'cx, BridgeTys>) -> Self::T {
         use stable_mir::ty::ImplTraitInTraitData;
         match self {
             ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id } => {
