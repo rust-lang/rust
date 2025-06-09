@@ -660,6 +660,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                    if term.is_trivially_wf(self.tcx()) {
+                        return Ok(EvaluatedToOk);
+                    }
+
                     // So, there is a bit going on here. First, `WellFormed` predicates
                     // are coinductive, like trait predicates with auto traits.
                     // This means that we need to detect if we have recursively
