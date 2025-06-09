@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Debug` captures lifetime that does not appear in bounds
-  --> $DIR/impl-fn-hrtb-bounds-2.rs:5:9
+  --> $DIR/impl-fn-hrtb-bounds-2.rs:8:9
    |
 LL | fn a() -> impl Fn(&u8) -> impl Debug {
    |                           ---------- opaque type defined here

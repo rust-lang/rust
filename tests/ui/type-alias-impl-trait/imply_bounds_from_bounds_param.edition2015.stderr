@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl PlusOne` captures lifetime that does not appear in bounds
-  --> $DIR/imply_bounds_from_bounds_param.rs:26:5
+  --> $DIR/imply_bounds_from_bounds_param.rs:29:5
    |
 LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne {
    |         --                     ------------ opaque type defined here

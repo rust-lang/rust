@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Swap + 'a` captures lifetime that does not appear in bounds
-  --> $DIR/rpit-hide-lifetime-for-swap.rs:17:5
+  --> $DIR/rpit-hide-lifetime-for-swap.rs:20:5
    |
 LL | fn hide<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {
    |             --                                            -------------- opaque type defined here
