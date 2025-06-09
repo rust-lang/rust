@@ -1621,13 +1621,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // we can't do codegen for unsupported ABIs, so error now so we won't get farther
         if !tcx.sess.target.is_abi_supported(extern_abi) {
-            struct_span_code_err!(
+            let mut err = struct_span_code_err!(
                 tcx.dcx(),
                 span,
                 E0570,
                 "`{extern_abi}` is not a supported ABI for the current target",
-            )
-            .emit();
+            );
+
+            if let ExternAbi::Stdcall { unwind } = extern_abi {
+                let c_abi = ExternAbi::C { unwind };
+                let system_abi = ExternAbi::System { unwind };
+                err.help(format!("if you need `extern {extern_abi}` on win32 and `extern {c_abi}` everywhere else, \
+                use `extern {system_abi}`"
+                ));
+            }
+            err.emit();
         }
         // stability gate even things that are already errored on
         gate_unstable_abi(tcx.sess, tcx.features(), span, extern_abi);
