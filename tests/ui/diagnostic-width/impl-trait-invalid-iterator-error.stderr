@@ -1,5 +1,5 @@
 error[E0277]: `()` is not an iterator
-  --> $DIR/conservative_impl_trait.rs:3:33
+  --> $DIR/impl-trait-invalid-iterator-error.rs:3:33
    |
 LL | fn will_ice(something: &u32) -> impl Iterator<Item = &u32> {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
