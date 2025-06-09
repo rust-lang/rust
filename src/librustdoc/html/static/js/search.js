@@ -4587,18 +4587,16 @@ class DocSearch {
                 // types with generic parameters go last.
                 // That's because of the way unification is structured: it eats off
                 // the end, and hits a fast path if the last item is a simple atom.
-                // @ts-expect-error
+                /** @type {function(rustdoc.QueryElement, rustdoc.QueryElement): number} */
                 const sortQ = (a, b) => {
                     const ag = a.generics.length === 0 && a.bindings.size === 0;
                     const bg = b.generics.length === 0 && b.bindings.size === 0;
                     if (ag !== bg) {
-                        // @ts-expect-error
-                        return ag - bg;
+                        return +ag - +bg;
                     }
-                    const ai = a.id > 0;
-                    const bi = b.id > 0;
-                    // @ts-expect-error
-                    return ai - bi;
+                    const ai = a.id !== null && a.id > 0;
+                    const bi = b.id !== null && b.id > 0;
+                    return +ai - +bi;
                 };
                 parsedQuery.elems.sort(sortQ);
                 parsedQuery.returned.sort(sortQ);
