@@ -4368,7 +4368,7 @@ class DocSearch {
          *
          * The `results` map contains information which will be used to sort the search results:
          *
-         * * `fullId` is a `string`` used as the key of the object we use for the `results` map.
+         * * `fullId` is an `integer`` used as the key of the object we use for the `results` map.
          * * `id` is the index in the `searchIndex` array for this element.
          * * `index` is an `integer`` used to sort by the position of the word in the item's name.
          * * `dist` is the main metric used to sort the search results.
@@ -4376,19 +4376,18 @@ class DocSearch {
          *   distance computed for everything other than the last path component.
          *
          * @param {rustdoc.Results} results
-         * @param {string} fullId
+         * @param {number} fullId
          * @param {number} id
          * @param {number} index
          * @param {number} dist
          * @param {number} path_dist
+         * @param {number} maxEditDistance
          */
-        // @ts-expect-error
         function addIntoResults(results, fullId, id, index, dist, path_dist, maxEditDistance) {
             if (dist <= maxEditDistance || index !== -1) {
                 if (results.has(fullId)) {
                     const result = results.get(fullId);
-                    // @ts-expect-error
-                    if (result.dontValidate || result.dist <= dist) {
+                    if (result === undefined || result.dontValidate || result.dist <= dist) {
                         return;
                     }
                 }
@@ -4456,7 +4455,7 @@ class DocSearch {
             }
 
             results.max_dist = Math.max(results.max_dist || 0, tfpDist);
-            addIntoResults(results, row.id.toString(), pos, 0, tfpDist, 0, Number.MAX_VALUE);
+            addIntoResults(results, row.id, pos, 0, tfpDist, 0, Number.MAX_VALUE);
         }
 
         /**
@@ -4507,22 +4506,21 @@ class DocSearch {
 
                     let pathDist = 0;
                     if (elem.fullPath.length > 1) {
-                        // @ts-expect-error
-                        pathDist = checkPath(elem.pathWithoutLast, row);
-                        if (pathDist === null) {
-                            return;
+
+                        const maybePathDist = checkPath(elem.pathWithoutLast, row);
+                        if (maybePathDist === null) {
+                            return
                         }
+                        pathDist = maybePathDist;
                     }
 
                     if (parsedQuery.literalSearch) {
                         if (row.word === elem.pathLast) {
-                            // @ts-expect-error
-                            addIntoResults(results_others, row.id, id, 0, 0, pathDist);
+                            addIntoResults(results_others, row.id, id, 0, 0, pathDist, 0);
                         }
                     } else {
                         addIntoResults(
                             results_others,
-                            // @ts-expect-error
                             row.id,
                             id,
                             row.normalizedName.indexOf(elem.normalizedPathLast),
@@ -4570,7 +4568,6 @@ class DocSearch {
                             const maxDist = results_in_args.size < MAX_RESULTS ?
                                 (tfpDist + 1) :
                                 results_in_args.max_dist;
-                            // @ts-expect-error
                             addIntoResults(results_in_args, row.id, i, -1, tfpDist, 0, maxDist);
                         }
                         if (returned) {
@@ -4581,7 +4578,6 @@ class DocSearch {
                             const maxDist = results_returned.size < MAX_RESULTS ?
                                 (tfpDist + 1) :
                                 results_returned.max_dist;
-                            // @ts-expect-error
                             addIntoResults(results_returned, row.id, i, -1, tfpDist, 0, maxDist);
                         }
                     }

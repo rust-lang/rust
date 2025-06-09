@@ -239,7 +239,7 @@ declare namespace rustdoc {
         query: ParsedQuery,
     }
 
-    type Results = { max_dist?: number } & Map<String, ResultObject>
+    type Results = { max_dist?: number } & Map<number, ResultObject>
 
     /**
      * An annotated `Row`, used in the viewmodel.
