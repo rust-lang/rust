@@ -7,10 +7,7 @@
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
-#![feature(map_try_insert)]
-#![feature(never_type)]
 #![feature(try_blocks)]
-#![feature(vec_deque_pop_if)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
 

@@ -25,7 +25,6 @@
 #![feature(dropck_eyepatch)]
 #![feature(extend_one)]
 #![feature(file_buffered)]
-#![feature(macro_metavar_expr)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]

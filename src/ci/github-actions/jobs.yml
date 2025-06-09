@@ -128,6 +128,7 @@ pr:
     <<: *job-linux-4c
   - name: mingw-check-tidy
     continue_on_error: true
+    free_disk: false
     <<: *job-linux-4c
   - name: x86_64-gnu-llvm-19
     env:
@@ -303,6 +304,10 @@ auto:
     <<: *job-linux-4c
 
   - name: mingw-check-2
+    <<: *job-linux-4c
+
+  - name: mingw-check-tidy
+    free_disk: false
     <<: *job-linux-4c
 
   - name: test-various

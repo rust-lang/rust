@@ -29,6 +29,7 @@ impl AbiMapping {
         }
     }
 
+    #[track_caller]
     pub fn unwrap(self) -> CanonAbi {
         self.into_option().unwrap()
     }
