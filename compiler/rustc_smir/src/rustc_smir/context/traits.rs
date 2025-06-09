@@ -44,7 +44,3 @@ pub trait SmirTypingEnv<'tcx> {
 pub trait SmirAllocRange<'tcx> {
     fn alloc_range(&self, offset: rustc_abi::Size, size: rustc_abi::Size) -> AllocRange;
 }
-
-pub trait SmirRegion<'tcx> {
-    fn lifetimes_re_erased(&self) -> ty::Region<'tcx>;
-}
