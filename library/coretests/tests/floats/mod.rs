@@ -1,9 +1,32 @@
 use std::fmt;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
-/// Verify that floats are within a tolerance of each other, 1.0e-6 by default.
+/// Set the default tolerance for float comparison based on the type.
+trait Approx {
+    const LIM: Self;
+}
+
+impl Approx for f16 {
+    const LIM: Self = 1e-3;
+}
+impl Approx for f32 {
+    const LIM: Self = 1e-6;
+}
+impl Approx for f64 {
+    const LIM: Self = 1e-6;
+}
+impl Approx for f128 {
+    const LIM: Self = 1e-9;
+}
+
+/// Determine the tolerance for values of the argument type.
+const fn lim_for_ty<T: Approx + Copy>(_x: T) -> T {
+    T::LIM
+}
+
+/// Verify that floats are within a tolerance of each other.
 macro_rules! assert_approx_eq_ {
-    ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, 1.0e-6) }};
+    ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, $crate::floats::lim_for_ty($a)) }};
     ($a:expr, $b:expr, $lim:expr) => {{
         let (a, b) = (&$a, &$b);
         let diff = (*a - *b).abs();
@@ -57,15 +80,6 @@ pub(crate) use assert_biteq_ as assert_biteq;
 mod const_asserts {
     // Shadow some assert implementations that would otherwise not compile in a const-context.
     // Every macro added here also needs to be added in the `float_test!` macro below.
-    macro_rules! assert_eq {
-        ($left:expr, $right:expr $(,)?) => {
-            std::assert!($left == $right)
-        };
-        ($left:expr, $right:expr, $($arg:tt)+) => {
-            std::assert!($left == $right, $($arg)+)
-        };
-    }
-    pub(crate) use assert_eq;
 
     macro_rules! assert_biteq {
         (@inner $left:expr, $right:expr, $msg_sep:literal, $($tt:tt)*) => {{
@@ -94,7 +108,7 @@ mod const_asserts {
     pub(crate) use assert_biteq;
 
     macro_rules! assert_approx_eq {
-        ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, 1.0e-6) }};
+        ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, $crate::floats::lim_for_ty($a)) }};
         ($a:expr, $b:expr, $lim:expr) => {{
             let (a, b) = (&$a, &$b);
             let diff = (*a - *b).abs();
@@ -171,7 +185,9 @@ macro_rules! float_test {
             $( $( #[$const_meta] )+ )?
             mod const_ {
                 #[allow(unused)]
-                use $crate::floats::const_asserts::{assert_eq, assert_biteq, assert_approx_eq};
+                use super::Approx;
+                #[allow(unused)]
+                use $crate::floats::const_asserts::{assert_biteq, assert_approx_eq};
 
                 #[test]
                 $( $( #[$f16_const_meta] )+ )?
@@ -650,7 +666,7 @@ float_test! {
     },
     test<Float> {
         assert_biteq!((1.0 as Float).fract(), 0.0);
-        assert_approx_eq!((1.3 as Float).fract(), 0.3, 1e-3); // rounding differs between float types
+        assert_approx_eq!((1.3 as Float).fract(), 0.3); // rounding differs between float types
         assert_biteq!((1.5 as Float).fract(), 0.5);
         assert_approx_eq!((1.7 as Float).fract(), 0.7);
         assert_biteq!((0.5 as Float).fract(), 0.5);
@@ -658,7 +674,7 @@ float_test! {
         assert_biteq!((-0.0 as Float).fract(), 0.0);
         assert_biteq!((-0.5 as Float).fract(), -0.5);
         assert_biteq!((-1.0 as Float).fract(), 0.0);
-        assert_approx_eq!((-1.3 as Float).fract(), -0.3, 1e-3); // rounding differs between float types
+        assert_approx_eq!((-1.3 as Float).fract(), -0.3); // rounding differs between float types
         assert_biteq!((-1.5 as Float).fract(), -0.5);
         assert_approx_eq!((-1.7 as Float).fract(), -0.7);
         assert_biteq!(Float::MAX.fract(), 0.0);
