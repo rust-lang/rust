@@ -2520,7 +2520,11 @@ class DocSearch {
      * @return {Promise<rustdoc.ResultsTable>}
      */
     async execQuery(origParsedQuery, filterCrates, currentCrate) {
-        const results_others = new Map(), results_in_args = new Map(),
+        /** @type {rustdoc.Results} */
+        const results_others = new Map(),
+            /** @type {rustdoc.Results} */
+            results_in_args = new Map(),
+            /** @type {rustdoc.Results} */
             results_returned = new Map();
 
         /** @type {rustdoc.ParsedQuery<rustdoc.QueryElement>} */
@@ -4451,7 +4455,6 @@ class DocSearch {
                 return;
             }
 
-            // @ts-expect-error
             results.max_dist = Math.max(results.max_dist || 0, tfpDist);
             addIntoResults(results, row.id.toString(), pos, 0, tfpDist, 0, Number.MAX_VALUE);
         }
@@ -4560,29 +4563,23 @@ class DocSearch {
                         const returned = row.type && row.type.output
                             && checkIfInList(row.type.output, elem, row.type.where_clause, null, 0);
                         if (in_args) {
-                            // @ts-expect-error
                             results_in_args.max_dist = Math.max(
-                                // @ts-expect-error
                                 results_in_args.max_dist || 0,
                                 tfpDist,
                             );
                             const maxDist = results_in_args.size < MAX_RESULTS ?
                                 (tfpDist + 1) :
-                                // @ts-expect-error
                                 results_in_args.max_dist;
                             // @ts-expect-error
                             addIntoResults(results_in_args, row.id, i, -1, tfpDist, 0, maxDist);
                         }
                         if (returned) {
-                            // @ts-expect-error
                             results_returned.max_dist = Math.max(
-                                // @ts-expect-error
                                 results_returned.max_dist || 0,
                                 tfpDist,
                             );
                             const maxDist = results_returned.size < MAX_RESULTS ?
                                 (tfpDist + 1) :
-                                // @ts-expect-error
                                 results_returned.max_dist;
                             // @ts-expect-error
                             addIntoResults(results_returned, row.id, i, -1, tfpDist, 0, maxDist);

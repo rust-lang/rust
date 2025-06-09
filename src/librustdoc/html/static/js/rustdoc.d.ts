@@ -129,7 +129,7 @@ declare namespace rustdoc {
 
     /**
      * A single parsed "atom" in a search query. For example,
-     * 
+     *
      *     std::fmt::Formatter, Write -> Result<()>
      *     ┏━━━━━━━━━━━━━━━━━━  ┌────    ┏━━━━━┅┅┅┅┄┄┄┄┄┄┄┄┄┄┄┄┄┄┐
      *     ┃                    │        ┗ QueryElement {        ┊
@@ -239,7 +239,7 @@ declare namespace rustdoc {
         query: ParsedQuery,
     }
 
-    type Results = Map<String, ResultObject>;
+    type Results = { max_dist?: number } & Map<String, ResultObject>
 
     /**
      * An annotated `Row`, used in the viewmodel.
