@@ -5199,7 +5199,6 @@ function registerSearchEvents() {
         if (searchState.input.value.length === 0) {
             searchState.hideResults();
         } else {
-            // @ts-expect-error
             searchState.timeout = setTimeout(search, 500);
         }
     };
