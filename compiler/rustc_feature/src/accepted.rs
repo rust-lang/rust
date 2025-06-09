@@ -382,6 +382,8 @@ declare_features! (
     (accepted, self_in_typedefs, "1.32.0", Some(49303)),
     /// Allows `Self` struct constructor (RFC 2302).
     (accepted, self_struct_ctor, "1.32.0", Some(51994)),
+    /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
+    (accepted, sha512_sm_x86, "CURRENT_RUSTC_VERSION", Some(126624)),
     /// Shortern the tail expression lifetime
     (accepted, shorter_tail_lifetimes, "1.84.0", Some(123739)),
     /// Allows using subslice patterns, `[a, .., b]` and `[a, xs @ .., b]`.
