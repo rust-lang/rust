@@ -125,6 +125,9 @@ macro_rules! define_rust_probestack {
 // Our goal here is to touch each page between %rsp+8 and %rsp+8-%rax,
 // ensuring that if any pages are unmapped we'll make a page fault.
 //
+// FIXME(abi_custom): This function is unsafe because it uses a custom ABI,
+// it does not actually match `extern "C"`.
+//
 // The ABI here is that the stack frame size is located in `%rax`. Upon
 // return we're not supposed to modify `%rsp` or `%rax`.
 //
@@ -260,6 +263,9 @@ core::arch::global_asm!(
 // that on Unix we're expected to restore everything as it was, this
 // function basically can't tamper with anything.
 //
+// FIXME(abi_custom): This function is unsafe because it uses a custom ABI,
+// it does not actually match `extern "C"`.
+//
 // The ABI here is the same as x86_64, except everything is 32-bits large.
 core::arch::global_asm!(
     define_rust_probestack!(
@@ -302,6 +308,9 @@ core::arch::global_asm!(
 // UEFI target is windows like target. LLVM will do _chkstk things like windows.
 // probestack function will also do things like _chkstk in MSVC.
 // So we need to sub %ax %sp in probestack when arch is x86.
+//
+// FIXME(abi_custom): This function is unsafe because it uses a custom ABI,
+// it does not actually match `extern "C"`.
 //
 // REF: Rust commit(74e80468347)
 // rust\src\llvm-project\llvm\lib\Target\X86\X86FrameLowering.cpp: 805
