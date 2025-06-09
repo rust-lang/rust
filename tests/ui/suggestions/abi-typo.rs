@@ -1,6 +1,6 @@
 //@ run-rustfix
-extern "cdedl" fn cdedl() {} //~ ERROR invalid ABI
+extern "systen" fn systen() {} //~ ERROR invalid ABI
 
 fn main() {
-    cdedl();
+    systen();
 }
