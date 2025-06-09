@@ -3552,6 +3552,65 @@ impl Step for CodegenGCC {
     }
 }
 
+/// Smoke test for stdarch which simply checks if we can build it with the in-tree
+/// compiler.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Stdarch {
+    compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for Stdarch {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.paths(&["library/stdarch"])
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+        let host = run.build_triple();
+        let compiler = run.builder.compiler(run.builder.top_stage, host);
+
+        builder.ensure(Stdarch { compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let compiler = self.compiler;
+        let target = self.target;
+
+        builder.ensure(compile::Std::new(compiler, target));
+
+        let mut cargo = builder::Cargo::new(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            SourceType::InTree,
+            target,
+            Kind::Check,
+        );
+
+        cargo.current_dir(&builder.src.join("library/stdarch"));
+        cargo.arg("--manifest-path").arg(builder.src.join("library/stdarch/Cargo.toml"));
+
+        // Just check that we can compile core_arch and std_detect for the given target
+        cargo.arg("-p").arg("core_arch").arg("--all-targets").env("TARGET", target.triple);
+
+        builder.info(&format!(
+            "{} stdarch stage{} ({} -> {})",
+            Kind::Test.description(),
+            compiler.stage,
+            &compiler.host,
+            target
+        ));
+        let _time = helpers::timeit(builder);
+
+        cargo.into_cmd().run(builder);
+    }
+}
+
 /// Test step that does two things:
 /// - Runs `cargo test` for the `src/tools/test-float-parse` tool.
 /// - Invokes the `test-float-parse` tool to test the standard library's
