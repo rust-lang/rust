@@ -114,18 +114,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // using the `libc` crate where this interface is public.
             let mut info = std::mem::MaybeUninit::<libc::Dl_info>::zeroed();
             unsafe {
-                if libc::dladdr(fn_ptr, info.as_mut_ptr()) != 0 {
-                    let info = info.assume_init();
-                    #[cfg(target_os = "cygwin")]
-                    let fname_ptr = info.dli_fname.as_ptr();
-                    #[cfg(not(target_os = "cygwin"))]
-                    let fname_ptr = info.dli_fname;
-                    assert!(!fname_ptr.is_null());
-                    if std::ffi::CStr::from_ptr(fname_ptr).to_str().unwrap()
-                        != lib_path.to_str().unwrap()
-                    {
-                        return None;
-                    }
+                let res = libc::dladdr(fn_ptr, info.as_mut_ptr());
+                assert!(res != 0, "failed to load info about function we already loaded");
+                let info = info.assume_init();
+                #[cfg(target_os = "cygwin")]
+                let fname_ptr = info.dli_fname.as_ptr();
+                #[cfg(not(target_os = "cygwin"))]
+                let fname_ptr = info.dli_fname;
+                assert!(!fname_ptr.is_null());
+                if std::ffi::CStr::from_ptr(fname_ptr).to_str().unwrap()
+                    != lib_path.to_str().unwrap()
+                {
+                    // The function is not actually in this .so, check the next one.
+                    continue;
                 }
             }
 
