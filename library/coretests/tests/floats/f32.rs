@@ -2,6 +2,8 @@ use core::f32;
 use core::f32::consts;
 use core::num::FpCategory as Fp;
 
+use super::{assert_approx_eq, assert_biteq};
+
 /// Smallest number
 const TINY_BITS: u32 = 0x1;
 

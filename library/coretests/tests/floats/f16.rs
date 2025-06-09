@@ -4,6 +4,8 @@
 use std::f16::consts;
 use std::num::FpCategory as Fp;
 
+use super::{assert_approx_eq, assert_biteq};
+
 /// Tolerance for results on the order of 10.0e-2
 #[allow(unused)]
 const TOL_N2: f16 = 0.0001;

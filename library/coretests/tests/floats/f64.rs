@@ -2,6 +2,8 @@ use core::f64;
 use core::f64::consts;
 use core::num::FpCategory as Fp;
 
+use super::{assert_approx_eq, assert_biteq};
+
 /// Smallest number
 const TINY_BITS: u64 = 0x1;
 

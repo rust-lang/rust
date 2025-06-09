@@ -5,6 +5,8 @@ use core::ops::{Add, Div, Mul, Sub};
 use std::f128::consts;
 use std::num::FpCategory as Fp;
 
+use super::{assert_approx_eq, assert_biteq};
+
 // Note these tolerances make sense around zero, but not for more extreme exponents.
 
 /// Default tolerances. Works for values that should be near precise but not exact. Roughly
