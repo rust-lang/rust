@@ -1,13 +1,13 @@
 error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
-  --> $DIR/generics.rs:73:55
+  --> $DIR/generics.rs:73:53
    |
-LL | extern "C-cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
-   |                                                       ^^^^^^
+LL | extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
+   |                                                     ^^^^^^
 
-error[E0798]: functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
+error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
   --> $DIR/generics.rs:30:1
    |
-LL | / extern "C-cmse-nonsecure-entry" fn introduced_generic<U: Copy>(
+LL | / extern "cmse-nonsecure-entry" fn introduced_generic<U: Copy>(
 LL | |
 LL | |     _: U,
 LL | |     _: u32,
@@ -16,22 +16,22 @@ LL | |     _: u32,
 LL | | ) -> u64 {
    | |________^
 
-error[E0798]: functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
+error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
   --> $DIR/generics.rs:40:1
    |
-LL | extern "C-cmse-nonsecure-entry" fn impl_trait(_: impl Copy, _: u32, _: u32, _: u32) -> u64 {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "cmse-nonsecure-entry" fn impl_trait(_: impl Copy, _: u32, _: u32, _: u32) -> u64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0798]: functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
+error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
   --> $DIR/generics.rs:14:5
    |
-LL |     extern "C-cmse-nonsecure-entry" fn ambient_generic(_: T, _: u32, _: u32, _: u32) -> u64 {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     extern "cmse-nonsecure-entry" fn ambient_generic(_: T, _: u32, _: u32, _: u32) -> u64 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0798]: functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
+error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
   --> $DIR/generics.rs:19:5
    |
-LL | /     extern "C-cmse-nonsecure-entry" fn ambient_generic_nested(
+LL | /     extern "cmse-nonsecure-entry" fn ambient_generic_nested(
 LL | |
 LL | |         _: Wrapper<T>,
 LL | |         _: u32,
@@ -40,38 +40,38 @@ LL | |         _: u32,
 LL | |     ) -> u64 {
    | |____________^
 
-error[E0798]: return value of `"C-cmse-nonsecure-entry"` function too large to pass via registers
-  --> $DIR/generics.rs:51:67
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/generics.rs:51:65
    |
-LL | extern "C-cmse-nonsecure-entry" fn trait_object(x: &dyn Trait) -> &dyn Trait {
-   |                                                                   ^^^^^^^^^^ this type doesn't fit in the available registers
+LL | extern "cmse-nonsecure-entry" fn trait_object(x: &dyn Trait) -> &dyn Trait {
+   |                                                                 ^^^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `"C-cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-error[E0798]: return value of `"C-cmse-nonsecure-entry"` function too large to pass via registers
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
   --> $DIR/generics.rs:58:6
    |
 LL | ) -> &'static dyn Trait {
    |      ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `"C-cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-error[E0798]: return value of `"C-cmse-nonsecure-entry"` function too large to pass via registers
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
   --> $DIR/generics.rs:68:6
    |
 LL | ) -> WrapperTransparent {
    |      ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `"C-cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 error: requires `va_list` lang_item
-  --> $DIR/generics.rs:73:55
+  --> $DIR/generics.rs:73:53
    |
-LL | extern "C-cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
-   |                                                       ^^^^^^
+LL | extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
+   |                                                     ^^^^^^
 
 error: aborting due to 9 previous errors
 

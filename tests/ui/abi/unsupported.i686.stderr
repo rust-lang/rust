@@ -58,29 +58,29 @@ error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
 LL | extern "riscv-interrupt-m" {}
    |        ^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: "C-cmse-nonsecure-call" is not a supported ABI for the current target
+error[E0570]: "cmse-nonsecure-call" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:120:28
    |
-LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn cmse_call_ptr(f: extern "cmse-nonsecure-call" fn()) {
+   |                            ^^^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:125:8
    |
-LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "cmse-nonsecure-entry" fn cmse_entry() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:127:29
    |
-LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn cmse_entry_ptr(f: extern "cmse-nonsecure-entry" fn()) {
+   |                             ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:131:8
    |
-LL | extern "C-cmse-nonsecure-entry" {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "cmse-nonsecure-entry" {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 14 previous errors
 

@@ -1,14 +1,14 @@
-error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
   --> $DIR/gate_test.rs:4:12
    |
-LL | pub extern "C-cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub extern "cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
+   |            ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0658]: the extern "C-cmse-nonsecure-entry" ABI is experimental and subject to change
+error[E0658]: the extern "cmse-nonsecure-entry" ABI is experimental and subject to change
   --> $DIR/gate_test.rs:4:12
    |
-LL | pub extern "C-cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub extern "cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
+   |            ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #75835 <https://github.com/rust-lang/rust/issues/75835> for more information
    = help: add `#![feature(cmse_nonsecure_entry)]` to the crate attributes to enable
