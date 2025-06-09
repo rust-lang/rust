@@ -9,7 +9,6 @@ use rustc_hir::def::DefKind;
 use rustc_smir::context::SmirCtxt;
 use rustc_smir::{Bridge, SmirContainer};
 use stable_mir::abi::{FnAbi, Layout, LayoutShape, ReprOptions};
-use stable_mir::convert::{RustcInternal, Stable};
 use stable_mir::crate_def::Attribute;
 use stable_mir::mir::alloc::{AllocId, GlobalAlloc};
 use stable_mir::mir::mono::{Instance, InstanceDef, StaticDef};
@@ -21,9 +20,10 @@ use stable_mir::ty::{
     Generics, ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy, Span,
     TraitDecl, TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef, VariantIdx,
 };
+use stable_mir::unstable::{RustcInternal, Stable, new_item_kind};
 use stable_mir::{
     AssocItems, Crate, CrateDef, CrateItem, CrateItems, CrateNum, DefId, Error, Filename,
-    ImplTraitDecls, ItemKind, Symbol, TraitDecls, alloc, mir, new_item_kind,
+    ImplTraitDecls, ItemKind, Symbol, TraitDecls, alloc, mir,
 };
 use tracing::debug;
 

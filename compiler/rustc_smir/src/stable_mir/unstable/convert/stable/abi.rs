@@ -4,8 +4,8 @@
 
 use rustc_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 use rustc_middle::ty;
+use rustc_smir::Tables;
 use rustc_smir::context::SmirCtxt;
-use rustc_smir::{IndexedVal, Tables};
 use rustc_target::callconv;
 use stable_mir::abi::{
     AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IntegerLength,
@@ -13,16 +13,16 @@ use stable_mir::abi::{
     TagEncoding, TyAndLayout, ValueAbi, VariantsShape, WrappingRange,
 };
 use stable_mir::compiler_interface::BridgeTys;
-use stable_mir::convert::Stable;
-use stable_mir::opaque;
+use stable_mir::unstable::Stable;
 use stable_mir::target::MachineSize as Size;
 use stable_mir::ty::{Align, VariantIdx};
+use stable_mir::{IndexedVal, opaque};
 
 use crate::{rustc_smir, stable_mir};
 
 impl<'tcx> Stable<'tcx> for rustc_abi::VariantIdx {
     type T = VariantIdx;
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         VariantIdx::to_val(self.as_usize())
     }
 }
@@ -30,7 +30,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::VariantIdx {
 impl<'tcx> Stable<'tcx> for rustc_abi::Endian {
     type T = stable_mir::target::Endian;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             rustc_abi::Endian::Little => stable_mir::target::Endian::Little,
             rustc_abi::Endian::Big => stable_mir::target::Endian::Big,
@@ -41,10 +41,10 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Endian {
 impl<'tcx> Stable<'tcx> for rustc_abi::TyAndLayout<'tcx, ty::Ty<'tcx>> {
     type T = TyAndLayout;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         TyAndLayout { ty: self.ty.stable(tables, cx), layout: self.layout.stable(tables, cx) }
     }
@@ -53,10 +53,10 @@ impl<'tcx> Stable<'tcx> for rustc_abi::TyAndLayout<'tcx, ty::Ty<'tcx>> {
 impl<'tcx> Stable<'tcx> for rustc_abi::Layout<'tcx> {
     type T = Layout;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         tables.layout_id(cx.lift(*self).unwrap())
     }
@@ -65,10 +65,10 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Layout<'tcx> {
 impl<'tcx> Stable<'tcx> for rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi::VariantIdx> {
     type T = LayoutShape;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         LayoutShape {
             fields: self.fields.stable(tables, cx),
@@ -83,10 +83,10 @@ impl<'tcx> Stable<'tcx> for rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi
 impl<'tcx> Stable<'tcx> for callconv::FnAbi<'tcx, ty::Ty<'tcx>> {
     type T = FnAbi;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         assert!(self.args.len() >= self.fixed_count as usize);
         assert!(!self.c_variadic || matches!(self.conv, CanonAbi::C));
@@ -103,10 +103,10 @@ impl<'tcx> Stable<'tcx> for callconv::FnAbi<'tcx, ty::Ty<'tcx>> {
 impl<'tcx> Stable<'tcx> for callconv::ArgAbi<'tcx, ty::Ty<'tcx>> {
     type T = ArgAbi;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         ArgAbi {
             ty: self.layout.ty.stable(tables, cx),
@@ -119,7 +119,7 @@ impl<'tcx> Stable<'tcx> for callconv::ArgAbi<'tcx, ty::Ty<'tcx>> {
 impl<'tcx> Stable<'tcx> for CanonAbi {
     type T = CallConvention;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             CanonAbi::C => CallConvention::C,
             CanonAbi::Rust => CallConvention::Rust,
@@ -155,7 +155,7 @@ impl<'tcx> Stable<'tcx> for CanonAbi {
 impl<'tcx> Stable<'tcx> for callconv::PassMode {
     type T = PassMode;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             callconv::PassMode::Ignore => PassMode::Ignore,
             callconv::PassMode::Direct(attr) => PassMode::Direct(opaque(attr)),
@@ -177,10 +177,10 @@ impl<'tcx> Stable<'tcx> for callconv::PassMode {
 impl<'tcx> Stable<'tcx> for rustc_abi::FieldsShape<rustc_abi::FieldIdx> {
     type T = FieldsShape;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match self {
             rustc_abi::FieldsShape::Primitive => FieldsShape::Primitive,
@@ -198,10 +198,10 @@ impl<'tcx> Stable<'tcx> for rustc_abi::FieldsShape<rustc_abi::FieldIdx> {
 impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::VariantIdx> {
     type T = VariantsShape;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match self {
             rustc_abi::Variants::Single { index } => {
@@ -212,7 +212,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::
                 VariantsShape::Multiple {
                     tag: tag.stable(tables, cx),
                     tag_encoding: tag_encoding.stable(tables, cx),
-                    tag_field: *tag_field,
+                    tag_field: tag_field.stable(tables,cx),
                     variants: variants.iter().as_slice().stable(tables, cx),
                 }
             }
@@ -223,10 +223,10 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::
 impl<'tcx> Stable<'tcx> for rustc_abi::TagEncoding<rustc_abi::VariantIdx> {
     type T = TagEncoding;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match self {
             rustc_abi::TagEncoding::Direct => TagEncoding::Direct,
@@ -244,10 +244,10 @@ impl<'tcx> Stable<'tcx> for rustc_abi::TagEncoding<rustc_abi::VariantIdx> {
 impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
     type T = ValueAbi;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match *self {
             rustc_abi::BackendRepr::Scalar(scalar) => ValueAbi::Scalar(scalar.stable(tables, cx)),
@@ -265,7 +265,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
 impl<'tcx> Stable<'tcx> for rustc_abi::Size {
     type T = Size;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         Size::from_bits(self.bits_usize())
     }
 }
@@ -273,7 +273,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Size {
 impl<'tcx> Stable<'tcx> for rustc_abi::Align {
     type T = Align;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         self.bytes()
     }
 }
@@ -281,10 +281,10 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Align {
 impl<'tcx> Stable<'tcx> for rustc_abi::Scalar {
     type T = Scalar;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match self {
             rustc_abi::Scalar::Initialized { value, valid_range } => Scalar::Initialized {
@@ -299,10 +299,10 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Scalar {
 impl<'tcx> Stable<'tcx> for rustc_abi::Primitive {
     type T = Primitive;
 
-    fn stable(
+    fn stable<'cx>(
         &self,
-        tables: &mut Tables<'tcx, BridgeTys>,
-        cx: &SmirCtxt<'tcx, BridgeTys>,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match self {
             rustc_abi::Primitive::Int(length, signed) => {
@@ -319,7 +319,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Primitive {
 impl<'tcx> Stable<'tcx> for rustc_abi::AddressSpace {
     type T = AddressSpace;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         AddressSpace(self.0)
     }
 }
@@ -327,7 +327,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::AddressSpace {
 impl<'tcx> Stable<'tcx> for rustc_abi::Integer {
     type T = IntegerLength;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             rustc_abi::Integer::I8 => IntegerLength::I8,
             rustc_abi::Integer::I16 => IntegerLength::I16,
@@ -341,7 +341,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Integer {
 impl<'tcx> Stable<'tcx> for rustc_abi::Float {
     type T = FloatLength;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             rustc_abi::Float::F16 => FloatLength::F16,
             rustc_abi::Float::F32 => FloatLength::F32,
@@ -354,7 +354,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Float {
 impl<'tcx> Stable<'tcx> for rustc_abi::WrappingRange {
     type T = WrappingRange;
 
-    fn stable(&self, _: &mut Tables<'tcx, BridgeTys>, _: &SmirCtxt<'tcx, BridgeTys>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &SmirCtxt<'_, BridgeTys>) -> Self::T {
         WrappingRange { start: self.start, end: self.end }
     }
 }
