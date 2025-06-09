@@ -88,6 +88,7 @@ impl<'a, 'll> SBuilder<'a, 'll> {
         };
         call
     }
+
 }
 
 impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
@@ -117,6 +118,20 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
             llvm::LLVMPositionBuilderAtEnd(bx.llbuilder, llbb);
         }
         bx
+    }
+
+    pub(crate) fn my_alloca2(&mut self, ty: &'ll Type, align: Align, name: &str) -> &'ll Value {
+        let val = unsafe {
+            let alloca = llvm::LLVMBuildAlloca(self.llbuilder, ty, UNNAMED);
+            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
+            // Cast to default addrspace if necessary
+            llvm::LLVMBuildPointerCast(self.llbuilder, alloca, self.cx.type_ptr(), UNNAMED)
+        };
+        if name != "" {
+            let name = std::ffi::CString::new(name).unwrap();
+            unsafe {llvm::set_value_name(val, &name.as_bytes())};
+        }
+        val
     }
 }
 
@@ -1261,7 +1276,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             llvm::LLVMBuildCleanupRet(self.llbuilder, funclet.cleanuppad(), unwind)
                 .expect("LLVM does not have support for cleanupret");
-        }
+            }
     }
 
     fn catch_pad(&mut self, parent: &'ll Value, args: &[&'ll Value]) -> Funclet<'ll> {
@@ -1631,14 +1646,14 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
                     debug!(
                         "type mismatch in function call of {:?}. \
                             Expected {:?} for param {}, got {:?}; injecting bitcast",
-                        llfn, expected_ty, i, actual_ty
+                            llfn, expected_ty, i, actual_ty
                     );
                     self.bitcast(actual_val, expected_ty)
                 } else {
                     actual_val
                 }
             })
-            .collect();
+        .collect();
 
         Cow::Owned(casted_args)
     }
@@ -1791,48 +1806,48 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         let is_indirect_call = unsafe { llvm::LLVMRustIsNonGVFunctionPointerTy(llfn) };
         if self.tcx.sess.is_sanitizer_cfi_enabled()
             && let Some(fn_abi) = fn_abi
-            && is_indirect_call
-        {
-            if let Some(fn_attrs) = fn_attrs
-                && fn_attrs.no_sanitize.contains(SanitizerSet::CFI)
+                && is_indirect_call
             {
-                return;
-            }
+                if let Some(fn_attrs) = fn_attrs
+                    && fn_attrs.no_sanitize.contains(SanitizerSet::CFI)
+                    {
+                        return;
+                    }
 
-            let mut options = cfi::TypeIdOptions::empty();
-            if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
-                options.insert(cfi::TypeIdOptions::GENERALIZE_POINTERS);
-            }
-            if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
-                options.insert(cfi::TypeIdOptions::NORMALIZE_INTEGERS);
-            }
+                let mut options = cfi::TypeIdOptions::empty();
+                if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
+                    options.insert(cfi::TypeIdOptions::GENERALIZE_POINTERS);
+                }
+                if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
+                    options.insert(cfi::TypeIdOptions::NORMALIZE_INTEGERS);
+                }
 
-            let typeid = if let Some(instance) = instance {
-                cfi::typeid_for_instance(self.tcx, instance, options)
-            } else {
-                cfi::typeid_for_fnabi(self.tcx, fn_abi, options)
-            };
-            let typeid_metadata = self.cx.typeid_metadata(typeid).unwrap();
-            let dbg_loc = self.get_dbg_loc();
+                let typeid = if let Some(instance) = instance {
+                    cfi::typeid_for_instance(self.tcx, instance, options)
+                } else {
+                    cfi::typeid_for_fnabi(self.tcx, fn_abi, options)
+                };
+                let typeid_metadata = self.cx.typeid_metadata(typeid).unwrap();
+                let dbg_loc = self.get_dbg_loc();
 
-            // Test whether the function pointer is associated with the type identifier.
-            let cond = self.type_test(llfn, typeid_metadata);
-            let bb_pass = self.append_sibling_block("type_test.pass");
-            let bb_fail = self.append_sibling_block("type_test.fail");
-            self.cond_br(cond, bb_pass, bb_fail);
+                // Test whether the function pointer is associated with the type identifier.
+                let cond = self.type_test(llfn, typeid_metadata);
+                let bb_pass = self.append_sibling_block("type_test.pass");
+                let bb_fail = self.append_sibling_block("type_test.fail");
+                self.cond_br(cond, bb_pass, bb_fail);
 
-            self.switch_to_block(bb_fail);
-            if let Some(dbg_loc) = dbg_loc {
-                self.set_dbg_loc(dbg_loc);
+                self.switch_to_block(bb_fail);
+                if let Some(dbg_loc) = dbg_loc {
+                    self.set_dbg_loc(dbg_loc);
+                }
+                self.abort();
+                self.unreachable();
+
+                self.switch_to_block(bb_pass);
+                if let Some(dbg_loc) = dbg_loc {
+                    self.set_dbg_loc(dbg_loc);
+                }
             }
-            self.abort();
-            self.unreachable();
-
-            self.switch_to_block(bb_pass);
-            if let Some(dbg_loc) = dbg_loc {
-                self.set_dbg_loc(dbg_loc);
-            }
-        }
     }
 
     // Emits KCFI operand bundles.
@@ -1847,31 +1862,31 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         let kcfi_bundle = if self.tcx.sess.is_sanitizer_kcfi_enabled()
             && let Some(fn_abi) = fn_abi
             && is_indirect_call
-        {
-            if let Some(fn_attrs) = fn_attrs
-                && fn_attrs.no_sanitize.contains(SanitizerSet::KCFI)
             {
-                return None;
-            }
+                if let Some(fn_attrs) = fn_attrs
+                    && fn_attrs.no_sanitize.contains(SanitizerSet::KCFI)
+                    {
+                        return None;
+                    }
 
-            let mut options = kcfi::TypeIdOptions::empty();
-            if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
-                options.insert(kcfi::TypeIdOptions::GENERALIZE_POINTERS);
-            }
-            if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
-                options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
-            }
+                let mut options = kcfi::TypeIdOptions::empty();
+                if self.tcx.sess.is_sanitizer_cfi_generalize_pointers_enabled() {
+                    options.insert(kcfi::TypeIdOptions::GENERALIZE_POINTERS);
+                }
+                if self.tcx.sess.is_sanitizer_cfi_normalize_integers_enabled() {
+                    options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
+                }
 
-            let kcfi_typeid = if let Some(instance) = instance {
-                kcfi::typeid_for_instance(self.tcx, instance, options)
+                let kcfi_typeid = if let Some(instance) = instance {
+                    kcfi::typeid_for_instance(self.tcx, instance, options)
+                } else {
+                    kcfi::typeid_for_fnabi(self.tcx, fn_abi, options)
+                };
+
+                Some(llvm::OperandBundleBox::new("kcfi", &[self.const_u32(kcfi_typeid)]))
             } else {
-                kcfi::typeid_for_fnabi(self.tcx, fn_abi, options)
+                None
             };
-
-            Some(llvm::OperandBundleBox::new("kcfi", &[self.const_u32(kcfi_typeid)]))
-        } else {
-            None
-        };
         kcfi_bundle
     }
 

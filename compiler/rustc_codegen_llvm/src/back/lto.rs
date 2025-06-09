@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::{io, iter, slice};
 
 use object::read::archive::ArchiveFile;
+use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
@@ -648,7 +649,7 @@ fn gen_globals<'ll>(cx: &'ll SimpleCx<'_>) -> (&'ll llvm::Type, &'ll llvm::Value
     let c_val = c_entry_name.as_bytes_with_nul();
     let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
     let at_zero = add_unnamed_global(&cx, &"", initializer, PrivateLinkage);
-    llvm::set_alignment(at_zero, rustc_abi::Align::ONE);
+    llvm::set_alignment(at_zero, Align::ONE);
 
     // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
     let struct_ident_ty = cx.type_named_struct("struct.ident_t");
@@ -657,7 +658,7 @@ fn gen_globals<'ll>(cx: &'ll SimpleCx<'_>) -> (&'ll llvm::Type, &'ll llvm::Value
     let initializer = crate::common::named_struct(struct_ident_ty, &struct_elems);
     cx.set_struct_body(struct_ident_ty, &struct_elems_ty, false);
     let at_one = add_unnamed_global(&cx, &"", initializer, PrivateLinkage);
-    llvm::set_alignment(at_one, rustc_abi::Align::EIGHT);
+    llvm::set_alignment(at_one, Align::EIGHT);
 
     // coppied from LLVM
     // typedef struct {
@@ -711,7 +712,7 @@ fn gen_globals<'ll>(cx: &'ll SimpleCx<'_>) -> (&'ll llvm::Type, &'ll llvm::Value
     (offload_entry_ty, at_one, foo, bar, baz, mapper_fn_ty)
 }
 
-fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'ll llvm::Value{
+fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'ll llvm::Value {
     let ti64 = cx.type_i64();
     let size_ty = cx.type_array(ti64, vals.len() as u64);
     let mut size_val = Vec::with_capacity(vals.len());
@@ -739,7 +740,7 @@ fn add_global<'ll>(cx: &SimpleCx<'ll>, name: &str, initializer: &'ll llvm::Value
 
 
 
-fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, offload_entry_ty: &'ll llvm::Type, num: i64) {
+fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, offload_entry_ty: &'ll llvm::Type, num: i64) -> &'ll llvm::Value {
     // We add a pair of sizes and maptypes per offloadable function.
     // @.offload_maptypes = private unnamed_addr constant [4 x i64] [i64 800, i64 544, i64 547, i64 544]
     let o_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{num}"), &vec![8u64,0,16,0]);
@@ -763,7 +764,7 @@ fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, offload_entry_ty: &'ll llvm::
 
     let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
     let llglobal = add_unnamed_global(&cx, &foo, initializer, InternalLinkage);
-    llvm::set_alignment(llglobal, rustc_abi::Align::ONE);
+    llvm::set_alignment(llglobal, Align::ONE);
     let c_section_name = CString::new(".llvm.rodata.offloading").unwrap();
     llvm::set_section(llglobal, &c_section_name);
 
@@ -780,7 +781,7 @@ fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, offload_entry_ty: &'ll llvm::
     llvm::set_global_constant(llglobal, true);
     llvm::set_linkage(llglobal, WeakAnyLinkage);
     llvm::set_initializer(llglobal, initializer);
-    llvm::set_alignment(llglobal, rustc_abi::Align::ONE);
+    llvm::set_alignment(llglobal, Align::ONE);
     let c_section_name = CString::new(".omp_offloading_entries").unwrap();
     llvm::set_section(llglobal, &c_section_name);
     // rustc
@@ -795,9 +796,10 @@ fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, offload_entry_ty: &'ll llvm::
     // 3. @.__omp_offloading_<hash>_fnc_name_<hash> = weak constant i8 0
     // 4. @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
     // 5. @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
+    o_types
 }
 
-fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, s_ident_t: &'ll llvm::Value, begin: &'ll llvm::Value, update: &'ll llvm::Value, end: &'ll llvm::Value, fn_ty: &'ll llvm::Type) {
+fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, s_ident_t: &'ll llvm::Value, begin: &'ll llvm::Value, update: &'ll llvm::Value, end: &'ll llvm::Value, fn_ty: &'ll llvm::Type, o_types: &[&'ll llvm::Value]) {
 
     let main_fn = cx.get_function("main");
     if let Some(main_fn) = main_fn {
@@ -811,20 +813,33 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, s_ident_t: &'ll llvm::Value, be
         };
         let kernel_call_bb = unsafe {llvm::LLVMGetInstructionParent(kernel_call)};
         let mut builder = SBuilder::build(cx, kernel_call_bb);
+
+        // First we generate a few variables used for the data mappers below.
+        // %.offload_baseptrs = alloca [3 x ptr], align 8
+        // %.offload_ptrs = alloca [3 x ptr], align 8
+        // %.offload_mappers = alloca [3 x ptr], align 8
+        // %.offload_sizes = alloca [3 x i64], align 8
+        unsafe{llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, main_fn)};
+        let ty = cx.type_array(cx.type_ptr(), 3);
+        builder.my_alloca2(ty, Align::EIGHT, ".offload_baseptrs");
+        builder.my_alloca2(ty, Align::EIGHT, ".offload_ptrs");
+        builder.my_alloca2(ty, Align::EIGHT, ".offload_mappers");
+        let ty = cx.type_array(cx.type_i64(), 3);
+        builder.my_alloca2(ty, Align::EIGHT, ".offload_sizes");
+
+
+        // Now we generate the __tgt_target_data calls
         unsafe {llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call)};
         dbg!("positioned builder, ready");
 
         let nullptr = cx.const_null(cx.type_ptr());
-        let args = vec![s_ident_t, cx.get_const_i64(u64::MAX), cx.get_const_i32(3), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr];
+        let o_type = o_types[0];
+        let args = vec![s_ident_t, cx.get_const_i64(u64::MAX), cx.get_const_i32(3), nullptr, nullptr, nullptr, o_type, nullptr, nullptr];
         dbg!(&fn_ty);
         dbg!(&begin);
         dbg!(&args);
         builder.call(fn_ty, begin, &args, None);
         dbg!("called begin");
-        //llty: &'ll Type,
-        //llfn: &'ll Value,
-        //args: &[&'ll Value],
-        //funclet: Option<&Funclet<'ll>>,
 
         // 1. set insert point before kernel call.
         // 2. generate all the GEPS and stores.
@@ -895,14 +910,15 @@ pub(crate) fn run_pass_manager(
             let (offload_entry_ty, at_one, foo, bar, baz, fn_ty) = gen_globals(&cx);
 
             dbg!("created struct");
+            let mut o_types = vec![];
             for num in 0..9 {
                 if !cx.get_function(&format!("kernel_{num}")).is_some() {
                     continue;
                 }
                 // TODO: replace num by proper fn name
-                gen_define_handling(&cx, offload_entry_ty, num);
+                o_types.push(gen_define_handling(&cx, offload_entry_ty, num));
             }
-            gen_call_handling(&cx, at_one, foo, bar, baz, fn_ty);
+            gen_call_handling(&cx, at_one, foo, bar, baz, fn_ty, &o_types);
         } else {
             dbg!("no marker found");
         }
