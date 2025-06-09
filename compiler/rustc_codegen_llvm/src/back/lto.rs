@@ -27,6 +27,7 @@ use llvm::Linkage::*;
 use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
 };
+use crate::builder::SBuilder;
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
@@ -630,7 +631,7 @@ fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
     llvm::set_rust_rules(true);
 }
 
-fn gen_globals<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Type {
+fn gen_globals<'ll>(cx: &'ll SimpleCx<'_>) -> (&'ll llvm::Type, &'ll llvm::Value) {
             let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
             let kernel_arguments_ty = cx.type_named_struct("struct.__tgt_kernel_arguments");
             let tptr = cx.type_ptr();
@@ -706,7 +707,7 @@ fn gen_globals<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Type {
             attributes::apply_to_llfn(bar, Function, &[nounwind]);
             attributes::apply_to_llfn(baz, Function, &[nounwind]);
 
-            offload_entry_ty
+            (offload_entry_ty, at_one)
 }
 
 fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'ll llvm::Value{
@@ -795,7 +796,8 @@ fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, offload_entry_ty: &'ll llvm::
                 // 5. @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
 }
 
-fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>) {
+fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, s_ident_t: &'ll llvm::Value) {
+    let builder = SBuilder::build(cx);
             // call void @__tgt_target_data_begin_mapper(ptr @1, i64 -1, i32 3, ptr %27, ptr %28, ptr %29, ptr @.offload_maptypes, ptr null, ptr null)
             // call void @__tgt_target_data_update_mapper(ptr @1, i64 -1, i32 2, ptr %46, ptr %47, ptr %48, ptr @.offload_maptypes.1, ptr null, ptr null)
             // call void @__tgt_target_data_end_mapper(ptr @1, i64 -1, i32 3, ptr %49, ptr %50, ptr %51, ptr @.offload_maptypes, ptr null, ptr null)
@@ -853,7 +855,7 @@ pub(crate) fn run_pass_manager(
             SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
         if cx.get_function("gen_tgt_offload").is_some() {
 
-            let offload_entry_ty = gen_globals(&cx);
+            let (offload_entry_ty, at_one) = gen_globals(&cx);
 
             dbg!("created struct");
             for num in 0..9 {
@@ -863,7 +865,7 @@ pub(crate) fn run_pass_manager(
                 // TODO: replace num by proper fn name
                 gen_define_handling(&cx, offload_entry_ty, num);
             }
-            gen_call_handling(&cx);
+            gen_call_handling(&cx, at_one);
         } else {
             dbg!("no marker found");
         }
