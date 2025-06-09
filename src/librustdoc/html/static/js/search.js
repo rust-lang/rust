@@ -4496,7 +4496,7 @@ class DocSearch {
             if (parsedQuery.foundElems === 1 && !parsedQuery.hasReturnArrow) {
                 const elem = parsedQuery.elems[0];
                 // use arrow functions to preserve `this`.
-                // @ts-expect-error
+                /** @type {function(number): void} */
                 const handleNameSearch = id => {
                     const row = this.searchIndex[id];
                     if (!typePassesFilter(elem.typeFilter, row.ty) ||
@@ -4509,7 +4509,7 @@ class DocSearch {
 
                         const maybePathDist = checkPath(elem.pathWithoutLast, row);
                         if (maybePathDist === null) {
-                            return
+                            return;
                         }
                         pathDist = maybePathDist;
                     }
