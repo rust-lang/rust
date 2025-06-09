@@ -578,22 +578,6 @@ impl Builder<'_> {
             rustflags.arg(sysroot_str);
         }
 
-        let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {
-            Some(setting) => {
-                // If an explicit setting is given, use that
-                setting
-            }
-            None => {
-                if mode == Mode::Std {
-                    // The standard library defaults to the legacy scheme
-                    false
-                } else {
-                    // The compiler and tools default to the new scheme
-                    true
-                }
-            }
-        };
-
         // By default, windows-rs depends on a native library that doesn't get copied into the
         // sysroot. Passing this cfg enables raw-dylib support instead, which makes the native
         // library unnecessary. This can be removed when windows-rs enables raw-dylib
@@ -602,11 +586,7 @@ impl Builder<'_> {
             rustflags.arg("--cfg=windows_raw_dylib");
         }
 
-        if use_new_symbol_mangling {
-            rustflags.arg("-Csymbol-mangling-version=v0");
-        } else {
-            rustflags.arg("-Csymbol-mangling-version=legacy");
-        }
+        rustflags.arg("-Csymbol-mangling-version=v0");
 
         // FIXME: the following components don't build with `-Zrandomize-layout` yet:
         // - rust-analyzer, due to the rowan crate
