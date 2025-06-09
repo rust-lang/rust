@@ -2,7 +2,7 @@ error[E0080]: reached the configured maximum number of stack frames
   --> $DIR/infinite-recursion-const-fn.rs:9:18
    |
 LL | const ARR: [i32; a()] = [5; 6];
-   |                  ^^^ evaluation of constant value failed here
+   |                  ^^^ evaluation of `ARR::{constant#0}` failed inside this call
    |
 note: inside `a`
   --> $DIR/infinite-recursion-const-fn.rs:4:5

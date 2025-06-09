@@ -8,7 +8,7 @@
 const ONE: usize = 1;
 const TWO: usize = 2;
 const LEN: usize = ONE - TWO;
-//~^ NOTE constant
+//~^ NOTE failed here
 //~| ERROR attempt to compute `1_usize - 2_usize`, which would overflow
 
 fn main() {

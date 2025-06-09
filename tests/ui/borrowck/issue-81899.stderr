@@ -2,7 +2,7 @@ error[E0080]: evaluation panicked: explicit panic
   --> $DIR/issue-81899.rs:6:24
    |
 LL | const _CONST: &[u8] = &f(&[], |_| {});
-   |                        ^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                        ^^^^^^^^^^^^^^ evaluation of `_CONST` failed inside this call
    |
 note: inside `f::<{closure@$DIR/issue-81899.rs:6:31: 6:34}>`
   --> $DIR/issue-81899.rs:13:5

@@ -88,11 +88,9 @@ const_eval_division_overflow =
 const_eval_dyn_call_not_a_method =
     `dyn` call trying to call something that is not a method
 
-const_eval_error = {$error_kind ->
-    [static] evaluation of static initializer failed here
-    [const] evaluation of constant value failed here
-    [const_with_path] evaluation of `{$instance}` failed here
-    *[other] {""}
+const_eval_error = evaluation of `{$instance}` failed {$num_frames ->
+    [0] here
+    *[other] inside this call
 }
 
 const_eval_exact_div_has_remainder =
