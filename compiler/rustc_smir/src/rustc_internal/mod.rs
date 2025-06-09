@@ -9,7 +9,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::CrateNum;
 use scoped_tls::scoped_thread_local;
 use stable_mir::Error;
-use stable_mir::convert::{RustcInternal, Stable};
+use stable_mir::unstable::{RustcInternal, Stable};
 
 use crate::rustc_smir::context::SmirCtxt;
 use crate::rustc_smir::{Bridge, SmirContainer, Tables};

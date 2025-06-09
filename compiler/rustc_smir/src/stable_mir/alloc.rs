@@ -13,9 +13,9 @@ use rustc_smir::{Tables, alloc};
 
 use super::Error;
 use super::compiler_interface::BridgeTys;
-use super::convert::Stable;
 use super::mir::Mutability;
 use super::ty::{Allocation, ProvenanceMap};
+use super::unstable::Stable;
 use crate::rustc_smir;
 
 /// Creates new empty `Allocation` from given `Align`.
