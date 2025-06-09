@@ -18,7 +18,6 @@ use rustc_span::def_id::DefId;
 
 use crate::base;
 use crate::context::CodegenCx;
-use crate::errors::InvalidMinimumAlignment;
 use crate::type_of::LayoutGccExt;
 
 fn set_global_alignment<'gcc, 'tcx>(
@@ -29,13 +28,8 @@ fn set_global_alignment<'gcc, 'tcx>(
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller. Rust doesn't support this yet.
-    if let Some(min) = cx.sess().target.min_global_align {
-        match Align::from_bits(min) {
-            Ok(min) => align = align.max(min),
-            Err(err) => {
-                cx.sess().dcx().emit_err(InvalidMinimumAlignment { err: err.to_string() });
-            }
-        }
+    if let Some(min_global) = cx.sess().target.min_global_align {
+        align = Ord::max(align, min_global);
     }
     gv.set_alignment(align.bytes() as i32);
 }
@@ -67,7 +61,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
     }
 
     #[cfg_attr(not(feature = "master"), allow(unused_mut))]
-    fn codegen_static(&self, def_id: DefId) {
+    fn codegen_static(&mut self, def_id: DefId) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
 
         let Ok((value, alloc)) = codegen_static_initializer(self, def_id) else {
@@ -154,25 +148,20 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             // TODO(antoyo): set link section.
         }
 
-        if attrs.flags.contains(CodegenFnAttrFlags::USED)
+        if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
             || attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         {
             self.add_used_global(global.to_rvalue());
         }
     }
-
-    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
-    fn add_used_global(&self, _global: RValue<'gcc>) {
-        // TODO(antoyo)
-    }
-
-    fn add_compiler_used_global(&self, global: RValue<'gcc>) {
-        // NOTE: seems like GCC does not make the distinction between compiler.used and used.
-        self.add_used_global(global);
-    }
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
+    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
+    pub fn add_used_global(&mut self, _global: RValue<'gcc>) {
+        // TODO(antoyo)
+    }
+
     #[cfg_attr(not(feature = "master"), allow(unused_variables))]
     pub fn add_used_function(&self, function: Function<'gcc>) {
         #[cfg(feature = "master")]

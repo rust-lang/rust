@@ -23,6 +23,9 @@ rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
+# We must use the proc_macro version that we will compile proc-macros against,
+# not the one from our own sysroot.
+rustc_proc_macro = { path = "../rustc_proc_macro" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }

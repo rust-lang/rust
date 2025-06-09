@@ -291,6 +291,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             probe::ObjectPick => {
                 let trait_def_id = pick.item.container_id(self.tcx);
 
+                // If the trait is not object safe (specifically, we care about when
+                // the receiver is not valid), then there's a chance that we will not
+                // actually be able to recover the object by derefing the receiver like
+                // we should if it were valid.
+                if !self.tcx.is_dyn_compatible(trait_def_id) {
+                    return ty::GenericArgs::extend_with_error(self.tcx, trait_def_id, &[]);
+                }
+
                 // This shouldn't happen for non-region error kinds, but may occur
                 // when we have error regions. Specifically, since we canonicalize
                 // during method steps, we may successfully deref when we assemble

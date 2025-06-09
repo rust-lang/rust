@@ -2,6 +2,8 @@
 
 use core::time::Duration;
 
+use rustc_abi::FieldIdx;
+
 use crate::concurrency::sync::FutexRef;
 use crate::*;
 
@@ -214,18 +216,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Only flag allowed is UMTX_ABSTIME.
         let abs_time = this.eval_libc_u32("UMTX_ABSTIME");
 
-        let timespec_place = this.project_field(ut, 0)?;
+        let timespec_place = this.project_field(ut, FieldIdx::from_u32(0))?;
         // Inner `timespec` must still be valid.
         let duration = match this.read_timespec(&timespec_place)? {
             Some(dur) => dur,
             None => return interp_ok(None),
         };
 
-        let flags_place = this.project_field(ut, 1)?;
+        let flags_place = this.project_field(ut, FieldIdx::from_u32(1))?;
         let flags = this.read_scalar(&flags_place)?.to_u32()?;
         let abs_time_flag = flags == abs_time;
 
-        let clock_id_place = this.project_field(ut, 2)?;
+        let clock_id_place = this.project_field(ut, FieldIdx::from_u32(2))?;
         let clock_id = this.read_scalar(&clock_id_place)?.to_i32()?;
         let timeout_clock = this.translate_umtx_time_clock_id(clock_id)?;
 

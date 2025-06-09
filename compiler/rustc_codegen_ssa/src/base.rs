@@ -492,6 +492,7 @@ where
 /// users main function.
 pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
+    cgu: &CodegenUnit<'tcx>,
 ) -> Option<Bx::Function> {
     let (main_def_id, entry_type) = cx.tcx().entry_fn(())?;
     let main_is_local = main_def_id.is_local();
@@ -500,10 +501,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     if main_is_local {
         // We want to create the wrapper in the same codegen unit as Rust's main
         // function.
-        if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
+        if !cgu.contains_item(&MonoItem::Fn(instance)) {
             return None;
         }
-    } else if !cx.codegen_unit().is_primary() {
+    } else if !cgu.is_primary() {
         // We want to create the wrapper only when the codegen unit is the primary one
         return None;
     }
@@ -560,7 +561,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
         let EntryFnType::Main { sigpipe } = entry_type;
         let (start_fn, start_ty, args, instance) = {
-            let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
+            let start_def_id = cx.tcx().require_lang_item(LangItem::Start, DUMMY_SP);
             let start_instance = ty::Instance::expect_resolve(
                 cx.tcx(),
                 cx.typing_env(),

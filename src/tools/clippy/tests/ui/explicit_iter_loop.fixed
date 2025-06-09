@@ -77,11 +77,11 @@ fn main() {
 
     struct NoIntoIter();
     impl NoIntoIter {
-        fn iter(&self) -> slice::Iter<u8> {
+        fn iter(&self) -> slice::Iter<'_, u8> {
             unimplemented!()
         }
 
-        fn iter_mut(&mut self) -> slice::IterMut<u8> {
+        fn iter_mut(&mut self) -> slice::IterMut<'_, u8> {
             unimplemented!()
         }
     }
@@ -182,4 +182,17 @@ pub fn issue_13184() {
 
     let rvalues = &values;
     for _ in rvalues.iter() {}
+}
+
+fn issue14630() {
+    macro_rules! mac {
+        (iter $e:expr) => {
+            $e.into_iter()
+        };
+    }
+
+    for _ in &dbg!([1, 2]) {}
+    //~^ explicit_iter_loop
+
+    for _ in mac!(iter [1, 2]) {}
 }

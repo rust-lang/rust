@@ -1,7 +1,7 @@
 //@revisions: 32bit 64bit
 //@[32bit]ignore-bitwidth: 64
 //@[64bit]ignore-bitwidth: 32
-//@no-rustfix
+//@no-rustfix: only some diagnostics have suggestions
 
 #![warn(
     clippy::cast_precision_loss,

@@ -7,6 +7,5 @@ trait Qux {
 static FOO: &(dyn Qux + Sync) = "desc";
 //~^ ERROR the trait `Qux` is not dyn compatible
 //~| ERROR the trait `Qux` is not dyn compatible
-//~| ERROR the trait `Qux` is not dyn compatible
 
 fn main() {}

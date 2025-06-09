@@ -74,13 +74,13 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
     ("compiler/rustc_codegen_gcc", EXCEPTIONS_GCC, None, &[]),
     ("src/bootstrap", EXCEPTIONS_BOOTSTRAP, None, &[]),
     ("src/ci/docker/host-x86_64/test-various/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
-    ("src/etc/test-float-parse", EXCEPTIONS, None, &[]),
     ("src/tools/cargo", EXCEPTIONS_CARGO, None, &["src/tools/cargo"]),
     //("src/tools/miri/test-cargo-miri", &[], None), // FIXME uncomment once all deps are vendored
     //("src/tools/miri/test_dependencies", &[], None), // FIXME uncomment once all deps are vendored
     ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None, &[]),
     ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book", "src/doc/reference"]),
     ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None, &["src/tools/rustc-perf"]),
+    ("src/tools/test-float-parse", EXCEPTIONS, None, &[]),
     // tidy-alphabetical-end
 ];
 
@@ -200,6 +200,7 @@ const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     ("cranelift-module", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-native", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-object", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-srcgen", "Apache-2.0 WITH LLVM-exception"),
     ("foldhash", "Zlib"),
     ("mach2", "BSD-2-Clause OR MIT OR Apache-2.0"),
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
@@ -525,6 +526,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-module",
     "cranelift-native",
     "cranelift-object",
+    "cranelift-srcgen",
     "crc32fast",
     "equivalent",
     "fallible-iterator",

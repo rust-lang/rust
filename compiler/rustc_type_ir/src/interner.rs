@@ -4,7 +4,6 @@ use std::ops::Deref;
 
 use rustc_ast_ir::Movability;
 use rustc_index::bit_set::DenseBitSet;
-use smallvec::SmallVec;
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
@@ -12,7 +11,7 @@ use crate::ir_print::IrPrint;
 use crate::lang_items::TraitSolverLangItem;
 use crate::relate::Relate;
 use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult};
-use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
+use crate::visit::{Flags, TypeVisitable};
 use crate::{self as ty, search_graph};
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
@@ -64,13 +63,16 @@ pub trait Interner:
         + TypeVisitable<Self>
         + SliceLike<Item = Self::LocalDefId>;
 
-    type CanonicalVars: Copy
+    type CanonicalVarKinds: Copy
         + Debug
         + Hash
         + Eq
-        + SliceLike<Item = ty::CanonicalVarInfo<Self>>
+        + SliceLike<Item = ty::CanonicalVarKind<Self>>
         + Default;
-    fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
+    fn mk_canonical_var_kinds(
+        self,
+        kinds: &[ty::CanonicalVarKind<Self>],
+    ) -> Self::CanonicalVarKinds;
 
     type ExternalConstraints: Copy
         + Debug
@@ -143,7 +145,7 @@ pub trait Interner:
     type ParamEnv: ParamEnv<Self>;
     type Predicate: Predicate<Self>;
     type Clause: Clause<Self>;
-    type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
+    type Clauses: Clauses<Self>;
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 
@@ -210,7 +212,7 @@ pub trait Interner:
     fn coroutine_hidden_types(
         self,
         def_id: Self::DefId,
-    ) -> ty::EarlyBinder<Self, ty::Binder<Self, Self::Tys>>;
+    ) -> ty::EarlyBinder<Self, ty::Binder<Self, ty::CoroutineWitnessTypes<Self>>>;
 
     fn fn_sig(
         self,
@@ -379,28 +381,45 @@ impl<T, R> CollectAndApply<T, R> for T {
         F: FnOnce(&[T]) -> R,
     {
         // This code is hot enough that it's worth specializing for the most
-        // common length lists, to avoid the overhead of `SmallVec` creation.
-        // Lengths 0, 1, and 2 typically account for ~95% of cases. If
-        // `size_hint` is incorrect a panic will occur via an `unwrap` or an
-        // `assert`.
-        match iter.size_hint() {
-            (0, Some(0)) => {
-                assert!(iter.next().is_none());
-                f(&[])
-            }
-            (1, Some(1)) => {
-                let t0 = iter.next().unwrap();
-                assert!(iter.next().is_none());
-                f(&[t0])
-            }
-            (2, Some(2)) => {
-                let t0 = iter.next().unwrap();
-                let t1 = iter.next().unwrap();
-                assert!(iter.next().is_none());
-                f(&[t0, t1])
-            }
-            _ => f(&iter.collect::<SmallVec<[_; 8]>>()),
-        }
+        // common length lists, to avoid the overhead of `Vec` creation.
+
+        let Some(t0) = iter.next() else {
+            return f(&[]);
+        };
+
+        let Some(t1) = iter.next() else {
+            return f(&[t0]);
+        };
+
+        let Some(t2) = iter.next() else {
+            return f(&[t0, t1]);
+        };
+
+        let Some(t3) = iter.next() else {
+            return f(&[t0, t1, t2]);
+        };
+
+        let Some(t4) = iter.next() else {
+            return f(&[t0, t1, t2, t3]);
+        };
+
+        let Some(t5) = iter.next() else {
+            return f(&[t0, t1, t2, t3, t4]);
+        };
+
+        let Some(t6) = iter.next() else {
+            return f(&[t0, t1, t2, t3, t4, t5]);
+        };
+
+        let Some(t7) = iter.next() else {
+            return f(&[t0, t1, t2, t3, t4, t5, t6]);
+        };
+
+        let Some(t8) = iter.next() else {
+            return f(&[t0, t1, t2, t3, t4, t5, t6, t7]);
+        };
+
+        f(&[t0, t1, t2, t3, t4, t5, t6, t7, t8].into_iter().chain(iter).collect::<Vec<_>>())
     }
 }
 
@@ -416,29 +435,57 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
         F: FnOnce(&[T]) -> R,
     {
         // This code is hot enough that it's worth specializing for the most
-        // common length lists, to avoid the overhead of `SmallVec` creation.
-        // Lengths 0, 1, and 2 typically account for ~95% of cases. If
-        // `size_hint` is incorrect a panic will occur via an `unwrap` or an
-        // `assert`, unless a failure happens first, in which case the result
-        // will be an error anyway.
-        Ok(match iter.size_hint() {
-            (0, Some(0)) => {
-                assert!(iter.next().is_none());
-                f(&[])
-            }
-            (1, Some(1)) => {
-                let t0 = iter.next().unwrap()?;
-                assert!(iter.next().is_none());
-                f(&[t0])
-            }
-            (2, Some(2)) => {
-                let t0 = iter.next().unwrap()?;
-                let t1 = iter.next().unwrap()?;
-                assert!(iter.next().is_none());
-                f(&[t0, t1])
-            }
-            _ => f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?),
-        })
+        // common length lists, to avoid the overhead of `Vec` creation.
+
+        let Some(t0) = iter.next() else {
+            return Ok(f(&[]));
+        };
+        let t0 = t0?;
+
+        let Some(t1) = iter.next() else {
+            return Ok(f(&[t0]));
+        };
+        let t1 = t1?;
+
+        let Some(t2) = iter.next() else {
+            return Ok(f(&[t0, t1]));
+        };
+        let t2 = t2?;
+
+        let Some(t3) = iter.next() else {
+            return Ok(f(&[t0, t1, t2]));
+        };
+        let t3 = t3?;
+
+        let Some(t4) = iter.next() else {
+            return Ok(f(&[t0, t1, t2, t3]));
+        };
+        let t4 = t4?;
+
+        let Some(t5) = iter.next() else {
+            return Ok(f(&[t0, t1, t2, t3, t4]));
+        };
+        let t5 = t5?;
+
+        let Some(t6) = iter.next() else {
+            return Ok(f(&[t0, t1, t2, t3, t4, t5]));
+        };
+        let t6 = t6?;
+
+        let Some(t7) = iter.next() else {
+            return Ok(f(&[t0, t1, t2, t3, t4, t5, t6]));
+        };
+        let t7 = t7?;
+
+        let Some(t8) = iter.next() else {
+            return Ok(f(&[t0, t1, t2, t3, t4, t5, t6, t7]));
+        };
+        let t8 = t8?;
+
+        Ok(f(&[Ok(t0), Ok(t1), Ok(t2), Ok(t3), Ok(t4), Ok(t5), Ok(t6), Ok(t7), Ok(t8)]
+            .into_iter()
+            .chain(iter)
+            .collect::<Result<Vec<_>, _>>()?))
     }
 }
 

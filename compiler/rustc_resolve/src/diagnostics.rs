@@ -6,7 +6,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_attr_data_structures::{self as attr, Stability};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -2623,7 +2623,53 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         for &StrippedCfgItem { parent_module, ident, ref cfg } in symbols {
-            if parent_module != module || ident.name != *segment {
+            if ident.name != *segment {
+                continue;
+            }
+
+            fn comes_from_same_module_for_glob(
+                r: &Resolver<'_, '_>,
+                parent_module: DefId,
+                module: DefId,
+                visited: &mut FxHashMap<DefId, bool>,
+            ) -> bool {
+                if let Some(&cached) = visited.get(&parent_module) {
+                    // this branch is prevent from being called recursively infinity,
+                    // because there has some cycles in globs imports,
+                    // see more spec case at `tests/ui/cfg/diagnostics-reexport-2.rs#reexport32`
+                    return cached;
+                }
+                visited.insert(parent_module, false);
+                let res = r.module_map.get(&parent_module).is_some_and(|m| {
+                    for importer in m.glob_importers.borrow().iter() {
+                        if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id()
+                        {
+                            if next_parent_module == module
+                                || comes_from_same_module_for_glob(
+                                    r,
+                                    next_parent_module,
+                                    module,
+                                    visited,
+                                )
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                    false
+                });
+                visited.insert(parent_module, res);
+                res
+            }
+
+            let comes_from_same_module = parent_module == module
+                || comes_from_same_module_for_glob(
+                    self,
+                    parent_module,
+                    module,
+                    &mut Default::default(),
+                );
+            if !comes_from_same_module {
                 continue;
             }
 

@@ -715,6 +715,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(no_analysis, true);
     untracked!(no_leak_check, true);
     untracked!(no_parallel_backend, true);
+    untracked!(no_steal_thir, true);
     untracked!(parse_crate_root_only, true);
     // `pre_link_arg` is omitted because it just forwards to `pre_link_args`.
     untracked!(pre_link_args, vec![String::from("abc"), String::from("def")]);
@@ -776,8 +777,7 @@ fn test_unstable_options_tracking_hash() {
         CoverageOptions {
             level: CoverageLevel::Mcdc,
             no_mir_spans: true,
-            discard_all_spans_in_codegen: true,
-            inject_unused_local_file: true,
+            discard_all_spans_in_codegen: true
         }
     );
     tracked!(crate_attr, vec!["abc".to_string()]);

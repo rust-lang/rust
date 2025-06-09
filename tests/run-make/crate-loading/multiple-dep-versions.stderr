@@ -39,7 +39,7 @@ error[E0599]: no method named `foo` found for struct `dep_2_reexport::Type` in t
   --> replaced
    |
 LL |     Type.foo();
-   |          ^^^ method not found in `Type`
+   |          ^^^ method not found in `dep_2_reexport::Type`
    |
 note: there are multiple different versions of crate `dependency` in the dependency graph
   --> replaced
@@ -63,7 +63,7 @@ error[E0599]: no function or associated item named `bar` found for struct `dep_2
   --> replaced
    |
 LL |     Type::bar();
-   |           ^^^ function or associated item not found in `Type`
+   |           ^^^ function or associated item not found in `dep_2_reexport::Type`
    |
 note: there are multiple different versions of crate `dependency` in the dependency graph
   --> replaced

@@ -58,11 +58,6 @@ pub(crate) struct UnstableInStableExposed {
         code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
         applicability = "has-placeholders"
     )]
-    #[suggestion(
-        const_eval_bypass_sugg,
-        code = "#[rustc_allow_const_fn_unstable({gate})]\n",
-        applicability = "has-placeholders"
-    )]
     pub attr_span: Span,
 }
 
@@ -442,38 +437,6 @@ pub struct LiveDrop<'tcx> {
     pub dropped_ty: Ty<'tcx>,
     #[label(const_eval_dropped_at_label)]
     pub dropped_at: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_error, code = E0080)]
-pub struct ConstEvalError {
-    #[primary_span]
-    pub span: Span,
-    /// One of "const", "const_with_path", and "static"
-    pub error_kind: &'static str,
-    pub instance: String,
-    #[subdiagnostic]
-    pub frame_notes: Vec<FrameNote>,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_nullary_intrinsic_fail)]
-pub struct NullaryIntrinsicError {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_validation_failure, code = E0080)]
-pub struct ValidationFailure {
-    #[primary_span]
-    pub span: Span,
-    #[note(const_eval_validation_failure_note)]
-    pub ub_note: (),
-    #[subdiagnostic]
-    pub frames: Vec<FrameNote>,
-    #[subdiagnostic]
-    pub raw_bytes: RawBytesNote,
 }
 
 pub trait ReportErrorExt {

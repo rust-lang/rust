@@ -739,7 +739,7 @@ impl Step for Clippy {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/clippy")
+        run.suite_path("src/tools/clippy/tests").path("src/tools/clippy")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -782,6 +782,23 @@ impl Step for Clippy {
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
         let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
+
+        // Collect paths of tests to run
+        'partially_test: {
+            let paths = &builder.config.paths[..];
+            let mut test_names = Vec::new();
+            for path in paths {
+                if let Some(path) =
+                    helpers::is_valid_test_suite_arg(path, "src/tools/clippy/tests", builder)
+                {
+                    test_names.push(path);
+                } else if path.ends_with("src/tools/clippy") {
+                    // When src/tools/clippy is called directly, all tests should be run.
+                    break 'partially_test;
+                }
+            }
+            cargo.env("TESTNAME", test_names.join(","));
+        }
 
         cargo.add_rustc_lib_path(builder);
         let cargo = prepare_cargo_test(cargo, &[], &[], host, builder);
@@ -1559,7 +1576,7 @@ impl Step for Compiletest {
 
         if builder.top_stage == 0 && env::var("COMPILETEST_FORCE_STAGE0").is_err() {
             eprintln!("\
-ERROR: `--stage 0` runs compiletest on the beta compiler, not your local changes, and will almost always cause tests to fail
+ERROR: `--stage 0` runs compiletest on the stage0 (precompiled) compiler, not your local changes, and will almost always cause tests to fail
 HELP: to test the compiler, use `--stage 1` instead
 HELP: to test the standard library, use `--stage 0 library/std` instead
 NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
@@ -1587,9 +1604,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
         // running compiler in stage 2 when plugins run.
         let (stage, stage_id) = if suite == "ui-fulldeps" && compiler.stage == 1 {
-            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead
-            // finding an incorrect compiler path on cross-targets, as the stage 0 beta compiler is
-            // always equal to `build.build` in the configuration.
+            // At stage 0 (stage - 1) we are using the stage0 compiler. Using `self.target` can lead
+            // finding an incorrect compiler path on cross-targets, as the stage 0 is always equal to
+            // `build.build` in the configuration.
             let build = builder.build.build;
             compiler = builder.compiler(compiler.stage - 1, build);
             let test_stage = compiler.stage + 1;
@@ -1675,7 +1692,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         if mode == "rustdoc-json" {
-            // Use the beta compiler for jsondocck
+            // Use the stage0 compiler for jsondocck
             let json_compiler = compiler.with_stage(0);
             cmd.arg("--jsondocck-path")
                 .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }).tool_path);
@@ -2400,10 +2417,10 @@ impl Step for ErrorIndex {
 }
 
 fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> bool {
-    if let Ok(contents) = fs::read_to_string(markdown) {
-        if !contents.contains("```") {
-            return true;
-        }
+    if let Ok(contents) = fs::read_to_string(markdown)
+        && !contents.contains("```")
+    {
+        return true;
     }
 
     builder.verbose(|| println!("doc tests for: {}", markdown.display()));
@@ -2690,16 +2707,6 @@ impl Step for Crate {
                         .arg(builder.src.join("library/sysroot/Cargo.toml"));
                 } else {
                     compile::std_cargo(builder, target, compiler.stage, &mut cargo);
-                    // `std_cargo` actually does the wrong thing: it passes `--sysroot build/host/stage2`,
-                    // but we want to use the force-recompile std we just built in `build/host/stage2-test-sysroot`.
-                    // Override it.
-                    if builder.download_rustc() && compiler.stage > 0 {
-                        let sysroot = builder
-                            .out
-                            .join(compiler.host)
-                            .join(format!("stage{}-test-sysroot", compiler.stage));
-                        cargo.env("RUSTC_SYSROOT", sysroot);
-                    }
                 }
             }
             Mode::Rustc => {
@@ -2947,7 +2954,14 @@ impl Step for Distcheck {
         run.builder.ensure(Distcheck);
     }
 
-    /// Runs "distcheck", a 'make check' from a tarball
+    /// Runs `distcheck`, which is a collection of smoke tests:
+    ///
+    /// - Run `make check` from an unpacked dist tarball to make sure we can at the minimum run
+    ///   check steps from those sources.
+    /// - Check that selected dist components (`rust-src` only at the moment) at least have expected
+    ///   directory shape and crate manifests that cargo can generate a lockfile from.
+    ///
+    /// FIXME(#136822): dist components are under-tested.
     fn run(self, builder: &Builder<'_>) {
         builder.info("Distcheck");
         let dir = builder.tempdir().join("distcheck");
@@ -3520,7 +3534,7 @@ impl Step for CodegenGCC {
 }
 
 /// Test step that does two things:
-/// - Runs `cargo test` for the `src/etc/test-float-parse` tool.
+/// - Runs `cargo test` for the `src/tools/test-float-parse` tool.
 /// - Invokes the `test-float-parse` tool to test the standard library's
 ///   float parsing routines.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3535,7 +3549,7 @@ impl Step for TestFloatParse {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/etc/test-float-parse")
+        run.path("src/tools/test-float-parse")
     }
 
     fn make_run(run: RunConfig<'_>) {

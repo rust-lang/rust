@@ -123,3 +123,19 @@ mod issue12131 {
         //~^ dbg_macro
     }
 }
+
+mod issue14914 {
+    use std::future::Future;
+
+    fn takes_async_fn<F, Fut>(_f: F)
+    where
+        F: FnOnce(i32) -> Fut,
+        Fut: Future<Output = i32>,
+    {
+    }
+
+    fn should_not_panic() {
+        takes_async_fn(async |val| dbg!(val));
+        //~^ dbg_macro
+    }
+}

@@ -1,4 +1,3 @@
-use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::ErrorGuaranteed;
@@ -6,6 +5,7 @@ use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::Span;
 use rustc_span::profiling::SpannedEventArgRecorder;
+use {rustc_ast as ast, rustc_proc_macro as pm};
 
 use crate::base::{self, *};
 use crate::{errors, proc_macro_server};

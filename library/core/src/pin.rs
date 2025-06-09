@@ -1092,7 +1092,6 @@ pub use self::unsafe_pinned::UnsafePinned;
 #[rustc_pub_transparent]
 #[derive(Copy, Clone)]
 pub struct Pin<Ptr> {
-    /// Only public for bootstrap.
     pointer: Ptr,
 }
 
@@ -1419,7 +1418,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     #[stable(feature = "pin_deref_mut", since = "1.84.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline(always)]
-    pub fn as_deref_mut(self: Pin<&mut Pin<Ptr>>) -> Pin<&mut Ptr::Target> {
+    pub fn as_deref_mut(self: Pin<&mut Self>) -> Pin<&mut Ptr::Target> {
         // SAFETY: What we're asserting here is that going from
         //
         //     Pin<&mut Pin<Ptr>>

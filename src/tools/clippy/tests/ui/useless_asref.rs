@@ -248,6 +248,16 @@ impl Issue12357 {
     }
 }
 
+fn issue_14828() {
+    pub trait T {
+        fn as_ref(&self) {}
+    }
+
+    impl T for () {}
+
+    ().as_ref();
+}
+
 fn main() {
     not_ok();
     ok();

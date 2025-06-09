@@ -27,6 +27,7 @@ use rustc_span::{Symbol, sym};
 
 pub(crate) use self::llvm::codegen_llvm_intrinsic_call;
 use crate::cast::clif_intcast;
+use crate::codegen_f16_f128;
 use crate::prelude::*;
 
 fn bug_on_incorrect_arg_count(intrinsic: impl std::fmt::Display) -> ! {
@@ -248,8 +249,10 @@ fn bool_to_zero_or_max_uint<'tcx>(
     let ty = fx.clif_type(ty).unwrap();
 
     let int_ty = match ty {
+        types::F16 => types::I16,
         types::F32 => types::I32,
         types::F64 => types::I64,
+        types::F128 => types::I128,
         ty => ty,
     };
 
@@ -308,45 +311,83 @@ fn codegen_float_intrinsic_call<'tcx>(
     ret: CPlace<'tcx>,
 ) -> bool {
     let (name, arg_count, ty, clif_ty) = match intrinsic {
+        sym::expf16 => ("expf16", 1, fx.tcx.types.f16, types::F16),
         sym::expf32 => ("expf", 1, fx.tcx.types.f32, types::F32),
         sym::expf64 => ("exp", 1, fx.tcx.types.f64, types::F64),
+        sym::expf128 => ("expf128", 1, fx.tcx.types.f128, types::F128),
+        sym::exp2f16 => ("exp2f16", 1, fx.tcx.types.f16, types::F16),
         sym::exp2f32 => ("exp2f", 1, fx.tcx.types.f32, types::F32),
         sym::exp2f64 => ("exp2", 1, fx.tcx.types.f64, types::F64),
+        sym::exp2f128 => ("exp2f128", 1, fx.tcx.types.f128, types::F128),
+        sym::sqrtf16 => ("sqrtf16", 1, fx.tcx.types.f16, types::F16),
         sym::sqrtf32 => ("sqrtf", 1, fx.tcx.types.f32, types::F32),
         sym::sqrtf64 => ("sqrt", 1, fx.tcx.types.f64, types::F64),
+        sym::sqrtf128 => ("sqrtf128", 1, fx.tcx.types.f128, types::F128),
+        sym::powif16 => ("__powisf2", 2, fx.tcx.types.f16, types::F16), // compiler-builtins
         sym::powif32 => ("__powisf2", 2, fx.tcx.types.f32, types::F32), // compiler-builtins
         sym::powif64 => ("__powidf2", 2, fx.tcx.types.f64, types::F64), // compiler-builtins
+        sym::powif128 => ("__powitf2", 2, fx.tcx.types.f128, types::F128), // compiler-builtins
+        sym::powf16 => ("powf16", 2, fx.tcx.types.f16, types::F16),
         sym::powf32 => ("powf", 2, fx.tcx.types.f32, types::F32),
         sym::powf64 => ("pow", 2, fx.tcx.types.f64, types::F64),
+        sym::powf128 => ("powf128", 2, fx.tcx.types.f128, types::F128),
+        sym::logf16 => ("logf16", 1, fx.tcx.types.f16, types::F16),
         sym::logf32 => ("logf", 1, fx.tcx.types.f32, types::F32),
         sym::logf64 => ("log", 1, fx.tcx.types.f64, types::F64),
+        sym::logf128 => ("logf128", 1, fx.tcx.types.f128, types::F128),
+        sym::log2f16 => ("log2f16", 1, fx.tcx.types.f16, types::F16),
         sym::log2f32 => ("log2f", 1, fx.tcx.types.f32, types::F32),
         sym::log2f64 => ("log2", 1, fx.tcx.types.f64, types::F64),
+        sym::log2f128 => ("log2f128", 1, fx.tcx.types.f128, types::F128),
+        sym::log10f16 => ("log10f16", 1, fx.tcx.types.f16, types::F16),
         sym::log10f32 => ("log10f", 1, fx.tcx.types.f32, types::F32),
         sym::log10f64 => ("log10", 1, fx.tcx.types.f64, types::F64),
+        sym::log10f128 => ("log10f128", 1, fx.tcx.types.f128, types::F128),
+        sym::fabsf16 => ("fabsf16", 1, fx.tcx.types.f16, types::F16),
         sym::fabsf32 => ("fabsf", 1, fx.tcx.types.f32, types::F32),
         sym::fabsf64 => ("fabs", 1, fx.tcx.types.f64, types::F64),
+        sym::fabsf128 => ("fabsf128", 1, fx.tcx.types.f128, types::F128),
+        sym::fmaf16 => ("fmaf16", 3, fx.tcx.types.f16, types::F16),
         sym::fmaf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32),
         sym::fmaf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
+        sym::fmaf128 => ("fmaf128", 3, fx.tcx.types.f128, types::F128),
         // FIXME: calling `fma` from libc without FMA target feature uses expensive sofware emulation
+        sym::fmuladdf16 => ("fmaf16", 3, fx.tcx.types.f16, types::F16), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f16
         sym::fmuladdf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f32
         sym::fmuladdf64 => ("fma", 3, fx.tcx.types.f64, types::F64), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f64
+        sym::fmuladdf128 => ("fmaf128", 3, fx.tcx.types.f128, types::F128), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f128
+        sym::copysignf16 => ("copysignf16", 2, fx.tcx.types.f16, types::F16),
         sym::copysignf32 => ("copysignf", 2, fx.tcx.types.f32, types::F32),
         sym::copysignf64 => ("copysign", 2, fx.tcx.types.f64, types::F64),
+        sym::copysignf128 => ("copysignf128", 2, fx.tcx.types.f128, types::F128),
+        sym::floorf16 => ("floorf16", 1, fx.tcx.types.f16, types::F16),
         sym::floorf32 => ("floorf", 1, fx.tcx.types.f32, types::F32),
         sym::floorf64 => ("floor", 1, fx.tcx.types.f64, types::F64),
+        sym::floorf128 => ("floorf128", 1, fx.tcx.types.f128, types::F128),
+        sym::ceilf16 => ("ceilf16", 1, fx.tcx.types.f16, types::F16),
         sym::ceilf32 => ("ceilf", 1, fx.tcx.types.f32, types::F32),
         sym::ceilf64 => ("ceil", 1, fx.tcx.types.f64, types::F64),
+        sym::ceilf128 => ("ceilf128", 1, fx.tcx.types.f128, types::F128),
+        sym::truncf16 => ("truncf16", 1, fx.tcx.types.f16, types::F16),
         sym::truncf32 => ("truncf", 1, fx.tcx.types.f32, types::F32),
         sym::truncf64 => ("trunc", 1, fx.tcx.types.f64, types::F64),
+        sym::truncf128 => ("truncf128", 1, fx.tcx.types.f128, types::F128),
+        sym::round_ties_even_f16 => ("rintf16", 1, fx.tcx.types.f16, types::F16),
         sym::round_ties_even_f32 => ("rintf", 1, fx.tcx.types.f32, types::F32),
         sym::round_ties_even_f64 => ("rint", 1, fx.tcx.types.f64, types::F64),
+        sym::round_ties_even_f128 => ("rintf128", 1, fx.tcx.types.f128, types::F128),
+        sym::roundf16 => ("roundf16", 1, fx.tcx.types.f16, types::F16),
         sym::roundf32 => ("roundf", 1, fx.tcx.types.f32, types::F32),
         sym::roundf64 => ("round", 1, fx.tcx.types.f64, types::F64),
+        sym::roundf128 => ("roundf128", 1, fx.tcx.types.f128, types::F128),
+        sym::sinf16 => ("sinf16", 1, fx.tcx.types.f16, types::F16),
         sym::sinf32 => ("sinf", 1, fx.tcx.types.f32, types::F32),
         sym::sinf64 => ("sin", 1, fx.tcx.types.f64, types::F64),
+        sym::sinf128 => ("sinf128", 1, fx.tcx.types.f128, types::F128),
+        sym::cosf16 => ("cosf16", 1, fx.tcx.types.f16, types::F16),
         sym::cosf32 => ("cosf", 1, fx.tcx.types.f32, types::F32),
         sym::cosf64 => ("cos", 1, fx.tcx.types.f64, types::F64),
+        sym::cosf128 => ("cosf128", 1, fx.tcx.types.f128, types::F128),
         _ => return false,
     };
 
@@ -379,13 +420,26 @@ fn codegen_float_intrinsic_call<'tcx>(
     };
 
     let layout = fx.layout_of(ty);
+    // FIXME(bytecodealliance/wasmtime#8312): Use native Cranelift operations
+    // for `f16` and `f128` once the lowerings have been implemented in Cranelift.
     let res = match intrinsic {
+        sym::fmaf16 | sym::fmuladdf16 => {
+            CValue::by_val(codegen_f16_f128::fma_f16(fx, args[0], args[1], args[2]), layout)
+        }
         sym::fmaf32 | sym::fmaf64 | sym::fmuladdf32 | sym::fmuladdf64 => {
             CValue::by_val(fx.bcx.ins().fma(args[0], args[1], args[2]), layout)
+        }
+        sym::copysignf16 => {
+            CValue::by_val(codegen_f16_f128::copysign_f16(fx, args[0], args[1]), layout)
+        }
+        sym::copysignf128 => {
+            CValue::by_val(codegen_f16_f128::copysign_f128(fx, args[0], args[1]), layout)
         }
         sym::copysignf32 | sym::copysignf64 => {
             CValue::by_val(fx.bcx.ins().fcopysign(args[0], args[1]), layout)
         }
+        sym::fabsf16 => CValue::by_val(codegen_f16_f128::abs_f16(fx, args[0]), layout),
+        sym::fabsf128 => CValue::by_val(codegen_f16_f128::abs_f128(fx, args[0]), layout),
         sym::fabsf32
         | sym::fabsf64
         | sym::floorf32
@@ -415,10 +469,35 @@ fn codegen_float_intrinsic_call<'tcx>(
 
         // These intrinsics aren't supported natively by Cranelift.
         // Lower them to a libcall.
-        sym::powif32 | sym::powif64 => {
-            let input_tys: Vec<_> = vec![AbiParam::new(clif_ty), AbiParam::new(types::I32)];
+        sym::powif16 | sym::powif32 | sym::powif64 | sym::powif128 => {
+            let temp;
+            let (clif_ty, args) = if intrinsic == sym::powif16 {
+                temp = [codegen_f16_f128::f16_to_f32(fx, args[0]), args[1]];
+                (types::F32, temp.as_slice())
+            } else {
+                (clif_ty, args)
+            };
+            let input_tys: Vec<_> =
+                vec![AbiParam::new(clif_ty), lib_call_arg_param(fx.tcx, types::I32, true)];
             let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], &args)[0];
+            let ret_val = if intrinsic == sym::powif16 {
+                codegen_f16_f128::f32_to_f16(fx, ret_val)
+            } else {
+                ret_val
+            };
             CValue::by_val(ret_val, fx.layout_of(ty))
+        }
+        sym::powf16 => {
+            // FIXME(f16_f128): Rust `compiler-builtins` doesn't export `powf16` yet.
+            let x = codegen_f16_f128::f16_to_f32(fx, args[0]);
+            let y = codegen_f16_f128::f16_to_f32(fx, args[1]);
+            let ret_val = fx.lib_call(
+                "powf",
+                vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
+                vec![AbiParam::new(types::F32)],
+                &[x, y],
+            )[0];
+            CValue::by_val(codegen_f16_f128::f32_to_f16(fx, ret_val), fx.layout_of(ty))
         }
         _ => {
             let input_tys: Vec<_> = args.iter().map(|_| AbiParam::new(clif_ty)).collect();
@@ -706,7 +785,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                             }
                         })
                     });
-                    crate::base::codegen_panic_nounwind(fx, &msg_str, Some(source_info.span));
+                    crate::base::codegen_panic_nounwind(fx, &msg_str, source_info.span);
                     return Ok(());
                 }
             }
@@ -733,11 +812,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             dest.write_cvalue(fx, val);
         }
 
-        sym::pref_align_of
-        | sym::needs_drop
-        | sym::type_id
-        | sym::type_name
-        | sym::variant_count => {
+        sym::needs_drop | sym::type_id | sym::type_name | sym::variant_count => {
             intrinsic_args!(fx, args => (); intrinsic);
 
             let const_val = fx
@@ -791,7 +866,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             // FIXME use a compiler fence once Cranelift supports it
             fx.bcx.ins().fence();
         }
-        _ if intrinsic.as_str().starts_with("atomic_load") => {
+        sym::atomic_load => {
             intrinsic_args!(fx, args => (ptr); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -801,7 +876,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     // FIXME implement 128bit atomics
                     if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
                         // special case for compiler-builtins to avoid having to patch it
-                        crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
+                        crate::base::codegen_panic_nounwind(
+                            fx,
+                            "128bit atomics not yet supported",
+                            source_info.span,
+                        );
                         return Ok(());
                     } else {
                         fx.tcx
@@ -822,7 +901,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let val = CValue::by_val(val, fx.layout_of(ty));
             ret.write_cvalue(fx, val);
         }
-        _ if intrinsic.as_str().starts_with("atomic_store") => {
+        sym::atomic_store => {
             intrinsic_args!(fx, args => (ptr, val); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -832,7 +911,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     // FIXME implement 128bit atomics
                     if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
                         // special case for compiler-builtins to avoid having to patch it
-                        crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
+                        crate::base::codegen_panic_nounwind(
+                            fx,
+                            "128bit atomics not yet supported",
+                            source_info.span,
+                        );
                         return Ok(());
                     } else {
                         fx.tcx
@@ -851,7 +934,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             fx.bcx.ins().atomic_store(MemFlags::trusted(), val, ptr);
         }
-        _ if intrinsic.as_str().starts_with("atomic_xchg") => {
+        sym::atomic_xchg => {
             intrinsic_args!(fx, args => (ptr, new); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -872,8 +955,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_cxchg") => {
-            // both atomic_cxchg_* and atomic_cxchgweak_*
+        sym::atomic_cxchg | sym::atomic_cxchgweak => {
             intrinsic_args!(fx, args => (ptr, test_old, new); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -896,7 +978,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, ret_val)
         }
 
-        _ if intrinsic.as_str().starts_with("atomic_xadd") => {
+        sym::atomic_xadd => {
             intrinsic_args!(fx, args => (ptr, amount); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -918,7 +1000,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_xsub") => {
+        sym::atomic_xsub => {
             intrinsic_args!(fx, args => (ptr, amount); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -940,7 +1022,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_and") => {
+        sym::atomic_and => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -961,7 +1043,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_or") => {
+        sym::atomic_or => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -982,7 +1064,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_xor") => {
+        sym::atomic_xor => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1003,7 +1085,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_nand") => {
+        sym::atomic_nand => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1024,7 +1106,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_max") => {
+        sym::atomic_max => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1045,7 +1127,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_umax") => {
+        sym::atomic_umax => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1066,7 +1148,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_min") => {
+        sym::atomic_min => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1087,7 +1169,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_umin") => {
+        sym::atomic_umin => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1109,6 +1191,20 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, old);
         }
 
+        sym::minimumf16 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            // FIXME(bytecodealliance/wasmtime#8312): Use `fmin` directly once
+            // Cranelift backend lowerings are implemented.
+            let a = codegen_f16_f128::f16_to_f32(fx, a);
+            let b = codegen_f16_f128::f16_to_f32(fx, b);
+            let val = fx.bcx.ins().fmin(a, b);
+            let val = codegen_f16_f128::f32_to_f16(fx, val);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
+            ret.write_cvalue(fx, val);
+        }
         sym::minimumf32 => {
             intrinsic_args!(fx, args => (a, b); intrinsic);
             let a = a.load_scalar(fx);
@@ -1125,6 +1221,31 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let val = fx.bcx.ins().fmin(a, b);
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
+            ret.write_cvalue(fx, val);
+        }
+        sym::minimumf128 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            // FIXME(bytecodealliance/wasmtime#8312): Use `fmin` once  Cranelift
+            // backend lowerings are implemented.
+            let val = codegen_f16_f128::fmin_f128(fx, a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f128));
+            ret.write_cvalue(fx, val);
+        }
+        sym::maximumf16 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            // FIXME(bytecodealliance/wasmtime#8312): Use `fmax` directly once
+            // Cranelift backend lowerings are implemented.
+            let a = codegen_f16_f128::f16_to_f32(fx, a);
+            let b = codegen_f16_f128::f16_to_f32(fx, b);
+            let val = fx.bcx.ins().fmax(a, b);
+            let val = codegen_f16_f128::f32_to_f16(fx, val);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
             ret.write_cvalue(fx, val);
         }
         sym::maximumf32 => {
@@ -1145,7 +1266,27 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
             ret.write_cvalue(fx, val);
         }
+        sym::maximumf128 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
 
+            // FIXME(bytecodealliance/wasmtime#8312): Use `fmax` once  Cranelift
+            // backend lowerings are implemented.
+            let val = codegen_f16_f128::fmax_f128(fx, a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f128));
+            ret.write_cvalue(fx, val);
+        }
+
+        sym::minnumf16 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let val = crate::num::codegen_float_min(fx, a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
+            ret.write_cvalue(fx, val);
+        }
         sym::minnumf32 => {
             intrinsic_args!(fx, args => (a, b); intrinsic);
             let a = a.load_scalar(fx);
@@ -1164,6 +1305,24 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
             ret.write_cvalue(fx, val);
         }
+        sym::minnumf128 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let val = crate::num::codegen_float_min(fx, a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f128));
+            ret.write_cvalue(fx, val);
+        }
+        sym::maxnumf16 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let val = crate::num::codegen_float_max(fx, a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
+            ret.write_cvalue(fx, val);
+        }
         sym::maxnumf32 => {
             intrinsic_args!(fx, args => (a, b); intrinsic);
             let a = a.load_scalar(fx);
@@ -1180,6 +1339,15 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let val = crate::num::codegen_float_max(fx, a, b);
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
+            ret.write_cvalue(fx, val);
+        }
+        sym::maxnumf128 => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let val = crate::num::codegen_float_max(fx, a, b);
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f128));
             ret.write_cvalue(fx, val);
         }
 

@@ -12,16 +12,13 @@
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(associated_type_defaults)]
-#![feature(box_into_inner)]
 #![feature(box_patterns)]
 #![feature(default_field_values)]
 #![feature(error_reporter)]
-#![feature(if_let_guard)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
-#![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
@@ -1530,7 +1527,7 @@ impl DiagCtxtInner {
             // Future breakages aren't emitted if they're `Level::Allow` or
             // `Level::Expect`, but they still need to be constructed and
             // stashed below, so they'll trigger the must_produce_diag check.
-            assert_matches!(diagnostic.level, Error | Warning | Allow | Expect);
+            assert_matches!(diagnostic.level, Error | ForceWarning | Warning | Allow | Expect);
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 

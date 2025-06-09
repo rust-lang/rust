@@ -42,9 +42,9 @@ fn get(
 }
 
 impl SingleAttributeParser for DeprecationParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::deprecated];
+    const PATH: &'static [Symbol] = &[sym::deprecated];
 
-    fn on_duplicate(cx: &AcceptContext<'_>, first_span: rustc_span::Span) {
+    fn on_duplicate(cx: &AcceptContext<'_>, first_span: Span) {
         // FIXME(jdonszelmann): merge with errors from check_attrs.rs
         cx.emit_err(session_diagnostics::UnusedMultiple {
             this: cx.attr_span,
@@ -79,7 +79,7 @@ impl SingleAttributeParser for DeprecationParser {
                     return None;
                 };
 
-                let ident_name = param.path_without_args().word_sym();
+                let ident_name = param.path().word_sym();
 
                 match ident_name {
                     Some(name @ sym::since) => {
@@ -102,7 +102,7 @@ impl SingleAttributeParser for DeprecationParser {
                     _ => {
                         cx.emit_err(session_diagnostics::UnknownMetaItem {
                             span: param_span,
-                            item: param.path_without_args().to_string(),
+                            item: param.path().to_string(),
                             expected: if features.deprecated_suggestion() {
                                 &["since", "note", "suggestion"]
                             } else {

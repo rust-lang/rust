@@ -9,7 +9,7 @@ use rustc_span::def_id::LocalDefId;
 use tracing::instrument;
 
 use crate::infer::InferCtxt;
-use crate::traits::{ObligationCause, ObligationCtxt};
+use crate::traits::ObligationCause;
 
 /// Implied bounds are region relationships that we deduce
 /// automatically. The idea is that (e.g.) a caller must check that a
@@ -79,24 +79,9 @@ fn implied_outlives_bounds<'a, 'tcx>(
 
     if !constraints.is_empty() {
         let QueryRegionConstraints { outlives } = constraints;
-        // Instantiation may have produced new inference variables and constraints on those
-        // variables. Process these constraints.
-        let ocx = ObligationCtxt::new(infcx);
         let cause = ObligationCause::misc(span, body_id);
-        for &constraint in &outlives {
-            ocx.register_obligation(infcx.query_outlives_constraint_to_obligation(
-                constraint,
-                cause.clone(),
-                param_env,
-            ));
-        }
-
-        let errors = ocx.select_all_or_error();
-        if !errors.is_empty() {
-            infcx.dcx().span_bug(
-                span,
-                "implied_outlives_bounds failed to solve obligations from instantiation",
-            );
+        for &(predicate, _) in &outlives {
+            infcx.register_outlives_constraint(predicate, &cause);
         }
     };
 

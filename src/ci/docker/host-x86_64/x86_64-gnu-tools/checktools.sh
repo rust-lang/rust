@@ -53,8 +53,8 @@ MIRIFLAGS="-Zmiri-force-intrinsic-fallback --cfg force_intrinsic_fallback -O -Zm
 case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     # Only this branch runs in PR CI.
-    # Fully test all main OSes, including a 32bit target.
-    python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri --target x86_64-apple-darwin
+    # Fully test all main OSes, and all main architectures.
+    python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri --target aarch64-apple-darwin
     python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri --target i686-pc-windows-msvc
     # Only run "pass" tests for the remaining targets, which is quite a bit faster.
     python3 "$X_PY" test --stage 2 src/tools/miri --target x86_64-pc-windows-gnu --test-args pass
@@ -69,7 +69,7 @@ case $HOST_TARGET in
     #FIXME: Re-enable this once CI issues are fixed
     # See <https://github.com/rust-lang/rust/issues/127883>
     # For now, these tests are moved to `x86_64-msvc-ext2` in `src/ci/github-actions/jobs.yml`.
-    #python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-apple-darwin --test-args pass
+    #python3 "$X_PY" test --stage 2 src/tools/miri --target x86_64-apple-darwin --test-args pass
     ;;
   *)
     echo "FATAL: unexpected host $HOST_TARGET"

@@ -508,7 +508,7 @@ fn get_captured_ids(cx: &LateContext<'_>, ty: Ty<'_>) -> HirIdSet {
         match ty.kind() {
             ty::Adt(_, generics) => {
                 for generic in *generics {
-                    if let GenericArgKind::Type(ty) = generic.unpack() {
+                    if let GenericArgKind::Type(ty) = generic.kind() {
                         get_captured_ids_recursive(cx, ty, set);
                     }
                 }

@@ -1,6 +1,7 @@
+use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
 use crate::helpers::check_min_vararg_count;
 use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
@@ -14,7 +15,7 @@ pub fn syscall<'tcx>(
     args: &[OpTy<'tcx>],
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
-    let ([op], varargs) = ecx.check_shim_variadic(abi, Conv::C, link_name, args)?;
+    let ([op], varargs) = ecx.check_shim_variadic(abi, CanonAbi::C, link_name, args)?;
     // The syscall variadic function is legal to call with more arguments than needed,
     // extra arguments are simply ignored. The important check is that when we use an
     // argument, we have to also check all arguments *before* it to ensure that they

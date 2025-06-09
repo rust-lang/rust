@@ -3,10 +3,10 @@ mod raw_dylib;
 use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fs::{File, OpenOptions, read};
-use std::io::{BufWriter, Write};
+use std::io::{BufReader, BufWriter, Write};
 use std::ops::{ControlFlow, Deref};
 use std::path::{Path, PathBuf};
-use std::process::{ExitStatus, Output, Stdio};
+use std::process::{Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
 
 use cc::windows_registry;
@@ -64,6 +64,23 @@ pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
         if e.kind() != io::ErrorKind::NotFound {
             dcx.err(format!("failed to remove {}: {}", path.display(), e));
+        }
+    }
+}
+
+fn check_link_info_print_request(sess: &Session, crate_types: &[CrateType]) {
+    let print_native_static_libs =
+        sess.opts.prints.iter().any(|p| p.kind == PrintKind::NativeStaticLibs);
+    let has_staticlib = crate_types.iter().any(|ct| *ct == CrateType::Staticlib);
+    if print_native_static_libs {
+        if !has_staticlib {
+            sess.dcx()
+                .warn(format!("cannot output linkage information without staticlib crate-type"));
+            sess.dcx()
+                .note(format!("consider `--crate-type staticlib` to print linkage information"));
+        } else if !sess.opts.output_types.should_link() {
+            sess.dcx()
+                .warn(format!("cannot output linkage information when --emit link is not passed"));
         }
     }
 }
@@ -167,6 +184,12 @@ pub fn link_binary(
                 );
             }
 
+            if sess.target.binary_format == BinaryFormat::Elf {
+                if let Err(err) = warn_if_linked_with_gold(sess, &out_filename) {
+                    info!(?err, "Error while checking if gold was the linker");
+                }
+            }
+
             if output.is_stdout() {
                 if output.is_tty() {
                     sess.dcx().emit_err(errors::BinaryOutputToTty {
@@ -179,6 +202,8 @@ pub fn link_binary(
             }
         }
     }
+
+    check_link_info_print_request(sess, &codegen_results.crate_info.crate_types);
 
     // Remove the temporary object file and metadata if we aren't saving temps.
     sess.time("link_binary_remove_temps", || {
@@ -717,13 +742,10 @@ fn link_natively(
 
     // Invoke the system linker
     info!("{cmd:?}");
-    let retry_on_segfault = env::var("RUSTC_RETRY_LINKER_ON_SEGFAULT").is_ok();
     let unknown_arg_regex =
         Regex::new(r"(unknown|unrecognized) (command line )?(option|argument)").unwrap();
     let mut prog;
-    let mut i = 0;
     loop {
-        i += 1;
         prog = sess.time("run_linker", || exec_linker(sess, &cmd, out_filename, flavor, tmpdir));
         let Ok(ref output) = prog else {
             break;
@@ -839,54 +861,7 @@ fn link_natively(
             continue;
         }
 
-        // Here's a terribly awful hack that really shouldn't be present in any
-        // compiler. Here an environment variable is supported to automatically
-        // retry the linker invocation if the linker looks like it segfaulted.
-        //
-        // Gee that seems odd, normally segfaults are things we want to know
-        // about!  Unfortunately though in rust-lang/rust#38878 we're
-        // experiencing the linker segfaulting on Travis quite a bit which is
-        // causing quite a bit of pain to land PRs when they spuriously fail
-        // due to a segfault.
-        //
-        // The issue #38878 has some more debugging information on it as well,
-        // but this unfortunately looks like it's just a race condition in
-        // macOS's linker with some thread pool working in the background. It
-        // seems that no one currently knows a fix for this so in the meantime
-        // we're left with this...
-        if !retry_on_segfault || i > 3 {
-            break;
-        }
-        let msg_segv = "clang: error: unable to execute command: Segmentation fault: 11";
-        let msg_bus = "clang: error: unable to execute command: Bus error: 10";
-        if out.contains(msg_segv) || out.contains(msg_bus) {
-            warn!(
-                ?cmd, %out,
-                "looks like the linker segfaulted when we tried to call it, \
-                 automatically retrying again",
-            );
-            continue;
-        }
-
-        if is_illegal_instruction(&output.status) {
-            warn!(
-                ?cmd, %out, status = %output.status,
-                "looks like the linker hit an illegal instruction when we \
-                 tried to call it, automatically retrying again.",
-            );
-            continue;
-        }
-
-        #[cfg(unix)]
-        fn is_illegal_instruction(status: &ExitStatus) -> bool {
-            use std::os::unix::prelude::*;
-            status.signal() == Some(libc::SIGILL)
-        }
-
-        #[cfg(not(unix))]
-        fn is_illegal_instruction(_status: &ExitStatus) -> bool {
-            false
-        }
+        break;
     }
 
     match prog {
@@ -1986,7 +1961,7 @@ fn add_post_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor
 /// This method creates a synthetic object file, which contains undefined references to all symbols
 /// that are necessary for the linking. They are only present in symbol table but not actually
 /// used in any sections, so the linker will therefore pick relevant rlibs for linking, but
-/// unused `#[no_mangle]` or `#[used]` can still be discard by GC sections.
+/// unused `#[no_mangle]` or `#[used(compiler)]` can still be discard by GC sections.
 ///
 /// There's a few internal crates in the standard library (aka libcore and
 /// libstd) which actually have a circular dependence upon one another. This
@@ -2020,7 +1995,8 @@ fn add_linked_symbol_object(
 
     if file.format() == object::BinaryFormat::MachO {
         // Divide up the sections into sub-sections via symbols for dead code stripping.
-        // Without this flag, unused `#[no_mangle]` or `#[used]` cannot be discard on MachO targets.
+        // Without this flag, unused `#[no_mangle]` or `#[used(compiler)]` cannot be
+        // discard on MachO targets.
         file.set_subsections_via_symbols();
     }
 
@@ -3405,4 +3381,55 @@ fn add_lld_args(
             cmd.cc_arg(format!("--target={}", versioned_llvm_target(sess)));
         }
     }
+}
+
+// gold has been deprecated with binutils 2.44
+// and is known to behave incorrectly around Rust programs.
+// There have been reports of being unable to bootstrap with gold:
+// https://github.com/rust-lang/rust/issues/139425
+// Additionally, gold miscompiles SHF_GNU_RETAIN sections, which are
+// emitted with `#[used(linker)]`.
+fn warn_if_linked_with_gold(sess: &Session, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    use object::read::elf::{FileHeader, SectionHeader};
+    use object::read::{ReadCache, ReadRef, Result};
+    use object::{Endianness, elf};
+
+    fn elf_has_gold_version_note<'a>(
+        elf: &impl FileHeader,
+        data: impl ReadRef<'a>,
+    ) -> Result<bool> {
+        let endian = elf.endian()?;
+
+        let section =
+            elf.sections(endian, data)?.section_by_name(endian, b".note.gnu.gold-version");
+        if let Some((_, section)) = section {
+            if let Some(mut notes) = section.notes(endian, data)? {
+                return Ok(notes.any(|note| {
+                    note.is_ok_and(|note| note.n_type(endian) == elf::NT_GNU_GOLD_VERSION)
+                }));
+            }
+        }
+
+        Ok(false)
+    }
+
+    let data = ReadCache::new(BufReader::new(File::open(path)?));
+
+    let was_linked_with_gold = if sess.target.pointer_width == 64 {
+        let elf = elf::FileHeader64::<Endianness>::parse(&data)?;
+        elf_has_gold_version_note(elf, &data)?
+    } else if sess.target.pointer_width == 32 {
+        let elf = elf::FileHeader32::<Endianness>::parse(&data)?;
+        elf_has_gold_version_note(elf, &data)?
+    } else {
+        return Ok(());
+    };
+
+    if was_linked_with_gold {
+        let mut warn =
+            sess.dcx().struct_warn("the gold linker is deprecated and has known bugs with Rust");
+        warn.help("consider using LLD or ld from GNU binutils instead");
+        warn.emit();
+    }
+    Ok(())
 }

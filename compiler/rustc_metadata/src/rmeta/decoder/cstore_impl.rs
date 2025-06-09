@@ -425,6 +425,7 @@ provide! { tcx, def_id, other, cdata,
     doc_link_traits_in_scope => {
         tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(def_id.index))
     }
+    anon_const_kind => { table }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
@@ -548,8 +549,9 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         has_global_allocator: |tcx, LocalCrate| CStore::from_tcx(tcx).has_global_allocator(),
         has_alloc_error_handler: |tcx, LocalCrate| CStore::from_tcx(tcx).has_alloc_error_handler(),
         postorder_cnums: |tcx, ()| {
-            tcx.arena
-                .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
+            tcx.arena.alloc_from_iter(
+                CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE).into_iter(),
+            )
         },
         crates: |tcx, ()| {
             // The list of loaded crates is now frozen in query cache,

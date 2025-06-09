@@ -43,8 +43,14 @@ use input::read_crates;
 use output::{ClippyCheckOutput, ClippyWarning, RustcIce};
 use rayon::prelude::*;
 
-const LINTCHECK_DOWNLOADS: &str = "target/lintcheck/downloads";
-const LINTCHECK_SOURCES: &str = "target/lintcheck/sources";
+#[must_use]
+pub fn target_dir() -> String {
+    env::var("CARGO_TARGET_DIR").unwrap_or("target".to_owned())
+}
+
+fn lintcheck_sources() -> String {
+    format!("{}/lintcheck/sources", target_dir())
+}
 
 /// Represents the actual source code of a crate that we ran "cargo clippy" on
 #[derive(Debug)]
@@ -307,7 +313,8 @@ fn main() {
 fn lintcheck(config: LintcheckConfig) {
     let clippy_ver = build_clippy(config.perf);
     let clippy_driver_path = fs::canonicalize(format!(
-        "target/{}/clippy-driver{EXE_SUFFIX}",
+        "{}/{}/clippy-driver{EXE_SUFFIX}",
+        target_dir(),
         if config.perf { "release" } else { "debug" }
     ))
     .unwrap();
@@ -315,7 +322,8 @@ fn lintcheck(config: LintcheckConfig) {
     // assert that clippy is found
     assert!(
         clippy_driver_path.is_file(),
-        "target/{}/clippy-driver binary not found! {}",
+        "{}/{}/clippy-driver binary not found! {}",
+        target_dir(),
         if config.perf { "release" } else { "debug" },
         clippy_driver_path.display()
     );
@@ -386,7 +394,7 @@ fn lintcheck(config: LintcheckConfig) {
         .unwrap();
 
     let server = config.recursive.then(|| {
-        let _: io::Result<()> = fs::remove_dir_all("target/lintcheck/shared_target_dir/recursive");
+        let _: io::Result<()> = fs::remove_dir_all(format!("{}/lintcheck/shared_target_dir/recursive", target_dir()));
 
         LintcheckServer::spawn(recursive_options)
     });
@@ -488,7 +496,7 @@ fn clippy_project_root() -> &'static Path {
 #[must_use]
 fn shared_target_dir(qualifier: &str) -> PathBuf {
     clippy_project_root()
-        .join("target/lintcheck/shared_target_dir")
+        .join(format!("{}/lintcheck/shared_target_dir", target_dir()))
         .join(qualifier)
 }
 

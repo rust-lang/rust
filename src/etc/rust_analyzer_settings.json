@@ -17,7 +17,7 @@
     ],
     "rust-analyzer.rustfmt.overrideCommand": [
         "${workspaceFolder}/build/host/rustfmt/bin/rustfmt",
-        "--edition=2021"
+        "--edition=2024"
     ],
     "rust-analyzer.procMacro.server": "${workspaceFolder}/build/host/stage0/libexec/rust-analyzer-proc-macro-srv",
     "rust-analyzer.procMacro.enable": true,

@@ -221,10 +221,16 @@ fn is_operator_overridden(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     }
 }
 
+/// Checks if dropping `expr` might have a visible side effect.
+fn expr_ty_has_significant_drop(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    let ty = cx.typeck_results().expr_ty(expr);
+    ty.has_significant_drop(cx.tcx, cx.typing_env())
+}
+
 fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Lit(..) | ExprKind::Closure { .. } => true,
-        ExprKind::Path(..) => !has_drop(cx, cx.typeck_results().expr_ty(expr)),
+        ExprKind::Path(..) => !expr_ty_has_significant_drop(cx, expr),
         ExprKind::Index(a, b, _) | ExprKind::Binary(_, a, b) => has_no_effect(cx, a) && has_no_effect(cx, b),
         ExprKind::Array(v) | ExprKind::Tup(v) => v.iter().all(|val| has_no_effect(cx, val)),
         ExprKind::Repeat(inner, _)
@@ -233,8 +239,8 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         | ExprKind::Unary(_, inner)
         | ExprKind::Field(inner, _)
         | ExprKind::AddrOf(_, _, inner) => has_no_effect(cx, inner),
-        ExprKind::Struct(_, fields, ref base) => {
-            !has_drop(cx, cx.typeck_results().expr_ty(expr))
+        ExprKind::Struct(_, fields, base) => {
+            !expr_ty_has_significant_drop(cx, expr)
                 && fields.iter().all(|field| has_no_effect(cx, field.expr))
                 && match &base {
                     StructTailExpr::None | StructTailExpr::DefaultFields(_) => true,
@@ -252,7 +258,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                     Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..)
                 );
                 if def_matched || is_range_literal(expr) {
-                    !has_drop(cx, cx.typeck_results().expr_ty(expr)) && args.iter().all(|arg| has_no_effect(cx, arg))
+                    !expr_ty_has_significant_drop(cx, expr) && args.iter().all(|arg| has_no_effect(cx, arg))
                 } else {
                     false
                 }

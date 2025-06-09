@@ -4,11 +4,21 @@ use rustc_type_ir::data_structures::{HashMap, ensure_sufficient_stack};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, InferCtxtLike,
-    Interner, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarKind, Flags, InferCtxtLike, Interner,
+    TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
 use crate::delegate::SolverDelegate;
+
+/// Does this have infer/placeholder/param, free regions or ReErased?
+const NEEDS_CANONICAL: TypeFlags = TypeFlags::from_bits(
+    TypeFlags::HAS_INFER.bits()
+        | TypeFlags::HAS_PLACEHOLDER.bits()
+        | TypeFlags::HAS_PARAM.bits()
+        | TypeFlags::HAS_FREE_REGIONS.bits()
+        | TypeFlags::HAS_RE_ERASED.bits(),
+)
+.unwrap();
 
 /// Whether we're canonicalizing a query input or the query response.
 ///
@@ -50,7 +60,7 @@ pub struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner> {
 
     // Mutable fields.
     variables: &'a mut Vec<I::GenericArg>,
-    primitive_var_infos: Vec<CanonicalVarInfo<I>>,
+    var_kinds: Vec<CanonicalVarKind<I>>,
     variable_lookup_table: HashMap<I::GenericArg, usize>,
     binder_index: ty::DebruijnIndex,
 
@@ -73,15 +83,19 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
             variables,
             variable_lookup_table: Default::default(),
-            primitive_var_infos: Vec::new(),
+            var_kinds: Vec::new(),
             binder_index: ty::INNERMOST,
 
             cache: Default::default(),
         };
 
-        let value = value.fold_with(&mut canonicalizer);
-        assert!(!value.has_infer(), "unexpected infer in {value:?}");
-        assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
+        let value = if value.has_type_flags(NEEDS_CANONICAL) {
+            value.fold_with(&mut canonicalizer)
+        } else {
+            value
+        };
+        debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
+        debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, variables) = canonicalizer.finalize();
         Canonical { max_universe, variables, value }
     }
@@ -106,12 +120,19 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
             variables,
             variable_lookup_table: Default::default(),
-            primitive_var_infos: Vec::new(),
+            var_kinds: Vec::new(),
             binder_index: ty::INNERMOST,
 
             cache: Default::default(),
         };
-        let param_env = input.goal.param_env.fold_with(&mut env_canonicalizer);
+
+        let param_env = input.goal.param_env;
+        let param_env = if param_env.has_type_flags(NEEDS_CANONICAL) {
+            param_env.fold_with(&mut env_canonicalizer)
+        } else {
+            param_env
+        };
+
         debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
         // Then canonicalize the rest of the input without keeping `'static`
         // while *mostly* reusing the canonicalizer from above.
@@ -123,7 +144,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             // We're able to reuse the `variable_lookup_table` as whether or not
             // it already contains an entry for `'static` does not matter.
             variable_lookup_table: env_canonicalizer.variable_lookup_table,
-            primitive_var_infos: env_canonicalizer.primitive_var_infos,
+            var_kinds: env_canonicalizer.var_kinds,
             binder_index: ty::INNERMOST,
 
             // We do not reuse the cache as it may contain entries whose canonicalized
@@ -134,14 +155,26 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             cache: Default::default(),
         };
 
-        let predicate = input.goal.predicate.fold_with(&mut rest_canonicalizer);
+        let predicate = input.goal.predicate;
+        let predicate = if predicate.has_type_flags(NEEDS_CANONICAL) {
+            predicate.fold_with(&mut rest_canonicalizer)
+        } else {
+            predicate
+        };
         let goal = Goal { param_env, predicate };
+
+        let predefined_opaques_in_body = input.predefined_opaques_in_body;
         let predefined_opaques_in_body =
-            input.predefined_opaques_in_body.fold_with(&mut rest_canonicalizer);
+            if input.predefined_opaques_in_body.has_type_flags(NEEDS_CANONICAL) {
+                predefined_opaques_in_body.fold_with(&mut rest_canonicalizer)
+            } else {
+                predefined_opaques_in_body
+            };
+
         let value = QueryInput { goal, predefined_opaques_in_body };
 
-        assert!(!value.has_infer(), "unexpected infer in {value:?}");
-        assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
+        debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
+        debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, variables) = rest_canonicalizer.finalize();
         Canonical { max_universe, variables, value }
     }
@@ -149,7 +182,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     fn get_or_insert_bound_var(
         &mut self,
         arg: impl Into<I::GenericArg>,
-        canonical_var_info: CanonicalVarInfo<I>,
+        kind: CanonicalVarKind<I>,
     ) -> ty::BoundVar {
         // FIXME: 16 is made up and arbitrary. We should look at some
         // perf data here.
@@ -162,14 +195,14 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             *self.variable_lookup_table.entry(arg).or_insert_with(|| {
                 let var = self.variables.len();
                 self.variables.push(arg);
-                self.primitive_var_infos.push(canonical_var_info);
+                self.var_kinds.push(kind);
                 var
             })
         } else {
             self.variables.iter().position(|&v| v == arg).unwrap_or_else(|| {
                 let var = self.variables.len();
                 self.variables.push(arg);
-                self.primitive_var_infos.push(canonical_var_info);
+                self.var_kinds.push(kind);
                 var
             })
         };
@@ -177,8 +210,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         ty::BoundVar::from(idx)
     }
 
-    fn finalize(self) -> (ty::UniverseIndex, I::CanonicalVars) {
-        let mut var_infos = self.primitive_var_infos;
+    fn finalize(self) -> (ty::UniverseIndex, I::CanonicalVarKinds) {
+        let mut var_kinds = self.var_kinds;
         // See the rustc-dev-guide section about how we deal with universes
         // during canonicalization in the new solver.
         match self.canonicalize_mode {
@@ -192,25 +225,25 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             // information for placeholders and inference variables created inside
             // of the query.
             CanonicalizeMode::Response { max_input_universe } => {
-                for var in var_infos.iter_mut() {
+                for var in var_kinds.iter_mut() {
                     let uv = var.universe();
                     let new_uv = ty::UniverseIndex::from(
                         uv.index().saturating_sub(max_input_universe.index()),
                     );
                     *var = var.with_updated_universe(new_uv);
                 }
-                let max_universe = var_infos
+                let max_universe = var_kinds
                     .iter()
-                    .map(|info| info.universe())
+                    .map(|kind| kind.universe())
                     .max()
                     .unwrap_or(ty::UniverseIndex::ROOT);
 
-                let var_infos = self.delegate.cx().mk_canonical_var_infos(&var_infos);
-                return (max_universe, var_infos);
+                let var_kinds = self.delegate.cx().mk_canonical_var_kinds(&var_kinds);
+                return (max_universe, var_kinds);
             }
         }
 
-        // Given a `var_infos` with existentials `En` and universals `Un` in
+        // Given a `var_kinds` with existentials `En` and universals `Un` in
         // universes `n`, this algorithm compresses them in place so that:
         //
         // - the new universe indices are as small as possible
@@ -219,12 +252,12 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         //   2. put a placeholder in the same universe as an existential which cannot name it
         //
         // Let's walk through an example:
-        // - var_infos: [E0, U1, E5, U2, E2, E6, U6], curr_compressed_uv: 0, next_orig_uv: 0
-        // - var_infos: [E0, U1, E5, U2, E2, E6, U6], curr_compressed_uv: 0, next_orig_uv: 1
-        // - var_infos: [E0, U1, E5, U2, E2, E6, U6], curr_compressed_uv: 1, next_orig_uv: 2
-        // - var_infos: [E0, U1, E5, U1, E1, E6, U6], curr_compressed_uv: 1, next_orig_uv: 5
-        // - var_infos: [E0, U1, E2, U1, E1, E6, U6], curr_compressed_uv: 2, next_orig_uv: 6
-        // - var_infos: [E0, U1, E1, U1, E1, E3, U3], curr_compressed_uv: 2, next_orig_uv: -
+        // - var_kinds: [E0, U1, E5, U2, E2, E6, U6], curr_compressed_uv: 0, next_orig_uv: 0
+        // - var_kinds: [E0, U1, E5, U2, E2, E6, U6], curr_compressed_uv: 0, next_orig_uv: 1
+        // - var_kinds: [E0, U1, E5, U2, E2, E6, U6], curr_compressed_uv: 1, next_orig_uv: 2
+        // - var_kinds: [E0, U1, E5, U1, E1, E6, U6], curr_compressed_uv: 1, next_orig_uv: 5
+        // - var_kinds: [E0, U1, E2, U1, E1, E6, U6], curr_compressed_uv: 2, next_orig_uv: 6
+        // - var_kinds: [E0, U1, E1, U1, E1, E3, U3], curr_compressed_uv: 2, next_orig_uv: -
         //
         // This algorithm runs in `O(mn)` where `n` is the number of different universes and
         // `m` the number of variables. This should be fine as both are expected to be small.
@@ -232,7 +265,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let mut existential_in_new_uv = None;
         let mut next_orig_uv = Some(ty::UniverseIndex::ROOT);
         while let Some(orig_uv) = next_orig_uv.take() {
-            let mut update_uv = |var: &mut CanonicalVarInfo<I>, orig_uv, is_existential| {
+            let mut update_uv = |var: &mut CanonicalVarKind<I>, orig_uv, is_existential| {
                 let uv = var.universe();
                 match uv.cmp(&orig_uv) {
                     Ordering::Less => (), // Already updated
@@ -284,7 +317,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             // Whenever we compress the universe of a placeholder, no existential with
             // an already compressed universe can name that placeholder.
             for is_existential in [false, true] {
-                for var in var_infos.iter_mut() {
+                for var in var_kinds.iter_mut() {
                     // We simply put all regions from the input into the highest
                     // compressed universe, so we only deal with them at the end.
                     if !var.is_region() {
@@ -298,26 +331,26 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
         // We put all regions into a separate universe.
         let mut first_region = true;
-        for var in var_infos.iter_mut() {
+        for var in var_kinds.iter_mut() {
             if var.is_region() {
                 if first_region {
                     first_region = false;
                     curr_compressed_uv = curr_compressed_uv.next_universe();
                 }
-                assert!(var.is_existential());
+                debug_assert!(var.is_existential());
                 *var = var.with_updated_universe(curr_compressed_uv);
             }
         }
 
-        let var_infos = self.delegate.cx().mk_canonical_var_infos(&var_infos);
-        (curr_compressed_uv, var_infos)
+        let var_kinds = self.delegate.cx().mk_canonical_var_kinds(&var_kinds);
+        (curr_compressed_uv, var_kinds)
     }
 
     fn cached_fold_ty(&mut self, t: I::Ty) -> I::Ty {
         let kind = match t.kind() {
             ty::Infer(i) => match i {
                 ty::TyVar(vid) => {
-                    assert_eq!(
+                    debug_assert_eq!(
                         self.delegate.opportunistic_resolve_ty_var(vid),
                         t,
                         "ty vid should have been resolved fully before canonicalization"
@@ -330,7 +363,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     ))
                 }
                 ty::IntVar(vid) => {
-                    assert_eq!(
+                    debug_assert_eq!(
                         self.delegate.opportunistic_resolve_int_var(vid),
                         t,
                         "ty vid should have been resolved fully before canonicalization"
@@ -338,7 +371,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     CanonicalVarKind::Ty(CanonicalTyVarKind::Int)
                 }
                 ty::FloatVar(vid) => {
-                    assert_eq!(
+                    debug_assert_eq!(
                         self.delegate.opportunistic_resolve_float_var(vid),
                         t,
                         "ty vid should have been resolved fully before canonicalization"
@@ -387,11 +420,15 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::Alias(_, _)
             | ty::Bound(_, _)
             | ty::Error(_) => {
-                return ensure_sufficient_stack(|| t.super_fold_with(self));
+                return if t.has_type_flags(NEEDS_CANONICAL) {
+                    ensure_sufficient_stack(|| t.super_fold_with(self))
+                } else {
+                    t
+                };
             }
         };
 
-        let var = self.get_or_insert_bound_var(t, CanonicalVarInfo { kind });
+        let var = self.get_or_insert_bound_var(t, kind);
 
         Ty::new_anon_bound(self.cx(), self.binder_index, var)
     }
@@ -459,7 +496,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             },
 
             ty::ReVar(vid) => {
-                assert_eq!(
+                debug_assert_eq!(
                     self.delegate.opportunistic_resolve_lt_var(vid),
                     r,
                     "region vid should have been resolved fully before canonicalization"
@@ -475,7 +512,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             }
         };
 
-        let var = self.get_or_insert_bound_var(r, CanonicalVarInfo { kind });
+        let var = self.get_or_insert_bound_var(r, kind);
 
         Region::new_anon_bound(self.cx(), self.binder_index, var)
     }
@@ -485,7 +522,8 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             ty
         } else {
             let res = self.cached_fold_ty(t);
-            assert!(self.cache.insert((self.binder_index, t), res).is_none());
+            let old = self.cache.insert((self.binder_index, t), res);
+            assert_eq!(old, None);
             res
         }
     }
@@ -494,7 +532,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
         let kind = match c.kind() {
             ty::ConstKind::Infer(i) => match i {
                 ty::InferConst::Var(vid) => {
-                    assert_eq!(
+                    debug_assert_eq!(
                         self.delegate.opportunistic_resolve_ct_var(vid),
                         c,
                         "const vid should have been resolved fully before canonicalization"
@@ -522,11 +560,28 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             | ty::ConstKind::Unevaluated(_)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
-            | ty::ConstKind::Expr(_) => return c.super_fold_with(self),
+            | ty::ConstKind::Expr(_) => {
+                return if c.has_type_flags(NEEDS_CANONICAL) { c.super_fold_with(self) } else { c };
+            }
         };
 
-        let var = self.get_or_insert_bound_var(c, CanonicalVarInfo { kind });
+        let var = self.get_or_insert_bound_var(c, kind);
 
         Const::new_anon_bound(self.cx(), self.binder_index, var)
+    }
+
+    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+        if p.flags().intersects(NEEDS_CANONICAL) { p.super_fold_with(self) } else { p }
+    }
+
+    fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
+        match self.canonicalize_mode {
+            CanonicalizeMode::Input { keep_static: true }
+            | CanonicalizeMode::Response { max_input_universe: _ } => {}
+            CanonicalizeMode::Input { keep_static: false } => {
+                panic!("erasing 'static in env")
+            }
+        }
+        if c.flags().intersects(NEEDS_CANONICAL) { c.super_fold_with(self) } else { c }
     }
 }

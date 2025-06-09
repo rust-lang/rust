@@ -1,12 +1,12 @@
 codegen_ssa_L4Bender_exporting_symbols_unimplemented = exporting symbols not implemented yet for L4Bender
 
+codegen_ssa_aarch64_softfloat_neon = enabling the `neon` target feature on the current target is unsound due to ABI issues
+
 codegen_ssa_add_native_library = failed to add native library {$library_path}: {$error}
 
 codegen_ssa_aix_strip_not_used = using host's `strip` binary to cross-compile to AIX which is not guaranteed to work
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
-
-codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing failure memory ordering
 
 codegen_ssa_autodiff_without_lto = using the autodiff feature requires using fat-lto
 
@@ -204,8 +204,6 @@ codegen_ssa_missing_cpp_build_tool_component = or a necessary component may be m
 
 codegen_ssa_missing_features = add the missing features in a `target_feature` attribute
 
-codegen_ssa_missing_memory_ordering = Atomic intrinsic missing memory ordering
-
 codegen_ssa_missing_query_depgraph =
     found CGU-reuse attribute but `-Zquery-dep-graph` was not specified
 
@@ -371,10 +369,6 @@ codegen_ssa_unexpected_parameter_name = unexpected parameter name
 
 codegen_ssa_unknown_archive_kind =
     Don't know how to build archive of type: {$kind}
-
-codegen_ssa_unknown_atomic_operation = unknown atomic operation
-
-codegen_ssa_unknown_atomic_ordering = unknown ordering in atomic intrinsic
 
 codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
 

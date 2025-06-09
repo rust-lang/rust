@@ -2,6 +2,7 @@ use std::sync::atomic::Ordering::Relaxed;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, BackendRepr};
+use rustc_errors::E0080;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo, ReportedErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
@@ -71,7 +72,12 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
 
     // This can't use `init_stack_frame` since `body` is not a function,
     // so computing its ABI would fail. It's also not worth it since there are no arguments to pass.
-    ecx.push_stack_frame_raw(cid.instance, body, &ret, StackPopCleanup::Root { cleanup: false })?;
+    ecx.push_stack_frame_raw(
+        cid.instance,
+        body,
+        &ret.clone().into(),
+        StackPopCleanup::Root { cleanup: false },
+    )?;
     ecx.storage_live_for_always_live_locals()?;
 
     // The main interpreter loop.
@@ -285,12 +291,18 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
             |error| {
                 let span = tcx.def_span(def_id);
 
+                // FIXME(oli-obk): why don't we have any tests for this code path?
                 super::report(
                     tcx,
                     error.into_kind(),
                     span,
                     || (span, vec![]),
-                    |span, _| errors::NullaryIntrinsicError { span },
+                    |diag, span, _| {
+                        diag.span_label(
+                            span,
+                            crate::fluent_generated::const_eval_nullary_intrinsic_fail,
+                        );
+                    },
                 )
             },
         );
@@ -418,31 +430,24 @@ fn report_eval_error<'tcx>(
     let (error, backtrace) = error.into_parts();
     backtrace.print_backtrace();
 
-    let (kind, instance) = if ecx.tcx.is_static(cid.instance.def_id()) {
-        ("static", String::new())
-    } else {
-        // If the current item has generics, we'd like to enrich the message with the
-        // instance and its args: to show the actual compile-time values, in addition to
-        // the expression, leading to the const eval error.
-        let instance = &cid.instance;
-        if !instance.args.is_empty() {
-            let instance = with_no_trimmed_paths!(instance.to_string());
-            ("const_with_path", instance)
-        } else {
-            ("const", String::new())
-        }
-    };
+    let instance = with_no_trimmed_paths!(cid.instance.to_string());
 
     super::report(
         *ecx.tcx,
         error,
         DUMMY_SP,
         || super::get_span_and_frames(ecx.tcx, ecx.stack()),
-        |span, frames| errors::ConstEvalError {
-            span,
-            error_kind: kind,
-            instance,
-            frame_notes: frames,
+        |diag, span, frames| {
+            let num_frames = frames.len();
+            // FIXME(oli-obk): figure out how to use structured diagnostics again.
+            diag.code(E0080);
+            diag.span_label(span, crate::fluent_generated::const_eval_error);
+            for frame in frames {
+                diag.subdiagnostic(frame);
+            }
+            // Add after the frame rendering above, as it adds its own `instance` args.
+            diag.arg("instance", instance);
+            diag.arg("num_frames", num_frames);
         },
     )
 }
@@ -472,6 +477,15 @@ fn report_validation_error<'tcx>(
         error,
         DUMMY_SP,
         || crate::const_eval::get_span_and_frames(ecx.tcx, ecx.stack()),
-        move |span, frames| errors::ValidationFailure { span, ub_note: (), frames, raw_bytes },
+        move |diag, span, frames| {
+            // FIXME(oli-obk): figure out how to use structured diagnostics again.
+            diag.code(E0080);
+            diag.span_label(span, crate::fluent_generated::const_eval_validation_failure);
+            diag.note(crate::fluent_generated::const_eval_validation_failure_note);
+            for frame in frames {
+                diag.subdiagnostic(frame);
+            }
+            diag.subdiagnostic(raw_bytes);
+        },
     )
 }

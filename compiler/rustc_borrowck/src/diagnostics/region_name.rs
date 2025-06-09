@@ -606,8 +606,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         hir_args: &'hir hir::GenericArgs<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<&'hir hir::Lifetime> {
-        for (kind, hir_arg) in iter::zip(args, hir_args.args) {
-            match (kind.unpack(), hir_arg) {
+        for (arg, hir_arg) in iter::zip(args, hir_args.args) {
+            match (arg.kind(), hir_arg) {
                 (GenericArgKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
                     if r.as_var() == needle_fr {
                         return Some(lt);
@@ -631,7 +631,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 ) => {
                     self.dcx().span_delayed_bug(
                         hir_arg.span(),
-                        format!("unmatched arg and hir arg: found {kind:?} vs {hir_arg:?}"),
+                        format!("unmatched arg and hir arg: found {arg:?} vs {hir_arg:?}"),
                     );
                 }
             }
@@ -997,7 +997,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     ) -> bool {
         let tcx = self.infcx.tcx;
         ty.walk().any(|arg| {
-            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+            if let ty::GenericArgKind::Type(ty) = arg.kind()
                 && let ty::Param(_) = ty.kind()
             {
                 clauses.iter().any(|pred| {

@@ -1,7 +1,7 @@
 [relabel]
 allow-unauthenticated = [
     "A-*", "C-*", "E-*", "I-*", "L-*", "P-*", "S-*", "T-*",
-    "good-first-issue", "beta-nominated"
+    "good first issue", "beta-nominated"
 ]
 
 # Allows shortcuts like `@rustbot ready`
@@ -45,6 +45,7 @@ contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIB
 users_on_vacation = [
     "matthiaskrgr",
     "Manishearth",
+    "blyxyas",
 ]
 
 [assign.owners]

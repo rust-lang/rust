@@ -4,9 +4,9 @@
 
 #![feature(autodiff)]
 
-use std::autodiff::autodiff;
+use std::autodiff::autodiff_reverse;
 
-#[autodiff(d_square, Reverse, Duplicated, Active)]
+#[autodiff_reverse(d_square, Duplicated, Active)]
 fn square(x: &f64) -> f64 {
     x * x
 }

@@ -38,7 +38,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
     }
 
     pub(crate) fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> Box<[ExprId]> {
-        exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect()
+        // `mirror_exprs` may also recurse deeply, so it needs protection from stack overflow.
+        // Note that we *could* forward to `mirror_expr` for that, but we can consolidate the
+        // overhead of stack growth by doing it outside the iteration.
+        ensure_sufficient_stack(|| exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect())
     }
 
     #[instrument(level = "trace", skip(self, hir_expr))]
@@ -220,7 +223,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 });
 
                 // kind = Pin { __pointer: pointer }
-                let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, Some(span));
+                let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, span);
                 let args = self.tcx.mk_args(&[new_pin_target.into()]);
                 let kind = ExprKind::Adt(Box::new(AdtExpr {
                     adt_def: self.tcx.adt_def(pin_did),
@@ -1220,6 +1223,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 HirProjectionKind::OpaqueCast => {
                     ExprKind::Use { source: self.thir.exprs.push(captured_place_expr) }
                 }
+                HirProjectionKind::UnwrapUnsafeBinder => ExprKind::PlaceUnwrapUnsafeBinder {
+                    source: self.thir.exprs.push(captured_place_expr),
+                },
                 HirProjectionKind::Index | HirProjectionKind::Subslice => {
                     // We don't capture these projections, so we can ignore them here
                     continue;

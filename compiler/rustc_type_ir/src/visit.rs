@@ -120,8 +120,8 @@ pub trait TypeVisitor<I: Interner>: Sized {
         p.super_visit_with(self)
     }
 
-    fn visit_clauses(&mut self, p: I::Clauses) -> Self::Result {
-        p.super_visit_with(self)
+    fn visit_clauses(&mut self, c: I::Clauses) -> Self::Result {
+        c.super_visit_with(self)
     }
 
     fn visit_error(&mut self, _guar: I::ErrorGuaranteed) -> Self::Result {

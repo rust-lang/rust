@@ -55,7 +55,7 @@ pub fn is_min_const_fn<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, msrv: Ms
 
 fn check_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, msrv: Msrv) -> McfResult {
     for arg in ty.walk() {
-        let ty = match arg.unpack() {
+        let ty = match arg.kind() {
             GenericArgKind::Type(ty) => ty,
 
             // No constraints on lifetimes or constants, except potentially
@@ -393,7 +393,8 @@ fn check_terminator<'tcx>(
     }
 }
 
-fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bool {
+/// Checks if the given `def_id` is a stable const fn, in respect to the given MSRV.
+pub fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bool {
     cx.tcx.is_const_fn(def_id)
         && cx
             .tcx
@@ -438,7 +439,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
             tcx,
             ObligationCause::dummy_with_span(body.span),
             param_env,
-            TraitRef::new(tcx, tcx.require_lang_item(LangItem::Destruct, Some(body.span)), [ty]),
+            TraitRef::new(tcx, tcx.require_lang_item(LangItem::Destruct, body.span), [ty]),
         );
 
         let mut selcx = SelectionContext::new(&infcx);

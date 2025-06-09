@@ -81,7 +81,10 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 /// (Mode restriction, config name, config values (if any))
 #[expect(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
 const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
-    (None, "bootstrap", None),
+    (Some(Mode::Rustc), "bootstrap", None),
+    (Some(Mode::Codegen), "bootstrap", None),
+    (Some(Mode::ToolRustc), "bootstrap", None),
+    (Some(Mode::ToolStd), "bootstrap", None),
     (Some(Mode::Rustc), "llvm_enzyme", None),
     (Some(Mode::Codegen), "llvm_enzyme", None),
     (Some(Mode::ToolRustc), "llvm_enzyme", None),
@@ -272,6 +275,16 @@ impl Mode {
     }
 }
 
+/// When `rust.rust_remap_debuginfo` is requested, the compiler needs to know how to
+/// opportunistically unremap compiler vs non-compiler sources. We use two schemes,
+/// [`RemapScheme::Compiler`] and [`RemapScheme::NonCompiler`].
+pub enum RemapScheme {
+    /// The [`RemapScheme::Compiler`] scheme will remap to `/rustc-dev/{hash}`.
+    Compiler,
+    /// The [`RemapScheme::NonCompiler`] scheme will remap to `/rustc/{hash}`.
+    NonCompiler,
+}
+
 #[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CLang {
     C,
@@ -363,19 +376,35 @@ impl Build {
         let in_tree_llvm_info = config.in_tree_llvm_info.clone();
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
-        let initial_target_libdir_str =
-            config.initial_sysroot.join("lib/rustlib").join(config.build).join("lib");
+        let initial_target_libdir =
+            output(Command::new(&config.initial_rustc).args(["--print", "target-libdir"]))
+                .trim()
+                .to_owned();
 
-        let initial_target_dir = Path::new(&initial_target_libdir_str).parent().unwrap();
+        let initial_target_dir = Path::new(&initial_target_libdir)
+            .parent()
+            .unwrap_or_else(|| panic!("{initial_target_libdir} has no parent"));
+
         let initial_lld = initial_target_dir.join("bin").join("rust-lld");
 
-        let initial_relative_libdir = initial_target_dir
-            .ancestors()
-            .nth(2)
-            .unwrap()
-            .strip_prefix(&config.initial_sysroot)
-            .expect("Couldn’t determine initial relative libdir.")
-            .to_path_buf();
+        let initial_relative_libdir = if cfg!(test) {
+            // On tests, bootstrap uses the shim rustc, not the one from the stage0 toolchain.
+            PathBuf::default()
+        } else {
+            let ancestor = initial_target_dir.ancestors().nth(2).unwrap_or_else(|| {
+                panic!("Not enough ancestors for {}", initial_target_dir.display())
+            });
+
+            ancestor
+                .strip_prefix(&config.initial_sysroot)
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "Couldn’t resolve the initial relative libdir from {}",
+                        initial_target_dir.display()
+                    )
+                })
+                .to_path_buf()
+        };
 
         let version = std::fs::read_to_string(src.join("src").join("version"))
             .expect("failed to read src/version");
@@ -1088,8 +1117,15 @@ Executed at: {executed_at}"#,
         &self,
         what: impl Display,
         target: impl Into<Option<TargetSelection>>,
+        custom_stage: Option<u32>,
     ) -> Option<gha::Group> {
-        self.msg(Kind::Check, self.config.stage, what, self.config.build, target)
+        self.msg(
+            Kind::Check,
+            custom_stage.unwrap_or(self.config.stage),
+            what,
+            self.config.build,
+            target,
+        )
     }
 
     #[must_use = "Groups should not be dropped until the Step finishes running"]
@@ -1194,7 +1230,7 @@ Executed at: {executed_at}"#,
         })
     }
 
-    fn debuginfo_map_to(&self, which: GitRepo) -> Option<String> {
+    fn debuginfo_map_to(&self, which: GitRepo, remap_scheme: RemapScheme) -> Option<String> {
         if !self.config.rust_remap_debuginfo {
             return None;
         }
@@ -1202,7 +1238,24 @@ Executed at: {executed_at}"#,
         match which {
             GitRepo::Rustc => {
                 let sha = self.rust_sha().unwrap_or(&self.version);
-                Some(format!("/rustc/{sha}"))
+
+                match remap_scheme {
+                    RemapScheme::Compiler => {
+                        // For compiler sources, remap via `/rustc-dev/{sha}` to allow
+                        // distinguishing between compiler sources vs library sources, since
+                        // `rustc-dev` dist component places them under
+                        // `$sysroot/lib/rustlib/rustc-src/rust` as opposed to `rust-src`'s
+                        // `$sysroot/lib/rustlib/src/rust`.
+                        //
+                        // Keep this scheme in sync with `rustc_metadata::rmeta::decoder`'s
+                        // `try_to_translate_virtual_to_real`.
+                        Some(format!("/rustc-dev/{sha}"))
+                    }
+                    RemapScheme::NonCompiler => {
+                        // For non-compiler sources, use `/rustc/{sha}` remapping scheme.
+                        Some(format!("/rustc/{sha}"))
+                    }
+                }
             }
             GitRepo::Llvm => Some(String::from("/rustc/llvm")),
         }
@@ -1269,7 +1322,7 @@ Executed at: {executed_at}"#,
             base.push("-fno-omit-frame-pointer".into());
         }
 
-        if let Some(map_to) = self.debuginfo_map_to(which) {
+        if let Some(map_to) = self.debuginfo_map_to(which, RemapScheme::NonCompiler) {
             let map = format!("{}={}", self.src.display(), map_to);
             let cc = self.cc(target);
             if cc.ends_with("clang") || cc.ends_with("gcc") {
@@ -1435,23 +1488,23 @@ Executed at: {executed_at}"#,
         // Look for Wasmtime, and for its default options be sure to disable
         // its caching system since we're executing quite a lot of tests and
         // ideally shouldn't pollute the cache too much.
-        if let Some(path) = finder.maybe_have("wasmtime") {
-            if let Ok(mut path) = path.into_os_string().into_string() {
-                path.push_str(" run -C cache=n --dir .");
-                // Make sure that tests have access to RUSTC_BOOTSTRAP. This (for example) is
-                // required for libtest to work on beta/stable channels.
-                //
-                // NB: with Wasmtime 20 this can change to `-S inherit-env` to
-                // inherit the entire environment rather than just this single
-                // environment variable.
-                path.push_str(" --env RUSTC_BOOTSTRAP");
+        if let Some(path) = finder.maybe_have("wasmtime")
+            && let Ok(mut path) = path.into_os_string().into_string()
+        {
+            path.push_str(" run -C cache=n --dir .");
+            // Make sure that tests have access to RUSTC_BOOTSTRAP. This (for example) is
+            // required for libtest to work on beta/stable channels.
+            //
+            // NB: with Wasmtime 20 this can change to `-S inherit-env` to
+            // inherit the entire environment rather than just this single
+            // environment variable.
+            path.push_str(" --env RUSTC_BOOTSTRAP");
 
-                if target.contains("wasip2") {
-                    path.push_str(" --wasi inherit-network --wasi allow-ip-name-lookup");
-                }
-
-                return Some(path);
+            if target.contains("wasip2") {
+                path.push_str(" --wasi inherit-network --wasi allow-ip-name-lookup");
             }
+
+            return Some(path);
         }
 
         None
@@ -1621,12 +1674,12 @@ Executed at: {executed_at}"#,
     /// sha, version, etc.
     fn rust_version(&self) -> String {
         let mut version = self.rust_info().version(self, &self.version);
-        if let Some(ref s) = self.config.description {
-            if !s.is_empty() {
-                version.push_str(" (");
-                version.push_str(s);
-                version.push(')');
-            }
+        if let Some(ref s) = self.config.description
+            && !s.is_empty()
+        {
+            version.push_str(" (");
+            version.push_str(s);
+            version.push(')');
         }
         version
     }
@@ -1744,14 +1797,14 @@ Executed at: {executed_at}"#,
     pub fn copy_link(&self, src: &Path, dst: &Path, file_type: FileType) {
         self.copy_link_internal(src, dst, false);
 
-        if file_type.could_have_split_debuginfo() {
-            if let Some(dbg_file) = split_debuginfo(src) {
-                self.copy_link_internal(
-                    &dbg_file,
-                    &dst.with_extension(dbg_file.extension().unwrap()),
-                    false,
-                );
-            }
+        if file_type.could_have_split_debuginfo()
+            && let Some(dbg_file) = split_debuginfo(src)
+        {
+            self.copy_link_internal(
+                &dbg_file,
+                &dst.with_extension(dbg_file.extension().unwrap()),
+                false,
+            );
         }
     }
 
@@ -1763,19 +1816,21 @@ Executed at: {executed_at}"#,
         if src == dst {
             return;
         }
-        if let Err(e) = fs::remove_file(dst) {
-            if cfg!(windows) && e.kind() != io::ErrorKind::NotFound {
-                // workaround for https://github.com/rust-lang/rust/issues/127126
-                // if removing the file fails, attempt to rename it instead.
-                let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
-                let _ = fs::rename(dst, format!("{}-{}", dst.display(), now.as_nanos()));
-            }
+        if let Err(e) = fs::remove_file(dst)
+            && cfg!(windows)
+            && e.kind() != io::ErrorKind::NotFound
+        {
+            // workaround for https://github.com/rust-lang/rust/issues/127126
+            // if removing the file fails, attempt to rename it instead.
+            let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
+            let _ = fs::rename(dst, format!("{}-{}", dst.display(), now.as_nanos()));
         }
-        let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
+        let mut metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {
             if dereference_symlinks {
                 src = t!(fs::canonicalize(src));
+                metadata = t!(fs::metadata(&src), format!("target = {}", src.display()));
             } else {
                 let link = t!(fs::read_link(src));
                 t!(self.symlink_file(link, dst));
@@ -1878,10 +1933,10 @@ Executed at: {executed_at}"#,
         chmod(&dst, file_type.perms());
 
         // If this file can have debuginfo, look for split debuginfo and install it too.
-        if file_type.could_have_split_debuginfo() {
-            if let Some(dbg_file) = split_debuginfo(src) {
-                self.install(&dbg_file, dstdir, FileType::Regular);
-            }
+        if file_type.could_have_split_debuginfo()
+            && let Some(dbg_file) = split_debuginfo(src)
+        {
+            self.install(&dbg_file, dstdir, FileType::Regular);
         }
     }
 

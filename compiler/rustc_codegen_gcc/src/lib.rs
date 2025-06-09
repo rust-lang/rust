@@ -16,7 +16,7 @@
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![feature(rustc_private, decl_macro, never_type, trusted_len)]
+#![feature(rustc_private)]
 #![allow(broken_intra_doc_links)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]
@@ -391,7 +391,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!()
     }
 
-    unsafe fn optimize(
+    fn optimize(
         _cgcx: &CodegenContext<Self>,
         _dcx: DiagCtxtHandle<'_>,
         module: &mut ModuleCodegen<Self::Module>,
@@ -409,14 +409,14 @@ impl WriteBackendMethods for GccCodegenBackend {
         Ok(())
     }
 
-    unsafe fn optimize_thin(
+    fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::lto::optimize_thin_module(thin, cgcx)
     }
 
-    unsafe fn codegen(
+    fn codegen(
         cgcx: &CodegenContext<Self>,
         dcx: DiagCtxtHandle<'_>,
         module: ModuleCodegen<Self::Module>,

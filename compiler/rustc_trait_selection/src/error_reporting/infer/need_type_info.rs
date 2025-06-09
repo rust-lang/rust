@@ -215,7 +215,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
                                 // `_` because then we'd end up with `Vec<_, _>`, instead of
                                 // `Vec<_>`.
                                 arg
-                            } else if let GenericArgKind::Type(_) = arg.unpack() {
+                            } else if let GenericArgKind::Type(_) = arg.kind() {
                                 // We don't replace lifetime or const params, only type params.
                                 self.new_infer().into()
                             } else {
@@ -347,7 +347,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         highlight: ty::print::RegionHighlightMode<'tcx>,
     ) -> InferenceDiagnosticsData {
         let tcx = self.tcx;
-        match term.unpack() {
+        match term.kind() {
             TermKind::Ty(ty) => {
                 if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
                     let var_origin = self.infcx.type_var_origin(ty_vid);
@@ -568,7 +568,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 return arg;
                             }
 
-                            match arg.unpack() {
+                            match arg.kind() {
                                 GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
                                 GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
                                 GenericArgKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
@@ -803,7 +803,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         }
         impl<'tcx> CostCtxt<'tcx> {
             fn arg_cost(self, arg: GenericArg<'tcx>) -> usize {
-                match arg.unpack() {
+                match arg.kind() {
                     GenericArgKind::Lifetime(_) => 0, // erased
                     GenericArgKind::Type(ty) => self.ty_cost(ty),
                     GenericArgKind::Const(_) => 3, // some non-zero value
@@ -898,7 +898,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             return true;
         }
 
-        match (arg.unpack(), self.target.unpack()) {
+        match (arg.kind(), self.target.kind()) {
             (GenericArgKind::Type(inner_ty), TermKind::Ty(target_ty)) => {
                 use ty::{Infer, TyVar};
                 match (inner_ty.kind(), target_ty.kind()) {
@@ -929,7 +929,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             if self.generic_arg_is_target(inner) {
                 return true;
             }
-            match inner.unpack() {
+            match inner.kind() {
                 GenericArgKind::Lifetime(_) => {}
                 GenericArgKind::Type(ty) => {
                     if matches!(

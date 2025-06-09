@@ -11,6 +11,7 @@ use rustc_ast::{
     Item, ItemKind, MethodCall, NodeId, Path, PathSegment, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
+use rustc_attr_parsing::is_doc_alias_attrs_contain_symbol;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -39,7 +40,7 @@ use crate::late::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
-    Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource, Segment, errors,
+    Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource, Resolver, Segment, errors,
     path_names_to_string,
 };
 
@@ -174,7 +175,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         &mut self,
         path: &[Segment],
         span: Span,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         res: Option<Res>,
     ) -> BaseError {
         // Make the base error.
@@ -420,7 +421,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         res: Option<Res>,
         qself: Option<&QSelf>,
     ) -> (Diag<'tcx>, Vec<ImportSuggestion>) {
@@ -477,6 +478,19 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             return (err, Vec::new());
         }
 
+        if let Some((did, item)) = self.lookup_doc_alias_name(path, source.namespace()) {
+            let item_name = item.name;
+            let suggestion_name = self.r.tcx.item_name(did);
+            err.span_suggestion(
+                item.span,
+                format!("`{suggestion_name}` has a name defined in the doc alias attribute as `{item_name}`"),
+                    suggestion_name,
+                    Applicability::MaybeIncorrect
+                );
+
+            return (err, Vec::new());
+        };
+
         let (found, suggested_candidates, mut candidates) = self.try_lookup_name_relaxed(
             &mut err,
             source,
@@ -525,12 +539,12 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         res: Option<Res>,
         qself: Option<&QSelf>,
     ) {
         if let Some(Res::Def(DefKind::AssocFn, _)) = res
-            && let PathSource::TraitItem(TypeNS) = source
+            && let PathSource::TraitItem(TypeNS, _) = source
             && let None = following_seg
             && let Some(qself) = qself
             && let TyKind::Path(None, ty_path) = &qself.ty.kind
@@ -636,7 +650,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn try_lookup_name_relaxed(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
@@ -751,12 +765,24 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 match candidate {
                     AssocSuggestion::Field(field_span) => {
                         if self_is_available {
-                            err.span_suggestion_verbose(
-                                span.shrink_to_lo(),
-                                "you might have meant to use the available field",
-                                format!("{pre}self."),
-                                Applicability::MachineApplicable,
-                            );
+                            let source_map = self.r.tcx.sess.source_map();
+                            // check if the field is used in a format string, such as `"{x}"`
+                            let field_is_format_named_arg = source_map
+                                .span_to_source(span, |s, start, _| {
+                                    Ok(s.get(start - 1..start) == Some("{"))
+                                });
+                            if let Ok(true) = field_is_format_named_arg {
+                                err.help(
+                                    format!("you might have meant to use the available field in a format string: `\"{{}}\", self.{}`", segment.ident.name),
+                                );
+                            } else {
+                                err.span_suggestion_verbose(
+                                    span.shrink_to_lo(),
+                                    "you might have meant to use the available field",
+                                    format!("{pre}self."),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                         } else {
                             err.span_label(field_span, "a field by that name exists in `Self`");
                         }
@@ -852,10 +878,69 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         (false, suggested_candidates, candidates)
     }
 
+    fn lookup_doc_alias_name(&mut self, path: &[Segment], ns: Namespace) -> Option<(DefId, Ident)> {
+        let find_doc_alias_name = |r: &mut Resolver<'ra, '_>, m: Module<'ra>, item_name: Symbol| {
+            for resolution in r.resolutions(m).borrow().values() {
+                let Some(did) =
+                    resolution.borrow().binding.and_then(|binding| binding.res().opt_def_id())
+                else {
+                    continue;
+                };
+                if did.is_local() {
+                    // We don't record the doc alias name in the local crate
+                    // because the people who write doc alias are usually not
+                    // confused by them.
+                    continue;
+                }
+                if is_doc_alias_attrs_contain_symbol(r.tcx.get_attrs(did, sym::doc), item_name) {
+                    return Some(did);
+                }
+            }
+            None
+        };
+
+        if path.len() == 1 {
+            for rib in self.ribs[ns].iter().rev() {
+                let item = path[0].ident;
+                if let RibKind::Module(module) = rib.kind
+                    && let Some(did) = find_doc_alias_name(self.r, module, item.name)
+                {
+                    return Some((did, item));
+                }
+            }
+        } else {
+            // Finds to the last resolved module item in the path
+            // and searches doc aliases within that module.
+            //
+            // Example: For the path `a::b::last_resolved::not_exist::c::d`,
+            // we will try to find any item has doc aliases named `not_exist`
+            // in `last_resolved` module.
+            //
+            // - Use `skip(1)` because the final segment must remain unresolved.
+            for (idx, seg) in path.iter().enumerate().rev().skip(1) {
+                let Some(id) = seg.id else {
+                    continue;
+                };
+                let Some(res) = self.r.partial_res_map.get(&id) else {
+                    continue;
+                };
+                if let Res::Def(DefKind::Mod, module) = res.expect_full_res()
+                    && let Some(module) = self.r.get_module(module)
+                    && let item = path[idx + 1].ident
+                    && let Some(did) = find_doc_alias_name(self.r, module, item.name)
+                {
+                    return Some((did, item));
+                }
+                break;
+            }
+        }
+        None
+    }
+
     fn suggest_trait_and_bounds(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         res: Option<Res>,
         span: Span,
         base_error: &BaseError,
@@ -932,7 +1017,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_typo(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
@@ -978,7 +1063,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_shadowed(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
@@ -1011,7 +1096,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn err_code_special_cases(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         path: &[Segment],
         span: Span,
     ) {
@@ -1056,7 +1141,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_self_ty(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         path: &[Segment],
         span: Span,
     ) -> bool {
@@ -1079,7 +1164,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_self_value(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         path: &[Segment],
         span: Span,
     ) -> bool {
@@ -1247,7 +1332,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_swapping_misplaced_self_ty_and_trait(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         res: Option<Res>,
         span: Span,
     ) {
@@ -1276,7 +1361,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         &mut self,
         err: &mut Diag<'_>,
         res: Option<Res>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
     ) {
         let PathSource::TupleStruct(_, _) = source else { return };
         let Some(Res::Def(DefKind::Fn, _)) = res else { return };
@@ -1288,7 +1373,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         &mut self,
         err: &mut Diag<'_>,
         res: Option<Res>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         span: Span,
     ) {
         let PathSource::Trait(_) = source else { return };
@@ -1337,7 +1422,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_pattern_match_with_let(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         span: Span,
     ) -> bool {
         if let PathSource::Expr(_) = source
@@ -1363,10 +1448,10 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn get_single_associated_item(
         &mut self,
         path: &[Segment],
-        source: &PathSource<'_>,
+        source: &PathSource<'_, '_>,
         filter_fn: &impl Fn(Res) -> bool,
     ) -> Option<TypoSuggestion> {
-        if let crate::PathSource::TraitItem(_) = source {
+        if let crate::PathSource::TraitItem(_, _) = source {
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(mod_path, None, None)
@@ -1471,7 +1556,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
     /// Check if the source is call expression and the first argument is `self`. If true,
     /// return the span of whole call and the span for all arguments expect the first one (`self`).
-    fn call_has_self_arg(&self, source: PathSource<'_>) -> Option<(Span, Option<Span>)> {
+    fn call_has_self_arg(&self, source: PathSource<'_, '_>) -> Option<(Span, Option<Span>)> {
         let mut has_self_arg = None;
         if let PathSource::Expr(Some(parent)) = source
             && let ExprKind::Call(_, args) = &parent.kind
@@ -1529,7 +1614,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         &mut self,
         err: &mut Diag<'_>,
         span: Span,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         path: &[Segment],
         res: Res,
         path_str: &str,
@@ -1581,7 +1666,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         };
 
-        let find_span = |source: &PathSource<'_>, err: &mut Diag<'_>| {
+        let find_span = |source: &PathSource<'_, '_>, err: &mut Diag<'_>| {
             match source {
                 PathSource::Expr(Some(Expr { span, kind: ExprKind::Call(_, _), .. }))
                 | PathSource::TupleStruct(span, _) => {
@@ -1965,8 +2050,86 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 err.span_label(span, fallback_label.to_string());
                 err.note("can't use `Self` as a constructor, you must use the implemented struct");
             }
-            (Res::Def(DefKind::TyAlias | DefKind::AssocTy, _), _) if ns == ValueNS => {
+            (
+                Res::Def(DefKind::TyAlias | DefKind::AssocTy, _),
+                PathSource::TraitItem(ValueNS, PathSource::TupleStruct(whole, args)),
+            ) => {
+                err.note("can't use a type alias as tuple pattern");
+
+                let mut suggestion = Vec::new();
+
+                if let &&[first, ..] = args
+                    && let &&[.., last] = args
+                {
+                    suggestion.extend([
+                        // "0: " has to be included here so that the fix is machine applicable.
+                        //
+                        // If this would only add " { " and then the code below add "0: ",
+                        // rustfix would crash, because end of this suggestion is the same as start
+                        // of the suggestion below. Thus, we have to merge these...
+                        (span.between(first), " { 0: ".to_owned()),
+                        (last.between(whole.shrink_to_hi()), " }".to_owned()),
+                    ]);
+
+                    suggestion.extend(
+                        args.iter()
+                            .enumerate()
+                            .skip(1) // See above
+                            .map(|(index, &arg)| (arg.shrink_to_lo(), format!("{index}: "))),
+                    )
+                } else {
+                    suggestion.push((span.between(whole.shrink_to_hi()), " {}".to_owned()));
+                }
+
+                err.multipart_suggestion(
+                    "use struct pattern instead",
+                    suggestion,
+                    Applicability::MachineApplicable,
+                );
+            }
+            (
+                Res::Def(DefKind::TyAlias | DefKind::AssocTy, _),
+                PathSource::TraitItem(
+                    ValueNS,
+                    PathSource::Expr(Some(ast::Expr {
+                        span: whole,
+                        kind: ast::ExprKind::Call(_, args),
+                        ..
+                    })),
+                ),
+            ) => {
                 err.note("can't use a type alias as a constructor");
+
+                let mut suggestion = Vec::new();
+
+                if let [first, ..] = &**args
+                    && let [.., last] = &**args
+                {
+                    suggestion.extend([
+                        // "0: " has to be included here so that the fix is machine applicable.
+                        //
+                        // If this would only add " { " and then the code below add "0: ",
+                        // rustfix would crash, because end of this suggestion is the same as start
+                        // of the suggestion below. Thus, we have to merge these...
+                        (span.between(first.span), " { 0: ".to_owned()),
+                        (last.span.between(whole.shrink_to_hi()), " }".to_owned()),
+                    ]);
+
+                    suggestion.extend(
+                        args.iter()
+                            .enumerate()
+                            .skip(1) // See above
+                            .map(|(index, arg)| (arg.span.shrink_to_lo(), format!("{index}: "))),
+                    )
+                } else {
+                    suggestion.push((span.between(whole.shrink_to_hi()), " {}".to_owned()));
+                }
+
+                err.multipart_suggestion(
+                    "use struct expression instead",
+                    suggestion,
+                    Applicability::MachineApplicable,
+                );
             }
             _ => return false,
         }
@@ -2536,7 +2699,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_using_enum_variant(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         def_id: DefId,
         span: Span,
     ) {
@@ -2714,7 +2877,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     pub(crate) fn suggest_adding_generic_parameter(
         &self,
         path: &[Segment],
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
     ) -> Option<(Span, &'static str, String, Applicability)> {
         let (ident, span) = match path {
             [segment]
@@ -3277,7 +3440,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     maybe_static = true;
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
-                        (DUMMY_NODE_ID, LifetimeRes::Static { suppress_elision_warning: false }),
+                        (DUMMY_NODE_ID, LifetimeRes::Static),
                     )];
                 }
             } else if elided_len == 0 {
@@ -3289,7 +3452,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     maybe_static = true;
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
-                        (DUMMY_NODE_ID, LifetimeRes::Static { suppress_elision_warning: false }),
+                        (DUMMY_NODE_ID, LifetimeRes::Static),
                     )];
                 }
             } else if num_params == 1 {

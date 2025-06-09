@@ -14,7 +14,7 @@ trait Foo<T> {
 struct A<T>(T);
 
 impl<T: C> Foo<T> for A<T> {
-    const BAR: usize = [5, 6, 7][T::BOO]; //~ ERROR evaluation of `<A<()> as Foo<()>>::BAR` failed
+    const BAR: usize = [5, 6, 7][T::BOO]; //~ ERROR index out of bounds: the length is 3 but the index is 42
 }
 
 fn foo<T: C>() -> &'static usize {

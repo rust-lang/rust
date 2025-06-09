@@ -1,0 +1,38 @@
+warning: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/not-tied-to-crate.rs:8:16
+   |
+LL |     fn bar(x: &'static u8) -> &u8 {
+   |                ^^^^^^^        --- the lifetime gets resolved as `'static`
+   |                |
+   |                this lifetime flows to the output
+   |
+note: the lint level is defined here
+  --> $DIR/not-tied-to-crate.rs:6:8
+   |
+LL | #[warn(mismatched_lifetime_syntaxes)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: one option is to consistently use `'static`
+   |
+LL |     fn bar(x: &'static u8) -> &'static u8 {
+   |                                +++++++
+
+error: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/not-tied-to-crate.rs:14:16
+   |
+LL |     fn baz(x: &'static u8) -> &u8 {
+   |                ^^^^^^^        --- the lifetime gets resolved as `'static`
+   |                |
+   |                this lifetime flows to the output
+   |
+note: the lint level is defined here
+  --> $DIR/not-tied-to-crate.rs:13:12
+   |
+LL |     #[deny(mismatched_lifetime_syntaxes)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: one option is to consistently use `'static`
+   |
+LL |     fn baz(x: &'static u8) -> &'static u8 {
+   |                                +++++++
+
+error: aborting due to 1 previous error; 1 warning emitted
+

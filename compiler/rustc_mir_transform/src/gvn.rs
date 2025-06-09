@@ -438,8 +438,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         dest.clone()
                     };
                     for (field_index, op) in fields.into_iter().enumerate() {
-                        let field_dest =
-                            self.ecx.project_field(&variant_dest, field_index).discard_err()?;
+                        let field_dest = self
+                            .ecx
+                            .project_field(&variant_dest, FieldIdx::from_usize(field_index))
+                            .discard_err()?;
                         self.ecx.copy_op(op, &field_dest).discard_err()?;
                     }
                     self.ecx
@@ -638,6 +640,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         place: PlaceRef<'tcx>,
         value: VnIndex,
         proj: PlaceElem<'tcx>,
+        from_non_ssa_index: &mut bool,
     ) -> Option<VnIndex> {
         let proj = match proj {
             ProjectionElem::Deref => {
@@ -682,6 +685,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             ProjectionElem::Index(idx) => {
                 if let Value::Repeat(inner, _) = self.get(value) {
+                    *from_non_ssa_index |= self.locals[idx].is_none();
                     return Some(*inner);
                 }
                 let idx = self.locals[idx]?;
@@ -774,6 +778,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         // Invariant: `value` holds the value up-to the `index`th projection excluded.
         let mut value = self.locals[place.local]?;
+        let mut from_non_ssa_index = false;
         for (index, proj) in place.projection.iter().enumerate() {
             if let Value::Projection(pointer, ProjectionElem::Deref) = *self.get(value)
                 && let Value::Address { place: mut pointee, kind, .. } = *self.get(pointer)
@@ -791,7 +796,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
 
             let base = PlaceRef { local: place.local, projection: &place.projection[..index] };
-            value = self.project(base, value, proj)?;
+            value = self.project(base, value, proj, &mut from_non_ssa_index)?;
         }
 
         if let Value::Projection(pointer, ProjectionElem::Deref) = *self.get(value)
@@ -804,6 +809,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
         if let Some(new_local) = self.try_as_local(value, location) {
             place_ref = PlaceRef { local: new_local, projection: &[] };
+        } else if from_non_ssa_index {
+            // If access to non-SSA locals is unavoidable, bail out.
+            return None;
         }
 
         if place_ref.local != place.local || place_ref.projection.len() < place.projection.len() {
@@ -1577,7 +1585,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // We needed to check the variant to avoid trying to read the tag
             // field from an enum where no fields have variants, since that tag
             // field isn't in the `Aggregate` from which we're getting values.
-            Some((FieldIdx::from_usize(field_idx), field_layout.ty))
+            Some((field_idx, field_layout.ty))
         } else if let ty::Adt(adt, args) = ty.kind()
             && adt.is_struct()
             && adt.repr().transparent()

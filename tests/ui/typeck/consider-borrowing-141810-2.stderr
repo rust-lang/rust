@@ -1,0 +1,19 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/consider-borrowing-141810-2.rs:4:12
+   |
+LL |        let x = if true {
+   |  ______________-
+LL | |          &()
+   | |          --- expected because of this
+LL | |      } else if false {
+   | | ____________^
+LL | ||     } else {
+LL | ||     };
+   | ||     ^
+   | ||_____|
+   |  |_____`if` and `else` have incompatible types
+   |        expected `&()`, found `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

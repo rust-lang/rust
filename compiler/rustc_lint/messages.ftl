@@ -13,6 +13,8 @@ lint_ambiguous_negative_literals = `-` has lower precedence than method calls, w
 lint_ambiguous_wide_pointer_comparisons = ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
     .addr_metadata_suggestion = use explicit `std::ptr::eq` method to compare metadata and addresses
     .addr_suggestion = use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+    .cast_suggestion = use untyped pointers to only compare their addresses
+    .expect_suggestion = or expect the lint to compare the pointers metadata and addresses
 
 lint_associated_const_elided_lifetime = {$elided ->
         [true] `&` without an explicit lifetime name cannot be used here
@@ -251,11 +253,6 @@ lint_duplicate_macro_attribute =
 
 lint_duplicate_matcher_binding = duplicate matcher binding
 
-lint_elided_named_lifetime = elided lifetime has a name
-    .label_elided = this elided lifetime gets resolved as `{$name}`
-    .label_named = lifetime `{$name}` declared here
-    .suggestion = consider specifying it explicitly
-
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
     .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum
@@ -371,8 +368,6 @@ lint_implicit_unsafe_autorefs = implicit autoref creates a reference to the dere
 lint_improper_ctypes = `extern` {$desc} uses type `{$ty}`, which is not FFI-safe
     .label = not FFI-safe
     .note = the type is defined here
-
-lint_improper_ctypes_128bit = 128-bit integers don't currently have a known stable ABI
 
 lint_improper_ctypes_array_help = consider passing a pointer to the array
 
@@ -515,6 +510,28 @@ lint_map_unit_fn = `Iterator::map` call that discard the iterator's values
 lint_metavariable_still_repeating = variable `{$name}` is still repeating at this depth
 
 lint_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
+
+lint_mismatched_lifetime_syntaxes =
+    lifetime flowing from input to output with different syntax can be confusing
+    .label_mismatched_lifetime_syntaxes_inputs =
+        {$n_inputs ->
+            [one] this lifetime flows
+            *[other] these lifetimes flow
+        } to the output
+    .label_mismatched_lifetime_syntaxes_outputs =
+        the {$n_outputs ->
+            [one] lifetime gets
+            *[other] lifetimes get
+        } resolved as `{$lifetime_name}`
+
+lint_mismatched_lifetime_syntaxes_suggestion_explicit =
+    one option is to consistently use `{$lifetime_name}`
+
+lint_mismatched_lifetime_syntaxes_suggestion_implicit =
+    one option is to consistently remove the lifetime
+
+lint_mismatched_lifetime_syntaxes_suggestion_mixed =
+    one option is to remove the lifetime for references and use the anonymous lifetime for paths
 
 lint_missing_fragment_specifier = missing fragment specifier
 
@@ -805,6 +822,11 @@ lint_type_ir_inherent_usage = do not use `rustc_type_ir::inherent` unless you're
 lint_type_ir_trait_usage = do not use `rustc_type_ir::Interner` or `rustc_type_ir::InferCtxtLike` unless you're inside of the trait solver
     .note = the method or struct you're looking for is likely defined somewhere else downstream in the compiler
 
+lint_undefined_transmute = pointers cannot be transmuted to integers during const eval
+    .note = at compile-time, pointers do not have an integer value
+    .note2 = avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior
+    .help = for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
+
 lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
     .label = argument has type `{$arg_ty}`
     .suggestion = use `std::mem::ManuallyDrop::into_inner` to get the inner value
@@ -835,6 +857,7 @@ lint_unexpected_cfg_name_similar_name = there is a config with a similar name
 lint_unexpected_cfg_name_similar_name_different_values = there is a config with a similar name and different values
 lint_unexpected_cfg_name_similar_name_no_value = there is a config with a similar name and no value
 lint_unexpected_cfg_name_similar_name_value = there is a config with a similar name and value
+lint_unexpected_cfg_name_version_syntax = there is a similar config predicate: `version("..")`
 lint_unexpected_cfg_name_with_similar_value = found config with similar value
 
 lint_unexpected_cfg_value = unexpected `cfg` condition value: {$has_value ->
@@ -952,7 +975,8 @@ lint_unused_doc_comment = unused doc comment
     .help = to document an item produced by a macro, the macro must produce the documentation as part of its expansion
 
 lint_unused_extern_crate = unused extern crate
-    .suggestion = remove it
+    .label = unused
+    .suggestion = remove the unused `extern crate`
 
 lint_unused_import_braces = braces around {$node} is unnecessary
 

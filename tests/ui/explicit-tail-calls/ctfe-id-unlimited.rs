@@ -25,7 +25,7 @@ const fn rec_id(n: u32) -> u32 {
 const ORIGINAL: u32 = 12345;
 // Original number, but with identity function applied
 // (this is the same, but requires execution of the recursion)
-const ID_ED: u32 = rec_id(ORIGINAL); //[return]~ error: evaluation of constant value failed
+const ID_ED: u32 = rec_id(ORIGINAL); //[return]~ ERROR: reached the configured maximum number of stack frames
 // Assert to make absolutely sure the computation actually happens
 const ASSERT: () = assert!(ORIGINAL == ID_ED);
 

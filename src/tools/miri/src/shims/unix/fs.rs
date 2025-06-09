@@ -89,8 +89,19 @@ impl UnixFileDescription for FileHandle {
         communicate_allowed: bool,
         op: FlockOp,
     ) -> InterpResult<'tcx, io::Result<()>> {
+        // cfg(bootstrap)
+        macro_rules! cfg_select_dispatch {
+            ($($tokens:tt)*) => {
+                #[cfg(bootstrap)]
+                cfg_match! { $($tokens)* }
+
+                #[cfg(not(bootstrap))]
+                cfg_select! { $($tokens)* }
+            };
+        }
+
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        cfg_match! {
+        cfg_select_dispatch! {
             all(target_family = "unix", not(target_os = "solaris")) => {
                 use std::os::fd::AsRawFd;
 
@@ -121,13 +132,13 @@ impl UnixFileDescription for FileHandle {
                 use std::os::windows::io::AsRawHandle;
 
                 use windows_sys::Win32::Foundation::{
-                    ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, HANDLE, TRUE,
+                    ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, TRUE,
                 };
                 use windows_sys::Win32::Storage::FileSystem::{
                     LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, UnlockFile,
                 };
 
-                let fh = self.file.as_raw_handle() as HANDLE;
+                let fh = self.file.as_raw_handle();
 
                 use FlockOp::*;
                 let (ret, lock_nb) = match op {

@@ -147,7 +147,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 DefKind::Macro(macro_kind)
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
-            ItemKind::Use(..) => return visit::walk_item(self, i),
+            ItemKind::Use(use_tree) => {
+                self.create_def(i.id, None, DefKind::Use, use_tree.span);
+                return visit::walk_item(self, i);
+            }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
                 return self.visit_macro_invoc(i.id);
             }
@@ -162,8 +165,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         self.with_parent(def_id, |this| {
             this.with_impl_trait(ImplTraitContext::Existential, |this| {
                 match i.kind {
-                    ItemKind::Struct(_, ref struct_def, _)
-                    | ItemKind::Union(_, ref struct_def, _) => {
+                    ItemKind::Struct(_, _, ref struct_def)
+                    | ItemKind::Union(_, _, ref struct_def) => {
                         // If this is a unit or tuple-like struct, register the constructor.
                         if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(struct_def) {
                             this.create_def(
@@ -232,9 +235,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
-    fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
+    fn visit_nested_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId) {
         self.create_def(id, None, DefKind::Use, use_tree.span);
-        visit::walk_use_tree(self, use_tree, id);
+        visit::walk_use_tree(self, use_tree);
     }
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {

@@ -371,11 +371,6 @@ impl Session {
         self.opts.unstable_opts.coverage_options.discard_all_spans_in_codegen
     }
 
-    /// True if testing flag `-Zcoverage-options=inject-unused-local-file` was passed.
-    pub fn coverage_inject_unused_local_file(&self) -> bool {
-        self.opts.unstable_opts.coverage_options.inject_unused_local_file
-    }
-
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
     }
@@ -463,13 +458,9 @@ impl Session {
     /// directories are also returned, for example if `--sysroot` is used but tools are missing
     /// (#125246): we also add the bin directories to the sysroot where rustc is located.
     pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
-        let bin_path = filesearch::make_target_bin_path(&self.sysroot, config::host_tuple());
-        let fallback_sysroot_paths = filesearch::sysroot_candidates()
+        let search_paths = filesearch::sysroot_with_fallback(&self.sysroot)
             .into_iter()
-            // Ignore sysroot candidate if it was the same as the sysroot path we just used.
-            .filter(|sysroot| *sysroot != self.sysroot)
             .map(|sysroot| filesearch::make_target_bin_path(&sysroot, config::host_tuple()));
-        let search_paths = std::iter::once(bin_path).chain(fallback_sysroot_paths);
 
         if self_contained {
             // The self-contained tools are expected to be e.g. in `bin/self-contained` in the

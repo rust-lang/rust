@@ -2156,6 +2156,7 @@ GetExitCodeProcess
 GetFileAttributesW
 GetFileInformationByHandle
 GetFileInformationByHandleEx
+GetFileSizeEx
 GetFileType
 GETFINALPATHNAMEBYHANDLE_FLAGS
 GetFinalPathNameByHandleW

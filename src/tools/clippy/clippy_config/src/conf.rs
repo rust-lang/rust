@@ -739,6 +739,7 @@ define_Conf! {
         manual_repeat_n,
         manual_retain,
         manual_slice_fill,
+        manual_slice_size_calculation,
         manual_split_once,
         manual_str_repeat,
         manual_strip,
@@ -827,7 +828,7 @@ define_Conf! {
     trait_assoc_item_kinds_order: SourceItemOrderingTraitAssocItemKinds = DEFAULT_TRAIT_ASSOC_ITEM_KINDS_ORDER.into(),
     /// The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by
     /// reference.
-    #[default_text = "target_pointer_width * 2"]
+    #[default_text = "target_pointer_width"]
     #[lints(trivially_copy_pass_by_ref)]
     trivial_copy_size_limit: Option<u64> = None,
     /// The maximum complexity a type can have

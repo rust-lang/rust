@@ -902,7 +902,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 fn is_field<'a>(p: &&Projection<'a>) -> bool {
                     match p.kind {
                         ProjectionKind::Field(_, _) => true,
-                        ProjectionKind::Deref | ProjectionKind::OpaqueCast => false,
+                        ProjectionKind::Deref
+                        | ProjectionKind::OpaqueCast
+                        | ProjectionKind::UnwrapUnsafeBinder => false,
                         p @ (ProjectionKind::Subslice | ProjectionKind::Index) => {
                             bug!("ProjectionKind {:?} was unexpected", p)
                         }
@@ -1558,7 +1560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
-            let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, Some(closure_span));
+            let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, closure_span);
             self.infcx
                 .type_implements_trait(drop_trait, [ty], self.tcx.param_env(closure_def_id))
                 .must_apply_modulo_regions()
@@ -2197,7 +2199,8 @@ fn restrict_capture_precision(
             }
             ProjectionKind::Deref => {}
             ProjectionKind::OpaqueCast => {}
-            ProjectionKind::Field(..) => {} // ignore
+            ProjectionKind::Field(..) => {}
+            ProjectionKind::UnwrapUnsafeBinder => {}
         }
     }
 
@@ -2268,6 +2271,7 @@ fn construct_place_string<'tcx>(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String 
             ProjectionKind::Index => String::from("Index"),
             ProjectionKind::Subslice => String::from("Subslice"),
             ProjectionKind::OpaqueCast => String::from("OpaqueCast"),
+            ProjectionKind::UnwrapUnsafeBinder => String::from("UnwrapUnsafeBinder"),
         };
         if i != 0 {
             projections_str.push(',');
