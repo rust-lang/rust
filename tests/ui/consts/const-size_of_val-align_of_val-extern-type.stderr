@@ -2,13 +2,13 @@ error[E0080]: `extern type` does not have known layout
   --> $DIR/const-size_of_val-align_of_val-extern-type.rs:10:31
    |
 LL | const _SIZE: usize = unsafe { size_of_val(&4 as *const i32 as *const Opaque) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_SIZE` failed here
 
 error[E0080]: `extern type` does not have known layout
   --> $DIR/const-size_of_val-align_of_val-extern-type.rs:11:32
    |
 LL | const _ALIGN: usize = unsafe { min_align_of_val(&4 as *const i32 as *const Opaque) };
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_ALIGN` failed here
 
 error: aborting due to 2 previous errors
 

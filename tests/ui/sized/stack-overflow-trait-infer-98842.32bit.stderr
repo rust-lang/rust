@@ -13,7 +13,7 @@ error[E0080]: a cycle occurred during layout computation
   --> $DIR/stack-overflow-trait-infer-98842.rs:14:1
    |
 LL | const _: *const Foo = 0 as _;
-   | ^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 
 error: aborting due to 2 previous errors
 
