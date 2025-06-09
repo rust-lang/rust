@@ -19,7 +19,7 @@ error[E0080]: constant accesses mutable global memory
   --> $DIR/const_refs_to_static_fail.rs:18:13
    |
 LL |     assert!(*C2 == 0);
-   |             ^^^ evaluation of constant value failed here
+   |             ^^^ evaluation of `C2_READ` failed here
 
 error: aborting due to 2 previous errors
 
