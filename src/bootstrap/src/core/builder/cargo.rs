@@ -11,7 +11,7 @@ use crate::utils::build_stamp;
 use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_args, linker_flags};
 use crate::{
     BootstrapCommand, CLang, Compiler, Config, DocTests, DryRun, EXTRA_CHECK_CFGS, GitRepo, Mode,
-    TargetSelection, command, prepare_behaviour_dump_dir, t,
+    RemapScheme, TargetSelection, command, prepare_behaviour_dump_dir, t,
 };
 
 /// Represents flag values in `String` form with whitespace delimiter to pass it to the compiler
@@ -636,6 +636,15 @@ impl Builder<'_> {
         for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
             if restricted_mode.is_none() || *restricted_mode == Some(mode) {
                 rustflags.arg(&check_cfg_arg(name, *values));
+
+                if *name == "bootstrap" {
+                    // Cargo doesn't pass RUSTFLAGS to proc_macros:
+                    // https://github.com/rust-lang/cargo/issues/4423
+                    // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
+                    // We also declare that the flag is expected, which we need to do to not
+                    // get warnings about it being unexpected.
+                    hostflags.arg(check_cfg_arg(name, *values));
+                }
             }
         }
 
@@ -645,13 +654,6 @@ impl Builder<'_> {
         if stage == 0 {
             hostflags.arg("--cfg=bootstrap");
         }
-        // Cargo doesn't pass RUSTFLAGS to proc_macros:
-        // https://github.com/rust-lang/cargo/issues/4423
-        // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
-        // We also declare that the flag is expected, which we need to do to not
-        // get warnings about it being unexpected.
-        hostflags.arg("-Zunstable-options");
-        hostflags.arg("--check-cfg=cfg(bootstrap)");
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
@@ -920,13 +922,46 @@ impl Builder<'_> {
             hostflags.arg(format!("-Ctarget-feature={sign}crt-static"));
         }
 
-        if let Some(map_to) = self.build.debuginfo_map_to(GitRepo::Rustc) {
-            let map = format!("{}={}", self.build.src.display(), map_to);
-            cargo.env("RUSTC_DEBUGINFO_MAP", map);
+        // `rustc` needs to know the remapping scheme, in order to know how to reverse it (unremap)
+        // later. Two env vars are set and made available to the compiler
+        //
+        // - `CFG_VIRTUAL_RUST_SOURCE_BASE_DIR`: `rust-src` remap scheme (`NonCompiler`)
+        // - `CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR`: `rustc-dev` remap scheme (`Compiler`)
+        //
+        // Keep this scheme in sync with `rustc_metadata::rmeta::decoder`'s
+        // `try_to_translate_virtual_to_real`.
+        //
+        // `RUSTC_DEBUGINFO_MAP` is used to pass through to the underlying rustc
+        // `--remap-path-prefix`.
+        match mode {
+            Mode::Rustc | Mode::Codegen => {
+                if let Some(ref map_to) =
+                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
+                {
+                    cargo.env("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR", map_to);
+                }
 
-            // `rustc` needs to know the virtual `/rustc/$hash` we're mapping to,
-            // in order to opportunistically reverse it later.
-            cargo.env("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR", map_to);
+                if let Some(ref map_to) =
+                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::Compiler)
+                {
+                    // When building compiler sources, we want to apply the compiler remap scheme.
+                    cargo.env(
+                        "RUSTC_DEBUGINFO_MAP",
+                        format!("{}={}", self.build.src.display(), map_to),
+                    );
+                    cargo.env("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR", map_to);
+                }
+            }
+            Mode::Std | Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd => {
+                if let Some(ref map_to) =
+                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
+                {
+                    cargo.env(
+                        "RUSTC_DEBUGINFO_MAP",
+                        format!("{}={}", self.build.src.display(), map_to),
+                    );
+                }
+            }
         }
 
         if self.config.rust_remap_debuginfo {
