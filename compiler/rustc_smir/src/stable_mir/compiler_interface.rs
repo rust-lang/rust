@@ -65,43 +65,6 @@ impl Bridge for BridgeTys {
     type StaticDef = stable_mir::mir::mono::StaticDef;
 }
 
-macro_rules! bridge_def {
-    ($name: ident, $ty: ty) => {
-        impl rustc_smir::bridge::$name<BridgeTys> for $ty {
-            fn new(def: stable_mir::DefId) -> Self {
-                Self(def)
-            }
-        }
-    };
-}
-
-bridge_def!(CrateItem, stable_mir::CrateItem);
-bridge_def!(AdtDef, stable_mir::ty::AdtDef);
-bridge_def!(ForeignModuleDef, stable_mir::ty::ForeignModuleDef);
-bridge_def!(ForeignDef, stable_mir::ty::ForeignDef);
-bridge_def!(FnDef, stable_mir::ty::FnDef);
-bridge_def!(ClosureDef, stable_mir::ty::ClosureDef);
-bridge_def!(CoroutineDef, stable_mir::ty::CoroutineDef);
-bridge_def!(CoroutineClosureDef, stable_mir::ty::CoroutineClosureDef);
-bridge_def!(AliasDef, stable_mir::ty::AliasDef);
-bridge_def!(ParamDef, stable_mir::ty::ParamDef);
-bridge_def!(BrNamedDef, stable_mir::ty::BrNamedDef);
-bridge_def!(TraitDef, stable_mir::ty::TraitDef);
-bridge_def!(GenericDef, stable_mir::ty::GenericDef);
-bridge_def!(ConstDef, stable_mir::ty::ConstDef);
-bridge_def!(ImplDef, stable_mir::ty::ImplDef);
-bridge_def!(RegionDef, stable_mir::ty::RegionDef);
-bridge_def!(CoroutineWitnessDef, stable_mir::ty::CoroutineWitnessDef);
-bridge_def!(AssocDef, stable_mir::ty::AssocDef);
-bridge_def!(OpaqueDef, stable_mir::ty::OpaqueDef);
-bridge_def!(StaticDef, stable_mir::mir::mono::StaticDef);
-
-impl rustc_smir::bridge::Prov<BridgeTys> for stable_mir::ty::Prov {
-    fn new(aid: stable_mir::mir::alloc::AllocId) -> Self {
-        Self(aid)
-    }
-}
-
 /// Stable public API for querying compiler information.
 ///
 /// All queries are delegated to [`crate::rustc_smir::context::SmirCtxt`] that provides

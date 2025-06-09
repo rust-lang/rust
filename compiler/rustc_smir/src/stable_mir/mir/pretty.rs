@@ -4,15 +4,14 @@ use std::io::Write;
 use std::{fmt, io, iter};
 
 use fmt::{Display, Formatter};
-use rustc_smir::IndexedVal;
 use stable_mir::mir::{
     Operand, Place, RawPtrKind, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents,
 };
 use stable_mir::ty::{AdtKind, AssocKind, MirConst, Ty, TyConst};
-use stable_mir::{Body, CrateDef, Mutability, with};
+use stable_mir::{Body, CrateDef, IndexedVal, Mutability, with};
 
 use super::{AggregateKind, AssertMessage, BinOp, BorrowKind, FakeBorrowKind, TerminatorKind};
-use crate::{rustc_smir, stable_mir};
+use crate::stable_mir;
 
 impl Display for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

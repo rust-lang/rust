@@ -119,7 +119,7 @@ impl Layout {
     }
 }
 
-impl crate::rustc_smir::IndexedVal for Layout {
+impl stable_mir::IndexedVal for Layout {
     fn to_val(index: usize) -> Self {
         Layout(index)
     }
