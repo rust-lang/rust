@@ -196,7 +196,6 @@ pub struct Build {
     crates: HashMap<String, Crate>,
     crate_paths: HashMap<PathBuf, String>,
     is_sudo: bool,
-    delayed_failures: RefCell<Vec<String>>,
     prerelease_version: Cell<Option<u32>>,
 
     #[cfg(feature = "build-metrics")]
@@ -457,7 +456,6 @@ impl Build {
             crates: HashMap::new(),
             crate_paths: HashMap::new(),
             is_sudo,
-            delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
 
             #[cfg(feature = "build-metrics")]
@@ -672,8 +670,7 @@ impl Build {
                 #[cfg(feature = "tracing")]
                 let _sanity_check_span =
                     span!(tracing::Level::DEBUG, "(1) executing dry-run sanity-check").entered();
-                self.config.dry_run = DryRun::SelfCheck;
-                self.config.exec_ctx.set_dry_run(DryRun::SelfCheck);
+                self.config.set_dry_run(DryRun::SelfCheck);
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
             }
@@ -683,8 +680,7 @@ impl Build {
                 #[cfg(feature = "tracing")]
                 let _actual_run_span =
                     span!(tracing::Level::DEBUG, "(2) executing actual run").entered();
-                self.config.dry_run = DryRun::Disabled;
-                self.config.exec_ctx.set_dry_run(DryRun::Disabled);
+                self.config.set_dry_run(DryRun::Disabled);
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
             }
@@ -700,14 +696,7 @@ impl Build {
         debug!("checking for postponed test failures from `test  --no-fail-fast`");
 
         // Check for postponed failures from `test --no-fail-fast`.
-        let failures = self.delayed_failures.borrow();
-        if !failures.is_empty() {
-            eprintln!("\n{} command(s) did not execute successfully:\n", failures.len());
-            for failure in failures.iter() {
-                eprintln!("  - {failure}\n");
-            }
-            exit!(1);
-        }
+        self.config.exec_ctx().report_failures_and_exit();
 
         #[cfg(feature = "build-metrics")]
         self.metrics.persist(self);
@@ -956,7 +945,7 @@ impl Build {
     }
 
     fn info(&self, msg: &str) {
-        match self.config.dry_run {
+        match self.config.get_dry_run() {
             DryRun::SelfCheck => (),
             DryRun::Disabled | DryRun::UserSelected => {
                 println!("{msg}");
@@ -1079,7 +1068,7 @@ impl Build {
 
     #[track_caller]
     fn group(&self, msg: &str) -> Option<gha::Group> {
-        match self.config.dry_run {
+        match self.config.get_dry_run() {
             DryRun::SelfCheck => None,
             DryRun::Disabled | DryRun::UserSelected => Some(gha::group(msg)),
         }

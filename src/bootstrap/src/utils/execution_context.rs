@@ -28,6 +28,10 @@ impl ExecutionContext {
         }
     }
 
+    pub fn get_dry_run(&self) -> &DryRun {
+        &self.dry_run
+    }
+
     pub fn verbose(&self, f: impl Fn()) {
         if self.is_verbose() {
             f()

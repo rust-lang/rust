@@ -443,13 +443,15 @@ impl StepDescription {
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
         if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
-            if !matches!(builder.config.dry_run, DryRun::SelfCheck) {
+            if !matches!(builder.config.get_dry_run(), DryRun::SelfCheck) {
                 println!("Skipping {pathset:?} because it is excluded");
             }
             return true;
         }
 
-        if !builder.config.skip.is_empty() && !matches!(builder.config.dry_run, DryRun::SelfCheck) {
+        if !builder.config.skip.is_empty()
+            && !matches!(builder.config.get_dry_run(), DryRun::SelfCheck)
+        {
             builder.verbose(|| {
                 println!(
                     "{:?} not skipped for {:?} -- not in {:?}",

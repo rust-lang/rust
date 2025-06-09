@@ -131,7 +131,6 @@ pub struct Config {
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
-    pub dry_run: DryRun,
     pub dump_bootstrap_shims: bool,
     /// Arguments appearing after `--` to be forwarded to tools,
     /// e.g. `--fix-broken` or test arguments.
@@ -364,16 +363,20 @@ impl Config {
         }
     }
 
+    pub fn set_dry_run(&mut self, dry_run: DryRun) {
+        self.exec_ctx.set_dry_run(dry_run);
+    }
+
+    pub fn get_dry_run(&self) -> &DryRun {
+        self.exec_ctx.get_dry_run()
+    }
+
     #[cfg_attr(
         feature = "tracing",
         instrument(target = "CONFIG_HANDLING", level = "trace", name = "Config::parse", skip_all)
     )]
     pub fn parse(flags: Flags) -> Config {
-        let mut exec_ctx = ExecutionContext::new();
-        exec_ctx.set_dry_run(if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled });
-        exec_ctx.set_verbose(flags.verbose);
-        exec_ctx.set_fail_fast(flags.cmd.fail_fast());
-        Self::parse_inner(flags, Self::get_toml, exec_ctx)
+        Self::parse_inner(flags, Self::get_toml)
     }
 
     #[cfg_attr(
@@ -388,9 +391,12 @@ impl Config {
     pub(crate) fn parse_inner(
         mut flags: Flags,
         get_toml: impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
-        exec_ctx: ExecutionContext,
     ) -> Config {
         let mut config = Config::default_opts();
+        let mut exec_ctx = ExecutionContext::new();
+        exec_ctx.set_verbose(flags.verbose);
+        exec_ctx.set_fail_fast(flags.cmd.fail_fast());
+
         config.exec_ctx = exec_ctx;
 
         // Set flags.
@@ -420,7 +426,7 @@ impl Config {
         config.on_fail = flags.on_fail;
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
-        config.dry_run = if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled };
+        config.set_dry_run(if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled });
         config.dump_bootstrap_shims = flags.dump_bootstrap_shims;
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
