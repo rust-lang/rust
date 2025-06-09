@@ -5,6 +5,7 @@
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 
 #![unstable(feature = "f16", issue = "116909")]
+#![doc(test(attr(feature(cfg_target_has_reliable_f16_f128), expect(internal_features))))]
 
 #[unstable(feature = "f16", issue = "116909")]
 pub use core::f16::consts;
@@ -27,8 +28,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -59,8 +58,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -93,8 +90,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -127,8 +122,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -146,8 +139,6 @@ impl f16 {
     /// Non-positive values:
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -180,8 +171,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -197,8 +186,6 @@ impl f16 {
     /// Non-positive values:
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -227,8 +214,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -244,8 +229,6 @@ impl f16 {
     /// Non-positive values:
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -274,8 +257,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -291,8 +272,6 @@ impl f16 {
     /// Non-positive values:
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -325,8 +304,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -358,8 +335,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -389,8 +364,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -423,8 +396,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -458,8 +429,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -496,8 +465,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -533,8 +500,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -574,8 +539,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -619,8 +582,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -657,8 +618,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -696,8 +655,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -714,8 +671,6 @@ impl f16 {
     /// Out-of-range values:
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -746,8 +701,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -784,8 +737,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -822,8 +773,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -857,8 +806,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -892,8 +839,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -929,8 +874,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -966,8 +909,6 @@ impl f16 {
     /// ```
     /// #![feature(f16)]
     /// #![feature(float_gamma)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -1004,8 +945,6 @@ impl f16 {
     /// ```
     /// #![feature(f16)]
     /// #![feature(float_gamma)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
@@ -1042,8 +981,6 @@ impl f16 {
     /// ```
     /// #![feature(f16)]
     /// #![feature(float_erf)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     /// /// The error function relates what percent of a normal distribution lies
@@ -1084,8 +1021,6 @@ impl f16 {
     /// ```
     /// #![feature(f16)]
     /// #![feature(float_erf)]
-    /// # #![feature(cfg_target_has_reliable_f16_f128)]
-    /// # #![expect(internal_features)]
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     /// let x: f16 = 0.123;

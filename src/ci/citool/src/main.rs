@@ -47,6 +47,7 @@ impl GitHubContext {
                 Some(RunType::TryJob { job_patterns: patterns })
             }
             ("push", "refs/heads/auto") => Some(RunType::AutoJob),
+            ("push", "refs/heads/master") => Some(RunType::MasterJob),
             _ => None,
         }
     }

@@ -395,7 +395,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }
 
         let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(self.body.typing_env(tcx));
-        let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+        let ocx = ObligationCtxt::new(&infcx);
 
         let body_id = self.body.source.def_id().expect_local();
         let host_polarity = match self.const_kind() {

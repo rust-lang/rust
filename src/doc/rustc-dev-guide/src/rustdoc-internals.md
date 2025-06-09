@@ -270,35 +270,6 @@ in `test.rs` is the function `make_test`, which is where hand-written
 Some extra reading about `make_test` can be found
 [here](https://quietmisdreavus.net/code/2018/02/23/how-the-doctests-get-made/).
 
-## Dotting i's And Crossing t's
-
-So that's `rustdoc`'s code in a nutshell, but there's more things in the
-compiler that deal with it. Since we have the full `compiletest` suite at hand,
-there's a set of tests in `tests/rustdoc` that make sure the final `HTML` is
-what we expect in various situations. These tests also use a supplementary
-script, `src/etc/htmldocck.py`, that allows it to look through the final `HTML`
-using `XPath` notation to get a precise look at the output. The full
-description of all the commands available to `rustdoc` tests (e.g. [`@has`] and
-[`@matches`]) is in [`htmldocck.py`].
-
-To use multiple crates in a `rustdoc` test, add `//@ aux-build:filename.rs`
-to the top of the test file. `filename.rs` should be placed in an `auxiliary`
-directory relative to the test file with the comment. If you need to build
-docs for the auxiliary file, use `//@ build-aux-docs`.
-
-In addition, there are separate tests for the search index and `rustdoc`'s
-ability to query it. The files in `tests/rustdoc-js` each contain a
-different search query and the expected results, broken out by search tab.
-These files are processed by a script in `src/tools/rustdoc-js` and the `Node.js`
-runtime. These tests don't have as thorough of a writeup, but a broad example
-that features results in all tabs can be found in `basic.js`. The basic idea is
-that you match a given `QUERY` with a set of `EXPECTED` results, complete with
-the full item path of each item.
-
-[`@has`]: https://github.com/rust-lang/rust/blob/master/src/etc/htmldocck.py#L39
-[`@matches`]: https://github.com/rust-lang/rust/blob/master/src/etc/htmldocck.py#L44
-[`htmldocck.py`]: https://github.com/rust-lang/rust/blob/master/src/etc/htmldocck.py
-
 ## Testing Locally
 
 Some features of the generated `HTML` documentation might require local
