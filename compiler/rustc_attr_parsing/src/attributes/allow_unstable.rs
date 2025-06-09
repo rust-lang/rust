@@ -24,6 +24,20 @@ impl<S: Stage> CombineAttributeParser<S> for AllowInternalUnstableParser {
     }
 }
 
+pub(crate) struct AllowUnstableFeatureParser;
+impl CombineAttributeParser for AllowUnstableFeatureParser {
+    const PATH: &'static [rustc_span::Symbol] = &[sym::unstable_feature_bound];
+    type Item = (Symbol, Span);
+    const CONVERT: ConvertFn<Self::Item> = AttributeKind::AllowUnstableFeature;
+
+    fn extend<'a>(
+        cx: &'a AcceptContext<'a>,
+        args: &'a ArgParser<'a>,
+    ) -> impl IntoIterator<Item = Self::Item> + 'a {
+        parse_unstable(cx, args, Self::PATH[0]).into_iter().zip(iter::repeat(cx.attr_span))
+    }
+}
+
 pub(crate) struct AllowConstFnUnstableParser;
 impl<S: Stage> CombineAttributeParser<S> for AllowConstFnUnstableParser {
     const PATH: &[Symbol] = &[sym::rustc_allow_const_fn_unstable];
