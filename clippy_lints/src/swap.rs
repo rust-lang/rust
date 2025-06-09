@@ -3,14 +3,14 @@ use clippy_utils::source::{snippet_indent, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 
-use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core};
+use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, path_to_local, std_or_core};
 use itertools::Itertools;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 
 use rustc_errors::Applicability;
-use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, Path, QPath, Stmt, StmtKind};
+use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
@@ -357,16 +357,13 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
                 let init = self.cx.expr_or_init(expr);
 
                 // We skip suggesting a variable binding in any of these cases:
-                // 1. Variable initialization is outside the suggestion span
-                // 2. Variable initialization is inside the suggestion span but the variable is not used as an index
-                //    or elsewhere later
-                // 3. Variable initialization is inside the suggestion span and the variable is used as an
-                //    index/elsewhere later, but its declaration is outside the suggestion span
+                // - Variable initialization is outside the suggestion span
+                // - Variable declaration is outside the suggestion span
+                // - Variable is not used as an index or elsewhere later
                 if !self.suggest_span.contains(init.span)
+                    || path_to_local(expr)
+                        .is_some_and(|hir_id| !self.suggest_span.contains(self.cx.tcx.hir_span(hir_id)))
                     || !self.is_used_other_than_swapping(first_segment.ident)
-                    || self
-                        .get_res_span(expr)
-                        .is_some_and(|span| !self.suggest_span.contains(span))
                 {
                     return String::new();
                 }
@@ -380,21 +377,6 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
                 format!("let {} = {init_str};\n{indent_str}", first_segment.ident)
             },
             _ => String::new(),
-        }
-    }
-
-    fn get_res_span(&self, expr: &'tcx Expr<'tcx>) -> Option<Span> {
-        if let ExprKind::Path(QPath::Resolved(
-            _,
-            Path {
-                res: rustc_hir::def::Res::Local(hir_id),
-                ..
-            },
-        )) = expr.kind
-        {
-            Some(self.cx.tcx.hir_span(*hir_id))
-        } else {
-            None
         }
     }
 
