@@ -11,6 +11,10 @@ name: CI
 on:
   push:
     branches:
+      # CI on master only serves for caching citool builds for the `calculate_matrix` job.
+      # In order to use GHA cache on PR CI (and auto/try) jobs, we need to write to it
+      # from the default branch.
+      - master
       - auto
       - try
       - try-perf
