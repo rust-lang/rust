@@ -8,16 +8,12 @@
 
 use std::ops::RangeInclusive;
 
-
 use rustc_smir::Tables;
 use rustc_smir::context::SmirCtxt;
-
 use stable_mir::compiler_interface::BridgeTys;
 
-use crate::{rustc_smir, stable_mir};
-
 use super::Stable;
-
+use crate::{rustc_smir, stable_mir};
 
 mod internal;
 mod stable;
