@@ -2514,8 +2514,8 @@ class DocSearch {
      *
      * @param  {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} origParsedQuery
      *     - The parsed user query
-     * @param  {Object} [filterCrates] - Crate to search in if defined
-     * @param  {Object} [currentCrate] - Current crate, to rank results from this crate higher
+     * @param  {Object} filterCrates - Crate to search in if defined
+     * @param  {string} currentCrate - Current crate, to rank results from this crate higher
      *
      * @return {Promise<rustdoc.ResultsTable>}
      */
@@ -4455,8 +4455,7 @@ class DocSearch {
             }
 
             results.max_dist = Math.max(results.max_dist || 0, tfpDist);
-            // @ts-expect-error
-            addIntoResults(results, row.id.toString(), pos, 0, tfpDist, 0, Number.MAX_VALUE);
+            addIntoResults(results, row.id, pos, 0, tfpDist, 0, Number.MAX_VALUE);
         }
 
         /**
@@ -4613,9 +4612,7 @@ class DocSearch {
 
         const isType = parsedQuery.foundElems !== 1 || parsedQuery.hasReturnArrow;
         const [sorted_in_args, sorted_returned, sorted_others] = await Promise.all([
-            // @ts-expect-error
             sortResults(results_in_args, "elems", currentCrate),
-            // @ts-expect-error
             sortResults(results_returned, "returned", currentCrate),
             // @ts-expect-error
             sortResults(results_others, (isType ? "query" : null), currentCrate),
