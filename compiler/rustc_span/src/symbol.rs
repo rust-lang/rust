@@ -1173,6 +1173,7 @@ symbols! {
         ignore,
         impl_header_lifetime_elision,
         impl_lint_pass,
+        impl_stability,
         impl_trait_in_assoc_type,
         impl_trait_in_bindings,
         impl_trait_in_fn_trait_return,
@@ -2265,6 +2266,7 @@ symbols! {
         unsized_locals,
         unsized_tuple_coercion,
         unstable,
+        unstable_feature_bound,
         unstable_location_reason_default: "this crate is being loaded from the sysroot, an \
                           unstable location; did you mean to load this crate \
                           from crates.io via `Cargo.toml` instead?",

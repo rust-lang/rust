@@ -156,6 +156,7 @@ where
             }
             ty::ClauseKind::ConstEvaluatable(ct) => ct.visit_with(self),
             ty::ClauseKind::WellFormed(term) => term.visit_with(self),
+            ty::ClauseKind::UnstableFeature(_) => V::Result::output(),
         }
     }
 

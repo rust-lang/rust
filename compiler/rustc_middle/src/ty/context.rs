@@ -132,6 +132,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type FnInputTys = &'tcx [Ty<'tcx>];
     type ParamTy = ParamTy;
     type BoundTy = ty::BoundTy;
+    type Symbol = Symbol;
 
     type PlaceholderTy = ty::PlaceholderType;
     type ErrorGuaranteed = ErrorGuaranteed;
@@ -826,6 +827,14 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
 
     fn associated_const_equality(self) -> bool {
         self.associated_const_equality()
+    }
+
+    fn impl_stability(self) -> bool {
+        self.impl_stability()
+    }
+
+    fn enabled(self, symbol: <TyCtxt<'tcx> as Interner>::Symbol) -> bool {
+        self.enabled(symbol)
     }
 }
 

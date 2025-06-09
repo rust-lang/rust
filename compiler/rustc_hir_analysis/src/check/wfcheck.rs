@@ -2368,9 +2368,12 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             // We lower empty bounds like `Vec<dyn Copy>:` as
             // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
             // regular WF checking
-            if let ty::ClauseKind::WellFormed(..) = pred.kind().skip_binder() {
-                continue;
+
+            match pred.kind().skip_binder() {
+                ty::ClauseKind::WellFormed(..) | ty::ClauseKind::UnstableFeature(..) => continue,
+                _ => {}
             }
+
             // Match the existing behavior.
             if pred.is_global() && !pred.has_type_flags(TypeFlags::HAS_BINDER_VARS) {
                 let pred = self.normalize(span, None, pred);
