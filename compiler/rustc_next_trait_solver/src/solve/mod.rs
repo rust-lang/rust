@@ -148,6 +148,40 @@ where
         }
     }
 
+    fn compute_unstable_feature_goal(
+        &mut self,
+        param_env: <I as Interner>::ParamEnv,
+        symbol: <I as Interner>::Symbol,
+    ) -> QueryResult<I> {
+        // Iterate through all goals in param_env to find the one that has the same symbol.
+        for pred in param_env.caller_bounds().iter() {
+            if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
+                if sym == symbol {
+                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                }
+            }
+        }
+
+        if self.cx().features().impl_stability() {
+            // If we are in std/core, and the feature is not enabled through #[unstable_feature_bound(..)]
+            return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
+                MaybeCause::Ambiguity,
+            ));
+        } else {
+            // Outside of std/core, check if feature is enabled at crate level with #[feature(..)]
+            // or if we are currently in codegen.
+            if self.cx().features().enabled(symbol)
+                || (self.typing_mode() == TypingMode::PostAnalysis)
+            {
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+            } else {
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
+                    MaybeCause::Ambiguity,
+                ));
+            }
+        }
+    }
+
     #[instrument(level = "trace", skip(self))]
     fn compute_const_evaluatable_goal(
         &mut self,

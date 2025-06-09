@@ -838,6 +838,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                    // Iterate through all goals in param_env to find the one that has the same symbol.
+                    for pred in obligation.param_env.caller_bounds().iter() {
+                        if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
+                            if sym == symbol {
+                                return Ok(EvaluatedToOk);
+                            }
+                        }
+                    }
+
+                    if self.tcx().features().impl_stability() {
+                        // If we are in std/core, and the feature is not enabled through #[unstable_feature_bound(..)].
+                        return Ok(EvaluatedToAmbig);
+                    } else {
+                        // Outside of std/core, check if feature is enabled at crate level with #[feature(..)]
+                        // or if we are currently in codegen.
+                        if self.tcx().features().enabled(symbol)
+                            || (self.infcx.typing_mode() == TypingMode::PostAnalysis)
+                        {
+                            return Ok(EvaluatedToOk);
+                        } else {
+                            return Ok(EvaluatedToAmbig);
+                        }
+                    }
+                }
+
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.infcx,
