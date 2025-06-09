@@ -13,9 +13,9 @@ use stable_mir::abi::{
     TagEncoding, TyAndLayout, ValueAbi, VariantsShape, WrappingRange,
 };
 use stable_mir::compiler_interface::BridgeTys;
-use stable_mir::unstable::Stable;
 use stable_mir::target::MachineSize as Size;
 use stable_mir::ty::{Align, VariantIdx};
+use stable_mir::unstable::Stable;
 use stable_mir::{IndexedVal, opaque};
 
 use crate::{rustc_smir, stable_mir};
@@ -212,7 +212,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::
                 VariantsShape::Multiple {
                     tag: tag.stable(tables, cx),
                     tag_encoding: tag_encoding.stable(tables, cx),
-                    tag_field: tag_field.stable(tables,cx),
+                    tag_field: tag_field.stable(tables, cx),
                     variants: variants.iter().as_slice().stable(tables, cx),
                 }
             }
