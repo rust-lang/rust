@@ -54,7 +54,6 @@ macro_rules! assert_biteq_ {
 }
 pub(crate) use assert_biteq_ as assert_biteq;
 
-#[allow(unused)]
 mod const_asserts {
     // Shadow some assert implementations that would otherwise not compile in a const-context.
     // Every macro added here also needs to be added in the `float_test!` macro below.
@@ -503,11 +502,18 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
+        assert_biteq!((1.0 as Float).floor(), 1.0);
+        assert_biteq!((1.3 as Float).floor(), 1.0);
+        assert_biteq!((1.5 as Float).floor(), 1.0);
+        assert_biteq!((1.7 as Float).floor(), 1.0);
+        assert_biteq!((0.5 as Float).floor(), 0.0);
         assert_biteq!((0.0 as Float).floor(), 0.0);
         assert_biteq!((-0.0 as Float).floor(), -0.0);
-        assert_biteq!((0.5 as Float).floor(), 0.0);
         assert_biteq!((-0.5 as Float).floor(), -1.0);
-        assert_biteq!((1.5 as Float).floor(), 1.0);
+        assert_biteq!((-1.0 as Float).floor(), -1.0);
+        assert_biteq!((-1.3 as Float).floor(), -2.0);
+        assert_biteq!((-1.5 as Float).floor(), -2.0);
+        assert_biteq!((-1.7 as Float).floor(), -2.0);
         assert_biteq!(Float::MAX.floor(), Float::MAX);
         assert_biteq!(Float::MIN.floor(), Float::MIN);
         assert_biteq!(Float::MIN_POSITIVE.floor(), 0.0);
@@ -525,10 +531,18 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
+        assert_biteq!((1.0 as Float).ceil(), 1.0);
+        assert_biteq!((1.3 as Float).ceil(), 2.0);
+        assert_biteq!((1.5 as Float).ceil(), 2.0);
+        assert_biteq!((1.7 as Float).ceil(), 2.0);
+        assert_biteq!((0.5 as Float).ceil(), 1.0);
         assert_biteq!((0.0 as Float).ceil(), 0.0);
         assert_biteq!((-0.0 as Float).ceil(), -0.0);
-        assert_biteq!((0.5 as Float).ceil(), 1.0);
         assert_biteq!((-0.5 as Float).ceil(), -0.0);
+        assert_biteq!((-1.0 as Float).ceil(), -1.0);
+        assert_biteq!((-1.3 as Float).ceil(), -1.0);
+        assert_biteq!((-1.5 as Float).ceil(), -1.0);
+        assert_biteq!((-1.7 as Float).ceil(), -1.0);
         assert_biteq!(Float::MAX.ceil(), Float::MAX);
         assert_biteq!(Float::MIN.ceil(), Float::MIN);
         assert_biteq!(Float::MIN_POSITIVE.ceil(), 1.0);
@@ -546,10 +560,19 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
+        assert_biteq!((2.5 as Float).round(), 3.0);
+        assert_biteq!((1.0 as Float).round(), 1.0);
+        assert_biteq!((1.3 as Float).round(), 1.0);
+        assert_biteq!((1.5 as Float).round(), 2.0);
+        assert_biteq!((1.7 as Float).round(), 2.0);
+        assert_biteq!((0.5 as Float).round(), 1.0);
         assert_biteq!((0.0 as Float).round(), 0.0);
         assert_biteq!((-0.0 as Float).round(), -0.0);
-        assert_biteq!((0.5 as Float).round(), 1.0);
         assert_biteq!((-0.5 as Float).round(), -1.0);
+        assert_biteq!((-1.0 as Float).round(), -1.0);
+        assert_biteq!((-1.3 as Float).round(), -1.0);
+        assert_biteq!((-1.5 as Float).round(), -2.0);
+        assert_biteq!((-1.7 as Float).round(), -2.0);
         assert_biteq!(Float::MAX.round(), Float::MAX);
         assert_biteq!(Float::MIN.round(), Float::MIN);
         assert_biteq!(Float::MIN_POSITIVE.round(), 0.0);
@@ -567,10 +590,19 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
+        assert_biteq!((2.5 as Float).round_ties_even(), 2.0);
+        assert_biteq!((1.0 as Float).round_ties_even(), 1.0);
+        assert_biteq!((1.3 as Float).round_ties_even(), 1.0);
+        assert_biteq!((1.5 as Float).round_ties_even(), 2.0);
+        assert_biteq!((1.7 as Float).round_ties_even(), 2.0);
+        assert_biteq!((0.5 as Float).round_ties_even(), 0.0);
         assert_biteq!((0.0 as Float).round_ties_even(), 0.0);
         assert_biteq!((-0.0 as Float).round_ties_even(), -0.0);
-        assert_biteq!((0.5 as Float).round_ties_even(), 0.0);
         assert_biteq!((-0.5 as Float).round_ties_even(), -0.0);
+        assert_biteq!((-1.0 as Float).round_ties_even(), -1.0);
+        assert_biteq!((-1.3 as Float).round_ties_even(), -1.0);
+        assert_biteq!((-1.5 as Float).round_ties_even(), -2.0);
+        assert_biteq!((-1.7 as Float).round_ties_even(), -2.0);
         assert_biteq!(Float::MAX.round_ties_even(), Float::MAX);
         assert_biteq!(Float::MIN.round_ties_even(), Float::MIN);
         assert_biteq!(Float::MIN_POSITIVE.round_ties_even(), 0.0);
@@ -588,10 +620,18 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
+        assert_biteq!((1.0 as Float).trunc(), 1.0);
+        assert_biteq!((1.3 as Float).trunc(), 1.0);
+        assert_biteq!((1.5 as Float).trunc(), 1.0);
+        assert_biteq!((1.7 as Float).trunc(), 1.0);
+        assert_biteq!((0.5 as Float).trunc(), 0.0);
         assert_biteq!((0.0 as Float).trunc(), 0.0);
         assert_biteq!((-0.0 as Float).trunc(), -0.0);
-        assert_biteq!((0.5 as Float).trunc(), 0.0);
         assert_biteq!((-0.5 as Float).trunc(), -0.0);
+        assert_biteq!((-1.0 as Float).trunc(), -1.0);
+        assert_biteq!((-1.3 as Float).trunc(), -1.0);
+        assert_biteq!((-1.5 as Float).trunc(), -1.0);
+        assert_biteq!((-1.7 as Float).trunc(), -1.0);
         assert_biteq!(Float::MAX.trunc(), Float::MAX);
         assert_biteq!(Float::MIN.trunc(), Float::MIN);
         assert_biteq!(Float::MIN_POSITIVE.trunc(), 0.0);
@@ -609,10 +649,18 @@ float_test! {
         f128: #[cfg(any(miri, target_has_reliable_f128_math))],
     },
     test<Float> {
+        assert_biteq!((1.0 as Float).fract(), 0.0);
+        assert_approx_eq!((1.3 as Float).fract(), 0.3, 1e-3); // rounding differs between float types
+        assert_biteq!((1.5 as Float).fract(), 0.5);
+        assert_approx_eq!((1.7 as Float).fract(), 0.7);
+        assert_biteq!((0.5 as Float).fract(), 0.5);
         assert_biteq!((0.0 as Float).fract(), 0.0);
         assert_biteq!((-0.0 as Float).fract(), 0.0);
-        assert_biteq!((0.5 as Float).fract(), 0.5);
         assert_biteq!((-0.5 as Float).fract(), -0.5);
+        assert_biteq!((-1.0 as Float).fract(), 0.0);
+        assert_approx_eq!((-1.3 as Float).fract(), -0.3, 1e-3); // rounding differs between float types
+        assert_biteq!((-1.5 as Float).fract(), -0.5);
+        assert_approx_eq!((-1.7 as Float).fract(), -0.7);
         assert_biteq!(Float::MAX.fract(), 0.0);
         assert_biteq!(Float::MIN.fract(), 0.0);
         assert_biteq!(Float::MIN_POSITIVE.fract(), Float::MIN_POSITIVE);
