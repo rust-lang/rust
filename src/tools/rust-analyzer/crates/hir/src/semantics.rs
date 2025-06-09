@@ -159,13 +159,13 @@ pub struct SemanticsImpl<'db> {
     macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, MacroCallId>>,
 }
 
-impl<DB> fmt::Debug for Semantics<'_, DB> {
+impl<DB: ?Sized> fmt::Debug for Semantics<'_, DB> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Semantics {{ ... }}")
     }
 }
 
-impl<'db, DB> ops::Deref for Semantics<'db, DB> {
+impl<'db, DB: ?Sized> ops::Deref for Semantics<'db, DB> {
     type Target = SemanticsImpl<'db>;
 
     fn deref(&self) -> &Self::Target {
@@ -173,12 +173,28 @@ impl<'db, DB> ops::Deref for Semantics<'db, DB> {
     }
 }
 
+// Note: while this variant of `Semantics<'_, _>` might seem unused, as it does not
+// find actual use within the rust-analyzer project itself, it exists to enable the use
+// within e.g. tracked salsa functions in third-party crates that build upon `ra_ap_hir`.
+impl Semantics<'_, dyn HirDatabase> {
+    /// Creates an instance that's weakly coupled to its underlying database type.
+    pub fn new_dyn(db: &'_ dyn HirDatabase) -> Semantics<'_, dyn HirDatabase> {
+        let impl_ = SemanticsImpl::new(db);
+        Semantics { db, imp: impl_ }
+    }
+}
+
 impl<DB: HirDatabase> Semantics<'_, DB> {
+    /// Creates an instance that's strongly coupled to its underlying database type.
     pub fn new(db: &DB) -> Semantics<'_, DB> {
         let impl_ = SemanticsImpl::new(db);
         Semantics { db, imp: impl_ }
     }
+}
 
+// Note: We take `DB` as `?Sized` here in order to support type-erased
+// use of `Semantics` via `Semantics<'_, dyn HirDatabase>`:
+impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
     pub fn hir_file_for(&self, syntax_node: &SyntaxNode) -> HirFileId {
         self.imp.find_file(syntax_node).file_id
     }
