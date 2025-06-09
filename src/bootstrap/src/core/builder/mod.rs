@@ -1023,6 +1023,7 @@ impl<'a> Builder<'a> {
                 test::RustdocJson,
                 test::HtmlCheck,
                 test::RustInstaller,
+                test::Stdarch,
                 test::TestFloatParse,
                 test::CollectLicenseMetadata,
                 // Run bootstrap close to the end as it's unlikely to fail
