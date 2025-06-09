@@ -1,0 +1,16 @@
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/command-line-error-format-human.rs:7:5
+   |
+LL |     let x = 42;
+   |         - first assignment to `x`
+LL |     x = 43;
+   |     ^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     let mut x = 42;
+   |         +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0384`.

@@ -727,7 +727,7 @@ download-rustc = false
         use build_helper::git::PathFreshness;
 
         use crate::core::build_steps::llvm::detect_llvm_freshness;
-        use crate::core::config::check_incompatible_options_for_ci_llvm;
+        use crate::core::config::toml::llvm::check_incompatible_options_for_ci_llvm;
 
         if !self.llvm_from_ci {
             return;

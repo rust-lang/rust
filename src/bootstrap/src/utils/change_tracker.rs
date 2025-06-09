@@ -416,4 +416,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Stage0 library no longer matches the in-tree library, which means stage1 compiler now uses the beta library.",
     },
+    ChangeInfo {
+        change_id: 141970,
+        severity: ChangeSeverity::Info,
+        summary: "Added new bootstrap flag `--skip-std-check-if-no-download-rustc` that skips std checks when download-rustc is unavailable. Mainly intended for developers to reduce RA overhead.",
+    },
 ];

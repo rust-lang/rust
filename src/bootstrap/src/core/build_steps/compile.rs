@@ -668,7 +668,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
     // Enable frame pointers by default for the library. Note that they are still controlled by a
     // separate setting for the compiler.
-    cargo.rustflag("-Cforce-frame-pointers=yes");
+    cargo.rustflag("-Zunstable-options");
+    cargo.rustflag("-Cforce-frame-pointers=non-leaf");
 
     let html_root =
         format!("-Zcrate-attr=doc(html_root_url=\"{}/\")", builder.doc_rust_lang_org_channel(),);
@@ -1278,6 +1279,17 @@ pub fn rustc_cargo(
         ));
     }
 
+    // The stage0 compiler changes infrequently and does not directly depend on code
+    // in the current working directory. Therefore, caching it with sccache should be
+    // useful.
+    // This is only performed for non-incremental builds, as ccache cannot deal with these.
+    if let Some(ref ccache) = builder.config.ccache
+        && compiler.stage == 0
+        && !builder.config.incremental
+    {
+        cargo.env("RUSTC_WRAPPER", ccache);
+    }
+
     rustc_cargo_env(builder, cargo, target, compiler.stage);
 }
 
@@ -1867,23 +1879,27 @@ impl Step for Sysroot {
         // so that any tools relying on `rust-src` also work for local builds,
         // and also for translating the virtual `/rustc/$hash` back to the real
         // directory (for running tests with `rust.remap-debuginfo = true`).
-        let sysroot_lib_rustlib_src = sysroot.join("lib/rustlib/src");
-        t!(fs::create_dir_all(&sysroot_lib_rustlib_src));
-        let sysroot_lib_rustlib_src_rust = sysroot_lib_rustlib_src.join("rust");
-        if let Err(e) = symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_src_rust) {
-            eprintln!(
-                "ERROR: creating symbolic link `{}` to `{}` failed with {}",
-                sysroot_lib_rustlib_src_rust.display(),
-                builder.src.display(),
-                e,
-            );
-            if builder.config.rust_remap_debuginfo {
+        if compiler.stage != 0 {
+            let sysroot_lib_rustlib_src = sysroot.join("lib/rustlib/src");
+            t!(fs::create_dir_all(&sysroot_lib_rustlib_src));
+            let sysroot_lib_rustlib_src_rust = sysroot_lib_rustlib_src.join("rust");
+            if let Err(e) =
+                symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_src_rust)
+            {
                 eprintln!(
-                    "ERROR: some `tests/ui` tests will fail when lacking `{}`",
+                    "ERROR: creating symbolic link `{}` to `{}` failed with {}",
                     sysroot_lib_rustlib_src_rust.display(),
+                    builder.src.display(),
+                    e,
                 );
+                if builder.config.rust_remap_debuginfo {
+                    eprintln!(
+                        "ERROR: some `tests/ui` tests will fail when lacking `{}`",
+                        sysroot_lib_rustlib_src_rust.display(),
+                    );
+                }
+                build_helper::exit!(1);
             }
-            build_helper::exit!(1);
         }
 
         // rustc-src component is already part of CI rustc's sysroot

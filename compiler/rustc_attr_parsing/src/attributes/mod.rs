@@ -74,7 +74,7 @@ pub(crate) trait AttributeParser: Default + 'static {
 pub(crate) trait SingleAttributeParser: 'static {
     const PATH: &'static [Symbol];
 
-    /// Caled when a duplicate attribute is found.
+    /// Called when a duplicate attribute is found.
     ///
     /// `first_span` is the span of the first occurrence of this attribute.
     // FIXME(jdonszelmann): default error

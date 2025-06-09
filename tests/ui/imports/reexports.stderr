@@ -11,10 +11,10 @@ LL |         pub use super::foo;
    |                 ^^^^^^^^^^
 
 error[E0603]: module import `foo` is private
-  --> $DIR/reexports.rs:36:15
+  --> $DIR/reexports.rs:36:22
    |
-LL |     use b::a::foo::S;
-   |               ^^^ private module import
+LL |     use crate::b::a::foo::S;
+   |                      ^^^ private module import
    |
 note: the module import `foo` is defined here...
   --> $DIR/reexports.rs:24:17
@@ -28,10 +28,10 @@ LL |     mod foo {
    |     ^^^^^^^
 
 error[E0603]: module import `foo` is private
-  --> $DIR/reexports.rs:37:15
+  --> $DIR/reexports.rs:37:22
    |
-LL |     use b::b::foo::S as T;
-   |               ^^^ private module import
+LL |     use crate::b::b::foo::S as T;
+   |                      ^^^ private module import
    |
 note: the module import `foo` is defined here...
   --> $DIR/reexports.rs:29:17

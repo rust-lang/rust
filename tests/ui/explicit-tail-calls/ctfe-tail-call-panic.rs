@@ -10,7 +10,7 @@ const fn g() {
     //~^ NOTE in this expansion of panic!
 }
 
-const _: () = f(); //~ ERROR evaluation of constant value failed
-//~^ NOTE explicit panic
+const _: () = f(); //~ NOTE failed inside this call
+//~^ ERROR explicit panic
 
 fn main() {}

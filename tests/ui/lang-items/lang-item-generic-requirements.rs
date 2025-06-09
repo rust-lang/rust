@@ -48,6 +48,7 @@ fn ice() {
 
     // Use index
     let arr = [0; 5];
+    //~^ ERROR requires `copy` lang_item
     let _ = arr[2];
     //~^ ERROR cannot index into a value of type `[{integer}; 5]`
 
@@ -61,5 +62,3 @@ fn ice() {
 
 // use `start`
 fn main() {}
-
-//~? ERROR requires `copy` lang_item

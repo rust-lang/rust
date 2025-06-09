@@ -834,7 +834,7 @@ impl<'a> Parser<'a> {
         // guides recovery in case we write `&raw expr`.
         if borrow_kind == ast::BorrowKind::Ref
             && mutbl == ast::Mutability::Not
-            && matches!(&expr.kind, ExprKind::Path(None, p) if p.is_ident(kw::Raw))
+            && matches!(&expr.kind, ExprKind::Path(None, p) if *p == kw::Raw)
         {
             self.expected_token_types.insert(TokenType::KwMut);
             self.expected_token_types.insert(TokenType::KwConst);
@@ -1119,7 +1119,7 @@ impl<'a> Parser<'a> {
     /// Parse the field access used in offset_of, matched by `$(e:expr)+`.
     /// Currently returns a list of idents. However, it should be possible in
     /// future to also do array indices, which might be arbitrary expressions.
-    fn parse_floating_field_access(&mut self) -> PResult<'a, P<[Ident]>> {
+    fn parse_floating_field_access(&mut self) -> PResult<'a, Vec<Ident>> {
         let mut fields = Vec::new();
         let mut trailing_dot = None;
 
@@ -3468,10 +3468,8 @@ impl<'a> Parser<'a> {
                 // Detect and recover from `($pat if $cond) => $arm`.
                 // FIXME(guard_patterns): convert this to a normal guard instead
                 let span = pat.span;
-                let ast::PatKind::Paren(subpat) = pat.into_inner().kind else { unreachable!() };
-                let ast::PatKind::Guard(_, mut cond) = subpat.into_inner().kind else {
-                    unreachable!()
-                };
+                let ast::PatKind::Paren(subpat) = pat.kind else { unreachable!() };
+                let ast::PatKind::Guard(_, mut cond) = subpat.kind else { unreachable!() };
                 self.psess.gated_spans.ungate_last(sym::guard_patterns, cond.span);
                 CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
                 let right = self.prev_token.span;

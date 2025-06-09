@@ -48,8 +48,8 @@ pub mod bar {
     pub struct Square;
 
     pub mod c {
-        use foo::Point;
-        use foo::Square; //~ ERROR unused import: `foo::Square`
+        use crate::foo::Point;
+        use crate::foo::Square; //~ ERROR unused import: `crate::foo::Square`
         pub fn cc(_p: Point) -> super::Square {
             fn f() -> super::Square {
                 super::Square
@@ -74,7 +74,7 @@ fn g() {
 // cf. issue #35135.
 #[allow(unused_variables)]
 fn h() {
-    use test2::foo; //~ ERROR unused import: `test2::foo`
+    use crate::test2::foo; //~ ERROR unused import: `crate::test2::foo`
     let foo = 0;
 }
 
@@ -83,6 +83,6 @@ fn main() {
     let mut a = 3;
     let mut b = 4;
     swap(&mut a, &mut b);
-    test::C.b();
+    crate::test::C.b();
     foo();
 }

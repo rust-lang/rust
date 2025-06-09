@@ -312,7 +312,7 @@ mod issue_9218 {
 
     // Inferred to be `&'a str`, afaik.
     fn cow_good_ret_ty<'a>(input: &'a Cow<'a, str>) -> &str {
-        //~^ ERROR: elided lifetime has a name
+        //~^ ERROR: lifetime flowing from input to output with different syntax
         todo!()
     }
 }

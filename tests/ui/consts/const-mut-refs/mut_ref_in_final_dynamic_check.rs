@@ -16,24 +16,21 @@ static mut BUFFER: i32 = 42;
 const fn helper() -> Option<&'static mut i32> { unsafe {
     Some(&mut *std::ptr::addr_of_mut!(BUFFER))
 } }
-const MUT: Option<&mut i32> = helper(); //~ ERROR it is undefined behavior to use this value
-//~^ NOTE encountered reference to mutable
+const MUT: Option<&mut i32> = helper(); //~ ERROR encountered reference to mutable
 
 const fn helper_int2ptr() -> Option<&'static mut i32> { unsafe {
     // Undefined behaviour (integer as pointer), who doesn't love tests like this.
     Some(&mut *(42 as *mut i32))
 } }
-const INT2PTR: Option<&mut i32> = helper_int2ptr(); //~ ERROR it is undefined behavior to use this value
-//~^ NOTE encountered a dangling reference
-static INT2PTR_STATIC: Option<&mut i32> = helper_int2ptr(); //~ ERROR it is undefined behavior to use this value
-//~^ NOTE encountered a dangling reference
+const INT2PTR: Option<&mut i32> = helper_int2ptr(); //~ ERROR encountered a dangling reference
+static INT2PTR_STATIC: Option<&mut i32> = helper_int2ptr(); //~ ERROR encountered a dangling reference
 
 const fn helper_dangling() -> Option<&'static mut i32> { unsafe {
     // Undefined behaviour (dangling pointer), who doesn't love tests like this.
     Some(&mut *(&mut 42 as *mut i32))
 } }
-const DANGLING: Option<&mut i32> = helper_dangling(); //~ ERROR it is undefined behavior to use this value
-static DANGLING_STATIC: Option<&mut i32> = helper_dangling(); //~ ERROR it is undefined behavior to use this value
+const DANGLING: Option<&mut i32> = helper_dangling(); //~ ERROR dangling reference
+static DANGLING_STATIC: Option<&mut i32> = helper_dangling(); //~ ERROR dangling reference
 
 // These are fine! Just statics pointing to mutable statics, nothing fundamentally wrong with this.
 static MUT_STATIC: Option<&mut i32> = helper();

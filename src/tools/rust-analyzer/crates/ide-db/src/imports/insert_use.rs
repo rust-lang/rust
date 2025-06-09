@@ -60,107 +60,87 @@ pub struct InsertUseConfig {
 }
 
 #[derive(Debug, Clone)]
-pub enum ImportScope {
+pub struct ImportScope {
+    pub kind: ImportScopeKind,
+    pub required_cfgs: Vec<ast::Attr>,
+}
+
+#[derive(Debug, Clone)]
+pub enum ImportScopeKind {
     File(ast::SourceFile),
     Module(ast::ItemList),
     Block(ast::StmtList),
 }
 
 impl ImportScope {
-    // FIXME: Remove this?
-    #[cfg(test)]
-    fn from(syntax: SyntaxNode) -> Option<Self> {
-        use syntax::match_ast;
-        fn contains_cfg_attr(attrs: &dyn HasAttrs) -> bool {
-            attrs.attrs().any(|attr| attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg"))
-        }
-        match_ast! {
-            match syntax {
-                ast::Module(module) => module.item_list().map(ImportScope::Module),
-                ast::SourceFile(file) => Some(ImportScope::File(file)),
-                ast::Fn(func) => contains_cfg_attr(&func).then(|| func.body().and_then(|it| it.stmt_list().map(ImportScope::Block))).flatten(),
-                ast::Const(konst) => contains_cfg_attr(&konst).then(|| match konst.body()? {
-                    ast::Expr::BlockExpr(block) => Some(block),
-                    _ => None,
-                }).flatten().and_then(|it| it.stmt_list().map(ImportScope::Block)),
-                ast::Static(statik) => contains_cfg_attr(&statik).then(|| match statik.body()? {
-                    ast::Expr::BlockExpr(block) => Some(block),
-                    _ => None,
-                }).flatten().and_then(|it| it.stmt_list().map(ImportScope::Block)),
-                _ => None,
-
-            }
-        }
-    }
-
     /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
     /// Returns the original source node inside attributes.
     pub fn find_insert_use_container(
         position: &SyntaxNode,
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<Self> {
-        fn contains_cfg_attr(attrs: &dyn HasAttrs) -> bool {
-            attrs.attrs().any(|attr| attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg"))
-        }
-
+        // The closest block expression ancestor
+        let mut block = None;
+        let mut required_cfgs = Vec::new();
         // Walk up the ancestor tree searching for a suitable node to do insertions on
         // with special handling on cfg-gated items, in which case we want to insert imports locally
         // or FIXME: annotate inserted imports with the same cfg
         for syntax in sema.ancestors_with_macros(position.clone()) {
             if let Some(file) = ast::SourceFile::cast(syntax.clone()) {
-                return Some(ImportScope::File(file));
-            } else if let Some(item) = ast::Item::cast(syntax) {
-                return match item {
-                    ast::Item::Const(konst) if contains_cfg_attr(&konst) => {
-                        // FIXME: Instead of bailing out with None, we should note down that
-                        // this import needs an attribute added
-                        match sema.original_ast_node(konst)?.body()? {
-                            ast::Expr::BlockExpr(block) => block,
-                            _ => return None,
+                return Some(ImportScope { kind: ImportScopeKind::File(file), required_cfgs });
+            } else if let Some(module) = ast::Module::cast(syntax.clone()) {
+                // early return is important here, if we can't find the original module
+                // in the input there is no way for us to insert an import anywhere.
+                return sema
+                    .original_ast_node(module)?
+                    .item_list()
+                    .map(ImportScopeKind::Module)
+                    .map(|kind| ImportScope { kind, required_cfgs });
+            } else if let Some(has_attrs) = ast::AnyHasAttrs::cast(syntax) {
+                if block.is_none() {
+                    if let Some(b) = ast::BlockExpr::cast(has_attrs.syntax().clone()) {
+                        if let Some(b) = sema.original_ast_node(b) {
+                            block = b.stmt_list();
                         }
-                        .stmt_list()
-                        .map(ImportScope::Block)
                     }
-                    ast::Item::Fn(func) if contains_cfg_attr(&func) => {
-                        // FIXME: Instead of bailing out with None, we should note down that
-                        // this import needs an attribute added
-                        sema.original_ast_node(func)?.body()?.stmt_list().map(ImportScope::Block)
+                }
+                if has_attrs
+                    .attrs()
+                    .any(|attr| attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg"))
+                {
+                    if let Some(b) = block {
+                        return Some(ImportScope {
+                            kind: ImportScopeKind::Block(b),
+                            required_cfgs,
+                        });
                     }
-                    ast::Item::Static(statik) if contains_cfg_attr(&statik) => {
-                        // FIXME: Instead of bailing out with None, we should note down that
-                        // this import needs an attribute added
-                        match sema.original_ast_node(statik)?.body()? {
-                            ast::Expr::BlockExpr(block) => block,
-                            _ => return None,
-                        }
-                        .stmt_list()
-                        .map(ImportScope::Block)
-                    }
-                    ast::Item::Module(module) => {
-                        // early return is important here, if we can't find the original module
-                        // in the input there is no way for us to insert an import anywhere.
-                        sema.original_ast_node(module)?.item_list().map(ImportScope::Module)
-                    }
-                    _ => continue,
-                };
+                    required_cfgs.extend(has_attrs.attrs().filter(|attr| {
+                        attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg")
+                    }));
+                }
             }
         }
         None
     }
 
     pub fn as_syntax_node(&self) -> &SyntaxNode {
-        match self {
-            ImportScope::File(file) => file.syntax(),
-            ImportScope::Module(item_list) => item_list.syntax(),
-            ImportScope::Block(block) => block.syntax(),
+        match &self.kind {
+            ImportScopeKind::File(file) => file.syntax(),
+            ImportScopeKind::Module(item_list) => item_list.syntax(),
+            ImportScopeKind::Block(block) => block.syntax(),
         }
     }
 
     pub fn clone_for_update(&self) -> Self {
-        match self {
-            ImportScope::File(file) => ImportScope::File(file.clone_for_update()),
-            ImportScope::Module(item_list) => ImportScope::Module(item_list.clone_for_update()),
-            ImportScope::Block(block) => ImportScope::Block(block.clone_for_update()),
+        Self {
+            kind: match &self.kind {
+                ImportScopeKind::File(file) => ImportScopeKind::File(file.clone_for_update()),
+                ImportScopeKind::Module(item_list) => {
+                    ImportScopeKind::Module(item_list.clone_for_update())
+                }
+                ImportScopeKind::Block(block) => ImportScopeKind::Block(block.clone_for_update()),
+            },
+            required_cfgs: self.required_cfgs.iter().map(|attr| attr.clone_for_update()).collect(),
         }
     }
 }
@@ -216,6 +196,11 @@ fn insert_use_with_alias_option(
         use_tree.wrap_in_tree_list();
     }
     let use_item = make::use_(None, use_tree).clone_for_update();
+    for attr in
+        scope.required_cfgs.iter().map(|attr| attr.syntax().clone_subtree().clone_for_update())
+    {
+        ted::insert(ted::Position::first_child_of(use_item.syntax()), attr);
+    }
 
     // merge into existing imports if possible
     if let Some(mb) = mb {
@@ -229,7 +214,6 @@ fn insert_use_with_alias_option(
             }
         }
     }
-
     // either we weren't allowed to merge or there is no import that fits the merge conditions
     // so look for the place we have to insert to
     insert_use_(scope, use_item, cfg.group);
@@ -316,10 +300,10 @@ fn guess_granularity_from_scope(scope: &ImportScope) -> ImportGranularityGuess {
         }
         _ => None,
     };
-    let mut use_stmts = match scope {
-        ImportScope::File(f) => f.items(),
-        ImportScope::Module(m) => m.items(),
-        ImportScope::Block(b) => b.items(),
+    let mut use_stmts = match &scope.kind {
+        ImportScopeKind::File(f) => f.items(),
+        ImportScopeKind::Module(m) => m.items(),
+        ImportScopeKind::Block(b) => b.items(),
     }
     .filter_map(use_stmt);
     let mut res = ImportGranularityGuess::Unknown;
@@ -463,12 +447,12 @@ fn insert_use_(scope: &ImportScope, use_item: ast::Use, group_imports: bool) {
         }
     }
 
-    let l_curly = match scope {
-        ImportScope::File(_) => None,
+    let l_curly = match &scope.kind {
+        ImportScopeKind::File(_) => None,
         // don't insert the imports before the item list/block expr's opening curly brace
-        ImportScope::Module(item_list) => item_list.l_curly_token(),
+        ImportScopeKind::Module(item_list) => item_list.l_curly_token(),
         // don't insert the imports before the item list's opening curly brace
-        ImportScope::Block(block) => block.l_curly_token(),
+        ImportScopeKind::Block(block) => block.l_curly_token(),
     };
     // there are no imports in this file at all
     // so put the import after all inner module attributes and possible license header comments

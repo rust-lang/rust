@@ -443,23 +443,26 @@ impl Step for Llvm {
         // See https://github.com/rust-lang/rust/pull/50104
         cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
 
-        if !enabled_llvm_projects.is_empty() {
-            enabled_llvm_projects.sort();
-            enabled_llvm_projects.dedup();
-            cfg.define("LLVM_ENABLE_PROJECTS", enabled_llvm_projects.join(";"));
-        }
-
         let mut enabled_llvm_runtimes = Vec::new();
 
         if helpers::forcing_clang_based_tests() {
             enabled_llvm_runtimes.push("compiler-rt");
         }
 
+        // This is an experimental flag, which likely builds more than necessary.
+        // We will optimize it when we get closer to releasing it on nightly.
         if builder.config.llvm_offload {
             enabled_llvm_runtimes.push("offload");
             //FIXME(ZuseZ4): LLVM intends to drop the offload dependency on openmp.
             //Remove this line once they achieved it.
             enabled_llvm_runtimes.push("openmp");
+            enabled_llvm_projects.push("compiler-rt");
+        }
+
+        if !enabled_llvm_projects.is_empty() {
+            enabled_llvm_projects.sort();
+            enabled_llvm_projects.dedup();
+            cfg.define("LLVM_ENABLE_PROJECTS", enabled_llvm_projects.join(";"));
         }
 
         if !enabled_llvm_runtimes.is_empty() {

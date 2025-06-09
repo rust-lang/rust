@@ -199,38 +199,10 @@ LL | fn FRPIT1() -> impl Iterator<Item: Copy, Item: Send> {
    |                              `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:133:42
-   |
-LL | fn FRPIT1() -> impl Iterator<Item: Copy, Item: Send> {
-   |                              ----------  ^^^^^^^^^^ re-bound here
-   |                              |
-   |                              `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:139:42
    |
 LL | fn FRPIT2() -> impl Iterator<Item: Copy, Item: Copy> {
    |                              ----------  ^^^^^^^^^^ re-bound here
-   |                              |
-   |                              `Item` bound here first
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:139:42
-   |
-LL | fn FRPIT2() -> impl Iterator<Item: Copy, Item: Copy> {
-   |                              ----------  ^^^^^^^^^^ re-bound here
-   |                              |
-   |                              `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:145:45
-   |
-LL | fn FRPIT3() -> impl Iterator<Item: 'static, Item: 'static> {
-   |                              -------------  ^^^^^^^^^^^^^ re-bound here
    |                              |
    |                              `Item` bound here first
 
@@ -241,8 +213,6 @@ LL | fn FRPIT3() -> impl Iterator<Item: 'static, Item: 'static> {
    |                              -------------  ^^^^^^^^^^^^^ re-bound here
    |                              |
    |                              `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:151:40
@@ -339,60 +309,6 @@ LL | type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
    |                        -------------  ^^^^^^^^^^^^^ re-bound here
    |                        |
    |                        `Item` bound here first
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:189:40
-   |
-LL | type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
-   |                            ----------  ^^^^^^^^^^ re-bound here
-   |                            |
-   |                            `Item` bound here first
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:189:40
-   |
-LL | type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
-   |                            ----------  ^^^^^^^^^^ re-bound here
-   |                            |
-   |                            `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:193:40
-   |
-LL | type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
-   |                            ----------  ^^^^^^^^^^ re-bound here
-   |                            |
-   |                            `Item` bound here first
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:193:40
-   |
-LL | type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
-   |                            ----------  ^^^^^^^^^^ re-bound here
-   |                            |
-   |                            `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:197:43
-   |
-LL | type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
-   |                            -------------  ^^^^^^^^^^^^^ re-bound here
-   |                            |
-   |                            `Item` bound here first
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:197:43
-   |
-LL | type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
-   |                            -------------  ^^^^^^^^^^^^^ re-bound here
-   |                            |
-   |                            `Item` bound here first
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:202:36
@@ -664,6 +580,16 @@ LL |     type A: Iterator<Item: 'static, Item: 'static>;
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:133:42
+   |
+LL | fn FRPIT1() -> impl Iterator<Item: Copy, Item: Send> {
+   |                              ----------  ^^^^^^^^^^ re-bound here
+   |                              |
+   |                              `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0282]: type annotations needed
   --> $DIR/duplicate.rs:136:5
    |
@@ -675,6 +601,16 @@ help: consider specifying the generic argument
 LL |     iter::empty::<T>()
    |                +++++
 
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:139:42
+   |
+LL | fn FRPIT2() -> impl Iterator<Item: Copy, Item: Copy> {
+   |                              ----------  ^^^^^^^^^^ re-bound here
+   |                              |
+   |                              `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0282]: type annotations needed
   --> $DIR/duplicate.rs:142:5
    |
@@ -685,6 +621,16 @@ help: consider specifying the generic argument
    |
 LL |     iter::empty::<T>()
    |                +++++
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:145:45
+   |
+LL | fn FRPIT3() -> impl Iterator<Item: 'static, Item: 'static> {
+   |                              -------------  ^^^^^^^^^^^^^ re-bound here
+   |                              |
+   |                              `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0282]: type annotations needed
   --> $DIR/duplicate.rs:148:5
@@ -729,6 +675,24 @@ LL | type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
    |
    = note: `ETAI4` must be used in combination with a concrete type within the same crate
 
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:189:40
+   |
+LL | type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
+   |                            ----------  ^^^^^^^^^^ re-bound here
+   |                            |
+   |                            `Item` bound here first
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:189:40
+   |
+LL | type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
+   |                            ----------  ^^^^^^^^^^ re-bound here
+   |                            |
+   |                            `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: unconstrained opaque type
   --> $DIR/duplicate.rs:193:14
    |
@@ -737,6 +701,24 @@ LL | type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
    |
    = note: `ETAI5` must be used in combination with a concrete type within the same crate
 
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:193:40
+   |
+LL | type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
+   |                            ----------  ^^^^^^^^^^ re-bound here
+   |                            |
+   |                            `Item` bound here first
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:193:40
+   |
+LL | type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
+   |                            ----------  ^^^^^^^^^^ re-bound here
+   |                            |
+   |                            `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: unconstrained opaque type
   --> $DIR/duplicate.rs:197:14
    |
@@ -744,6 +726,24 @@ LL | type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `ETAI6` must be used in combination with a concrete type within the same crate
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:197:43
+   |
+LL | type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
+   |                            -------------  ^^^^^^^^^^^^^ re-bound here
+   |                            |
+   |                            `Item` bound here first
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:197:43
+   |
+LL | type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
+   |                            -------------  ^^^^^^^^^^^^^ re-bound here
+   |                            |
+   |                            `Item` bound here first
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 87 previous errors
 

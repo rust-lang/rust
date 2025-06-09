@@ -58,7 +58,7 @@
 //!
 //! There are unit tests but they are woefully inadequate at ensuring correctness, they only cover
 //! a small percentage of possible errors. Far more extensive tests are located in the directory
-//! `src/etc/test-float-parse` as a Rust program.
+//! `src/tools/test-float-parse` as a Rust program.
 //!
 //! A note on integer overflow: Many parts of this file perform arithmetic with the decimal
 //! exponent `e`. Primarily, we shift the decimal point around: Before the first decimal digit,

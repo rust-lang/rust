@@ -7,8 +7,8 @@ mod earth {
 }
 
 mod collider {
-    pub use moon::*;
-    pub use earth::*;
+    pub use crate::moon::*;
+    pub use crate::earth::*;
 }
 
 fn main() {

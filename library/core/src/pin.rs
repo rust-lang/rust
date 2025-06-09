@@ -1092,7 +1092,6 @@ pub use self::unsafe_pinned::UnsafePinned;
 #[rustc_pub_transparent]
 #[derive(Copy, Clone)]
 pub struct Pin<Ptr> {
-    /// Only public for bootstrap.
     pointer: Ptr,
 }
 

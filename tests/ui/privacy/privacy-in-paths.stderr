@@ -1,10 +1,10 @@
 error[E0603]: module `bar` is private
-  --> $DIR/privacy-in-paths.rs:24:16
+  --> $DIR/privacy-in-paths.rs:24:21
    |
-LL |         ::foo::bar::baz::f();
-   |                ^^^       - function `f` is not publicly re-exported
-   |                |
-   |                private module
+LL |         crate::foo::bar::baz::f();
+   |                     ^^^       - function `f` is not publicly re-exported
+   |                     |
+   |                     private module
    |
 note: the module `bar` is defined here
   --> $DIR/privacy-in-paths.rs:3:5
@@ -13,10 +13,10 @@ LL |     mod bar {
    |     ^^^^^^^
 
 error[E0603]: module `bar` is private
-  --> $DIR/privacy-in-paths.rs:25:16
+  --> $DIR/privacy-in-paths.rs:25:21
    |
-LL |         ::foo::bar::S::f();
-   |                ^^^ private module
+LL |         crate::foo::bar::S::f();
+   |                     ^^^ private module
    |
 note: the module `bar` is defined here
   --> $DIR/privacy-in-paths.rs:3:5
@@ -25,17 +25,17 @@ LL |     mod bar {
    |     ^^^^^^^
 help: consider importing this struct through its public re-export instead
    |
-LL -         ::foo::bar::S::f();
+LL -         crate::foo::bar::S::f();
 LL +         foo::S::f();
    |
 
 error[E0603]: trait `T` is private
-  --> $DIR/privacy-in-paths.rs:26:23
+  --> $DIR/privacy-in-paths.rs:26:28
    |
-LL |         <() as ::foo::T>::Assoc::f();
-   |                       ^   ----- associated type `Assoc` is not publicly re-exported
-   |                       |
-   |                       private trait
+LL |         <() as crate::foo::T>::Assoc::f();
+   |                            ^   ----- associated type `Assoc` is not publicly re-exported
+   |                            |
+   |                            private trait
    |
 note: the trait `T` is defined here
   --> $DIR/privacy-in-paths.rs:8:5

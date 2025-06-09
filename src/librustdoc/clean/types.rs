@@ -1277,7 +1277,7 @@ impl GenericBound {
     }
 
     fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
-        let did = cx.tcx.require_lang_item(LangItem::Sized, None);
+        let did = cx.tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
         let empty = ty::Binder::dummy(ty::GenericArgs::empty());
         let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
@@ -1341,7 +1341,7 @@ impl PreciseCapturingArg {
 pub(crate) enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<GenericParamDef> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
-    EqPredicate { lhs: Type, rhs: Term },
+    EqPredicate { lhs: QPathData, rhs: Term },
 }
 
 impl WherePredicate {
@@ -1704,14 +1704,6 @@ impl Type {
         matches!(self, Type::Tuple(v) if v.is_empty())
     }
 
-    pub(crate) fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
-        if let QPath(box QPathData { self_type, trait_, assoc, .. }) = self {
-            Some((self_type, trait_.as_ref()?.def_id(), assoc.clone()))
-        } else {
-            None
-        }
-    }
-
     /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
     ///
     /// [clean]: crate::clean
@@ -1746,7 +1738,7 @@ pub(crate) struct QPathData {
     pub assoc: PathSegment,
     pub self_type: Type,
     /// FIXME: compute this field on demand.
-    pub should_show_cast: bool,
+    pub should_fully_qualify: bool,
     pub trait_: Option<Path>,
 }
 

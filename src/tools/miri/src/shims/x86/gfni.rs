@@ -1,6 +1,7 @@
+use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -30,14 +31,14 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // See `affine_transform` for details.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=gf2p8affine_
             "vgf2p8affineqb.128" | "vgf2p8affineqb.256" | "vgf2p8affineqb.512" => {
-                let [left, right, imm8] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right, imm8] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 affine_transform(this, left, right, imm8, dest, /* inverse */ false)?;
             }
             // Used to implement the `_mm{, 256, 512}_gf2p8affineinv_epi64_epi8` functions.
             // See `affine_transform` for details.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=gf2p8affineinv
             "vgf2p8affineinvqb.128" | "vgf2p8affineinvqb.256" | "vgf2p8affineinvqb.512" => {
-                let [left, right, imm8] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right, imm8] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 affine_transform(this, left, right, imm8, dest, /* inverse */ true)?;
             }
             // Used to implement the `_mm{, 256, 512}_gf2p8mul_epi8` functions.
@@ -46,7 +47,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // polynomial representation with the reduction polynomial x^8 + x^4 + x^3 + x + 1.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=gf2p8mul
             "vgf2p8mulb.128" | "vgf2p8mulb.256" | "vgf2p8mulb.512" => {
-                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;

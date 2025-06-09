@@ -1,10 +1,10 @@
 error[E0252]: the name `foo` is defined multiple times
   --> $DIR/duplicate.rs:15:9
    |
-LL |     use a::foo;
-   |         ------ previous import of the value `foo` here
-LL |     use a::foo;
-   |         ^^^^^^ `foo` reimported here
+LL |     use crate::a::foo;
+   |         ------------- previous import of the value `foo` here
+LL |     use crate::a::foo;
+   |         ^^^^^^^^^^^^^ `foo` reimported here
    |
    = note: `foo` must be defined only once in the value namespace of this module
 
@@ -38,14 +38,14 @@ LL |     f::foo();
 note: `foo` could refer to the function imported here
   --> $DIR/duplicate.rs:24:13
    |
-LL |     pub use a::*;
-   |             ^^^^
+LL |     pub use crate::a::*;
+   |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
   --> $DIR/duplicate.rs:25:13
    |
-LL |     pub use b::*;
-   |             ^^^^
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 
 error[E0659]: `foo` is ambiguous
@@ -80,14 +80,14 @@ LL |     g::foo();
 note: `foo` could refer to the function imported here
   --> $DIR/duplicate.rs:24:13
    |
-LL |     pub use a::*;
-   |             ^^^^
+LL |     pub use crate::a::*;
+   |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
   --> $DIR/duplicate.rs:25:13
    |
-LL |     pub use b::*;
-   |             ^^^^
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
    = note: `#[warn(ambiguous_glob_imports)]` on by default
 

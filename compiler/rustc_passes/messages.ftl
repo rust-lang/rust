@@ -509,22 +509,10 @@ passes_must_not_suspend =
 passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
 
-passes_naked_asm_outside_naked_fn =
-    the `naked_asm!` macro can only be used in functions marked with `#[unsafe(naked)]`
-
-passes_naked_functions_asm_block =
-    naked functions must contain a single `naked_asm!` invocation
-    .label_multiple_asm = multiple `naked_asm!` invocations are not allowed in naked functions
-    .label_non_asm = not allowed in naked functions
-
 passes_naked_functions_incompatible_attribute =
     attribute incompatible with `#[unsafe(naked)]`
     .label = the `{$attr}` attribute is incompatible with `#[unsafe(naked)]`
     .naked_attribute = function marked with `#[unsafe(naked)]` here
-
-passes_naked_functions_must_naked_asm =
-    the `asm!` macro is not allowed in naked functions
-    .label = consider using the `naked_asm!` macro instead
 
 passes_no_link =
     attribute should be applied to an `extern crate` item
@@ -555,9 +543,6 @@ passes_no_mangle_foreign =
     .label = foreign {$foreign_item_kind}
     .note = symbol names in extern blocks are not mangled
     .suggestion = remove this attribute
-
-passes_no_patterns =
-    patterns not allowed in naked function parameters
 
 passes_no_sanitize =
     `#[no_sanitize({$attr_str})]` should be applied to {$accepted_kind}
@@ -605,10 +590,6 @@ passes_panic_unwind_without_std =
     unwinding panics are not supported without std
     .note = since the core library is usually precompiled with panic="unwind", rebuilding your crate with panic="abort" may not be enough to fix the problem
     .help = using nightly cargo, use -Zbuild-std with panic="abort" to avoid unwinding
-
-passes_params_not_allowed =
-    referencing function parameters is not allowed in naked functions
-    .help = follow the calling convention in asm block to use parameters
 
 passes_parent_info =
     {$num ->

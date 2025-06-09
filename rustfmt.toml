@@ -29,6 +29,7 @@ ignore = [
 
     # Do not format submodules.
     "library/backtrace",
+    "library/compiler-builtins",
     "library/portable-simd",
     "library/stdarch",
     "src/doc/book",
