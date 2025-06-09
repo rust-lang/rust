@@ -18,7 +18,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
-use crate::attributes::repr::ReprParser;
+use crate::attributes::repr::{AlignParser, ReprParser};
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
@@ -89,6 +89,7 @@ macro_rules! attribute_parsers {
 attribute_parsers!(
     pub(crate) static ATTRIBUTE_PARSERS = [
         // tidy-alphabetical-start
+        AlignParser,
         BodyStabilityParser,
         ConfusablesParser,
         ConstStabilityParser,

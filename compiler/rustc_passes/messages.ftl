@@ -13,6 +13,10 @@ passes_abi_ne =
 passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
+passes_align_should_be_repr_align =
+    `#[align(...)]` is not supported on {$item} items
+    .suggestion = use `#[repr(align(...))]` instead
+
 passes_allow_incoherent_impl =
     `rustc_allow_incoherent_impl` attribute should be applied to impl items
     .label = the only currently supported targets are inherent methods
@@ -28,10 +32,6 @@ passes_attr_application_enum =
 passes_attr_application_struct =
     attribute should be applied to a struct
     .label = not a struct
-
-passes_attr_application_struct_enum_function_method_union =
-    attribute should be applied to a struct, enum, function, associated function, or union
-    .label = not a struct, enum, function, associated function, or union
 
 passes_attr_application_struct_enum_union =
     attribute should be applied to a struct, enum, or union
@@ -583,12 +583,13 @@ passes_remove_fields =
      *[other] fields
     }
 
-passes_repr_align_function =
-    `repr(align)` attributes on functions are unstable
-
 passes_repr_align_greater_than_target_max =
     alignment must not be greater than `isize::MAX` bytes
     .note = `isize::MAX` is {$size} for the current target
+
+passes_repr_align_should_be_align =
+    `#[repr(align(...))]` is not supported on {$item} items
+    .help = use `#[align(...)]` instead
 
 passes_repr_conflicting =
     conflicting representation hints

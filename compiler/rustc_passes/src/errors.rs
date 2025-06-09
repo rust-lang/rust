@@ -1308,13 +1308,6 @@ pub(crate) enum AttrApplication {
         #[label]
         span: Span,
     },
-    #[diag(passes_attr_application_struct_enum_function_method_union, code = E0517)]
-    StructEnumFunctionMethodUnion {
-        #[primary_span]
-        hint_span: Span,
-        #[label]
-        span: Span,
-    },
 }
 
 #[derive(Diagnostic)]
@@ -1815,4 +1808,27 @@ pub(crate) enum UnexportableItem<'a> {
         vis_note: Span,
         field_name: &'a str,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_repr_align_should_be_align)]
+pub(crate) struct ReprAlignShouldBeAlign {
+    #[primary_span]
+    #[help]
+    pub span: Span,
+    pub item: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_align_should_be_repr_align)]
+pub(crate) struct AlignShouldBeReprAlign {
+    #[primary_span]
+    #[suggestion(
+        style = "verbose",
+        applicability = "machine-applicable",
+        code = "#[repr(align({align_bytes}))]"
+    )]
+    pub span: Span,
+    pub item: &'static str,
+    pub align_bytes: u64,
 }

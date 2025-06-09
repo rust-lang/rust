@@ -19,8 +19,9 @@ extern "C" fn example2() {
     naked_asm!("")
 }
 
-#[repr(align(16), C)]
+#[repr(C)]
 //~^ ERROR attribute should be applied to a struct, enum, or union [E0517]
+#[align(16)]
 #[unsafe(naked)]
 extern "C" fn example3() {
     //~^ NOTE not a struct, enum, or union
