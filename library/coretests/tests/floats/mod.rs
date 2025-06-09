@@ -411,6 +411,8 @@ float_test! {
             Float::NEG_INFINITY.midpoint(Float::NEG_INFINITY),
             Float::NEG_INFINITY
         );
+        assert!(Float::NEG_INFINITY.midpoint(Float::INFINITY).is_nan());
+        assert!(Float::INFINITY.midpoint(Float::NEG_INFINITY).is_nan());
         assert!(Float::NAN.midpoint(1.0).is_nan());
         assert!((1.0 as Float).midpoint(Float::NAN).is_nan());
         assert!(Float::NAN.midpoint(Float::NAN).is_nan());
