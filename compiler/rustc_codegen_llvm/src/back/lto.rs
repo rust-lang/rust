@@ -705,12 +705,33 @@ pub(crate) fn run_pass_manager(
             cx.set_struct_body(kernel_arguments_ty, &kernel_elements, false);
             let global = cx.declare_global("my_struct_global", offload_entry_ty);
             let global = cx.declare_global("my_struct_global2", kernel_arguments_ty);
-//@my_struct_global = external global %struct.__tgt_offload_entry
-//@my_struct_global2 = external global %struct.__tgt_kernel_arguments
+            //@my_struct_global = external global %struct.__tgt_offload_entry
+            //@my_struct_global2 = external global %struct.__tgt_kernel_arguments
             dbg!(&offload_entry_ty);
             dbg!(&kernel_arguments_ty);
             //LLVMTypeRef elements[9] = {i64Ty, i16Ty, i16Ty, i32Ty, ptrTy, ptrTy, i64Ty, i64Ty, ptrTy};
             //LLVMStructSetBody(structTy, elements, 9, 0);
+
+            // New, to test memtransfer
+            // ; Function Attrs: nounwind
+            // declare void @__tgt_target_data_begin_mapper(ptr, i64, i32, ptr, ptr, ptr, ptr, ptr, ptr) #3
+            //
+            // ; Function Attrs: nounwind
+            // declare void @__tgt_target_data_update_mapper(ptr, i64, i32, ptr, ptr, ptr, ptr, ptr, ptr) #3
+            //
+            // ; Function Attrs: nounwind
+            // declare void @__tgt_target_data_end_mapper(ptr, i64, i32, ptr, ptr, ptr, ptr, ptr, ptr) #3
+
+            let mapper_begin = "__tgt_target_data_begin_mapper";
+            let mapper_update = String::from("__tgt_target_data_update_mapper");
+            let mapper_end = String::from("__tgt_target_data_end_mapper");
+            let args = vec![tptr, ti64, ti32, tptr, tptr, tptr, tptr, tptr, tptr];
+            let mapper_fn_ty = cx.type_func(&args, cx.type_void());
+            let foo = crate::declare::declare_simple_fn(&cx, &mapper_begin, llvm::CallConv::CCallConv, llvm::UnnamedAddr::No, llvm::Visibility::Default, mapper_fn_ty);
+            let bar = crate::declare::declare_simple_fn(&cx, &mapper_update, llvm::CallConv::CCallConv, llvm::UnnamedAddr::No, llvm::Visibility::Default, mapper_fn_ty);
+            let baz = crate::declare::declare_simple_fn(&cx, &mapper_end, llvm::CallConv::CCallConv, llvm::UnnamedAddr::No, llvm::Visibility::Default, mapper_fn_ty);
+            // TODO: add nounwind
+
             dbg!("created struct");
             for num in 0..9 {
                 if !cx.get_function(&format!("kernel_{num}")).is_some() {
@@ -771,7 +792,7 @@ pub(crate) fn run_pass_manager(
                 llvm::set_section(llglobal, &c_section_name);
 
 
-                // New, TODO: cleanup
+                // Not actively used yet, for calling real kernels
                 let name = format!(".offloading.entry.kernel_{num}");
                 let ci64_0 = cx.get_const_i64(0);
                 let ci16_1 = cx.get_const_i16(1);
@@ -791,24 +812,8 @@ pub(crate) fn run_pass_manager(
                 // clang
                 // @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
 
+
                 //
-                // enum Flags {
-                //   OMP_REGISTER_REQUIRES = 0x10,
-                // };
-                //
-                // typedef struct {
-                //   void *ImageStart;
-                //   void *ImageEnd;
-                //   __tgt_offload_entry *EntriesBegin;
-                //   __tgt_offload_entry *EntriesEnd;
-                // } __tgt_device_image;
-                //
-                // typedef struct {
-                //   int32_t NumDeviceImages;
-                //   __tgt_device_image *DeviceImages;
-                //   __tgt_offload_entry *HostEntriesBegin;
-                //   __tgt_offload_entry *HostEntriesEnd;
-                // } __tgt_bin_desc;
                 // 1. @.offload_sizes.{num} = private unnamed_addr constant [4 x i64] [i64 8, i64 0, i64 16, i64 0]
                 // 2. @.offload_maptypes
                 // 3. @.__omp_offloading_<hash>_fnc_name_<hash> = weak constant i8 0
