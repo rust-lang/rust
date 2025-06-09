@@ -1,3 +1,9 @@
+//! Defines a set of traits that is used for abstracting
+//! stable_mir's components that are needed in rustc_smir.
+//!
+//! These traits are really useful when programming
+//! in stable_mir-agnostic settings.
+
 use std::fmt::Debug;
 
 use super::Bridge;
@@ -7,7 +13,11 @@ pub trait SmirError {
     fn from_internal<T: Debug>(err: T) -> Self;
 }
 
-macro_rules! make_def_trait {
+pub trait Prov<B: Bridge> {
+    fn new(aid: B::AllocId) -> Self;
+}
+
+macro_rules! make_bridge_trait {
     ($name:ident) => {
         pub trait $name<B: Bridge> {
             fn new(did: B::DefId) -> Self;
@@ -15,27 +25,23 @@ macro_rules! make_def_trait {
     };
 }
 
-make_def_trait!(CrateItem);
-make_def_trait!(AdtDef);
-make_def_trait!(ForeignModuleDef);
-make_def_trait!(ForeignDef);
-make_def_trait!(FnDef);
-make_def_trait!(ClosureDef);
-make_def_trait!(CoroutineDef);
-make_def_trait!(CoroutineClosureDef);
-make_def_trait!(AliasDef);
-make_def_trait!(ParamDef);
-make_def_trait!(BrNamedDef);
-make_def_trait!(TraitDef);
-make_def_trait!(GenericDef);
-make_def_trait!(ConstDef);
-make_def_trait!(ImplDef);
-make_def_trait!(RegionDef);
-make_def_trait!(CoroutineWitnessDef);
-make_def_trait!(AssocDef);
-make_def_trait!(OpaqueDef);
-make_def_trait!(StaticDef);
-
-pub trait Prov<B: Bridge> {
-    fn new(aid: B::AllocId) -> Self;
-}
+make_bridge_trait!(CrateItem);
+make_bridge_trait!(AdtDef);
+make_bridge_trait!(ForeignModuleDef);
+make_bridge_trait!(ForeignDef);
+make_bridge_trait!(FnDef);
+make_bridge_trait!(ClosureDef);
+make_bridge_trait!(CoroutineDef);
+make_bridge_trait!(CoroutineClosureDef);
+make_bridge_trait!(AliasDef);
+make_bridge_trait!(ParamDef);
+make_bridge_trait!(BrNamedDef);
+make_bridge_trait!(TraitDef);
+make_bridge_trait!(GenericDef);
+make_bridge_trait!(ConstDef);
+make_bridge_trait!(ImplDef);
+make_bridge_trait!(RegionDef);
+make_bridge_trait!(CoroutineWitnessDef);
+make_bridge_trait!(AssocDef);
+make_bridge_trait!(OpaqueDef);
+make_bridge_trait!(StaticDef);
