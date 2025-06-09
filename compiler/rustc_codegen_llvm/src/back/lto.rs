@@ -632,7 +632,7 @@ fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
     llvm::set_rust_rules(true);
 }
 
-fn gen_globals<'ll>(cx: &'ll SimpleCx<'_>) -> (&'ll llvm::Type, &'ll llvm::Value) {
+fn gen_globals<'ll>(cx: &'ll SimpleCx<'_>) -> (&'ll llvm::Type, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Type) {
     let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
     let kernel_arguments_ty = cx.type_named_struct("struct.__tgt_kernel_arguments");
     let tptr = cx.type_ptr();
@@ -708,7 +708,7 @@ fn gen_globals<'ll>(cx: &'ll SimpleCx<'_>) -> (&'ll llvm::Type, &'ll llvm::Value
     attributes::apply_to_llfn(bar, Function, &[nounwind]);
     attributes::apply_to_llfn(baz, Function, &[nounwind]);
 
-    (offload_entry_ty, at_one)
+    (offload_entry_ty, at_one, foo, bar, baz, mapper_fn_ty)
 }
 
 fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'ll llvm::Value{
@@ -797,7 +797,7 @@ fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, offload_entry_ty: &'ll llvm::
     // 5. @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
 }
 
-fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, s_ident_t: &'ll llvm::Value) {
+fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, s_ident_t: &'ll llvm::Value, begin: &'ll llvm::Value, update: &'ll llvm::Value, end: &'ll llvm::Value, fn_ty: &'ll llvm::Type) {
 
     let main_fn = cx.get_function("main");
     if let Some(main_fn) = main_fn {
@@ -810,9 +810,21 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, s_ident_t: &'ll llvm::Value) {
             return;
         };
         let kernel_call_bb = unsafe {llvm::LLVMGetInstructionParent(kernel_call)};
-        let builder = SBuilder::build(cx, kernel_call_bb);
+        let mut builder = SBuilder::build(cx, kernel_call_bb);
         unsafe {llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call)};
         dbg!("positioned builder, ready");
+
+        let nullptr = cx.const_null(cx.type_ptr());
+        let args = vec![s_ident_t, cx.get_const_i64(u64::MAX), cx.get_const_i32(3), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr];
+        dbg!(&fn_ty);
+        dbg!(&begin);
+        dbg!(&args);
+        builder.call(fn_ty, begin, &args, None);
+        dbg!("called begin");
+        //llty: &'ll Type,
+        //llfn: &'ll Value,
+        //args: &[&'ll Value],
+        //funclet: Option<&Funclet<'ll>>,
 
         // 1. set insert point before kernel call.
         // 2. generate all the GEPS and stores.
@@ -880,7 +892,7 @@ pub(crate) fn run_pass_manager(
             SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
         if cx.get_function("gen_tgt_offload").is_some() {
 
-            let (offload_entry_ty, at_one) = gen_globals(&cx);
+            let (offload_entry_ty, at_one, foo, bar, baz, fn_ty) = gen_globals(&cx);
 
             dbg!("created struct");
             for num in 0..9 {
@@ -890,7 +902,7 @@ pub(crate) fn run_pass_manager(
                 // TODO: replace num by proper fn name
                 gen_define_handling(&cx, offload_entry_ty, num);
             }
-            gen_call_handling(&cx, at_one);
+            gen_call_handling(&cx, at_one, foo, bar, baz, fn_ty);
         } else {
             dbg!("no marker found");
         }
