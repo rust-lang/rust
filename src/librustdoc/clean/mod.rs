@@ -2830,9 +2830,13 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            ItemKind::Struct(_, generics, variant_data) => StructItem(Struct {
+            ItemKind::Struct(_, _, variant_data) => StructItem(Struct {
                 ctor_kind: variant_data.ctor_kind(),
-                generics: clean_generics(generics, cx),
+                generics: clean_ty_generics(
+                    cx,
+                    cx.tcx.generics_of(def_id),
+                    cx.tcx.predicates_of(def_id),
+                ),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Macro(_, macro_def, MacroKind::Bang) => MacroItem(Macro {
