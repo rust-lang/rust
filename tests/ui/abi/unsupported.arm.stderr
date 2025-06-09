@@ -159,29 +159,29 @@ error[E0570]: `"vectorcall"` is not a supported ABI for the current target
 LL | extern "vectorcall" {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
+warning: the calling convention "cmse-nonsecure-call" is not supported on this target
   --> $DIR/unsupported.rs:151:21
    |
-LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn cmse_call_ptr(f: extern "cmse-nonsecure-call" fn()) {
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
-warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
+warning: the calling convention "cmse-nonsecure-entry" is not supported on this target
   --> $DIR/unsupported.rs:159:22
    |
-LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn cmse_entry_ptr(f: extern "cmse-nonsecure-entry" fn()) {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
-error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
+error[E0570]: `"cmse-nonsecure-entry"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:164:1
    |
-LL | extern "C-cmse-nonsecure-entry" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "cmse-nonsecure-entry" {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:36:1
@@ -249,11 +249,11 @@ error[E0570]: `"vectorcall"` is not a supported ABI for the current target
 LL | extern "vectorcall" fn vectorcall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
+error[E0570]: `"cmse-nonsecure-entry"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:157:1
    |
-LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "cmse-nonsecure-entry" fn cmse_entry() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 20 previous errors; 14 warnings emitted
 
@@ -382,22 +382,22 @@ LL | fn vectorcall_ptr(f: extern "vectorcall" fn()) {
    = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
+warning: the calling convention "cmse-nonsecure-call" is not supported on this target
   --> $DIR/unsupported.rs:151:21
    |
-LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn cmse_call_ptr(f: extern "cmse-nonsecure-call" fn()) {
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
    = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
+warning: the calling convention "cmse-nonsecure-entry" is not supported on this target
   --> $DIR/unsupported.rs:159:22
    |
-LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn cmse_entry_ptr(f: extern "cmse-nonsecure-entry" fn()) {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
