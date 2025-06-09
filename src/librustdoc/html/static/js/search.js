@@ -4712,7 +4712,6 @@ function printTab(nb) {
         iter += 1;
     });
     if (foundCurrentTab && foundCurrentResultSet) {
-        // @ts-expect-error
         searchState.currentTab = nb;
         // Corrections only kick in on type-based searches.
         const correctionsElem = document.getElementsByClassName("search-corrections");
@@ -4765,7 +4764,6 @@ function getFilterCrates() {
 
 // @ts-expect-error
 function nextTab(direction) {
-    // @ts-expect-error
     const next = (searchState.currentTab + direction + 3) % searchState.focusedByTab.length;
     // @ts-expect-error
     searchState.focusedByTab[searchState.currentTab] = document.activeElement;
@@ -4776,14 +4774,12 @@ function nextTab(direction) {
 // Focus the first search result on the active tab, or the result that
 // was focused last time this tab was active.
 function focusSearchResult() {
-    // @ts-expect-error
     const target = searchState.focusedByTab[searchState.currentTab] ||
         document.querySelectorAll(".search-results.active a").item(0) ||
-        // @ts-expect-error
         document.querySelectorAll("#search-tabs button").item(searchState.currentTab);
-    // @ts-expect-error
     searchState.focusedByTab[searchState.currentTab] = null;
     if (target) {
+        // @ts-expect-error
         target.focus();
     }
 }
@@ -4935,7 +4931,6 @@ function makeTabHeader(tabNb, text, nbElems) {
     const fmtNbElems =
         nbElems < 10  ? `\u{2007}(${nbElems})\u{2007}\u{2007}` :
         nbElems < 100 ? `\u{2007}(${nbElems})\u{2007}` : `\u{2007}(${nbElems})`;
-    // @ts-expect-error
     if (searchState.currentTab === tabNb) {
         return "<button class=\"selected\">" + text +
             "<span class=\"count\">" + fmtNbElems + "</span></button>";
@@ -4949,7 +4944,6 @@ function makeTabHeader(tabNb, text, nbElems) {
  * @param {string} filterCrates
  */
 async function showResults(results, go_to_first, filterCrates) {
-    // @ts-expect-error
     const search = searchState.outputElement();
     if (go_to_first || (results.others.length === 1
         && getSettingValue("go-to-only-result") === "true")
@@ -4967,7 +4961,6 @@ async function showResults(results, go_to_first, filterCrates) {
         // will be used, starting search again since the search input is not empty, leading you
         // back to the previous page again.
         window.onunload = () => { };
-        // @ts-expect-error
         searchState.removeQueryParameters();
         const elem = document.createElement("a");
         elem.href = results.others[0].href;
@@ -4987,7 +4980,6 @@ async function showResults(results, go_to_first, filterCrates) {
     // Navigate to the relevant tab if the current tab is empty, like in case users search
     // for "-> String". If they had selected another tab previously, they have to click on
     // it again.
-    // @ts-expect-error
     let currentTab = searchState.currentTab;
     if ((currentTab === 0 && results.others.length === 0) ||
         (currentTab === 1 && results.in_args.length === 0) ||
@@ -5075,8 +5067,8 @@ async function showResults(results, go_to_first, filterCrates) {
     resultsElem.appendChild(ret_in_args);
     resultsElem.appendChild(ret_returned);
 
-    search.innerHTML = output;
     // @ts-expect-error
+    search.innerHTML = output;
     if (searchState.rustdocToolbar) {
         // @ts-expect-error
         search.querySelector(".main-heading").appendChild(searchState.rustdocToolbar);
@@ -5085,9 +5077,9 @@ async function showResults(results, go_to_first, filterCrates) {
     if (crateSearch) {
         crateSearch.addEventListener("input", updateCrate);
     }
+    // @ts-expect-error
     search.appendChild(resultsElem);
     // Reset focused elements.
-    // @ts-expect-error
     searchState.showResults(search);
     // @ts-expect-error
     const elems = document.getElementById("search-tabs").childNodes;
@@ -5098,7 +5090,6 @@ async function showResults(results, go_to_first, filterCrates) {
         const j = i;
         // @ts-expect-error
         elem.onclick = () => printTab(j);
-        // @ts-expect-error
         searchState.focusedByTab.push(null);
         i += 1;
     }
@@ -5110,7 +5101,6 @@ function updateSearchHistory(url) {
     if (!browserSupportsHistoryApi()) {
         return;
     }
-    // @ts-expect-error
     const params = searchState.getQueryStringParams();
     if (!history.state && !params.search) {
         history.pushState(null, "", url);
@@ -5137,10 +5127,8 @@ async function search(forced) {
         return;
     }
 
-    // @ts-expect-error
     searchState.setLoadingSearch();
 
-    // @ts-expect-error
     const params = searchState.getQueryStringParams();
 
     // In case we have no information about the saved crate and there is a URL query parameter,
@@ -5150,7 +5138,6 @@ async function search(forced) {
     }
 
     // Update document title to maintain a meaningful browser history
-    // @ts-expect-error
     searchState.title = "\"" + query.userQuery + "\" Search - Rust";
 
     // Because searching is incremental by character, only the most
@@ -5172,33 +5159,28 @@ async function search(forced) {
 function onSearchSubmit(e) {
     // @ts-expect-error
     e.preventDefault();
-    // @ts-expect-error
     searchState.clearInputTimeout();
     search();
 }
 
 function putBackSearch() {
-    // @ts-expect-error
     const search_input = searchState.input;
-    // @ts-expect-error
     if (!searchState.input) {
         return;
     }
     // @ts-expect-error
     if (search_input.value !== "" && !searchState.isDisplayed()) {
-        // @ts-expect-error
         searchState.showResults();
         if (browserSupportsHistoryApi()) {
             history.replaceState(null, "",
+                // @ts-expect-error
                 buildUrl(search_input.value, getFilterCrates()));
         }
-        // @ts-expect-error
         document.title = searchState.title;
     }
 }
 
 function registerSearchEvents() {
-    // @ts-expect-error
     const params = searchState.getQueryStringParams();
 
     // Populate search bar with query string search term when provided,
@@ -5212,11 +5194,9 @@ function registerSearchEvents() {
     }
 
     const searchAfter500ms = () => {
-        // @ts-expect-error
         searchState.clearInputTimeout();
         // @ts-expect-error
         if (searchState.input.value.length === 0) {
-            // @ts-expect-error
             searchState.hideResults();
         } else {
             // @ts-expect-error
@@ -5236,7 +5216,6 @@ function registerSearchEvents() {
             return;
         }
         // Do NOT e.preventDefault() here. It will prevent pasting.
-        // @ts-expect-error
         searchState.clearInputTimeout();
         // zero-timeout necessary here because at the time of event handler execution the
         // pasted content is not in the input field yet. Shouldn’t make any difference for
@@ -5262,7 +5241,6 @@ function registerSearchEvents() {
                 // @ts-expect-error
                 previous.focus();
             } else {
-                // @ts-expect-error
                 searchState.focus();
             }
             e.preventDefault();
@@ -5315,7 +5293,6 @@ function registerSearchEvents() {
         const previousTitle = document.title;
 
         window.addEventListener("popstate", e => {
-            // @ts-expect-error
             const params = searchState.getQueryStringParams();
             // Revert to the previous title manually since the History
             // API ignores the title parameter.
@@ -5343,7 +5320,6 @@ function registerSearchEvents() {
                 searchState.input.value = "";
                 // When browsing back from search results the main page
                 // visibility must be reset.
-                // @ts-expect-error
                 searchState.hideResults();
             }
         });
@@ -5356,7 +5332,6 @@ function registerSearchEvents() {
     // that try to sync state between the URL and the search input. To work around it,
     // do a small amount of re-init on page show.
     window.onpageshow = () => {
-        // @ts-expect-error
         const qSearch = searchState.getQueryStringParams().search;
         // @ts-expect-error
         if (searchState.input.value === "" && qSearch) {
