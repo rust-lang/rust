@@ -481,6 +481,11 @@ impl<I: Interner> AliasTy<I> {
     }
 
     pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        // Don't re-intern if the self ty didn't change.
+        if self_ty == self.args.type_at(0) {
+            return self;
+        }
+
         AliasTy::new(
             interner,
             self.def_id,

@@ -98,6 +98,11 @@ impl<I: Interner> TraitRef<I> {
     }
 
     pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        // Don't re-intern if the self ty didn't change.
+        if self_ty == self.args.type_at(0) {
+            return self;
+        }
+
         TraitRef::new(
             interner,
             self.def_id,
@@ -646,6 +651,10 @@ impl<I: Interner> AliasTerm<I> {
     }
 
     pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        if self_ty == self.args.type_at(0) {
+            return self;
+        }
+
         AliasTerm::new(
             interner,
             self.def_id,
