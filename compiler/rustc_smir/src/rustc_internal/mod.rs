@@ -43,11 +43,14 @@ pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
 /// # Panics
 ///
 /// This function will panic if StableMIR has not been properly initialized.
-pub fn internal<'tcx, S>(item: S) -> S::T<'tcx>
+pub fn internal<'tcx, S>(tcx: TyCtxt<'tcx>, item: S) -> S::T<'tcx>
 where
     S: RustcInternal,
 {
-    with_container(|tables, cx| item.internal(tables, cx))
+    // The tcx argument ensures that the item won't outlive the type context.
+    // See https://github.com/rust-lang/rust/pull/120128/commits/9aace6723572438a94378451793ca37deb768e72
+    // for more details.
+    with_container(|tables, _| item.internal(tables, tcx))
 }
 
 pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
@@ -69,14 +72,14 @@ where
 
 /// Loads the current context and calls a function with it.
 /// Do not nest these, as that will ICE.
-pub(crate) fn with_container<'tcx, R, B: Bridge>(
-    f: impl FnOnce(&mut Tables<'tcx, B>, &SmirCtxt<'tcx, B>) -> R,
+pub(crate) fn with_container<R, B: Bridge>(
+    f: impl for<'tcx> FnOnce(&mut Tables<'tcx, B>, &SmirCtxt<'tcx, B>) -> R,
 ) -> R {
     assert!(TLV.is_set());
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        let container = ptr as *const SmirContainer<'tcx, B>;
+        let container = ptr as *const SmirContainer<'_, B>;
         let mut tables = unsafe { (*container).tables.borrow_mut() };
         let cx = unsafe { (*container).cx.borrow() };
         f(&mut *tables, &*cx)
