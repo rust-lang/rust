@@ -44,6 +44,9 @@ attr_parsing_incorrect_repr_format_packed_expect_integer =
 attr_parsing_incorrect_repr_format_packed_one_or_zero_arg =
     incorrect `repr(packed)` attribute format: `packed` takes exactly one parenthesized argument, or no parentheses at all
 
+attr_parsing_invalid_alignment_value =
+    invalid alignment value: {$error_part}
+
 attr_parsing_invalid_issue_string =
     `issue` must be a non-zero numeric string or "none"
     .must_not_be_zero = `issue` must not be "0", use "none" instead

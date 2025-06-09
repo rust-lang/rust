@@ -1,9 +1,66 @@
-error[E0589]: invalid `repr(align)` attribute: `align` needs an argument
-  --> $DIR/malformed-fn-align.rs:5:12
+error[E0539]: malformed `align` attribute input
+  --> $DIR/malformed-fn-align.rs:5:5
    |
-LL |     #[repr(align)]
-   |            ^^^^^ help: supply an argument here: `align(...)`
+LL |     #[align]
+   |     ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[align(<alignment in bytes>)]
+   |            ++++++++++++++++++++++
 
-error: aborting due to 1 previous error
+error[E0539]: malformed `align` attribute input
+  --> $DIR/malformed-fn-align.rs:9:1
+   |
+LL | #[align = 16]
+   | ^^^^^^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[align = 16]
+LL + #[align(<alignment in bytes>)]
+   |
+LL - #[align = 16]
+LL + #[align]
+   |
 
-For more information about this error, try `rustc --explain E0589`.
+error[E0589]: invalid alignment value: not an unsuffixed integer
+  --> $DIR/malformed-fn-align.rs:12:9
+   |
+LL | #[align("hello")]
+   |         ^^^^^^^
+
+error[E0589]: invalid alignment value: not a power of two
+  --> $DIR/malformed-fn-align.rs:15:9
+   |
+LL | #[align(0)]
+   |         ^
+
+error: `#[repr(align(...))]` is not supported on function items
+  --> $DIR/malformed-fn-align.rs:18:8
+   |
+LL | #[repr(align(16))]
+   |        ^^^^^^^^^
+   |
+help: use `#[align(...)]` instead
+  --> $DIR/malformed-fn-align.rs:18:8
+   |
+LL | #[repr(align(16))]
+   |        ^^^^^^^^^
+
+error: `#[align(...)]` is not supported on struct items
+  --> $DIR/malformed-fn-align.rs:21:1
+   |
+LL | #[align(16)]
+   | ^^^^^^^^^^^^
+   |
+help: use `#[repr(align(...))]` instead
+   |
+LL - #[align(16)]
+LL + #[repr(align(16))]
+   |
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0539, E0589.
+For more information about an error, try `rustc --explain E0539`.
