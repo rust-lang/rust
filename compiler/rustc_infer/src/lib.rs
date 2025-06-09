@@ -20,7 +20,6 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(extend_one)]
-#![feature(iterator_try_collect)]
 #![feature(rustdoc_internals)]
 #![recursion_limit = "512"] // For rustdoc
 // tidy-alphabetical-end
