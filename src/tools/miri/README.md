@@ -396,20 +396,22 @@ to Miri failing to detect cases of undefined behavior in a program.
 * `-Zmiri-force-intrinsic-fallback` forces the use of the "fallback" body for all intrinsics that
   have one. This is useful to test the fallback bodies, but should not be used otherwise. It is
   **unsound** since the fallback body might not be checking for all UB.
-* `-Zmiri-native-lib=<path to a shared object file>` is an experimental flag for providing support
-  for calling native functions from inside the interpreter via FFI. The flag is supported only on
-  Unix systems. Functions not provided by that file are still executed via the usual Miri shims. If
-  a path to a directory is specified, all files in that directory are included nonrecursively. This
-  flag can be passed multiple times to specify multiple files and/or directories.
+* `-Zmiri-native-lib=<path to a shared object file or folder>` is an experimental flag for providing
+  support for calling native functions from inside the interpreter via FFI. The flag is supported
+  only on Unix systems. Functions not provided by that file are still executed via the usual Miri
+  shims. If a path to a directory is specified, all files in that directory are included
+  non-recursively. This flag can be passed multiple times to specify multiple files and/or
+  directories.
   **WARNING**: If an invalid/incorrect `.so` file is specified, this can cause Undefined Behavior in
   Miri itself! And of course, Miri often cannot do any checks on the actions taken by the native code.
   Note that Miri has its own handling of file descriptors, so if you want to replace *some*
   functions working on file descriptors, you will have to replace *all* of them, or the two kinds of
-  file descriptors will be mixed up. This is **work in progress**; currently, only integer and
-  pointers arguments and return values are supported and memory allocated by the native code cannot
-  be accessed from Rust (only the other way around). Native code must not spawn threads that keep
-  running in the background after the call has returned to Rust and that access Rust-allocated
-  memory. Finally, the flag is **unsound** in the sense that Miri stops tracking details such as
+  file descriptors will be mixed up.
+  This is **work in progress**; currently, only integer and pointers arguments and return values are
+  supported and memory allocated by the native code cannot be accessed from Rust (only the other way
+  around). Native code must not spawn threads that keep running in the background after the call has
+  returned to Rust and that access Rust-allocated memory.
+  Finally, the flag is **unsound** in the sense that Miri stops tracking details such as
   initialization and provenance on memory shared with native code, so it is easily possible to write
   code that has UB which is missed by Miri.
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
