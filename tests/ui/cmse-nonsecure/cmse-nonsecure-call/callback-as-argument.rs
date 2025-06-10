@@ -9,8 +9,8 @@ extern crate minicore;
 use minicore::*;
 
 #[no_mangle]
-pub extern "C-cmse-nonsecure-entry" fn test(
-    f: extern "C-cmse-nonsecure-call" fn(u32, u32, u32, u32) -> u32,
+pub extern "cmse-nonsecure-entry" fn test(
+    f: extern "cmse-nonsecure-call" fn(u32, u32, u32, u32) -> u32,
     a: u32,
     b: u32,
     c: u32,

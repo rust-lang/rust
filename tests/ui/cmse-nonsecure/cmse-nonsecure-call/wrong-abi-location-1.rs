@@ -7,4 +7,4 @@
 extern crate minicore;
 use minicore::*;
 
-pub extern "C-cmse-nonsecure-call" fn test() {} //~ ERROR [E0781]
+pub extern "cmse-nonsecure-call" fn test() {} //~ ERROR [E0781]

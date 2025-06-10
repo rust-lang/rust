@@ -2,7 +2,7 @@
 #[allow(unsupported_fn_ptr_calling_conventions)]
 fn main() {
     let non_secure_function = unsafe {
-        core::mem::transmute::<usize, extern "C-cmse-nonsecure-call" fn(i32, i32, i32, i32) -> i32>(
+        core::mem::transmute::<usize, extern "cmse-nonsecure-call" fn(i32, i32, i32, i32) -> i32>(
             //~^ ERROR [E0658]
             0x10000004,
         )

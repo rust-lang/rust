@@ -14,8 +14,8 @@ LLVM, the Rust compiler and the linker are providing
 [support](https://developer.arm.com/documentation/ecm0359818/latest/) for the
 TrustZone-M feature.
 
-One of the things provided, with this unstable feature, is the
-`C-cmse-nonsecure-entry` ABI. This ABI marks a Secure function as an
+One of the things provided with this unstable feature is the
+"cmse-nonsecure-entry" ABI. This ABI marks a Secure function as an
 entry function (see [section
 5.4](https://developer.arm.com/documentation/ecm0359818/latest/) for details).
 With this ABI, the compiler will do the following:
@@ -30,7 +30,6 @@ Because the stack can not be used to pass parameters, there will be compilation
 errors if:
 * the total size of all parameters is too big (for example more than four 32
   bits integers)
-* the entry function is not using a C ABI
 
 The special symbol `__acle_se_` will be used by the linker to generate a secure
 gateway veneer.
@@ -42,7 +41,7 @@ gateway veneer.
 #![feature(cmse_nonsecure_entry)]
 
 #[no_mangle]
-pub extern "C-cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
+pub extern "cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
     input + 6
 }
 ```

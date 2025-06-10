@@ -14,7 +14,7 @@ extern crate minicore;
 use minicore::*;
 
 #[no_mangle]
-pub extern "C-cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
+pub extern "cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
     //~^ ERROR [E0570]
     input
 }

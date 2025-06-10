@@ -14,8 +14,8 @@ LLVM, the Rust compiler and the linker are providing
 [support](https://developer.arm.com/documentation/ecm0359818/latest/) for the
 TrustZone-M feature.
 
-One of the things provided, with this unstable feature, is the
-`C-cmse-nonsecure-call` function ABI. This ABI is used on function pointers to
+One of the things provided with this unstable feature is the
+"cmse-nonsecure-call" function ABI. This ABI is used on function pointers to
 non-secure code to mark a non-secure function call (see [section
 5.5](https://developer.arm.com/documentation/ecm0359818/latest/) for details).
 
@@ -28,9 +28,6 @@ With this ABI, the compiler will do the following to perform the call:
 To avoid using the non-secure stack, the compiler will constrain the number and
 type of parameters/return value.
 
-The `extern "C-cmse-nonsecure-call"` ABI is otherwise equivalent to the
-`extern "C"` ABI.
-
 <!-- NOTE(ignore) this example is specific to thumbv8m targets -->
 
 ``` rust,ignore
@@ -40,7 +37,7 @@ The `extern "C-cmse-nonsecure-call"` ABI is otherwise equivalent to the
 #[no_mangle]
 pub fn call_nonsecure_function(addr: usize) -> u32 {
     let non_secure_function =
-        unsafe { core::mem::transmute::<usize, extern "C-cmse-nonsecure-call" fn() -> u32>(addr) };
+        unsafe { core::mem::transmute::<usize, extern "cmse-nonsecure-call" fn() -> u32>(addr) };
     non_secure_function()
 }
 ```

@@ -27,26 +27,26 @@ pub struct U32Compound(u16, u16);
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub fn params(
-    f1: extern "C-cmse-nonsecure-call" fn(),
-    f2: extern "C-cmse-nonsecure-call" fn(u32, u32, u32, u32),
-    f3: extern "C-cmse-nonsecure-call" fn(u64, u64),
-    f4: extern "C-cmse-nonsecure-call" fn(u128),
-    f5: extern "C-cmse-nonsecure-call" fn(f64, f32, f32),
-    f6: extern "C-cmse-nonsecure-call" fn(ReprTransparentStruct<u64>, U32Compound),
-    f7: extern "C-cmse-nonsecure-call" fn([u32; 4]),
+    f1: extern "cmse-nonsecure-call" fn(),
+    f2: extern "cmse-nonsecure-call" fn(u32, u32, u32, u32),
+    f3: extern "cmse-nonsecure-call" fn(u64, u64),
+    f4: extern "cmse-nonsecure-call" fn(u128),
+    f5: extern "cmse-nonsecure-call" fn(f64, f32, f32),
+    f6: extern "cmse-nonsecure-call" fn(ReprTransparentStruct<u64>, U32Compound),
+    f7: extern "cmse-nonsecure-call" fn([u32; 4]),
 ) {
 }
 
 #[no_mangle]
 pub fn returns(
-    f1: extern "C-cmse-nonsecure-call" fn() -> u32,
-    f2: extern "C-cmse-nonsecure-call" fn() -> u64,
-    f3: extern "C-cmse-nonsecure-call" fn() -> i64,
-    f4: extern "C-cmse-nonsecure-call" fn() -> f64,
-    f5: extern "C-cmse-nonsecure-call" fn() -> [u8; 4],
-    f6: extern "C-cmse-nonsecure-call" fn() -> ReprTransparentStruct<u64>,
-    f7: extern "C-cmse-nonsecure-call" fn() -> ReprTransparentStruct<ReprTransparentStruct<u64>>,
-    f8: extern "C-cmse-nonsecure-call" fn() -> ReprTransparentEnumU64,
-    f9: extern "C-cmse-nonsecure-call" fn() -> U32Compound,
+    f1: extern "cmse-nonsecure-call" fn() -> u32,
+    f2: extern "cmse-nonsecure-call" fn() -> u64,
+    f3: extern "cmse-nonsecure-call" fn() -> i64,
+    f4: extern "cmse-nonsecure-call" fn() -> f64,
+    f5: extern "cmse-nonsecure-call" fn() -> [u8; 4],
+    f6: extern "cmse-nonsecure-call" fn() -> ReprTransparentStruct<u64>,
+    f7: extern "cmse-nonsecure-call" fn() -> ReprTransparentStruct<ReprTransparentStruct<u64>>,
+    f8: extern "cmse-nonsecure-call" fn() -> ReprTransparentEnumU64,
+    f9: extern "cmse-nonsecure-call" fn() -> U32Compound,
 ) {
 }
