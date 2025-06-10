@@ -192,7 +192,7 @@ impl<'p, Cx: PatCx> PatOrWild<'p, Cx> {
     }
     pub(crate) fn ctor(self) -> &'p Constructor<Cx> {
         match self {
-            PatOrWild::Wild => &Wildcard,
+            PatOrWild::Wild => const { &Wildcard },
             PatOrWild::Pat(pat) => pat.ctor(),
         }
     }

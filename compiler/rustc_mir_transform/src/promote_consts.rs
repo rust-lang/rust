@@ -397,7 +397,19 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
 
             BorrowKind::Shared => {
-                let has_mut_interior = self.qualif_local::<qualifs::HasMutInterior>(place.local);
+                // Let's just see what happens if we reject anything `!Freeze`...
+                // (Except ZST which definitely can't have interior mut)
+                let ty = place.ty(self.body, self.tcx).ty;
+                let has_mut_interior = match ty.kind() {
+                    // Empty arrays have no interior mutability no matter their element type.
+                    ty::Array(_elem, count)
+                        if count.try_to_target_usize(self.tcx).is_some_and(|v| v == 0) =>
+                    {
+                        false
+                    }
+                    // Fallback to checking `Freeze`.
+                    _ => !ty.is_freeze(self.tcx, self.typing_env),
+                };
                 if has_mut_interior {
                     return Err(Unpromotable);
                 }
