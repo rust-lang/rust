@@ -3,6 +3,12 @@ codegen_llvm_autodiff_without_lto = using the autodiff feature requires using fa
 
 codegen_llvm_copy_bitcode = failed to copy bitcode to object file: {$err}
 
+codegen_llvm_deprecated_intrinsic =
+    Using deprecated intrinsic `{$name}`, consider using other intrinsics/instructions
+
+codegen_llvm_deprecated_intrinsic_with_replacement =
+    Using deprecated intrinsic `{$name}`, `{$replacement}` can be used instead
+
 codegen_llvm_dynamic_linking_with_lto =
     cannot prefer dynamic linking when performing LTO
     .note = only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO
@@ -13,6 +19,12 @@ codegen_llvm_fixed_x18_invalid_arch = the `-Zfixed-x18` flag is not supported on
 codegen_llvm_from_llvm_diag = {$message}
 
 codegen_llvm_from_llvm_optimization_diag = {$filename}:{$line}:{$column} {$pass_name} ({$kind}): {$message}
+
+codegen_llvm_intrinsic_signature_mismatch =
+    Intrinsic signature mismatch for `{$name}`: expected signature `{$llvm_fn_ty}`, found `{$rust_fn_ty}`
+
+codegen_llvm_invalid_intrinsic =
+    Invalid LLVM Intrinsic `{$name}`
 
 codegen_llvm_load_bitcode = failed to load bitcode of module "{$name}"
 codegen_llvm_load_bitcode_with_llvm_err = failed to load bitcode of module "{$name}": {$llvm_err}
