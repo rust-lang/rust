@@ -793,7 +793,11 @@ pub(crate) fn clean_generics<'tcx>(
     }
 }
 
-fn clean_ty_generics<'tcx>(
+fn clean_ty_generics<'tcx>(cx: &mut DocContext<'tcx>, def_id: DefId) -> Generics {
+    clean_ty_generics_inner(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id))
+}
+
+fn clean_ty_generics_inner<'tcx>(
     cx: &mut DocContext<'tcx>,
     gens: &ty::Generics,
     preds: ty::GenericPredicates<'tcx>,
@@ -1297,11 +1301,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 None,
             );
 
-            let mut generics = clean_ty_generics(
-                cx,
-                tcx.generics_of(assoc_item.def_id),
-                tcx.explicit_predicates_of(assoc_item.def_id),
-            );
+            let mut generics = clean_ty_generics(cx, assoc_item.def_id);
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
             match assoc_item.container {
@@ -1389,7 +1389,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 let bounds = tcx.explicit_item_bounds(assoc_item.def_id).iter_identity_copied();
                 predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
             }
-            let mut generics = clean_ty_generics(
+            let mut generics = clean_ty_generics_inner(
                 cx,
                 tcx.generics_of(assoc_item.def_id),
                 ty::GenericPredicates { parent: None, predicates },
