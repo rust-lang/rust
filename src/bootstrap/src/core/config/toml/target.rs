@@ -101,7 +101,7 @@ impl Config {
                 let mut target = Target::from_triple(&triple);
 
                 if let Some(ref s) = cfg.llvm_config {
-                    if self.download_rustc_commit.is_some() && triple == *self.build.triple {
+                    if self.download_rustc_commit.is_some() && triple == *self.host_target.triple {
                         panic!(
                             "setting llvm_config for the host is incompatible with download-rustc"
                         );

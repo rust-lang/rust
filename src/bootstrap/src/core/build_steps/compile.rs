@@ -159,7 +159,7 @@ impl Step for Std {
         let compiler = if builder.download_rustc() && self.force_recompile {
             // When there are changes in the library tree with CI-rustc, we want to build
             // the stageN library and that requires using stageN-1 compiler.
-            builder.compiler(self.compiler.stage.saturating_sub(1), builder.config.build)
+            builder.compiler(self.compiler.stage.saturating_sub(1), builder.config.host_target)
         } else {
             self.compiler
         };
@@ -301,7 +301,7 @@ impl Step for Std {
 
         builder.ensure(StdLink::from_std(
             self,
-            builder.compiler(compiler.stage, builder.config.build),
+            builder.compiler(compiler.stage, builder.config.host_target),
         ));
     }
 }
@@ -1084,8 +1084,8 @@ impl Step for Rustc {
 
         // Ensure that build scripts and proc macros have a std / libproc_macro to link against.
         builder.ensure(Std::new(
-            builder.compiler(self.compiler.stage, builder.config.build),
-            builder.config.build,
+            builder.compiler(self.compiler.stage, builder.config.host_target),
+            builder.config.host_target,
         ));
 
         let mut cargo = builder::Cargo::new(
@@ -1150,7 +1150,7 @@ impl Step for Rustc {
 
         builder.ensure(RustcLink::from_rustc(
             self,
-            builder.compiler(compiler.stage, builder.config.build),
+            builder.compiler(compiler.stage, builder.config.host_target),
         ));
 
         compiler.stage
@@ -1190,11 +1190,11 @@ pub fn rustc_cargo(
     // We want to link against registerEnzyme and in the future we want to use additional
     // functionality from Enzyme core. For that we need to link against Enzyme.
     if builder.config.llvm_enzyme {
-        let arch = builder.build.build;
+        let arch = builder.build.host_target;
         let enzyme_dir = builder.build.out.join(arch).join("enzyme").join("lib");
         cargo.rustflag("-L").rustflag(enzyme_dir.to_str().expect("Invalid path"));
 
-        if let Some(llvm_config) = builder.llvm_config(builder.config.build) {
+        if let Some(llvm_config) = builder.llvm_config(builder.config.host_target) {
             let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
             cargo.rustflag("-l").rustflag(&format!("Enzyme-{llvm_version_major}"));
         }
@@ -1813,7 +1813,7 @@ impl Step for Sysroot {
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
         if builder.download_rustc() && compiler.stage != 0 {
             assert_eq!(
-                builder.config.build, compiler.host,
+                builder.config.host_target, compiler.host,
                 "Cross-compiling is not yet supported with `download-rustc`",
             );
 
@@ -1967,7 +1967,7 @@ impl Step for Assemble {
         if target_compiler.stage == 0 {
             trace!("stage 0 build compiler is always available, simply returning");
             assert_eq!(
-                builder.config.build, target_compiler.host,
+                builder.config.host_target, target_compiler.host,
                 "Cannot obtain compiler for non-native build triple at stage 0"
             );
             // The stage 0 compiler for the build triple is always pre-built.
@@ -2080,15 +2080,16 @@ impl Step for Assemble {
         debug!(
             "ensuring build compiler is available: compiler(stage = {}, host = {:?})",
             target_compiler.stage - 1,
-            builder.config.build,
+            builder.config.host_target,
         );
-        let mut build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
+        let mut build_compiler =
+            builder.compiler(target_compiler.stage - 1, builder.config.host_target);
 
         // Build enzyme
         if builder.config.llvm_enzyme && !builder.config.dry_run() {
             debug!("`llvm_enzyme` requested");
             let enzyme_install = builder.ensure(llvm::Enzyme { target: build_compiler.host });
-            let llvm_config = builder.llvm_config(builder.config.build).unwrap();
+            let llvm_config = builder.llvm_config(builder.config.host_target).unwrap();
             let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
             let lib_ext = std::env::consts::DLL_EXTENSION;
             let libenzyme = format!("libEnzyme-{llvm_version_major}");
