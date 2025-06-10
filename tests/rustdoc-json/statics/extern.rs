@@ -35,4 +35,5 @@ unsafe extern "C" {
 }
 
 //@ ismany '$.index[?(@.inner.static)].inner.static.expr' '""' '""' '""' '""' '""' '""' '""' '""'
-//@ ismany '$.index[?(@.inner.static)].inner.static.type.primitive' '"i32"' '"i32"' '"i32"' '"i32"' '"i32"' '"i32"' '"i32"' '"i32"'
+//@ is '$.types[0].primitive' '"i32"'
+//@ ismany '$.index[?(@.inner.static)].inner.static.type' 0 0 0 0 0 0 0 0

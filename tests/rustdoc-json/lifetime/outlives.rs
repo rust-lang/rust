@@ -8,9 +8,12 @@
 //@ is "$.index[?(@.name=='foo')].inner.function.generics.params[2].kind.type.default" null
 //@ count "$.index[?(@.name=='foo')].inner.function.generics.params[2].kind.type.bounds[*]" 1
 //@ is "$.index[?(@.name=='foo')].inner.function.generics.params[2].kind.type.bounds[0].outlives" \"\'b\"
-//@ is "$.index[?(@.name=='foo')].inner.function.sig.inputs[0][1].borrowed_ref.lifetime" \"\'a\"
-//@ is "$.index[?(@.name=='foo')].inner.function.sig.inputs[0][1].borrowed_ref.is_mutable" false
-//@ is "$.index[?(@.name=='foo')].inner.function.sig.inputs[0][1].borrowed_ref.type.borrowed_ref.lifetime" \"\'b\"
-//@ is "$.index[?(@.name=='foo')].inner.function.sig.inputs[0][1].borrowed_ref.type.borrowed_ref.is_mutable" false
-//@ is "$.index[?(@.name=='foo')].inner.function.sig.inputs[0][1].borrowed_ref.type.borrowed_ref.type.generic" \"T\"
+//@ is "$.index[?(@.name=='foo')].inner.function.sig.inputs[0][1]" 2
+//@ is "$.types[2].borrowed_ref.lifetime" \"\'a\"
+//@ is "$.types[2].borrowed_ref.is_mutable" false
+//@ is "$.types[2].borrowed_ref.type" 1
+//@ is "$.types[1].borrowed_ref.lifetime" \"\'b\"
+//@ is "$.types[1].borrowed_ref.is_mutable" false
+//@ is "$.types[1].borrowed_ref.type" 0
+//@ is "$.types[0].generic" \"T\"
 pub fn foo<'a, 'b: 'a, T: 'b>(_: &'a &'b T) {}

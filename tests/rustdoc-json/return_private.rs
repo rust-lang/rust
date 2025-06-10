@@ -6,8 +6,9 @@ mod secret {
 }
 
 //@ has "$.index[?(@.name=='get_secret')].inner.function"
-//@ is "$.index[?(@.name=='get_secret')].inner.function.sig.output.resolved_path.path" '"secret::Secret"'
-//@ is "$.index[?(@.name=='get_secret')].inner.function.sig.output.resolved_path.id" $struct_secret
+//@ is "$.index[?(@.name=='get_secret')].inner.function.sig.output" 0
+//@ is "$.types[0].resolved_path.path" '"secret::Secret"'
+//@ is "$.types[0].resolved_path.id" $struct_secret
 pub fn get_secret() -> secret::Secret {
     secret::Secret
 }

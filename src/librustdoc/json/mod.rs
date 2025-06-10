@@ -14,7 +14,7 @@ use std::io::{BufWriter, Write, stdout};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -41,7 +41,8 @@ pub(crate) struct JsonRenderer<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
-    index: Rc<RefCell<FxHashMap<types::Id, types::Item>>>,
+    index: RefCell<FxHashMap<types::ItemId, types::Item>>,
+    types: RefCell<FxIndexSet<types::Type>>,
     /// The directory where the JSON blob should be written to.
     ///
     /// If this is `None`, the blob will be printed to `stdout` instead.
@@ -56,7 +57,7 @@ impl<'tcx> JsonRenderer<'tcx> {
         self.tcx.sess
     }
 
-    fn get_trait_implementors(&mut self, id: DefId) -> Vec<types::Id> {
+    fn get_trait_implementors(&mut self, id: DefId) -> Vec<types::ItemId> {
         Rc::clone(&self.cache)
             .implementors
             .get(&id)
@@ -73,7 +74,7 @@ impl<'tcx> JsonRenderer<'tcx> {
             .unwrap_or_default()
     }
 
-    fn get_impls(&mut self, id: DefId) -> Vec<types::Id> {
+    fn get_impls(&mut self, id: DefId) -> Vec<types::ItemId> {
         Rc::clone(&self.cache)
             .impls
             .get(&id)
@@ -134,7 +135,7 @@ fn target(sess: &rustc_session::Session) -> types::Target {
     let feature_stability: FxHashMap<&str, Stability> = sess
         .target
         .rust_target_features()
-        .into_iter()
+        .iter()
         .copied()
         .map(|(name, stability, _)| (name, stability))
         .collect();
@@ -144,7 +145,7 @@ fn target(sess: &rustc_session::Session) -> types::Target {
         target_features: sess
             .target
             .rust_target_features()
-            .into_iter()
+            .iter()
             .copied()
             .filter(|(_, stability, _)| {
                 // Describe only target features which the user can toggle
@@ -158,7 +159,7 @@ fn target(sess: &rustc_session::Session) -> types::Target {
                         _ => None,
                     },
                     implies_features: implied_features
-                        .into_iter()
+                        .iter()
                         .copied()
                         .filter(|name| {
                             // Imply only target features which the user can toggle
@@ -197,7 +198,8 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         Ok((
             JsonRenderer {
                 tcx,
-                index: Rc::new(RefCell::new(FxHashMap::default())),
+                index: RefCell::new(FxHashMap::default()),
+                types: RefCell::new(FxIndexSet::default()),
                 out_dir: if options.output_to_stdout { None } else { Some(options.output) },
                 cache: Rc::new(cache),
                 imported_items,
@@ -299,7 +301,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         debug!("Done with crate");
 
         let e = ExternalCrate { crate_num: LOCAL_CRATE };
-        let index = (*self.index).clone().into_inner();
+        let index = self.index.clone().into_inner();
 
         // Note that tcx.rust_target_features is inappropriate here because rustdoc tries to run for
         // multiple targets: https://github.com/rust-lang/rust/pull/137632
@@ -313,6 +315,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
             index,
+            types: self.types.borrow().iter().cloned().collect(),
             paths: self
                 .cache
                 .paths

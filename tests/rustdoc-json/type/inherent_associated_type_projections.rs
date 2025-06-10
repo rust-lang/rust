@@ -6,10 +6,13 @@ pub struct Parametrized<T>(T);
 
 //@ count "$.index[?(@.name=='test')].inner.function.sig.inputs[*]" 1
 //@ is "$.index[?(@.name=='test')].inner.function.sig.inputs[0][0]" '"_"'
-//@ is '$.index[?(@.name=="test")].inner.function.sig.inputs[0][1].qualified_path.self_type.resolved_path.id' $Parametrized
-//@ is '$.index[?(@.name=="test")].inner.function.sig.inputs[0][1].qualified_path.self_type.resolved_path.args.angle_bracketed.args[0].type.primitive' \"i32\"
-//@ is '$.index[?(@.name=="test")].inner.function.sig.inputs[0][1].qualified_path.name' '"Proj"'
-//@ is '$.index[?(@.name=="test")].inner.function.sig.inputs[0][1].qualified_path.trait' null
+//@ is '$.index[?(@.name=="test")].inner.function.sig.inputs[0][1]' 20
+//@ is '$.types[20].qualified_path.self_type' 5
+//@ is '$.types[5].resolved_path.id' $Parametrized
+//@ is '$.types[5].resolved_path.args.angle_bracketed.args[0].type' 4
+//@ is '$.types[4].primitive' \"i32\"
+//@ is '$.types[20].qualified_path.name' '"Proj"'
+//@ is '$.types[20].qualified_path.trait' null
 pub fn test(_: Parametrized<i32>::Proj) {}
 
 /// param_bool

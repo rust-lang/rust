@@ -30,7 +30,7 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 46;
+pub const FORMAT_VERSION: u32 = 47;
 
 /// The root of the emitted JSON blob.
 ///
@@ -40,16 +40,18 @@ pub const FORMAT_VERSION: u32 = 46;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Crate {
     /// The id of the root [`Module`] item of the local crate.
-    pub root: Id,
+    pub root: ItemId,
     /// The version string given to `--crate-version`, if any.
     pub crate_version: Option<String>,
     /// Whether or not the output includes private items.
     pub includes_private: bool,
     /// A collection of all items in the local crate as well as some external traits and their
     /// items that are referenced locally.
-    pub index: HashMap<Id, Item>,
+    pub index: HashMap<ItemId, Item>,
     /// Maps IDs to fully qualified paths and other info helpful for generating links.
-    pub paths: HashMap<Id, ItemSummary>,
+    pub paths: HashMap<ItemId, ItemSummary>,
+    /// A collection of all types of the local crate. Can be indexed with [`TypeId`].
+    pub types: Vec<Type>,
     /// Maps `crate_id` of items to a crate name and html_root_url if it exists.
     pub external_crates: HashMap<u32, ExternalCrate>,
     /// Information about the target for which this documentation was generated
@@ -159,7 +161,7 @@ pub struct ItemSummary {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Item {
     /// The unique identifier of this item. Can be used to find this item in various mappings.
-    pub id: Id,
+    pub id: ItemId,
     /// This can be used as a key to the `external_crates` map of [`Crate`] to see which crate
     /// this item came from.
     pub crate_id: u32,
@@ -175,7 +177,7 @@ pub struct Item {
     /// Some("") if there is some documentation but it is empty (EG `#[doc = ""]`).
     pub docs: Option<String>,
     /// This mapping resolves [intra-doc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
-    pub links: HashMap<String, Id>,
+    pub links: HashMap<String, ItemId>,
     /// Attributes on this item.
     ///
     /// Does not include `#[deprecated]` attributes: see the [`Self::deprecation`] field instead.
@@ -228,7 +230,7 @@ pub enum Visibility {
     /// For `pub(in path)` visibility.
     Restricted {
         /// ID of the module to which this visibility restricts items.
-        parent: Id,
+        parent: ItemId,
         /// The path with which [`parent`] was referenced
         /// (like `super::super` or `crate::foo::bar`).
         ///
@@ -289,9 +291,9 @@ pub enum GenericArgs {
     /// `Fn(A, B) -> C`
     Parenthesized {
         /// The input types, enclosed in parentheses.
-        inputs: Vec<Type>,
+        inputs: Vec<TypeId>,
         /// The output type provided after the `->`, if present.
-        output: Option<Type>,
+        output: Option<TypeId>,
     },
     /// `T::method(..)`
     ReturnTypeNotation,
@@ -314,7 +316,7 @@ pub enum GenericArg {
     /// std::borrow::Cow<'static, str>
     ///                           ^^^
     /// ```
-    Type(Type),
+    Type(TypeId),
     /// A constant as a generic argument.
     /// ```text
     /// core::array::IntoIter<u32, { 640 * 1024 }>
@@ -390,7 +392,12 @@ pub enum AssocItemConstraintKind {
 /// to parse them, or otherwise depend on any implementation details.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 // FIXME(aDotInTheVoid): Consider making this non-public in rustdoc-types.
-pub struct Id(pub u32);
+pub struct ItemId(pub u32);
+
+/// A type identifier.
+///
+/// It can be used to lookup in [`Crate::types`] to resolve it to [`Type`].
+pub type TypeId = usize;
 
 /// The fundamental kind of an item. Unlike [`ItemEnum`], this does not carry any additional info.
 ///
@@ -485,7 +492,7 @@ pub enum ItemEnum {
     /// A `struct` declaration.
     Struct(Struct),
     /// A field of a struct.
-    StructField(Type),
+    StructField(TypeId),
     /// An `enum` declaration.
     Enum(Enum),
     /// A variant of a enum.
@@ -509,7 +516,7 @@ pub enum ItemEnum {
     Constant {
         /// The type of the constant.
         #[serde(rename = "type")]
-        type_: Type,
+        type_: TypeId,
         /// The declared constant itself.
         #[serde(rename = "const")]
         const_: Constant,
@@ -538,7 +545,7 @@ pub enum ItemEnum {
     AssocConst {
         /// The type of the constant.
         #[serde(rename = "type")]
-        type_: Type,
+        type_: TypeId,
         /// Inside a trait declaration, this is the default value for the associated constant,
         /// if provided.
         /// Inside an `impl` block, this is the value assigned to the associated constant,
@@ -575,7 +582,7 @@ pub enum ItemEnum {
         /// //       ^^^^^
         /// ```
         #[serde(rename = "type")]
-        type_: Option<Type>,
+        type_: Option<TypeId>,
     },
 }
 
@@ -588,7 +595,7 @@ pub struct Module {
     /// compiler.
     pub is_crate: bool,
     /// [`Item`]s declared inside this module.
-    pub items: Vec<Id>,
+    pub items: Vec<ItemId>,
     /// If `true`, this module is not part of the public API, but it contains
     /// items that are re-exported as public API.
     pub is_stripped: bool,
@@ -604,11 +611,11 @@ pub struct Union {
     /// The list of fields in the union.
     ///
     /// All of the corresponding [`Item`]s are of kind [`ItemEnum::StructField`].
-    pub fields: Vec<Id>,
+    pub fields: Vec<ItemId>,
     /// All impls (both of traits and inherent) for this union.
     ///
     /// All of the corresponding [`Item`]s are of kind [`ItemEnum::Impl`].
-    pub impls: Vec<Id>,
+    pub impls: Vec<ItemId>,
 }
 
 /// A `struct`.
@@ -621,7 +628,7 @@ pub struct Struct {
     pub generics: Generics,
     /// All impls (both of traits and inherent) for this struct.
     /// All of the corresponding [`Item`]s are of kind [`ItemEnum::Impl`].
-    pub impls: Vec<Id>,
+    pub impls: Vec<ItemId>,
 }
 
 /// The kind of a [`Struct`] and the data specific to it, i.e. fields.
@@ -636,7 +643,7 @@ pub enum StructKind {
     Unit,
     /// A struct with unnamed fields.
     ///
-    /// All [`Id`]'s will point to [`ItemEnum::StructField`].
+    /// All [`ItemId`]'s will point to [`ItemEnum::StructField`].
     /// Unlike most of JSON, private and `#[doc(hidden)]` fields will be given as `None`
     /// instead of being omitted, because order matters.
     ///
@@ -644,7 +651,7 @@ pub enum StructKind {
     /// pub struct TupleStruct(i32);
     /// pub struct EmptyTupleStruct();
     /// ```
-    Tuple(Vec<Option<Id>>),
+    Tuple(Vec<Option<ItemId>>),
     /// A struct with named fields.
     ///
     /// ```rust
@@ -655,7 +662,7 @@ pub enum StructKind {
         /// The list of fields in the struct.
         ///
         /// All of the corresponding [`Item`]s are of kind [`ItemEnum::StructField`].
-        fields: Vec<Id>,
+        fields: Vec<ItemId>,
         /// Whether any fields have been removed from the result, due to being private or hidden.
         has_stripped_fields: bool,
     },
@@ -671,9 +678,9 @@ pub struct Enum {
     /// The list of variants in the enum.
     ///
     /// All of the corresponding [`Item`]s are of kind [`ItemEnum::Variant`]
-    pub variants: Vec<Id>,
+    pub variants: Vec<ItemId>,
     /// `impl`s for the enum.
-    pub impls: Vec<Id>,
+    pub impls: Vec<ItemId>,
 }
 
 /// A variant of an enum.
@@ -700,7 +707,7 @@ pub enum VariantKind {
     Plain,
     /// A variant with unnamed fields.
     ///
-    /// All [`Id`]'s will point to [`ItemEnum::StructField`].
+    /// All [`ItemId`]'s will point to [`ItemEnum::StructField`].
     /// Unlike most of JSON, `#[doc(hidden)]` fields will be given as `None`
     /// instead of being omitted, because order matters.
     ///
@@ -710,7 +717,7 @@ pub enum VariantKind {
     ///     EmptyTupleVariant(),
     /// }
     /// ```
-    Tuple(Vec<Option<Id>>),
+    Tuple(Vec<Option<ItemId>>),
     /// A variant with named fields.
     ///
     /// ```rust
@@ -722,7 +729,7 @@ pub enum VariantKind {
     Struct {
         /// The list of variants in the enum.
         /// All of the corresponding [`Item`]s are of kind [`ItemEnum::Variant`].
-        fields: Vec<Id>,
+        fields: Vec<ItemId>,
         /// Whether any variants have been removed from the result, due to being private or hidden.
         has_stripped_fields: bool,
     },
@@ -860,7 +867,7 @@ pub enum GenericParamDefKind {
         /// trait PartialEq<Rhs = Self> {}
         /// //                    ^^^^
         /// ```
-        default: Option<Type>,
+        default: Option<TypeId>,
         /// This is normally `false`, which means that this generic parameter is
         /// declared in the Rust source text.
         ///
@@ -891,7 +898,7 @@ pub enum GenericParamDefKind {
     Const {
         /// The type of the constant as declared.
         #[serde(rename = "type")]
-        type_: Type,
+        type_: TypeId,
         /// The stringified expression for the default value, if provided. It's not guaranteed that
         /// it'll match the actual source code for the default value.
         default: Option<String>,
@@ -915,7 +922,7 @@ pub enum WherePredicate {
         /// //                              ^
         /// ```
         #[serde(rename = "type")]
-        type_: Type,
+        type_: TypeId,
         /// The set of bounds that constrain the type.
         ///
         /// ```rust
@@ -942,7 +949,7 @@ pub enum WherePredicate {
     /// A type must exactly equal another type.
     EqPredicate {
         /// The left side of the equation.
-        lhs: Type,
+        lhs: TypeId,
         /// The right side of the equation.
         rhs: Term,
     },
@@ -1020,7 +1027,7 @@ pub enum Term {
     /// fn f(x: impl IntoIterator<Item = u32>) {}
     /// //                               ^^^
     /// ```
-    Type(Type),
+    Type(TypeId),
     /// A constant.
     ///
     /// ```ignore (incomplete feature in the snippet)
@@ -1047,16 +1054,16 @@ pub enum Type {
     /// Built-in numeric types (e.g. `u32`, `f32`), `bool`, `char`.
     Primitive(String),
     /// A function pointer type, e.g. `fn(u32) -> u32`, `extern "C" fn() -> *const u8`
-    FunctionPointer(Box<FunctionPointer>),
+    FunctionPointer(FunctionPointer),
     /// A tuple type, e.g. `(String, u32, Box<usize>)`
-    Tuple(Vec<Type>),
+    Tuple(Vec<TypeId>),
     /// An unsized slice type, e.g. `[u32]`.
-    Slice(Box<Type>),
+    Slice(TypeId),
     /// An array type, e.g. `[u32; 15]`
     Array {
         /// The type of the contained element.
         #[serde(rename = "type")]
-        type_: Box<Type>,
+        type_: TypeId,
         /// The stringified expression that is the length of the array.
         ///
         /// Keep in mind that it's not guaranteed to match the actual source code of the expression.
@@ -1068,7 +1075,7 @@ pub enum Type {
     Pat {
         /// The base type, e.g. the `u32` in `u32 is 1..`
         #[serde(rename = "type")]
-        type_: Box<Type>,
+        type_: TypeId,
         #[doc(hidden)]
         __pat_unstable_do_not_use: String,
     },
@@ -1082,7 +1089,7 @@ pub enum Type {
         is_mutable: bool,
         /// The type of the pointee.
         #[serde(rename = "type")]
-        type_: Box<Type>,
+        type_: TypeId,
     },
     /// `&'a mut String`, `&str`, etc.
     BorrowedRef {
@@ -1092,7 +1099,7 @@ pub enum Type {
         is_mutable: bool,
         /// The type of the pointee, e.g. the `i32` in `&'a mut i32`
         #[serde(rename = "type")]
-        type_: Box<Type>,
+        type_: TypeId,
     },
     /// Associated types like `<Type as Trait>::Name` and `T::Item` where
     /// `T: Iterator` or inherent associated types like `Struct::Name`.
@@ -1110,14 +1117,14 @@ pub enum Type {
         /// <core::slice::IterMut<'static, u32> as BetterIterator>::Item<'static>
         /// //                                                          ^^^^^^^^^
         /// ```
-        args: Box<GenericArgs>,
+        args: GenericArgs,
         /// The type with which this type is associated.
         ///
         /// ```ignore (incomplete expression)
         /// <core::array::IntoIter<u32, 42> as Iterator>::Item
         /// // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         /// ```
-        self_type: Box<Type>,
+        self_type: TypeId,
         /// `None` iff this is an *inherent* associated type.
         #[serde(rename = "trait")]
         trait_: Option<Path>,
@@ -1142,14 +1149,14 @@ pub struct Path {
     // Example tested in ./tests/rustdoc-json/path_name.rs
     pub path: String,
     /// The ID of the type.
-    pub id: Id,
+    pub id: ItemId,
     /// Generic arguments to the type.
     ///
     /// ```ignore (incomplete expression)
     /// std::borrow::Cow<'static, str>
     /// //              ^^^^^^^^^^^^^^
     /// ```
-    pub args: Option<Box<GenericArgs>>,
+    pub args: Option<GenericArgs>,
 }
 
 /// A type that is a function pointer.
@@ -1175,9 +1182,9 @@ pub struct FunctionSignature {
     ///
     /// Note that not all names will be valid identifiers, as some of
     /// them may be patterns.
-    pub inputs: Vec<(String, Type)>,
+    pub inputs: Vec<(String, TypeId)>,
     /// The output type, if specified.
-    pub output: Option<Type>,
+    pub output: Option<TypeId>,
     /// Whether the function accepts an arbitrary amount of trailing arguments the C way.
     ///
     /// ```ignore (incomplete code)
@@ -1199,13 +1206,13 @@ pub struct Trait {
     /// [^1]: Formerly known as "object safe".
     pub is_dyn_compatible: bool,
     /// Associated [`Item`]s that can/must be implemented by the `impl` blocks.
-    pub items: Vec<Id>,
+    pub items: Vec<ItemId>,
     /// Information about the type parameters and `where` clauses of the trait.
     pub generics: Generics,
     /// Constraints that must be met by the implementor of the trait.
     pub bounds: Vec<GenericBound>,
     /// The implementations of the trait.
-    pub implementations: Vec<Id>,
+    pub implementations: Vec<ItemId>,
 }
 
 /// A trait alias declaration, e.g. `trait Int = Add + Sub + Mul + Div;`
@@ -1245,16 +1252,16 @@ pub struct Impl {
     pub trait_: Option<Path>,
     /// The type that the impl block is for.
     #[serde(rename = "for")]
-    pub for_: Type,
+    pub for_: TypeId,
     /// The list of associated items contained in this impl block.
-    pub items: Vec<Id>,
+    pub items: Vec<ItemId>,
     /// Whether this is a negative impl (e.g. `!Sized` or `!Send`).
     pub is_negative: bool,
     /// Whether this is an impl that’s implied by the compiler
     /// (for autotraits, e.g. `Send` or `Sync`).
     pub is_synthetic: bool,
     // FIXME: document this
-    pub blanket_impl: Option<Type>,
+    pub blanket_impl: Option<TypeId>,
 }
 
 /// A `use` statement.
@@ -1270,7 +1277,7 @@ pub struct Use {
     /// ```rust
     /// pub use i32 as my_i32;
     /// ```
-    pub id: Option<Id>,
+    pub id: Option<ItemId>,
     /// Whether this statement is a wildcard `use`, e.g. `use source::*;`
     pub is_glob: bool,
 }
@@ -1315,7 +1322,7 @@ pub enum MacroKind {
 pub struct TypeAlias {
     /// The type referred to by this alias.
     #[serde(rename = "type")]
-    pub type_: Type,
+    pub type_: TypeId,
     /// Information about the type parameters and `where` clauses of the alias.
     pub generics: Generics,
 }
@@ -1325,7 +1332,7 @@ pub struct TypeAlias {
 pub struct Static {
     /// The type of the static.
     #[serde(rename = "type")]
-    pub type_: Type,
+    pub type_: TypeId,
     /// This is `true` for mutable statics, declared as `static mut X: T = f();`
     pub is_mutable: bool,
     /// The stringified expression for the initial value.
@@ -1356,7 +1363,7 @@ pub struct Primitive {
     /// The name of the type.
     pub name: String,
     /// The implementations, inherent and of traits, on the primitive type.
-    pub impls: Vec<Id>,
+    pub impls: Vec<ItemId>,
 }
 
 #[cfg(test)]

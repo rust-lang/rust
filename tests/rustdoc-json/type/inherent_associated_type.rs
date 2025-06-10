@@ -9,9 +9,11 @@ pub struct Owner;
 pub fn create() -> Owner::Metadata {
     OwnerMetadata
 }
-//@ is '$.index[?(@.name=="create")].inner.function.sig.output.qualified_path.name' '"Metadata"'
-//@ is '$.index[?(@.name=="create")].inner.function.sig.output.qualified_path.trait' null
-//@ is '$.index[?(@.name=="create")].inner.function.sig.output.qualified_path.self_type.resolved_path.id' $Owner
+//@ is '$.index[?(@.name=="create")].inner.function.sig.output' 15
+//@ is '$.types[15].qualified_path.name' '"Metadata"'
+//@ is '$.types[15].qualified_path.trait' null
+//@ is '$.types[15].qualified_path.self_type' 14
+//@ is '$.types[14].resolved_path.id' $Owner
 
 /// impl
 impl Owner {
@@ -20,4 +22,5 @@ impl Owner {
 }
 //@ set iat = '$.index[?(@.docs=="iat")].id'
 //@ is '$.index[?(@.docs=="impl")].inner.impl.items[*]' $iat
-//@ is '$.index[?(@.docs=="iat")].inner.assoc_type.type.resolved_path.id' $OwnerMetadata
+//@ is '$.index[?(@.docs=="iat")].inner.assoc_type.type' 0
+//@ is '$.types[0].resolved_path.id' $OwnerMetadata

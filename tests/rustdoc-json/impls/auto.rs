@@ -19,6 +19,7 @@ impl Foo {
 //@ is "$.index[?(@.docs=='has span')].span.end" "[15, 2]"
 //@ is "$.index[?(@.docs=='has span')].inner.impl.is_synthetic" false
 //@ is "$.index[?(@.inner.impl.is_synthetic==true)].span" null
-//@ is "$.index[?(@.inner.impl.is_synthetic==true)].inner.impl.for.resolved_path.path" '"Foo"'
+//@ is "$.index[?(@.inner.impl.is_synthetic==true)].inner.impl.for" 0
+//@ is "$.types[0].resolved_path.path" '"Foo"'
 //@ is "$.index[?(@.inner.impl.is_synthetic==true)].inner.impl.trait.path" '"Bar"'
 pub struct Foo;

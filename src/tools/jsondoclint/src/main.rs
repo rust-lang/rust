@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Result, bail};
 use clap::Parser;
 use fs_err as fs;
-use rustdoc_json_types::{Crate, FORMAT_VERSION, Id};
+use rustdoc_json_types::{Crate, FORMAT_VERSION, ItemId};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -15,7 +15,7 @@ mod validator;
 #[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 struct Error {
     kind: ErrorKind,
-    id: Id,
+    id: ItemId,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Clone)]
@@ -81,7 +81,7 @@ fn main() -> Result<()> {
                     [sel] => eprintln!(
                         "{} not in index or paths, but referred to at '{}'",
                         err.id.0,
-                        json_find::to_jsonpath(&sel)
+                        json_find::to_jsonpath(sel)
                     ),
                     [sel, ..] => {
                         if verbose {
@@ -99,7 +99,7 @@ fn main() -> Result<()> {
                             eprintln!(
                                 "{} not in index or paths, but referred to at '{}' and {} more",
                                 err.id.0,
-                                json_find::to_jsonpath(&sel),
+                                json_find::to_jsonpath(sel),
                                 sels.len() - 1,
                             )
                         }

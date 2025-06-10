@@ -14,7 +14,7 @@ use rustc_middle::{bug, ty};
 use rustc_span::{Pos, Symbol, kw};
 use rustdoc_json_types::*;
 
-use crate::clean::{self, ItemId};
+use crate::clean;
 use crate::formats::FormatRenderer;
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
@@ -107,7 +107,7 @@ impl JsonRenderer<'_> {
         }
     }
 
-    fn ids(&self, items: impl IntoIterator<Item = clean::Item>) -> Vec<Id> {
+    fn ids(&self, items: impl IntoIterator<Item = clean::Item>) -> Vec<ItemId> {
         items
             .into_iter()
             .filter(|x| !x.is_stripped() && !x.is_keyword())
@@ -118,7 +118,7 @@ impl JsonRenderer<'_> {
     fn ids_keeping_stripped(
         &self,
         items: impl IntoIterator<Item = clean::Item>,
-    ) -> Vec<Option<Id>> {
+    ) -> Vec<Option<ItemId>> {
         items
             .into_iter()
             .map(|i| (!i.is_stripped() && !i.is_keyword()).then(|| self.id_from_item(&i)))
@@ -470,7 +470,7 @@ impl FromClean<clean::WherePredicate> for WherePredicate {
             EqPredicate { lhs, rhs } => WherePredicate::EqPredicate {
                 // The LHS currently has type `Type` but it should be a `QualifiedPath` since it may
                 // refer to an associated const. However, `EqPredicate` shouldn't exist in the first
-                // place: <https://github.com/rust-lang/rust/141368>.
+                // place: <https://github.com/rust-lang/rust/issues/141368>.
                 lhs: lhs.into_json(renderer),
                 rhs: rhs.into_json(renderer),
             },
@@ -522,6 +522,12 @@ pub(crate) fn from_trait_bound_modifier(
     }
 }
 
+impl FromClean<clean::Type> for TypeId {
+    fn from_clean(ty: clean::Type, renderer: &JsonRenderer<'_>) -> Self {
+        from_type(ty.into_json(renderer), renderer)
+    }
+}
+
 impl FromClean<clean::Type> for Type {
     fn from_clean(ty: clean::Type, renderer: &JsonRenderer<'_>) -> Self {
         use clean::Type::{
@@ -539,26 +545,24 @@ impl FromClean<clean::Type> for Type {
             // FIXME: add dedicated variant to json Type?
             SelfTy => Type::Generic("Self".to_owned()),
             Primitive(p) => Type::Primitive(p.as_sym().to_string()),
-            BareFunction(f) => Type::FunctionPointer(Box::new((*f).into_json(renderer))),
+            BareFunction(f) => Type::FunctionPointer((*f).into_json(renderer)),
             Tuple(t) => Type::Tuple(t.into_json(renderer)),
-            Slice(t) => Type::Slice(Box::new((*t).into_json(renderer))),
-            Array(t, s) => {
-                Type::Array { type_: Box::new((*t).into_json(renderer)), len: s.to_string() }
-            }
+            Slice(t) => Type::Slice((*t).into_json(renderer)),
+            Array(t, s) => Type::Array { type_: (*t).into_json(renderer), len: s.to_string() },
             clean::Type::Pat(t, p) => Type::Pat {
-                type_: Box::new((*t).into_json(renderer)),
+                type_: (*t).into_json(renderer),
                 __pat_unstable_do_not_use: p.to_string(),
             },
             ImplTrait(g) => Type::ImplTrait(g.into_json(renderer)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {
                 is_mutable: mutability == ast::Mutability::Mut,
-                type_: Box::new((*type_).into_json(renderer)),
+                type_: (*type_).into_json(renderer),
             },
             BorrowedRef { lifetime, mutability, type_ } => Type::BorrowedRef {
                 lifetime: lifetime.map(convert_lifetime),
                 is_mutable: mutability == ast::Mutability::Mut,
-                type_: Box::new((*type_).into_json(renderer)),
+                type_: (*type_).into_json(renderer),
             },
             QPath(qpath) => (*qpath).into_json(renderer),
             // FIXME(unsafe_binder): Implement rustdoc-json.
@@ -567,13 +571,23 @@ impl FromClean<clean::Type> for Type {
     }
 }
 
+fn from_type(ty: Type, renderer: &JsonRenderer<'_>) -> TypeId {
+    renderer.types.borrow_mut().insert_full(ty).0
+}
+
 impl FromClean<clean::Path> for Path {
     fn from_clean(path: clean::Path, renderer: &JsonRenderer<'_>) -> Path {
         Path {
             path: path.whole_name(),
             id: renderer.id_from_item_default(path.def_id().into()),
-            args: path.segments.last().map(|args| Box::new(args.clone().args.into_json(renderer))),
+            args: path.segments.into_iter().next_back().map(|args| args.args.into_json(renderer)),
         }
+    }
+}
+
+impl FromClean<clean::QPathData> for TypeId {
+    fn from_clean(qpath: clean::QPathData, renderer: &JsonRenderer<'_>) -> Self {
+        from_type(qpath.into_json(renderer), renderer)
     }
 }
 
@@ -583,8 +597,8 @@ impl FromClean<clean::QPathData> for Type {
 
         Self::QualifiedPath {
             name: assoc.name.to_string(),
-            args: Box::new(assoc.args.into_json(renderer)),
-            self_type: Box::new(self_type.into_json(renderer)),
+            args: assoc.args.into_json(renderer),
+            self_type: self_type.into_json(renderer),
             trait_: trait_.map(|trait_| trait_.into_json(renderer)),
         }
     }
@@ -768,7 +782,11 @@ impl FromClean<clean::Import> for Use {
         Use {
             source: import.source.path.whole_name(),
             name,
-            id: import.source.did.map(ItemId::from).map(|i| renderer.id_from_item_default(i)),
+            id: import
+                .source
+                .did
+                .map(clean::ItemId::from)
+                .map(|i| renderer.id_from_item_default(i)),
             is_glob,
         }
     }

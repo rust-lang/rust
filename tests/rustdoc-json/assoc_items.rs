@@ -15,19 +15,20 @@ pub trait EasyToImpl {
     type ToDeclare;
     //@ has "$.index[?(@.docs=='AN_ATTRIBUTE trait')].inner.assoc_const"
     //@ is "$.index[?(@.docs=='AN_ATTRIBUTE trait')].inner.assoc_const.value" null
-    //@ is "$.index[?(@.docs=='AN_ATTRIBUTE trait')].inner.assoc_const.type.primitive" '"usize"'
+    //@ is "$.index[?(@.docs=='AN_ATTRIBUTE trait')].inner.assoc_const.type" 0
+    //@ is "$.types[0].primitive" '"usize"'
     /// AN_ATTRIBUTE trait
     const AN_ATTRIBUTE: usize;
 }
 
 impl EasyToImpl for Simple {
     //@ has "$.index[?(@.docs=='ToDeclare impl')].inner.assoc_type"
-    //@ is "$.index[?(@.docs=='ToDeclare impl')].inner.assoc_type.type.primitive" \"usize\"
+    //@ is "$.index[?(@.docs=='ToDeclare impl')].inner.assoc_type.type" 0
     /// ToDeclare impl
     type ToDeclare = usize;
 
     //@ has "$.index[?(@.docs=='AN_ATTRIBUTE impl')].inner.assoc_const"
-    //@ is "$.index[?(@.docs=='AN_ATTRIBUTE impl')].inner.assoc_const.type.primitive" \"usize\"
+    //@ is "$.index[?(@.docs=='AN_ATTRIBUTE impl')].inner.assoc_const.type" 0
     //@ is "$.index[?(@.docs=='AN_ATTRIBUTE impl')].inner.assoc_const.value" \"12\"
     /// AN_ATTRIBUTE impl
     const AN_ATTRIBUTE: usize = 12;
