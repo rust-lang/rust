@@ -609,7 +609,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         self.info = info;
     }
 
-    fn after_krate(&mut self) -> Result<(), Error> {
+    fn after_krate(mut self) -> Result<(), Error> {
         let crate_name = self.tcx().crate_name(LOCAL_CRATE);
         let final_file = self.dst.join(crate_name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");

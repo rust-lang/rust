@@ -36,19 +36,18 @@ use crate::formats::cache::Cache;
 use crate::json::conversions::IntoJson;
 use crate::{clean, try_err};
 
-#[derive(Clone)]
 pub(crate) struct JsonRenderer<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
-    index: Rc<RefCell<FxHashMap<types::Id, types::Item>>>,
+    index: FxHashMap<types::Id, types::Item>,
     /// The directory where the JSON blob should be written to.
     ///
     /// If this is `None`, the blob will be printed to `stdout` instead.
     out_dir: Option<PathBuf>,
     cache: Rc<Cache>,
     imported_items: DefIdSet,
-    id_interner: Rc<RefCell<ids::IdInterner>>,
+    id_interner: RefCell<ids::IdInterner>,
 }
 
 impl<'tcx> JsonRenderer<'tcx> {
@@ -197,7 +196,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         Ok((
             JsonRenderer {
                 tcx,
-                index: Rc::new(RefCell::new(FxHashMap::default())),
+                index: FxHashMap::default(),
                 out_dir: if options.output_to_stdout { None } else { Some(options.output) },
                 cache: Rc::new(cache),
                 imported_items,
@@ -272,7 +271,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::Macro(_)
                 | types::ItemEnum::ProcMacro(_) => false,
             };
-            let removed = self.index.borrow_mut().insert(new_item.id, new_item.clone());
+            let removed = self.index.insert(new_item.id, new_item.clone());
 
             // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
             // to make sure the items are unique. The main place this happens is when an item, is
@@ -295,11 +294,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         unreachable!("RUN_ON_MODULE = false, should never call mod_item_in")
     }
 
-    fn after_krate(&mut self) -> Result<(), Error> {
+    fn after_krate(self) -> Result<(), Error> {
         debug!("Done with crate");
 
         let e = ExternalCrate { crate_num: LOCAL_CRATE };
-        let index = (*self.index).clone().into_inner();
+        let index = self.index.clone();
 
         // Note that tcx.rust_target_features is inappropriate here because rustdoc tries to run for
         // multiple targets: https://github.com/rust-lang/rust/pull/137632
@@ -324,7 +323,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
                             path: path.iter().map(|s| s.to_string()).collect(),
-                            kind: kind.into_json(self),
+                            kind: kind.into_json(&self),
                         },
                     )
                 })

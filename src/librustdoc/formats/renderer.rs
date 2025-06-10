@@ -67,7 +67,7 @@ pub(crate) trait FormatRenderer<'tcx>: Sized {
     }
 
     /// Post processing hook for cleanup and dumping output to files.
-    fn after_krate(&mut self) -> Result<(), Error>;
+    fn after_krate(self) -> Result<(), Error>;
 
     fn cache(&self) -> &Cache;
 }
