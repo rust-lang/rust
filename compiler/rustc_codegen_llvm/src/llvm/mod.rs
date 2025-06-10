@@ -343,6 +343,10 @@ impl Intrinsic {
         unsafe { LLVMIntrinsicIsOverloaded(self.id) == True }
     }
 
+    pub(crate) fn is_target_specific(self) -> bool {
+        unsafe { LLVMRustIsTargetIntrinsic(self.id) }
+    }
+
     pub(crate) fn get_type<'ll>(self, llcx: &'ll Context, type_params: &[&'ll Type]) -> &'ll Type {
         unsafe { LLVMIntrinsicGetType(llcx, self.id, type_params.as_ptr(), type_params.len()) }
     }
