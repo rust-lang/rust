@@ -81,7 +81,9 @@ pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ex
     // in `check_abi` above.
     match AbiMap::from_target(&tcx.sess.target).canonize_abi(abi, false) {
         AbiMapping::Direct(..) => (),
-        // this is not a redundant match arm: these ABIs started linting after reviving this lint
+        // This is not a redundant match arm: these ABIs started linting after introducing
+        // UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS already existed and we want to
+        // avoid expanding the scope of that lint so it can move to a hard error sooner.
         AbiMapping::Deprecated(..) => {
             tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
                 lint.primary_message("use of calling convention not supported on this target");
