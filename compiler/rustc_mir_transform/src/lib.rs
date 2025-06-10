@@ -51,6 +51,7 @@ mod errors;
 mod ffi_unwind_calls;
 mod lint;
 mod lint_tail_expr_drop_order;
+mod liveness;
 mod patch;
 mod shim;
 mod ssa;
@@ -216,6 +217,7 @@ pub fn provide(providers: &mut Providers) {
         mir_for_ctfe,
         mir_coroutine_witnesses: coroutine::mir_coroutine_witnesses,
         optimized_mir,
+        check_liveness: liveness::check_liveness,
         is_mir_available,
         is_ctfe_mir_available: is_mir_available,
         mir_callgraph_cyclic: inline::cycle::mir_callgraph_cyclic,
@@ -512,6 +514,8 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
             tcx.ensure_done().mir_inliner_callees(ty::InstanceKind::Item(def.to_def_id()));
         }
     }
+
+    tcx.ensure_done().check_liveness(def);
 
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
