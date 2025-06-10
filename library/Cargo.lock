@@ -4,12 +4,11 @@ version = 4
 
 [[package]]
 name = "addr2line"
-version = "0.24.2"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfbe277e56a376000877090da837660b4427aad530e3028d44e0bffe4f89a1c1"
+checksum = "9acbfca36652500c911ddb767ed433e3ed99b032b5d935be73c6923662db1d43"
 dependencies = [
- "compiler_builtins",
- "gimli",
+ "gimli 0.32.0",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
 ]
@@ -120,6 +119,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 dependencies = [
  "compiler_builtins",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
+]
+
+[[package]]
+name = "gimli"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93563d740bc9ef04104f9ed6f86f1e3275c2cdafb95664e26584b9ca807a8ffe"
+dependencies = [
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
 ]
@@ -406,7 +415,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8393f2782b6060a807337ff353780c1ca15206f9ba2424df18cb6e733bd7b345"
 dependencies = [
  "compiler_builtins",
- "gimli",
+ "gimli 0.31.1",
  "rustc-std-workspace-core",
 ]
 
