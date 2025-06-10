@@ -127,4 +127,33 @@ impl !Trait for () {}
 "#,
         )
     }
+
+    #[test]
+    fn impl_sized_for_unsized() {
+        check_diagnostics(
+            r#"
+//- minicore: sized
+trait Trait {
+    type Item
+    where
+        Self: Sized;
+
+    fn item()
+    where
+        Self: Sized;
+}
+
+trait OtherTrait {}
+
+impl Trait for () {
+    type Item = ();
+    fn item() {}
+}
+
+// Items with Self: Sized bound not required to be implemented for unsized types.
+impl Trait for str {}
+impl Trait for dyn OtherTrait {}
+ "#,
+        )
+    }
 }

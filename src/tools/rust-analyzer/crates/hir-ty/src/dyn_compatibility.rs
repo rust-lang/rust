@@ -122,7 +122,7 @@ pub fn dyn_compatibility_of_trait_query(
     res
 }
 
-fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
+pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
     let krate = def.module(db).krate();
     let Some(sized) = LangItem::Sized.resolve_trait(db, krate) else {
         return false;
