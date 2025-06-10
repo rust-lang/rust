@@ -227,12 +227,11 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
 
     // Keep interning as long as there are things to intern.
     // We show errors if there are dangling pointers, or mutable pointers in immutable contexts
-    // (i.e., everything except for `static mut`). When these errors affect references, it is
-    // unfortunate that we show these errors here and not during validation, since validation can
-    // show much nicer errors. However, we do need these checks to be run on all pointers, including
-    // raw pointers, so we cannot rely on validation to catch them -- and since interning runs
-    // before validation, and interning doesn't know the type of anything, this means we can't show
-    // better errors. Maybe we should consider doing validation before interning in the future.
+    // (i.e., everything except for `static mut`). We only return these errors as a `Result`
+    // so that the caller can run validation, and subsequently only report interning errors
+    // if validation fails. Validation has the better error messages so we prefer those, but
+    // interning has better coverage since it "sees" *all* pointers, including raw pointers and
+    // references stored in unions.
     while let Some(prov) = todo.pop() {
         trace!(?prov);
         let alloc_id = prov.alloc_id();
@@ -279,12 +278,12 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
             // when there is memory there that someone might expect to be mutable, but we make it immutable.
             let dangling = !is_already_global && !ecx.memory.alloc_map.contains_key(&alloc_id);
             if !dangling {
-                // Found a mutable reference inside a const where inner allocations should be
+                // Found a mutable pointer inside a const where inner allocations should be
                 // immutable.
                 if !ecx.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
                     span_bug!(
                         ecx.tcx.span,
-                        "the static const safety checks accepted mutable references they should not have accepted"
+                        "the static const safety checks accepted a mutable pointer they should not have accepted"
                     );
                 }
                 // Prefer dangling pointer errors over mutable pointer errors
