@@ -205,6 +205,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-mips64",
     "only-msp430",
     "only-msvc",
+    "only-musl",
     "only-nightly",
     "only-nvptx64",
     "only-powerpc",
