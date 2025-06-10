@@ -16,6 +16,12 @@ macro_rules! mac2 {
     }
 }
 
+macro_rules! mac3 {
+    () => {
+        "Provided by"
+    };
+}
+
 // Should not lint.
 #[doc = mac1!()]
 pub struct Foo;
@@ -24,5 +30,11 @@ pub struct Foo;
 mac2!{}
 
 #[doc = "provided by a [`BufferProvider`](crate::BufferProvider)."]
-//~^ ERROR: redundant_explicit_links
+/// bla
+//~^^ ERROR: redundant_explicit_links
 pub struct Bla;
+
+#[doc = mac3!()]
+/// a [`BufferProvider`](crate::BufferProvider).
+//~^ ERROR: redundant_explicit_links
+pub fn f() {}
