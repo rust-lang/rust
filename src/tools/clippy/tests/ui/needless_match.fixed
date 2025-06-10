@@ -1,7 +1,7 @@
 #![warn(clippy::needless_match)]
 #![allow(clippy::manual_map)]
 #![allow(dead_code)]
-
+#![allow(unused)]
 #[derive(Clone, Copy)]
 enum Simple {
     A,
