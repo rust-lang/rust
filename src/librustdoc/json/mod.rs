@@ -294,11 +294,13 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         unreachable!("RUN_ON_MODULE = false, should never call mod_item_in")
     }
 
-    fn after_krate(self) -> Result<(), Error> {
+    fn after_krate(mut self) -> Result<(), Error> {
         debug!("Done with crate");
 
         let e = ExternalCrate { crate_num: LOCAL_CRATE };
-        let index = self.index.clone();
+
+        // We've finished using the index, and don't want to clone it, because it is big.
+        let index = std::mem::take(&mut self.index);
 
         // Note that tcx.rust_target_features is inappropriate here because rustdoc tries to run for
         // multiple targets: https://github.com/rust-lang/rust/pull/137632
