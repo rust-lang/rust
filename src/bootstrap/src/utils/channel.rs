@@ -8,6 +8,7 @@
 use std::fs;
 use std::path::Path;
 
+use super::execution_context::ExecutionContext;
 use super::helpers;
 use crate::Build;
 use crate::utils::helpers::{start_process, t};
@@ -34,7 +35,7 @@ pub struct Info {
 }
 
 impl GitInfo {
-    pub fn new(omit_git_hash: bool, dir: &Path) -> GitInfo {
+    pub fn new(omit_git_hash: bool, dir: &Path, exec_ctx: impl AsRef<ExecutionContext>) -> GitInfo {
         // See if this even begins to look like a git dir
         if !dir.join(".git").exists() {
             match read_commit_info_file(dir) {
@@ -43,10 +44,12 @@ impl GitInfo {
             }
         }
 
-        // Make sure git commands work
-        match helpers::git(Some(dir)).arg("rev-parse").as_command_mut().output() {
-            Ok(ref out) if out.status.success() => {}
-            _ => return GitInfo::Absent,
+        let mut git_command = helpers::git(Some(dir));
+        git_command.arg("rev-parse");
+        let output = git_command.allow_failure().run_capture(exec_ctx);
+
+        if output.is_failure() {
+            return GitInfo::Absent;
         }
 
         // If we're ignoring the git info, we don't actually need to collect it, just make sure this
