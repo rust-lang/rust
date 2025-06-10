@@ -1637,7 +1637,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             err.emit();
         }
-        // stability gate even things that are already errored on
+        // Show required feature gate even if we already errored, as the user is likely to build the code
+        // for the actually intended target next and then they will need the feature gate.
         gate_unstable_abi(tcx.sess, tcx.features(), span, extern_abi);
         extern_abi
     }
