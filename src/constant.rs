@@ -228,7 +228,7 @@ fn pointer_for_allocation<'tcx>(
     crate::pointer::Pointer::new(global_ptr)
 }
 
-pub(crate) fn data_id_for_alloc_id(
+fn data_id_for_alloc_id(
     cx: &mut ConstantCx,
     module: &mut dyn Module,
     alloc_id: AllocId,
