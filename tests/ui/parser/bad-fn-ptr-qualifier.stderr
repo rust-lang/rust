@@ -222,5 +222,80 @@ LL - pub type FTT6 = for<'a> const async unsafe extern "C" fn();
 LL + pub type FTT6 = for<'a> const unsafe extern "C" fn();
    |
 
-error: aborting due to 16 previous errors
+error: expected one of `extern` or `fn`, found keyword `const`
+  --> $DIR/bad-fn-ptr-qualifier.rs:27:22
+   |
+LL | pub type W1 = unsafe const fn();
+   |               -------^^^^^
+   |               |      |
+   |               |      expected one of `extern` or `fn`
+   |               help: `const` must come before `unsafe`: `const unsafe`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/bad-fn-ptr-qualifier.rs:27:15
+   |
+LL | pub type W1 = unsafe const fn();
+   |               ^^^^^^^-----^^^^^
+   |                      |
+   |                      `const` because of this
+   |
+help: remove the `const` qualifier
+   |
+LL - pub type W1 = unsafe const fn();
+LL + pub type W1 = const fn();
+   |
+
+error: expected one of `extern` or `fn`, found keyword `async`
+  --> $DIR/bad-fn-ptr-qualifier.rs:30:22
+   |
+LL | pub type W2 = unsafe async fn();
+   |               -------^^^^^
+   |               |      |
+   |               |      expected one of `extern` or `fn`
+   |               help: `async` must come before `unsafe`: `async unsafe`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error: an `fn` pointer type cannot be `async`
+  --> $DIR/bad-fn-ptr-qualifier.rs:30:15
+   |
+LL | pub type W2 = unsafe async fn();
+   |               ^^^^^^^-----^^^^^
+   |                      |
+   |                      `async` because of this
+   |
+help: remove the `async` qualifier
+   |
+LL - pub type W2 = unsafe async fn();
+LL + pub type W2 = async fn();
+   |
+
+error: expected one of `extern` or `fn`, found keyword `const`
+  --> $DIR/bad-fn-ptr-qualifier.rs:33:30
+   |
+LL | pub type W3 = for<'a> unsafe const fn();
+   |                       -------^^^^^
+   |                       |      |
+   |                       |      expected one of `extern` or `fn`
+   |                       help: `const` must come before `unsafe`: `const unsafe`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/bad-fn-ptr-qualifier.rs:33:15
+   |
+LL | pub type W3 = for<'a> unsafe const fn();
+   |               ^^^^^^^^^^^^^^^-----^^^^^
+   |                              |
+   |                              `const` because of this
+   |
+help: remove the `const` qualifier
+   |
+LL - pub type W3 = for<'a> unsafe const fn();
+LL + pub type W3 = for<'a> const fn();
+   |
+
+error: aborting due to 22 previous errors
 

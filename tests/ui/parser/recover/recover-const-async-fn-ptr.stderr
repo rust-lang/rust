@@ -222,14 +222,89 @@ LL - type FT6 = for<'a> const async unsafe extern "C" fn();
 LL + type FT6 = for<'a> const unsafe extern "C" fn();
    |
 
+error: expected one of `extern` or `fn`, found keyword `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:24:18
+   |
+LL | type W1 = unsafe const fn();
+   |           -------^^^^^
+   |           |      |
+   |           |      expected one of `extern` or `fn`
+   |           help: `const` must come before `unsafe`: `const unsafe`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:24:11
+   |
+LL | type W1 = unsafe const fn();
+   |           ^^^^^^^-----^^^^^
+   |                  |
+   |                  `const` because of this
+   |
+help: remove the `const` qualifier
+   |
+LL - type W1 = unsafe const fn();
+LL + type W1 = const fn();
+   |
+
+error: expected one of `extern` or `fn`, found keyword `async`
+  --> $DIR/recover-const-async-fn-ptr.rs:27:18
+   |
+LL | type W2 = unsafe async fn();
+   |           -------^^^^^
+   |           |      |
+   |           |      expected one of `extern` or `fn`
+   |           help: `async` must come before `unsafe`: `async unsafe`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error: an `fn` pointer type cannot be `async`
+  --> $DIR/recover-const-async-fn-ptr.rs:27:11
+   |
+LL | type W2 = unsafe async fn();
+   |           ^^^^^^^-----^^^^^
+   |                  |
+   |                  `async` because of this
+   |
+help: remove the `async` qualifier
+   |
+LL - type W2 = unsafe async fn();
+LL + type W2 = async fn();
+   |
+
+error: expected one of `extern` or `fn`, found keyword `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:30:26
+   |
+LL | type W3 = for<'a> unsafe const fn();
+   |                   -------^^^^^
+   |                   |      |
+   |                   |      expected one of `extern` or `fn`
+   |                   help: `const` must come before `unsafe`: `const unsafe`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:30:11
+   |
+LL | type W3 = for<'a> unsafe const fn();
+   |           ^^^^^^^^^^^^^^^-----^^^^^
+   |                          |
+   |                          `const` because of this
+   |
+help: remove the `const` qualifier
+   |
+LL - type W3 = for<'a> unsafe const fn();
+LL + type W3 = for<'a> const fn();
+   |
+
 error[E0308]: mismatched types
-  --> $DIR/recover-const-async-fn-ptr.rs:24:33
+  --> $DIR/recover-const-async-fn-ptr.rs:35:33
    |
 LL |     let _recovery_witness: () = 0;
    |                            --   ^ expected `()`, found integer
    |                            |
    |                            expected due to this
 
-error: aborting due to 17 previous errors
+error: aborting due to 23 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

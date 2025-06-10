@@ -23,4 +23,15 @@ pub type FTT6 = for<'a> const async unsafe extern "C" fn();
 //~^ ERROR an `fn` pointer type cannot be `const`
 //~| ERROR an `fn` pointer type cannot be `async`
 
+// Tests with qualifiers in the wrong order
+pub type W1 = unsafe const fn();
+//~^ ERROR an `fn` pointer type cannot be `const`
+//~| ERROR expected one of `extern` or `fn`, found keyword `const`
+pub type W2 = unsafe async fn();
+//~^ ERROR an `fn` pointer type cannot be `async`
+//~| ERROR expected one of `extern` or `fn`, found keyword `async`
+pub type W3 = for<'a> unsafe const fn();
+//~^ ERROR an `fn` pointer type cannot be `const`
+//~| ERROR expected one of `extern` or `fn`, found keyword `const`
+
 fn main() {}
