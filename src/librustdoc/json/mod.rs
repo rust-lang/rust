@@ -64,7 +64,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                     .iter()
                     .map(|i| {
                         let item = &i.impl_item;
-                        self.item(item.clone()).unwrap();
+                        self.item(item).unwrap();
                         self.id_from_item(item)
                     })
                     .collect()
@@ -95,7 +95,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                         }
 
                         if item.item_id.is_local() || is_primitive_impl {
-                            self.item(item.clone()).unwrap();
+                            self.item(item).unwrap();
                             Some(self.id_from_item(item))
                         } else {
                             None
@@ -216,7 +216,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     /// Inserts an item into the index. This should be used rather than directly calling insert on
     /// the hashmap because certain items (traits and types) need to have their mappings for trait
     /// implementations filled out before they're inserted.
-    fn item(&mut self, item: clean::Item) -> Result<(), Error> {
+    fn item(&mut self, item: &clean::Item) -> Result<(), Error> {
         let item_type = item.type_();
         let item_name = item.name;
         trace!("rendering {item_type} {item_name:?}");
@@ -224,11 +224,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         // Flatten items that recursively store other items. We include orphaned items from
         // stripped modules and etc that are otherwise reachable.
         if let ItemKind::StrippedItem(inner) = &item.kind {
-            inner.inner_items().for_each(|i| self.item(i.clone()).unwrap());
+            inner.inner_items().for_each(|i| self.item(i).unwrap());
         }
 
         // Flatten items that recursively store other items
-        item.kind.inner_items().for_each(|i| self.item(i.clone()).unwrap());
+        item.kind.inner_items().for_each(|i| self.item(i).unwrap());
 
         let item_id = item.item_id;
         if let Some(mut new_item) = self.convert_item(item) {

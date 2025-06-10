@@ -830,7 +830,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         Ok(())
     }
 
-    fn item(&mut self, item: clean::Item) -> Result<(), Error> {
+    fn item(&mut self, item: &clean::Item) -> Result<(), Error> {
         // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
         // if they contain impls for public types. These modules can also
         // contain items such as publicly re-exported structures.
