@@ -23,13 +23,10 @@ type FT6 = for<'a> const async unsafe extern "C" fn();
 // Tests with qualifiers in the wrong order
 type W1 = unsafe const fn();
 //~^ ERROR an `fn` pointer type cannot be `const`
-//~| ERROR expected one of `extern` or `fn`, found keyword `const`
 type W2 = unsafe async fn();
 //~^ ERROR an `fn` pointer type cannot be `async`
-//~| ERROR expected one of `extern` or `fn`, found keyword `async`
 type W3 = for<'a> unsafe const fn();
 //~^ ERROR an `fn` pointer type cannot be `const`
-//~| ERROR expected one of `extern` or `fn`, found keyword `const`
 
 fn main() {
     let _recovery_witness: () = 0; //~ ERROR mismatched types
