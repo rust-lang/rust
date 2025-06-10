@@ -235,11 +235,7 @@
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
 #![doc(rust_logo)]
-#![cfg_attr(
-    bootstrap,
-    doc(cfg_hide(not(test), no_global_oom_handling, not(no_global_oom_handling)))
-)]
-#![cfg_attr(not(bootstrap), doc(auto_cfg(hide(no_global_oom_handling))))]
+#![doc(auto_cfg(hide(no_global_oom_handling)))]
 // Don't link to std. We are std.
 #![no_std]
 // Tell the compiler to link to either panic_abort or panic_unwind
@@ -274,7 +270,6 @@
 // tidy-alphabetical-start
 
 // stabilization was reverted after it hit beta
-#![cfg_attr(bootstrap, feature(doc_cfg_hide))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
