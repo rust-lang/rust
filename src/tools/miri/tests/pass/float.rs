@@ -45,7 +45,6 @@ macro_rules! assert_approx_eq {
     };
 }
 
-
 /// From IEEE 754 a Signaling NaN for single precision has the following representation:
 /// ```
 /// s | 1111 1111 | 0x..x
