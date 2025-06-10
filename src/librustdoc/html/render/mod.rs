@@ -50,8 +50,7 @@ use std::{fs, str};
 use askama::Template;
 use itertools::Either;
 use rustc_attr_data_structures::{
-    ConstStability, DeprecatedSince, Deprecation, RustcVersion, Stability, StabilityLevel,
-    StableSince,
+    ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Mutability;
@@ -141,12 +140,7 @@ pub(crate) struct IndexItem {
     pub(crate) search_type: Option<IndexItemFunctionType>,
     pub(crate) aliases: Box<[Symbol]>,
     pub(crate) deprecation: Option<Deprecation>,
-    pub(crate) stability: Option<Stability>,
-}
-impl IndexItem {
-    fn is_unstable(&self) -> bool {
-        matches!(&self.stability, Some(Stability { level: StabilityLevel::Unstable { .. }, .. }))
-    }
+    pub(crate) is_unstable: bool,
 }
 
 /// A type used for the search index.
