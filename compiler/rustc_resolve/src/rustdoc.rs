@@ -49,7 +49,7 @@ pub struct DocFragment {
     pub doc: Symbol,
     pub kind: DocFragmentKind,
     pub indent: usize,
-    /// Because we temper with the spans context, this information cannot be correctly retrieved
+    /// Because we tamper with the spans context, this information cannot be correctly retrieved
     /// later on. So instead, we compute it and store it here.
     pub from_expansion: bool,
 }
@@ -509,16 +509,20 @@ fn collect_link_data<'input, F: BrokenLinkCallback<'input>>(
     display_text.map(String::into_boxed_str)
 }
 
-/// Returns a span encompassing all the document fragments.
+/// Returns a tuple containing a span encompassing all the document fragments and a boolean that is
+/// `true` if any of the fragments are from a macro expansion.
 pub fn span_of_fragments_with_expansion(fragments: &[DocFragment]) -> Option<(Span, bool)> {
-    let Some(first_fragment) = fragments.first() else { return None };
+    let (first_fragment, last_fragment) = match fragments {
+        [] => return None,
+        [first, .., last] => (first, last),
+        [first] => (first, first),
+    };
     if first_fragment.span == DUMMY_SP {
         return None;
     }
-    let last_fragment = fragments.last().expect("no doc strings provided");
     Some((
         first_fragment.span.to(last_fragment.span),
-        first_fragment.from_expansion || last_fragment.from_expansion,
+        fragments.iter().any(|frag| frag.from_expansion),
     ))
 }
 
@@ -538,12 +542,16 @@ pub fn span_of_fragments(fragments: &[DocFragment]) -> Option<Span> {
 /// This method will return `Some` only if one of the following is true:
 ///
 /// - The doc is made entirely from sugared doc comments, which cannot contain escapes
-/// - The doc is entirely from a single doc fragment with a string literal exactly equal to `markdown`.
+/// - The doc is entirely from a single doc fragment with a string literal exactly equal to
+///   `markdown`.
 /// - The doc comes from `include_str!`
-/// - The doc includes exactly one substring matching `markdown[md_range]` which is contained in a single doc fragment.
+/// - The doc includes exactly one substring matching `markdown[md_range]` which is contained in a
+///   single doc fragment.
 ///
-/// This function is defined in the compiler so it can be used by
-/// both `rustdoc` and `clippy`.
+/// This function is defined in the compiler so it can be used by both `rustdoc` and `clippy`.
+///
+/// It returns a tuple containing a span encompassing all the document fragments and a boolean that
+/// is `true` if any of the *matched* fragments are from a macro expansion.
 pub fn source_span_for_markdown_range(
     tcx: TyCtxt<'_>,
     markdown: &str,
@@ -678,12 +686,13 @@ pub fn source_span_for_markdown_range_inner(
         }
     }
 
-    let (span, from_expansion) = span_of_fragments_with_expansion(fragments)?;
+    let (span, _) = span_of_fragments_with_expansion(fragments)?;
+    let src_span = span.from_inner(InnerSpan::new(
+        md_range.start + start_bytes,
+        md_range.end + start_bytes + end_bytes,
+    ));
     Some((
-        span.from_inner(InnerSpan::new(
-            md_range.start + start_bytes,
-            md_range.end + start_bytes + end_bytes,
-        )),
-        from_expansion,
+        src_span,
+        fragments.iter().any(|frag| frag.span.overlaps(src_span) && frag.from_expansion),
     ))
 }

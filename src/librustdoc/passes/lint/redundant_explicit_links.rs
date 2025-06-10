@@ -171,21 +171,26 @@ fn check_inline_or_reference_unknown_redundancy(
                 }
                 None => item.attr_span(cx.tcx),
             };
-        let (explicit_span, from_expansion) = source_span_for_markdown_range(
+        let (explicit_span, false) = source_span_for_markdown_range(
             cx.tcx,
             doc,
             &offset_explicit_range(doc, link_range, open, close),
             &item.attrs.doc_strings,
-        )?;
-        if from_expansion {
+        )?
+        else {
+            // This `span` comes from macro expansion so skipping it.
             return None;
-        }
-        let (display_span, _) = source_span_for_markdown_range(
+        };
+        let (display_span, false) = source_span_for_markdown_range(
             cx.tcx,
             doc,
             resolvable_link_range,
             &item.attrs.doc_strings,
-        )?;
+        )?
+        else {
+            // This `span` comes from macro expansion so skipping it.
+            return None;
+        };
 
         cx.tcx.node_span_lint(crate::lint::REDUNDANT_EXPLICIT_LINKS, hir_id, explicit_span, |lint| {
             lint.primary_message("redundant explicit link target")
@@ -227,21 +232,26 @@ fn check_reference_redundancy(
                 }
                 None => item.attr_span(cx.tcx),
             };
-        let (explicit_span, from_expansion) = source_span_for_markdown_range(
+        let (explicit_span, false) = source_span_for_markdown_range(
             cx.tcx,
             doc,
             &offset_explicit_range(doc, link_range.clone(), b'[', b']'),
             &item.attrs.doc_strings,
-        )?;
-        if from_expansion {
+        )?
+        else {
+            // This `span` comes from macro expansion so skipping it.
             return None;
-        }
-        let (display_span, _) = source_span_for_markdown_range(
+        };
+        let (display_span, false) = source_span_for_markdown_range(
             cx.tcx,
             doc,
             resolvable_link_range,
             &item.attrs.doc_strings,
-        )?;
+        )?
+        else {
+            // This `span` comes from macro expansion so skipping it.
+            return None;
+        };
         let (def_span, _) = source_span_for_markdown_range(
             cx.tcx,
             doc,
