@@ -29,7 +29,7 @@ use crate::llvm::AttributePlace::Function;
 use crate::llvm::Visibility;
 use crate::type_::Type;
 use crate::value::Value;
-use crate::{attributes, llvm};
+use crate::{attributes, errors, llvm};
 
 /// Declare a function with a SimpleCx.
 ///
@@ -150,34 +150,39 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
-        let signature = fn_abi.llvm_type(self, name.as_bytes(), true);
-        let llfn;
+        let signature = fn_abi.llvm_type(self, name.as_bytes());
 
-        if let FunctionSignature::Intrinsic(fn_ty) = signature {
-            // intrinsics have a specified set of attributes, so we don't use the `FnAbi` set for them
-            llfn = declare_simple_fn(
-                self,
-                name,
-                fn_abi.llvm_cconv(self),
-                llvm::UnnamedAddr::Global,
-                llvm::Visibility::Default,
-                fn_ty,
-            );
-        } else {
-            // Function addresses in Rust are never significant, allowing functions to
-            // be merged.
-            llfn = declare_raw_fn(
-                self,
-                name,
-                fn_abi.llvm_cconv(self),
-                llvm::UnnamedAddr::Global,
-                llvm::Visibility::Default,
-                signature.fn_ty(),
-            );
+        let span = || instance.map(|instance| self.tcx.def_span(instance.def_id()));
+
+        if let FunctionSignature::LLVMSignature(_, llvm_fn_ty) = signature {
+            // check if the intrinsic signatures match
+            if !fn_abi.verify_intrinsic_signature(self, llvm_fn_ty) {
+                self.tcx.dcx().emit_fatal(errors::IntrinsicSignatureMismatch {
+                    name,
+                    llvm_fn_ty: &format!("{llvm_fn_ty:?}"),
+                    rust_fn_ty: &format!("{:?}", fn_abi.rust_signature(self)),
+                    span: span(),
+                });
+            }
+        }
+
+        // Function addresses in Rust are never significant, allowing functions to
+        // be merged.
+        let llfn = declare_raw_fn(
+            self,
+            name,
+            fn_abi.llvm_cconv(self),
+            llvm::UnnamedAddr::Global,
+            llvm::Visibility::Default,
+            signature.fn_ty(),
+        );
+
+        if signature.intrinsic().is_none() {
+            // Don't apply any attributes to intrinsics, they will be applied by AutoUpgrade
             fn_abi.apply_attrs_llfn(self, llfn, instance);
         }
 
-        if let FunctionSignature::MaybeInvalidIntrinsic(..) = signature {
+        if let FunctionSignature::MaybeInvalid(..) = signature {
             let mut new_llfn = None;
             let can_upgrade =
                 unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn, false) };
@@ -185,17 +190,19 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             if can_upgrade {
                 // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
                 if let Some(new_llfn) = new_llfn {
-                    self.tcx.dcx().note(format!(
-                        "Using deprecated intrinsic `{name}`, `{}` can be used instead",
-                        str::from_utf8(llvm::get_value_name(new_llfn)).unwrap()
-                    ));
+                    self.tcx.dcx().emit_note(errors::DeprecatedIntrinsicWithReplacement {
+                        name,
+                        replacement: str::from_utf8(llvm::get_value_name(new_llfn)).unwrap(),
+                        span: span(),
+                    });
                 } else if self.tcx.sess.opts.verbose {
-                    self.tcx.dcx().note(format!(
-                        "Using deprecated intrinsic `{name}`, consider using other intrinsics/instructions"
-                    ));
+                    // At least for now, we are only emitting notes for deprecated intrinsics with no direct replacement
+                    // because they are used quite a lot in stdarch. After the stdarch uses has been removed, we can make
+                    // this always emit a note (or even an warning)
+                    self.tcx.dcx().emit_note(errors::DeprecatedIntrinsic { name, span: span() });
                 }
             } else {
-                self.tcx.dcx().fatal(format!("Invalid LLVM intrinsic: `{name}`"))
+                self.tcx.dcx().emit_fatal(errors::InvalidIntrinsic { name, span: span() });
             }
         }
 
