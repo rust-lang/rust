@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
 use clippy_utils::{is_self, is_self_ty};
-use rustc_attr_parsing::{find_attr, AttributeKind, InlineAttr};
+use rustc_attr_data_structures::{find_attr, AttributeKind, InlineAttr};
 use rustc_data_structures::fx::FxHashSet;
 use core::ops::ControlFlow;
 use rustc_abi::ExternAbi;
