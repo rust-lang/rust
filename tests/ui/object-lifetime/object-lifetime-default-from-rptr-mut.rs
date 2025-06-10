@@ -3,7 +3,7 @@
 // lifetime bound.
 
 
-#![allow(dead_code)]
+#![allow(dead_code, unused)]
 
 trait Test {
     fn foo(&self) { }
