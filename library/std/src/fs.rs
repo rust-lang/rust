@@ -153,7 +153,6 @@ pub enum TryLockError {
     WouldBlock,
 }
 
-#[unstable(feature = "dirfd", issue = "120426")]
 /// An object providing access to a directory on the filesystem.
 ///
 /// Files are automatically closed when they go out of scope.  Errors detected
@@ -165,14 +164,18 @@ pub enum TryLockError {
 ///
 /// ```no_run
 /// #![feature(dirfd)]
-/// use std::fs::Dir;
+/// use std::{fs::Dir, io::Read};
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let dir = Dir::new("foo")?;
-///     let file = dir.open("bar.txt")?;
+///     let mut file = dir.open("bar.txt")?;
+///     let mut s = String::new();
+///     file.read_to_string(&mut s)?;
+///     println!("{}", s);
 ///     Ok(())
 /// }
 /// ```
+#[unstable(feature = "dirfd", issue = "120426")]
 pub struct Dir {
     inner: fs_imp::Dir,
 }
@@ -1500,10 +1503,8 @@ impl Dir {
     ///
     /// # Errors
     ///
-    /// This function will return an error in these (and other) situations:
-    /// * The path doesn't exist
-    /// * The path doesn't specify a directory
-    /// * The process doesn't have permission to read the directory
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
     ///
     /// # Examples
     ///
@@ -1530,10 +1531,7 @@ impl Dir {
     ///
     /// # Errors
     ///
-    /// This function will return an error in these (and other) situations:
-    /// * The path doesn't exist
-    /// * The path doesn't specify a directory
-    /// * The process doesn't have permission to read/write (according to `opts`) the directory
+    /// This function may return an error according to [`OpenOptions::open`].
     ///
     /// # Examples
     ///
@@ -1556,10 +1554,8 @@ impl Dir {
     ///
     /// # Errors
     ///
-    /// This function will return an error in these (and other) situations:
-    /// * The path doesn't exist
-    /// * The path doesn't specify a regular file
-    /// * The process doesn't have permission to read/write (according to `opts`) the directory
+    /// This function will return an error if `path` does not point to an existing file.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
     ///
     /// # Examples
     ///
@@ -1584,11 +1580,7 @@ impl Dir {
     ///
     /// # Errors
     ///
-    /// This function may return an error in these (and other) situations, depending on the
-    /// specified `opts`:
-    /// * The path doesn't exist
-    /// * The path doesn't specify a regular file
-    /// * The process doesn't have permission to read/write (according to `opts`) the directory
+    /// This function may return an error according to [`OpenOptions::open`].
     ///
     /// # Examples
     ///
@@ -1613,9 +1605,8 @@ impl Dir {
     ///
     /// # Errors
     ///
-    /// This function will return an error in these (and other) situations:
-    /// * The path exists
-    /// * The process doesn't have permission to create the directory
+    /// This function will return an error if `path` points to an existing file or directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
     ///
     /// # Examples
     ///
@@ -1640,10 +1631,8 @@ impl Dir {
     ///
     /// # Errors
     ///
-    /// This function will return an error in these (and other) situations:
-    /// * The path doesn't exist
-    /// * The path doesn't specify a regular file
-    /// * The process doesn't have permission to delete the file.
+    /// This function will return an error if `path` does not point to an existing file.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
     ///
     /// # Examples
     ///
@@ -1666,11 +1655,8 @@ impl Dir {
     ///
     /// # Errors
     ///
-    /// This function will return an error in these (and other) situations:
-    /// * The path doesn't exist
-    /// * The path doesn't specify a directory
-    /// * The directory isn't empty
-    /// * The process doesn't have permission to delete the directory.
+    /// This function will return an error if `path` does not point to an existing, non-empty directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
     ///
     /// # Examples
     ///
@@ -1694,10 +1680,8 @@ impl Dir {
     ///
     /// # Errors
     ///
-    /// This function will return an error in these (and other) situations:
-    /// * The `from` path doesn't exist
-    /// * The `from` path doesn't specify a directory
-    /// * `self` and `to_dir` are on different mount points
+    /// This function will return an error if `from` does not point to an existing file or directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
     ///
     /// # Examples
     ///
