@@ -1,4 +1,10 @@
-error: Invalid LLVM intrinsic: `llvm.abcde`
+error: Invalid LLVM Intrinsic `llvm.abcde`
+  --> $DIR/invalid-llvm-intrinsic.rs:7:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+   |
+   = note: `#[deny(unknown_llvm_intrinsic)]` on by default
 
 error: aborting due to 1 previous error
 

@@ -18,6 +18,7 @@ use rustc_codegen_ssa::traits::TypeMembershipCodegenMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
+use rustc_session::lint::builtin::{DEPRECATED_LLVM_INTRINSIC, UNKNOWN_LLVM_INTRINSIC};
 use rustc_target::callconv::FnAbi;
 use smallvec::SmallVec;
 use tracing::debug;
@@ -29,7 +30,7 @@ use crate::llvm::AttributePlace::Function;
 use crate::llvm::Visibility;
 use crate::type_::Type;
 use crate::value::Value;
-use crate::{attributes, llvm};
+use crate::{attributes, errors, llvm};
 
 /// Declare a function with a SimpleCx.
 ///
@@ -150,52 +151,69 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
-        let signature = fn_abi.llvm_type(self, name.as_bytes(), true);
-        let llfn;
+        let signature = fn_abi.llvm_type(self, name.as_bytes());
 
-        if let FunctionSignature::Intrinsic(fn_ty) = signature {
-            // intrinsics have a specified set of attributes, so we don't use the `FnAbi` set for them
-            llfn = declare_simple_fn(
-                self,
-                name,
-                fn_abi.llvm_cconv(self),
-                llvm::UnnamedAddr::Global,
-                llvm::Visibility::Default,
-                fn_ty,
-            );
-        } else {
-            // Function addresses in Rust are never significant, allowing functions to
-            // be merged.
-            llfn = declare_raw_fn(
-                self,
-                name,
-                fn_abi.llvm_cconv(self),
-                llvm::UnnamedAddr::Global,
-                llvm::Visibility::Default,
-                signature.fn_ty(),
-            );
+        let span = || instance.map(|instance| self.tcx.def_span(instance.def_id()));
+
+        if let FunctionSignature::LLVMSignature(_, llvm_fn_ty) = signature {
+            // check if the intrinsic signatures match
+            if !fn_abi.verify_intrinsic_signature(self, llvm_fn_ty) {
+                self.tcx.dcx().emit_fatal(errors::IntrinsicSignatureMismatch {
+                    name,
+                    llvm_fn_ty: &format!("{llvm_fn_ty:?}"),
+                    rust_fn_ty: &format!("{:?}", fn_abi.rust_signature(self)),
+                    span: span(),
+                });
+            }
+        }
+
+        // Function addresses in Rust are never significant, allowing functions to
+        // be merged.
+        let llfn = declare_raw_fn(
+            self,
+            name,
+            fn_abi.llvm_cconv(self),
+            llvm::UnnamedAddr::Global,
+            llvm::Visibility::Default,
+            signature.fn_ty(),
+        );
+
+        if signature.intrinsic().is_none() {
+            // Don't apply any attributes to intrinsics, they will be applied by AutoUpgrade
             fn_abi.apply_attrs_llfn(self, llfn, instance);
         }
 
-        if let FunctionSignature::MaybeInvalidIntrinsic(..) = signature {
+        if let FunctionSignature::MaybeInvalid(..) = signature {
             let mut new_llfn = None;
             let can_upgrade =
                 unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn, false) };
 
-            if can_upgrade {
-                // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
-                if let Some(new_llfn) = new_llfn {
-                    self.tcx.dcx().note(format!(
-                        "Using deprecated intrinsic `{name}`, `{}` can be used instead",
-                        str::from_utf8(&llvm::get_value_name(new_llfn)).unwrap()
-                    ));
+            // we can emit diagnostics for local crates only
+            if let Some(instance) = instance
+                && let Some(local_def_id) = instance.def_id().as_local()
+            {
+                let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
+                let span = self.tcx.def_span(local_def_id);
+
+                if can_upgrade {
+                    // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
+                    let msg = if let Some(new_llfn) = new_llfn {
+                        format!(
+                            "Using deprecated intrinsic `{name}`, `{}` can be used instead",
+                            str::from_utf8(&llvm::get_value_name(new_llfn)).unwrap()
+                        )
+                    } else {
+                        format!("Using deprecated intrinsic `{name}`")
+                    };
+                    self.tcx.node_lint(DEPRECATED_LLVM_INTRINSIC, hir_id, |d| {
+                        d.primary_message(msg).span(span);
+                    });
                 } else {
-                    self.tcx.dcx().note(format!(
-                        "Using deprecated intrinsic `{name}`, consider using other intrinsics/instructions"
-                    ));
+                    // This is either plain wrong, or this can be caused by incompatible LLVM versions, we let the user decide
+                    self.tcx.node_lint(UNKNOWN_LLVM_INTRINSIC, hir_id, |d| {
+                        d.primary_message(format!("Invalid LLVM Intrinsic `{name}`")).span(span);
+                    });
                 }
-            } else {
-                self.tcx.dcx().fatal(format!("Invalid LLVM intrinsic: `{name}`"))
             }
         }
 
