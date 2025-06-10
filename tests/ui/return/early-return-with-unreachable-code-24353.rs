@@ -4,6 +4,7 @@ fn main() {
     return ();
 
     let x = ();
+    //~^ WARN unused variable: `x`
     x
 }
 

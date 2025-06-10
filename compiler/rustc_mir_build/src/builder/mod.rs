@@ -69,11 +69,6 @@ pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
                 }
             };
 
-            // Checking liveness after building the THIR ensures there were no typeck errors.
-            //
-            // maybe move the check to a MIR pass?
-            tcx.ensure_ok().check_liveness(def);
-
             // Don't steal here, instead steal in unsafeck. This is so that
             // pattern inline constants can be evaluated as part of building the
             // THIR of the parent function without a cycle.
