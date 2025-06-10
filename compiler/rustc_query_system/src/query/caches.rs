@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::sync::OnceLock;
-use std::sync::atomic::AtomicU32;
+use std::sync::{Mutex, OnceLock};
 
 use rustc_data_structures::sharded::ShardedHashMap;
 pub use rustc_data_structures::vec_cache::VecCache;
@@ -48,8 +47,7 @@ pub trait QueryCache: Sized {
 /// more specialized kinds of cache. Backed by a sharded hashmap.
 pub struct DefaultCache<K, V> {
     cache: ShardedHashMap<K, (V, DepNodeIndex)>,
-    // FIXME: if perf is bad, try pushing this into `cache` with Option<V> or so.
-    active: ShardedHashMap<K, u32>,
+    active: Mutex<Vec<Option<K>>>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
@@ -72,25 +70,30 @@ where
     }
 
     fn to_unique_index(&self, key: &Self::Key) -> usize {
-        static ACTIVE_INDEX: AtomicU32 = AtomicU32::new(0);
-        self.active
-            .get_or_insert_with(*key, || {
-                ACTIVE_INDEX.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-            })
-            .try_into()
-            .unwrap()
-    }
+        let mut guard = self.active.lock().unwrap();
 
-    fn to_key(&self, idx: usize) -> Self::Key {
-        for shard in self.active.lock_shards() {
-            for (k, v) in shard.iter() {
-                if (*v as usize) == idx {
-                    return *k;
-                }
+        for (idx, slot) in guard.iter_mut().enumerate() {
+            if let Some(k) = slot
+                && k == key
+            {
+                // Return idx if we found the slot containing this key.
+                return idx;
+            } else if slot.is_none() {
+                // If slot is empty, reuse it.
+                *slot = Some(*key);
+                return idx;
             }
         }
 
-        unreachable!("index not currently mapped")
+        // If no slot currently contains our key, add a new slot.
+        let idx = guard.len();
+        guard.push(Some(*key));
+        return idx;
+    }
+
+    fn to_key(&self, idx: usize) -> Self::Key {
+        let guard = self.active.lock().unwrap();
+        guard[idx].expect("still present")
     }
 
     #[inline]
@@ -101,7 +104,14 @@ where
 
         // Make sure to do this second -- this ensures lookups return success prior to active
         // getting removed, helping avoiding assignment of multiple indices per logical key.
-        self.active.remove(key);
+        let mut guard = self.active.lock().unwrap();
+        for slot in guard.iter_mut() {
+            if let Some(k) = slot
+                && *k == key
+            {
+                *slot = None;
+            }
+        }
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
