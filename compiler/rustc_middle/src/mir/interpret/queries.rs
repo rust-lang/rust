@@ -12,9 +12,11 @@ use crate::ty::{self, ConstToValTreeResult, GenericArgs, TyCtxt, TypeVisitableEx
 use crate::{error, mir};
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
-    /// that can't take any generic arguments like const items or enum discriminants. If a
-    /// generic parameter is used within the constant `ErrorHandled::TooGeneric` will be returned.
+    /// Evaluates a constant without providing any generic parameters.
+    ///
+    /// This is useful to evaluate consts that can't take any generic arguments like enum
+    /// discriminants. If a non-region generic parameter is used within the constant
+    /// `ErrorHandled::TooGeneric` will be returned.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly(self, def_id: DefId) -> EvalToConstValueResult<'tcx> {
         // In some situations def_id will have generic parameters within scope, but they aren't allowed
@@ -28,9 +30,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.const_eval_global_id(typing_env, cid, DUMMY_SP)
     }
 
-    /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
-    /// that can't take any generic arguments like const items or enum discriminants. If a
-    /// generic parameter is used within the constant `ErrorHandled::TooGeneric` will be returned.
+    /// Evaluates a constant without providing any generic parameters.
+    ///
+    /// This is useful to evaluate consts that can't take any generic arguments like enum
+    /// discriminants. If a non-region generic parameter is used within the constant
+    /// `ErrorHandled::TooGeneric` will be returned.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly_to_alloc(self, def_id: DefId) -> EvalToAllocationRawResult<'tcx> {
         // In some situations def_id will have generic parameters within scope, but they aren't allowed

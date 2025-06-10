@@ -1424,74 +1424,54 @@ struct RootCollector<'a, 'tcx> {
     entry_fn: Option<(DefId, EntryFnType)>,
 }
 
-impl<'v> RootCollector<'_, 'v> {
+impl<'tcx> RootCollector<'_, 'tcx> {
     fn process_item(&mut self, id: hir::ItemId) {
-        match self.tcx.def_kind(id.owner_id) {
+        let tcx = self.tcx;
+        let def_id = id.owner_id.to_def_id();
+
+        match tcx.def_kind(def_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
                 if self.strategy == MonoItemCollectionStrategy::Eager
-                    && !self.tcx.generics_of(id.owner_id).requires_monomorphization(self.tcx)
+                    && !tcx.generics_of(def_id).own_requires_monomorphization()
+                    && let args = ty::GenericArgs::for_item(tcx, def_id, |param, _| {
+                        expect_and_erase_regions(tcx, param)
+                    })
+                    && !tcx.instantiate_and_check_impossible_predicates((def_id, args))
                 {
-                    debug!("RootCollector: ADT drop-glue for `{id:?}`",);
-                    let id_args =
-                        ty::GenericArgs::for_item(self.tcx, id.owner_id.to_def_id(), |param, _| {
-                            match param.kind {
-                                GenericParamDefKind::Lifetime => {
-                                    self.tcx.lifetimes.re_erased.into()
-                                }
-                                GenericParamDefKind::Type { .. }
-                                | GenericParamDefKind::Const { .. } => {
-                                    unreachable!(
-                                        "`own_requires_monomorphization` check means that \
-                                we should have no type/const params"
-                                    )
-                                }
-                            }
-                        });
+                    let ty = tcx.type_of(def_id).instantiate(tcx, args);
+                    debug_assert!(!ty.has_non_region_param());
 
-                    // This type is impossible to instantiate, so we should not try to
-                    // generate a `drop_in_place` instance for it.
-                    if self.tcx.instantiate_and_check_impossible_predicates((
-                        id.owner_id.to_def_id(),
-                        id_args,
-                    )) {
-                        return;
-                    }
-
-                    let ty =
-                        self.tcx.type_of(id.owner_id.to_def_id()).instantiate(self.tcx, id_args);
-                    assert!(!ty.has_non_region_param());
-                    visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
+                    debug!("RootCollector: ADT drop-glue for `{id:?}`");
+                    visit_drop_use(tcx, ty, true, DUMMY_SP, self.output);
                 }
             }
             DefKind::GlobalAsm => {
-                debug!(
-                    "RootCollector: ItemKind::GlobalAsm({})",
-                    self.tcx.def_path_str(id.owner_id)
-                );
+                debug!("RootCollector: ItemKind::GlobalAsm({})", tcx.def_path_str(def_id));
                 self.output.push(dummy_spanned(MonoItem::GlobalAsm(id)));
             }
             DefKind::Static { .. } => {
-                let def_id = id.owner_id.to_def_id();
-                debug!("RootCollector: ItemKind::Static({})", self.tcx.def_path_str(def_id));
+                debug!("RootCollector: ItemKind::Static({})", tcx.def_path_str(def_id));
                 self.output.push(dummy_spanned(MonoItem::Static(def_id)));
             }
             DefKind::Const => {
                 // Const items only generate mono items if they are actually used somewhere.
                 // Just declaring them is insufficient.
-
                 // If we're collecting items eagerly, then recurse into all constants.
                 // Otherwise the value is only collected when explicitly mentioned in other items.
-                if self.strategy == MonoItemCollectionStrategy::Eager {
-                    if !self.tcx.generics_of(id.owner_id).own_requires_monomorphization()
-                        && let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id())
-                    {
-                        collect_const_value(self.tcx, val, self.output);
-                    }
+                if self.strategy == MonoItemCollectionStrategy::Eager
+                    && !tcx.generics_of(def_id).own_requires_monomorphization()
+                    && let args = ty::GenericArgs::for_item(tcx, def_id, |param, _| {
+                        expect_and_erase_regions(tcx, param)
+                    })
+                    && !tcx.instantiate_and_check_impossible_predicates((def_id, args))
+                    && let Ok(val) = tcx.const_eval_poly(def_id)
+                {
+                    collect_const_value(tcx, val, self.output);
                 }
             }
             DefKind::Impl { .. } => {
                 if self.strategy == MonoItemCollectionStrategy::Eager {
-                    create_mono_items_for_default_impls(self.tcx, id, self.output);
+                    create_mono_items_for_default_impls(tcx, id, self.output);
                 }
             }
             DefKind::Fn => {
@@ -1614,15 +1594,9 @@ fn create_mono_items_for_default_impls<'tcx>(
     item: hir::ItemId,
     output: &mut MonoItems<'tcx>,
 ) {
-    let Some(impl_) = tcx.impl_trait_header(item.owner_id) else {
-        return;
-    };
-
+    let impl_def_id = item.owner_id.to_def_id();
+    let Some(impl_) = tcx.impl_trait_header(impl_def_id) else { return };
     if matches!(impl_.polarity, ty::ImplPolarity::Negative) {
-        return;
-    }
-
-    if tcx.generics_of(item.owner_id).own_requires_monomorphization() {
         return;
     }
 
@@ -1631,18 +1605,12 @@ fn create_mono_items_for_default_impls<'tcx>(
     // which we check below) is only parameterized over lifetime. In that case,
     // we use the ReErased, which has no lifetime information associated with
     // it, to validate whether or not the impl is legal to instantiate at all.
-    let only_region_params = |param: &ty::GenericParamDef, _: &_| match param.kind {
-        GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-            unreachable!(
-                "`own_requires_monomorphization` check means that \
-                we should have no type/const params"
-            )
-        }
-    };
-    let impl_args = GenericArgs::for_item(tcx, item.owner_id.to_def_id(), only_region_params);
-    let trait_ref = impl_.trait_ref.instantiate(tcx, impl_args);
-
+    if tcx.generics_of(impl_def_id).own_requires_monomorphization() {
+        return;
+    }
+    let impl_args = ty::GenericArgs::for_item(tcx, impl_def_id, |param, _| {
+        expect_and_erase_regions(tcx, param)
+    });
     // Unlike 'lazy' monomorphization that begins by collecting items transitively
     // called by `main` or other global items, when eagerly monomorphizing impl
     // items, we never actually check that the predicates of this impl are satisfied
@@ -1652,13 +1620,15 @@ fn create_mono_items_for_default_impls<'tcx>(
     // consider higher-ranked predicates such as `for<'a> &'a mut [u8]: Copy` to
     // be trivially false. We must now check that the impl has no impossible-to-satisfy
     // predicates.
-    if tcx.instantiate_and_check_impossible_predicates((item.owner_id.to_def_id(), impl_args)) {
+    if tcx.instantiate_and_check_impossible_predicates((impl_def_id, impl_args)) {
         return;
     }
 
+    let trait_ref = impl_.trait_ref.instantiate(tcx, impl_args);
+
     let typing_env = ty::TypingEnv::fully_monomorphized();
     let trait_ref = tcx.normalize_erasing_regions(typing_env, trait_ref);
-    let overridden_methods = tcx.impl_item_implementor_ids(item.owner_id);
+    let overridden_methods = tcx.impl_item_implementor_ids(impl_def_id);
     for method in tcx.provided_trait_methods(trait_ref.def_id) {
         if overridden_methods.contains_key(&method.def_id) {
             continue;
@@ -1671,12 +1641,26 @@ fn create_mono_items_for_default_impls<'tcx>(
         // As mentioned above, the method is legal to eagerly instantiate if it
         // only has lifetime generic parameters. This is validated by calling
         // `own_requires_monomorphization` on both the impl and method.
-        let args = trait_ref.args.extend_to(tcx, method.def_id, only_region_params);
+        let args = trait_ref
+            .args
+            .extend_to(tcx, method.def_id, |param, _| expect_and_erase_regions(tcx, param));
         let instance = ty::Instance::expect_resolve(tcx, typing_env, method.def_id, args, DUMMY_SP);
 
         let mono_item = create_fn_mono_item(tcx, instance, DUMMY_SP);
         if mono_item.node.is_instantiable(tcx) && tcx.should_codegen_locally(instance) {
             output.push(mono_item);
+        }
+    }
+}
+
+fn expect_and_erase_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param: &ty::GenericParamDef,
+) -> ty::GenericArg<'tcx> {
+    match param.kind {
+        GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+            bug!("unexpected non-region param")
         }
     }
 }

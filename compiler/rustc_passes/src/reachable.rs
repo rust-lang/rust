@@ -37,6 +37,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ExistentialTraitRef, TyCtxt};
 use rustc_privacy::DefIdVisitor;
 use rustc_session::config::CrateType;
+use rustc_trait_selection::traits;
 use tracing::debug;
 
 /// Determines whether this item is recursive for reachability. See `is_recursively_reachable_local`
@@ -205,19 +206,34 @@ impl<'tcx> ReachableContext<'tcx> {
                     }
 
                     hir::ItemKind::Const(_, _, _, init) => {
-                        // Only things actually ending up in the final constant value are reachable
-                        // for codegen. Everything else is only needed during const-eval, so even if
-                        // const-eval happens in a downstream crate, all they need is
-                        // `mir_for_ctfe`.
+                        if self.tcx.generics_of(item.owner_id).own_requires_monomorphization() {
+                            // In this case, we don't want to evaluate the const initializer.
+                            // In lieu of that, we have to consider everything mentioned in it
+                            // as reachable, since it *may* end up in the final value.
+                            self.visit_nested_body(init);
+                            return;
+                        }
+
+                        let predicates = self.tcx.predicates_of(item.owner_id);
+                        let predicates = predicates.instantiate_identity(self.tcx).predicates;
+                        if traits::impossible_predicates(self.tcx, predicates) {
+                            // The constant is impossible to reference.
+                            // Therefore nothing can be reachable via it.
+                            return;
+                        }
+
                         match self.tcx.const_eval_poly_to_alloc(item.owner_id.def_id.into()) {
                             Ok(alloc) => {
+                                // Only things actually ending up in the final constant value are
+                                // reachable for codegen. Everything else is only needed during
+                                // const-eval, so even if const-eval happens in a downstream crate,
+                                // all they need is `mir_for_ctfe`.
                                 let alloc = self.tcx.global_alloc(alloc.alloc_id).unwrap_memory();
                                 self.propagate_from_alloc(alloc);
                             }
-                            // We can't figure out which value the constant will evaluate to. In
-                            // lieu of that, we have to consider everything mentioned in the const
-                            // initializer reachable, since it *may* end up in the final value.
-                            Err(ErrorHandled::TooGeneric(_)) => self.visit_nested_body(init),
+                            // We've checked at the start that there aren't any non-lifetime params
+                            // in scope. The const initializer can't possibly be too generic.
+                            Err(ErrorHandled::TooGeneric(_)) => bug!(),
                             // If there was an error evaluating the const, nothing can be reachable
                             // via it, and anyway compilation will fail.
                             Err(ErrorHandled::Reported(..)) => {}

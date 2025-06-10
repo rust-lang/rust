@@ -721,8 +721,13 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 /// returns true, then either normalize encountered an error or one of the predicates did not
 /// hold. Used when creating vtables to check for unsatisfiable methods. This should not be
 /// used during analysis.
+#[instrument(level = "debug", skip(tcx))]
 pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause<'tcx>>) -> bool {
-    debug!("impossible_predicates(predicates={:?})", predicates);
+    debug_assert!(!predicates.has_non_region_param());
+    if predicates.is_empty() {
+        return false;
+    }
+
     let (infcx, param_env) = tcx
         .infer_ctxt()
         .with_next_trait_solver(true)
@@ -749,26 +754,23 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
     false
 }
 
+#[instrument(level = "debug", skip(tcx), ret)]
 fn instantiate_and_check_impossible_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (DefId, GenericArgsRef<'tcx>),
+    (def_id, args): (DefId, GenericArgsRef<'tcx>),
 ) -> bool {
-    debug!("instantiate_and_check_impossible_predicates(key={:?})", key);
-
-    let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
+    let mut predicates = tcx.predicates_of(def_id).instantiate(tcx, args).predicates;
 
     // Specifically check trait fulfillment to avoid an error when trying to resolve
     // associated items.
-    if let Some(trait_def_id) = tcx.trait_of_item(key.0) {
-        let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, key.1);
+    if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
+        let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, args);
         predicates.push(trait_ref.upcast(tcx));
     }
 
     predicates.retain(|predicate| !predicate.has_param());
-    let result = impossible_predicates(tcx, predicates);
 
-    debug!("instantiate_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
-    result
+    impossible_predicates(tcx, predicates)
 }
 
 /// Checks whether a trait's associated item is impossible to reference on a given impl.
