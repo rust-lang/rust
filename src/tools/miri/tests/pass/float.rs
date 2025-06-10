@@ -45,7 +45,6 @@ macro_rules! assert_approx_eq {
     };
 }
 
-
 /// From IEEE 754 a Signaling NaN for single precision has the following representation:
 /// ```
 /// s | 1111 1111 | 0x..x
@@ -1387,7 +1386,6 @@ fn test_non_determinism() {
         frem_algebraic, frem_fast, fsub_algebraic, fsub_fast,
     };
     use std::{f32, f64};
-    // TODO: Also test powi and powf when the non-determinism is implemented for them
 
     /// Ensure that the operation is non-deterministic
     #[track_caller]
@@ -1427,21 +1425,23 @@ fn test_non_determinism() {
     }
     pub fn test_operations_f32(a: f32, b: f32) {
         test_operations_f!(a, b);
-        // FIXME: temporarily disabled as it breaks std tests.
-        // ensure_nondet(|| a.log(b));
-        // ensure_nondet(|| a.exp());
-        // ensure_nondet(|| 10f32.exp2());
-        // ensure_nondet(|| f32::consts::E.ln());
+        // FIXME: some are temporarily disabled as it breaks std tests.
+        ensure_nondet(|| a.powf(b));
+        ensure_nondet(|| a.powi(2));
+        ensure_nondet(|| a.log(b));
+        ensure_nondet(|| a.exp());
+        ensure_nondet(|| 10f32.exp2());
+        ensure_nondet(|| f32::consts::E.ln());
+        ensure_nondet(|| 10f32.log10());
+        ensure_nondet(|| 8f32.log2());
         // ensure_nondet(|| 1f32.ln_1p());
-        // ensure_nondet(|| 10f32.log10());
-        // ensure_nondet(|| 8f32.log2());
         // ensure_nondet(|| 27.0f32.cbrt());
         // ensure_nondet(|| 3.0f32.hypot(4.0f32));
-        // ensure_nondet(|| 1f32.sin());
-        // ensure_nondet(|| 0f32.cos());
-        // // On i686-pc-windows-msvc , these functions are implemented by calling the `f64` version,
-        // // which means the little rounding errors Miri introduces are discard by the cast down to `f32`.
-        // // Just skip the test for them.
+        ensure_nondet(|| 1f32.sin());
+        ensure_nondet(|| 1f32.cos());
+        // On i686-pc-windows-msvc , these functions are implemented by calling the `f64` version,
+        // which means the little rounding errors Miri introduces are discarded by the cast down to
+        // `f32`. Just skip the test for them.
         // if !cfg!(all(target_os = "windows", target_env = "msvc", target_arch = "x86")) {
         //     ensure_nondet(|| 1.0f32.tan());
         //     ensure_nondet(|| 1.0f32.asin());
@@ -1462,18 +1462,20 @@ fn test_non_determinism() {
     }
     pub fn test_operations_f64(a: f64, b: f64) {
         test_operations_f!(a, b);
-        // FIXME: temporarily disabled as it breaks std tests.
-        // ensure_nondet(|| a.log(b));
-        // ensure_nondet(|| a.exp());
-        // ensure_nondet(|| 50f64.exp2());
-        // ensure_nondet(|| 3f64.ln());
+        // FIXME: some are temporarily disabled as it breaks std tests.
+        ensure_nondet(|| a.powf(b));
+        ensure_nondet(|| a.powi(2));
+        ensure_nondet(|| a.log(b));
+        ensure_nondet(|| a.exp());
+        ensure_nondet(|| 50f64.exp2());
+        ensure_nondet(|| 3f64.ln());
+        ensure_nondet(|| f64::consts::E.log10());
+        ensure_nondet(|| f64::consts::E.log2());
         // ensure_nondet(|| 1f64.ln_1p());
-        // ensure_nondet(|| f64::consts::E.log10());
-        // ensure_nondet(|| f64::consts::E.log2());
         // ensure_nondet(|| 27.0f64.cbrt());
         // ensure_nondet(|| 3.0f64.hypot(4.0f64));
-        // ensure_nondet(|| 1f64.sin());
-        // ensure_nondet(|| 0f64.cos());
+        ensure_nondet(|| 1f64.sin());
+        ensure_nondet(|| 1f64.cos());
         // ensure_nondet(|| 1.0f64.tan());
         // ensure_nondet(|| 1.0f64.asin());
         // ensure_nondet(|| 5.0f64.acos());

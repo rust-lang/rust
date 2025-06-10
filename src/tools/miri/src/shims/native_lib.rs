@@ -87,31 +87,35 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Get the pointer to the function of the specified name in the shared object file,
-    /// if it exists. The function must be in the shared object file specified: we do *not*
-    /// return pointers to functions in dependencies of the library.  
+    /// if it exists. The function must be in one of the shared object files specified:
+    /// we do *not* return pointers to functions in dependencies of libraries.
     fn get_func_ptr_explicitly_from_lib(&mut self, link_name: Symbol) -> Option<CodePtr> {
         let this = self.eval_context_mut();
-        // Try getting the function from the shared library.
-        let (lib, lib_path) = this.machine.native_lib.as_ref().unwrap();
-        let func: libloading::Symbol<'_, unsafe extern "C" fn()> =
-            unsafe { lib.get(link_name.as_str().as_bytes()).ok()? };
-        #[expect(clippy::as_conversions)] // fn-ptr to raw-ptr cast needs `as`.
-        let fn_ptr = *func.deref() as *mut std::ffi::c_void;
+        // Try getting the function from one of the shared libraries.
+        for (lib, lib_path) in &this.machine.native_lib {
+            let Ok(func): Result<libloading::Symbol<'_, unsafe extern "C" fn()>, _> =
+                (unsafe { lib.get(link_name.as_str().as_bytes()) })
+            else {
+                continue;
+            };
+            #[expect(clippy::as_conversions)] // fn-ptr to raw-ptr cast needs `as`.
+            let fn_ptr = *func.deref() as *mut std::ffi::c_void;
 
-        // FIXME: this is a hack!
-        // The `libloading` crate will automatically load system libraries like `libc`.
-        // On linux `libloading` is based on `dlsym`: https://docs.rs/libloading/0.7.3/src/libloading/os/unix/mod.rs.html#202
-        // and `dlsym`(https://linux.die.net/man/3/dlsym) looks through the dependency tree of the
-        // library if it can't find the symbol in the library itself.
-        // So, in order to check if the function was actually found in the specified
-        // `machine.external_so_lib` we need to check its `dli_fname` and compare it to
-        // the specified SO file path.
-        // This code is a reimplementation of the mechanism for getting `dli_fname` in `libloading`,
-        // from: https://docs.rs/libloading/0.7.3/src/libloading/os/unix/mod.rs.html#411
-        // using the `libc` crate where this interface is public.
-        let mut info = std::mem::MaybeUninit::<libc::Dl_info>::zeroed();
-        unsafe {
-            if libc::dladdr(fn_ptr, info.as_mut_ptr()) != 0 {
+            // FIXME: this is a hack!
+            // The `libloading` crate will automatically load system libraries like `libc`.
+            // On linux `libloading` is based on `dlsym`: https://docs.rs/libloading/0.7.3/src/libloading/os/unix/mod.rs.html#202
+            // and `dlsym`(https://linux.die.net/man/3/dlsym) looks through the dependency tree of the
+            // library if it can't find the symbol in the library itself.
+            // So, in order to check if the function was actually found in the specified
+            // `machine.external_so_lib` we need to check its `dli_fname` and compare it to
+            // the specified SO file path.
+            // This code is a reimplementation of the mechanism for getting `dli_fname` in `libloading`,
+            // from: https://docs.rs/libloading/0.7.3/src/libloading/os/unix/mod.rs.html#411
+            // using the `libc` crate where this interface is public.
+            let mut info = std::mem::MaybeUninit::<libc::Dl_info>::zeroed();
+            unsafe {
+                let res = libc::dladdr(fn_ptr, info.as_mut_ptr());
+                assert!(res != 0, "failed to load info about function we already loaded");
                 let info = info.assume_init();
                 #[cfg(target_os = "cygwin")]
                 let fname_ptr = info.dli_fname.as_ptr();
@@ -121,13 +125,15 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if std::ffi::CStr::from_ptr(fname_ptr).to_str().unwrap()
                     != lib_path.to_str().unwrap()
                 {
-                    return None;
+                    // The function is not actually in this .so, check the next one.
+                    continue;
                 }
             }
-        }
 
-        // Return a pointer to the function.
-        Some(CodePtr(fn_ptr))
+            // Return a pointer to the function.
+            return Some(CodePtr(fn_ptr));
+        }
+        None
     }
 }
 
