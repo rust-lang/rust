@@ -183,21 +183,15 @@ pub enum AttributeKind {
     ConstStabilityIndirect,
 
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
-    Deprecation {
-        deprecation: Deprecation,
-        span: Span,
-    },
+    Deprecation { deprecation: Deprecation, span: Span },
 
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
-    DocComment {
-        style: AttrStyle,
-        kind: CommentKind,
-        span: Span,
-        comment: Symbol,
-    },
+    DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
+
+    /// Represents `#[inline]`.
+    Inline(InlineAttr, Span),
 
     /// Represents `#[rustc_macro_transparency]`.
-    Inline(InlineAttr, Span),
     MacroTransparency(Transparency),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
