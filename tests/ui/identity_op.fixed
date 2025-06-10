@@ -312,3 +312,20 @@ fn issue_13470() {
     let _: u64 = 1u64 + ((x as i32 + y as i32) as u64);
     //~^ identity_op
 }
+
+fn issue_14932() {
+    let _ = 0usize + &Default::default(); // no error
+
+    0usize + &Default::default(); // no error
+
+    let _ = usize::default();
+    //~^ identity_op
+
+    let _n: usize = Default::default();
+    //~^ identity_op
+}
+
+fn issue_14932_2() -> usize {
+    Default::default()
+    //~^ identity_op
+}
