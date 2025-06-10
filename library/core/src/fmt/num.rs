@@ -565,11 +565,12 @@ mod imp {
 }
 impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
+const U128_MAX_DEC_N: usize = u128::MAX.ilog(10) as usize + 1;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for u128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        const MAX_DEC_N: usize = u128::MAX.ilog(10) as usize + 1;
-        let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
+        let mut buf = [MaybeUninit::<u8>::uninit(); U128_MAX_DEC_N];
 
         f.pad_integral(true, "", self._fmt(&mut buf))
     }
@@ -579,9 +580,8 @@ impl fmt::Display for u128 {
 impl fmt::Display for i128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This is not a typo, we use the maximum number of digits of `u128`, hence why we use
-        // `u128::MAX`.
-        const MAX_DEC_N: usize = u128::MAX.ilog(10) as usize + 1;
-        let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
+        // `U128_MAX_DEC_N`.
+        let mut buf = [MaybeUninit::<u8>::uninit(); U128_MAX_DEC_N];
 
         let is_nonnegative = *self >= 0;
         f.pad_integral(is_nonnegative, "", self.unsigned_abs()._fmt(&mut buf))
@@ -598,8 +598,6 @@ impl u128 {
         issue = "none"
     )]
     pub fn _fmt<'a>(self, buf: &'a mut [MaybeUninit<u8>]) -> &'a str {
-        const MAX_DEC_N: usize = u128::MAX.ilog(10) as usize + 1;
-
         // Optimize common-case zero, which would also need special treatment due to
         // its "leading" zero.
         if self == 0 {
@@ -609,26 +607,26 @@ impl u128 {
         // Take the 16 least-significant decimals.
         let (quot_1e16, mod_1e16) = div_rem_1e16(self);
         let (mut remain, mut offset) = if quot_1e16 == 0 {
-            (mod_1e16, MAX_DEC_N)
+            (mod_1e16, U128_MAX_DEC_N)
         } else {
             // Write digits at buf[23..39].
-            enc_16lsd::<{ MAX_DEC_N - 16 }>(buf, mod_1e16);
+            enc_16lsd::<{ U128_MAX_DEC_N - 16 }>(buf, mod_1e16);
 
             // Take another 16 decimals.
             let (quot2, mod2) = div_rem_1e16(quot_1e16);
             if quot2 == 0 {
-                (mod2, MAX_DEC_N - 16)
+                (mod2, U128_MAX_DEC_N - 16)
             } else {
                 // Write digits at buf[7..23].
-                enc_16lsd::<{ MAX_DEC_N - 32 }>(buf, mod2);
+                enc_16lsd::<{ U128_MAX_DEC_N - 32 }>(buf, mod2);
                 // Quot2 has at most 7 decimals remaining after two 1e16 divisions.
-                (quot2 as u64, MAX_DEC_N - 32)
+                (quot2 as u64, U128_MAX_DEC_N - 32)
             }
         };
 
         // Format per four digits from the lookup table.
         while remain > 999 {
-            // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
+            // SAFETY: All of the decimals fit in buf due to U128_MAX_DEC_N
             // and the while condition ensures at least 4 more decimals.
             unsafe { core::hint::assert_unchecked(offset >= 4) }
             // SAFETY: The offset counts down from its initial buf.len()
@@ -649,7 +647,7 @@ impl u128 {
 
         // Format per two digits from the lookup table.
         if remain > 9 {
-            // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
+            // SAFETY: All of the decimals fit in buf due to U128_MAX_DEC_N
             // and the if condition ensures at least 2 more decimals.
             unsafe { core::hint::assert_unchecked(offset >= 2) }
             // SAFETY: The offset counts down from its initial buf.len()
@@ -665,7 +663,7 @@ impl u128 {
 
         // Format the last remaining digit, if any.
         if remain != 0 {
-            // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
+            // SAFETY: All of the decimals fit in buf due to U128_MAX_DEC_N
             // and the if condition ensures (at least) 1 more decimals.
             unsafe { core::hint::assert_unchecked(offset >= 1) }
             // SAFETY: The offset counts down from its initial buf.len()
