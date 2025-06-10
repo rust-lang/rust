@@ -21,11 +21,15 @@ use crate::infer::canonical::{Canonical, CanonicalVarValues};
 impl<'tcx, V> Canonical<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
     /// with the value given in `var_values`.
-    fn instantiate(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
+    fn instantiate<const UWU: bool>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        var_values: &CanonicalVarValues<'tcx>,
+    ) -> V
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.instantiate_projected(tcx, var_values, |value| value.clone())
+        self.instantiate_projected::<_, UWU>(tcx, var_values, |value| value.clone())
     }
 
     /// Allows one to apply a instantiation to some subset of
@@ -34,7 +38,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
     /// variables bound in `self` (usually this extracts from subset
     /// of `self`). Apply the instantiation `var_values` to this value
     /// V, replacing each of the canonical variables.
-    fn instantiate_projected<T>(
+    fn instantiate_projected<T, const UWU: bool>(
         &self,
         tcx: TyCtxt<'tcx>,
         var_values: &CanonicalVarValues<'tcx>,
@@ -45,14 +49,14 @@ impl<'tcx, V> Canonical<'tcx, V> {
     {
         assert_eq!(self.variables.len(), var_values.len());
         let value = projection_fn(&self.value);
-        instantiate_value(tcx, var_values, value)
+        instantiate_value_0::<_, UWU>(tcx, var_values, value)
     }
 }
 
 /// Instantiate the values from `var_values` into `value`. `var_values`
 /// must be values for the set of canonical variables that appear in
 /// `value`.
-pub(super) fn instantiate_value<'tcx, T>(
+pub(super) fn instantiate_value_0<'tcx, T, const UWU: bool>(
     tcx: TyCtxt<'tcx>,
     var_values: &CanonicalVarValues<'tcx>,
     value: T,
@@ -64,7 +68,7 @@ where
         return value;
     }
 
-    value.fold_with(&mut BoundVarReplacer {
+    value.fold_with(&mut BoundVarReplacer::<UWU> {
         tcx,
         current_index: ty::INNERMOST,
         var_values: var_values.var_values,
@@ -73,7 +77,7 @@ where
 }
 
 /// Replaces the escaping bound vars (late bound regions or bound types) in a type.
-struct BoundVarReplacer<'tcx> {
+struct BoundVarReplacer<'tcx, const UWU: bool> {
     tcx: TyCtxt<'tcx>,
 
     /// As with `RegionFolder`, represents the index of a binder *just outside*
@@ -87,7 +91,7 @@ struct BoundVarReplacer<'tcx> {
     cache: DelayedMap<(ty::DebruijnIndex, Ty<'tcx>), Ty<'tcx>>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'tcx> {
+impl<'tcx, const UWU: bool> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'tcx, UWU> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -146,19 +150,23 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'tcx> {
     fn fold_clauses(&mut self, c: ty::Clauses<'tcx>) -> ty::Clauses<'tcx> {
         if c.has_vars_bound_at_or_above(self.current_index) {
             if self.current_index == ty::INNERMOST {
-                let index = *self
-                    .tcx
-                    .highest_var_in_clauses_cache
-                    .lock()
-                    .entry(c)
-                    .or_insert_with(|| highest_var_in_clauses(c));
-                let c_args = &self.var_values[..=index];
-                if let Some(c) = self.tcx.clauses_cache.lock().get(&(c, c_args)) {
-                    c
+                if UWU {
+                    let index = *self
+                        .tcx
+                        .highest_var_in_clauses_cache
+                        .lock()
+                        .entry(c)
+                        .or_insert_with(|| highest_var_in_clauses(c));
+                    let c_args = &self.var_values[..=index];
+                    if let Some(c2) = self.tcx.clauses_cache.lock().get(&(c, c_args)) {
+                        c2
+                    } else {
+                        let folded = c.super_fold_with(self);
+                        self.tcx.clauses_cache.lock().insert((c, c_args), folded);
+                        folded
+                    }
                 } else {
-                    let folded = c.super_fold_with(self);
-                    self.tcx.clauses_cache.lock().insert((c, c_args), folded);
-                    folded
+                    c.super_fold_with(self)
                 }
             } else {
                 c.super_fold_with(self)

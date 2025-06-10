@@ -222,7 +222,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        canonical.instantiate(self.tcx, &values)
+        canonical.instantiate::<false>(self.tcx, &values)
     }
 
     fn instantiate_canonical_var_with_infer(

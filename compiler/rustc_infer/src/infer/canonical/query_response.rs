@@ -17,7 +17,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use tracing::{debug, instrument};
 
-use crate::infer::canonical::instantiate::{CanonicalExt, instantiate_value};
+use crate::infer::canonical::instantiate::{CanonicalExt, instantiate_value_0};
 use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
     QueryRegionConstraints, QueryResponse,
@@ -170,12 +170,13 @@ impl<'tcx> InferCtxt<'tcx> {
             self.query_response_instantiation(cause, param_env, original_values, query_response)?;
 
         for (predicate, _category) in &query_response.value.region_constraints.outlives {
-            let predicate = instantiate_value(self.tcx, &result_args, *predicate);
+            let predicate = instantiate_value_0::<_, false>(self.tcx, &result_args, *predicate);
             self.register_outlives_constraint(predicate, cause);
         }
 
         let user_result: R =
-            query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
+            query_response
+                .instantiate_projected::<_, false>(self.tcx, &result_args, |q_r| q_r.value.clone());
 
         Ok(InferOk { value: user_result, obligations })
     }
@@ -242,9 +243,10 @@ impl<'tcx> InferCtxt<'tcx> {
 
         for (index, original_value) in original_values.var_values.iter().enumerate() {
             // ...with the value `v_r` of that variable from the query.
-            let result_value = query_response.instantiate_projected(self.tcx, &result_args, |v| {
-                v.var_values[BoundVar::new(index)]
-            });
+            let result_value =
+                query_response.instantiate_projected::<_, false>(self.tcx, &result_args, |v| {
+                    v.var_values[BoundVar::new(index)]
+                });
             match (original_value.kind(), result_value.kind()) {
                 (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
                     if re1.is_erased() && re2.is_erased() =>
@@ -289,7 +291,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // ...also include the other query region constraints from the query.
         output_query_region_constraints.outlives.extend(
             query_response.value.region_constraints.outlives.iter().filter_map(|&r_c| {
-                let r_c = instantiate_value(self.tcx, &result_args, r_c);
+                let r_c = instantiate_value_0::<_, false>(self.tcx, &result_args, r_c);
 
                 // Screen out `'a: 'a` cases.
                 let ty::OutlivesPredicate(k1, r2) = r_c.0;
@@ -298,7 +300,8 @@ impl<'tcx> InferCtxt<'tcx> {
         );
 
         let user_result: R =
-            query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
+            query_response
+                .instantiate_projected::<_, false>(self.tcx, &result_args, |q_r| q_r.value.clone());
 
         Ok(InferOk { value: user_result, obligations })
     }
@@ -469,8 +472,8 @@ impl<'tcx> InferCtxt<'tcx> {
 
         // Carry all newly resolved opaque types to the caller's scope
         for &(a, b) in &query_response.value.opaque_types {
-            let a = instantiate_value(self.tcx, &result_args, a);
-            let b = instantiate_value(self.tcx, &result_args, b);
+            let a = instantiate_value_0::<_, false>(self.tcx, &result_args, a);
+            let b = instantiate_value_0::<_, false>(self.tcx, &result_args, b);
             debug!(?a, ?b, "constrain opaque type");
             // We use equate here instead of, for example, just registering the
             // opaque type's hidden value directly, because the hidden type may have been an inference
@@ -512,7 +515,8 @@ impl<'tcx> InferCtxt<'tcx> {
         // `query_response.var_values` after applying the instantiation
         // by `result_args`.
         let instantiated_query_response = |index: BoundVar| -> GenericArg<'tcx> {
-            query_response.instantiate_projected(self.tcx, result_args, |v| v.var_values[index])
+            query_response
+                .instantiate_projected::<_, false>(self.tcx, result_args, |v| v.var_values[index])
         };
 
         // Unify the original value for each variable with the value

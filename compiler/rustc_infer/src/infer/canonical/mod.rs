@@ -69,7 +69,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let canonical_inference_vars =
             self.instantiate_canonical_vars(span, canonical.variables, |ui| universes[ui]);
-        let result = canonical.instantiate(self.tcx, &canonical_inference_vars);
+        let result = canonical.instantiate::<true>(self.tcx, &canonical_inference_vars);
         (result, canonical_inference_vars)
     }
 
