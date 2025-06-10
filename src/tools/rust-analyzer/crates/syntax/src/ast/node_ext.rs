@@ -276,18 +276,15 @@ impl ast::PathSegment {
                 _ => PathSegmentKind::Name(name_ref),
             }
         } else {
-            match self.syntax().first_child_or_token()?.kind() {
-                T![<] => {
-                    // <T> or <T as Trait>
-                    // T is any TypeRef, Trait has to be a PathType
-                    let mut type_refs =
-                        self.syntax().children().filter(|node| ast::Type::can_cast(node.kind()));
-                    let type_ref = type_refs.next().and_then(ast::Type::cast);
-                    let trait_ref = type_refs.next().and_then(ast::PathType::cast);
-                    PathSegmentKind::Type { type_ref, trait_ref }
-                }
-                _ => return None,
-            }
+            let anchor = self.type_anchor()?;
+            // FIXME: Move this over to `ast::TypeAnchor`
+            // <T> or <T as Trait>
+            // T is any TypeRef, Trait has to be a PathType
+            let mut type_refs =
+                anchor.syntax().children().filter(|node| ast::Type::can_cast(node.kind()));
+            let type_ref = type_refs.next().and_then(ast::Type::cast);
+            let trait_ref = type_refs.next().and_then(ast::PathType::cast);
+            PathSegmentKind::Type { type_ref, trait_ref }
         };
         Some(res)
     }
@@ -473,7 +470,7 @@ impl ast::Impl {
 // [#15778](https://github.com/rust-lang/rust-analyzer/issues/15778)
 impl ast::PathSegment {
     pub fn qualifying_trait(&self) -> Option<ast::PathType> {
-        let mut path_types = support::children(self.syntax());
+        let mut path_types = support::children(self.type_anchor()?.syntax());
         let first = path_types.next()?;
         path_types.next().or(Some(first))
     }

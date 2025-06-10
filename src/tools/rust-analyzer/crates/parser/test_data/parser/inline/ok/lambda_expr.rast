@@ -202,13 +202,14 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           CLOSURE_EXPR
-            FOR_KW "for"
-            GENERIC_PARAM_LIST
-              L_ANGLE "<"
-              LIFETIME_PARAM
-                LIFETIME
-                  LIFETIME_IDENT "'a"
-              R_ANGLE ">"
+            CLOSURE_BINDER
+              FOR_KW "for"
+              GENERIC_PARAM_LIST
+                L_ANGLE "<"
+                LIFETIME_PARAM
+                  LIFETIME
+                    LIFETIME_IDENT "'a"
+                R_ANGLE ">"
             WHITESPACE " "
             PARAM_LIST
               PIPE "|"
@@ -222,13 +223,14 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           CLOSURE_EXPR
-            FOR_KW "for"
-            GENERIC_PARAM_LIST
-              L_ANGLE "<"
-              LIFETIME_PARAM
-                LIFETIME
-                  LIFETIME_IDENT "'a"
-              R_ANGLE ">"
+            CLOSURE_BINDER
+              FOR_KW "for"
+              GENERIC_PARAM_LIST
+                L_ANGLE "<"
+                LIFETIME_PARAM
+                  LIFETIME
+                    LIFETIME_IDENT "'a"
+                R_ANGLE ">"
             WHITESPACE " "
             MOVE_KW "move"
             WHITESPACE " "

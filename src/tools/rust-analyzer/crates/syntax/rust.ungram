@@ -39,7 +39,10 @@ PathSegment =
 | NameRef GenericArgList?
 | NameRef ParenthesizedArgList RetType?
 | NameRef ReturnTypeSyntax
-| '<' Type ('as' PathType)? '>'
+| TypeAnchor
+
+TypeAnchor =
+  '<' Type ('as' PathType)? '>'
 
 ReturnTypeSyntax =
   '(' '..' ')'
@@ -98,7 +101,7 @@ WhereClause =
   'where' predicates:(WherePred (',' WherePred)* ','?)
 
 WherePred =
-  ('for' GenericParamList)?  (Lifetime | Type) ':' TypeBoundList?
+  ('for' GenericParamList)? (Lifetime | Type) ':' TypeBoundList?
 
 
 //*************************//

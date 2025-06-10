@@ -292,7 +292,7 @@ impl GlobalState {
 
                 if let (Some(_command), Some(path)) = (&discover_command, &path) {
                     let build = linked_projects.iter().find_map(|project| match project {
-                        LinkedProject::InlineJsonProject(it) => it.crate_by_buildfile(path),
+                        LinkedProject::InlineProjectJson(it) => it.crate_by_buildfile(path),
                         _ => None,
                     });
 
@@ -318,7 +318,7 @@ impl GlobalState {
                                 &progress,
                             )
                         }
-                        LinkedProject::InlineJsonProject(it) => {
+                        LinkedProject::InlineProjectJson(it) => {
                             let workspace = project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
                                 &cargo_config,

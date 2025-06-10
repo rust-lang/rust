@@ -1,4 +1,5 @@
 use either::Either;
+use hir::{Field, HasCrate};
 use hir::{HasSource, HirDisplay, Semantics, VariantId, db::ExpandDatabase};
 use ide_db::text_edit::TextEdit;
 use ide_db::{EditionedFileId, RootDatabase, source_change::SourceChange};
@@ -13,42 +14,67 @@ use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 //
 // This diagnostic is triggered if created structure does not have field provided in record.
 pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Diagnostic {
-    let node = d.field.map(Into::into);
-    if d.private {
-        // FIXME: quickfix to add required visibility
-        Diagnostic::new_with_syntax_node_ptr(
-            ctx,
-            DiagnosticCode::RustcHardError("E0451"),
-            "field is private",
-            node,
-        )
-        .stable()
+    let (code, message) = if d.private.is_some() {
+        ("E0451", "field is private")
+    } else if let VariantId::EnumVariantId(_) = d.variant {
+        ("E0559", "no such field")
     } else {
-        Diagnostic::new_with_syntax_node_ptr(
-            ctx,
-            match d.variant {
-                VariantId::EnumVariantId(_) => DiagnosticCode::RustcHardError("E0559"),
-                _ => DiagnosticCode::RustcHardError("E0560"),
-            },
-            "no such field",
-            node,
-        )
+        ("E0560", "no such field")
+    };
+
+    let node = d.field.map(Into::into);
+    Diagnostic::new_with_syntax_node_ptr(ctx, DiagnosticCode::RustcHardError(code), message, node)
         .stable()
         .with_fixes(fixes(ctx, d))
-    }
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Option<Vec<Assist>> {
     // FIXME: quickfix for pattern
     let root = ctx.sema.db.parse_or_expand(d.field.file_id);
     match &d.field.value.to_node(&root) {
-        Either::Left(node) => missing_record_expr_field_fixes(
-            &ctx.sema,
-            d.field.file_id.original_file(ctx.sema.db),
-            node,
-        ),
+        Either::Left(node) => {
+            if let Some(private_field) = d.private {
+                field_is_private_fixes(
+                    &ctx.sema,
+                    d.field.file_id.original_file(ctx.sema.db),
+                    node,
+                    private_field,
+                )
+            } else {
+                missing_record_expr_field_fixes(
+                    &ctx.sema,
+                    d.field.file_id.original_file(ctx.sema.db),
+                    node,
+                )
+            }
+        }
         _ => None,
     }
+}
+
+fn field_is_private_fixes(
+    sema: &Semantics<'_, RootDatabase>,
+    usage_file_id: EditionedFileId,
+    record_expr_field: &ast::RecordExprField,
+    private_field: Field,
+) -> Option<Vec<Assist>> {
+    let def_crate = private_field.krate(sema.db);
+    let usage_crate = sema.file_to_module_def(usage_file_id.file_id(sema.db))?.krate();
+    let visibility = if usage_crate == def_crate { "pub(crate) " } else { "pub " };
+
+    let source = private_field.source(sema.db)?;
+    let (range, _) = source.syntax().original_file_range_opt(sema.db)?;
+    let source_change = SourceChange::from_text_edit(
+        range.file_id.file_id(sema.db),
+        TextEdit::insert(range.range.start(), visibility.into()),
+    );
+
+    Some(vec![fix(
+        "increase_field_visibility",
+        "Increase field visibility",
+        source_change,
+        sema.original_range(record_expr_field.syntax()).range,
+    )])
 }
 
 fn missing_record_expr_field_fixes(
@@ -118,7 +144,7 @@ fn missing_record_expr_field_fixes(
         "create_field",
         "Create field",
         source_change,
-        record_expr_field.syntax().text_range(),
+        sema.original_range(record_expr_field.syntax()).range,
     )]);
 
     fn record_field_list(field_def_list: ast::FieldList) -> Option<ast::RecordFieldList> {
@@ -387,19 +413,90 @@ fn f(s@m::Struct {
     // assignee expression
     m::Struct {
         field: 0,
-      //^^^^^^^^ error: field is private
+      //^^^^^^^^ 💡 error: field is private
         field2
-      //^^^^^^ error: field is private
+      //^^^^^^ 💡 error: field is private
     } = s;
     m::Struct {
         field: 0,
-      //^^^^^^^^ error: field is private
+      //^^^^^^^^ 💡 error: field is private
         field2
-      //^^^^^^ error: field is private
+      //^^^^^^ 💡 error: field is private
     };
 }
 "#,
         )
+    }
+
+    #[test]
+    fn test_struct_field_private_same_crate_fix() {
+        check_diagnostics(
+            r#"
+mod m {
+    pub struct Struct {
+        field: u32,
+    }
+}
+fn f() {
+    let _ = m::Struct {
+        field: 0,
+      //^^^^^^^^ 💡 error: field is private
+    };
+}
+"#,
+        );
+
+        check_fix(
+            r#"
+mod m {
+    pub struct Struct {
+        field: u32,
+    }
+}
+fn f() {
+    let _ = m::Struct {
+        field$0: 0,
+    };
+}
+"#,
+            r#"
+mod m {
+    pub struct Struct {
+        pub(crate) field: u32,
+    }
+}
+fn f() {
+    let _ = m::Struct {
+        field: 0,
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_struct_field_private_other_crate_fix() {
+        check_fix(
+            r#"
+//- /lib.rs crate:another_crate
+pub struct Struct {
+    field: u32,
+}
+//- /lib.rs crate:this_crate deps:another_crate
+use another_crate;
+
+fn f() {
+    let _ = another_crate::Struct {
+        field$0: 0,
+    };
+}
+"#,
+            r#"
+pub struct Struct {
+    pub field: u32,
+}
+"#,
+        );
     }
 
     #[test]
