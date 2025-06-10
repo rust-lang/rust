@@ -1,7 +1,7 @@
 macro_rules! morestuff {
     (
-        <= "space between most kinds of tokens" : 1 $x + @ :: >>= 'static
-        "no space inside paren or bracket" : (2 a) [2 a] $(2 $a:tt)*
+        <= "space between most kinds of tokens" : 1 $x:ident + @ :: >>=
+        'static "no space inside paren or bracket" : (2 a) [2 a] $(2 $a:tt)*
         "space inside curly brace" : { 2 a }
         "no space inside empty delimiters" : () [] {}
         "no space before comma or semicolon" : a, (a), { a }, a; [T; 0];

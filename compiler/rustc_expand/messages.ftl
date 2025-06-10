@@ -113,7 +113,7 @@ expand_meta_var_expr_unrecognized_var =
     variable `{$key}` is not recognized in meta-variable expression
 
 expand_missing_fragment_specifier = missing fragment specifier
-    .note = fragment specifiers must be specified in the 2024 edition
+    .note = fragment specifiers must be provided
     .suggestion_add_fragspec = try adding a specifier here
     .valid = {$valid}
 
