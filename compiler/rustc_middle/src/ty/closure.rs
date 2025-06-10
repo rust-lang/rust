@@ -327,6 +327,11 @@ pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tc
                     )
                 }
             },
+            HirProjectionKind::UnwrapUnsafeBinder => {
+                curr_string = format!("unwrap_binder!({curr_string})");
+            }
+            // Just change the type to the hidden type, so we can actually project.
+            HirProjectionKind::OpaqueCast => {}
             proj => bug!("{:?} unexpected because it isn't captured", proj),
         }
     }
