@@ -241,6 +241,8 @@ declare_features! (
     (unstable, sized_hierarchy, "1.89.0", None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
+    /// FIXME: needs description and tracking issue.
+    (unstable, structural_init, "CURRENT_RUSTC_VERSION", None),
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None),
     /// Helps with formatting for `group_imports = "StdExternalCrate"`.
