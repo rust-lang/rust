@@ -3,11 +3,11 @@ use std::fmt;
 
 use Context::*;
 use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, LocalModDefId};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Destination, Node};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::DesugaringKind;
@@ -73,15 +73,15 @@ struct CheckLoopVisitor<'tcx> {
     block_breaks: BTreeMap<Span, BlockInfo>,
 }
 
-fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
+pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'tcx hir::Body<'tcx>) {
     let mut check =
         CheckLoopVisitor { tcx, cx_stack: vec![Normal], block_breaks: Default::default() };
-    tcx.hir_visit_item_likes_in_module(module_def_id, &mut check);
+    let cx = match tcx.def_kind(def_id) {
+        DefKind::AnonConst => AnonConst,
+        _ => Fn,
+    };
+    check.with_context(cx, |v| v.visit_body(body));
     check.report_outside_loop_error();
-}
-
-pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_loops, ..*providers };
 }
 
 impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
@@ -91,31 +91,12 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
         self.tcx
     }
 
-    fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) {
-        self.with_context(AnonConst, |v| intravisit::walk_anon_const(v, c));
+    fn visit_anon_const(&mut self, _: &'hir hir::AnonConst) {
+        // Typecked on its own.
     }
 
     fn visit_inline_const(&mut self, c: &'hir hir::ConstBlock) {
         self.with_context(ConstBlock, |v| intravisit::walk_inline_const(v, c));
-    }
-
-    fn visit_fn(
-        &mut self,
-        fk: hir::intravisit::FnKind<'hir>,
-        fd: &'hir hir::FnDecl<'hir>,
-        b: hir::BodyId,
-        _: Span,
-        id: LocalDefId,
-    ) {
-        self.with_context(Fn, |v| intravisit::walk_fn(v, fk, fd, b, id));
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &'hir hir::TraitItem<'hir>) {
-        self.with_context(Fn, |v| intravisit::walk_trait_item(v, trait_item));
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'hir hir::ImplItem<'hir>) {
-        self.with_context(Fn, |v| intravisit::walk_impl_item(v, impl_item));
     }
 
     fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
