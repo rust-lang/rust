@@ -1245,7 +1245,7 @@ pub struct SyntheticSyntax;
 // Crate authors can opt their type out of completions in some cases.
 // This is done with the `#[rust_analyzer::completions(...)]` attribute.
 //
-// All completeable things support `#[rust_analyzer::completions(ignore_flyimport)]`,
+// All completable things support `#[rust_analyzer::completions(ignore_flyimport)]`,
 // which causes the thing to get excluded from flyimport completion. It will still
 // be completed when in scope. This is analogous to the setting `rust-analyzer.completion.autoimport.exclude`
 // with `"type": "always"`.
