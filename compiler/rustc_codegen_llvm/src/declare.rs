@@ -178,7 +178,36 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             signature.fn_ty(),
         );
 
-        if signature.intrinsic().is_none() {
+        if let Some(intrinsic) = signature.intrinsic() {
+            if intrinsic.is_target_specific() {
+                let (llvm_arch, _) = name[5..].split_once('.').unwrap();
+                let target_arch = self.tcx.sess.target.arch.as_ref();
+
+                let is_correct_arch = match llvm_arch {
+                    "aarch64" => matches!(target_arch, "aarch64" | "arm64ec"),
+                    "amdgcn" => target_arch == "amdgpu",
+                    "arm" | "bpf" | "hexagon" => target_arch == llvm_arch,
+                    "loongarch" => matches!(target_arch, "loongarch32" | "loongarch64"),
+                    "mips" => target_arch.starts_with("mips"),
+                    "nvvm" => target_arch == "nvptx64",
+                    "ppc" => matches!(target_arch, "powerpc" | "powerpc64"),
+                    "riscv" => matches!(target_arch, "riscv32" | "riscv64"),
+                    "s390" => target_arch == "s390x",
+                    "spv" => target_arch == "spirv",
+                    "wasm" => matches!(target_arch, "wasm32" | "wasm64"),
+                    "x86" => matches!(target_arch, "x86" | "x86_64"),
+                    _ => true, // fallback for unknown archs
+                };
+
+                if !is_correct_arch {
+                    self.tcx.dcx().emit_fatal(errors::IntrinsicWrongArch {
+                        name,
+                        target_arch,
+                        span: span(),
+                    });
+                }
+            }
+        } else {
             // Don't apply any attributes to intrinsics, they will be applied by AutoUpgrade
             fn_abi.apply_attrs_llfn(self, llfn, instance);
         }

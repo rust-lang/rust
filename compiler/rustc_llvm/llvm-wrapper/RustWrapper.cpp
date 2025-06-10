@@ -1909,6 +1909,14 @@ LLVMRustUpgradeIntrinsicFunction(LLVMValueRef Fn, LLVMValueRef *NewFn,
   return CanUpgrade;
 }
 
+extern "C" bool LLVMRustIsTargetIntrinsic(unsigned ID) {
+#if LLVM_VERSION_GE(20, 1)
+  return Intrinsic::isTargetIntrinsic(ID);
+#else
+  return Function::isTargetIntrinsic(ID);
+#endif
+}
+
 extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {
   auto *CB = unwrap<CallBase>(CallSite);
   switch (CB->getIntrinsicID()) {
