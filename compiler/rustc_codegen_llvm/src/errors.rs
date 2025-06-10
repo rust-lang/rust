@@ -157,3 +157,12 @@ pub(crate) struct IntrinsicSignatureMismatch<'a> {
     #[primary_span]
     pub span: Option<Span>,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_intrinsic_wrong_arch)]
+pub(crate) struct IntrinsicWrongArch<'a> {
+    pub name: &'a str,
+    pub target_arch: &'a str,
+    #[primary_span]
+    pub span: Option<Span>,
+}

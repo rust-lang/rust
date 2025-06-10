@@ -20,6 +20,7 @@ use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::lint::builtin::{DEPRECATED_LLVM_INTRINSIC, UNKNOWN_LLVM_INTRINSIC};
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 use smallvec::SmallVec;
 use tracing::debug;
 
@@ -100,6 +101,26 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 }
 
+fn llvm_arch_for(rust_arch: &Arch) -> Option<&'static str> {
+    Some(match rust_arch {
+        Arch::AArch64 | Arch::Arm64EC => "aarch64",
+        Arch::AmdGpu => "amdgcn",
+        Arch::Arm => "arm",
+        Arch::Bpf => "bpf",
+        Arch::Hexagon => "hexagon",
+        Arch::LoongArch32 | Arch::LoongArch64 => "loongarch",
+        Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => "mips",
+        Arch::Nvptx64 => "nvvm",
+        Arch::PowerPC | Arch::PowerPC64 | Arch::PowerPC64LE => "ppc",
+        Arch::RiscV32 | Arch::RiscV64 => "riscv",
+        Arch::S390x => "s390",
+        Arch::SpirV => "spv",
+        Arch::Wasm32 | Arch::Wasm64 => "wasm",
+        Arch::X86 | Arch::X86_64 => "x86",
+        _ => return None, // fallback for unknown archs
+    })
+}
+
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// Declare a C ABI function.
     ///
@@ -176,7 +197,22 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             signature.fn_ty(),
         );
 
-        if signature.intrinsic().is_none() {
+        if let Some(intrinsic) = signature.intrinsic()
+            && intrinsic.is_target_specific()
+        {
+            let (llvm_arch, _) = name[5..].split_once('.').unwrap();
+            let rust_arch = &self.tcx.sess.target.arch;
+
+            if let Some(correct_llvm_arch) = llvm_arch_for(rust_arch)
+                && llvm_arch != correct_llvm_arch
+            {
+                self.tcx.dcx().emit_fatal(errors::IntrinsicWrongArch {
+                    name,
+                    target_arch: rust_arch.desc(),
+                    span: span(),
+                });
+            }
+        } else {
             // Don't apply any attributes to intrinsics, they will be applied by AutoUpgrade
             fn_abi.apply_attrs_llfn(self, llfn, instance);
         }
