@@ -799,7 +799,7 @@ fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, offload_entry_ty: &'ll llvm::
     o_types
 }
 
-fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, s_ident_t: &'ll llvm::Value, begin: &'ll llvm::Value, update: &'ll llvm::Value, end: &'ll llvm::Value, fn_ty: &'ll llvm::Type, o_types: &[&'ll llvm::Value]) {
+fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernel: &'ll llvm::Value, s_ident_t: &'ll llvm::Value, begin: &'ll llvm::Value, update: &'ll llvm::Value, end: &'ll llvm::Value, fn_ty: &'ll llvm::Type, o_types: &[&'ll llvm::Value]) {
 
     let main_fn = cx.get_function("main");
     if let Some(main_fn) = main_fn {
@@ -814,32 +814,50 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, s_ident_t: &'ll llvm::Value, be
         let kernel_call_bb = unsafe {llvm::LLVMGetInstructionParent(kernel_call)};
         let mut builder = SBuilder::build(cx, kernel_call_bb);
 
+        let types = cx.func_params_types(cx.val_ty(kernel));
+        let num_args = types.len();
+
         // First we generate a few variables used for the data mappers below.
         // %.offload_baseptrs = alloca [3 x ptr], align 8
         // %.offload_ptrs = alloca [3 x ptr], align 8
         // %.offload_mappers = alloca [3 x ptr], align 8
         // %.offload_sizes = alloca [3 x i64], align 8
         unsafe{llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, main_fn)};
-        let ty = cx.type_array(cx.type_ptr(), 3);
-        builder.my_alloca2(ty, Align::EIGHT, ".offload_baseptrs");
-        builder.my_alloca2(ty, Align::EIGHT, ".offload_ptrs");
-        builder.my_alloca2(ty, Align::EIGHT, ".offload_mappers");
-        let ty = cx.type_array(cx.type_i64(), 3);
-        builder.my_alloca2(ty, Align::EIGHT, ".offload_sizes");
-
+        let ty = cx.type_array(cx.type_ptr(), num_args);
+        let a1 = builder.my_alloca2(ty, Align::EIGHT, ".offload_baseptrs");
+        let a2 = builder.my_alloca2(ty, Align::EIGHT, ".offload_ptrs");
+        let a3 = builder.my_alloca2(ty, Align::EIGHT, ".offload_mappers");
+        let ty2 = cx.type_array(cx.type_i64(), num_args);
+        let a4 = builder.my_alloca2(ty2, Align::EIGHT, ".offload_sizes");
 
         // Now we generate the __tgt_target_data calls
         unsafe {llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call)};
         dbg!("positioned builder, ready");
 
+        // %27 = getelementptr inbounds [3 x ptr], ptr %.offload_baseptrs, i32 0, i32 0
+        // %28 = getelementptr inbounds [3 x ptr], ptr %.offload_ptrs, i32 0, i32 0
+        // %29 = getelementptr inbounds [3 x i64], ptr %.offload_sizes, i32 0, i32 0
+        let i32_0 = cx.get_const_i32(0);
+        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
+        let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
+        let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]);
+
         let nullptr = cx.const_null(cx.type_ptr());
         let o_type = o_types[0];
-        let args = vec![s_ident_t, cx.get_const_i64(u64::MAX), cx.get_const_i32(3), nullptr, nullptr, nullptr, o_type, nullptr, nullptr];
-        dbg!(&fn_ty);
-        dbg!(&begin);
-        dbg!(&args);
+        let args = vec![s_ident_t, cx.get_const_i64(u64::MAX), cx.get_const_i32(3), gep1, gep2, gep3, o_type, nullptr, nullptr];
         builder.call(fn_ty, begin, &args, None);
-        dbg!("called begin");
+
+        unsafe {llvm::LLVMRustPositionAfter(builder.llbuilder, kernel_call)};
+        dbg!("re-positioned builder, ready");
+
+        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
+        let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
+        let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]);
+
+        let nullptr = cx.const_null(cx.type_ptr());
+        let o_type = o_types[0];
+        let args = vec![s_ident_t, cx.get_const_i64(u64::MAX), cx.get_const_i32(num_args), gep1, gep2, gep3, o_type, nullptr, nullptr];
+        builder.call(fn_ty, end, &args, None);
 
         // 1. set insert point before kernel call.
         // 2. generate all the GEPS and stores.
@@ -907,7 +925,7 @@ pub(crate) fn run_pass_manager(
             SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
         if cx.get_function("gen_tgt_offload").is_some() {
 
-            let (offload_entry_ty, at_one, foo, bar, baz, fn_ty) = gen_globals(&cx);
+            let (offload_entry_ty, at_one, begin, update, end, fn_ty) = gen_globals(&cx);
 
             dbg!("created struct");
             let mut o_types = vec![];
@@ -918,7 +936,8 @@ pub(crate) fn run_pass_manager(
                 // TODO: replace num by proper fn name
                 o_types.push(gen_define_handling(&cx, offload_entry_ty, num));
             }
-            gen_call_handling(&cx, at_one, foo, bar, baz, fn_ty, &o_types);
+            let kernel = cx.get_function("kernel_1").unwrap();
+            gen_call_handling(&cx, kernel, at_one, begin, update, end, fn_ty, &o_types);
         } else {
             dbg!("no marker found");
         }

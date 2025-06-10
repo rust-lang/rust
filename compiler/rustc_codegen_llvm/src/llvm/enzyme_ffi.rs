@@ -33,6 +33,7 @@ unsafe extern "C" {
         kind: AttributeKind,
     );
     pub(crate) fn LLVMRustPositionBefore<'a>(B: &'a Builder<'_>, I: &'a Value);
+    pub(crate) fn LLVMRustPositionAfter<'a>(B: &'a Builder<'_>, I: &'a Value);
     pub(crate) fn LLVMRustGetFunctionCall(
         F: &Value,
         name: *const c_char,

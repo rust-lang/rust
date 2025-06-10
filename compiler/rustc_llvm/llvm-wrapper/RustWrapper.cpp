@@ -1602,10 +1602,16 @@ extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
   unwrap(B)->SetInsertPoint(unwrap(BB), Point);
 }
 
-extern "C" void LLVMRustPositionBefore(LLVMBuilderRef B,
-                                             LLVMValueRef Instr) {
+extern "C" void LLVMRustPositionBefore(LLVMBuilderRef B, LLVMValueRef Instr) {
   if (auto I = dyn_cast<Instruction>(unwrap<Value>(Instr))) {
     unwrap(B)->SetInsertPoint(I);
+  }
+}
+
+extern "C" void LLVMRustPositionAfter(LLVMBuilderRef B, LLVMValueRef Instr) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(Instr))) {
+    auto J = I->getNextNonDebugInstruction();
+    unwrap(B)->SetInsertPoint(J);
   }
 }
 

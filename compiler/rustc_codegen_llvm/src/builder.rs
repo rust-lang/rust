@@ -133,6 +133,26 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         }
         val
     }
+
+    pub(crate) fn inbounds_gep(
+        &mut self,
+        ty: &'ll Type,
+        ptr: &'ll Value,
+        indices: &[&'ll Value],
+    ) -> &'ll Value {
+        unsafe {
+            llvm::LLVMBuildGEPWithNoWrapFlags(
+                self.llbuilder,
+                ty,
+                ptr,
+                indices.as_ptr(),
+                indices.len() as c_uint,
+                UNNAMED,
+                GEPNoWrapFlags::InBounds,
+            )
+        }
+    }
+
 }
 
 /// Empty string, to be used where LLVM expects an instruction name, indicating
