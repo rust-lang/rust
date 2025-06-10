@@ -846,7 +846,7 @@ impl Module {
                     )
                 }
 
-                let missing: Vec<_> = required_items
+                let mut missing: Vec<_> = required_items
                     .filter(|(name, id)| {
                         !impl_assoc_items_scratch.iter().any(|(impl_name, impl_item)| {
                             discriminant(impl_item) == discriminant(id) && impl_name == name
@@ -854,6 +854,38 @@ impl Module {
                     })
                     .map(|(name, item)| (name.clone(), AssocItem::from(*item)))
                     .collect();
+
+                if !missing.is_empty() {
+                    let self_ty = db.impl_self_ty(impl_def.id).substitute(
+                        Interner,
+                        &hir_ty::generics::generics(db, impl_def.id.into()).placeholder_subst(db),
+                    );
+                    let self_ty = if let TyKind::Alias(AliasTy::Projection(projection)) =
+                        self_ty.kind(Interner)
+                    {
+                        db.normalize_projection(
+                            projection.clone(),
+                            db.trait_environment(impl_def.id.into()),
+                        )
+                    } else {
+                        self_ty
+                    };
+                    let self_ty_is_guaranteed_unsized = matches!(
+                        self_ty.kind(Interner),
+                        TyKind::Dyn(..) | TyKind::Slice(..) | TyKind::Str
+                    );
+                    if self_ty_is_guaranteed_unsized {
+                        missing.retain(|(_, assoc_item)| {
+                            let assoc_item = match *assoc_item {
+                                AssocItem::Function(it) => it.id.into(),
+                                AssocItem::Const(it) => it.id.into(),
+                                AssocItem::TypeAlias(it) => it.id.into(),
+                            };
+                            !hir_ty::dyn_compatibility::generics_require_sized_self(db, assoc_item)
+                        });
+                    }
+                }
+
                 if !missing.is_empty() {
                     acc.push(
                         TraitImplMissingAssocItems {
