@@ -1,0 +1,20 @@
+error[E0557]: feature has been removed
+  --> $DIR/removed-features-note-version-and-pr-issue-141619.rs:3:12
+   |
+LL | #![feature(external_doc)]
+   |            ^^^^^^^^^^^^ feature has been removed
+   |
+   = note: removed in 1.54.0 (you are using $RUSTC_VERSION); see <https://github.com/rust-lang/rust/pull/85457> for more information
+   = note: use #[doc = include_str!("filename")] instead, which handles macro invocations
+
+error: unknown `doc` attribute `include`
+  --> $DIR/removed-features-note-version-and-pr-issue-141619.rs:4:8
+   |
+LL | #![doc(include("README.md"))]
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(invalid_doc_attributes)]` on by default
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0557`.

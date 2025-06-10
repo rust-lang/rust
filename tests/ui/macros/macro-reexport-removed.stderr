@@ -1,13 +1,14 @@
 error[E0557]: feature has been removed
-  --> $DIR/macro-reexport-removed.rs:3:12
+  --> $DIR/macro-reexport-removed.rs:4:12
    |
 LL | #![feature(macro_reexport)]
    |            ^^^^^^^^^^^^^^ feature has been removed
    |
+   = note: removed in 1.0.0 (you are using $RUSTC_VERSION); see <https://github.com/rust-lang/rust/pull/49982> for more information
    = note: subsumed by `pub use`
 
 error: cannot find attribute `macro_reexport` in this scope
-  --> $DIR/macro-reexport-removed.rs:5:3
+  --> $DIR/macro-reexport-removed.rs:6:3
    |
 LL | #[macro_reexport(macro_one)]
    |   ^^^^^^^^^^^^^^ help: a built-in attribute with a similar name exists: `macro_export`
