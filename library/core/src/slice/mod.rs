@@ -21,6 +21,7 @@ use crate::{fmt, hint, ptr, range, slice};
     issue = "none",
     reason = "exposed from core to be reused in std; use the memchr crate"
 )]
+#[doc(hidden)]
 /// Pure Rust memchr implementation, taken from rust-memchr
 pub mod memchr;
 
