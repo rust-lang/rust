@@ -347,6 +347,10 @@ impl Intrinsic {
         unsafe { LLVMIntrinsicIsOverloaded(self.id) == True }
     }
 
+    pub(crate) fn is_target_specific(self) -> bool {
+        unsafe { LLVMRustIsTargetIntrinsic(self.id) }
+    }
+
     pub(crate) fn overloaded_name<'ll>(
         self,
         llmod: &'ll Module,
