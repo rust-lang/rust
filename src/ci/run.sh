@@ -186,9 +186,11 @@ else
   # Download GCC from CI on test builders
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=true"
 
-  if [ "$NO_DOWNLOAD_CI_RUSTC" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
-  fi
+  # download-rustc seems to be broken on CI after the stage0 redesign
+  # Disable it until these issues are debugged and resolved
+#  if [ "$NO_DOWNLOAD_CI_RUSTC" = "" ]; then
+#    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
+#  fi
 fi
 
 if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then

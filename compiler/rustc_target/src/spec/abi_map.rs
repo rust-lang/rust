@@ -116,9 +116,6 @@ impl AbiMap {
             (ExternAbi::Vectorcall { .. }, Arch::X86 | Arch::X86_64) => {
                 CanonAbi::X86(X86Call::Vectorcall)
             }
-            (ExternAbi::Vectorcall { .. }, _) if os == OsKind::Windows => {
-                return AbiMapping::Deprecated(CanonAbi::C);
-            }
             (ExternAbi::Vectorcall { .. }, _) => return AbiMapping::Invalid,
 
             (ExternAbi::SysV64 { .. }, Arch::X86_64) => CanonAbi::X86(X86Call::SysV64),

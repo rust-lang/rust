@@ -4,14 +4,15 @@ use std::ops::ControlFlow;
 use rustc_abi::FieldIdx;
 use rustc_attr_data_structures::ReprAttr::ReprPacked;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
+use rustc_errors::{EmissionGuarantee, MultiSpan};
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{LangItem, Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_lint_defs::builtin::{
-    REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS, UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
+    REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS, UNSUPPORTED_CALLING_CONVENTIONS,
+    UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
@@ -24,6 +25,7 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
+use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits;
@@ -35,25 +37,56 @@ use {rustc_attr_data_structures as attrs, rustc_hir as hir};
 use super::compare_impl_item::check_type_bounds;
 use super::*;
 
-pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: ExternAbi) {
-    if !tcx.sess.target.is_abi_supported(abi) {
-        struct_span_code_err!(
-            tcx.dcx(),
-            span,
-            E0570,
-            "`{abi}` is not a supported ABI for the current target",
-        )
-        .emit();
+pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
+    // FIXME: this should be checked earlier, e.g. in `rustc_ast_lowering`, to fix
+    // things like #86232.
+    fn add_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T>) {
+        if let ExternAbi::Cdecl { unwind } = abi {
+            let c_abi = ExternAbi::C { unwind };
+            diag.help(format!("use `extern {c_abi}` instead",));
+        } else if let ExternAbi::Stdcall { unwind } = abi {
+            let c_abi = ExternAbi::C { unwind };
+            let system_abi = ExternAbi::System { unwind };
+            diag.help(format!(
+                "if you need `extern {abi}` on win32 and `extern {c_abi}` everywhere else, \
+                use `extern {system_abi}`"
+            ));
+        }
+    }
+
+    match AbiMap::from_target(&tcx.sess.target).canonize_abi(abi, false) {
+        AbiMapping::Direct(..) => (),
+        AbiMapping::Invalid => {
+            let mut err = struct_span_code_err!(
+                tcx.dcx(),
+                span,
+                E0570,
+                "`{abi}` is not a supported ABI for the current target",
+            );
+            add_help(abi, &mut err);
+            err.emit();
+        }
+        AbiMapping::Deprecated(..) => {
+            tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
+                lint.primary_message("use of calling convention not supported on this target");
+                add_help(abi, lint);
+            });
+        }
     }
 }
 
 pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
-    if !tcx.sess.target.is_abi_supported(abi) {
-        tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
-            lint.primary_message(format!(
-                "the calling convention {abi} is not supported on this target"
-            ));
-        });
+    // This is always an FCW, even for `AbiMapping::Invalid`, since we started linting later than
+    // in `check_abi` above.
+    match AbiMap::from_target(&tcx.sess.target).canonize_abi(abi, false) {
+        AbiMapping::Direct(..) => (),
+        AbiMapping::Deprecated(..) | AbiMapping::Invalid => {
+            tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
+                lint.primary_message(format!(
+                    "the calling convention {abi} is not supported on this target"
+                ));
+            });
+        }
     }
 }
 
@@ -812,7 +845,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
                 return;
             };
-            check_abi(tcx, it.span, abi);
+            check_abi(tcx, it.hir_id(), it.span, abi);
 
             for item in items {
                 let def_id = item.id.owner_id.def_id;

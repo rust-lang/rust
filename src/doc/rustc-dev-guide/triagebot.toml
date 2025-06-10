@@ -72,6 +72,23 @@ days-threshold = 7
 # Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html
 [assign]
 
+# NOTE: do not add `[assign.owners]` if we still wish to keep the opt-in
+# reviewer model, as `[assign.owners]` will cause triagebot auto-reviewer
+# assignment to kick in.
+
+# Custom PR welcome message for when no auto reviewer assignment is performed
+# and no explicit manual reviewer selection is made.
+# Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html#custom-welcome-messages
+[assign.custom_welcome_messages]
+welcome-message = ""
+welcome-message-no-reviewer = """\
+Thanks for the PR. If you have write access, feel free to merge this PR if it \
+does not need reviews. You can request a review using `r? rustc-dev-guide` or \
+`r? <username>`.
+"""
+
+# Groups for `r? <group>`.
+# Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html#usage
 # Keep members alphanumerically sorted.
 [assign.adhoc_groups]
 rustc-dev-guide = [

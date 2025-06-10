@@ -128,6 +128,11 @@ pr:
     <<: *job-linux-4c
   - name: mingw-check-tidy
     continue_on_error: true
+    free_disk: false
+    env:
+      # This submodule is expensive to checkout, and it should not be needed for
+      # tidy. This speeds up the PR CI job by ~1 minute.
+      SKIP_SUBMODULES: src/gcc
     <<: *job-linux-4c
   - name: x86_64-gnu-llvm-19
     env:
@@ -303,6 +308,10 @@ auto:
     <<: *job-linux-4c
 
   - name: mingw-check-2
+    <<: *job-linux-4c
+
+  - name: mingw-check-tidy
+    free_disk: false
     <<: *job-linux-4c
 
   - name: test-various

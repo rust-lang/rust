@@ -67,43 +67,29 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 
 ## Code structure
 
-* All paths in this section are relative to `src/librustdoc` in the rust-lang/rust repository.
+All paths in this section are relative to `src/librustdoc/` in the rust-lang/rust repository.
+
 * Most of the HTML printing code is in `html/format.rs` and `html/render/mod.rs`.
-  It's in a bunch of `fmt::Display` implementations and supplementary
-  functions.
-* The types that got `Display` impls above are defined in `clean/mod.rs`, right
-  next to the custom `Clean` trait used to process them out of the rustc HIR.
+  It's in a bunch of functions returning `impl std::fmt::Display`.
+* The data types that get rendered by the functions mentioned above are defined in `clean/types.rs`.
+  The functions responsible for creating them from the `HIR` and the `rustc_middle::ty` IR
+  live in `clean/mod.rs`.
 * The bits specific to using rustdoc as a test harness are in
   `doctest.rs`.
 * The Markdown renderer is loaded up in `html/markdown.rs`, including functions
   for extracting doctests from a given block of Markdown.
 * Frontend CSS and JavaScript are stored in `html/static/`.
+  * Re. JavaScript, type annotations are written using [TypeScript-flavored JSDoc]
+comments and an external `.d.ts` file.
+    This way, the code itself remains plain, valid JavaScript.
+    We only use `tsc` as a linter.
+
+[TypeScript-flavored JSDoc]: https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html
 
 ## Tests
 
-* Tests on search engine and index are located in `tests/rustdoc-js` and `tests/rustdoc-js-std`.
-  The format is specified
-  [in the search guide](rustdoc-internals/search.md#testing-the-search-engine).
-* Tests on the "UI" of rustdoc (the terminal output it produces when run) are in
-  `tests/rustdoc-ui`
-* Tests on the "GUI" of rustdoc (the HTML, JS, and CSS as rendered in a browser)
-  are in `tests/rustdoc-gui`. These use a [NodeJS tool called
-  browser-UI-test](https://github.com/GuillaumeGomez/browser-UI-test/) that uses
-  puppeteer to run tests in a headless browser and check rendering and
-  interactivity.  For information on how to write this form of test,
-  see [`tests/rustdoc-gui/README.md`][rustdoc-gui-readme]
-  as well as [the description of the `.goml` format][goml-script]
-* Tests on the structure of rustdoc HTML output are located in `tests/rustdoc`,
-  where they're handled by the test runner of bootstrap and
-  the supplementary script `src/etc/htmldocck.py`.
-  [These tests have several extra directives available to them](./rustdoc-internals/rustdoc-test-suite.md).
-* Additionally, JavaScript type annotations are written using [TypeScript-flavored JSDoc]
-  comments and an external d.ts file. The code itself is plain, valid JavaScript; we only
-  use tsc as a linter.
-
-[TypeScript-flavored JSDoc]: https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html
-[rustdoc-gui-readme]: https://github.com/rust-lang/rust/blob/master/tests/rustdoc-gui/README.md
-[goml-script]: https://github.com/GuillaumeGomez/browser-UI-test/blob/master/goml-script.md
+`rustdoc`'s integration tests are split across several test suites.
+See [Rustdoc tests suites](tests/compiletest.md#rustdoc-test-suites) for more details.
 
 ## Constraints
 
