@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include "bar.h"
 
-extern void foo(float*);
+extern void foo(char*);
 
-void bar(float *ptr) {
+void bar(char *ptr) {
     if (((uintptr_t)ptr >> 56) != 0x1f) {
         fprintf(stderr, "Top byte corrupted on Rust -> C FFI boundary!\n");
         exit(1);
