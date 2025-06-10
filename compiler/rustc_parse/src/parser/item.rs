@@ -262,7 +262,7 @@ impl<'a> Parser<'a> {
                     define_opaque: None,
                 }))
             }
-        } else if self.check_keyword(exp!(Trait)) || self.check_auto_or_unsafe_trait_item() {
+        } else if self.check_keyword(exp!(Trait)) || self.check_trait_item_with_modifiers() {
             // TRAIT ITEM
             self.parse_item_trait(attrs, lo)?
         } else if self.check_keyword(exp!(Impl))
@@ -373,7 +373,7 @@ impl<'a> Parser<'a> {
     pub(super) fn is_path_start_item(&mut self) -> bool {
         self.is_kw_followed_by_ident(kw::Union) // no: `union::b`, yes: `union U { .. }`
         || self.is_reuse_path_item()
-        || self.check_auto_or_unsafe_trait_item() // no: `auto::b`, yes: `auto trait X { .. }`
+        || self.check_trait_item_with_modifiers() // no: `auto::b`, yes: `auto trait X { .. }`
         || self.is_async_fn() // no(2015): `async::b`, yes: `async fn`
         || matches!(self.is_macro_rules_item(), IsMacroRulesItem::Yes{..}) // no: `macro_rules::b`, yes: `macro_rules! mac`
     }
@@ -872,16 +872,67 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Is this an `(unsafe auto? | auto) trait` item?
-    fn check_auto_or_unsafe_trait_item(&mut self) -> bool {
-        // auto trait
-        self.check_keyword(exp!(Auto)) && self.is_keyword_ahead(1, &[kw::Trait])
-            // unsafe auto trait
-            || self.check_keyword(exp!(Unsafe)) && self.is_keyword_ahead(1, &[kw::Trait, kw::Auto])
+    /// Is this an `[ impl(in path) ]? unsafe? auto? trait` item?
+    fn check_trait_item_with_modifiers(&mut self) -> bool {
+        let current_token = TokenTree::Token(self.token.clone(), self.token_spacing);
+        let look_ahead = |index| match index {
+            0 => Some(&current_token),
+            _ => self.token_cursor.curr.look_ahead(index - 1),
+        };
+
+        let mut has_impl_restriction = false;
+        let mut has_unsafe = false;
+        let mut has_auto = false;
+        let mut has_trait = false;
+
+        let mut index = 0;
+
+        if let Some(TokenTree::Token(token, _)) = look_ahead(index)
+            && token.is_keyword(kw::Impl)
+        {
+            has_impl_restriction = true;
+            index += 1;
+        }
+        // impl restrictions require parens, but we enforce this later.
+        if has_impl_restriction
+            && matches!(
+                look_ahead(index),
+                Some(TokenTree::Delimited(_, _, Delimiter::Parenthesis, _))
+            )
+        {
+            index += 1;
+        }
+        if let Some(TokenTree::Token(token, _)) = look_ahead(index)
+            && token.is_keyword(kw::Unsafe)
+        {
+            has_unsafe = true;
+            index += 1;
+        }
+        if let Some(TokenTree::Token(token, _)) = look_ahead(index)
+            && token.is_keyword(kw::Auto)
+        {
+            has_auto = true;
+            index += 1;
+        }
+        if let Some(TokenTree::Token(token, _)) = look_ahead(index)
+            && token.is_keyword(kw::Trait)
+        {
+            has_trait = true;
+        }
+
+        let ret = (has_impl_restriction || has_unsafe || has_auto) && has_trait;
+        if !ret {
+            self.expected_token_types.insert(exp!(Impl).token_type);
+            self.expected_token_types.insert(exp!(Unsafe).token_type);
+            self.expected_token_types.insert(exp!(Auto).token_type);
+        }
+        ret
     }
 
-    /// Parses `unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
+    /// Parses `[ impl(in path) ]? unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
     fn parse_item_trait(&mut self, attrs: &mut AttrVec, lo: Span) -> PResult<'a, ItemKind> {
+        let impl_restriction =
+            self.parse_restriction(exp!(Impl), Some(sym::impl_restriction), FollowedByType::No)?;
         let safety = self.parse_safety(Case::Sensitive);
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(exp!(Auto)) {
@@ -913,6 +964,12 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
 
             let whole_span = lo.to(self.prev_token.span);
+            if !matches!(impl_restriction.kind, RestrictionKind::Implied) {
+                self.dcx().emit_err(errors::TraitAliasCannotHaveImplRestriction {
+                    span: whole_span,
+                    restriction: impl_restriction.span,
+                });
+            }
             if is_auto == IsAuto::Yes {
                 self.dcx().emit_err(errors::TraitAliasCannotBeAuto { span: whole_span });
             }
@@ -927,7 +984,15 @@ impl<'a> Parser<'a> {
             // It's a normal trait.
             generics.where_clause = self.parse_where_clause()?;
             let items = self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
-            Ok(ItemKind::Trait(Box::new(Trait { is_auto, safety, ident, generics, bounds, items })))
+            Ok(ItemKind::Trait(Box::new(Trait {
+                impl_restriction,
+                is_auto,
+                safety,
+                ident,
+                generics,
+                bounds,
+                items,
+            })))
         }
     }
 

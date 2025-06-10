@@ -178,6 +178,7 @@ pub struct ResolverOutputs {
 #[derive(Debug)]
 pub struct ResolverGlobalCtxt {
     pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
+    pub impl_restrictions: FxIndexMap<LocalDefId, Restriction>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
@@ -318,6 +319,35 @@ impl Visibility {
                 }
             }
             ty::Visibility::Public => "pub".to_string(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, Decodable, HashStable)]
+pub enum Restriction {
+    /// The restriction does not affect the item.
+    Unrestricted,
+    /// The restriction only applies outside of this path.
+    Restricted(DefId, Span),
+}
+
+impl Restriction {
+    /// Returns `true` if the behavior is allowed/unrestricted in the given module. A value of
+    /// `false` indicates that the behavior is prohibited.
+    pub fn is_allowed_in(self, module: DefId, tcx: TyCtxt<'_>) -> bool {
+        let restricted_to = match self {
+            Restriction::Unrestricted => return true,
+            Restriction::Restricted(module, _) => module,
+        };
+
+        tcx.is_descendant_of(module, restricted_to.into())
+    }
+
+    /// Obtain the [`Span`] of the restriction. If unrestricted, an empty span is returned.
+    pub fn span(&self) -> Span {
+        match self {
+            Restriction::Unrestricted => DUMMY_SP,
+            Restriction::Restricted(_, span) => *span,
         }
     }
 }

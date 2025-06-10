@@ -377,6 +377,13 @@ parse_inclusive_range_no_end = inclusive range with no end
 parse_incorrect_parens_trait_bounds = incorrect parentheses around trait bounds
 parse_incorrect_parens_trait_bounds_sugg = fix the parentheses
 
+parse_incorrect_restriction = incorrect {parse_restriction_noun} restriction
+    .help = some possible {parse_restriction_noun} restrictions are:
+            `{$keyword}(crate)`: {parse_restriction_adjective} only in the current crate
+            `{$keyword}(super)`: {parse_restriction_adjective} only in the current module's parent
+            `{$keyword}(in path::to::module)`: {parse_restriction_adjective} only in the specified path
+    .suggestion = make this {parse_restriction_adjective} only to module `{$path}` with `in`
+
 parse_incorrect_semicolon =
     expected item, found `;`
     .suggestion = remove this semicolon
@@ -783,6 +790,18 @@ parse_reserved_string = invalid string literal
     .note = unprefixed guarded string literals are reserved for future use since Rust 2024
     .suggestion_whitespace = consider inserting whitespace here
 
+# internal use only
+parse_restriction_adjective = { $keyword ->
+    [impl] implementable
+    *[DEFAULT_IS_BUG] BUG
+}
+
+# internal use only
+parse_restriction_noun = { $keyword ->
+    [impl] impl
+    *[DEFAULT_IS_BUG] BUG
+}
+
 parse_return_types_use_thin_arrow = return types are denoted using `->`
     .suggestion = use `->` instead
 
@@ -853,6 +872,7 @@ parse_trailing_vert_not_allowed = a trailing `|` is not allowed in an or-pattern
 parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
 parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
 
+parse_trait_alias_cannot_have_impl_restriction = trait alias cannot have `impl` restriction
 parse_transpose_dyn_or_impl = `for<...>` expected after `{$kw}`, not before
     .suggestion = move `{$kw}` before the `for<...>`
 

@@ -357,6 +357,7 @@ impl<'a> State<'a> {
                 self.bclose(item.span, empty, cb);
             }
             ast::ItemKind::Trait(box ast::Trait {
+                impl_restriction,
                 safety,
                 is_auto,
                 ident,
@@ -366,6 +367,7 @@ impl<'a> State<'a> {
             }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
+                self.print_restriction("impl", impl_restriction);
                 self.print_safety(*safety);
                 self.print_is_auto(*is_auto);
                 self.word_nbsp("trait");
@@ -470,6 +472,22 @@ impl<'a> State<'a> {
                 }
             }
             ast::VisibilityKind::Inherited => {}
+        }
+    }
+
+    // FIXME(jhpratt) make `kw` into a const generic once permitted
+    pub(crate) fn print_restriction(&mut self, kw: &'static str, restriction: &ast::Restriction) {
+        match restriction.kind {
+            ast::RestrictionKind::Unrestricted => self.word_nbsp(kw),
+            ast::RestrictionKind::Restricted { ref path, shorthand, id: _ } => {
+                let path = Self::to_string(|s| s.print_path(path, false, 0));
+                if shorthand {
+                    self.word_nbsp(format!("{kw}({path})"))
+                } else {
+                    self.word_nbsp(format!("{kw}(in {path})"))
+                }
+            }
+            ast::RestrictionKind::Implied => {}
         }
     }
 
