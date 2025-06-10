@@ -55,7 +55,3 @@ rustc-dep-of-std = ["compiler-builtins", "dep:core"]
 # This makes certain traits and function specializations public that
 # are not normally public but are required by the `builtins-test`
 unstable-public-internals = []
-
-[lints.rust]
-# The cygwin config can be dropped after our benchmark toolchain is bumped
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)', 'cfg(target_os, values("cygwin"))'] }
