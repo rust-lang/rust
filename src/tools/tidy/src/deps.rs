@@ -441,6 +441,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows-strings",
     "windows-sys",
     "windows-targets",
+    "windows-threading",
     "windows_aarch64_gnullvm",
     "windows_aarch64_msvc",
     "windows_i686_gnu",
