@@ -2838,7 +2838,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 user_ty: None,
                 source_info,
                 local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(
-                    BindingForm::RefForGuard,
+                    BindingForm::RefForGuard(for_arm_body),
                 ))),
             });
             if self.should_emit_debug_info_for_binding(name, var_id) {
