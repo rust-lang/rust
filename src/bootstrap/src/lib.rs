@@ -32,6 +32,7 @@ use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
+use utils::execution_context::ExecutionContext;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
@@ -198,7 +199,6 @@ pub struct Build {
     crates: HashMap<String, Crate>,
     crate_paths: HashMap<PathBuf, String>,
     is_sudo: bool,
-    delayed_failures: RefCell<Vec<String>>,
     prerelease_version: Cell<Option<u32>>,
 
     #[cfg(feature = "build-metrics")]
@@ -469,7 +469,6 @@ impl Build {
             crates: HashMap::new(),
             crate_paths: HashMap::new(),
             is_sudo,
-            delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
 
             #[cfg(feature = "build-metrics")]
@@ -629,7 +628,7 @@ impl Build {
             return;
         }
 
-        if GitInfo::new(false, Path::new(submodule)).is_managed_git_subrepository() {
+        if config.git_info(false, Path::new(submodule)).is_managed_git_subrepository() {
             config.update_submodule(submodule);
         }
     }
@@ -684,7 +683,7 @@ impl Build {
                 #[cfg(feature = "tracing")]
                 let _sanity_check_span =
                     span!(tracing::Level::DEBUG, "(1) executing dry-run sanity-check").entered();
-                self.config.dry_run = DryRun::SelfCheck;
+                self.config.set_dry_run(DryRun::SelfCheck);
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
             }
@@ -694,7 +693,7 @@ impl Build {
                 #[cfg(feature = "tracing")]
                 let _actual_run_span =
                     span!(tracing::Level::DEBUG, "(2) executing actual run").entered();
-                self.config.dry_run = DryRun::Disabled;
+                self.config.set_dry_run(DryRun::Disabled);
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
             }
@@ -710,14 +709,7 @@ impl Build {
         debug!("checking for postponed test failures from `test  --no-fail-fast`");
 
         // Check for postponed failures from `test --no-fail-fast`.
-        let failures = self.delayed_failures.borrow();
-        if !failures.is_empty() {
-            eprintln!("\n{} command(s) did not execute successfully:\n", failures.len());
-            for failure in failures.iter() {
-                eprintln!("  - {failure}\n");
-            }
-            exit!(1);
-        }
+        self.config.exec_ctx().report_failures_and_exit();
 
         #[cfg(feature = "build-metrics")]
         self.metrics.persist(self);
@@ -953,133 +945,6 @@ impl Build {
         })
     }
 
-    /// Execute a command and return its output.
-    /// Note: Ideally, you should use one of the BootstrapCommand::run* functions to
-    /// execute commands. They internally call this method.
-    #[track_caller]
-    fn run(
-        &self,
-        command: &mut BootstrapCommand,
-        stdout: OutputMode,
-        stderr: OutputMode,
-    ) -> CommandOutput {
-        command.mark_as_executed();
-        if self.config.dry_run() && !command.run_always {
-            return CommandOutput::default();
-        }
-
-        #[cfg(feature = "tracing")]
-        let _run_span = trace_cmd!(command);
-
-        let created_at = command.get_created_location();
-        let executed_at = std::panic::Location::caller();
-
-        self.verbose(|| {
-            println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
-        });
-
-        let cmd = command.as_command_mut();
-        cmd.stdout(stdout.stdio());
-        cmd.stderr(stderr.stdio());
-
-        let output = cmd.output();
-
-        use std::fmt::Write;
-
-        let mut message = String::new();
-        let output: CommandOutput = match output {
-            // Command has succeeded
-            Ok(output) if output.status.success() => {
-                CommandOutput::from_output(output, stdout, stderr)
-            }
-            // Command has started, but then it failed
-            Ok(output) => {
-                writeln!(
-                    message,
-                    r#"
-Command {command:?} did not execute successfully.
-Expected success, got {}
-Created at: {created_at}
-Executed at: {executed_at}"#,
-                    output.status,
-                )
-                .unwrap();
-
-                let output: CommandOutput = CommandOutput::from_output(output, stdout, stderr);
-
-                // If the output mode is OutputMode::Capture, we can now print the output.
-                // If it is OutputMode::Print, then the output has already been printed to
-                // stdout/stderr, and we thus don't have anything captured to print anyway.
-                if stdout.captures() {
-                    writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
-                }
-                if stderr.captures() {
-                    writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
-                }
-                output
-            }
-            // The command did not even start
-            Err(e) => {
-                writeln!(
-                    message,
-                    "\n\nCommand {command:?} did not execute successfully.\
-            \nIt was not possible to execute the command: {e:?}"
-                )
-                .unwrap();
-                CommandOutput::did_not_start(stdout, stderr)
-            }
-        };
-
-        let fail = |message: &str, output: CommandOutput| -> ! {
-            if self.is_verbose() {
-                println!("{message}");
-            } else {
-                let (stdout, stderr) = (output.stdout_if_present(), output.stderr_if_present());
-                // If the command captures output, the user would not see any indication that
-                // it has failed. In this case, print a more verbose error, since to provide more
-                // context.
-                if stdout.is_some() || stderr.is_some() {
-                    if let Some(stdout) =
-                        output.stdout_if_present().take_if(|s| !s.trim().is_empty())
-                    {
-                        println!("STDOUT:\n{stdout}\n");
-                    }
-                    if let Some(stderr) =
-                        output.stderr_if_present().take_if(|s| !s.trim().is_empty())
-                    {
-                        println!("STDERR:\n{stderr}\n");
-                    }
-                    println!("Command {command:?} has failed. Rerun with -v to see more details.");
-                } else {
-                    println!("Command has failed. Rerun with -v to see more details.");
-                }
-            }
-            exit!(1);
-        };
-
-        if !output.is_success() {
-            match command.failure_behavior {
-                BehaviorOnFailure::DelayFail => {
-                    if self.fail_fast {
-                        fail(&message, output);
-                    }
-
-                    let mut failures = self.delayed_failures.borrow_mut();
-                    failures.push(message);
-                }
-                BehaviorOnFailure::Exit => {
-                    fail(&message, output);
-                }
-                BehaviorOnFailure::Ignore => {
-                    // If failures are allowed, either the error has been printed already
-                    // (OutputMode::Print) or the user used a capture output mode and wants to
-                    // handle the error output on their own.
-                }
-            }
-        }
-        output
-    }
-
     /// Check if verbosity is greater than the `level`
     pub fn is_verbose_than(&self, level: usize) -> bool {
         self.verbosity > level
@@ -1093,7 +958,7 @@ Executed at: {executed_at}"#,
     }
 
     fn info(&self, msg: &str) {
-        match self.config.dry_run {
+        match self.config.get_dry_run() {
             DryRun::SelfCheck => (),
             DryRun::Disabled | DryRun::UserSelected => {
                 println!("{msg}");
@@ -1216,7 +1081,7 @@ Executed at: {executed_at}"#,
 
     #[track_caller]
     fn group(&self, msg: &str) -> Option<gha::Group> {
-        match self.config.dry_run {
+        match self.config.get_dry_run() {
             DryRun::SelfCheck => None,
             DryRun::Disabled | DryRun::UserSelected => Some(gha::group(msg)),
         }
@@ -2044,6 +1909,16 @@ to download LLVM rather than building it.
         let result = f(&mut stream);
         stream.reset().unwrap();
         result
+    }
+
+    pub fn exec_ctx(&self) -> &ExecutionContext {
+        &self.config.exec_ctx
+    }
+}
+
+impl AsRef<ExecutionContext> for Build {
+    fn as_ref(&self) -> &ExecutionContext {
+        &self.config.exec_ctx
     }
 }
 

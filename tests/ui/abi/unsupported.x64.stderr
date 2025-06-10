@@ -99,7 +99,7 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 error[E0570]: `"stdcall"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:117:1
+  --> $DIR/unsupported.rs:119:1
    |
 LL | extern "stdcall" {}
    | ^^^^^^^^^^^^^^^^^^^
@@ -107,27 +107,18 @@ LL | extern "stdcall" {}
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
 error[E0570]: `"stdcall-unwind"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:121:1
+  --> $DIR/unsupported.rs:123:1
    |
 LL | extern "stdcall-unwind" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: if you need `extern "stdcall-unwind"` on win32 and `extern "C-unwind"` everywhere else, use `extern "system-unwind"`
 
-warning: the calling convention "cdecl" is not supported on this target
-  --> $DIR/unsupported.rs:129:17
+warning: use of calling convention not supported on this target
+  --> $DIR/unsupported.rs:131:17
    |
 LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    |                 ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:134:1
-   |
-LL | extern "cdecl" {}
-   | ^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
@@ -135,7 +126,17 @@ LL | extern "cdecl" {}
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:137:1
+  --> $DIR/unsupported.rs:136:1
+   |
+LL | extern "cdecl" {}
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
+   = help: use `extern "C"` instead
+
+warning: use of calling convention not supported on this target
+  --> $DIR/unsupported.rs:139:1
    |
 LL | extern "cdecl-unwind" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -145,7 +146,7 @@ LL | extern "cdecl-unwind" {}
    = help: use `extern "C-unwind"` instead
 
 warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
-  --> $DIR/unsupported.rs:151:21
+  --> $DIR/unsupported.rs:153:21
    |
 LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -154,7 +155,7 @@ LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
-  --> $DIR/unsupported.rs:159:22
+  --> $DIR/unsupported.rs:161:22
    |
 LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -163,7 +164,7 @@ LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:164:1
+  --> $DIR/unsupported.rs:166:1
    |
 LL | extern "C-cmse-nonsecure-entry" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -219,7 +220,7 @@ LL | extern "stdcall" fn stdcall() {}
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:126:1
+  --> $DIR/unsupported.rs:128:1
    |
 LL | extern "cdecl" fn cdecl() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -229,7 +230,7 @@ LL | extern "cdecl" fn cdecl() {}
    = help: use `extern "C"` instead
 
 error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:157:1
+  --> $DIR/unsupported.rs:159:1
    |
 LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -315,19 +316,20 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: the calling convention "cdecl" is not supported on this target
-  --> $DIR/unsupported.rs:129:17
+warning: use of calling convention not supported on this target
+  --> $DIR/unsupported.rs:131:17
    |
 LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    |                 ^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
+   = help: use `extern "C"` instead
+   = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 Future breakage diagnostic:
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:134:1
+  --> $DIR/unsupported.rs:136:1
    |
 LL | extern "cdecl" {}
    | ^^^^^^^^^^^^^^^^^
@@ -339,7 +341,7 @@ LL | extern "cdecl" {}
 
 Future breakage diagnostic:
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:137:1
+  --> $DIR/unsupported.rs:139:1
    |
 LL | extern "cdecl-unwind" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -351,7 +353,7 @@ LL | extern "cdecl-unwind" {}
 
 Future breakage diagnostic:
 warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
-  --> $DIR/unsupported.rs:151:21
+  --> $DIR/unsupported.rs:153:21
    |
 LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -362,7 +364,7 @@ LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
 
 Future breakage diagnostic:
 warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
-  --> $DIR/unsupported.rs:159:22
+  --> $DIR/unsupported.rs:161:22
    |
 LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -373,7 +375,7 @@ LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
 
 Future breakage diagnostic:
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:126:1
+  --> $DIR/unsupported.rs:128:1
    |
 LL | extern "cdecl" fn cdecl() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
