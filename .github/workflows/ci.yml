@@ -122,6 +122,13 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: disable write cache
+        if: runner.os == 'Windows'
+        run: |
+          cd src/ci/winfs-yolo
+          CARGO_INCREMENTAL=0 cargo run
+
+
       # Free up disk space on Linux by removing preinstalled components that
       # we do not need. We do this to enable some of the less resource
       # intensive jobs to run on free runners, which however also have
