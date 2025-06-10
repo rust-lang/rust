@@ -1,5 +1,5 @@
 #![deny(clippy::useless_conversion)]
-#![allow(clippy::needless_if, clippy::unnecessary_wraps)]
+#![allow(clippy::needless_if, clippy::unnecessary_wraps, unused)]
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]
 

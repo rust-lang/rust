@@ -1095,6 +1095,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 tcx.ensure_ok().check_transmutes(def_id);
             }
             tcx.ensure_ok().has_ffi_unwind_calls(def_id);
+            tcx.ensure_ok().check_liveness(def_id);
 
             // If we need to codegen, ensure that we emit all errors from
             // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
