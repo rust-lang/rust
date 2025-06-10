@@ -40,7 +40,7 @@ libc = { version = "0.2.172", default-features = false, features = [
 ], public = true }
 
 [target.'cfg(all(not(target_os = "aix"), not(all(windows, target_env = "msvc", not(target_vendor = "uwp")))))'.dependencies]
-object = { version = "0.36.0", default-features = false, optional = true, features = [
+object = { version = "0.37.1", default-features = false, optional = true, features = [
     'read_core',
     'elf',
     'macho',
@@ -50,7 +50,7 @@ object = { version = "0.36.0", default-features = false, optional = true, featur
 ] }
 
 [target.'cfg(target_os = "aix")'.dependencies]
-object = { version = "0.36.0", default-features = false, optional = true, features = [
+object = { version = "0.37.1", default-features = false, optional = true, features = [
     'read_core',
     'xcoff',
     'unaligned',
