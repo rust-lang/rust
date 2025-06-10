@@ -555,7 +555,6 @@ dependencies = [
  "tempfile",
  "tikv-jemalloc-sys",
  "ui_test",
- "windows-sys",
 ]
 
 [[package]]
