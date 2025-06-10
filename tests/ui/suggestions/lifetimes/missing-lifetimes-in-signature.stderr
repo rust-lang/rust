@@ -101,15 +101,17 @@ LL + fn bat<'b, 'a, G: 'a + 'b, T>(g: G, dest: &'b mut T) -> impl FnOnce() + 'b 
 error[E0621]: explicit lifetime required in the type of `dest`
   --> $DIR/missing-lifetimes-in-signature.rs:73:5
    |
-LL |   fn bat<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-   |                                    ------ help: add explicit lifetime `'a` to the type of `dest`: `&'a mut T`
-...
 LL | /     move || {
 LL | |
 LL | |
 LL | |         *dest = g.get();
 LL | |     }
    | |_____^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `dest`
+   |
+LL | fn bat<'a, G: 'a, T>(g: G, dest: &'a mut T) -> impl FnOnce() + '_ + 'a
+   |                                   ++
 
 error[E0309]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:85:5
