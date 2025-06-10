@@ -1016,7 +1016,6 @@ impl Step for RustAnalyzerProcMacroSrv {
 pub struct LlvmBitcodeLinker {
     pub compiler: Compiler,
     pub target: TargetSelection,
-    pub extra_features: Vec<String>,
 }
 
 impl Step for LlvmBitcodeLinker {
@@ -1033,7 +1032,6 @@ impl Step for LlvmBitcodeLinker {
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
-            extra_features: Vec::new(),
             target: run.target,
         });
     }
@@ -1050,7 +1048,7 @@ impl Step for LlvmBitcodeLinker {
             mode: Mode::ToolRustc,
             path: "src/tools/llvm-bitcode-linker",
             source_type: SourceType::InTree,
-            extra_features: self.extra_features,
+            extra_features: vec![],
             allow_features: "",
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,

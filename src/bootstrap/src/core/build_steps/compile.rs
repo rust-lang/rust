@@ -2061,7 +2061,6 @@ impl Step for Assemble {
                     builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
                         compiler,
                         target: target_compiler.host,
-                        extra_features: vec![],
                     });
                 let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
                 builder.copy_link(
