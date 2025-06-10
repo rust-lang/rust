@@ -4,12 +4,17 @@ use core::{arch, mem};
 // Kernel-provided user-mode helper functions:
 // https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
 unsafe fn __kuser_cmpxchg(oldval: u32, newval: u32, ptr: *mut u32) -> bool {
-    let f: extern "C" fn(u32, u32, *mut u32) -> u32 = mem::transmute(0xffff0fc0usize as *const ());
+    // FIXME(volatile): the third parameter is a volatile pointer
+    // SAFETY: kernel docs specify a known address with the given signature
+    let f = unsafe {
+        mem::transmute::<_, extern "C" fn(u32, u32, *mut u32) -> u32>(0xffff0fc0usize as *const ())
+    };
     f(oldval, newval, ptr) == 0
 }
 
 unsafe fn __kuser_memory_barrier() {
-    let f: extern "C" fn() = mem::transmute(0xffff0fa0usize as *const ());
+    // SAFETY: kernel docs specify a known address with the given signature
+    let f = unsafe { mem::transmute::<_, extern "C" fn()>(0xffff0fa0usize as *const ()) };
     f();
 }
 
@@ -67,8 +72,10 @@ fn insert_aligned(aligned: u32, val: u32, shift: u32, mask: u32) -> u32 {
 /// - if `size_of::<T>() == 2`, `ptr` or `ptr` offset by 2 bytes must be valid for a relaxed atomic
 ///   read of 2 bytes.
 /// - if `size_of::<T>() == 4`, `ptr` must be valid for a relaxed atomic read of 4 bytes.
+// FIXME: assert some of the preconditions in debug mode
 unsafe fn atomic_load_aligned<T>(ptr: *mut u32) -> u32 {
-    if mem::size_of::<T>() == 4 {
+    const { assert!(size_of::<T>() <= 4) };
+    if size_of::<T>() == 4 {
         // SAFETY: As `T` has a size of 4, the caller garantees this is sound.
         unsafe { AtomicU32::from_ptr(ptr).load(Ordering::Relaxed) }
     } else {
@@ -100,11 +107,13 @@ unsafe fn atomic_rmw<T, F: Fn(u32) -> u32, G: Fn(u32, u32) -> u32>(ptr: *mut T, 
     let (shift, mask) = get_shift_mask(ptr);
 
     loop {
-        let curval_aligned = atomic_load_aligned::<T>(aligned_ptr);
+        // FIXME(safety): preconditions review needed
+        let curval_aligned = unsafe { atomic_load_aligned::<T>(aligned_ptr) };
         let curval = extract_aligned(curval_aligned, shift, mask);
         let newval = f(curval);
         let newval_aligned = insert_aligned(curval_aligned, newval, shift, mask);
-        if __kuser_cmpxchg(curval_aligned, newval_aligned, aligned_ptr) {
+        // FIXME(safety): preconditions review needed
+        if unsafe { __kuser_cmpxchg(curval_aligned, newval_aligned, aligned_ptr) } {
             return g(curval, newval);
         }
     }
@@ -116,13 +125,15 @@ unsafe fn atomic_cmpxchg<T>(ptr: *mut T, oldval: u32, newval: u32) -> u32 {
     let (shift, mask) = get_shift_mask(ptr);
 
     loop {
-        let curval_aligned = atomic_load_aligned::<T>(aligned_ptr);
+        // FIXME(safety): preconditions review needed
+        let curval_aligned = unsafe { atomic_load_aligned::<T>(aligned_ptr) };
         let curval = extract_aligned(curval_aligned, shift, mask);
         if curval != oldval {
             return curval;
         }
         let newval_aligned = insert_aligned(curval_aligned, newval, shift, mask);
-        if __kuser_cmpxchg(curval_aligned, newval_aligned, aligned_ptr) {
+        // FIXME(safety): preconditions review needed
+        if unsafe { __kuser_cmpxchg(curval_aligned, newval_aligned, aligned_ptr) } {
             return oldval;
         }
     }
@@ -132,7 +143,14 @@ macro_rules! atomic_rmw {
     ($name:ident, $ty:ty, $op:expr, $fetch:expr) => {
         intrinsics! {
             pub unsafe extern "C" fn $name(ptr: *mut $ty, val: $ty) -> $ty {
-                atomic_rmw(ptr, |x| $op(x as $ty, val) as u32, |old, new| $fetch(old, new)) as $ty
+                // FIXME(safety): preconditions review needed
+                unsafe {
+                    atomic_rmw(
+                        ptr,
+                        |x| $op(x as $ty, val) as u32,
+                        |old, new| $fetch(old, new)
+                    ) as $ty
+                }
             }
         }
     };
@@ -149,7 +167,8 @@ macro_rules! atomic_cmpxchg {
     ($name:ident, $ty:ty) => {
         intrinsics! {
             pub unsafe extern "C" fn $name(ptr: *mut $ty, oldval: $ty, newval: $ty) -> $ty {
-                atomic_cmpxchg(ptr, oldval as u32, newval as u32) as $ty
+                // FIXME(safety): preconditions review needed
+                unsafe { atomic_cmpxchg(ptr, oldval as u32, newval as u32) as $ty }
             }
         }
     };
@@ -285,6 +304,7 @@ atomic_cmpxchg!(__sync_val_compare_and_swap_4, u32);
 
 intrinsics! {
     pub unsafe extern "C" fn __sync_synchronize() {
-        __kuser_memory_barrier();
+       // SAFETY: preconditions are the same as the calling function.
+       unsafe {  __kuser_memory_barrier() };
     }
 }

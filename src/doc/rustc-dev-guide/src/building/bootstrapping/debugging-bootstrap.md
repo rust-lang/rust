@@ -55,7 +55,7 @@ Bootstrap will conditionally build `tracing` support and enable `tracing` output
 
 Example basic usage[^just-trace]:
 
-[^just-trace]: It is not recommend to use *just* `BOOTSTRAP_TRACING=TRACE` because that will dump *everything* at `TRACE` level, including logs intentionally gated behind custom targets as they are too verbose even for `TRACE` level by default.
+[^just-trace]: It is not recommended to use *just* `BOOTSTRAP_TRACING=TRACE` because that will dump *everything* at `TRACE` level, including logs intentionally gated behind custom targets as they are too verbose even for `TRACE` level by default.
 
 ```bash
 $ BOOTSTRAP_TRACING=bootstrap=TRACE ./x build library --stage 1

@@ -319,7 +319,7 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
 
     let infcx = tcx.infer_ctxt().ignoring_regions().build(ty::TypingMode::non_body_analysis());
 
-    let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
+    let ocx = traits::ObligationCtxt::new(&infcx);
     let cause = traits::ObligationCause::dummy();
     let param_env = tcx.param_env(impl_def_id);
 
