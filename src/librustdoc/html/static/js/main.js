@@ -800,21 +800,34 @@ function preLoadCss(cssUrl) {
 
     // <https://github.com/search?q=repo%3Arust-lang%2Frust+[RUSTDOCIMPL]+trait.impl&type=code>
     window.register_implementors = imp => {
-        const implementors = document.getElementById("implementors-list");
-        const synthetic_implementors = document.getElementById("synthetic-implementors-list");
+        /** Takes an ID as input and returns a list of two elements. The first element is the DOM
+         * element with the given ID and the second is the "negative marker", meaning the location
+         * between the negative and non-negative impls.
+         *
+         * @param {string} id: ID of the DOM element.
+         *
+         * @return {[HTMLElement|null, HTMLElement|null]}
+         */
+        function implementorsElems(id) {
+            const elem = document.getElementById(id);
+            return [elem, elem ? elem.querySelector(".negative-marker") : null];
+        }
+        const implementors = implementorsElems("implementors-list");
+        const synthetic_implementors = implementorsElems("synthetic-implementors-list");
         const inlined_types = new Set();
 
         const TEXT_IDX = 0;
-        const SYNTHETIC_IDX = 1;
-        const TYPES_IDX = 2;
+        const IS_NEG_IDX = 1;
+        const SYNTHETIC_IDX = 2;
+        const TYPES_IDX = 3;
 
-        if (synthetic_implementors) {
+        if (synthetic_implementors[0]) {
             // This `inlined_types` variable is used to avoid having the same implementation
             // showing up twice. For example "String" in the "Sync" doc page.
             //
             // By the way, this is only used by and useful for traits implemented automatically
             // (like "Send" and "Sync").
-            onEachLazy(synthetic_implementors.getElementsByClassName("impl"), el => {
+            onEachLazy(synthetic_implementors[0].getElementsByClassName("impl"), el => {
                 const aliases = el.getAttribute("data-aliases");
                 if (!aliases) {
                     return;
@@ -827,7 +840,7 @@ function preLoadCss(cssUrl) {
         }
 
         // @ts-expect-error
-        let currentNbImpls = implementors.getElementsByClassName("impl").length;
+        let currentNbImpls = implementors[0].getElementsByClassName("impl").length;
         // @ts-expect-error
         const traitName = document.querySelector(".main-heading h1 > .trait").textContent;
         const baseIdName = "impl-" + traitName + "-";
@@ -884,8 +897,16 @@ function preLoadCss(cssUrl) {
                 addClass(display, "impl");
                 display.appendChild(anchor);
                 display.appendChild(code);
-                // @ts-expect-error
-                list.appendChild(display);
+
+                // If this is a negative implementor, we put it into the right location (just
+                // before the negative impl marker).
+                if (struct[IS_NEG_IDX]) {
+                    // @ts-expect-error
+                    list[1].before(display);
+                } else {
+                    // @ts-expect-error
+                    list[0].appendChild(display);
+                }
                 currentNbImpls += 1;
             }
         }
