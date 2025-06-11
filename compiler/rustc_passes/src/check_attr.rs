@@ -142,6 +142,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 Attribute::Parsed(AttributeKind::Repr(_)) => { /* handled below this loop and elsewhere */
                 }
+                Attribute::Parsed(AttributeKind::AllowUnstableFeature(_)) => {
+                    // FIXME: handle this later.
+                }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
