@@ -11,7 +11,7 @@ trait Trait {
 }
 
 #[unstable_feature_bound(foo)]
-impl Trait for T { 
+impl Trait for T {
 // FIXME: this line above failed with cannot find type `T` in this scope
     fn method(&self) {
         println!("hi");

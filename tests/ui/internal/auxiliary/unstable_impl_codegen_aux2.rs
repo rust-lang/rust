@@ -8,8 +8,8 @@
 
 extern crate unstable_impl_codegen_aux1 as aux;
 
-/// Upstream crate for unstable impl codegen test 
-/// that depends on aux crate in 
+/// Upstream crate for unstable impl codegen test
+/// that depends on aux crate in
 /// unstable_impl_codegen_aux1.rs
 
 fn foo<T>(a:T) {
