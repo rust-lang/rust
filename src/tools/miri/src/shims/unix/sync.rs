@@ -504,11 +504,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let mutex = mutex_get_data(this, mutex_op)?.clone();
 
-        let ret = if this.mutex_is_locked(&mutex.mutex_ref) {
-            let owner_thread = this.mutex_get_owner(&mutex.mutex_ref);
+        let ret = if let Some(owner_thread) = mutex.mutex_ref.owner() {
             if owner_thread != this.active_thread() {
                 this.mutex_enqueue_and_block(
-                    &mutex.mutex_ref,
+                    mutex.mutex_ref,
                     Some((Scalar::from_i32(0), dest.clone())),
                 );
                 return interp_ok(());
@@ -541,8 +540,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let mutex = mutex_get_data(this, mutex_op)?.clone();
 
-        interp_ok(Scalar::from_i32(if this.mutex_is_locked(&mutex.mutex_ref) {
-            let owner_thread = this.mutex_get_owner(&mutex.mutex_ref);
+        interp_ok(Scalar::from_i32(if let Some(owner_thread) = mutex.mutex_ref.owner() {
             if owner_thread != this.active_thread() {
                 this.eval_libc_i32("EBUSY")
             } else {
@@ -596,7 +594,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // since we make the field uninit below.
         let mutex = mutex_get_data(this, mutex_op)?.clone();
 
-        if this.mutex_is_locked(&mutex.mutex_ref) {
+        if mutex.mutex_ref.owner().is_some() {
             throw_ub_format!("destroyed a locked mutex");
         }
 
@@ -618,7 +616,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
 
-        if this.rwlock_is_write_locked(&rwlock.rwlock_ref) {
+        if rwlock.rwlock_ref.is_write_locked() {
             this.rwlock_enqueue_and_block_reader(
                 rwlock.rwlock_ref,
                 Scalar::from_i32(0),
@@ -637,7 +635,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
 
-        if this.rwlock_is_write_locked(&rwlock.rwlock_ref) {
+        if rwlock.rwlock_ref.is_write_locked() {
             interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
         } else {
             this.rwlock_reader_lock(&rwlock.rwlock_ref);
@@ -654,7 +652,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
 
-        if this.rwlock_is_locked(&rwlock.rwlock_ref) {
+        if rwlock.rwlock_ref.is_locked() {
             // Note: this will deadlock if the lock is already locked by this
             // thread in any way.
             //
@@ -685,7 +683,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
 
-        if this.rwlock_is_locked(&rwlock.rwlock_ref) {
+        if rwlock.rwlock_ref.is_locked() {
             interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
         } else {
             this.rwlock_writer_lock(&rwlock.rwlock_ref);
@@ -714,7 +712,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // since we make the field uninit below.
         let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
 
-        if this.rwlock_is_locked(&rwlock.rwlock_ref) {
+        if rwlock.rwlock_ref.is_locked() {
             throw_ub_format!("destroyed a locked rwlock");
         }
 

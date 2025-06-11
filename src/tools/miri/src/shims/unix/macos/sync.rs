@@ -289,15 +289,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let mutex_ref = mutex_ref.clone();
 
-        if this.mutex_is_locked(&mutex_ref) {
-            if this.mutex_get_owner(&mutex_ref) == this.active_thread() {
+        if let Some(owner) = mutex_ref.owner() {
+            if owner == this.active_thread() {
                 // Matching the current macOS implementation: abort on reentrant locking.
                 throw_machine_stop!(TerminationInfo::Abort(
                     "attempted to lock an os_unfair_lock that is already locked by the current thread".to_owned()
                 ));
             }
 
-            this.mutex_enqueue_and_block(&mutex_ref, None);
+            this.mutex_enqueue_and_block(mutex_ref, None);
         } else {
             this.mutex_lock(&mutex_ref);
         }
@@ -319,7 +319,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let mutex_ref = mutex_ref.clone();
 
-        if this.mutex_is_locked(&mutex_ref) {
+        if mutex_ref.owner().is_some() {
             // Contrary to the blocking lock function, this does not check for
             // reentrancy.
             this.write_scalar(Scalar::from_bool(false), dest)?;
@@ -350,9 +350,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ));
         }
 
-        // If the lock is not locked by anyone now, it went quer.
+        // If the lock is not locked by anyone now, it went quiet.
         // Reset to zero so that it can be moved and initialized again for the next phase.
-        if !this.mutex_is_locked(&mutex_ref) {
+        if mutex_ref.owner().is_none() {
             let lock_place = this.deref_pointer_as(lock_op, this.machine.layouts.u32)?;
             this.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
         }
@@ -371,9 +371,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let mutex_ref = mutex_ref.clone();
 
-        if !this.mutex_is_locked(&mutex_ref)
-            || this.mutex_get_owner(&mutex_ref) != this.active_thread()
-        {
+        if mutex_ref.owner().is_none_or(|o| o != this.active_thread()) {
             throw_machine_stop!(TerminationInfo::Abort(
                 "called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread".to_owned()
             ));
@@ -393,17 +391,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let mutex_ref = mutex_ref.clone();
 
-        if this.mutex_is_locked(&mutex_ref)
-            && this.mutex_get_owner(&mutex_ref) == this.active_thread()
-        {
+        if mutex_ref.owner().is_some_and(|o| o == this.active_thread()) {
             throw_machine_stop!(TerminationInfo::Abort(
                 "called os_unfair_lock_assert_not_owner on an os_unfair_lock owned by the current thread".to_owned()
             ));
         }
 
-        // If the lock is not locked by anyone now, it went quer.
+        // If the lock is not locked by anyone now, it went quiet.
         // Reset to zero so that it can be moved and initialized again for the next phase.
-        if !this.mutex_is_locked(&mutex_ref) {
+        if mutex_ref.owner().is_none() {
             let lock_place = this.deref_pointer_as(lock_op, this.machine.layouts.u32)?;
             this.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
         }
