@@ -1389,7 +1389,8 @@ impl Config {
                 // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
                 // This syntax isn't accepted by `branch.{branch}`. Strip it.
                 let branch = current_branch.stdout();
-                let branch = branch.strip_prefix("heads/").unwrap_or(&branch);
+                let branch = branch.trim();
+                let branch = branch.strip_prefix("heads/").unwrap_or(branch);
                 git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
             }
             git.args(["submodule", "update", "--init", "--recursive", "--depth=1"]);
