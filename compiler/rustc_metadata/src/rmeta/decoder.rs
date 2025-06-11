@@ -1949,6 +1949,16 @@ impl CrateMetadata {
         self.root.is_proc_macro_crate()
     }
 
+    pub(crate) fn proc_macros_for_crate(&self, krate: CrateNum, cstore: &CStore) -> Vec<DefId> {
+        let Some(data) = self.root.proc_macro_data.as_ref() else {
+            return vec![];
+        };
+        data.macros
+            .decode(CrateMetadataRef { cdata: self, cstore })
+            .map(|index| DefId { index, krate })
+            .collect()
+    }
+
     pub(crate) fn name(&self) -> Symbol {
         self.root.header.name
     }
