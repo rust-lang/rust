@@ -57,7 +57,9 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
     match AbiMap::from_target(&tcx.sess.target).canonize_abi(abi, false) {
         AbiMapping::Direct(..) => (),
         // already erred in rustc_ast_lowering
-        AbiMapping::Invalid => (),
+        AbiMapping::Invalid => {
+            tcx.dcx().span_delayed_bug(span, format!("{abi} should be rejected in ast_lowering"));
+        }
         AbiMapping::Deprecated(..) => {
             tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
                 lint.primary_message("use of calling convention not supported on this target");
