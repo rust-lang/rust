@@ -2,8 +2,16 @@
 // successfully emit a diagnostic. Regression test for issue #114714.
 
 #![feature(generic_const_items)]
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 
-const Q<'a, 'b>: &'a &'b () = &&(); //~ ERROR reference has a longer lifetime than the data it references
+struct S<'a>(&'a ());
+
+impl<'a> S<'a> {
+    const K<'b>: &'a &'b () = &&(); //~ ERROR reference has a longer lifetime than the data it references
+}
+
+const Q<'a, 'b>: () = {
+    let _: &'a &'b () = &&(); //~ ERROR lifetime may not live long enough
+};
 
 fn main() {}
