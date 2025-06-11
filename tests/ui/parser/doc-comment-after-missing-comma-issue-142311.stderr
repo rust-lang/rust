@@ -1,0 +1,69 @@
+error: expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `/// Like where people drink`
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:10:5
+   |
+LL |     Bar
+   |        - expected one of `(`, `,`, `=`, `{`, or `}`
+LL |     /// Like where people drink
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected token
+   |
+help: add a space before the last `/` to write a regular comment
+   |
+LL |     // / Like where people drink
+   |       +
+help: missing `,`
+   |
+LL |     Bar,
+   |        +
+
+error: expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `///xxxxxx`
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:12:8
+   |
+LL |     Baa///xxxxxx
+   |        ^^^^^^^^^ expected one of `(`, `,`, `=`, `{`, or `}`
+   |
+help: add a space before the last `/` to write a regular comment
+   |
+LL |     Baa// /xxxxxx
+   |          +
+help: missing `,`
+   |
+LL |     Baa,///xxxxxx
+   |        +
+
+error: expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `///xxxxxx`
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:14:8
+   |
+LL |     Baz///xxxxxx
+   |        ^^^^^^^^^ expected one of `(`, `,`, `=`, `{`, or `}`
+   |
+   = help: doc comments must come before what they document, if a comment was intended use `//`
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
+help: add a space before the last `/` to write a regular comment
+   |
+LL |     Baz// /xxxxxx
+   |          +
+
+error: expected one of `,`, `.`, `;`, `?`, `]`, or an operator, found doc comment `///xxxxxx`
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:20:10
+   |
+LL |         1///xxxxxx
+   |          ^^^^^^^^^ expected one of `,`, `.`, `;`, `?`, `]`, or an operator
+   |
+help: add a space before the last `/` to write a regular comment
+   |
+LL |         1// /xxxxxx
+   |            +
+
+error: expected one of `,`, `.`, `?`, `]`, or an operator, found doc comment `///xxxxxx`
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:29:10
+   |
+LL |         2///xxxxxx
+   |          ^^^^^^^^^ expected one of `,`, `.`, `?`, `]`, or an operator
+   |
+help: add a space before the last `/` to write a regular comment
+   |
+LL |         2// /xxxxxx
+   |            +
+
+error: aborting due to 5 previous errors
+
