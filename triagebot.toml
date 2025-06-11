@@ -729,6 +729,41 @@ don't know
 ]
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
 
+[notify-zulip."beta-nominated".bootstrap]
+required_labels = ["T-bootstrap"]
+zulip_stream = 507486 # #t-infra/bootstrap/backports
+topic = "#{number}: beta-nominated"
+message_on_add = [
+    """\
+@*T-bootstrap* PR #{number} "{title}" has been nominated for beta backport.
+""",
+    """\
+/poll Approve beta backport of #{number}?
+approve
+decline
+don't know
+""",
+]
+message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."stable-nominated".bootstrap]
+required_labels = ["T-bootstrap"]
+zulip_stream = 507486 # #t-infra/bootstrap/backports
+topic = "#{number}: stable-nominated"
+message_on_add = [
+    """\
+@*T-bootstrap* PR #{number} "{title}" has been nominated for stable backport.
+""",
+    """\
+/poll Approve stable backport of #{number}?
+approve
+approve (but does not justify new dot release on its own)
+decline
+don't know
+""",
+]
+message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
 [notify-zulip."A-edition-2021"]
 required_labels = ["C-bug"]
 zulip_stream = 268952 # #edition
