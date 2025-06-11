@@ -6,13 +6,14 @@
 /// Aux crate for unstable impl codegen test.
 
 #[stable(feature = "a", since = "1.1.1" )]
-trait Trait {
+pub trait Trait {
+    #[stable(feature = "a", since = "1.1.1" )]
     fn method(&self);
 }
 
 #[unstable_feature_bound(foo)]
-impl Trait for T {
-// FIXME: this line above failed with cannot find type `T` in this scope
+#[unstable(feature = "foo", issue = "none" )]
+impl<T> Trait for T {
     fn method(&self) {
         println!("hi");
     }
