@@ -29,3 +29,11 @@ fn location_const_column() {
     const COLUMN: u32 = CALLER.column();
     assert_eq!(COLUMN, 40);
 }
+
+#[test]
+fn location_debug() {
+    let f = format!("{:?}", Location::caller());
+    assert!(f.contains(&format!("{:?}", file!())));
+    assert!(f.contains("35"));
+    assert!(f.contains("29"));
+}
