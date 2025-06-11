@@ -85,6 +85,8 @@ pub struct FileType(c_short);
 #[derive(Debug)]
 pub struct DirBuilder {}
 
+pub struct Dir(!);
+
 impl FileAttr {
     pub fn size(&self) -> u64 {
         self.stat.st_size as u64
@@ -190,6 +192,51 @@ impl Iterator for ReadDir {
 impl Drop for InnerReadDir {
     fn drop(&mut self) {
         unsafe { abi::SOLID_FS_CloseDir(self.dirp) };
+    }
+}
+
+impl Dir {
+    pub fn new<P: AsRef<Path>>(_path: P) -> io::Result<Self> {
+        unsupported()
+    }
+
+    pub fn new_with<P: AsRef<Path>>(_path: P, opts: &OpenOptions) -> io::Result<Self> {
+        unsupported()
+    }
+
+    pub fn open<P: AsRef<Path>>(&self, _path: P) -> io::Result<File> {
+        self.0
+    }
+
+    pub fn open_with<P: AsRef<Path>>(&self, _path: P, opts: &OpenOptions) -> io::Result<File> {
+        self.0
+    }
+
+    pub fn create_dir<P: AsRef<Path>>(&self, _path: P) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn remove_file<P: AsRef<Path>>(&self, _path: P) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn remove_dir<P: AsRef<Path>>(&self, _path: P) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        _from: P,
+        _to_dir: &Self,
+        _to: Q,
+    ) -> io::Result<()> {
+        self.0
+    }
+}
+
+impl fmt::Debug for Dir {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0
     }
 }
 
