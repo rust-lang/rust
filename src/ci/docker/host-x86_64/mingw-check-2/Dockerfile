@@ -27,7 +27,9 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV SCRIPT \
-        BOOTSTRAP_TRACING=bootstrap=TRACE python3 ../x.py check && \
+        # The BOOTSTRAP_TRACING flag is added to verify whether the 
+        # bootstrap process compiles successfully with this flag enabled.
+        BOOTSTRAP_TRACING=1 python3 ../x.py check && \
         python3 ../x.py clippy ci && \
         python3 ../x.py test --stage 1 core alloc std test proc_macro && \
         python3 ../x.py doc --stage 0 bootstrap && \
