@@ -742,8 +742,20 @@ fn add_global<'ll>(cx: &SimpleCx<'ll>, name: &str, initializer: &'ll llvm::Value
 
 fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, kernel: &'ll llvm::Value, offload_entry_ty: &'ll llvm::Type, num: i64) -> &'ll llvm::Value {
     let types = cx.func_params_types(cx.get_type_of_global(kernel));
-    let o_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{num}"), &vec![8u64,0,16,0]);
-    let o_types = add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{num}"), &vec![800u64, 544, 547, 544]);
+    // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
+    // reference) types.
+    let num_ptr_types = types.iter().map(|&x| matches!(cx.type_kind(x), rustc_codegen_ssa::common::TypeKind::Pointer)).count();
+
+    // We do not know their size anymore at this level, so hardcode a placeholder.
+    // A follow-up pr will track these from the frontend, where we still have Rust types.
+    // Then, we will be able to figure out that e.g. `&[f32;1024]` will result in 32*1024 bytes.
+    // I decided that 1024 bytes is a great placeholder value for now.
+    let o_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{num}"), &vec![1024;num_ptr_types]);
+    // Here we figure out whether something needs to be copied to the gpu (=1), from the gpu (=2),
+    // or both to and from the gpu (=3). Other values shouldn't affect us for now.
+    // A non-mutable reference or pointer will be 1, an array that's not read, but fully overwritten
+    // will be 2. For now, everything is 3, untill we have our frontend set up.
+    let o_types = add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{num}"), &vec![3;num_ptr_types]);
     // Next: For each function, generate these three entries. A weak constant,
     // the llvm.rodata entry name, and  the omp_offloading_entries value
 
@@ -794,11 +806,11 @@ fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, kernel: &'ll llvm::Value, off
     o_types
 }
 
-fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernel: &'ll llvm::Value, s_ident_t: &'ll llvm::Value, begin: &'ll llvm::Value, update: &'ll llvm::Value, end: &'ll llvm::Value, fn_ty: &'ll llvm::Type, o_types: &[&'ll llvm::Value]) {
+fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernels: &[&'ll llvm::Value], s_ident_t: &'ll llvm::Value, begin: &'ll llvm::Value, update: &'ll llvm::Value, end: &'ll llvm::Value, fn_ty: &'ll llvm::Type, o_types: &[&'ll llvm::Value]) {
 
     let main_fn = cx.get_function("main");
     if let Some(main_fn) = main_fn {
-        let kernel_name = "kernel_1";//name.as_c_char_ptr(), name.len)
+        let kernel_name = "kernel_1";
         let call = unsafe {llvm::LLVMRustGetFunctionCall(main_fn, kernel_name.as_c_char_ptr(), kernel_name.len())};
         let kernel_call = if call.is_some() {
             dbg!("found kernel call");
@@ -809,20 +821,21 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernel: &'ll llvm::Value, s_ide
         let kernel_call_bb = unsafe {llvm::LLVMGetInstructionParent(kernel_call)};
         let mut builder = SBuilder::build(cx, kernel_call_bb);
 
-        let types = cx.func_params_types(cx.get_type_of_global(kernel));
+        let types = cx.func_params_types(cx.get_type_of_global(kernels[0]));
         dbg!(&types);
         let num_args = types.len() as u64;
 
         // First we generate a few variables used for the data mappers below.
-        // %.offload_baseptrs = alloca [3 x ptr], align 8
-        // %.offload_ptrs = alloca [3 x ptr], align 8
-        // %.offload_mappers = alloca [3 x ptr], align 8
-        // %.offload_sizes = alloca [3 x i64], align 8
         unsafe{llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, main_fn)};
         let ty = cx.type_array(cx.type_ptr(), num_args);
+
+        // Baseptr are just the input pointer to the kernel, stored in a local alloca
         let a1 = builder.my_alloca2(ty, Align::EIGHT, ".offload_baseptrs");
+
+        // Ptrs are the result of a gep into the baseptr, at least for our trivial types.
         let a2 = builder.my_alloca2(ty, Align::EIGHT, ".offload_ptrs");
-        let a3 = builder.my_alloca2(ty, Align::EIGHT, ".offload_mappers");
+
+        // These represent the sizes in bytes, e.g. the entry for `&[f64; 16]` will be 8*16.
         let ty2 = cx.type_array(cx.type_i64(), num_args);
         let a4 = builder.my_alloca2(ty2, Align::EIGHT, ".offload_sizes");
 
@@ -830,9 +843,6 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernel: &'ll llvm::Value, s_ide
         unsafe {llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call)};
         dbg!("positioned builder, ready");
 
-        // %27 = getelementptr inbounds [3 x ptr], ptr %.offload_baseptrs, i32 0, i32 0
-        // %28 = getelementptr inbounds [3 x ptr], ptr %.offload_ptrs, i32 0, i32 0
-        // %29 = getelementptr inbounds [3 x i64], ptr %.offload_sizes, i32 0, i32 0
         let i32_0 = cx.get_const_i32(0);
         let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
         let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
@@ -840,7 +850,7 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernel: &'ll llvm::Value, s_ide
 
         let nullptr = cx.const_null(cx.type_ptr());
         let o_type = o_types[0];
-        let args = vec![s_ident_t, cx.get_const_i64(u64::MAX), cx.get_const_i32(3), gep1, gep2, gep3, o_type, nullptr, nullptr];
+        let args = vec![s_ident_t, cx.get_const_i64(u64::MAX), cx.get_const_i32(num_args), gep1, gep2, gep3, o_type, nullptr, nullptr];
         builder.call(fn_ty, begin, &args, None);
 
         unsafe {llvm::LLVMRustPositionAfter(builder.llbuilder, kernel_call)};
@@ -925,15 +935,16 @@ pub(crate) fn run_pass_manager(
 
             dbg!("created struct");
             let mut o_types = vec![];
+            let mut kernels = vec![];
             for num in 0..9 {
                 let kernel = cx.get_function(&format!("kernel_{num}"));
                 if let Some(kernel) = kernel{
                     o_types.push(gen_define_handling(&cx, kernel, offload_entry_ty, num));
+                    kernels.push(kernel);
                 }
             }
-            let kernel = cx.get_function("kernel_1").unwrap();
             dbg!("gen_call_handling");
-            gen_call_handling(&cx, kernel, at_one, begin, update, end, fn_ty, &o_types);
+            gen_call_handling(&cx, &kernels, at_one, begin, update, end, fn_ty, &o_types);
         } else {
             dbg!("no marker found");
         }
