@@ -79,14 +79,6 @@ pub trait MutVisitor: Sized + MutVisitorResult<Result = ()> {
         walk_crate(self, c)
     }
 
-    fn visit_meta_list_item(&mut self, list_item: &mut MetaItemInner) {
-        walk_meta_list_item(self, list_item);
-    }
-
-    fn visit_meta_item(&mut self, meta_item: &mut MetaItem) {
-        walk_meta_item(self, meta_item);
-    }
-
     fn visit_use_tree(&mut self, use_tree: &mut UseTree) {
         walk_use_tree(self, use_tree);
     }
@@ -398,16 +390,6 @@ generate_flat_map_visitor_fns! {
     visit_arms, Arm, flat_map_arm;
 }
 
-#[inline]
-fn visit_thin_vec<T, F>(elems: &mut ThinVec<T>, mut visit_elem: F)
-where
-    F: FnMut(&mut T),
-{
-    for elem in elems {
-        visit_elem(elem);
-    }
-}
-
 fn visit_attrs<T: MutVisitor>(vis: &mut T, attrs: &mut AttrVec) {
     for attr in attrs.iter_mut() {
         vis.visit_attribute(attr);
@@ -442,23 +424,6 @@ pub fn walk_flat_map_variant<T: MutVisitor>(
 ) -> SmallVec<[Variant; 1]> {
     vis.visit_variant(&mut variant);
     smallvec![variant]
-}
-
-fn walk_meta_list_item<T: MutVisitor>(vis: &mut T, li: &mut MetaItemInner) {
-    match li {
-        MetaItemInner::MetaItem(mi) => vis.visit_meta_item(mi),
-        MetaItemInner::Lit(_lit) => {}
-    }
-}
-
-fn walk_meta_item<T: MutVisitor>(vis: &mut T, mi: &mut MetaItem) {
-    let MetaItem { unsafety: _, path: _, kind, span } = mi;
-    match kind {
-        MetaItemKind::Word => {}
-        MetaItemKind::List(mis) => visit_thin_vec(mis, |mi| vis.visit_meta_list_item(mi)),
-        MetaItemKind::NameValue(_s) => {}
-    }
-    vis.visit_span(span);
 }
 
 pub fn walk_flat_map_param<T: MutVisitor>(vis: &mut T, mut param: Param) -> SmallVec<[Param; 1]> {
@@ -504,17 +469,6 @@ pub fn walk_flat_map_expr_field<T: MutVisitor>(
 ) -> SmallVec<[ExprField; 1]> {
     vis.visit_expr_field(&mut f);
     smallvec![f]
-}
-
-pub fn walk_item_kind<K: WalkItemKind>(
-    kind: &mut K,
-    span: Span,
-    id: NodeId,
-    visibility: &mut Visibility,
-    ctxt: K::Ctxt,
-    vis: &mut impl MutVisitor,
-) {
-    kind.walk(span, id, visibility, ctxt, vis)
 }
 
 pub fn walk_flat_map_item(vis: &mut impl MutVisitor, mut item: P<Item>) -> SmallVec<[P<Item>; 1]> {
