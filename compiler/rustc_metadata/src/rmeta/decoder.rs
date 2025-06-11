@@ -2014,6 +2014,22 @@ impl CrateMetadata {
         self.root.is_proc_macro_crate()
     }
 
+    pub(crate) fn proc_macros_for_crate(
+        &self,
+        krate: CrateNum,
+        cstore: &CStore,
+    ) -> impl Iterator<Item = DefId> {
+        gen move {
+            for def_id in self.root.proc_macro_data.as_ref().into_iter().flat_map(move |data| {
+                data.macros
+                    .decode(CrateMetadataRef { cdata: self, cstore })
+                    .map(move |index| DefId { index, krate })
+            }) {
+                yield def_id;
+            }
+        }
+    }
+
     pub(crate) fn name(&self) -> Symbol {
         self.root.header.name
     }
