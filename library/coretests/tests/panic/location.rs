@@ -33,7 +33,7 @@ fn location_const_column() {
 #[test]
 fn location_debug() {
     let f = format!("{:?}", Location::caller());
-    assert!(f.contains("location.rs"));
+    assert!(f.contains(&format!("{:?}", file!())));
     assert!(f.contains("35"));
     assert!(f.contains("29"));
 }
