@@ -153,6 +153,29 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         }
     }
 
+    pub(crate) fn store(
+        &mut self,
+        val: &'ll Value,
+        ptr: &'ll Value,
+        align: Align,
+    ) -> &'ll Value {
+        debug!("Store {:?} -> {:?}", val, ptr);
+        assert_eq!(self.cx.type_kind(self.cx.val_ty(ptr)), TypeKind::Pointer);
+        unsafe {
+            let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+            llvm::LLVMSetAlignment(store, align.bytes() as c_uint);
+            store
+        }
+    }
+
+    pub(crate) fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
+        unsafe {
+            let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
+            llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
+            load
+        }
+    }
+
 }
 
 /// Empty string, to be used where LLVM expects an instruction name, indicating

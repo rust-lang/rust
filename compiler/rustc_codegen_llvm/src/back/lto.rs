@@ -840,13 +840,13 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernels: &[&'ll llvm::Value], s
             return;
         };
         let kernel_call_bb = unsafe {llvm::LLVMGetInstructionParent(kernel_call)};
-        let called = unsafe {llvm::LLVMGetCalledValue(kernel_call)};
+        let called = unsafe {llvm::LLVMGetCalledValue(kernel_call).unwrap()};
         let mut builder = SBuilder::build(cx, kernel_call_bb);
 
         let types = cx.func_params_types(cx.get_type_of_global(called));
         dbg!(&types);
         let num_args = types.len() as u64;
-        let mut names: Vec<&llvm::Value> = Vec::with_capacity(num_args);
+        let mut names: Vec<&llvm::Value> = Vec::with_capacity(num_args as usize);
 
         // Step 0)
         unsafe{llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, main_fn)};
@@ -859,21 +859,37 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernels: &[&'ll llvm::Value], s
         let ty2 = cx.type_array(cx.type_i64(), num_args);
         let a4 = builder.my_alloca2(ty2, Align::EIGHT, ".offload_sizes");
         // Now we allocate once per function param, a copy to be passed to one of our maps.
+        let mut vals = vec![];
+        let mut geps = vec![];
+        let i32_0 = cx.get_const_i32(0);
         for (index, in_ty) in types.iter().enumerate() {
-            // Todo:
+            // get function arg, store it into the alloca, and read it.
             let p = llvm::get_param(called, index as u32);
             let name = llvm::get_value_name(p);
-            let arg_name = format!("{name}.addr");
-            let alloca = unsafe {llvm::LLVMBuildAlloca(builder.llbuilder, in_ty, arg_name)};
-            // get function arg, store it into the alloca, and read it.
+            let name = str::from_utf8(name).unwrap();
+            let arg_name = CString::new(format!("{name}.addr")).unwrap();
+            let alloca = unsafe {llvm::LLVMBuildAlloca(builder.llbuilder, in_ty, arg_name.as_ptr())};
+            builder.store(p, alloca, Align::EIGHT);
+            let val = builder.load(in_ty, alloca, Align::EIGHT);
+            let gep = builder.inbounds_gep(cx.type_f32(), val, &[i32_0]);
+            vals.push(val);
+            geps.push(gep);
         }
 
 
         // Step 1)
         unsafe {llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call)};
+        for i in 0..num_args {
+            let idx = cx.get_const_i32(i);
+            let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, idx]);
+            builder.store(vals[i as usize], gep1, Align::EIGHT);
+            let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, idx]);
+            builder.store(geps[i as usize], gep2, Align::EIGHT);
+            let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, idx]);
+            builder.store(cx.get_const_i64(1024), gep3, Align::EIGHT);
+        }
 
         // Step 2)
-        let i32_0 = cx.get_const_i32(0);
         let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
         let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
         let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]);
