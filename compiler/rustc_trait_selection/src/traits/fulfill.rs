@@ -781,7 +781,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         // Outside of std/core, check if feature is enabled at crate level with #[feature(..)]
                         // or if we are currently in codegen.
                         if self.selcx.tcx().features().enabled(symbol)
-                            || (self.selcx.infcx.typing_mode() == TypingMode::PostAnalysis)
                         {
                             return ProcessResult::Changed(Default::default());
                         } else {

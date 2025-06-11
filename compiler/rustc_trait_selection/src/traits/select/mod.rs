@@ -855,7 +855,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         // Outside of std/core, check if feature is enabled at crate level with #[feature(..)]
                         // or if we are currently in codegen.
                         if self.tcx().features().enabled(symbol)
-                            || (self.infcx.typing_mode() == TypingMode::PostAnalysis)
                         {
                             return Ok(EvaluatedToOk);
                         } else {
