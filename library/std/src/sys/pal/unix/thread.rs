@@ -310,7 +310,7 @@ impl Thread {
         target_os = "vxworks",
     ))]
     pub fn sleep_until(deadline: Instant) {
-        let Some(mut ts) = deadline.into_inner().into_timespec().to_timespec() else {
+        let Some(ts) = deadline.into_inner().into_timespec().to_timespec() else {
             // The deadline is further in the future then can be passed to
             // clock_nanosleep. We have to use Self::sleep intead. This might
             // happen on 32 bit platforms, especially closer to 2038.
@@ -321,23 +321,26 @@ impl Thread {
             return;
         };
 
-        let ts_ptr = &mut ts as *mut _;
-
-        // If we're awoken with a signal and the return value is -1
-        // clock_nanosleep needs to be called again.
         unsafe {
-            while libc::clock_nanosleep(
-                super::time::Instant::CLOCK_ID,
-                libc::TIMER_ABSTIME,
-                ts_ptr,
-                ts_ptr,
-            ) == -1
-            {
-                assert_eq!(
-                    os::errno(),
-                    libc::EINTR,
-                    "clock nanosleep should only return an error if interrupted"
+            // When we get interrupted (res = EINTR) call clock_nanosleep again
+            loop {
+                let res = libc::clock_nanosleep(
+                    super::time::Instant::CLOCK_ID,
+                    libc::TIMER_ABSTIME,
+                    &ts,
+                    core::ptr::null_mut(), // not required with TIMER_ABSTIME
                 );
+
+                if res == 0 {
+                    break;
+                } else {
+                    assert_eq!(
+                        res,
+                        libc::EINTR,
+                        "timespec is in range,
+                         clockid is valid and kernel should support it"
+                    );
+                }
             }
         }
     }

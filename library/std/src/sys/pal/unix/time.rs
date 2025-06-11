@@ -292,7 +292,10 @@ impl Instant {
         Some(Instant { t: self.t.checked_sub_duration(other)? })
     }
 
-    #[allow(unused, reason = "needed by the `sleep_until` on some unix platforms")]
+    #[cfg_attr(
+        not(target_os = "linux"),
+        allow(unused, reason = "needed by the `sleep_until` on some unix platforms")
+    )]
     pub(crate) fn into_timespec(self) -> Timespec {
         self.t
     }
