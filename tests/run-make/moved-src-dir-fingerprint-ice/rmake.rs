@@ -12,10 +12,7 @@
 // sessions.
 // See https://github.com/rust-lang/rust/issues/85019
 
-//@ ignore-none
-// Reason: no-std is not supported
-//@ ignore-nvptx64-nvidia-cuda
-// FIXME: can't find crate for 'std'
+//@ needs-target-std
 
 use run_make_support::{rfs, rust_lib_name, rustc};
 
