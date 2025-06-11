@@ -1,9 +1,11 @@
+#![allow(unused_crate_dependencies)]
+
 use std::env;
 #[cfg(target_os = "linux")]
 use std::os::unix::process::ExitStatusExt;
 use std::process::{Command, ExitStatus, Stdio};
 
-use rustc_thred_pool::ThreadPoolBuilder;
+use rustc_thread_pool::ThreadPoolBuilder;
 
 fn force_stack_overflow(depth: u32) {
     let mut buffer = [0u8; 1024 * 1024];

@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-rustc_thred_pool::join(|| Rc::new(22), || ()); //~ ERROR
+rustc_thread_pool::join(|| Rc::new(22), || ()); //~ ERROR
 
 ``` */
 mod left {}
@@ -11,7 +11,7 @@ mod left {}
 
 use std::rc::Rc;
 
-rustc_thred_pool::join(|| (), || Rc::new(23)); //~ ERROR
+rustc_thread_pool::join(|| (), || Rc::new(23)); //~ ERROR
 
 ``` */
 mod right {}

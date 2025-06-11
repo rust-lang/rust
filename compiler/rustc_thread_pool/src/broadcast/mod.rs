@@ -6,7 +6,7 @@ use crate::job::{ArcJob, StackJob};
 use crate::latch::{CountLatch, LatchRef};
 use crate::registry::{Registry, WorkerThread};
 
-mod test;
+mod tests;
 
 /// Executes `op` within every thread in the current threadpool. If this is
 /// called from a non-Rayon thread, it will execute in the global threadpool.
@@ -103,18 +103,18 @@ where
     };
 
     let n_threads = registry.num_threads();
-    let current_thread = WorkerThread::current().as_ref();
+    let current_thread = unsafe { WorkerThread::current().as_ref() };
     let tlv = crate::tlv::get();
     let latch = CountLatch::with_count(n_threads, current_thread);
     let jobs: Vec<_> =
         (0..n_threads).map(|_| StackJob::new(tlv, &f, LatchRef::new(&latch))).collect();
-    let job_refs = jobs.iter().map(|job| job.as_job_ref());
+    let job_refs = jobs.iter().map(|job| unsafe { job.as_job_ref() });
 
     registry.inject_broadcast(job_refs);
 
     // Wait for all jobs to complete, then collect the results, maybe propagating a panic.
     latch.wait(current_thread);
-    jobs.into_iter().map(|job| job.into_result()).collect()
+    jobs.into_iter().map(|job| unsafe { job.into_result() }).collect()
 }
 
 /// Execute `op` on every thread in the pool. It will be executed on each

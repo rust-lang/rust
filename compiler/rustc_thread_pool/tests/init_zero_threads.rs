@@ -1,4 +1,6 @@
-use rustc_thred_pool::ThreadPoolBuilder;
+#![allow(unused_crate_dependencies)]
+
+use rustc_thread_pool::ThreadPoolBuilder;
 
 #[test]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]

@@ -50,7 +50,7 @@ use crate::unwind;
 /// This code creates a Rayon task that increments a global counter.
 ///
 /// ```rust
-/// # use rustc_thred_pool as rayon;
+/// # use rustc_thread_pool as rayon;
 /// use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 ///
 /// static GLOBAL_COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -80,7 +80,7 @@ where
     // be able to panic, and hence the data won't leak but will be
     // enqueued into some deque for later execution.
     let abort_guard = unwind::AbortIfPanic; // just in case we are wrong, and code CAN panic
-    let job_ref = spawn_job(func, registry);
+    let job_ref = unsafe { spawn_job(func, registry) };
     registry.inject_or_push(job_ref);
     mem::forget(abort_guard);
 }
@@ -150,16 +150,16 @@ where
     // be able to panic, and hence the data won't leak but will be
     // enqueued into some deque for later execution.
     let abort_guard = unwind::AbortIfPanic; // just in case we are wrong, and code CAN panic
-    let job_ref = spawn_job(func, registry);
+    let job_ref = unsafe { spawn_job(func, registry) };
 
     // If we're in the pool, use our thread's private fifo for this thread to execute
     // in a locally-FIFO order. Otherwise, just use the pool's global injector.
     match registry.current_thread() {
-        Some(worker) => worker.push_fifo(job_ref),
+        Some(worker) => unsafe { worker.push_fifo(job_ref) },
         None => registry.inject(job_ref),
     }
     mem::forget(abort_guard);
 }
 
 #[cfg(test)]
-mod test;
+mod tests;

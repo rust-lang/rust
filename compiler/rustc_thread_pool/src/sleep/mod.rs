@@ -31,7 +31,7 @@ struct SleepData {
 impl SleepData {
     /// Checks if the conditions for a deadlock holds and if so calls the deadlock handler
     #[inline]
-    pub fn deadlock_check(&self, deadlock_handler: &Option<Box<DeadlockHandler>>) {
+    pub(super) fn deadlock_check(&self, deadlock_handler: &Option<Box<DeadlockHandler>>) {
         if self.active_threads == 0 && self.blocked_threads > 0 {
             (deadlock_handler.as_ref().unwrap())();
         }
@@ -102,7 +102,7 @@ impl Sleep {
     /// Mark a Rayon worker thread as blocked. This triggers the deadlock handler
     /// if no other worker thread is active
     #[inline]
-    pub fn mark_blocked(&self, deadlock_handler: &Option<Box<DeadlockHandler>>) {
+    pub(super) fn mark_blocked(&self, deadlock_handler: &Option<Box<DeadlockHandler>>) {
         let mut data = self.data.lock().unwrap();
         debug_assert!(data.active_threads > 0);
         debug_assert!(data.blocked_threads < data.worker_count);
@@ -115,7 +115,7 @@ impl Sleep {
 
     /// Mark a previously blocked Rayon worker thread as unblocked
     #[inline]
-    pub fn mark_unblocked(&self) {
+    pub(super) fn mark_unblocked(&self) {
         let mut data = self.data.lock().unwrap();
         debug_assert!(data.active_threads < data.worker_count);
         debug_assert!(data.blocked_threads > 0);

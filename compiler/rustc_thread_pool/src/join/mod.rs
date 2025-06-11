@@ -7,7 +7,7 @@ use crate::tlv::{self, Tlv};
 use crate::{FnContext, unwind};
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 /// Takes two closures and *potentially* runs them in parallel. It
 /// returns a pair of the results from those closures.
@@ -41,7 +41,7 @@ mod test;
 /// [the `par_sort` method]: ../rayon/slice/trait.ParallelSliceMut.html#method.par_sort
 ///
 /// ```rust
-/// # use rustc_thred_pool as rayon;
+/// # use rustc_thread_pool as rayon;
 /// let mut v = vec![5, 1, 8, 22, 0, 44];
 /// quick_sort(&mut v);
 /// assert_eq!(v, vec![0, 1, 5, 8, 22, 44]);
@@ -192,7 +192,7 @@ unsafe fn join_recover_from_panic(
     err: Box<dyn Any + Send>,
     tlv: Tlv,
 ) -> ! {
-    worker_thread.wait_until(job_b_latch);
+    unsafe { worker_thread.wait_until(job_b_latch) };
 
     // Restore the TLV since we might have run some jobs overwriting it when waiting for job b.
     tlv::set(tlv);

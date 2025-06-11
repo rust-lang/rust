@@ -61,7 +61,7 @@ impl JobRef {
 
     #[inline]
     pub(super) unsafe fn execute(self) {
-        (self.execute_fn)(self.pointer)
+        unsafe { (self.execute_fn)(self.pointer) }
     }
 }
 
@@ -97,7 +97,7 @@ where
     }
 
     pub(super) unsafe fn as_job_ref(&self) -> JobRef {
-        JobRef::new(self)
+        unsafe { JobRef::new(self) }
     }
 
     pub(super) unsafe fn run_inline(self, stolen: bool) -> R {
@@ -116,12 +116,16 @@ where
     R: Send,
 {
     unsafe fn execute(this: *const ()) {
-        let this = &*(this as *const Self);
+        let this = unsafe { &*(this as *const Self) };
         tlv::set(this.tlv);
         let abort = unwind::AbortIfPanic;
-        let func = (*this.func.get()).take().unwrap();
-        (*this.result.get()) = JobResult::call(func);
-        Latch::set(&this.latch);
+        let func = unsafe { (*this.func.get()).take().unwrap() };
+        unsafe {
+            (*this.result.get()) = JobResult::call(func);
+        }
+        unsafe {
+            Latch::set(&this.latch);
+        }
         mem::forget(abort);
     }
 }
@@ -152,7 +156,7 @@ where
     /// lifetimes, so it is up to you to ensure that this JobRef
     /// doesn't outlive any data that it closes over.
     pub(super) unsafe fn into_job_ref(self: Box<Self>) -> JobRef {
-        JobRef::new(Box::into_raw(self))
+        unsafe { JobRef::new(Box::into_raw(self)) }
     }
 
     /// Creates a static `JobRef` from this job.
@@ -169,7 +173,7 @@ where
     BODY: FnOnce() + Send,
 {
     unsafe fn execute(this: *const ()) {
-        let this = Box::from_raw(this as *mut Self);
+        let this = unsafe { Box::from_raw(this as *mut Self) };
         tlv::set(this.tlv);
         (this.job)();
     }
@@ -196,7 +200,7 @@ where
     /// lifetimes, so it is up to you to ensure that this JobRef
     /// doesn't outlive any data that it closes over.
     pub(super) unsafe fn as_job_ref(this: &Arc<Self>) -> JobRef {
-        JobRef::new(Arc::into_raw(Arc::clone(this)))
+        unsafe { JobRef::new(Arc::into_raw(Arc::clone(this))) }
     }
 
     /// Creates a static `JobRef` from this job.
@@ -213,7 +217,7 @@ where
     BODY: Fn() + Send + Sync,
 {
     unsafe fn execute(this: *const ()) {
-        let this = Arc::from_raw(this as *mut Self);
+        let this = unsafe { Arc::from_raw(this as *mut Self) };
         (this.job)();
     }
 }
@@ -254,17 +258,17 @@ impl JobFifo {
         // jobs in a thread's deque may be popped from the back (LIFO) or stolen from the front
         // (FIFO), but either way they will end up popping from the front of this queue.
         self.inner.push(job_ref);
-        JobRef::new(self)
+        unsafe { JobRef::new(self) }
     }
 }
 
 impl Job for JobFifo {
     unsafe fn execute(this: *const ()) {
         // We "execute" a queue by executing its first job, FIFO.
-        let this = &*(this as *const Self);
+        let this = unsafe { &*(this as *const Self) };
         loop {
             match this.inner.steal() {
-                Steal::Success(job_ref) => break job_ref.execute(),
+                Steal::Success(job_ref) => break unsafe { job_ref.execute() },
                 Steal::Empty => panic!("FIFO is empty"),
                 Steal::Retry => {}
             }

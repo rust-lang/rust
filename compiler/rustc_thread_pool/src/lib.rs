@@ -61,6 +61,7 @@
 //! conflicting requirements will need to be resolved before the build will
 //! succeed.
 
+#![cfg_attr(test, allow(unused_crate_dependencies))]
 #![warn(rust_2018_idioms)]
 
 use std::any::Any;
@@ -85,7 +86,7 @@ mod unwind;
 mod worker_local;
 
 mod compile_fail;
-mod test;
+mod tests;
 
 pub mod tlv;
 
@@ -152,14 +153,14 @@ enum ErrorKind {
 /// The following creates a thread pool with 22 threads.
 ///
 /// ```rust
-/// # use rustc_thred_pool as rayon;
+/// # use rustc_thread_pool as rayon;
 /// let pool = rayon::ThreadPoolBuilder::new().num_threads(22).build().unwrap();
 /// ```
 ///
 /// To instead configure the global thread pool, use [`build_global()`]:
 ///
 /// ```rust
-/// # use rustc_thred_pool as rayon;
+/// # use rustc_thread_pool as rayon;
 /// rayon::ThreadPoolBuilder::new().num_threads(22).build_global().unwrap();
 /// ```
 ///
@@ -315,7 +316,7 @@ impl ThreadPoolBuilder {
     /// A scoped pool may be useful in combination with scoped thread-local variables.
     ///
     /// ```
-    /// # use rustc_thred_pool as rayon;
+    /// # use rustc_thread_pool as rayon;
     ///
     /// scoped_tls::scoped_thread_local!(static POOL_DATA: Vec<i32>);
     ///
@@ -382,7 +383,7 @@ impl<S> ThreadPoolBuilder<S> {
     /// A minimal spawn handler just needs to call `run()` from an independent thread.
     ///
     /// ```
-    /// # use rustc_thred_pool as rayon;
+    /// # use rustc_thread_pool as rayon;
     /// fn main() -> Result<(), rayon::ThreadPoolBuildError> {
     ///     let pool = rayon::ThreadPoolBuilder::new()
     ///         .spawn_handler(|thread| {
@@ -400,7 +401,7 @@ impl<S> ThreadPoolBuilder<S> {
     /// any errors from the thread builder.
     ///
     /// ```
-    /// # use rustc_thred_pool as rayon;
+    /// # use rustc_thread_pool as rayon;
     /// fn main() -> Result<(), rayon::ThreadPoolBuildError> {
     ///     let pool = rayon::ThreadPoolBuilder::new()
     ///         .spawn_handler(|thread| {
@@ -429,7 +430,7 @@ impl<S> ThreadPoolBuilder<S> {
     /// [`std::thread::scope`]: https://doc.rust-lang.org/std/thread/fn.scope.html
     ///
     /// ```
-    /// # use rustc_thred_pool as rayon;
+    /// # use rustc_thread_pool as rayon;
     /// fn main() -> Result<(), rayon::ThreadPoolBuildError> {
     ///     std::thread::scope(|scope| {
     ///         let pool = rayon::ThreadPoolBuilder::new()

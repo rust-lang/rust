@@ -1,5 +1,7 @@
+#![allow(unused_crate_dependencies)]
+
 use crossbeam_utils::thread;
-use rustc_thred_pool::ThreadPoolBuilder;
+use rustc_thread_pool::ThreadPoolBuilder;
 
 #[derive(PartialEq, Eq, Debug)]
 struct Local(i32);

@@ -1,10 +1,12 @@
+#![allow(unused_crate_dependencies)]
+
 /// Test that one can emulate join with `scope`:
 fn pseudo_join<F, G>(f: F, g: G)
 where
     F: FnOnce() + Send,
     G: FnOnce() + Send,
 {
-    rustc_thred_pool::scope(|s| {
+    rustc_thread_pool::scope(|s| {
         s.spawn(|_| g());
         f();
     });
