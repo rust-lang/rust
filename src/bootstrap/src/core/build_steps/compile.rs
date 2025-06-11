@@ -2024,20 +2024,20 @@ impl Step for Assemble {
             }
         }
 
-        let maybe_install_llvm_bitcode_linker = |compiler| {
+        // Build llvm-bitcode-linker if it is enabled and install it into the sysroot of `compiler`
+        let maybe_install_llvm_bitcode_linker = |compiler: Compiler| {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
                 let llvm_bitcode_linker =
                     builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
-                        compiler,
-                        target: target_compiler.host,
+                        target: compiler.host,
                     });
 
                 // Copy the llvm-bitcode-linker to the self-contained binary directory
                 let bindir_self_contained = builder
                     .sysroot(compiler)
                     .join(format!("lib/rustlib/{}/bin/self-contained", compiler.host));
-                let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
+                let tool_exe = exe("llvm-bitcode-linker", compiler.host);
 
                 t!(fs::create_dir_all(&bindir_self_contained));
                 builder.copy_link(

@@ -983,9 +983,11 @@ impl Step for RustAnalyzerProcMacroSrv {
     }
 }
 
+/// Compile the `llvm-bitcode-linker` tool for `target`.
+/// It is a compiler host tool used to link specific targets using LLVM.
+/// It is used by `rustc` at runtime.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LlvmBitcodeLinker {
-    pub compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -1001,10 +1003,7 @@ impl Step for LlvmBitcodeLinker {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(LlvmBitcodeLinker {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
-            target: run.target,
-        });
+        run.builder.ensure(LlvmBitcodeLinker { target: run.target });
     }
 
     #[cfg_attr(
@@ -1012,8 +1011,10 @@ impl Step for LlvmBitcodeLinker {
         instrument(level = "debug", name = "LlvmBitcodeLinker::run", skip_all)
     )]
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
+        let compiler = builder.compiler_for_target(self.target);
+
         builder.ensure(ToolBuild {
-            compiler: self.compiler,
+            compiler,
             target: self.target,
             tool: "llvm-bitcode-linker",
             mode: Mode::ToolRustc,
