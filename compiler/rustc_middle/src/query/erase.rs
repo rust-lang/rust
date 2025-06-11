@@ -389,6 +389,7 @@ tcx_lifetime! {
     rustc_middle::ty::layout::FnAbiError,
     rustc_middle::ty::layout::LayoutError,
     rustc_middle::ty::ParamEnv,
+    rustc_middle::ty::TypingEnv,
     rustc_middle::ty::Predicate,
     rustc_middle::ty::SymbolName,
     rustc_middle::ty::TraitRef,
