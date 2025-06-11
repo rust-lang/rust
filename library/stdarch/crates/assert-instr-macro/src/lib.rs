@@ -124,8 +124,10 @@ pub fn assert_instr(
         let target = std::env::var("TARGET").unwrap();
         if target.contains("x86_64") {
             syn::LitStr::new("sysv64", proc_macro2::Span::call_site())
-        } else {
+        } else if target.contains("86") {
             syn::LitStr::new("vectorcall", proc_macro2::Span::call_site())
+        } else {
+            syn::LitStr::new("C", proc_macro2::Span::call_site())
         }
     } else {
         syn::LitStr::new("C", proc_macro2::Span::call_site())

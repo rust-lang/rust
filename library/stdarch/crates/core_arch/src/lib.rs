@@ -33,10 +33,8 @@
     decl_macro,
     generic_arg_infer,
     asm_experimental_arch,
-    sha512_sm_x86,
     x86_amx_intrinsics,
     f16,
-    keylocker_x86,
     aarch64_unstable_target_feature,
     bigint_helper_methods
 )]
