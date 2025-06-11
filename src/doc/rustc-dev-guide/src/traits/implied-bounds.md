@@ -10,7 +10,8 @@ while implicit ones are handled, well... implicitly.
 ## explicit implied bounds
 
 The explicit implied bounds are computed in [`fn inferred_outlives_of`].
-Only ADTs and [CTAs](../appendix/glossary.md#cta) have explicit implied bounds
+Only ADTs, [CTAs](../appendix/glossary.md#cta)
+and free [GCIs] have explicit implied bounds
 which are computed via a fixpoint algorithm in the [`fn inferred_outlives_crate`] query.
 
 We use [`fn insert_required_clauses_to_be_wf`] on all fields of all ADTs in the crate.
@@ -34,6 +35,7 @@ if the outlived region is a region parameter.
  [`fn check_explicit_clauses`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/implicit_infer.rs#L238
  [`fn insert_outlives_clause`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/utils.rs#L15
  [nostatic]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/utils.rs#L159-L165
+ [GCIs]: https://github.com/rust-lang/rust/issues/113521
 
 ## implicit implied bounds
 
