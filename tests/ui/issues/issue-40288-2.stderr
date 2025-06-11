@@ -1,20 +1,24 @@
 error[E0621]: explicit lifetime required in the type of `y`
   --> $DIR/issue-40288-2.rs:9:5
    |
-LL | fn lifetime_transmute_slice<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
-   |                                                         -- help: add explicit lifetime `'a` to the type of `y`: `&'a T`
-...
 LL |     out[0]
    |     ^^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `y`
+   |
+LL | fn lifetime_transmute_slice<'a, T: ?Sized>(x: &'a T, y: &'a T) -> &'a T {
+   |                                                          ++
 
 error[E0621]: explicit lifetime required in the type of `y`
   --> $DIR/issue-40288-2.rs:24:5
    |
-LL | fn lifetime_transmute_struct<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
-   |                                                          -- help: add explicit lifetime `'a` to the type of `y`: `&'a T`
-...
 LL |     out.head
    |     ^^^^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `y`
+   |
+LL | fn lifetime_transmute_struct<'a, T: ?Sized>(x: &'a T, y: &'a T) -> &'a T {
+   |                                                           ++
 
 error: aborting due to 2 previous errors
 
