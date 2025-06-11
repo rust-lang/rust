@@ -1,8 +1,9 @@
 #![cfg(test)]
 
-use crate::{ThreadPoolBuildError, ThreadPoolBuilder};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Barrier};
+
+use crate::{ThreadPoolBuildError, ThreadPoolBuilder};
 
 #[test]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -29,9 +30,7 @@ fn start_callback_called() {
         b.wait();
     };
 
-    let conf = ThreadPoolBuilder::new()
-        .num_threads(n_threads)
-        .start_handler(start_handler);
+    let conf = ThreadPoolBuilder::new().num_threads(n_threads).start_handler(start_handler);
     let _ = conf.build().unwrap();
 
     // Wait for all the threads to have been scheduled to run.
@@ -56,9 +55,7 @@ fn exit_callback_called() {
         b.wait();
     };
 
-    let conf = ThreadPoolBuilder::new()
-        .num_threads(n_threads)
-        .exit_handler(exit_handler);
+    let conf = ThreadPoolBuilder::new().num_threads(n_threads).exit_handler(exit_handler);
     {
         let _ = conf.build().unwrap();
         // Drop the pool so it stops the running threads.

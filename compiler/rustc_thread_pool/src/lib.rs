@@ -57,20 +57,17 @@
 //!
 //! While we strive to keep `rayon-core` semver-compatible, it's still
 //! possible to arrive at this situation if different crates have overly
-//! restrictive tilde or inequality requirements for `rayon-core`.  The
+//! restrictive tilde or inequality requirements for `rayon-core`. The
 //! conflicting requirements will need to be resolved before the build will
 //! succeed.
 
 #![warn(rust_2018_idioms)]
 
 use std::any::Any;
-use std::env;
 use std::error::Error;
-use std::fmt;
-use std::io;
 use std::marker::PhantomData;
 use std::str::FromStr;
-use std::thread;
+use std::{env, fmt, io, thread};
 
 #[macro_use]
 mod private;
@@ -92,20 +89,18 @@ mod test;
 
 pub mod tlv;
 
-pub use self::broadcast::{broadcast, spawn_broadcast, BroadcastContext};
-pub use self::join::{join, join_context};
-pub use self::registry::ThreadBuilder;
-pub use self::registry::{mark_blocked, mark_unblocked, Registry};
-pub use self::scope::{in_place_scope, scope, Scope};
-pub use self::scope::{in_place_scope_fifo, scope_fifo, ScopeFifo};
-pub use self::spawn::{spawn, spawn_fifo};
-pub use self::thread_pool::current_thread_has_pending_tasks;
-pub use self::thread_pool::current_thread_index;
-pub use self::thread_pool::ThreadPool;
-pub use self::thread_pool::{yield_local, yield_now, Yield};
 pub use worker_local::WorkerLocal;
 
+pub use self::broadcast::{BroadcastContext, broadcast, spawn_broadcast};
+pub use self::join::{join, join_context};
 use self::registry::{CustomSpawn, DefaultSpawn, ThreadSpawn};
+pub use self::registry::{Registry, ThreadBuilder, mark_blocked, mark_unblocked};
+pub use self::scope::{Scope, ScopeFifo, in_place_scope, in_place_scope_fifo, scope, scope_fifo};
+pub use self::spawn::{spawn, spawn_fifo};
+pub use self::thread_pool::{
+    ThreadPool, Yield, current_thread_has_pending_tasks, current_thread_index, yield_local,
+    yield_now,
+};
 
 /// Returns the maximum number of threads that Rayon supports in a single thread-pool.
 ///
@@ -282,7 +277,7 @@ where
     }
 
     /// Initializes the global thread pool. This initialization is
-    /// **optional**.  If you do not call this function, the thread pool
+    /// **optional**. If you do not call this function, the thread pool
     /// will be automatically initialized with the default
     /// configuration. Calling `build_global` is not recommended, except
     /// in two scenarios:
@@ -290,7 +285,7 @@ where
     /// - You wish to change the default configuration.
     /// - You are running a benchmark, in which case initializing may
     ///   yield slightly more consistent results, since the worker threads
-    ///   will already be ready to go even in the first iteration.  But
+    ///   will already be ready to go even in the first iteration. But
     ///   this cost is minimal.
     ///
     /// Initialization of the global thread pool happens exactly
@@ -490,26 +485,16 @@ impl<S> ThreadPoolBuilder<S> {
         if self.num_threads > 0 {
             self.num_threads
         } else {
-            let default = || {
-                thread::available_parallelism()
-                    .map(|n| n.get())
-                    .unwrap_or(1)
-            };
+            let default = || thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
 
-            match env::var("RAYON_NUM_THREADS")
-                .ok()
-                .and_then(|s| usize::from_str(&s).ok())
-            {
+            match env::var("RAYON_NUM_THREADS").ok().and_then(|s| usize::from_str(&s).ok()) {
                 Some(x @ 1..) => return x,
                 Some(0) => return default(),
                 _ => {}
             }
 
             // Support for deprecated `RAYON_RS_NUM_CPUS`.
-            match env::var("RAYON_RS_NUM_CPUS")
-                .ok()
-                .and_then(|s| usize::from_str(&s).ok())
-            {
+            match env::var("RAYON_RS_NUM_CPUS").ok().and_then(|s| usize::from_str(&s).ok()) {
                 Some(x @ 1..) => x,
                 _ => default(),
             }
@@ -723,9 +708,7 @@ impl<S> ThreadPoolBuilder<S> {
 impl Configuration {
     /// Creates and return a valid rayon thread pool configuration, but does not initialize it.
     pub fn new() -> Configuration {
-        Configuration {
-            builder: ThreadPoolBuilder::new(),
-        }
+        Configuration { builder: ThreadPoolBuilder::new() }
     }
 
     /// Deprecated in favor of `ThreadPoolBuilder::build`.
@@ -905,10 +888,7 @@ pub struct FnContext {
 impl FnContext {
     #[inline]
     fn new(migrated: bool) -> Self {
-        FnContext {
-            migrated,
-            _marker: PhantomData,
-        }
+        FnContext { migrated, _marker: PhantomData }
     }
 }
 

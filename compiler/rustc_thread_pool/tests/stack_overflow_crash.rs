@@ -1,10 +1,9 @@
-use rayon_core::ThreadPoolBuilder;
-
 use std::env;
-use std::process::{Command, ExitStatus, Stdio};
-
 #[cfg(target_os = "linux")]
 use std::os::unix::process::ExitStatusExt;
+use std::process::{Command, ExitStatus, Stdio};
+
+use rayon_core::ThreadPoolBuilder;
 
 fn force_stack_overflow(depth: u32) {
     let mut buffer = [0u8; 1024 * 1024];
@@ -18,13 +17,7 @@ fn force_stack_overflow(depth: u32) {
 #[cfg(unix)]
 fn disable_core() {
     unsafe {
-        libc::setrlimit(
-            libc::RLIMIT_CORE,
-            &libc::rlimit {
-                rlim_cur: 0,
-                rlim_max: 0,
-            },
-        );
+        libc::setrlimit(libc::RLIMIT_CORE, &libc::rlimit { rlim_cur: 0, rlim_max: 0 });
     }
 }
 
@@ -50,10 +43,7 @@ fn stack_overflow_crash() {
     #[cfg(any(unix, windows))]
     assert_eq!(status.code(), overflow_code());
     #[cfg(target_os = "linux")]
-    assert!(matches!(
-        status.signal(),
-        Some(libc::SIGABRT | libc::SIGSEGV)
-    ));
+    assert!(matches!(status.signal(), Some(libc::SIGABRT | libc::SIGSEGV)));
 
     // Now run with a larger stack and verify correct operation.
     let status = run_ignored("run_with_large_stack");
@@ -86,10 +76,7 @@ fn run_with_large_stack() {
 }
 
 fn run_with_stack(stack_size_in_mb: usize) {
-    let pool = ThreadPoolBuilder::new()
-        .stack_size(stack_size_in_mb * 1024 * 1024)
-        .build()
-        .unwrap();
+    let pool = ThreadPoolBuilder::new().stack_size(stack_size_in_mb * 1024 * 1024).build().unwrap();
     pool.install(|| {
         #[cfg(unix)]
         disable_core();

@@ -1,11 +1,10 @@
+use std::any::Any;
+
 use crate::job::StackJob;
 use crate::latch::SpinLatch;
 use crate::registry::{self, WorkerThread};
 use crate::tlv::{self, Tlv};
-use crate::unwind;
-use std::any::Any;
-
-use crate::FnContext;
+use crate::{FnContext, unwind};
 
 #[cfg(test)]
 mod test;
@@ -22,7 +21,7 @@ mod test;
 /// it.
 ///
 /// When `join` is called from outside the thread pool, the calling
-/// thread will block while the closures execute in the pool.  When
+/// thread will block while the closures execute in the pool. When
 /// `join` is called within the pool, the calling thread still actively
 /// participates in the thread pool. It will begin by executing closure
 /// A (on the current thread). While it is doing that, it will advertise
@@ -80,13 +79,13 @@ mod test;
 /// CPU-bound tasks that do not perform I/O or other blocking
 /// operations. If you do perform I/O, and that I/O should block
 /// (e.g., waiting for a network request), the overall performance may
-/// be poor.  Moreover, if you cause one closure to be blocked waiting
+/// be poor. Moreover, if you cause one closure to be blocked waiting
 /// on another (for example, using a channel), that could lead to a
 /// deadlock.
 ///
 /// # Panics
 ///
-/// No matter what happens, both closures will always be executed.  If
+/// No matter what happens, both closures will always be executed. If
 /// a single closure panics, whether it be the first or second
 /// closure, that panic will be propagated and hence `join()` will
 /// panic with the same panic value. If both closures panic, `join()`
@@ -109,7 +108,7 @@ where
 /// Identical to `join`, except that the closures have a parameter
 /// that provides context for the way the closure has been called,
 /// especially indicating whether they're executing on a different
-/// thread than where `join_context` was called.  This will occur if
+/// thread than where `join_context` was called. This will occur if
 /// the second job is stolen by a different thread, or if
 /// `join_context` was called from outside the thread pool to begin
 /// with.
@@ -148,7 +147,7 @@ where
         };
 
         // Now that task A has finished, try to pop job B from the
-        // local stack.  It may already have been popped by job A; it
+        // local stack. It may already have been popped by job A; it
         // may also have been stolen. There may also be some tasks
         // pushed on top of it in the stack, and we will have to pop
         // those off to get to it.

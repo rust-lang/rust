@@ -1,10 +1,9 @@
-use crate::scope;
 use std::any::Any;
-use std::sync::mpsc::channel;
 use std::sync::Mutex;
+use std::sync::mpsc::channel;
 
 use super::{spawn, spawn_fifo};
-use crate::ThreadPoolBuilder;
+use crate::{ThreadPoolBuilder, scope};
 
 #[test]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -45,10 +44,7 @@ fn panic_fwd() {
 
     let builder = ThreadPoolBuilder::new().panic_handler(panic_handler);
 
-    builder
-        .build()
-        .unwrap()
-        .spawn(move || panic!("Hello, world!"));
+    builder.build().unwrap().spawn(move || panic!("Hello, world!"));
 
     assert_eq!(1, rx.recv().unwrap());
 }
@@ -193,10 +189,7 @@ fn fifo_order() {
 fn lifo_fifo_order() {
     // LIFO on the outside, FIFO on the inside
     let vec = test_order!(spawn, spawn_fifo);
-    let expected: Vec<i32> = (0..10)
-        .rev()
-        .flat_map(|i| (0..10).map(move |j| i * 10 + j))
-        .collect();
+    let expected: Vec<i32> = (0..10).rev().flat_map(|i| (0..10).map(move |j| i * 10 + j)).collect();
     assert_eq!(vec, expected);
 }
 
@@ -205,9 +198,7 @@ fn lifo_fifo_order() {
 fn fifo_lifo_order() {
     // FIFO on the outside, LIFO on the inside
     let vec = test_order!(spawn_fifo, spawn);
-    let expected: Vec<i32> = (0..10)
-        .flat_map(|i| (0..10).rev().map(move |j| i * 10 + j))
-        .collect();
+    let expected: Vec<i32> = (0..10).flat_map(|i| (0..10).rev().map(move |j| i * 10 + j)).collect();
     assert_eq!(vec, expected);
 }
 

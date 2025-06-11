@@ -3,17 +3,16 @@
 //!
 //! [`ThreadPool`]: struct.ThreadPool.html
 
-use crate::broadcast::{self, BroadcastContext};
-use crate::join;
-use crate::registry::{Registry, ThreadSpawn, WorkerThread};
-use crate::scope::{do_in_place_scope, do_in_place_scope_fifo};
-use crate::spawn;
-use crate::{scope, Scope};
-use crate::{scope_fifo, ScopeFifo};
-use crate::{ThreadPoolBuildError, ThreadPoolBuilder};
 use std::error::Error;
 use std::fmt;
 use std::sync::Arc;
+
+use crate::broadcast::{self, BroadcastContext};
+use crate::registry::{Registry, ThreadSpawn, WorkerThread};
+use crate::scope::{do_in_place_scope, do_in_place_scope_fifo};
+use crate::{
+    Scope, ScopeFifo, ThreadPoolBuildError, ThreadPoolBuilder, join, scope, scope_fifo, spawn,
+};
 
 mod test;
 

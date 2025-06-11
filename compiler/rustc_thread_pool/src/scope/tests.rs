@@ -1,12 +1,12 @@
-use crate::unwind;
-use crate::ThreadPoolBuilder;
-use crate::{scope, scope_fifo, Scope, ScopeFifo};
-use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
 use std::iter::once;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Barrier, Mutex};
 use std::vec;
+
+use rand::{Rng, SeedableRng};
+use rand_xorshift::XorShiftRng;
+
+use crate::{Scope, ScopeFifo, ThreadPoolBuilder, scope, scope_fifo, unwind};
 
 #[test]
 fn scope_empty() {
@@ -93,10 +93,7 @@ impl<T: Send> Tree<T> {
     where
         OP: Fn(&mut T) + Sync,
     {
-        let Tree {
-            ref mut value,
-            ref mut children,
-        } = *self;
+        let Tree { ref mut value, ref mut children } = *self;
         scope.spawn(move |scope| {
             for child in children {
                 scope.spawn(move |scope| child.update_in_scope(op, scope));
@@ -124,10 +121,7 @@ fn random_tree1(depth: usize, rng: &mut XorShiftRng) -> Tree<u32> {
             .collect()
     };
 
-    Tree {
-        value: rng.random_range(0..1_000_000),
-        children,
-    }
+    Tree { value: rng.random_range(0..1_000_000), children }
 }
 
 #[test]
@@ -161,11 +155,7 @@ fn linear_stack_growth() {
         let diff_when_500 = *max_diff.get_mut().unwrap() as f64;
 
         let ratio = diff_when_5 / diff_when_500;
-        assert!(
-            ratio > 0.9 && ratio < 1.1,
-            "stack usage ratio out of bounds: {}",
-            ratio
-        );
+        assert!(ratio > 0.9 && ratio < 1.1, "stack usage ratio out of bounds: {}", ratio);
     });
 }
 
@@ -366,10 +356,7 @@ fn nested_fifo_order() {
 fn nested_lifo_fifo_order() {
     // LIFO on the outside, FIFO on the inside
     let vec = test_nested_order!(scope => spawn, scope_fifo => spawn_fifo);
-    let expected: Vec<i32> = (0..10)
-        .rev()
-        .flat_map(|i| (0..10).map(move |j| i * 10 + j))
-        .collect();
+    let expected: Vec<i32> = (0..10).rev().flat_map(|i| (0..10).map(move |j| i * 10 + j)).collect();
     assert_eq!(vec, expected);
 }
 
@@ -378,9 +365,7 @@ fn nested_lifo_fifo_order() {
 fn nested_fifo_lifo_order() {
     // FIFO on the outside, LIFO on the inside
     let vec = test_nested_order!(scope_fifo => spawn_fifo, scope => spawn);
-    let expected: Vec<i32> = (0..10)
-        .flat_map(|i| (0..10).rev().map(move |j| i * 10 + j))
-        .collect();
+    let expected: Vec<i32> = (0..10).flat_map(|i| (0..10).rev().map(move |j| i * 10 + j)).collect();
     assert_eq!(vec, expected);
 }
 

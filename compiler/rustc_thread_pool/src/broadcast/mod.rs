@@ -1,9 +1,10 @@
-use crate::job::{ArcJob, StackJob};
-use crate::latch::{CountLatch, LatchRef};
-use crate::registry::{Registry, WorkerThread};
 use std::fmt;
 use std::marker::PhantomData;
 use std::sync::Arc;
+
+use crate::job::{ArcJob, StackJob};
+use crate::latch::{CountLatch, LatchRef};
+use crate::registry::{Registry, WorkerThread};
 
 mod test;
 
@@ -53,10 +54,7 @@ impl<'a> BroadcastContext<'a> {
     pub(super) fn with<R>(f: impl FnOnce(BroadcastContext<'_>) -> R) -> R {
         let worker_thread = WorkerThread::current();
         assert!(!worker_thread.is_null());
-        f(BroadcastContext {
-            worker: unsafe { &*worker_thread },
-            _marker: PhantomData,
-        })
+        f(BroadcastContext { worker: unsafe { &*worker_thread }, _marker: PhantomData })
     }
 
     /// Our index amongst the broadcast threads (ranges from `0..self.num_threads()`).
@@ -108,9 +106,8 @@ where
     let current_thread = WorkerThread::current().as_ref();
     let tlv = crate::tlv::get();
     let latch = CountLatch::with_count(n_threads, current_thread);
-    let jobs: Vec<_> = (0..n_threads)
-        .map(|_| StackJob::new(tlv, &f, LatchRef::new(&latch)))
-        .collect();
+    let jobs: Vec<_> =
+        (0..n_threads).map(|_| StackJob::new(tlv, &f, LatchRef::new(&latch))).collect();
     let job_refs = jobs.iter().map(|job| job.as_job_ref());
 
     registry.inject_broadcast(job_refs);

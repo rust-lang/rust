@@ -5,19 +5,19 @@
 //! [`in_place_scope()`]: fn.in_place_scope.html
 //! [`join()`]: ../join/join.fn.html
 
+use std::any::Any;
+use std::marker::PhantomData;
+use std::mem::ManuallyDrop;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicPtr, Ordering};
+use std::{fmt, ptr};
+
 use crate::broadcast::BroadcastContext;
 use crate::job::{ArcJob, HeapJob, JobFifo, JobRef};
 use crate::latch::{CountLatch, Latch};
-use crate::registry::{global_registry, in_worker, Registry, WorkerThread};
+use crate::registry::{Registry, WorkerThread, global_registry, in_worker};
 use crate::tlv::{self, Tlv};
 use crate::unwind;
-use std::any::Any;
-use std::fmt;
-use std::marker::PhantomData;
-use std::mem::ManuallyDrop;
-use std::ptr;
-use std::sync::atomic::{AtomicPtr, Ordering};
-use std::sync::Arc;
 
 #[cfg(test)]
 mod test;
@@ -53,7 +53,7 @@ struct ScopeBase<'scope> {
     job_completed_latch: CountLatch,
 
     /// You can think of a scope as containing a list of closures to execute,
-    /// all of which outlive `'scope`.  They're not actually required to be
+    /// all of which outlive `'scope`. They're not actually required to be
     /// `Sync`, but it's still safe to let the `Scope` implement `Sync` because
     /// the closures are only *moved* across threads to be executed.
     #[allow(clippy::type_complexity)]
@@ -179,9 +179,9 @@ struct ScopeBase<'scope> {
 /// they were spawned. So in this example, absent any stealing, we can
 /// expect `s.2` to execute before `s.1`, and `t.2` before `t.1`. Other
 /// threads always steal from the other end of the deque, like FIFO
-/// order.  The idea is that "recent" tasks are most likely to be fresh
+/// order. The idea is that "recent" tasks are most likely to be fresh
 /// in the local CPU's cache, while other threads can steal older
-/// "stale" tasks.  For an alternate approach, consider
+/// "stale" tasks. For an alternate approach, consider
 /// [`scope_fifo()`] instead.
 ///
 /// [`scope_fifo()`]: fn.scope_fifo.html
@@ -353,7 +353,7 @@ where
 ///
 /// Under `scope_fifo()`, the spawns are prioritized in a FIFO order on
 /// the thread from which they were spawned, as opposed to `scope()`'s
-/// LIFO.  So in this example, we can expect `s.1` to execute before
+/// LIFO. So in this example, we can expect `s.1` to execute before
 /// `s.2`, and `t.1` before `t.2`. Other threads also steal tasks in
 /// FIFO order, as usual. Overall, this has roughly the same order as
 /// the now-deprecated [`breadth_first`] option, except the effect is
@@ -469,7 +469,7 @@ impl<'scope> Scope<'scope> {
     }
 
     /// Spawns a job into the fork-join scope `self`. This job will
-    /// execute sometime before the fork-join scope completes.  The
+    /// execute sometime before the fork-join scope completes. The
     /// job is specified as a closure, and this closure receives its
     /// own reference to the scope `self` as argument. This can be
     /// used to inject new jobs into `self`.
@@ -539,7 +539,7 @@ impl<'scope> Scope<'scope> {
     }
 
     /// Spawns a job into every thread of the fork-join scope `self`. This job will
-    /// execute on each thread sometime before the fork-join scope completes.  The
+    /// execute on each thread sometime before the fork-join scope completes. The
     /// job is specified as a closure, and this closure receives its own reference
     /// to the scope `self` as argument, as well as a `BroadcastContext`.
     pub fn spawn_broadcast<BODY>(&self, body: BODY)
@@ -567,7 +567,7 @@ impl<'scope> ScopeFifo<'scope> {
     }
 
     /// Spawns a job into the fork-join scope `self`. This job will
-    /// execute sometime before the fork-join scope completes.  The
+    /// execute sometime before the fork-join scope completes. The
     /// job is specified as a closure, and this closure receives its
     /// own reference to the scope `self` as argument. This can be
     /// used to inject new jobs into `self`.
@@ -575,7 +575,7 @@ impl<'scope> ScopeFifo<'scope> {
     /// # See also
     ///
     /// This method is akin to [`Scope::spawn()`], but with a FIFO
-    /// priority.  The [`scope_fifo` function] has more details about
+    /// priority. The [`scope_fifo` function] has more details about
     /// this distinction.
     ///
     /// [`Scope::spawn()`]: struct.Scope.html#method.spawn
@@ -605,7 +605,7 @@ impl<'scope> ScopeFifo<'scope> {
     }
 
     /// Spawns a job into every thread of the fork-join scope `self`. This job will
-    /// execute on each thread sometime before the fork-join scope completes.  The
+    /// execute on each thread sometime before the fork-join scope completes. The
     /// job is specified as a closure, and this closure receives its own reference
     /// to the scope `self` as argument, as well as a `BroadcastContext`.
     pub fn spawn_broadcast<BODY>(&self, body: BODY)

@@ -1,12 +1,13 @@
-use crate::latch::Latch;
-use crate::tlv;
-use crate::tlv::Tlv;
-use crate::unwind;
-use crossbeam_deque::{Injector, Steal};
 use std::any::Any;
 use std::cell::UnsafeCell;
 use std::mem;
 use std::sync::Arc;
+
+use crossbeam_deque::{Injector, Steal};
+
+use crate::latch::Latch;
+use crate::tlv::Tlv;
+use crate::{tlv, unwind};
 
 pub(super) enum JobResult<T> {
     None,
@@ -29,7 +30,7 @@ pub(super) trait Job {
 /// Effectively a Job trait object. Each JobRef **must** be executed
 /// exactly once, or else data may leak.
 ///
-/// Internally, we store the job's data in a `*const ()` pointer.  The
+/// Internally, we store the job's data in a `*const ()` pointer. The
 /// true type is something like `*const StackJob<...>`, but we hide
 /// it. We also carry the "execute fn" from the `Job` trait.
 pub(super) struct JobRef {
@@ -48,10 +49,7 @@ impl JobRef {
         T: Job,
     {
         // erase types:
-        JobRef {
-            pointer: data as *const (),
-            execute_fn: <T as Job>::execute,
-        }
+        JobRef { pointer: data as *const (), execute_fn: <T as Job>::execute }
     }
 
     /// Returns an opaque handle that can be saved and compared,
@@ -69,7 +67,7 @@ impl JobRef {
 
 /// A job that will be owned by a stack slot. This means that when it
 /// executes it need not free any heap data, the cleanup occurs when
-/// the stack frame is later popped.  The function parameter indicates
+/// the stack frame is later popped. The function parameter indicates
 /// `true` if the job was stolen -- executed on a different thread.
 pub(super) struct StackJob<L, F, R>
 where
@@ -248,13 +246,11 @@ pub(super) struct JobFifo {
 
 impl JobFifo {
     pub(super) fn new() -> Self {
-        JobFifo {
-            inner: Injector::new(),
-        }
+        JobFifo { inner: Injector::new() }
     }
 
     pub(super) unsafe fn push(&self, job_ref: JobRef) -> JobRef {
-        // A little indirection ensures that spawns are always prioritized in FIFO order.  The
+        // A little indirection ensures that spawns are always prioritized in FIFO order. The
         // jobs in a thread's deque may be popped from the back (LIFO) or stolen from the front
         // (FIFO), but either way they will end up popping from the front of this queue.
         self.inner.push(job_ref);

@@ -1,13 +1,15 @@
 //! Code that decides when workers should go to sleep. See README.md
 //! for an overview.
 
-use crate::latch::CoreLatch;
-use crate::registry::WorkerThread;
-use crate::DeadlockHandler;
-use crossbeam_utils::CachePadded;
 use std::sync::atomic::Ordering;
 use std::sync::{Condvar, Mutex};
 use std::thread;
+
+use crossbeam_utils::CachePadded;
+
+use crate::DeadlockHandler;
+use crate::latch::CoreLatch;
+use crate::registry::WorkerThread;
 
 mod counters;
 pub(crate) use self::counters::THREADS_MAX;
@@ -125,11 +127,7 @@ impl Sleep {
     pub(super) fn start_looking(&self, worker_index: usize) -> IdleState {
         self.counters.add_inactive_thread();
 
-        IdleState {
-            worker_index,
-            rounds: 0,
-            jobs_counter: JobsEventCounter::DUMMY,
-        }
+        IdleState { worker_index, rounds: 0, jobs_counter: JobsEventCounter::DUMMY }
     }
 
     #[inline]
@@ -165,9 +163,7 @@ impl Sleep {
 
     #[cold]
     fn announce_sleepy(&self) -> JobsEventCounter {
-        self.counters
-            .increment_jobs_event_counter_if(JobsEventCounter::is_active)
-            .jobs_counter()
+        self.counters.increment_jobs_event_counter_if(JobsEventCounter::is_active).jobs_counter()
     }
 
     #[cold]
@@ -258,7 +254,7 @@ impl Sleep {
     }
 
     /// Notify the given thread that it should wake up (if it is
-    /// sleeping).  When this method is invoked, we typically know the
+    /// sleeping). When this method is invoked, we typically know the
     /// thread is asleep, though in rare cases it could have been
     /// awoken by (e.g.) new work having been posted.
     pub(super) fn notify_worker_latch_is_set(&self, target_worker_index: usize) {
@@ -307,9 +303,7 @@ impl Sleep {
         // Read the counters and -- if sleepy workers have announced themselves
         // -- announce that there is now work available. The final value of `counters`
         // with which we exit the loop thus corresponds to a state when
-        let counters = self
-            .counters
-            .increment_jobs_event_counter_if(JobsEventCounter::is_sleepy);
+        let counters = self.counters.increment_jobs_event_counter_if(JobsEventCounter::is_sleepy);
         let num_awake_but_idle = counters.awake_but_idle_threads();
         let num_sleepers = counters.sleeping_threads();
 

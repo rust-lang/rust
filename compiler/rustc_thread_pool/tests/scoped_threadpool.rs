@@ -10,9 +10,7 @@ scoped_tls::scoped_thread_local!(static LOCAL: Local);
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn missing_scoped_tls() {
     LOCAL.set(&Local(42), || {
-        let pool = ThreadPoolBuilder::new()
-            .build()
-            .expect("thread pool created");
+        let pool = ThreadPoolBuilder::new().build().expect("thread pool created");
 
         // `LOCAL` is not set in the pool.
         pool.install(|| {

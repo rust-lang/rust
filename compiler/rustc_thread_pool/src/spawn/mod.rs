@@ -1,9 +1,10 @@
+use std::mem;
+use std::sync::Arc;
+
 use crate::job::*;
 use crate::registry::Registry;
 use crate::tlv::Tlv;
 use crate::unwind;
-use std::mem;
-use std::sync::Arc;
 
 /// Puts the task into the Rayon threadpool's job queue in the "static"
 /// or "global" scope. Just like a standard thread, this task is not
@@ -28,9 +29,9 @@ use std::sync::Arc;
 /// other threads may steal tasks at any time. However, they are
 /// generally prioritized in a LIFO order on the thread from which
 /// they were spawned. Other threads always steal from the other end of
-/// the deque, like FIFO order.  The idea is that "recent" tasks are
+/// the deque, like FIFO order. The idea is that "recent" tasks are
 /// most likely to be fresh in the local CPU's cache, while other
-/// threads can steal older "stale" tasks.  For an alternate approach,
+/// threads can steal older "stale" tasks. For an alternate approach,
 /// consider [`spawn_fifo()`] instead.
 ///
 /// [`spawn_fifo()`]: fn.spawn_fifo.html
@@ -39,7 +40,7 @@ use std::sync::Arc;
 ///
 /// If this closure should panic, the resulting panic will be
 /// propagated to the panic handler registered in the `ThreadPoolBuilder`,
-/// if any.  See [`ThreadPoolBuilder::panic_handler()`][ph] for more
+/// if any. See [`ThreadPoolBuilder::panic_handler()`][ph] for more
 /// details.
 ///
 /// [ph]: struct.ThreadPoolBuilder.html#method.panic_handler
@@ -103,7 +104,7 @@ where
 }
 
 /// Fires off a task into the Rayon threadpool in the "static" or
-/// "global" scope.  Just like a standard thread, this task is not
+/// "global" scope. Just like a standard thread, this task is not
 /// tied to the current stack frame, and hence it cannot hold any
 /// references other than those with `'static` lifetime. If you want
 /// to spawn a task that references stack data, use [the `scope_fifo()`
@@ -124,7 +125,7 @@ where
 ///
 /// If this closure should panic, the resulting panic will be
 /// propagated to the panic handler registered in the `ThreadPoolBuilder`,
-/// if any.  See [`ThreadPoolBuilder::panic_handler()`][ph] for more
+/// if any. See [`ThreadPoolBuilder::panic_handler()`][ph] for more
 /// details.
 ///
 /// [ph]: struct.ThreadPoolBuilder.html#method.panic_handler
@@ -152,7 +153,7 @@ where
     let job_ref = spawn_job(func, registry);
 
     // If we're in the pool, use our thread's private fifo for this thread to execute
-    // in a locally-FIFO order.  Otherwise, just use the pool's global injector.
+    // in a locally-FIFO order. Otherwise, just use the pool's global injector.
     match registry.current_thread() {
         Some(worker) => worker.push_fifo(job_ref),
         None => registry.inject(job_ref),

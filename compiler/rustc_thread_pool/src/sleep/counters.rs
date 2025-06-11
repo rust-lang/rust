@@ -89,9 +89,7 @@ const ONE_JEC: usize = 1 << JEC_SHIFT;
 impl AtomicCounters {
     #[inline]
     pub(super) fn new() -> AtomicCounters {
-        AtomicCounters {
-            value: AtomicUsize::new(0),
-        }
+        AtomicCounters { value: AtomicUsize::new(0) }
     }
 
     /// Load and return the current value of the various counters.
@@ -230,9 +228,7 @@ impl Counters {
     fn increment_jobs_counter(self) -> Counters {
         // We can freely add to JEC because it occupies the most significant bits.
         // Thus it doesn't overflow into the other counters, just wraps itself.
-        Counters {
-            word: self.word.wrapping_add(ONE_JEC),
-        }
+        Counters { word: self.word.wrapping_add(ONE_JEC) }
     }
 
     #[inline]

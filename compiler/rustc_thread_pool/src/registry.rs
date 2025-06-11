@@ -1,23 +1,20 @@
+use std::cell::Cell;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hasher;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, Once};
+use std::{fmt, io, mem, ptr, thread};
+
+use crossbeam_deque::{Injector, Steal, Stealer, Worker};
+
 use crate::job::{JobFifo, JobRef, StackJob};
 use crate::latch::{AsCoreLatch, CoreLatch, Latch, LatchRef, LockLatch, OnceLatch, SpinLatch};
 use crate::sleep::Sleep;
 use crate::tlv::Tlv;
-use crate::unwind;
 use crate::{
     AcquireThreadHandler, DeadlockHandler, ErrorKind, ExitHandler, PanicHandler,
-    ReleaseThreadHandler, StartHandler, ThreadPoolBuildError, ThreadPoolBuilder, Yield,
+    ReleaseThreadHandler, StartHandler, ThreadPoolBuildError, ThreadPoolBuilder, Yield, unwind,
 };
-use crossbeam_deque::{Injector, Steal, Stealer, Worker};
-use std::cell::Cell;
-use std::collections::hash_map::DefaultHasher;
-use std::fmt;
-use std::hash::Hasher;
-use std::io;
-use std::mem;
-use std::ptr;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, Once};
-use std::thread;
 
 /// Thread builder used for customization via
 /// [`ThreadPoolBuilder::spawn_handler`](struct.ThreadPoolBuilder.html#method.spawn_handler).
@@ -193,9 +190,7 @@ fn set_global_registry<F>(registry: F) -> Result<&'static Arc<Registry>, ThreadP
 where
     F: FnOnce() -> Result<Arc<Registry>, ThreadPoolBuildError>,
 {
-    let mut result = Err(ThreadPoolBuildError::new(
-        ErrorKind::GlobalPoolAlreadyInitialized,
-    ));
+    let mut result = Err(ThreadPoolBuildError::new(ErrorKind::GlobalPoolAlreadyInitialized));
 
     THE_REGISTRY_SET.call_once(|| {
         result = registry().map(|registry: Arc<Registry>| {
@@ -222,25 +217,23 @@ fn default_global_registry() -> Result<Arc<Registry>, ThreadPoolBuildError> {
     // is stubbed out, and we won't have to change anything if they do add real threading.
     let unsupported = matches!(&result, Err(e) if e.is_unsupported());
     if unsupported && WorkerThread::current().is_null() {
-        let builder = ThreadPoolBuilder::new()
-            .num_threads(1)
-            .spawn_handler(|thread| {
-                // Rather than starting a new thread, we're just taking over the current thread
-                // *without* running the main loop, so we can still return from here.
-                // The WorkerThread is leaked, but we never shutdown the global pool anyway.
-                let worker_thread = Box::leak(Box::new(WorkerThread::from(thread)));
-                let registry = &*worker_thread.registry;
-                let index = worker_thread.index;
+        let builder = ThreadPoolBuilder::new().num_threads(1).spawn_handler(|thread| {
+            // Rather than starting a new thread, we're just taking over the current thread
+            // *without* running the main loop, so we can still return from here.
+            // The WorkerThread is leaked, but we never shutdown the global pool anyway.
+            let worker_thread = Box::leak(Box::new(WorkerThread::from(thread)));
+            let registry = &*worker_thread.registry;
+            let index = worker_thread.index;
 
-                unsafe {
-                    WorkerThread::set_current(worker_thread);
+            unsafe {
+                WorkerThread::set_current(worker_thread);
 
-                    // let registry know we are ready to do work
-                    Latch::set(&registry.thread_infos[index].primed);
-                }
+                // let registry know we are ready to do work
+                Latch::set(&registry.thread_infos[index].primed);
+            }
 
-                Ok(())
-            });
+            Ok(())
+        });
 
         let fallback_result = Registry::new(builder);
         if fallback_result.is_ok() {
@@ -273,11 +266,7 @@ impl Registry {
 
         let (workers, stealers): (Vec<_>, Vec<_>) = (0..n_threads)
             .map(|_| {
-                let worker = if breadth_first {
-                    Worker::new_fifo()
-                } else {
-                    Worker::new_lifo()
-                };
+                let worker = if breadth_first { Worker::new_fifo() } else { Worker::new_lifo() };
 
                 let stealer = worker.stealer();
                 (worker, stealer)
@@ -341,7 +330,7 @@ impl Registry {
         }
     }
 
-    /// Returns the number of threads in the current registry.  This
+    /// Returns the number of threads in the current registry. This
     /// is better than `Registry::current().num_threads()` because it
     /// avoids incrementing the `Arc`.
     pub(super) fn current_num_threads() -> usize {
@@ -359,11 +348,7 @@ impl Registry {
     pub(super) fn current_thread(&self) -> Option<&WorkerThread> {
         unsafe {
             let worker = WorkerThread::current().as_ref()?;
-            if worker.registry().id() == self.id() {
-                Some(worker)
-            } else {
-                None
-            }
+            if worker.registry().id() == self.id() { Some(worker) } else { None }
         }
     }
 
@@ -371,9 +356,7 @@ impl Registry {
     pub(super) fn id(&self) -> RegistryId {
         // We can rely on `self` not to change since we only ever create
         // registries that are boxed up in an `Arc` (see `new()` above).
-        RegistryId {
-            addr: self as *const Self as usize,
-        }
+        RegistryId { addr: self as *const Self as usize }
     }
 
     pub(super) fn num_threads(&self) -> usize {
@@ -391,7 +374,7 @@ impl Registry {
         }
     }
 
-    /// Waits for the worker threads to get up and running.  This is
+    /// Waits for the worker threads to get up and running. This is
     /// meant to be used for benchmarking purposes, primarily, so that
     /// you can get more consistent numbers by having everything
     /// "ready to go".
@@ -512,7 +495,7 @@ impl Registry {
     /// If already in a worker-thread of this registry, just execute `op`.
     /// Otherwise, inject `op` in this thread-pool. Either way, block until `op`
     /// completes and return its return value. If `op` panics, that panic will
-    /// be propagated as well.  The second argument indicates `true` if injection
+    /// be propagated as well. The second argument indicates `true` if injection
     /// was performed, `false` if executed directly.
     pub(super) fn in_worker<OP, R>(&self, op: OP) -> R
     where
@@ -844,9 +827,7 @@ impl WorkerThread {
                     // The job might have injected local work, so go back to the outer loop.
                     continue 'outer;
                 } else {
-                    self.registry
-                        .sleep
-                        .no_work_found(&mut idle_state, latch, &self)
+                    self.registry.sleep.no_work_found(&mut idle_state, latch, &self)
                 }
             }
 
@@ -880,9 +861,7 @@ impl WorkerThread {
         // deques, and finally to injected jobs from the
         // outside. The idea is to finish what we started before
         // we take on something new.
-        self.take_local_job()
-            .or_else(|| self.steal())
-            .or_else(|| self.registry.pop_injected_job())
+        self.take_local_job().or_else(|| self.steal()).or_else(|| self.registry.pop_injected_job())
     }
 
     pub(super) fn yield_now(&self) -> Yield {
@@ -984,10 +963,10 @@ unsafe fn main_loop(thread: ThreadBuilder) {
     registry.release_thread();
 }
 
-/// If already in a worker-thread, just execute `op`.  Otherwise,
+/// If already in a worker-thread, just execute `op`. Otherwise,
 /// execute `op` in the default thread-pool. Either way, block until
 /// `op` completes and return its return value. If `op` panics, that
-/// panic will be propagated as well.  The second argument indicates
+/// panic will be propagated as well. The second argument indicates
 /// `true` if injection was performed, `false` if executed directly.
 pub(super) fn in_worker<OP, R>(op: OP) -> R
 where
@@ -1026,9 +1005,7 @@ impl XorShift64Star {
             seed = hasher.finish();
         }
 
-        XorShift64Star {
-            state: Cell::new(seed),
-        }
+        XorShift64Star { state: Cell::new(seed) }
     }
 
     fn next(&self) -> u64 {

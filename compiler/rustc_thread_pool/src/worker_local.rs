@@ -1,7 +1,8 @@
-use crate::registry::{Registry, WorkerThread};
 use std::fmt;
 use std::ops::Deref;
 use std::sync::Arc;
+
+use crate::registry::{Registry, WorkerThread};
 
 #[repr(align(64))]
 #[derive(Debug)]
@@ -27,9 +28,7 @@ impl<T> WorkerLocal<T> {
     pub fn new<F: FnMut(usize) -> T>(mut initial: F) -> WorkerLocal<T> {
         let registry = Registry::current();
         WorkerLocal {
-            locals: (0..registry.num_threads())
-                .map(|i| CacheAligned(initial(i)))
-                .collect(),
+            locals: (0..registry.num_threads()).map(|i| CacheAligned(initial(i))).collect(),
             registry,
         }
     }
@@ -62,9 +61,7 @@ impl<T> WorkerLocal<Vec<T>> {
 
 impl<T: fmt::Debug> fmt::Debug for WorkerLocal<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("WorkerLocal")
-            .field("registry", &self.registry.id())
-            .finish()
+        f.debug_struct("WorkerLocal").field("registry", &self.registry.id()).finish()
     }
 }
 

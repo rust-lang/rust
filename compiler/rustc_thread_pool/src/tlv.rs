@@ -1,7 +1,8 @@
 //! Allows access to the Rayon's thread local value
 //! which is preserved when moving jobs across threads
 
-use std::{cell::Cell, ptr};
+use std::cell::Cell;
+use std::ptr;
 
 thread_local!(pub static TLV: Cell<*const ()> = const { Cell::new(ptr::null()) });
 

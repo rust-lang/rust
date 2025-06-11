@@ -182,7 +182,7 @@ This is possible because the C++ memory model typically offers guarantees of the
 form "if you see the access A, then you must see those other accesses" -- but it
 doesn't guarantee that you will see the access A (i.e., if you think of
 processors with independent caches, you may be operating on very out of date
-cache state). 
+cache state).
 
 ## Using seq-cst fences to prevent deadlock
 

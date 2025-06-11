@@ -28,7 +28,7 @@ use crate::registry::{Registry, WorkerThread};
 /// - Once `probe()` returns true, all memory effects from the `set()`
 ///   are visible (in other words, the set should synchronize-with
 ///   the probe).
-/// - Once `set()` occurs, the next `probe()` *will* observe it.  This
+/// - Once `set()` occurs, the next `probe()` *will* observe it. This
 ///   typically requires a seq-cst ordering. See [the "tickle-then-get-sleepy" scenario in the sleep
 ///   README](/src/sleep/README.md#tickle-then-get-sleepy) for details.
 pub(super) trait Latch {
@@ -78,9 +78,7 @@ pub(super) struct CoreLatch {
 impl CoreLatch {
     #[inline]
     fn new() -> Self {
-        Self {
-            state: AtomicUsize::new(0),
-        }
+        Self { state: AtomicUsize::new(0) }
     }
 
     /// Invoked by owning thread as it prepares to sleep. Returns true
@@ -88,9 +86,7 @@ impl CoreLatch {
     /// latch was set in the meantime.
     #[inline]
     pub(super) fn get_sleepy(&self) -> bool {
-        self.state
-            .compare_exchange(UNSET, SLEEPY, Ordering::SeqCst, Ordering::Relaxed)
-            .is_ok()
+        self.state.compare_exchange(UNSET, SLEEPY, Ordering::SeqCst, Ordering::Relaxed).is_ok()
     }
 
     /// Invoked by owning thread as it falls asleep sleep. Returns
@@ -98,9 +94,7 @@ impl CoreLatch {
     /// was set in the meantime.
     #[inline]
     pub(super) fn fall_asleep(&self) -> bool {
-        self.state
-            .compare_exchange(SLEEPY, SLEEPING, Ordering::SeqCst, Ordering::Relaxed)
-            .is_ok()
+        self.state.compare_exchange(SLEEPY, SLEEPING, Ordering::SeqCst, Ordering::Relaxed).is_ok()
     }
 
     /// Invoked by owning thread as it falls asleep sleep. Returns
@@ -110,8 +104,7 @@ impl CoreLatch {
     pub(super) fn wake_up(&self) {
         if !self.probe() {
             let _ =
-                self.state
-                    .compare_exchange(SLEEPING, UNSET, Ordering::SeqCst, Ordering::Relaxed);
+                self.state.compare_exchange(SLEEPING, UNSET, Ordering::SeqCst, Ordering::Relaxed);
         }
     }
 
@@ -166,15 +159,12 @@ impl<'r> SpinLatch<'r> {
         }
     }
 
-    /// Creates a new spin latch for cross-threadpool blocking.  Notably, we
+    /// Creates a new spin latch for cross-threadpool blocking. Notably, we
     /// need to make sure the registry is kept alive after setting, so we can
     /// safely call the notification.
     #[inline]
     pub(super) fn cross(thread: &'r WorkerThread) -> SpinLatch<'r> {
-        SpinLatch {
-            cross: true,
-            ..SpinLatch::new(thread)
-        }
+        SpinLatch { cross: true, ..SpinLatch::new(thread) }
     }
 
     #[inline]
@@ -235,10 +225,7 @@ pub(super) struct LockLatch {
 impl LockLatch {
     #[inline]
     pub(super) fn new() -> LockLatch {
-        LockLatch {
-            m: Mutex::new(false),
-            v: Condvar::new(),
-        }
+        LockLatch { m: Mutex::new(false), v: Condvar::new() }
     }
 
     /// Block until latch is set, then resets this lock latch so it can be reused again.
@@ -288,9 +275,7 @@ pub(super) struct OnceLatch {
 impl OnceLatch {
     #[inline]
     pub(super) fn new() -> OnceLatch {
-        Self {
-            core_latch: CoreLatch::new(),
-        }
+        Self { core_latch: CoreLatch::new() }
     }
 
     /// Set the latch, then tickle the specific worker thread,
@@ -372,9 +357,7 @@ impl CountLatch {
                     registry: Arc::clone(owner.registry()),
                     worker_index: owner.index(),
                 },
-                None => CountLatchKind::Blocking {
-                    latch: LockLatch::new(),
-                },
+                None => CountLatchKind::Blocking { latch: LockLatch::new() },
             },
         }
     }
@@ -387,11 +370,7 @@ impl CountLatch {
 
     pub(super) fn wait(&self, owner: Option<&WorkerThread>) {
         match &self.kind {
-            CountLatchKind::Stealing {
-                latch,
-                registry,
-                worker_index,
-            } => unsafe {
+            CountLatchKind::Stealing { latch, registry, worker_index } => unsafe {
                 let owner = owner.expect("owner thread");
                 debug_assert_eq!(registry.id(), owner.registry().id());
                 debug_assert_eq!(*worker_index, owner.index());
@@ -409,11 +388,7 @@ impl Latch for CountLatch {
             // NOTE: Once we call `set` on the internal `latch`,
             // the target may proceed and invalidate `this`!
             match (*this).kind {
-                CountLatchKind::Stealing {
-                    ref latch,
-                    ref registry,
-                    worker_index,
-                } => {
+                CountLatchKind::Stealing { ref latch, ref registry, worker_index } => {
                     let registry = Arc::clone(registry);
                     if CoreLatch::set(latch) {
                         registry.notify_worker_latch_is_set(worker_index);
@@ -433,10 +408,7 @@ pub(super) struct LatchRef<'a, L> {
 
 impl<L> LatchRef<'_, L> {
     pub(super) fn new(inner: &L) -> LatchRef<'_, L> {
-        LatchRef {
-            inner,
-            marker: PhantomData,
-        }
+        LatchRef { inner, marker: PhantomData }
     }
 }
 

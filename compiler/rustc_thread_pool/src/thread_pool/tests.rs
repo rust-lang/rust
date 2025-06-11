@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 
-use crate::{join, Scope, ScopeFifo, ThreadPool, ThreadPoolBuilder};
+use crate::{Scope, ScopeFifo, ThreadPool, ThreadPoolBuilder, join};
 
 #[test]
 #[should_panic(expected = "Hello, world!")]
@@ -296,9 +296,8 @@ fn nested_scopes() {
         }
     }
 
-    let pools: Vec<_> = (0..10)
-        .map(|_| ThreadPoolBuilder::new().num_threads(1).build().unwrap())
-        .collect();
+    let pools: Vec<_> =
+        (0..10).map(|_| ThreadPoolBuilder::new().num_threads(1).build().unwrap()).collect();
 
     let counter = AtomicUsize::new(0);
     nest(&pools, vec![], |scopes| {
@@ -333,9 +332,8 @@ fn nested_fifo_scopes() {
         }
     }
 
-    let pools: Vec<_> = (0..10)
-        .map(|_| ThreadPoolBuilder::new().num_threads(1).build().unwrap())
-        .collect();
+    let pools: Vec<_> =
+        (0..10).map(|_| ThreadPoolBuilder::new().num_threads(1).build().unwrap()).collect();
 
     let counter = AtomicUsize::new(0);
     nest(&pools, vec![], |scopes| {

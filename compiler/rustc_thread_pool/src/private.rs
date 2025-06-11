@@ -1,5 +1,5 @@
 //! The public parts of this private module are used to create traits
-//! that cannot be implemented outside of our own crate.  This way we
+//! that cannot be implemented outside of our own crate. This way we
 //! can feel free to extend those traits without worrying about it
 //! being a breaking change for other implementations.
 
