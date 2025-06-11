@@ -1,5 +1,3 @@
-#![feature(generic_arg_infer)]
-
 struct All<'a, T, const N: usize> {
   v: &'a T,
 }

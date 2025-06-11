@@ -1,4 +1,4 @@
-#![feature(generic_arg_infer, closure_lifetime_binder)]
+#![feature(closure_lifetime_binder)]
 
 fn main() {
     let c = for<'a> |b: &'a [u32; _]| -> u32 { b[0] };

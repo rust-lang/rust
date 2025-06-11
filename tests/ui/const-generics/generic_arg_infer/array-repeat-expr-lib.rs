@@ -1,6 +1,5 @@
 //@ check-pass
 
-#![feature(generic_arg_infer)]
 #![crate_type = "lib"]
 
 // Test that encoding the hallucinated `DefId` for the `_` const argument doesn't

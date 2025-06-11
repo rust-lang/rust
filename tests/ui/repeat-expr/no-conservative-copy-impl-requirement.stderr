@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed for `&[Foo<_>; _]`
-  --> $DIR/no-conservative-copy-impl-requirement.rs:17:9
+  --> $DIR/no-conservative-copy-impl-requirement.rs:15:9
    |
 LL |     let x = &[Foo::<_>; _];
    |         ^     -------- type must be known at this point

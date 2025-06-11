@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![allow(unused_variables)]
-#![feature(generic_arg_infer)]
 
 struct Zeroes;
 impl Into<&'static [usize; 3]> for Zeroes {
