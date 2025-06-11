@@ -1,8 +1,8 @@
-error[E0570]: `"gpu-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported-abi-transmute.rs:5:59
+error[E0570]: `"thiscall"` is not a supported ABI for the current target
+  --> $DIR/unsupported-abi-transmute.rs:12:53
    |
-LL |     let a = unsafe { core::mem::transmute::<usize, extern "gpu-kernel" fn(i32)>(4) }(2);
-   |                                                           ^^^^^^^^^^^^
+LL |     let a = unsafe { mem::transmute::<usize, extern "thiscall" fn(i32)>(4) }(2);
+   |                                                     ^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
