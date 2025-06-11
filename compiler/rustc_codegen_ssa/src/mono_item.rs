@@ -40,7 +40,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
             MonoItem::GlobalAsm(item_id) => {
                 base::codegen_global_asm(cx, item_id);
             }
-            MonoItem::WeakAlias(def_id, target) => {
+            MonoItem::WeakAlias(_def_id, _target) => {
                 todo!()
             }
             MonoItem::Fn(instance) => {

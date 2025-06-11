@@ -1,7 +1,6 @@
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
-    ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
-    alloc_error_handler_name, default_fn_name, global_fn_name,
+    AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, alloc_error_handler_name,
 };
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
@@ -18,7 +17,6 @@ pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
     cx: SimpleCx<'_>,
     module_name: &str,
-    kind: AllocatorKind,
     alloc_error_handler_kind: AllocatorKind,
 ) {
     let usize = match tcx.sess.target.pointer_width {
@@ -28,7 +26,6 @@ pub(crate) unsafe fn codegen(
         tws => bug!("Unsupported target word size for int: {}", tws),
     };
     let i8 = cx.type_i8();
-    let i8p = cx.type_ptr();
 
     // rust alloc error handler
     create_wrapper_function(
