@@ -1,6 +1,5 @@
 //@ aux-build:unstable_impl_codegen_aux2.rs
 //@ check-pass
-#![feature(foo)]
 
 /// Downstream crate for unstable impl codegen test
 /// that depends on upstream crate in
