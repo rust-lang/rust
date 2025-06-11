@@ -232,9 +232,6 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
     }
 
     pub fn types_may_unify(self, lhs: I::Ty, rhs: I::Ty) -> bool {
-        if lhs == rhs {
-            return true;
-        }
         self.types_may_unify_inner(lhs, rhs, Self::STARTING_DEPTH)
     }
 
@@ -263,6 +260,10 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
     }
 
     fn types_may_unify_inner(self, lhs: I::Ty, rhs: I::Ty, depth: usize) -> bool {
+        if lhs == rhs {
+            return true;
+        }
+
         match rhs.kind() {
             // Start by checking whether the `rhs` type may unify with
             // pretty much everything. Just return `true` in that case.
