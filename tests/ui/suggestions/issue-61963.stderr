@@ -1,8 +1,8 @@
 error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-61963.rs:24:14
+  --> $DIR/issue-61963.rs:20:1
    |
-LL |     bar: Box<Bar>,
-   |              ^^^
+LL | pub struct Foo {
+   | ^^^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
@@ -13,21 +13,21 @@ LL | #![deny(bare_trait_objects)]
    |         ^^^^^^^^^^^^^^^^^^
 help: if this is a dyn-compatible trait, use `dyn`
    |
-LL |     bar: Box<dyn Bar>,
-   |              +++
+LL | dyn pub struct Foo {
+   | +++
 
 error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-61963.rs:20:1
+  --> $DIR/issue-61963.rs:24:14
    |
-LL | pub struct Foo {
-   | ^^^
+LL |     bar: Box<Bar>,
+   |              ^^^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: if this is a dyn-compatible trait, use `dyn`
    |
-LL | dyn pub struct Foo {
-   | +++
+LL |     bar: Box<dyn Bar>,
+   |              +++
 
 error: aborting due to 2 previous errors
 

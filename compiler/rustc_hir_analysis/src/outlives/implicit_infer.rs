@@ -61,7 +61,24 @@ pub(super) fn infer_outlives_clauses(tcx: TyCtxt<'_>) -> GlobalOutlivesClauses<'
                         &mut global_explicit_clauses,
                     );
                 }
-
+                // HACK(generic_const_items): We have to explicitly disqualify const items that do
+                // not have any parameters to break certain query cycles that would otherwise occur
+                // when `typeck`'ing const items which we would only do if its type signature was
+                // ill-formed due to it missing or containing inferred types `_`.
+                //
+                // This is correct as we only ever imply outlives-predicates where the outlived
+                // region is early-bound ... for which the item must have generic parameters.
+                DefKind::Const if !tcx.generics_of(item_did).is_empty() => {
+                    insert_required_outlives_clauses_to_be_wf(
+                        tcx,
+                        tcx.type_of(item_did).instantiate_identity().skip_norm_wip(),
+                        tcx.def_span(item_did),
+                        &global_inferred_outlives,
+                        &mut item_required_clauses,
+                        &mut explicit_map,
+                    );
+                    // XXX FIXME: walk body, too
+                }
                 _ => {}
             };
 
