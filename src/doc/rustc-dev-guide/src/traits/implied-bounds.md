@@ -9,9 +9,9 @@ handled... well... implicitly.
 
 ## explicit implied bounds
 
-The explicit implied bounds are computed in [`fn inferred_outlives_of`]. Only ADTs and
-lazy type aliases have explicit implied bounds which are computed via a fixpoint algorithm
-in the [`fn inferred_outlives_crate`] query.
+The explicit implied bounds are computed in [`fn inferred_outlives_of`]. Only ADTs,
+[lazy type aliases][lta] and [free (generic) const items][gci] have explicit implied bounds
+which are computed via a fixpoint algorithm in the [`fn inferred_outlives_crate`] query.
 
 We use [`fn insert_required_predicates_to_be_wf`] on all fields of all ADTs in the crate.
 This function computes the outlives bounds for each component of the field using a
@@ -31,6 +31,8 @@ if the outlived region is a region parameter. [It does not add `'static` require
  [`fn check_explicit_predicates`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/implicit_infer.rs#L238
  [`fn insert_outlives_predicate`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/utils.rs#L15
  [nostatic]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_hir_analysis/src/outlives/utils.rs#L159-L165
+ [lta]: https://github.com/rust-lang/rust/issues/112792
+ [gci]: https://github.com/rust-lang/rust/issues/113521
 
 ## implicit implied bounds
 
