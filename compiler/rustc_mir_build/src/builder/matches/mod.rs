@@ -2973,6 +2973,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // These we may eventually support:
             Constructor::Struct
             | Constructor::Ref
+            | Constructor::DerefPattern(_)
             | Constructor::Slice(_)
             | Constructor::UnionField
             | Constructor::Or

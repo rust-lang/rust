@@ -19,7 +19,7 @@ fn const_continue_to_loop() -> u8 {
                 _ => {
                     #[const_continue]
                     break 'a 2;
-                    //~^ ERROR `#[const_continue]` must break to a labeled block in a `#[loop_match]`
+                    //~^ ERROR `#[const_continue]` must break to a labeled block that participates in a `#[loop_match]`
                 }
             }
         }
