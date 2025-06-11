@@ -1215,6 +1215,7 @@ unsafe extern "C" {
 
     // Operations on instructions
     pub(crate) fn LLVMGetInstructionParent(Inst: &Value) -> &BasicBlock;
+    pub(crate) fn LLVMGetCalledValue(CallInst: &Value) -> Option<&Value>;
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;

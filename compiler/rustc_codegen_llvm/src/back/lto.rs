@@ -28,7 +28,7 @@ use llvm::Linkage::*;
 use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
 };
-use crate::builder::SBuilder;
+use crate::builder::{SBuilder, UNNAMED};
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
@@ -806,6 +806,27 @@ fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, kernel: &'ll llvm::Value, off
     o_types
 }
 
+
+// For each kernel *call*, we now use some of our previous declared globals to move data to and from
+// the gpu. We don't have a proper frontend yet, so we assume that every call to a kernel function
+// from main is intended to run on the GPU. For now, we only handle the data transfer part of it.
+// If two consecutive kernels use the same memory, we still move it to the host and back to the gpu.
+// Since in our frontend users (by default) don't have to specify data transfer, this is something
+// we should optimize in the future! We also assume that everything should be copied back and forth,
+// but sometimes we can directly zero-allocate on the device and only move back, or if something is
+// immutable, we might only copy it to the device, but not back.
+//
+// Current steps:
+// 0. Alloca some variables for the following steps
+// 1. set insert point before kernel call.
+// 2. generate all the GEPS and stores, to be used in 3)
+// 3. generate __tgt_target_data_begin calls to move data to the GPU
+//
+// unchanged: keep kernel call. Later move the kernel to the GPU
+//
+// 4. set insert point after kernel call.
+// 5. generate all the GEPS and stores, to be used in 6)
+// 6. generate __tgt_target_data_end calls to move data from the GPU
 fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernels: &[&'ll llvm::Value], s_ident_t: &'ll llvm::Value, begin: &'ll llvm::Value, update: &'ll llvm::Value, end: &'ll llvm::Value, fn_ty: &'ll llvm::Type, o_types: &[&'ll llvm::Value]) {
 
     let main_fn = cx.get_function("main");
@@ -819,30 +840,39 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernels: &[&'ll llvm::Value], s
             return;
         };
         let kernel_call_bb = unsafe {llvm::LLVMGetInstructionParent(kernel_call)};
+        let called = unsafe {llvm::LLVMGetCalledValue(kernel_call)};
         let mut builder = SBuilder::build(cx, kernel_call_bb);
 
-        let types = cx.func_params_types(cx.get_type_of_global(kernels[0]));
+        let types = cx.func_params_types(cx.get_type_of_global(called));
         dbg!(&types);
         let num_args = types.len() as u64;
+        let mut names: Vec<&llvm::Value> = Vec::with_capacity(num_args);
 
-        // First we generate a few variables used for the data mappers below.
+        // Step 0)
         unsafe{llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, main_fn)};
         let ty = cx.type_array(cx.type_ptr(), num_args);
-
         // Baseptr are just the input pointer to the kernel, stored in a local alloca
         let a1 = builder.my_alloca2(ty, Align::EIGHT, ".offload_baseptrs");
-
         // Ptrs are the result of a gep into the baseptr, at least for our trivial types.
         let a2 = builder.my_alloca2(ty, Align::EIGHT, ".offload_ptrs");
-
         // These represent the sizes in bytes, e.g. the entry for `&[f64; 16]` will be 8*16.
         let ty2 = cx.type_array(cx.type_i64(), num_args);
         let a4 = builder.my_alloca2(ty2, Align::EIGHT, ".offload_sizes");
+        // Now we allocate once per function param, a copy to be passed to one of our maps.
+        for (index, in_ty) in types.iter().enumerate() {
+            // Todo:
+            let p = llvm::get_param(called, index as u32);
+            let name = llvm::get_value_name(p);
+            let arg_name = format!("{name}.addr");
+            let alloca = unsafe {llvm::LLVMBuildAlloca(builder.llbuilder, in_ty, arg_name)};
+            // get function arg, store it into the alloca, and read it.
+        }
 
-        // Now we generate the __tgt_target_data calls
+
+        // Step 1)
         unsafe {llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call)};
-        dbg!("positioned builder, ready");
 
+        // Step 2)
         let i32_0 = cx.get_const_i32(0);
         let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
         let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
@@ -853,8 +883,8 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernels: &[&'ll llvm::Value], s
         let args = vec![s_ident_t, cx.get_const_i64(u64::MAX), cx.get_const_i32(num_args), gep1, gep2, gep3, o_type, nullptr, nullptr];
         builder.call(fn_ty, begin, &args, None);
 
+        // Step 4)
         unsafe {llvm::LLVMRustPositionAfter(builder.llbuilder, kernel_call)};
-        dbg!("re-positioned builder, ready");
 
         let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
         let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
@@ -864,15 +894,6 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernels: &[&'ll llvm::Value], s
         let o_type = o_types[0];
         let args = vec![s_ident_t, cx.get_const_i64(u64::MAX), cx.get_const_i32(num_args), gep1, gep2, gep3, o_type, nullptr, nullptr];
         builder.call(fn_ty, end, &args, None);
-
-        // 1. set insert point before kernel call.
-        // 2. generate all the GEPS and stores.
-        // 3. generate __tgt_target_data calls.
-        //
-        // unchanged: keep kernel call.
-        //
-        // 4. generate all the GEPS and stores.
-        // 5. generate __tgt_target_data calls
 
         // call void @__tgt_target_data_begin_mapper(ptr @1, i64 -1, i32 3, ptr %27, ptr %28, ptr %29, ptr @.offload_maptypes, ptr null, ptr null)
         // call void @__tgt_target_data_update_mapper(ptr @1, i64 -1, i32 2, ptr %46, ptr %47, ptr %48, ptr @.offload_maptypes.1, ptr null, ptr null)
