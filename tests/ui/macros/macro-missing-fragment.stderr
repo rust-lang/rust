@@ -1,10 +1,10 @@
 error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:8:20
+  --> $DIR/macro-missing-fragment.rs:4:20
    |
 LL |     ( $( any_token $field_rust_type )* ) => {};
    |                    ^^^^^^^^^^^^^^^^
    |
-   = note: fragment specifiers must be specified in the 2024 edition
+   = note: fragment specifiers must be provided
    = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
 help: try adding a specifier here
    |
@@ -12,12 +12,12 @@ LL |     ( $( any_token $field_rust_type:spec )* ) => {};
    |                                    +++++
 
 error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:18:7
+  --> $DIR/macro-missing-fragment.rs:10:7
    |
 LL |     ( $name ) => {};
    |       ^^^^^
    |
-   = note: fragment specifiers must be specified in the 2024 edition
+   = note: fragment specifiers must be provided
    = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
 help: try adding a specifier here
    |
@@ -25,12 +25,12 @@ LL |     ( $name:spec ) => {};
    |            +++++
 
 error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:25:7
+  --> $DIR/macro-missing-fragment.rs:14:7
    |
 LL |     ( $name ) => {};
    |       ^^^^^
    |
-   = note: fragment specifiers must be specified in the 2024 edition
+   = note: fragment specifiers must be provided
    = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
 help: try adding a specifier here
    |
@@ -38,7 +38,7 @@ LL |     ( $name:spec ) => {};
    |            +++++
 
 error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:8:20
+  --> $DIR/macro-missing-fragment.rs:4:20
    |
 LL |     ( $( any_token $field_rust_type )* ) => {};
    |                    ^^^^^^^^^^^^^^^^
