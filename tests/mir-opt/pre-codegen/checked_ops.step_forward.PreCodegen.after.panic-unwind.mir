@@ -6,6 +6,8 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     let mut _0: u16;
     scope 1 (inlined <u16 as Step>::forward) {
         let mut _8: u16;
+        let mut _9: &std::option::Option<u16>;
+        let _10: std::option::Option<u16>;
         scope 2 {
         }
         scope 3 (inlined <u16 as Step>::forward_checked) {
@@ -32,6 +34,8 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     }
 
     bb0: {
+        StorageLive(_9);
+        StorageLive(_10);
         StorageLive(_4);
         StorageLive(_3);
         _3 = Gt(copy _2, const 65535_usize);
@@ -51,6 +55,7 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     bb2: {
         StorageDead(_5);
         StorageDead(_6);
+        // DBG: AssignRef(_9, _10)
         goto -> bb7;
     }
 
@@ -61,11 +66,13 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     bb4: {
         StorageDead(_5);
         StorageDead(_6);
+        // DBG: AssignRef(_9, _10)
         goto -> bb6;
     }
 
     bb5: {
         StorageDead(_3);
+        // DBG: AssignRef(_9, _10)
         goto -> bb6;
     }
 
@@ -79,6 +86,8 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
         _0 = Add(copy _1, copy _8);
         StorageDead(_8);
         StorageDead(_4);
+        StorageDead(_10);
+        StorageDead(_9);
         return;
     }
 }
