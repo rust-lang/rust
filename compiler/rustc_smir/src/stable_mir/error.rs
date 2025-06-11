@@ -7,6 +7,10 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::{fmt, io};
 
+use rustc_smir::bridge::SmirError;
+
+use crate::rustc_smir;
+
 macro_rules! error {
      ($fmt: literal $(,)?) => { Error(format!($fmt)) };
      ($fmt: literal, $($arg:tt)*) => { Error(format!($fmt, $($arg)*)) };
@@ -30,9 +34,13 @@ pub enum CompilerError<T> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Error(pub(crate) String);
 
-impl Error {
-    pub fn new(msg: String) -> Self {
+impl SmirError for Error {
+    fn new(msg: String) -> Self {
         Self(msg)
+    }
+
+    fn from_internal<T: Debug>(err: T) -> Self {
+        Self(format!("{err:?}"))
     }
 }
 
