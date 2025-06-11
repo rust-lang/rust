@@ -986,7 +986,7 @@ impl Step for RustAnalyzerProcMacroSrv {
 /// Compile the `llvm-bitcode-linker` tool for `target`.
 /// It is a compiler host tool used to link specific targets using LLVM.
 /// It is used by `rustc` at runtime.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LlvmBitcodeLinker {
     pub target: TargetSelection,
 }
