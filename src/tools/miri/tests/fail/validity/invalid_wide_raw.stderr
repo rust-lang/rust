@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value: encountered null pointer,
   --> tests/fail/validity/invalid_wide_raw.rs:LL:CC
    |
 LL |     dbg!(S { x: unsafe { std::mem::transmute((0usize, 0usize)) } });
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered null pointer, but expected a vtable pointer
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -2,7 +2,7 @@ error: Undefined Behavior: creating allocation with non-power-of-two alignment A
   --> tests/fail/alloc/unsupported_non_power_two_alignment.rs:LL:CC
    |
 LL |         __rust_alloc(1, 3);
-   |         ^^^^^^^^^^^^^^^^^^ creating allocation with non-power-of-two alignment ALIGN
+   |         ^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

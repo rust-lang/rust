@@ -2,7 +2,7 @@ error: Undefined Behavior: using vtable for `Baz` but `Bar` was expected
   --> tests/fail/dyn-upcast-trait-mismatch.rs:LL:CC
    |
 LL |         let _err = baz_fake as *const dyn Foo;
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ using vtable for `Baz` but `Bar` was expected
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

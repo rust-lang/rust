@@ -2,10 +2,7 @@ error: Undefined Behavior: attempting a write access using <TAG> at ALLOC[0x0], 
   --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
    |
 LL |         *LEAK = 7;
-   |         ^^^^^^^^^
-   |         |
-   |         attempting a write access using <TAG> at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
-   |         this error occurs as part of an access at ALLOC[0x0..0x4]
+   |         ^^^^^^^^^ this error occurs as part of an access at ALLOC[0x0..0x4]
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information

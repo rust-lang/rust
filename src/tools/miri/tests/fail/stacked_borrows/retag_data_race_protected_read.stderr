@@ -1,8 +1,8 @@
-error: Undefined Behavior: Data race detected between (1) non-atomic read on thread `main` and (2) retag write of type `i32` on thread `unnamed-ID` at ALLOC. (2) just happened here
+error: Undefined Behavior: Data race detected between (1) non-atomic read on thread `main` and (2) retag write of type `i32` on thread `unnamed-ID` at ALLOC
   --> tests/fail/stacked_borrows/retag_data_race_protected_read.rs:LL:CC
    |
-LL |         retag(unsafe { &mut *ptr.0 });
-   |                        ^^^^^^^^^^^ Data race detected between (1) non-atomic read on thread `main` and (2) retag write of type `i32` on thread `unnamed-ID` at ALLOC. (2) just happened here
+LL | ...   retag(unsafe { &mut *ptr.0 });
+   |                      ^^^^^^^^^^^ (2) just happened here
    |
 help: and (1) occurred earlier here
   --> tests/fail/stacked_borrows/retag_data_race_protected_read.rs:LL:CC

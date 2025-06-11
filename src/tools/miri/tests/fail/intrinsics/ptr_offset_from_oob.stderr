@@ -2,7 +2,7 @@ error: Undefined Behavior: `ptr_offset_from` called on two different pointers wh
   --> tests/fail/intrinsics/ptr_offset_from_oob.rs:LL:CC
    |
 LL |         ptr.wrapping_add(4).offset_from(ptr);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called on two different pointers where the memory range between them is not in-bounds of an allocation
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

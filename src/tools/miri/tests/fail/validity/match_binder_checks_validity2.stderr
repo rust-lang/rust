@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value: encountered 0x03, but exp
   --> tests/fail/validity/match_binder_checks_validity2.rs:LL:CC
    |
 LL |             _x => println!("hi from the void!"),
-   |             ^^ constructing invalid value: encountered 0x03, but expected a boolean
+   |             ^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

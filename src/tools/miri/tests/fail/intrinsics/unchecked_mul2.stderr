@@ -2,7 +2,7 @@ error: Undefined Behavior: arithmetic overflow in `unchecked_mul`
   --> tests/fail/intrinsics/unchecked_mul2.rs:LL:CC
    |
 LL |     let _val = unsafe { 1_000_000_000i32.unchecked_mul(-4) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ arithmetic overflow in `unchecked_mul`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -2,7 +2,7 @@ error: Undefined Behavior: memory access failed: attempting to access 2 bytes, b
   --> tests/fail/dangling_pointers/out_of_bounds_write.rs:LL:CC
    |
 LL |     unsafe { *v.as_mut_ptr().wrapping_byte_add(5) = 0 };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: attempting to access 2 bytes, but got ALLOC+0x5 which is at or beyond the end of the allocation of size 4 bytes
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

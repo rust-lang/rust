@@ -2,7 +2,7 @@ error: unsupported operation: creating allocation with alignment ALIGN exceeding
   --> tests/fail/alloc/unsupported_big_alignment.rs:LL:CC
    |
 LL |         __rust_alloc(1, 1 << 30);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ creating allocation with alignment ALIGN exceeding rustc's maximum supported value
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:

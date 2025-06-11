@@ -1,8 +1,8 @@
-error: Undefined Behavior: Data race detected between (1) retag write on thread `unnamed-ID` and (2) non-atomic write on thread `unnamed-ID` at ALLOC. (2) just happened here
+error: Undefined Behavior: Data race detected between (1) retag write on thread `unnamed-ID` and (2) non-atomic write on thread `unnamed-ID` at ALLOC
   --> tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
    |
-LL |         *p = 5;
-   |         ^^^^^^ Data race detected between (1) retag write on thread `unnamed-ID` and (2) non-atomic write on thread `unnamed-ID` at ALLOC. (2) just happened here
+LL | ...   *p = 5;
+   |       ^^^^^^ (2) just happened here
    |
 help: and (1) occurred earlier here
   --> tests/fail/both_borrows/retag_data_race_write.rs:LL:CC

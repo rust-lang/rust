@@ -2,7 +2,7 @@ error: Undefined Behavior: accessing memory based on pointer with alignment ALIG
   --> tests/fail/unaligned_pointers/unaligned_ptr2.rs:LL:CC
    |
 LL |     let _x = unsafe { *x };
-   |                       ^^ accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
+   |                       ^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

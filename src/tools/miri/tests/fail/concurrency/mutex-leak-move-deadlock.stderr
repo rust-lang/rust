@@ -1,8 +1,8 @@
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> RUSTLIB/std/$FILE:LL:CC
    |
 LL | $CODE
-   | ^ the evaluated program deadlocked
+   | ^ this thread got stuck here
    |
 note: inside `main`
   --> tests/fail/concurrency/mutex-leak-move-deadlock.rs:LL:CC

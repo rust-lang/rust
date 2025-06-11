@@ -14,7 +14,7 @@ fn main() {
     thread::spawn(|| {
         unsafe {
             let native = GetCurrentThread();
-            assert_eq!(WaitForSingleObject(native, INFINITE), WAIT_OBJECT_0); //~ ERROR: deadlock: the evaluated program deadlocked
+            assert_eq!(WaitForSingleObject(native, INFINITE), WAIT_OBJECT_0); //~ ERROR: deadlock
         }
     })
     .join()

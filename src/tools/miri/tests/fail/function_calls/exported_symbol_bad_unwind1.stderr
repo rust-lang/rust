@@ -7,7 +7,7 @@ error: Undefined Behavior: unwinding past a stack frame that does not allow unwi
   --> tests/fail/function_calls/exported_symbol_bad_unwind1.rs:LL:CC
    |
 LL |     unsafe { unwind() }
-   |              ^^^^^^^^ unwinding past a stack frame that does not allow unwinding
+   |              ^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -1,14 +1,14 @@
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
    |
-   = note: the evaluated program deadlocked
+   = note: this thread got stuck here
    = note: (no span available)
    = note: BACKTRACE on thread `unnamed-ID`:
 
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
-   |                                                                  ^ the evaluated program deadlocked
+   |                                                                  ^ this thread got stuck here
    |
    = note: BACKTRACE:
    = note: inside `std::sys::pal::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
@@ -20,18 +20,18 @@ note: inside `main`
 LL |     thread1.join().unwrap();
    |     ^^^^^^^^^^^^^^
 
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC
    |
 LL |         check_epoll_wait::<TAG>(epfd, &[(expected_event, expected_value)], -1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program deadlocked
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this thread got stuck here
    |
    = note: BACKTRACE on thread `unnamed-ID`:
    = note: inside closure at tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC
 
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
    |
-   = note: the evaluated program deadlocked
+   = note: this thread got stuck here
    = note: (no span available)
    = note: BACKTRACE on thread `unnamed-ID`:
 

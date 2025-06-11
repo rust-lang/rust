@@ -4,7 +4,7 @@ error: abnormal termination: the program aborted execution
   --> tests/fail/panic/no_std.rs:LL:CC
    |
 LL |     core::intrinsics::abort();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the program aborted execution
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
    = note: BACKTRACE:
    = note: inside `panic_handler` at tests/fail/panic/no_std.rs:LL:CC
