@@ -101,7 +101,7 @@ fn trait_alias_template() {
     assert_eq!(
         but_last_line(&template.to_string()),
         r#"(function() {
-    var implementors = Object.fromEntries([]);
+    const implementors = Object.fromEntries([]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
@@ -113,7 +113,7 @@ fn trait_alias_template() {
     assert_eq!(
         but_last_line(&template.to_string()),
         r#"(function() {
-    var implementors = Object.fromEntries([["a"]]);
+    const implementors = Object.fromEntries([["a"]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
@@ -125,7 +125,7 @@ fn trait_alias_template() {
     assert_eq!(
         but_last_line(&template.to_string()),
         r#"(function() {
-    var implementors = Object.fromEntries([["a"],["b"]]);
+    const implementors = Object.fromEntries([["a"],["b"]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
