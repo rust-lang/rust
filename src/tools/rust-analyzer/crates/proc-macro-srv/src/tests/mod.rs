@@ -244,6 +244,7 @@ fn test_fn_like_mk_literals() {
               LITERAL ByteStr byte_string 1
               LITERAL Char c 1
               LITERAL Str string 1
+              LITERAL Str -string 1
               LITERAL CStr cstring 1
               LITERAL Float 3.14f64 1
               PUNCH   - [alone] 1
@@ -266,6 +267,7 @@ fn test_fn_like_mk_literals() {
               LITERAL ByteStr byte_string 42:2@0..100#ROOT2024
               LITERAL Char c 42:2@0..100#ROOT2024
               LITERAL Str string 42:2@0..100#ROOT2024
+              LITERAL Str -string 42:2@0..100#ROOT2024
               LITERAL CStr cstring 42:2@0..100#ROOT2024
               LITERAL Float 3.14f64 42:2@0..100#ROOT2024
               PUNCH   - [alone] 42:2@0..100#ROOT2024

@@ -31,6 +31,7 @@ pub fn fn_like_mk_literals(_args: TokenStream) -> TokenStream {
         TokenTree::from(Literal::byte_string(b"byte_string")),
         TokenTree::from(Literal::character('c')),
         TokenTree::from(Literal::string("string")),
+        TokenTree::from(Literal::string("-string")),
         TokenTree::from(Literal::c_string(c"cstring")),
         // as of 2022-07-21, there's no method on `Literal` to build a raw
         // string or a raw byte string
