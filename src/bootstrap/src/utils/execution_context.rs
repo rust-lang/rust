@@ -6,6 +6,8 @@
 use std::sync::{Arc, Mutex};
 
 use crate::core::config::DryRun;
+#[cfg(feature = "tracing")]
+use crate::trace_cmd;
 use crate::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, exit};
 
 #[derive(Clone, Default)]
