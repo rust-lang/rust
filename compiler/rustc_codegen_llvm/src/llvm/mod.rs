@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::string::FromUtf8Error;
 
 use libc::c_uint;
-use rustc_abi::{Align, Size, WrappingRange};
+use rustc_abi::{AddressSpace, Align, Size, WrappingRange};
 use rustc_llvm::RustString;
 
 pub(crate) use self::CallConv::*;
@@ -347,6 +347,20 @@ impl Intrinsic {
         unsafe {
             LLVMGetIntrinsicDeclaration(llmod, self.id, type_params.as_ptr(), type_params.len())
         }
+    }
+}
+
+/// Safe wrapper for `LLVMAddAlias2`
+pub(crate) fn add_alias(
+    module: &Module,
+    ty: &Type,
+    address_space: AddressSpace,
+    aliasee: &Value,
+    name: &[u8],
+) {
+    unsafe {
+        let data = name.as_c_char_ptr();
+        LLVMAddAlias2(value, data, address_space, aliasee, name.len());
     }
 }
 
