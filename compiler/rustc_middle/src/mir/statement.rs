@@ -15,19 +15,33 @@ use crate::ty::CoroutineArgsExt;
 pub struct Statement<'tcx> {
     pub source_info: SourceInfo,
     pub kind: StatementKind<'tcx>,
-    pub debug_info: Vec<StmtDebugInfo>,
+    pub debuginfos: Vec<StmtDebugInfo<'tcx>>,
 }
 
 impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
-    pub fn make_nop(&mut self) {
-        // TODO: convert the stmt to debuginfo.
-        self.kind = StatementKind::Nop
+    pub fn make_nop(&mut self, drop_debuginfo: bool) {
+        if matches!(self.kind, StatementKind::Nop) {
+            return;
+        }
+        let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop);
+        if !drop_debuginfo {
+            match replaced_stmt {
+                StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
+                    if let Some(local) = place.as_local() =>
+                {
+                    self.debuginfos.push(StmtDebugInfo::AssignRef(local, ref_place));
+                }
+                _ => {
+                    bug!("debuginfo is not yet supported.")
+                }
+            }
+        }
     }
 
     pub fn new(source_info: SourceInfo, kind: StatementKind<'tcx>) -> Self {
-        Statement { source_info, kind, debug_info: Vec::new() }
+        Statement { source_info, kind, debuginfos: Vec::new() }
     }
 }
 
@@ -943,4 +957,6 @@ impl RawPtrKind {
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
-pub struct StmtDebugInfo {}
+pub enum StmtDebugInfo<'tcx> {
+    AssignRef(Local, Place<'tcx>),
+}
