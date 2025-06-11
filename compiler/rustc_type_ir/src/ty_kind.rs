@@ -771,23 +771,6 @@ pub enum InferTy {
     FreshFloatTy(u32),
 }
 
-/// Raw `TyVid` are used as the unification key for `sub_relations`;
-/// they carry no values.
-impl UnifyKey for TyVid {
-    type Value = ();
-    #[inline]
-    fn index(&self) -> u32 {
-        self.as_u32()
-    }
-    #[inline]
-    fn from_index(i: u32) -> TyVid {
-        TyVid::from_u32(i)
-    }
-    fn tag() -> &'static str {
-        "TyVid"
-    }
-}
-
 impl UnifyValue for IntVarValue {
     type Error = NoError;
 
