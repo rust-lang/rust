@@ -4509,7 +4509,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             let path_seg = |seg: &Segment| PathSegment::from_ident(seg.ident);
             let path = Path { segments: path.iter().map(path_seg).collect(), span, tokens: None };
             if let Ok((_, res)) =
-                self.r.resolve_macro_path(&path, None, &self.parent_scope, false, false, None)
+                self.r.resolve_macro_path(&path, None, &self.parent_scope, false, false, None, None)
             {
                 return Ok(Some(PartialRes::new(res)));
             }
