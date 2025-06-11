@@ -217,6 +217,8 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     /// the hashmap because certain items (traits and types) need to have their mappings for trait
     /// implementations filled out before they're inserted.
     fn item(&mut self, item: &clean::Item) -> Result<(), Error> {
+        use std::collections::hash_map::Entry;
+
         let item_type = item.type_();
         let item_name = item.name;
         trace!("rendering {item_type} {item_name:?}");
@@ -271,18 +273,25 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::Macro(_)
                 | types::ItemEnum::ProcMacro(_) => false,
             };
-            let removed = self.index.insert(new_item.id, new_item.clone());
 
             // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
             // to make sure the items are unique. The main place this happens is when an item, is
             // reexported in more than one place. See `rustdoc-json/reexport/in_root_and_mod`
-            if let Some(old_item) = removed {
-                // In case of generic implementations (like `impl<T> Trait for T {}`), all the
-                // inner items will be duplicated so we can ignore if they are slightly different.
-                if !can_be_ignored {
-                    assert_eq!(old_item, new_item);
+            match self.index.entry(new_item.id) {
+                Entry::Vacant(entry) => {
+                    entry.insert(new_item);
                 }
-                trace!("replaced {old_item:?}\nwith {new_item:?}");
+                Entry::Occupied(mut entry) => {
+                    // In case of generic implementations (like `impl<T> Trait for T {}`), all the
+                    // inner items will be duplicated so we can ignore if they are slightly
+                    // different.
+                    let old_item = entry.get_mut();
+                    if !can_be_ignored {
+                        assert_eq!(*old_item, new_item);
+                    }
+                    trace!("replaced {old_item:?}\nwith {new_item:?}");
+                    *old_item = new_item;
+                }
             }
         }
 
