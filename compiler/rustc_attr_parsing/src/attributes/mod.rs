@@ -12,7 +12,7 @@
 //! - [`CombineAttributeParser`]: makes it easy to implement an attribute which should combine the
 //! contents of attributes, if an attribute appear multiple times in a list
 //!
-//! Attributes should be added to [`ATTRIBUTE_MAPPING`](crate::context::ATTRIBUTE_MAPPING) to be parsed.
+//! Attributes should be added to [`ATTRIBUTE_PARSERS`](crate::context::ATTRIBUTE_PARSERS) to be parsed.
 
 use std::marker::PhantomData;
 
