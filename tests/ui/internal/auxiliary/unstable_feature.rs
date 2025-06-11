@@ -1,7 +1,6 @@
 #![allow(internal_features)]
 #![feature(staged_api)]
 #![feature(impl_stability)]
-#![allow(dead_code)]
 #![stable(feature = "a", since = "1.1.1" )]
 
 #[stable(feature = "a", since = "1.1.1" )]
@@ -24,7 +23,4 @@ impl Foo for Bar {
 #[unstable(feature = "feat_moo", issue = "none" )]
 impl Foo for Moo {
     fn foo() {}
-}
-
-fn main() {
 }

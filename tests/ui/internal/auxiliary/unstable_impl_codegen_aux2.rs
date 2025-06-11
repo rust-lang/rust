@@ -11,6 +11,3 @@ use aux::Trait;
 pub fn foo<T>(a:T) {
     a.method();
 }
-
-fn main() {
-}

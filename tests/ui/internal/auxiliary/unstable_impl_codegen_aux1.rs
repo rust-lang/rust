@@ -18,6 +18,3 @@ impl<T> Trait for T {
         println!("hi");
     }
 }
-
-fn main() {
-}
