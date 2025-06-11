@@ -780,8 +780,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     } else {
                         // Outside of std/core, check if feature is enabled at crate level with #[feature(..)]
                         // or if we are currently in codegen.
-                        if self.selcx.tcx().features().enabled(symbol)
-                        {
+                        if self.selcx.tcx().features().enabled(symbol) {
                             return ProcessResult::Changed(Default::default());
                         } else {
                             return ProcessResult::Unchanged;

@@ -170,8 +170,7 @@ where
         } else {
             // Outside of std/core, check if feature is enabled at crate level with #[feature(..)]
             // or if we are currently in codegen.
-            if self.cx().features().enabled(symbol)
-            {
+            if self.cx().features().enabled(symbol) {
                 return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
             } else {
                 return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(

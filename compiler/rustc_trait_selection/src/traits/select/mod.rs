@@ -854,8 +854,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     } else {
                         // Outside of std/core, check if feature is enabled at crate level with #[feature(..)]
                         // or if we are currently in codegen.
-                        if self.tcx().features().enabled(symbol)
-                        {
+                        if self.tcx().features().enabled(symbol) {
                             return Ok(EvaluatedToOk);
                         } else {
                             return Ok(EvaluatedToAmbig);
