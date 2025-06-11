@@ -2083,6 +2083,8 @@ unsafe extern "C" {
         ValueLen: size_t,
     );
 
+    pub(crate) fn LLVMRustAddLinkerOptions(M: &Module, Value: *const c_char, ValueLen: size_t);
+
     pub(crate) fn LLVMRustDIBuilderCreateCompileUnit<'a>(
         Builder: &DIBuilder<'a>,
         Lang: c_uint,

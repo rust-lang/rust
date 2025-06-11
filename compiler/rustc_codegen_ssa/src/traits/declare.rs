@@ -20,5 +20,5 @@ pub trait PreDefineCodegenMethods<'tcx>: BackendTypes {
         symbol_name: &str,
     );
 
-    fn weak_alias(&self, aliasee: Self::Function, name: &str);
+    fn weak_alias(&self, aliasee: Self::Function, aliasee_name: &str, name: &str);
 }

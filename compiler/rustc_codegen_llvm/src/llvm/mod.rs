@@ -441,6 +441,12 @@ pub(crate) fn add_module_flag_str(
     }
 }
 
+pub(crate) fn add_module_linker_option(module: &Module, value: &str) {
+    unsafe {
+        LLVMRustAddLinkerOptions(module, value.as_c_char_ptr(), value.len());
+    }
+}
+
 pub(crate) fn set_dllimport_storage_class<'ll>(v: &'ll Value) {
     unsafe {
         LLVMSetDLLStorageClass(v, DLLStorageClass::DllImport);
