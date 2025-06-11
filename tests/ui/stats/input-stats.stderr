@@ -13,9 +13,9 @@ ast-stats Arm                       96 (NN.N%)             2            48
 ast-stats Local                     96 (NN.N%)             1            96
 ast-stats FnDecl                   120 (NN.N%)             5            24
 ast-stats InlineAsm                120 (NN.N%)             1           120
-ast-stats Attribute                128 (NN.N%)             4            32
+ast-stats Attribute                160 (NN.N%)             5            32
 ast-stats - DocComment                32 (NN.N%)             1
-ast-stats - Normal                    96 (NN.N%)             3
+ast-stats - Normal                   128 (NN.N%)             4
 ast-stats Param                    160 (NN.N%)             4            40
 ast-stats Stmt                     160 (NN.N%)             5            32
 ast-stats - Let                       32 (NN.N%)             1
@@ -41,7 +41,7 @@ ast-stats - Path                      72 (NN.N%)             1
 ast-stats - Struct                    72 (NN.N%)             1
 ast-stats - Lit                      144 (NN.N%)             2
 ast-stats - Block                    216 (NN.N%)             3
-ast-stats PathSegment              864 (NN.N%)            36            24
+ast-stats PathSegment              888 (NN.N%)            37            24
 ast-stats Ty                       896 (NN.N%)            14            64
 ast-stats - Ptr                       64 (NN.N%)             1
 ast-stats - Ref                       64 (NN.N%)             1
@@ -56,7 +56,7 @@ ast-stats - Trait                    144 (NN.N%)             1
 ast-stats - Fn                       288 (NN.N%)             2
 ast-stats - Use                      576 (NN.N%)             4
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  7_416                   127
+ast-stats Total                  7_472                   129
 ast-stats
 hir-stats HIR STATS
 hir-stats Name                Accumulated Size         Count     Item Size
@@ -82,10 +82,10 @@ hir-stats - Expr                      32 (NN.N%)             1
 hir-stats - Let                       32 (NN.N%)             1
 hir-stats - Semi                      32 (NN.N%)             1
 hir-stats FnDecl                   120 (NN.N%)             3            40
-hir-stats Attribute                128 (NN.N%)             4            32
 hir-stats FieldDef                 128 (NN.N%)             2            64
 hir-stats GenericArgs              144 (NN.N%)             3            48
 hir-stats Variant                  144 (NN.N%)             2            72
+hir-stats Attribute                160 (NN.N%)             5            32
 hir-stats GenericBound             256 (NN.N%)             4            64
 hir-stats - Trait                    256 (NN.N%)             4
 hir-stats Block                    288 (NN.N%)             6            48
@@ -117,5 +117,5 @@ hir-stats - Use                      352 (NN.N%)             4
 hir-stats Path                   1_040 (NN.N%)            26            40
 hir-stats PathSegment            1_776 (NN.N%)            37            48
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_644                   172
+hir-stats Total                  8_676                   173
 hir-stats
