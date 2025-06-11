@@ -1364,6 +1364,7 @@ impl Default for Options {
             cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             real_rust_source_base_dir: None,
+            real_rustc_dev_source_base_dir: None,
             edition: DEFAULT_EDITION,
             json_artifact_notifications: false,
             json_unused_externs: JsonUnusedExterns::No,
@@ -2713,6 +2714,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         // This is the location used by the `rust-src` `rustup` component.
         real_source_base_dir("lib/rustlib/src/rust", "library/std/src/lib.rs");
 
+    let real_rustc_dev_source_base_dir =
+        // This is the location used by the `rustc-dev` `rustup` component.
+        real_source_base_dir("lib/rustlib/rustc-src/rust", "compiler/rustc/src/main.rs");
+
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
         search_paths.push(SearchPath::from_cli_opt(
@@ -2766,6 +2771,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
         real_rust_source_base_dir,
+        real_rustc_dev_source_base_dir,
         edition,
         json_artifact_notifications,
         json_unused_externs,
