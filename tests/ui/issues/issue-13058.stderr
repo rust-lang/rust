@@ -1,11 +1,13 @@
 error[E0621]: explicit lifetime required in the type of `cont`
   --> $DIR/issue-13058.rs:14:21
    |
-LL | fn check<'r, I: Iterator<Item=usize>, T: Itble<'r, usize, I>>(cont: &T) -> bool
-   |                                                                     -- help: add explicit lifetime `'r` to the type of `cont`: `&'r T`
-LL | {
 LL |     let cont_iter = cont.iter();
    |                     ^^^^^^^^^^^ lifetime `'r` required
+   |
+help: add explicit lifetime `'r` to the type of `cont`
+   |
+LL | fn check<'r, I: Iterator<Item=usize>, T: Itble<'r, usize, I>>(cont: &'r T) -> bool
+   |                                                                      ++
 
 error: aborting due to 1 previous error
 
