@@ -1759,6 +1759,17 @@ impl<'a> CrateMetadataRef<'a> {
                     &mut name,
                 );
 
+                // If this file is under $sysroot/lib/rustlib/rustc-src/
+                // and the user wish to simulate remapping with -Z simulate-remapped-rust-src-base,
+                // then we change `name` to a similar state as if the rust was bootstrapped
+                // with `remap-debuginfo = true`.
+                try_to_translate_real_to_virtual(
+                    option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
+                    &sess.opts.real_rustc_dev_source_base_dir,
+                    "compiler",
+                    &mut name,
+                );
+
                 // If this file's path has been remapped to `/rustc/$hash`,
                 // we might be able to reverse that.
                 //
@@ -1767,6 +1778,17 @@ impl<'a> CrateMetadataRef<'a> {
                 try_to_translate_virtual_to_real(
                     option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"),
                     &sess.opts.real_rust_source_base_dir,
+                    &mut name,
+                );
+
+                // If this file's path has been remapped to `/rustc-dev/$hash`,
+                // we might be able to reverse that.
+                //
+                // NOTE: if you update this, you might need to also update bootstrap's code for generating
+                // the `rustc-dev` component in `Src::run` in `src/bootstrap/dist.rs`.
+                try_to_translate_virtual_to_real(
+                    option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
+                    &sess.opts.real_rustc_dev_source_base_dir,
                     &mut name,
                 );
 

@@ -397,6 +397,15 @@ top_level_options!(
         /// (the `rust.remap-debuginfo` option in `bootstrap.toml`).
         real_rust_source_base_dir: Option<PathBuf> [TRACKED_NO_CRATE_HASH],
 
+        /// Base directory containing the `compiler/` directory for the rustc sources.
+        /// Right now it's always `$sysroot/lib/rustlib/rustc-src/rust`
+        /// (i.e. the `rustup` `rustc-dev` component).
+        ///
+        /// This directory is what the virtual `/rustc-dev/$hash` is translated back to,
+        /// if Rust was built with path remapping to `/rustc/$hash` enabled
+        /// (the `rust.remap-debuginfo` option in `bootstrap.toml`).
+        real_rustc_dev_source_base_dir: Option<PathBuf> [TRACKED_NO_CRATE_HASH],
+
         edition: Edition [TRACKED],
 
         /// `true` if we're emitting JSON blobs about each artifact produced
