@@ -4,8 +4,8 @@
 
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter};
-use std::iter;
 use std::ops::{Index, IndexMut};
+use std::{iter, mem};
 
 pub use basic_blocks::{BasicBlocks, SwitchTargetValue};
 use either::Either;
@@ -1340,6 +1340,8 @@ pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,
 
+    pub after_last_stmt_debuginfos: Vec<StmtDebugInfo<'tcx>>,
+
     /// Terminator for this block.
     ///
     /// N.B., this should generally ONLY be `None` during construction.
@@ -1369,6 +1371,7 @@ impl<'tcx> BasicBlockData<'tcx> {
     ) -> BasicBlockData<'tcx> {
         BasicBlockData {
             statements,
+            after_last_stmt_debuginfos: Vec::new(),
             terminator,
             is_cleanup,
         }
@@ -1405,6 +1408,23 @@ impl<'tcx> BasicBlockData<'tcx> {
         } else {
             self.terminator().successors()
         }
+    }
+
+    pub fn retain_statements<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Statement<'tcx>) -> bool,
+    {
+        let mut debuginfos = Vec::new();
+        self.statements.retain_mut(|stmt| {
+            let retain = f(stmt);
+            if retain {
+                stmt.debuginfos.splice(0..0, mem::take(&mut debuginfos));
+            } else {
+                debuginfos.extend_from_slice(&stmt.debuginfos);
+            }
+            retain
+        });
+        self.after_last_stmt_debuginfos.extend_from_slice(&debuginfos);
     }
 }
 
@@ -1710,7 +1730,7 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 128);
+    static_assert_size!(BasicBlockData<'_>, 152);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
     static_assert_size!(Statement<'_>, 56);
