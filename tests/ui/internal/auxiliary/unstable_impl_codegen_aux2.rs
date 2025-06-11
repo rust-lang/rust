@@ -8,7 +8,7 @@ use aux::Trait;
 /// that depends on aux crate in
 /// unstable_impl_codegen_aux1.rs
 
-pub fn foo<T: Trait>(a:T) {
+pub fn foo<T>(a:T) {
     a.method();
 }
 
