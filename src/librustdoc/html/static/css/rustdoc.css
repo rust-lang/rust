@@ -2976,6 +2976,9 @@ in src-script.js and main.js
 {
 	margin-bottom: 0.75em;
 }
+.negative-marker {
+	display: none;
+}
 
 .variants > .docblock,
 .implementors-toggle > .docblock,
