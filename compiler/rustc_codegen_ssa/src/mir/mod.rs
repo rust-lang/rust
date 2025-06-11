@@ -7,6 +7,7 @@ use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::{debug, instrument};
 

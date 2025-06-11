@@ -1,12 +1,12 @@
 use std::borrow::{Borrow, Cow};
+use std::ffi::CString;
 use std::ops::Deref;
 use std::{iter, ptr};
 
 pub(crate) mod autodiff;
 
 use libc::{c_char, c_uint, size_t};
-use rustc_abi as abi;
-use rustc_abi::{Align, Size, WrappingRange};
+use rustc_abi::{self as abi, AddressSpace, Align, Size, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};

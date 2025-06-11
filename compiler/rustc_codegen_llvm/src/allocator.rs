@@ -30,37 +30,6 @@ pub(crate) unsafe fn codegen(
     let i8 = cx.type_i8();
     let i8p = cx.type_ptr();
 
-    if kind == AllocatorKind::Default {
-        for method in ALLOCATOR_METHODS {
-            let mut args = Vec::with_capacity(method.inputs.len());
-            for input in method.inputs.iter() {
-                match input.ty {
-                    AllocatorTy::Layout => {
-                        args.push(usize); // size
-                        args.push(usize); // align
-                    }
-                    AllocatorTy::Ptr => args.push(i8p),
-                    AllocatorTy::Usize => args.push(usize),
-
-                    AllocatorTy::ResultPtr | AllocatorTy::Unit => panic!("invalid allocator arg"),
-                }
-            }
-            let output = match method.output {
-                AllocatorTy::ResultPtr => Some(i8p),
-                AllocatorTy::Unit => None,
-
-                AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
-                    panic!("invalid allocator output")
-                }
-            };
-
-            let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
-            let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
-
-            create_wrapper_function(tcx, &cx, &from_name, &to_name, &args, output, false);
-        }
-    }
-
     // rust alloc error handler
     create_wrapper_function(
         tcx,

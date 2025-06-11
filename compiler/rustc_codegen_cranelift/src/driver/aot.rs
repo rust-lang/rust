@@ -563,6 +563,7 @@ fn codegen_cgu_content(
                 );
                 codegened_functions.push(codegened_function);
             }
+            MonoItem::WeakAlias(_, _) => todo!(),
             MonoItem::Static(def_id) => {
                 let data_id = crate::constant::codegen_static(tcx, module, def_id);
                 if let Some(debug_context) = &mut cx.debug_context {

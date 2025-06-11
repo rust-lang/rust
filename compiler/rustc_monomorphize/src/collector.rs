@@ -456,6 +456,9 @@ fn collect_items_rec<'tcx>(
             // optimized, and if they did then the const-eval interpreter would have to worry about
             // mentioned_items.
         }
+        MonoItem::WeakAlias(_def_id, _target) => {
+            todo!()
+        }
         MonoItem::Fn(instance) => {
             // Sanity check whether this ended up being collected accidentally
             debug_assert!(tcx.should_codegen_locally(instance));

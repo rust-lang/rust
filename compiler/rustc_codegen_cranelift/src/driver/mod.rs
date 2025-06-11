@@ -49,7 +49,7 @@ fn predefine_mono_items<'tcx>(
                         )
                         .unwrap();
                 }
-                MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {}
+                MonoItem::WeakAlias(_, _) | MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {}
             }
         }
     });

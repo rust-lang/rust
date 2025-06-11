@@ -121,7 +121,7 @@ pub(crate) struct FullCx<'ll, 'tcx> {
 
     /// Statics that will be placed in the llvm.compiler.used variable
     /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
-    pub compiler_used_statics: Vec<&'ll Value>,
+    pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
 
     /// Mapping of non-scalar types to llvm types.
     pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
@@ -614,7 +614,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 const_globals: Default::default(),
                 statics_to_rauw: RefCell::new(Vec::new()),
                 used_statics: Vec::new(),
-                compiler_used_statics: Vec::new(),
+                compiler_used_statics: RefCell::new(Vec::new()),
                 type_lowering: Default::default(),
                 scalar_lltypes: Default::default(),
                 coverage_cx,

@@ -53,6 +53,7 @@ pub enum InstantiationMode {
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
+    WeakAlias(DefId, Instance<'tcx>),
     GlobalAsm(ItemId),
 }
 
@@ -94,7 +95,7 @@ impl<'tcx> MonoItem<'tcx> {
     pub fn is_user_defined(&self) -> bool {
         match *self {
             MonoItem::Fn(instance) => matches!(instance.def, InstanceKind::Item(..)),
-            MonoItem::Static(..) | MonoItem::GlobalAsm(..) => true,
+            MonoItem::WeakAlias(_, _) | MonoItem::Static(..) | MonoItem::GlobalAsm(..) => true,
         }
     }
 
@@ -105,21 +106,23 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(instance) => tcx.size_estimate(instance),
             // Conservatively estimate the size of a static declaration or
             // assembly item to be 1.
-            MonoItem::Static(_) | MonoItem::GlobalAsm(_) => 1,
+            MonoItem::WeakAlias(_, _) | MonoItem::Static(_) | MonoItem::GlobalAsm(_) => 1,
         }
     }
 
     pub fn is_generic_fn(&self) -> bool {
         match self {
             MonoItem::Fn(instance) => instance.args.non_erasable_generics().next().is_some(),
-            MonoItem::Static(..) | MonoItem::GlobalAsm(..) => false,
+            MonoItem::WeakAlias(_, _) | MonoItem::Static(..) | MonoItem::GlobalAsm(..) => false,
         }
     }
 
     pub fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> SymbolName<'tcx> {
         match *self {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
-            MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
+            MonoItem::Static(def_id) | MonoItem::WeakAlias(def_id, _) => {
+                tcx.symbol_name(Instance::mono(tcx, def_id))
+            }
             MonoItem::GlobalAsm(item_id) => {
                 SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.owner_id))
             }
@@ -137,7 +140,7 @@ impl<'tcx> MonoItem<'tcx> {
         // Statics and global_asm! must be instantiated exactly once.
         let instance = match *self {
             MonoItem::Fn(instance) => instance,
-            MonoItem::Static(..) | MonoItem::GlobalAsm(..) => {
+            MonoItem::WeakAlias(_, _) | MonoItem::Static(..) | MonoItem::GlobalAsm(..) => {
                 return InstantiationMode::GloballyShared { may_conflict: false };
             }
         };
@@ -236,7 +239,7 @@ impl<'tcx> MonoItem<'tcx> {
     pub fn explicit_linkage(&self, tcx: TyCtxt<'tcx>) -> Option<Linkage> {
         let def_id = match *self {
             MonoItem::Fn(ref instance) => instance.def_id(),
-            MonoItem::Static(def_id) => def_id,
+            MonoItem::WeakAlias(def_id, _) | MonoItem::Static(def_id) => def_id,
             MonoItem::GlobalAsm(..) => return None,
         };
 
@@ -273,7 +276,9 @@ impl<'tcx> MonoItem<'tcx> {
         debug!("is_instantiable({:?})", self);
         let (def_id, args) = match *self {
             MonoItem::Fn(ref instance) => (instance.def_id(), instance.args),
-            MonoItem::Static(def_id) => (def_id, GenericArgs::empty()),
+            MonoItem::WeakAlias(def_id, _) | MonoItem::Static(def_id) => {
+                (def_id, GenericArgs::empty())
+            }
             // global asm never has predicates
             MonoItem::GlobalAsm(..) => return true,
         };
@@ -284,7 +289,7 @@ impl<'tcx> MonoItem<'tcx> {
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
         match *self {
             MonoItem::Fn(Instance { def, .. }) => def.def_id().as_local(),
-            MonoItem::Static(def_id) => def_id.as_local(),
+            MonoItem::WeakAlias(def_id, _) | MonoItem::Static(def_id) => def_id.as_local(),
             MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id),
         }
         .map(|def_id| tcx.def_span(def_id))
@@ -299,7 +304,7 @@ impl<'tcx> MonoItem<'tcx> {
     pub fn krate(&self) -> CrateNum {
         match self {
             MonoItem::Fn(instance) => instance.def_id().krate,
-            MonoItem::Static(def_id) => def_id.krate,
+            MonoItem::WeakAlias(def_id, _) | MonoItem::Static(def_id) => def_id.krate,
             MonoItem::GlobalAsm(..) => LOCAL_CRATE,
         }
     }
@@ -308,7 +313,7 @@ impl<'tcx> MonoItem<'tcx> {
     pub fn def_id(&self) -> DefId {
         match *self {
             MonoItem::Fn(Instance { def, .. }) => def.def_id(),
-            MonoItem::Static(def_id) => def_id,
+            MonoItem::WeakAlias(def_id, _) | MonoItem::Static(def_id) => def_id,
             MonoItem::GlobalAsm(item_id) => item_id.owner_id.to_def_id(),
         }
     }
@@ -320,6 +325,13 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
             MonoItem::Fn(instance) => write!(f, "fn {instance}"),
             MonoItem::Static(def_id) => {
                 write!(f, "static {}", Instance::new_raw(def_id, GenericArgs::empty()))
+            }
+            MonoItem::WeakAlias(def_id, target) => {
+                write!(
+                    f,
+                    "weak alias {} => {target}",
+                    Instance::new_raw(def_id, GenericArgs::empty())
+                )
             }
             MonoItem::GlobalAsm(..) => write!(f, "global_asm"),
         }
@@ -559,7 +571,9 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::AsyncDropGlueCtorShim(..) => None,
                         }
                     }
-                    MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
+                    MonoItem::WeakAlias(def_id, _) | MonoItem::Static(def_id) => {
+                        def_id.as_local().map(Idx::index)
+                    }
                     MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.index()),
                 },
                 item.symbol_name(tcx),
