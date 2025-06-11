@@ -1231,7 +1231,6 @@ libs = [
 bootstrap = [
     "@Mark-Simulacrum",
     "@albertlarsan68",
-    "@onur-ozkan",
     "@kobzol",
     "@jieyouxu",
     "@clubby789",
@@ -1424,8 +1423,8 @@ compiletest = [
 "/src/tools/rustdoc-themes" =                            ["rustdoc"]
 "/src/tools/tidy" =                                      ["bootstrap"]
 "/src/tools/x" =                                         ["bootstrap"]
-"/src/tools/rustdoc-gui-test" =                          ["bootstrap", "@onur-ozkan"]
-"/src/tools/libcxx-version" =                            ["@onur-ozkan"]
+"/src/tools/rustdoc-gui-test" =                          ["bootstrap"]
+"/src/tools/libcxx-version" =                            ["bootstrap"]
 
 # Enable review queue tracking
 # Documentation at: https://forge.rust-lang.org/triagebot/review-queue-tracking.html
