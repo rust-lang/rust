@@ -58,9 +58,9 @@ pub enum MaybeEnteredSpan {
 macro_rules! enter_trace_span {
     ($machine:ident, $($tt:tt)*) => {
         if $machine::TRACING_ENABLED {
-            $crate::interpret::tracing_utils::MaybeEnteredSpan::Some(tracing::info_span!($($tt)*).entered())
+            $crate::interpret::util::MaybeEnteredSpan::Some(tracing::info_span!($($tt)*).entered())
         } else {
-            $crate::interpret::tracing_utils::MaybeEnteredSpan::None
+            $crate::interpret::util::MaybeEnteredSpan::None
         }
     }
 }
