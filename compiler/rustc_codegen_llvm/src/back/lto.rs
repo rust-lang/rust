@@ -740,15 +740,10 @@ fn add_global<'ll>(cx: &SimpleCx<'ll>, name: &str, initializer: &'ll llvm::Value
 
 
 
-fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, offload_entry_ty: &'ll llvm::Type, num: i64) -> &'ll llvm::Value {
-    // We add a pair of sizes and maptypes per offloadable function.
-    // @.offload_maptypes = private unnamed_addr constant [4 x i64] [i64 800, i64 544, i64 547, i64 544]
+fn gen_define_handling<'ll>(cx: &'ll SimpleCx<'_>, kernel: &'ll llvm::Value, offload_entry_ty: &'ll llvm::Type, num: i64) -> &'ll llvm::Value {
+    let types = cx.func_params_types(cx.get_type_of_global(kernel));
     let o_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{num}"), &vec![8u64,0,16,0]);
     let o_types = add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{num}"), &vec![800u64, 544, 547, 544]);
-    // TODO: We should add another pair per call to offloadable functions
-    // @.offload_sizes.5 = private unnamed_addr constant [2 x i64] [i64 16384, i64 16384]
-    // @.offload_maptypes.6 = private unnamed_addr constant [2 x i64] [i64 1, i64 3]
-
     // Next: For each function, generate these three entries. A weak constant,
     // the llvm.rodata entry name, and  the omp_offloading_entries value
 
@@ -814,8 +809,9 @@ fn gen_call_handling<'ll>(cx: &'ll SimpleCx<'_>, kernel: &'ll llvm::Value, s_ide
         let kernel_call_bb = unsafe {llvm::LLVMGetInstructionParent(kernel_call)};
         let mut builder = SBuilder::build(cx, kernel_call_bb);
 
-        let types = cx.func_params_types(cx.val_ty(kernel));
-        let num_args = types.len();
+        let types = cx.func_params_types(cx.get_type_of_global(kernel));
+        dbg!(&types);
+        let num_args = types.len() as u64;
 
         // First we generate a few variables used for the data mappers below.
         // %.offload_baseptrs = alloca [3 x ptr], align 8
@@ -930,19 +926,17 @@ pub(crate) fn run_pass_manager(
             dbg!("created struct");
             let mut o_types = vec![];
             for num in 0..9 {
-                if !cx.get_function(&format!("kernel_{num}")).is_some() {
-                    continue;
+                let kernel = cx.get_function(&format!("kernel_{num}"));
+                if let Some(kernel) = kernel{
+                    o_types.push(gen_define_handling(&cx, kernel, offload_entry_ty, num));
                 }
-                // TODO: replace num by proper fn name
-                o_types.push(gen_define_handling(&cx, offload_entry_ty, num));
             }
             let kernel = cx.get_function("kernel_1").unwrap();
+            dbg!("gen_call_handling");
             gen_call_handling(&cx, kernel, at_one, begin, update, end, fn_ty, &o_types);
         } else {
             dbg!("no marker found");
         }
-    } else {
-        dbg!("Not creating struct");
     }
 
     if cfg!(llvm_enzyme) && enable_ad && !thin {
