@@ -731,10 +731,7 @@ impl Step for Rustdoc {
         // libraries here. The intuition here is that If we've built a compiler, we should be able
         // to build rustdoc.
         //
-        let mut extra_features = Vec::new();
-        if builder.config.jemalloc(target) {
-            extra_features.push("jemalloc".to_string());
-        }
+        let extra_features = Vec::new();
 
         let ToolBuildResult { tool_path, build_compiler, target_compiler } =
             builder.ensure(ToolBuild {
