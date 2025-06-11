@@ -1041,7 +1041,7 @@ impl Step for LlvmBitcodeLinker {
         instrument(level = "debug", name = "LlvmBitcodeLinker::run", skip_all)
     )]
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
-        let tool_result = builder.ensure(ToolBuild {
+        builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
             tool: "llvm-bitcode-linker",
@@ -1052,24 +1052,7 @@ impl Step for LlvmBitcodeLinker {
             allow_features: "",
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,
-        });
-
-        if tool_result.target_compiler.stage > 0 {
-            let bindir_self_contained = builder
-                .sysroot(tool_result.target_compiler)
-                .join(format!("lib/rustlib/{}/bin/self-contained", self.target.triple));
-            t!(fs::create_dir_all(&bindir_self_contained));
-            let bin_destination = bindir_self_contained
-                .join(exe("llvm-bitcode-linker", tool_result.target_compiler.host));
-            builder.copy_link(&tool_result.tool_path, &bin_destination, FileType::Executable);
-            ToolBuildResult {
-                tool_path: bin_destination,
-                build_compiler: tool_result.build_compiler,
-                target_compiler: tool_result.target_compiler,
-            }
-        } else {
-            tool_result
-        }
+        })
     }
 }
 
