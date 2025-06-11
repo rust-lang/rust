@@ -209,11 +209,7 @@ impl<'tcx> Instance<'tcx> {
         // If we are not in share generics mode, we don't link to upstream
         // monomorphizations but always instantiate our own internal versions
         // instead.
-        if !tcx.sess.opts.share_generics()
-            // However, if the def_id is marked inline(never), then it's fine to just reuse the
-            // upstream monomorphization.
-            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_attr_data_structures::InlineAttr::Never
-        {
+        if !tcx.sess.opts.share_generics() {
             return None;
         }
 

@@ -3132,7 +3132,6 @@ ui/packed/issue-118537-field-offset.rs
 ui/packed/issue-27060-2.rs
 ui/packed/issue-27060.rs
 ui/packed/issue-46152.rs
-ui/panics/issue-47429-short-backtraces.rs
 ui/parser/issue-116781.rs
 ui/parser/issue-12187-1.rs
 ui/parser/issue-12187-2.rs
