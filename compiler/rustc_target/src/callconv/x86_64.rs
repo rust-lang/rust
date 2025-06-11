@@ -7,6 +7,7 @@ use rustc_abi::{
 };
 
 use crate::callconv::{ArgAbi, CastTarget, FnAbi};
+use crate::spec::HasTargetSpec;
 
 /// Classification of "eightbyte" components.
 // N.B., the order of the variants is from general to specific,
@@ -175,7 +176,7 @@ const MAX_SSE_REGS: usize = 8; // XMM0-7
 pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
-    C: HasDataLayout,
+    C: HasDataLayout + HasTargetSpec,
 {
     let mut int_regs = MAX_INT_REGS;
     let mut sse_regs = MAX_SSE_REGS;
@@ -236,7 +237,7 @@ where
                 if arg.layout.is_aggregate() {
                     let size = arg.layout.size;
                     arg.cast_to(cast_target(cls, size));
-                } else {
+                } else if is_arg || cx.target_spec().is_like_darwin {
                     arg.extend_integer_width_to(32);
                 }
             }

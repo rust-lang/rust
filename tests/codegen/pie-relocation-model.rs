@@ -13,7 +13,7 @@ pub fn call_foreign_fn() -> u8 {
 
 // External functions are still marked as non-dso_local, since we don't know if the symbol
 // is defined in the binary or in the shared library.
-// CHECK: declare zeroext i8 @foreign_fn()
+// CHECK: declare i8 @foreign_fn()
 extern "C" {
     fn foreign_fn() -> u8;
 }

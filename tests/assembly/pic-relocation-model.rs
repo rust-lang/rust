@@ -19,7 +19,7 @@ pub fn call_other_fn() -> u8 {
 }
 
 // CHECK-LABEL: other_fn:
-// CHECK:       callq *foreign_fn@GOTPCREL(%rip)
+// CHECK:       {{(jmpq|callq)}} *foreign_fn@GOTPCREL(%rip)
 #[no_mangle]
 #[inline(never)]
 pub fn other_fn() -> u8 {
