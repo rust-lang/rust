@@ -208,7 +208,7 @@ impl CodegenBackend for GccCodegenBackend {
         #[cfg(not(feature = "master"))]
         {
             let temp_dir = TempDir::new().expect("cannot create temporary directory");
-            let temp_file = temp_dir.into_path().join("result.asm");
+            let temp_file = temp_dir.keep().join("result.asm");
             let check_context = Context::default();
             check_context.set_print_errors_to_stderr(false);
             let _int128_ty = check_context.new_c_type(CType::UInt128t);
