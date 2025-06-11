@@ -41,7 +41,7 @@ mod test;
 /// [the `par_sort` method]: ../rayon/slice/trait.ParallelSliceMut.html#method.par_sort
 ///
 /// ```rust
-/// # use rayon_core as rayon;
+/// # use rustc_thred_pool as rayon;
 /// let mut v = vec![5, 1, 8, 22, 0, 44];
 /// quick_sort(&mut v);
 /// assert_eq!(v, vec![0, 1, 5, 8, 22, 44]);

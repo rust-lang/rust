@@ -84,7 +84,7 @@ struct ScopeBase<'scope> {
 /// it would be less efficient than the real implementation:
 ///
 /// ```rust
-/// # use rayon_core as rayon;
+/// # use rustc_thred_pool as rayon;
 /// pub fn join<A,B,RA,RB>(oper_a: A, oper_b: B) -> (RA, RB)
 ///     where A: FnOnce() -> RA + Send,
 ///           B: FnOnce() -> RB + Send,
@@ -125,7 +125,7 @@ struct ScopeBase<'scope> {
 /// To see how and when tasks are joined, consider this example:
 ///
 /// ```rust
-/// # use rayon_core as rayon;
+/// # use rustc_thred_pool as rayon;
 /// // point start
 /// rayon::scope(|s| {
 ///     s.spawn(|s| { // task s.1
@@ -193,7 +193,7 @@ struct ScopeBase<'scope> {
 /// spawned task.
 ///
 /// ```rust
-/// # use rayon_core as rayon;
+/// # use rustc_thred_pool as rayon;
 /// let ok: Vec<i32> = vec![1, 2, 3];
 /// rayon::scope(|s| {
 ///     let bad: Vec<i32> = vec![4, 5, 6];
@@ -217,7 +217,7 @@ struct ScopeBase<'scope> {
 /// in this case including both `ok` *and* `bad`:
 ///
 /// ```rust
-/// # use rayon_core as rayon;
+/// # use rustc_thred_pool as rayon;
 /// let ok: Vec<i32> = vec![1, 2, 3];
 /// rayon::scope(|s| {
 ///     let bad: Vec<i32> = vec![4, 5, 6];
@@ -238,7 +238,7 @@ struct ScopeBase<'scope> {
 /// is a borrow of `ok` and capture *that*:
 ///
 /// ```rust
-/// # use rayon_core as rayon;
+/// # use rustc_thred_pool as rayon;
 /// let ok: Vec<i32> = vec![1, 2, 3];
 /// rayon::scope(|s| {
 ///     let bad: Vec<i32> = vec![4, 5, 6];
@@ -260,7 +260,7 @@ struct ScopeBase<'scope> {
 /// of individual variables:
 ///
 /// ```rust
-/// # use rayon_core as rayon;
+/// # use rustc_thred_pool as rayon;
 /// let ok: Vec<i32> = vec![1, 2, 3];
 /// rayon::scope(|s| {
 ///     let bad: Vec<i32> = vec![4, 5, 6];
@@ -312,7 +312,7 @@ where
 /// [`scope()`]: fn.scope.html
 ///
 /// ```rust
-/// # use rayon_core as rayon;
+/// # use rustc_thred_pool as rayon;
 /// // point start
 /// rayon::scope_fifo(|s| {
 ///     s.spawn_fifo(|s| { // task s.1
@@ -487,7 +487,7 @@ impl<'scope> Scope<'scope> {
     /// # Examples
     ///
     /// ```rust
-    /// # use rayon_core as rayon;
+    /// # use rustc_thred_pool as rayon;
     /// let mut value_a = None;
     /// let mut value_b = None;
     /// let mut value_c = None;

@@ -23,7 +23,7 @@
 //! | `RwLock<T>`             | `RefCell<T>`        | `parking_lot::RwLock<T>`        |
 //! | `MTLock<T>`        [^1] | `T`                 | `Lock<T>`                       |
 //! |                         |                     |                                 |
-//! | `ParallelIterator`      | `Iterator`          | `rayon::iter::ParallelIterator` |
+//! | `ParallelIterator`      | `Iterator`          | `rustc_thread_pool::iter::ParallelIterator` |
 //!
 //! [^1]: `MTLock` is similar to `Lock`, but the serial version avoids the cost
 //! of a `RefCell`. This is appropriate when interior mutability is not

@@ -1,5 +1,5 @@
 use crossbeam_utils::thread;
-use rayon_core::ThreadPoolBuilder;
+use rustc_thred_pool::ThreadPoolBuilder;
 
 #[derive(PartialEq, Eq, Debug)]
 struct Local(i32);

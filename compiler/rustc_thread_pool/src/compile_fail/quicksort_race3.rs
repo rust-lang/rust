@@ -7,7 +7,7 @@ fn quick_sort<T:PartialOrd+Send>(v: &mut [T]) {
 
     let mid = partition(v);
     let (_lo, hi) = v.split_at_mut(mid);
-    rayon_core::join(|| quick_sort(hi), || quick_sort(hi)); //~ ERROR
+    rustc_thred_pool::join(|| quick_sort(hi), || quick_sort(hi)); //~ ERROR
 }
 
 fn partition<T:PartialOrd+Send>(v: &mut [T]) -> usize {

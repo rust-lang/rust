@@ -28,7 +28,7 @@ mod test;
 /// ## Creating a ThreadPool
 ///
 /// ```rust
-/// # use rayon_core as rayon;
+/// # use rustc_thred_pool as rayon;
 /// let pool = rayon::ThreadPoolBuilder::new().num_threads(8).build().unwrap();
 /// ```
 ///
@@ -88,10 +88,10 @@ impl ThreadPool {
     /// meantime. For example
     ///
     /// ```rust
-    /// # use rayon_core as rayon;
+    /// # use rustc_thred_pool as rayon;
     /// fn main() {
     ///     rayon::ThreadPoolBuilder::new().num_threads(1).build_global().unwrap();
-    ///     let pool = rayon_core::ThreadPoolBuilder::default().build().unwrap();
+    ///     let pool = rustc_thred_pool::ThreadPoolBuilder::default().build().unwrap();
     ///     let do_it = || {
     ///         print!("one ");
     ///         pool.install(||{});
@@ -123,7 +123,7 @@ impl ThreadPool {
     /// ## Using `install()`
     ///
     /// ```rust
-    ///    # use rayon_core as rayon;
+    ///    # use rustc_thred_pool as rayon;
     ///    fn main() {
     ///         let pool = rayon::ThreadPoolBuilder::new().num_threads(8).build().unwrap();
     ///         let n = pool.install(|| fib(20));
@@ -172,7 +172,7 @@ impl ThreadPool {
     /// # Examples
     ///
     /// ```
-    ///    # use rayon_core as rayon;
+    ///    # use rustc_thred_pool as rayon;
     ///    use std::sync::atomic::{AtomicUsize, Ordering};
     ///
     ///    fn main() {

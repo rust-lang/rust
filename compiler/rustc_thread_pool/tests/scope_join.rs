@@ -4,7 +4,7 @@ where
     F: FnOnce() + Send,
     G: FnOnce() + Send,
 {
-    rayon_core::scope(|s| {
+    rustc_thred_pool::scope(|s| {
         s.spawn(|_| g());
         f();
     });

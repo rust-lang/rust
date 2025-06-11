@@ -1,4 +1,4 @@
-use rayon_core::join;
+use rustc_thred_pool::join;
 
 #[test]
 #[should_panic(expected = "should panic")]

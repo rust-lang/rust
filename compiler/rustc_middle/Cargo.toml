@@ -9,7 +9,6 @@ bitflags = "2.4.1"
 either = "1.5.0"
 gsgdt = "0.1.2"
 polonius-engine = "0.13.0"
-rustc-rayon-core = { version = "0.5.0" }
 rustc_abi = { path = "../rustc_abi" }
 rustc_apfloat = "0.2.0"
 rustc_arena = { path = "../rustc_arena" }
@@ -33,6 +32,7 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
+rustc_thread_pool = { path = "../rustc_thread_pool" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.12"
