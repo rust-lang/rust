@@ -9,4 +9,5 @@ impl Trait for Struct {}
 //@ has "$.index[?(@.name=='Struct')].inner.struct.impls[*]" $impl
 //@ is "$.index[?(@.name=='Trait')].inner.trait.implementations[*]" $impl
 //@ is "$.index[?(@.docs=='impl')].inner.impl.trait.id" $trait
-//@ is "$.index[?(@.docs=='impl')].inner.impl.for.resolved_path.id" $struct
+//@ is "$.index[?(@.docs=='impl')].inner.impl.for" 0
+//@ is "$.types[0].resolved_path.id" $struct

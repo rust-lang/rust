@@ -12,7 +12,8 @@ where
 //@ is    '$.index[?(@.name=="on_trait")].inner.function.generics.params[1].kind.type.bounds' []
 //@ is    '$.index[?(@.name=="on_trait")].inner.function.generics.params[1].kind.type.bounds' []
 //@ count '$.index[?(@.name=="on_trait")].inner.function.generics.where_predicates[*]' 1
-//@ is    '$.index[?(@.name=="on_trait")].inner.function.generics.where_predicates[0].bound_predicate.type.generic' '"T"'
+//@ is    '$.index[?(@.name=="on_trait")].inner.function.generics.where_predicates[0].bound_predicate.type' 0
+//@ is    '$.types[0].generic' '"T"'
 //@ count '$.index[?(@.name=="on_trait")].inner.function.generics.where_predicates[0].bound_predicate.bounds[*]' 1
 //@ is    '$.index[?(@.name=="on_trait")].inner.function.generics.where_predicates[0].bound_predicate.bounds[0].outlives' \"\'a\"
 pub fn on_trait<'a, T>()

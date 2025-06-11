@@ -19,7 +19,7 @@ impl Cache {
         // `filename` needs to replace `-` with `_` to be sure the JSON path will always be valid.
         let filename =
             Path::new(&config.template).file_stem().unwrap().to_str().unwrap().replace('-', "_");
-        let file_path = root.join(&Path::with_extension(Path::new(&filename), "json"));
+        let file_path = root.join(Path::with_extension(Path::new(&filename), "json"));
         let content = fs::read_to_string(&file_path).expect("failed to read JSON file");
 
         Cache {

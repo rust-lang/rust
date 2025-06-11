@@ -4,7 +4,8 @@
 pub trait Local {}
 
 //@ is "$.index[?(@.docs=='Local for bool')].inner.impl.trait.id" $Local
-//@ is "$.index[?(@.docs=='Local for bool')].inner.impl.for.primitive" '"bool"'
+//@ is "$.index[?(@.docs=='Local for bool')].inner.impl.for" 0
+//@ is "$.types[0].primitive" '"bool"'
 /// Local for bool
 impl Local for bool {}
 

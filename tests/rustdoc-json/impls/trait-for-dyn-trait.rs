@@ -12,4 +12,5 @@ impl T1 for dyn T2 {}
 //@ is '$.index[?(@.name=="T2")].inner.trait.implementations' []
 
 //@ is '$.index[?(@.docs=="Fun impl")].inner.impl.trait.id' $t1
-//@ is '$.index[?(@.docs=="Fun impl")].inner.impl.for.dyn_trait.traits[*].trait.id' $t2
+//@ is '$.index[?(@.docs=="Fun impl")].inner.impl.for' 0
+//@ is '$.types[0].dyn_trait.traits[*].trait.id' $t2

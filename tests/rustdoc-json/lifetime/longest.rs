@@ -8,17 +8,14 @@
 //@ is "$.index[?(@.name=='longest')].inner.function.sig.inputs[0][0]" '"l"'
 //@ is "$.index[?(@.name=='longest')].inner.function.sig.inputs[1][0]" '"r"'
 
-//@ is "$.index[?(@.name=='longest')].inner.function.sig.inputs[0][1].borrowed_ref.lifetime" \"\'a\"
-//@ is "$.index[?(@.name=='longest')].inner.function.sig.inputs[0][1].borrowed_ref.is_mutable" false
-//@ is "$.index[?(@.name=='longest')].inner.function.sig.inputs[0][1].borrowed_ref.type.primitive" \"str\"
+//@ is "$.index[?(@.name=='longest')].inner.function.sig.inputs[0][1]" 1
+//@ is "$.index[?(@.name=='longest')].inner.function.sig.inputs[1][1]" 1
+//@ is "$.index[?(@.name=='longest')].inner.function.sig.output" 1
 
-//@ is "$.index[?(@.name=='longest')].inner.function.sig.inputs[1][1].borrowed_ref.lifetime" \"\'a\"
-//@ is "$.index[?(@.name=='longest')].inner.function.sig.inputs[1][1].borrowed_ref.is_mutable" false
-//@ is "$.index[?(@.name=='longest')].inner.function.sig.inputs[1][1].borrowed_ref.type.primitive" \"str\"
-
-//@ is "$.index[?(@.name=='longest')].inner.function.sig.output.borrowed_ref.lifetime" \"\'a\"
-//@ is "$.index[?(@.name=='longest')].inner.function.sig.output.borrowed_ref.is_mutable" false
-//@ is "$.index[?(@.name=='longest')].inner.function.sig.output.borrowed_ref.type.primitive" \"str\"
+//@ is "$.types[1].borrowed_ref.lifetime" \"\'a\"
+//@ is "$.types[1].borrowed_ref.is_mutable" false
+//@ is "$.types[1].borrowed_ref.type" 0
+//@ is "$.types[0].primitive" \"str\"
 
 pub fn longest<'a>(l: &'a str, r: &'a str) -> &'a str {
     if l.len() > r.len() { l } else { r }

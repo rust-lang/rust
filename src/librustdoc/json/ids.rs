@@ -1,6 +1,6 @@
 //! Id handling for rustdoc-json.
 //!
-//! Manages the creation of [`rustdoc_json_types::Id`] and the
+//! Manages the creation of [`rustdoc_json_types::ItemId`] and the
 //! fact that these don't correspond exactly to [`DefId`], because
 //! [`rustdoc_json_types::Item`] doesn't correspond exactly to what
 //! other phases think of as an "item".
@@ -14,14 +14,14 @@ use rustdoc_json_types as types;
 use super::JsonRenderer;
 use crate::clean;
 
-pub(super) type IdInterner = FxHashMap<FullItemId, types::Id>;
+pub(super) type IdInterner = FxHashMap<FullItemId, types::ItemId>;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 /// An uninterned id.
 ///
 /// Each one corresponds to exactly one of both:
 /// 1. [`rustdoc_json_types::Item`].
-/// 2. [`rustdoc_json_types::Id`] transitively (as each `Item` has an `Id`).
+/// 2. [`rustdoc_json_types::ItemId`] transitively (as each `Item` has an `Id`).
 ///
 /// It's *broadly* equivalent to a [`DefId`], but needs slightly more information
 /// to fully disambiguate items, because sometimes we choose to split a single HIR
@@ -66,7 +66,7 @@ pub(super) struct FullItemId {
 }
 
 impl JsonRenderer<'_> {
-    pub(crate) fn id_from_item_default(&self, item_id: clean::ItemId) -> types::Id {
+    pub(crate) fn id_from_item_default(&self, item_id: clean::ItemId) -> types::ItemId {
         self.id_from_item_inner(item_id, None, None)
     }
 
@@ -75,7 +75,7 @@ impl JsonRenderer<'_> {
         item_id: clean::ItemId,
         name: Option<Symbol>,
         imported_id: Option<DefId>,
-    ) -> types::Id {
+    ) -> types::ItemId {
         let (def_id, extra_id) = match item_id {
             clean::ItemId::DefId(did) => (did, imported_id),
             clean::ItemId::Blanket { for_, impl_id } => (for_, Some(impl_id)),
@@ -107,10 +107,10 @@ impl JsonRenderer<'_> {
         let len = interner.len();
         *interner
             .entry(key)
-            .or_insert_with(|| types::Id(len.try_into().expect("too many items in a crate")))
+            .or_insert_with(|| types::ItemId(len.try_into().expect("too many items in a crate")))
     }
 
-    pub(crate) fn id_from_item(&self, item: &clean::Item) -> types::Id {
+    pub(crate) fn id_from_item(&self, item: &clean::Item) -> types::ItemId {
         match item.kind {
             clean::ItemKind::ImportItem(ref import) => {
                 let imported_id = import.source.did;

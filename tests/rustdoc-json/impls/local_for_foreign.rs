@@ -13,6 +13,7 @@ impl LocalTrait for foreign_struct::ForeignStruct {}
 
 //@ set impl = "$.index[?(@.docs=='local for foreign')].id"
 //@ is "$.index[?(@.docs=='local for foreign')].inner.impl.trait.id" $LocalTrait
-//@ is "$.index[?(@.docs=='local for foreign')].inner.impl.for.resolved_path.id" $ForeignStruct
+//@ is "$.index[?(@.docs=='local for foreign')].inner.impl.for" 0
+//@ is "$.types[0].resolved_path.id" $ForeignStruct
 
 //@ is "$.index[?(@.name=='LocalTrait')].inner.trait.implementations[*]" $impl

@@ -67,14 +67,16 @@ pub enum EnumWithStrippedTupleVariants {
 //@ is "$.index[?(@.docs=='3.3.0')].name" '"0"'
 //@ is "$.index[?(@.docs=='3.3.1')].name" '"1"'
 
-//@ is "$.index[?(@.docs=='1.1.0')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='2.1.0')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='2.1.1')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='2.2.1')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='2.3.0')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.1.1')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.1.2')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.2.0')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.2.2')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.3.0')].inner.struct_field" '{"primitive": "bool"}'
-//@ is "$.index[?(@.docs=='3.3.1')].inner.struct_field" '{"primitive": "bool"}'
+//@ is "$.types[0].primitive" '"bool"'
+
+//@ is "$.index[?(@.docs=='1.1.0')].inner.struct_field" 0
+//@ is "$.index[?(@.docs=='2.1.0')].inner.struct_field" 0
+//@ is "$.index[?(@.docs=='2.1.1')].inner.struct_field" 0
+//@ is "$.index[?(@.docs=='2.2.1')].inner.struct_field" 0
+//@ is "$.index[?(@.docs=='2.3.0')].inner.struct_field" 0
+//@ is "$.index[?(@.docs=='3.1.1')].inner.struct_field" 0
+//@ is "$.index[?(@.docs=='3.1.2')].inner.struct_field" 0
+//@ is "$.index[?(@.docs=='3.2.0')].inner.struct_field" 0
+//@ is "$.index[?(@.docs=='3.2.2')].inner.struct_field" 0
+//@ is "$.index[?(@.docs=='3.3.0')].inner.struct_field" 0
+//@ is "$.index[?(@.docs=='3.3.1')].inner.struct_field" 0

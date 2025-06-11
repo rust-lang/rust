@@ -15,4 +15,5 @@ impl Wham for GeorgeMichael {}
 
 // Impl points to both struct and trait.
 //@ is "$.index[?(@.docs == 'Wham for George Michael')].inner.impl.trait.id" $wham
-//@ is "$.index[?(@.docs == 'Wham for George Michael')].inner.impl.for.resolved_path.id" $gm
+//@ is "$.index[?(@.docs == 'Wham for George Michael')].inner.impl.for" 0
+//@ is "$.types[0].resolved_path.id" $gm

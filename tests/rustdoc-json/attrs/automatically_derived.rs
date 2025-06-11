@@ -9,5 +9,8 @@ impl Default for Manual {
     }
 }
 
-//@ is '$.index[?(@.inner.impl.for.resolved_path.path == "Derive" && @.inner.impl.trait.path == "Default")].attrs' '["#[automatically_derived]"]'
-//@ is '$.index[?(@.inner.impl.for.resolved_path.path == "Manual" && @.inner.impl.trait.path == "Default")].attrs' '[]'
+//@ is '$.types[0].resolved_path.path' '"Derive"'
+//@ is '$.types[14].resolved_path.path' '"Manual"'
+
+//@ is '$.index[?(@.inner.impl.for == 0 && @.inner.impl.trait.path == "Default")].attrs' '["#[automatically_derived]"]'
+//@ is '$.index[?(@.inner.impl.for == 14 && @.inner.impl.trait.path == "Default")].attrs' '[]'
