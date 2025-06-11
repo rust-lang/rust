@@ -24,8 +24,3 @@ from_transmute! { unsafe i64x2 => v2i64 }
 from_transmute! { unsafe i64x4 => v4i64 }
 from_transmute! { unsafe f64x2 => v2f64 }
 from_transmute! { unsafe f64x4 => v4f64 }
-
-from_transmute! { unsafe usizex2 => v2u64 }
-from_transmute! { unsafe usizex4 => v4u64 }
-from_transmute! { unsafe isizex2 => v2i64 }
-from_transmute! { unsafe isizex4 => v4i64 }
