@@ -286,6 +286,11 @@ environment variable. We first document the most relevant and most commonly used
   specific circumstances, but Miri's behavior will also be more stable across versions and targets.
   This is equivalent to `-Zmiri-fixed-schedule -Zmiri-compare-exchange-weak-failure-rate=0.0
   -Zmiri-address-reuse-cross-thread-rate=0.0 -Zmiri-disable-weak-memory-emulation`.
+* `-Zmiri-deterministic-floats` makes Miri's floating-point behavior fully deterministic. This means
+  that operations will always return the preferred NaN, imprecise operations will not have any
+  random error applied to them, and `min`/`max` as "maybe fused" multiply-add all behave
+  deterministically. Note that Miri still uses host floats for some operations, so behavior can
+  still differ depending on the host target and setup.
 * `-Zmiri-disable-isolation` disables host isolation. As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
