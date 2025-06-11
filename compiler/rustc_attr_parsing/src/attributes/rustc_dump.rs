@@ -96,6 +96,7 @@ impl NoArgsAttributeParser for RustcDumpInferredOutlivesParser {
         Allow(Target::Enum),
         Allow(Target::Union),
         Allow(Target::TyAlias),
+        Allow(Target::Const),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpInferredOutlives;

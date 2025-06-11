@@ -13,7 +13,7 @@ pub(super) fn inferred_outlives_of(
     item_def_id: LocalDefId,
 ) -> &[(ty::Clause<'_>, Span)] {
     match tcx.def_kind(item_def_id) {
-        DefKind::Struct | DefKind::Enum | DefKind::Union => {}
+        DefKind::Struct | DefKind::Enum | DefKind::Union | DefKind::Const => {}
         DefKind::TyAlias if tcx.type_alias_is_checked(item_def_id) => {}
         DefKind::AnonConst
             if tcx.features().generic_const_exprs()
