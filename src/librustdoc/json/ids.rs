@@ -1,6 +1,6 @@
 //! Id handling for rustdoc-json.
 //!
-//! Manages the creation of [`rustdoc_json_types::Id`] and the
+//! Manages the creation of [`rustdoc_json_types::ItemId`] and the
 //! fact that these don't correspond exactly to [`DefId`], because
 //! [`rustdoc_json_types::Item`] doesn't correspond exactly to what
 //! other phases think of as an "item".
@@ -21,7 +21,7 @@ pub(super) type IdInterner = FxHashMap<FullItemId, types::ItemId>;
 ///
 /// Each one corresponds to exactly one of both:
 /// 1. [`rustdoc_json_types::Item`].
-/// 2. [`rustdoc_json_types::Id`] transitively (as each `Item` has an `Id`).
+/// 2. [`rustdoc_json_types::ItemId`] transitively (as each `Item` has an `Id`).
 ///
 /// It's *broadly* equivalent to a [`DefId`], but needs slightly more information
 /// to fully disambiguate items, because sometimes we choose to split a single HIR
