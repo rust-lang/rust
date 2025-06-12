@@ -246,7 +246,7 @@ impl ItemTree {
                 macro_calls,
                 macro_rules,
                 macro_defs,
-                vis,
+                vis: _,
             } = &mut **data;
 
             uses.shrink_to_fit();
@@ -266,36 +266,13 @@ impl ItemTree {
             macro_calls.shrink_to_fit();
             macro_rules.shrink_to_fit();
             macro_defs.shrink_to_fit();
-
-            vis.arena.shrink_to_fit();
         }
     }
 }
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemVisibilities {
-    arena: Arena<RawVisibility>,
-}
-
-impl ItemVisibilities {
-    fn alloc(&mut self, vis: RawVisibility) -> RawVisibilityId {
-        match &vis {
-            RawVisibility::Public => RawVisibilityId::PUB,
-            RawVisibility::Module(path, explicitiy) if path.segments().is_empty() => {
-                match (path.kind, explicitiy) {
-                    (PathKind::SELF, VisibilityExplicitness::Explicit) => {
-                        RawVisibilityId::PRIV_EXPLICIT
-                    }
-                    (PathKind::SELF, VisibilityExplicitness::Implicit) => {
-                        RawVisibilityId::PRIV_IMPLICIT
-                    }
-                    (PathKind::Crate, _) => RawVisibilityId::PUB_CRATE,
-                    _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
-                }
-            }
-            _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
-        }
-    }
+    arena: Box<[RawVisibility]>,
 }
 
 #[derive(Default, Debug, Eq, PartialEq)]
@@ -577,7 +554,7 @@ impl Index<RawVisibilityId> for ItemTree {
                     VisibilityExplicitness::Explicit,
                 )
             }),
-            _ => &self.data().vis.arena[Idx::from_raw(index.0.into())],
+            _ => &self.data().vis.arena[index.0 as usize],
         }
     }
 }
@@ -702,7 +679,7 @@ pub enum FieldsShape {
 }
 
 /// Visibility of an item, not yet resolved.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RawVisibility {
     /// `pub(in module)`, `pub(crate)` or `pub(super)`. Also private, which is
     /// equivalent to `pub(self)`.

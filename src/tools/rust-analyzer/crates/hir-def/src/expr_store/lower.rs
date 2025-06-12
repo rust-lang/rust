@@ -7,6 +7,7 @@ mod path;
 
 use std::mem;
 
+use base_db::FxIndexSet;
 use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
@@ -65,8 +66,6 @@ use crate::{
 };
 
 pub use self::path::hir_segment_to_ast_segment;
-
-type FxIndexSet<K> = indexmap::IndexSet<K, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 
 pub(super) fn lower_body(
     db: &dyn DefDatabase,

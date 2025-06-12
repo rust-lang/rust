@@ -28,6 +28,8 @@ use syntax::{Parse, SyntaxError, ast};
 use triomphe::Arc;
 pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet};
 
+pub type FxIndexSet<T> = indexmap::IndexSet<T, rustc_hash::FxBuildHasher>;
+
 #[macro_export]
 macro_rules! impl_intern_key {
     ($id:ident, $loc:ident) => {

@@ -1,5 +1,6 @@
 //! File symbol extraction.
 
+use base_db::FxIndexSet;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, Complete, DefWithBodyId, ExternCrateId, HasModule, ImplId, Lookup, MacroId,
@@ -20,8 +21,6 @@ use rustc_hash::FxHashMap;
 use syntax::{AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, ToSmolStr, ast::HasName};
 
 use crate::{HasCrate, Module, ModuleDef, Semantics};
-
-pub type FxIndexSet<T> = indexmap::IndexSet<T, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
