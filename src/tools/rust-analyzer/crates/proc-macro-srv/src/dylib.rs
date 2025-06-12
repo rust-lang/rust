@@ -3,7 +3,6 @@
 mod version;
 
 use proc_macro::bridge;
-use span::ErasedFileAstId;
 use std::{fmt, fs, io, time::SystemTime};
 
 use libloading::Library;
@@ -162,20 +161,14 @@ impl Expander {
         def_site: S,
         call_site: S,
         mixed_site: S,
-        fixup_ast_id: ErasedFileAstId,
     ) -> Result<TopSubtree<S>, String>
     where
         <S::Server as bridge::server::Types>::TokenStream: Default,
     {
-        let result = self.inner.proc_macros.expand(
-            macro_name,
-            macro_body,
-            attributes,
-            def_site,
-            call_site,
-            mixed_site,
-            fixup_ast_id,
-        );
+        let result = self
+            .inner
+            .proc_macros
+            .expand(macro_name, macro_body, attributes, def_site, call_site, mixed_site);
         result.map_err(|e| e.into_string().unwrap_or_default())
     }
 

@@ -55,7 +55,7 @@ pub enum SpanMode {
     Id,
 
     /// Rust Analyzer-specific span handling mode.
-    RustAnalyzer { fixup_ast_id: u32 },
+    RustAnalyzer,
 }
 
 /// Represents responses sent from the proc-macro-srv to the client.
@@ -308,7 +308,7 @@ mod tests {
     #[test]
     fn test_proc_macro_rpc_works() {
         let tt = fixture_token_tree();
-        for v in HASHED_AST_ID..=CURRENT_API_VERSION {
+        for v in RUST_ANALYZER_SPAN_SUPPORT..=CURRENT_API_VERSION {
             let mut span_data_table = Default::default();
             let task = ExpandMacro {
                 data: ExpandMacroData {
