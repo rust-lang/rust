@@ -88,7 +88,7 @@ pub(crate) fn goto_definition(
     }
 
     let navs = sema
-        .descend_into_macros_no_opaque(original_token.clone())
+        .descend_into_macros_no_opaque(original_token.clone(), false)
         .into_iter()
         .filter_map(|token| {
             let parent = token.value.parent()?;

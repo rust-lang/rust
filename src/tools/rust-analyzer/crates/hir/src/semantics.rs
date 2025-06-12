@@ -244,7 +244,7 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
         offset: TextSize,
     ) -> impl Iterator<Item = ast::NameLike> + 'slf {
         node.token_at_offset(offset)
-            .map(move |token| self.descend_into_macros_no_opaque(token))
+            .map(move |token| self.descend_into_macros_no_opaque(token, true))
             .map(|descendants| descendants.into_iter().filter_map(move |it| it.value.parent()))
             // re-order the tokens from token_at_offset by returning the ancestors with the smaller first nodes first
             // See algo::ancestors_at_offset, which uses the same approach
@@ -1009,10 +1009,11 @@ impl<'db> SemanticsImpl<'db> {
     pub fn descend_into_macros_no_opaque(
         &self,
         token: SyntaxToken,
+        always_descend_into_derives: bool,
     ) -> SmallVec<[InFile<SyntaxToken>; 1]> {
         let mut res = smallvec![];
         let token = self.wrap_token_infile(token);
-        self.descend_into_macros_all(token.clone(), true, &mut |t, ctx| {
+        self.descend_into_macros_all(token.clone(), always_descend_into_derives, &mut |t, ctx| {
             if !ctx.is_opaque(self.db) {
                 // Don't descend into opaque contexts
                 res.push(t);
