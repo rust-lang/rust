@@ -1003,7 +1003,13 @@ unsafe extern "C" {
         SLen: c_uint,
     ) -> MetadataKindId;
 
-    // Create modules.
+    // Create, print, and destroy modules.
+    pub(crate) fn LLVMPrintModuleToFile(
+        M: &Module,
+        Name: *const c_char,
+        Error_message: *mut c_char,
+    );
+    pub(crate) fn LLVMDisposeModule(M: &Module);
     pub(crate) fn LLVMModuleCreateWithNameInContext(
         ModuleID: *const c_char,
         C: &Context,

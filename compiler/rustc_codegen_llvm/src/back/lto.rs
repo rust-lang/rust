@@ -678,7 +678,7 @@ pub(crate) fn run_pass_manager(
     if cfg!(llvm_enzyme) && enable_gpu && !thin {
         let cx =
             SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
-        crate::builder::gpu_offload::handle_gpu_code(&cx);
+        crate::builder::gpu_offload::handle_gpu_code(cgcx, &cx);
     }
 
     if cfg!(llvm_enzyme) && enable_ad && !thin {

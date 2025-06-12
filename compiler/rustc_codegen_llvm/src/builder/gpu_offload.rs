@@ -5,15 +5,62 @@ use crate::common::AsCCharPtr;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Linkage, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
+use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 
 use llvm::Linkage::*;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
 
+// We don't copy types from other functions because we generate a new module and context.
+// Bringing in types from other contexts would likely cause issues.
+pub(crate) fn gen_image_wrapper_module<'ll>(
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    old_cx: &SimpleCx<'ll>,
+) {
+    unsafe {
+        let llcx = llvm::LLVMRustContextCreate(false);
+        let module_name = CString::new("offload.wrapper.module").unwrap();
+        let llmod = llvm::LLVMModuleCreateWithNameInContext(module_name.as_ptr(), llcx);
+        let cx = SimpleCx::new(llmod, llcx, cgcx.pointer_size);
+        let tptr = cx.type_ptr();
+        let ti64 = cx.type_i64();
+        let ti32 = cx.type_i32();
+        let ti16 = cx.type_i16();
+        let ti8 = cx.type_i8();
+        let dl_cstr = llvm::LLVMGetDataLayoutStr(old_cx.llmod);
+        llvm::LLVMSetDataLayout(llmod, dl_cstr);
+        //  target triple = "x86_64-unknown-linux-gnu"
+
+        let mut entry_fields = [ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
+
+        let entry_struct_name = CString::new("__tgt_offload_entry").unwrap();
+        let entry_struct = llvm::LLVMStructCreateNamed(llcx, entry_struct_name.as_ptr());
+        llvm::LLVMStructSetBody(
+            entry_struct,
+            entry_fields.as_mut_ptr(),
+            entry_fields.len() as u32,
+            0,
+        );
+
+        llvm::LLVMPrintModuleToFile(
+            llmod,
+            CString::new("rustmagic.openmp.image.wrapper.ll").unwrap().as_ptr(),
+            std::ptr::null_mut(),
+        );
+
+        // Clean up
+        llvm::LLVMDisposeModule(llmod);
+        llvm::LLVMContextDispose(llcx);
+    }
+}
+
 // first we need to add all the fun to the host module
 // %struct.__tgt_offload_entry = type { i64, i16, i16, i32, ptr, ptr, i64, i64, ptr }
 // %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
-pub(crate) fn handle_gpu_code<'ll>(cx: &'ll SimpleCx<'_>) {
+pub(crate) fn handle_gpu_code<'ll>(
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cx: &'ll SimpleCx<'_>,
+) {
     if cx.get_function("gen_tgt_offload").is_some() {
         let (offload_entry_ty, at_one, begin, update, end, fn_ty) = gen_globals(&cx);
 
@@ -29,7 +76,7 @@ pub(crate) fn handle_gpu_code<'ll>(cx: &'ll SimpleCx<'_>) {
         }
         dbg!("gen_call_handling");
         gen_call_handling(&cx, &kernels, at_one, begin, update, end, fn_ty, &o_types);
-        gen_image_wrapper_module();
+        gen_image_wrapper_module(&cgcx, &cx);
     } else {
         dbg!("no marker found");
     }
@@ -413,5 +460,3 @@ fn gen_call_handling<'ll>(
         // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
     }
 }
-
-pub(crate) fn gen_image_wrapper_module() {}
