@@ -1240,13 +1240,6 @@ libs = [
     "@thomcc",
     "@ibraheemdev",
 ]
-bootstrap = [
-    "@Mark-Simulacrum",
-    "@albertlarsan68",
-    "@kobzol",
-    "@jieyouxu",
-    "@clubby789",
-]
 infra-ci = [
     "@Mark-Simulacrum",
     "@Kobzol",
