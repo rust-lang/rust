@@ -21,7 +21,7 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
-    AdtDef, BottomUpFolder, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
+    AdtDef, BottomUpFolder, FnSig, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
@@ -95,6 +95,18 @@ pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ex
                 lint.primary_message(format!(
                     "the calling convention {abi} is not supported on this target"
                 ));
+            });
+        }
+    }
+}
+
+pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, fn_sig_span: Span) {
+    if fn_sig.abi == ExternAbi::Custom {
+        // Function definitions that use `extern "custom"` must be naked functions.
+        if !tcx.has_attr(def_id, sym::naked) {
+            tcx.dcx().emit_err(crate::errors::AbiCustomClothedFunction {
+                span: fn_sig_span,
+                naked_span: tcx.def_span(def_id).shrink_to_lo(),
             });
         }
     }
