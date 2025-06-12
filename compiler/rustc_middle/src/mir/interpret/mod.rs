@@ -104,6 +104,7 @@ enum AllocDiscriminant {
     VTable,
     Static,
     Type,
+    PartialHash,
 }
 
 pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
@@ -131,6 +132,11 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
         GlobalAlloc::Type(ty) => {
             trace!("encoding {alloc_id:?} with {ty:#?}");
             AllocDiscriminant::Type.encode(encoder);
+            ty.encode(encoder);
+        }
+        GlobalAlloc::PartialHash(ty) => {
+            trace!("encoding {alloc_id:?} with {ty:#?}");
+            AllocDiscriminant::PartialHash.encode(encoder);
             ty.encode(encoder);
         }
         GlobalAlloc::Static(did) => {
@@ -240,6 +246,12 @@ impl<'s> AllocDecodingSession<'s> {
                 trace!("decoded typid: {ty:?}");
                 decoder.interner().reserve_and_set_type_id_alloc(ty)
             }
+            AllocDiscriminant::PartialHash => {
+                trace!("creating typeid alloc ID");
+                let ty = Decodable::decode(decoder);
+                trace!("decoded typid: {ty:?}");
+                decoder.interner().reserve_and_set_type_id_partial_hash(ty)
+            }
             AllocDiscriminant::Static => {
                 trace!("creating extern static alloc ID");
                 let did = <DefId as Decodable<D>>::decode(decoder);
@@ -270,9 +282,10 @@ pub enum GlobalAlloc<'tcx> {
     Static(DefId),
     /// The alloc ID points to memory.
     Memory(ConstAllocation<'tcx>),
-    /// A TypeId pointer. For now cannot be turned into a runtime value.
-    /// TODO: turn into actual TypeId?
+    /// A pointer to be stored within a TypeId pointing to the full hash.
     Type(Ty<'tcx>),
+    /// A partial type hash (the first `size_of<usize>()` bytes of the hash).
+    PartialHash(Ty<'tcx>),
 }
 
 impl<'tcx> GlobalAlloc<'tcx> {
@@ -312,6 +325,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
         match self {
             GlobalAlloc::Function { .. } => cx.data_layout().instruction_address_space,
             GlobalAlloc::Type(_)
+            | GlobalAlloc::PartialHash(_)
             | GlobalAlloc::Static(..)
             | GlobalAlloc::Memory(..)
             | GlobalAlloc::VTable(..) => AddressSpace::DATA,
@@ -350,7 +364,10 @@ impl<'tcx> GlobalAlloc<'tcx> {
                 }
             }
             GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
-            GlobalAlloc::Type(_) | GlobalAlloc::Function { .. } | GlobalAlloc::VTable(..) => {
+            GlobalAlloc::PartialHash(_)
+            | GlobalAlloc::Type(_)
+            | GlobalAlloc::Function { .. }
+            | GlobalAlloc::VTable(..) => {
                 // These are immutable.
                 Mutability::Not
             }
@@ -398,8 +415,8 @@ impl<'tcx> GlobalAlloc<'tcx> {
                 // No data to be accessed here. But vtables are pointer-aligned.
                 (Size::ZERO, tcx.data_layout.pointer_align.abi)
             }
-            // TODO make this represent normal type ids somehow
-            GlobalAlloc::Type(_) => (Size::from_bytes(16), Align::from_bytes(8).unwrap()),
+            GlobalAlloc::Type(_) => (Size::from_bytes(16), Align::ONE),
+            GlobalAlloc::PartialHash(_) => (Size::ZERO, Align::ONE),
         }
     }
 }
@@ -505,9 +522,15 @@ impl<'tcx> TyCtxt<'tcx> {
         self.reserve_and_set_dedup(GlobalAlloc::VTable(ty, dyn_ty), salt)
     }
 
-    /// Generates an [AllocId] for a [core::mem::type_info::TypeId]. Will get deduplicated.
+    /// Generates an [AllocId] for a [core::mem::type_info::TypeIdData]. Will get deduplicated.
     pub fn reserve_and_set_type_id_alloc(self, ty: Ty<'tcx>) -> AllocId {
         self.reserve_and_set_dedup(GlobalAlloc::Type(ty), 0)
+    }
+
+    /// Generates an [AllocId] that will get replaced by a partial hash of a type.
+    /// See [core::mem::type_info::TypeId] for more information.
+    pub fn reserve_and_set_type_id_partial_hash(self, ty: Ty<'tcx>) -> AllocId {
+        self.reserve_and_set_dedup(GlobalAlloc::PartialHash(ty), 0)
     }
 
     /// Interns the `Allocation` and return a new `AllocId`, even if there's already an identical

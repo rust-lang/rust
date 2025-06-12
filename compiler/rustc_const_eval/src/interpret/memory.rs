@@ -353,6 +353,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         kind = "typeid",
                     )
                 }
+                Some(GlobalAlloc::PartialHash(..)) => {
+                    err_ub_custom!(
+                        fluent::const_eval_invalid_dealloc,
+                        alloc_id = alloc_id,
+                        kind = "partial_hash",
+                    )
+                }
                 Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
                     err_ub_custom!(
                         fluent::const_eval_invalid_dealloc,
@@ -622,7 +629,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             Some(GlobalAlloc::Function { .. }) => throw_ub!(DerefFunctionPointer(id)),
             Some(GlobalAlloc::VTable(..)) => throw_ub!(DerefVTablePointer(id)),
-            Some(GlobalAlloc::Type(..)) => throw_ub!(DerefTypeIdPointer(id)),
+            Some(GlobalAlloc::Type(..)) | Some(GlobalAlloc::PartialHash(..)) => {
+                throw_ub!(DerefTypeIdPointer(id))
+            }
             None => throw_ub!(PointerUseAfterFree(id, CheckInAllocMsg::MemoryAccess)),
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
@@ -904,9 +913,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let (size, align) = global_alloc.size_and_align(*self.tcx, self.typing_env);
             let mutbl = global_alloc.mutability(*self.tcx, self.typing_env);
             let kind = match global_alloc {
-                GlobalAlloc::Type(_) | GlobalAlloc::Static { .. } | GlobalAlloc::Memory { .. } => {
-                    AllocKind::LiveData
-                }
+                GlobalAlloc::Type(_)
+                | GlobalAlloc::PartialHash(_)
+                | GlobalAlloc::Static { .. }
+                | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
                 GlobalAlloc::Function { .. } => bug!("We already checked function pointers above"),
                 GlobalAlloc::VTable { .. } => AllocKind::VTable,
             };
@@ -1218,6 +1228,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for DumpAllocs<'a, 'tcx, M> {
                         }
                         Some(GlobalAlloc::Type(ty)) => {
                             write!(fmt, " (typeid for {ty})")?;
+                        }
+                        Some(GlobalAlloc::PartialHash(ty)) => {
+                            write!(fmt, " (partial hash of {ty})")?;
                         }
                         Some(GlobalAlloc::Static(did)) => {
                             write!(fmt, " (static: {})", self.ecx.tcx.def_path_str(did))?;
