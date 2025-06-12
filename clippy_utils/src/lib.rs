@@ -2711,7 +2711,7 @@ impl<'tcx> ExprUseNode<'tcx> {
 }
 
 /// Gets the context an expression's value is used in.
-pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> ExprUseCtxt<'tcx> {
+pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'tcx>) -> ExprUseCtxt<'tcx> {
     let mut adjustments = [].as_slice();
     let mut is_ty_unified = false;
     let mut moved_before_use = false;
