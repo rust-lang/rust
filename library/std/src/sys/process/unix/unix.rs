@@ -340,6 +340,10 @@ impl Command {
             cvt(libc::setpgid(0, pgroup))?;
         }
 
+        if self.get_setsid() {
+            cvt(libc::setsid())?;
+        }
+
         // emscripten has no signal support.
         #[cfg(not(target_os = "emscripten"))]
         {
@@ -657,6 +661,7 @@ impl Command {
         };
 
         let pgroup = self.get_pgroup();
+        let setsid = self.get_setsid();
 
         struct PosixSpawnFileActions<'a>(&'a mut MaybeUninit<libc::posix_spawn_file_actions_t>);
 
@@ -739,6 +744,10 @@ impl Command {
                     default_set.as_ptr(),
                 ))?;
                 flags |= libc::POSIX_SPAWN_SETSIGDEF;
+            }
+
+            if setsid {
+                flags |= libc::POSIX_SPAWN_SETSID;
             }
 
             cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
