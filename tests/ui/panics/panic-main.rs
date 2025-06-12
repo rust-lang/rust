@@ -22,6 +22,7 @@
 //@[unwind-full] exec-env: RUST_BACKTRACE=full
 
 //@ run-fail
+//@ failure-status: 101
 //@ error-pattern:moop
 //@ needs-subprocess
 
