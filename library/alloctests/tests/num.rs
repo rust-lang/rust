@@ -1,15 +1,21 @@
-use std::fmt::{Debug, Display};
+use core::fmt::NumBuffer;
 use std::str::FromStr;
 
-fn assert_nb<Int: ToString + FromStr + Debug + Display + Eq>(value: Int) {
-    let s = value.to_string();
-    let s2 = format!("s: {}.", value);
+macro_rules! assert_nb {
+    ($int:ident, $value:expr) => {
+        let value: $int = $value;
+        let s = value.to_string();
+        let s2 = format!("s: {}.", value);
 
-    assert_eq!(format!("s: {s}."), s2);
-    let Ok(ret) = Int::from_str(&s) else {
-        panic!("failed to convert into to string");
+        assert_eq!(format!("s: {s}."), s2);
+        let Ok(ret) = $int::from_str(&s) else {
+            panic!("failed to convert into to string");
+        };
+        assert_eq!(ret, value);
+
+        let mut buffer = NumBuffer::<$int>::new();
+        assert_eq!(value.format_into(&mut buffer), s.as_str());
     };
-    assert_eq!(ret, value);
 }
 
 macro_rules! uint_to_s {
@@ -17,11 +23,11 @@ macro_rules! uint_to_s {
         $(
             #[test]
             fn $fn_name() {
-                assert_nb::<$int>($int::MIN);
-                assert_nb::<$int>($int::MAX);
-                assert_nb::<$int>(1);
-                assert_nb::<$int>($int::MIN / 2);
-                assert_nb::<$int>($int::MAX / 2);
+                assert_nb!($int, $int::MIN);
+                assert_nb!($int, $int::MAX);
+                assert_nb!($int, 1);
+                assert_nb!($int, $int::MIN / 2);
+                assert_nb!($int, $int::MAX / 2);
             }
         )+
     }
@@ -31,13 +37,13 @@ macro_rules! int_to_s {
         $(
             #[test]
             fn $fn_name() {
-                assert_nb::<$int>($int::MIN);
-                assert_nb::<$int>($int::MAX);
-                assert_nb::<$int>(1);
-                assert_nb::<$int>(0);
-                assert_nb::<$int>(-1);
-                assert_nb::<$int>($int::MIN / 2);
-                assert_nb::<$int>($int::MAX / 2);
+                assert_nb!($int, $int::MIN);
+                assert_nb!($int, $int::MAX);
+                assert_nb!($int, 1);
+                assert_nb!($int, 0);
+                assert_nb!($int, -1);
+                assert_nb!($int, $int::MIN / 2);
+                assert_nb!($int, $int::MAX / 2);
             }
         )+
     }

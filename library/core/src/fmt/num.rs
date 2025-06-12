@@ -1,5 +1,6 @@
 //! Integer and floating-point number formatting
 
+use crate::fmt::NumBuffer;
 use crate::mem::MaybeUninit;
 use crate::num::fmt as numfmt;
 use crate::ops::{Div, Rem, Sub};
@@ -60,7 +61,7 @@ unsafe trait GenericRadix: Sized {
         let zero = T::zero();
         let is_nonnegative = x >= zero;
         let mut buf = [MaybeUninit::<u8>::uninit(); 128];
-        let mut curr = buf.len();
+        let mut offset = buf.len();
         let base = T::from_u8(Self::BASE);
         if is_nonnegative {
             // Accumulate each digit of the number from the least significant
@@ -68,8 +69,8 @@ unsafe trait GenericRadix: Sized {
             loop {
                 let n = x % base; // Get the current place value.
                 x = x / base; // Deaccumulate the number.
-                curr -= 1;
-                buf[curr].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                offset -= 1;
+                buf[offset].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 if x == zero {
                     // No more digits left to accumulate.
                     break;
@@ -80,27 +81,17 @@ unsafe trait GenericRadix: Sized {
             loop {
                 let n = zero - (x % base); // Get the current place value.
                 x = x / base; // Deaccumulate the number.
-                curr -= 1;
-                buf[curr].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                offset -= 1;
+                buf[offset].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 if x == zero {
                     // No more digits left to accumulate.
                     break;
                 };
             }
         }
-        // SAFETY: `curr` is initialized to `buf.len()` and is only decremented, so it can't overflow. It is
-        // decremented exactly once for each digit. Since u128 is the widest fixed width integer format supported,
-        // the maximum number of digits (bits) is 128 for base-2, so `curr` won't underflow as well.
-        let buf = unsafe { buf.get_unchecked(curr..) };
-        // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
-        // valid UTF-8
-        let buf = unsafe {
-            str::from_utf8_unchecked(slice::from_raw_parts(
-                MaybeUninit::slice_as_ptr(buf),
-                buf.len(),
-            ))
-        };
-        f.pad_integral(is_nonnegative, Self::PREFIX, buf)
+        // SAFETY: Starting from `offset`, all elements of the slice have been set.
+        let buf_slice = unsafe { slice_buffer_to_str(&buf, offset) };
+        f.pad_integral(is_nonnegative, Self::PREFIX, buf_slice)
     }
 }
 
@@ -199,6 +190,17 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"\
       6061626364656667686970717273747576777879\
       8081828384858687888990919293949596979899";
 
+/// This function converts a slice of ascii characters into a `&str` starting from `offset`.
+///
+/// Safety notes: `buf` content starting from `offset` index MUST BE initialized and MUST BE ascii
+/// characters.
+unsafe fn slice_buffer_to_str(buf: &[MaybeUninit<u8>], offset: usize) -> &str {
+    // SAFETY: All buf content since offset is set.
+    let written = unsafe { buf.get_unchecked(offset..) };
+    // SAFETY: Writes use ASCII from the lookup table exclusively.
+    unsafe { str::from_utf8_unchecked(written.assume_init_ref()) }
+}
+
 macro_rules! impl_Display {
     ($($signed:ident, $unsigned:ident,)* ; as $u:ident via $conv_fn:ident named $gen_name:ident) => {
 
@@ -248,6 +250,12 @@ macro_rules! impl_Display {
                 issue = "none"
             )]
             pub fn _fmt<'a>(self, buf: &'a mut [MaybeUninit::<u8>]) -> &'a str {
+                let offset = self._fmt_inner(buf);
+                // SAFETY: Starting from `offset`, all elements of the slice have been set.
+                unsafe { slice_buffer_to_str(buf, offset) }
+            }
+
+            fn _fmt_inner(self, buf: &mut [MaybeUninit::<u8>]) -> usize {
                 // Count the number of bytes in buf that are not initialized.
                 let mut offset = buf.len();
                 // Consume the least-significant decimals from a working copy.
@@ -309,24 +317,99 @@ macro_rules! impl_Display {
                     // not used: remain = 0;
                 }
 
-                // SAFETY: All buf content since offset is set.
-                let written = unsafe { buf.get_unchecked(offset..) };
-                // SAFETY: Writes use ASCII from the lookup table exclusively.
-                unsafe {
-                    str::from_utf8_unchecked(slice::from_raw_parts(
-                          MaybeUninit::slice_as_ptr(written),
-                          written.len(),
-                    ))
-                }
+                offset
             }
-        })*
+        }
+
+        impl $signed {
+            /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
+            /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// #![feature(int_format_into)]
+            /// use core::fmt::NumBuffer;
+            ///
+            #[doc = concat!("let n = 0", stringify!($signed), ";")]
+            /// let mut buf = NumBuffer::new();
+            /// assert_eq!(n.format_into(&mut buf), "0");
+            ///
+            #[doc = concat!("let n1 = 32", stringify!($unsigned), ";")]
+            /// let mut buf1 = NumBuffer::new();
+            /// assert_eq!(n1.format_into(&mut buf1), "32");
+            ///
+            #[doc = concat!("let n2 = ", stringify!($unsigned::MAX), ";")]
+            /// let mut buf2 = NumBuffer::new();
+            #[doc = concat!("assert_eq!(n2.format_into(&mut buf2), ", stringify!($unsigned::MAX), ".to_string());")]
+            /// ```
+            #[unstable(feature = "int_format_into", issue = "138215")]
+            pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
+                let mut offset;
+
+                #[cfg(not(feature = "optimize_for_size"))]
+                {
+                    offset = self.unsigned_abs()._fmt_inner(&mut buf.buf);
+                }
+                #[cfg(feature = "optimize_for_size")]
+                {
+                    offset = _inner_slow_integer_to_str(self.unsigned_abs().$conv_fn(), &mut buf.buf);
+                }
+                // Only difference between signed and unsigned are these 4 lines.
+                if self < 0 {
+                    offset -= 1;
+                    buf.buf[offset].write(b'-');
+                }
+                // SAFETY: Starting from `offset`, all elements of the slice have been set.
+                unsafe { slice_buffer_to_str(&buf.buf, offset) }
+            }
+        }
+
+        impl $unsigned {
+            /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
+            /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// #![feature(int_format_into)]
+            /// use core::fmt::NumBuffer;
+            ///
+            #[doc = concat!("let n = 0", stringify!($signed), ";")]
+            /// let mut buf = NumBuffer::new();
+            /// assert_eq!(n.format_into(&mut buf), "0");
+            ///
+            #[doc = concat!("let n1 = 32", stringify!($unsigned), ";")]
+            /// let mut buf1 = NumBuffer::new();
+            /// assert_eq!(n1.format_into(&mut buf1), "32");
+            ///
+            #[doc = concat!("let n2 = ", stringify!($unsigned::MAX), ";")]
+            /// let mut buf2 = NumBuffer::new();
+            #[doc = concat!("assert_eq!(n2.format_into(&mut buf2), ", stringify!($unsigned::MAX), ".to_string());")]
+            /// ```
+            #[unstable(feature = "int_format_into", issue = "138215")]
+            pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
+                let offset;
+
+                #[cfg(not(feature = "optimize_for_size"))]
+                {
+                    offset = self._fmt_inner(&mut buf.buf);
+                }
+                #[cfg(feature = "optimize_for_size")]
+                {
+                    offset = _inner_slow_integer_to_str(self.$conv_fn(), &mut buf.buf);
+                }
+                // SAFETY: Starting from `offset`, all elements of the slice have been set.
+                unsafe { slice_buffer_to_str(&buf.buf, offset) }
+            }
+        }
+
+
+        )*
 
         #[cfg(feature = "optimize_for_size")]
-        fn $gen_name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            const MAX_DEC_N: usize = $u::MAX.ilog(10) as usize + 1;
-            let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
-            let mut curr = MAX_DEC_N;
-            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
+        fn _inner_slow_integer_to_str(mut n: $u, buf: &mut [MaybeUninit::<u8>]) -> usize {
+            let mut curr = buf.len();
 
             // SAFETY: To show that it's OK to copy into `buf_ptr`, notice that at the beginning
             // `curr == buf.len() == 39 > log(n)` since `n < 2^128 < 10^39`, and at
@@ -336,7 +419,7 @@ macro_rules! impl_Display {
             unsafe {
                 loop {
                     curr -= 1;
-                    buf_ptr.add(curr).write((n % 10) as u8 + b'0');
+                    buf[curr].write((n % 10) as u8 + b'0');
                     n /= 10;
 
                     if n == 0 {
@@ -344,12 +427,17 @@ macro_rules! impl_Display {
                     }
                 }
             }
+            cur
+        }
 
-            // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid UTF-8
-            let buf_slice = unsafe {
-                str::from_utf8_unchecked(
-                    slice::from_raw_parts(buf_ptr.add(curr), buf.len() - curr))
-            };
+        #[cfg(feature = "optimize_for_size")]
+        fn $gen_name(n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            const MAX_DEC_N: usize = $u::MAX.ilog(10) as usize + 1;
+            let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
+
+            let offset = _inner_slow_integer_to_str(n, &mut buf);
+            // SAFETY: Starting from `offset`, all elements of the slice have been set.
+            let buf_slice = unsafe { slice_buffer_to_str(&buf, offset) };
             f.pad_integral(is_nonnegative, "", buf_slice)
         }
     };
@@ -566,7 +654,7 @@ mod imp {
 impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
 /// Helper function for writing a u64 into `buf` going from last to first, with `curr`.
-fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut usize) {
+fn parse_u64_into(mut n: u64, buf: &mut [MaybeUninit<u8>], curr: &mut usize) {
     let buf_ptr = MaybeUninit::slice_as_mut_ptr(buf);
     let lut_ptr = DEC_DIGITS_LUT.as_ptr();
     assert!(*curr > 19);
@@ -673,42 +761,103 @@ impl fmt::Display for i128 {
     }
 }
 
+impl u128 {
+    /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
+    /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(int_format_into)]
+    /// use core::fmt::NumBuffer;
+    ///
+    /// let n = 0u128;
+    /// let mut buf = NumBuffer::new();
+    /// assert_eq!(n.format_into(&mut buf), "0");
+    ///
+    /// let n1 = 32u128;
+    /// let mut buf1 = NumBuffer::new();
+    /// assert_eq!(n1.format_into(&mut buf1), "32");
+    ///
+    /// let n2 = u128::MAX;
+    /// let mut buf2 = NumBuffer::new();
+    /// assert_eq!(n2.format_into(&mut buf2), u128::MAX.to_string());
+    /// ```
+    #[unstable(feature = "int_format_into", issue = "138215")]
+    pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
+        let offset = fmt_u128_inner(self, &mut buf.buf);
+        // SAFETY: Starting from `offset`, all elements of the slice have been set.
+        unsafe { slice_buffer_to_str(&buf.buf, offset) }
+    }
+}
+
+impl i128 {
+    /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
+    /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(int_format_into)]
+    /// use core::fmt::NumBuffer;
+    ///
+    /// let n = 0i128;
+    /// let mut buf = NumBuffer::new();
+    /// assert_eq!(n.format_into(&mut buf), "0");
+    ///
+    /// let n1 = 32i128;
+    /// let mut buf1 = NumBuffer::new();
+    /// assert_eq!(n1.format_into(&mut buf1), "32");
+    ///
+    /// let n2 = i128::MAX;
+    /// let mut buf2 = NumBuffer::new();
+    /// assert_eq!(n2.format_into(&mut buf2), i128::MAX.to_string());
+    /// ```
+    #[unstable(feature = "int_format_into", issue = "138215")]
+    pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
+        let mut offset = fmt_u128_inner(self.unsigned_abs(), &mut buf.buf);
+        // Only difference between signed and unsigned are these 4 lines.
+        if self < 0 {
+            offset -= 1;
+            buf.buf[offset].write(b'-');
+        }
+        // SAFETY: Starting from `offset`, all elements of the slice have been set.
+        unsafe { slice_buffer_to_str(&buf.buf, offset) }
+    }
+}
+
 /// Specialized optimization for u128. Instead of taking two items at a time, it splits
 /// into at most 2 u64s, and then chunks by 10e16, 10e8, 10e4, 10e2, and then 10e1.
 /// It also has to handle 1 last item, as 10^40 > 2^128 > 10^39, whereas
 /// 10^20 > 2^64 > 10^19.
-fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    const MAX_DEC_N: usize = u128::MAX.ilog(10) as usize + 1;
-    let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
+///
+/// IMPORTANT: `buf` length MUST BE at least 39.
+fn fmt_u128_inner(n: u128, buf: &mut [MaybeUninit<u8>]) -> usize {
     let mut curr = buf.len();
-
     let (n, rem) = udiv_1e19(n);
-    parse_u64_into(rem, &mut buf, &mut curr);
+    parse_u64_into(rem, buf, &mut curr);
 
     if n != 0 {
         // 0 pad up to point
         let target = buf.len() - 19;
         // SAFETY: Guaranteed that we wrote at most 19 bytes, and there must be space
-        // remaining since it has length 39
+        // remaining since it has length of at least 39
         unsafe {
-            ptr::write_bytes(
-                MaybeUninit::slice_as_mut_ptr(&mut buf).add(target),
-                b'0',
-                curr - target,
-            );
+            ptr::write_bytes(MaybeUninit::slice_as_mut_ptr(buf).add(target), b'0', curr - target);
         }
         curr = target;
 
         let (n, rem) = udiv_1e19(n);
-        parse_u64_into(rem, &mut buf, &mut curr);
+        parse_u64_into(rem, buf, &mut curr);
         // Should this following branch be annotated with unlikely?
         if n != 0 {
             let target = buf.len() - 38;
             // The raw `buf_ptr` pointer is only valid until `buf` is used the next time,
             // buf `buf` is not used in this scope so we are good.
-            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
+            let buf_ptr = MaybeUninit::slice_as_mut_ptr(buf);
             // SAFETY: At this point we wrote at most 38 bytes, pad up to that point,
-            // There can only be at most 1 digit remaining.
+            // There can only be at most 1 digit remaining (+ another one if this is actually
+            // converting a `i128` type which has a bigger size).
             unsafe {
                 ptr::write_bytes(buf_ptr.add(target), b'0', curr - target);
                 curr = target - 1;
@@ -716,15 +865,17 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
             }
         }
     }
+    curr
+}
 
-    // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid
-    // UTF-8 since `DEC_DIGITS_LUT` is
-    let buf_slice = unsafe {
-        str::from_utf8_unchecked(slice::from_raw_parts(
-            MaybeUninit::slice_as_mut_ptr(&mut buf).add(curr),
-            buf.len() - curr,
-        ))
-    };
+fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    // 2^128 is about 3*10^38, so 39 gives an extra byte of space
+    const MAX_DEC_N: usize = u128::MAX.ilog(10) as usize + 1;
+    let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
+
+    let offset = fmt_u128_inner(n, &mut buf);
+    // SAFETY: Starting from `offset`, all elements of the slice have been set.
+    let buf_slice = unsafe { slice_buffer_to_str(&buf, offset) };
     f.pad_integral(is_nonnegative, "", buf_slice)
 }
 
