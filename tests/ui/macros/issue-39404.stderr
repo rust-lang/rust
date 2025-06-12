@@ -1,23 +1,15 @@
 error: missing fragment specifier
-  --> $DIR/issue-39404.rs:3:19
+  --> $DIR/issue-39404.rs:4:6
    |
-LL | macro_rules! m { ($i) => {} }
-   |                   ^^
+LL |     ($i) => {};
+   |      ^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
-   = note: `#[deny(missing_fragment_specifier)]` on by default
+   = note: fragment specifiers must be provided
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+help: try adding a specifier here
+   |
+LL |     ($i:spec) => {};
+   |        +++++
 
 error: aborting due to 1 previous error
-
-Future incompatibility report: Future breakage diagnostic:
-error: missing fragment specifier
-  --> $DIR/issue-39404.rs:3:19
-   |
-LL | macro_rules! m { ($i) => {} }
-   |                   ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
-   = note: `#[deny(missing_fragment_specifier)]` on by default
 
