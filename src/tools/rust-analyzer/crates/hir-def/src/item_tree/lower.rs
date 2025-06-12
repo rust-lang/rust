@@ -2,6 +2,7 @@
 
 use std::{cell::OnceCell, collections::hash_map::Entry};
 
+use base_db::FxIndexSet;
 use hir_expand::{
     HirFileId,
     mod_path::PathKind,
@@ -37,6 +38,7 @@ pub(super) struct Ctx<'a> {
     source_ast_id_map: Arc<AstIdMap>,
     span_map: OnceCell<SpanMap>,
     file: HirFileId,
+    visibilities: FxIndexSet<RawVisibility>,
 }
 
 impl<'a> Ctx<'a> {
@@ -47,6 +49,7 @@ impl<'a> Ctx<'a> {
             source_ast_id_map: db.ast_id_map(file),
             file,
             span_map: OnceCell::new(),
+            visibilities: FxIndexSet::default(),
         }
     }
 
@@ -57,6 +60,9 @@ impl<'a> Ctx<'a> {
     pub(super) fn lower_module_items(mut self, item_owner: &dyn HasModuleItem) -> ItemTree {
         self.tree.top_level =
             item_owner.items().flat_map(|item| self.lower_mod_item(&item)).collect();
+        if let Some(data) = &mut self.tree.data {
+            data.vis.arena = self.visibilities.into_iter().collect();
+        }
         self.tree
     }
 
@@ -90,6 +96,9 @@ impl<'a> Ctx<'a> {
             }
         }
 
+        if let Some(data) = &mut self.tree.data {
+            data.vis.arena = self.visibilities.into_iter().collect();
+        }
         self.tree
     }
 
@@ -115,7 +124,9 @@ impl<'a> Ctx<'a> {
                 }
             }
         }
-
+        if let Some(data) = &mut self.tree.data {
+            data.vis.arena = self.visibilities.into_iter().collect();
+        }
         self.tree
     }
 
@@ -370,7 +381,22 @@ impl<'a> Ctx<'a> {
         let vis = visibility_from_ast(self.db, item.visibility(), &mut |range| {
             self.span_map().span_for_range(range).ctx
         });
-        self.data().vis.alloc(vis)
+        match &vis {
+            RawVisibility::Public => RawVisibilityId::PUB,
+            RawVisibility::Module(path, explicitiy) if path.segments().is_empty() => {
+                match (path.kind, explicitiy) {
+                    (PathKind::SELF, VisibilityExplicitness::Explicit) => {
+                        RawVisibilityId::PRIV_EXPLICIT
+                    }
+                    (PathKind::SELF, VisibilityExplicitness::Implicit) => {
+                        RawVisibilityId::PRIV_IMPLICIT
+                    }
+                    (PathKind::Crate, _) => RawVisibilityId::PUB_CRATE,
+                    _ => RawVisibilityId(self.visibilities.insert_full(vis).0 as u32),
+                }
+            }
+            _ => RawVisibilityId(self.visibilities.insert_full(vis).0 as u32),
+        }
     }
 }
 
