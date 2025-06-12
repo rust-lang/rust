@@ -368,12 +368,40 @@ impl LinkSelfContained {
     }
 
     /// To help checking CLI usage while some of the values are unstable: returns whether one of the
-    /// components was set individually. This would also require the `-Zunstable-options` flag, to
-    /// be allowed.
-    fn are_unstable_variants_set(&self) -> bool {
-        let any_component_set =
-            !self.enabled_components.is_empty() || !self.disabled_components.is_empty();
-        self.explicitly_set.is_none() && any_component_set
+    /// unstable components was set individually, for the given `TargetTuple`. This would also
+    /// require the `-Zunstable-options` flag, to be allowed.
+    fn check_unstable_variants(&self, target_tuple: &TargetTuple) -> Result<(), String> {
+        if self.explicitly_set.is_some() {
+            return Ok(());
+        }
+
+        // `-C link-self-contained=[-+]linker` is only stable on x64 linux.
+        let check_linker = |components: LinkSelfContainedComponents, polarity: &str| {
+            let has_linker = components.is_linker_enabled();
+            if has_linker && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+                return Err(format!(
+                    "`-C link-self-contained={polarity}linker` is unstable on the `{target_tuple}` \
+                    target. The `-Z unstable-options` flag must also be passed to use it on this target",
+                ));
+            }
+            Ok(())
+        };
+        check_linker(self.enabled_components, "+")?;
+        check_linker(self.disabled_components, "-")?;
+
+        // Since only the linker component is stable, any other component used is unstable, and
+        // that's an error.
+        let unstable_enabled = self.enabled_components - LinkSelfContainedComponents::LINKER;
+        let unstable_disabled = self.disabled_components - LinkSelfContainedComponents::LINKER;
+        if !unstable_enabled.union(unstable_disabled).is_empty() {
+            return Err(String::from(
+                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`\
+                /`+linker` are stable, the `-Z unstable-options` flag must also be passed to use \
+                the unstable values",
+            ));
+        }
+
+        Ok(())
     }
 
     /// Returns whether the self-contained linker component was enabled on the CLI, using the
@@ -400,7 +428,7 @@ impl LinkSelfContained {
     }
 }
 
-/// The different values that `-Z linker-features` can take on the CLI: a list of individually
+/// The different values that `-C linker-features` can take on the CLI: a list of individually
 /// enabled or disabled features used during linking.
 ///
 /// There is no need to enable or disable them in bulk. Each feature is fine-grained, and can be
@@ -439,6 +467,44 @@ impl LinkerFeaturesCli {
             }
             _ => None,
         }
+    }
+
+    /// When *not* using `-Z unstable-options` on the CLI, ensure only stable linker features are
+    /// used, for the given `TargetTuple`. Returns `Ok` if no unstable variants are used.
+    /// The caller should ensure that e.g. `nightly_options::is_unstable_enabled()`
+    /// returns false.
+    pub(crate) fn check_unstable_variants(&self, target_tuple: &TargetTuple) -> Result<(), String> {
+        // `-C linker-features=[-+]lld` is only stable on x64 linux.
+        let check_lld = |features: LinkerFeatures, polarity: &str| {
+            let has_lld = features.is_lld_enabled();
+            if has_lld && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+                return Err(format!(
+                    "`-C linker-features={polarity}lld` is unstable on the `{target_tuple}` \
+                    target. The `-Z unstable-options` flag must also be passed to use it on this target",
+                ));
+            }
+            Ok(())
+        };
+        check_lld(self.enabled, "+")?;
+        check_lld(self.disabled, "-")?;
+
+        // Since only lld is stable, any non-lld feature used is unstable, and that's an error.
+        let unstable_enabled = self.enabled - LinkerFeatures::LLD;
+        let unstable_disabled = self.disabled - LinkerFeatures::LLD;
+        if !unstable_enabled.union(unstable_disabled).is_empty() {
+            let unstable_features: Vec<_> = unstable_enabled
+                .iter()
+                .map(|f| format!("+{}", f.as_str().unwrap()))
+                .chain(unstable_disabled.iter().map(|f| format!("-{}", f.as_str().unwrap())))
+                .collect();
+            return Err(format!(
+                "the requested `-C linker-features={}` are unstable, and also require the \
+                `-Z unstable-options` flag to be usable",
+                unstable_features.join(","),
+            ));
+        }
+
+        Ok(())
     }
 }
 
@@ -2601,26 +2667,21 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         }
     }
 
-    if !nightly_options::is_unstable_enabled(matches)
-        && cg.force_frame_pointers == FramePointer::NonLeaf
-    {
+    let unstable_options_enabled = nightly_options::is_unstable_enabled(matches);
+    if !unstable_options_enabled && cg.force_frame_pointers == FramePointer::NonLeaf {
         early_dcx.early_fatal(
             "`-Cforce-frame-pointers=non-leaf` or `always` also requires `-Zunstable-options` \
                 and a nightly compiler",
         )
     }
 
-    // For testing purposes, until we have more feedback about these options: ensure `-Z
-    // unstable-options` is required when using the unstable `-C link-self-contained` and `-C
-    // linker-flavor` options.
-    if !nightly_options::is_unstable_enabled(matches) {
-        let uses_unstable_self_contained_option =
-            cg.link_self_contained.are_unstable_variants_set();
-        if uses_unstable_self_contained_option {
-            early_dcx.early_fatal(
-                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off` are stable, \
-                the `-Z unstable-options` flag must also be passed to use the unstable values",
-            );
+    let target_triple = parse_target_triple(early_dcx, matches);
+
+    // Ensure `-Z unstable-options` is required when using the unstable `-C link-self-contained` and
+    // `-C linker-flavor` options.
+    if !unstable_options_enabled {
+        if let Err(error) = cg.link_self_contained.check_unstable_variants(&target_triple) {
+            early_dcx.early_fatal(error);
         }
 
         if let Some(flavor) = cg.linker_flavor {
@@ -2652,7 +2713,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let cg = cg;
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
-    let target_triple = parse_target_triple(early_dcx, matches);
     let opt_level = parse_opt_level(early_dcx, matches, &cg);
     // The `-g` and `-C debuginfo` flags specify the same setting, so we want to be able
     // to use them interchangeably. See the note above (regarding `-O` and `-C opt-level`)
@@ -2660,6 +2720,12 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let debuginfo = select_debuginfo(matches, &cg);
     let debuginfo_compression = unstable_opts.debuginfo_compression;
+
+    if !unstable_options_enabled {
+        if let Err(error) = cg.linker_features.check_unstable_variants(&target_triple) {
+            early_dcx.early_fatal(error);
+        }
+    }
 
     let crate_name = matches.opt_str("crate-name");
     let unstable_features = UnstableFeatures::from_environment(crate_name.as_deref());
