@@ -1229,6 +1229,7 @@ compiler = [
     "@oli-obk",
     "@petrochenkov",
     "@SparrowLii",
+    "@WaffleLapkin",
     "@wesleywiser",
 ]
 libs = [
@@ -1239,13 +1240,6 @@ libs = [
     "@tgross35",
     "@thomcc",
     "@ibraheemdev",
-]
-bootstrap = [
-    "@Mark-Simulacrum",
-    "@albertlarsan68",
-    "@kobzol",
-    "@jieyouxu",
-    "@clubby789",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
@@ -1266,6 +1260,7 @@ codegen = [
     "@dianqk",
     "@saethlin",
     "@workingjubilee",
+    "@WaffleLapkin",
 ]
 query-system = [
     "@oli-obk",

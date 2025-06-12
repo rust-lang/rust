@@ -1478,6 +1478,9 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
         participle: &'tcx str,
         name_list: DiagSymbolList,
         #[subdiagnostic]
+        // only on DeadCodes since it's never a problem for tuple struct fields
+        enum_variants_with_same_name: Vec<EnumVariantSameName<'tcx>>,
+        #[subdiagnostic]
         parent_info: Option<ParentInfo<'tcx>>,
         #[subdiagnostic]
         ignored_derived_impls: Option<IgnoredDerivedImpls>,
@@ -1496,6 +1499,15 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
         #[subdiagnostic]
         ignored_derived_impls: Option<IgnoredDerivedImpls>,
     },
+}
+
+#[derive(Subdiagnostic)]
+#[note(passes_enum_variant_same_name)]
+pub(crate) struct EnumVariantSameName<'tcx> {
+    #[primary_span]
+    pub variant_span: Span,
+    pub dead_name: Symbol,
+    pub descr: &'tcx str,
 }
 
 #[derive(Subdiagnostic)]
