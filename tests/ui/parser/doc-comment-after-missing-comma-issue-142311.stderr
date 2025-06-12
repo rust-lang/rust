@@ -1,47 +1,49 @@
-error: expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `/// Like where people drink`
+error[E0585]: found a documentation comment that doesn't document anything
   --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:10:5
    |
 LL |     Bar
    |        - expected one of `(`, `,`, `=`, `{`, or `}`
 LL |     /// Like where people drink
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected token
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     this doc comment doesn't document anything
+   |     unexpected token
    |
-help: add a space before the last `/` to write a regular comment
+help: missing `,` before the doc comment
    |
-LL |     // / Like where people drink
-   |       +
-help: missing `,`
-   |
-LL |     Bar,
+LL |     Bar, 
    |        +
 
-error: expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `///xxxxxx`
+error[E0585]: found a documentation comment that doesn't document anything
   --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:12:8
    |
 LL |     Baa///xxxxxx
-   |        ^^^^^^^^^ expected one of `(`, `,`, `=`, `{`, or `}`
+   |        ^^^^^^^^^
+   |        |
+   |        this doc comment doesn't document anything
+   |        expected one of `(`, `,`, `=`, `{`, or `}`
    |
-help: add a space before the last `/` to write a regular comment
+help: missing `,` before the doc comment
    |
-LL |     Baa// /xxxxxx
-   |          +
-help: missing `,`
-   |
-LL |     Baa,///xxxxxx
+LL |     Baa, ///xxxxxx
    |        +
 
-error: expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `///xxxxxx`
+error[E0585]: found a documentation comment that doesn't document anything
   --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:14:8
    |
 LL |     Baz///xxxxxx
-   |        ^^^^^^^^^ expected one of `(`, `,`, `=`, `{`, or `}`
+   |        ^^^^^^^^^
+   |        |
+   |        this doc comment doesn't document anything
+   |        expected one of `(`, `,`, `=`, `{`, or `}`
    |
    = help: doc comments must come before what they document, if a comment was intended use `//`
    = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
-help: add a space before the last `/` to write a regular comment
+help: missing `,` before the doc comment
    |
-LL |     Baz// /xxxxxx
-   |          +
+LL |     Baz, ///xxxxxx
+   |        +
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0585`.

@@ -8,11 +8,11 @@ enum Foo {
     /// Like the noise a sheep makes
     Bar
     /// Like where people drink
-    //~^ ERROR expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `/// Like where people drink`
+    //~^ ERROR found a documentation comment that doesn't document anything [E0585]
     Baa///xxxxxx
-    //~^ ERROR expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `///xxxxxx`
+    //~^ ERROR found a documentation comment that doesn't document anything [E0585]
     Baz///xxxxxx
-    //~^ ERROR expected one of `(`, `,`, `=`, `{`, or `}`, found doc comment `///xxxxxx`
+    //~^ ERROR found a documentation comment that doesn't document anything [E0585]
 }
 
 fn main() {}
