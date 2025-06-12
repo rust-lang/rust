@@ -1,0 +1,58 @@
+error[E0599]: the function or associated item `do_something` exists for tuple `(i32, &u32, String)`, but its trait bounds were not satisfied
+  --> $DIR/missing-bound-on-tuple.rs:28:43
+   |
+LL |     let _failure = <(i32, &u32, String)>::do_something();
+   |                                           ^^^^^^^^^^^^ function or associated item cannot be called on `(i32, &u32, String)` due to unsatisfied trait bounds
+   |
+note: the following trait bounds were not satisfied:
+      `&(i32, &u32, String): Default`
+      `&mut (i32, &u32, String): Default`
+      `(i32, &u32, String): Default`
+  --> $DIR/missing-bound-on-tuple.rs:5:9
+   |
+LL | impl<T: Default> WorksOnDefault for T {}
+   |         ^^^^^^^  --------------     -
+   |         |
+   |         unsatisfied trait bound introduced here
+note: `Default` is implemented for `(i32, u32, String)` but not for `(i32, &u32, String)`
+  --> $SRC_DIR/core/src/tuple.rs:LL:COL
+   = note: this error originates in the macro `tuple_impls` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: the function or associated item `do_be_do` exists for tuple `(i32, &u32, String)`, but its trait bounds were not satisfied
+  --> $DIR/missing-bound-on-tuple.rs:32:43
+   |
+LL |     let _failure = <(i32, &u32, String)>::do_be_do();
+   |                                           ^^^^^^^^ function or associated item cannot be called on `(i32, &u32, String)` due to unsatisfied trait bounds
+   |
+note: the following trait bounds were not satisfied:
+      `&(i32, &u32, String): Foo`
+      `&mut (i32, &u32, String): Foo`
+      `(i32, &u32, String): Foo`
+  --> $DIR/missing-bound-on-tuple.rs:15:9
+   |
+LL | impl<T: Foo> WorksOnFoo for T {}
+   |         ^^^  ----------     -
+   |         |
+   |         unsatisfied trait bound introduced here
+note: `Foo` is implemented for `(i32, u32, String)` but not for `(i32, &u32, String)`
+  --> $DIR/missing-bound-on-tuple.rs:19:1
+   |
+LL | impl<A: Foo, B: Foo, C: Foo> Foo for (A, B, C) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: the function or associated item `default` exists for tuple `(i32, &u32, String)`, but its trait bounds were not satisfied
+  --> $DIR/missing-bound-on-tuple.rs:35:43
+   |
+LL |     let _failure = <(i32, &u32, String)>::default();
+   |                                           ^^^^^^^ function or associated item cannot be called on `(i32, &u32, String)` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `&u32: Default`
+           which is required by `(i32, &u32, String): Default`
+note: `Default` is implemented for `(i32, u32, String)` but not for `(i32, &u32, String)`
+  --> $SRC_DIR/core/src/tuple.rs:LL:COL
+   = note: this error originates in the macro `tuple_impls` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.
