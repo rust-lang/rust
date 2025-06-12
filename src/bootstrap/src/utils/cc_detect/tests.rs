@@ -77,11 +77,11 @@ fn test_new_cc_build() {
 
 #[test]
 fn test_default_compiler_wasi() {
-    let build = Build::new(Config { ..Config::parse(Flags::parse(&["build".to_owned()])) });
+    let mut build = Build::new(Config { ..Config::parse(Flags::parse(&["build".to_owned()])) });
     let target = TargetSelection::from_user("wasm32-wasi");
     let wasi_sdk = PathBuf::from("/wasi-sdk");
-    // SAFETY: bootstrap tests run on a single thread
-    unsafe { env::set_var("WASI_SDK_PATH", &wasi_sdk) };
+    build.wasi_sdk_path = Some(wasi_sdk.clone());
+
     let mut cfg = cc::Build::new();
     if let Some(result) = default_compiler(&mut cfg, Language::C, target.clone(), &build) {
         let expected = {
@@ -93,10 +93,6 @@ fn test_default_compiler_wasi() {
         panic!(
             "default_compiler should return a compiler path for wasi target when WASI_SDK_PATH is set"
         );
-    }
-    // SAFETY: bootstrap tests run on a single thread
-    unsafe {
-        env::remove_var("WASI_SDK_PATH");
     }
 }
 

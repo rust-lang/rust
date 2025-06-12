@@ -194,6 +194,8 @@ pub struct Build {
     cxx: HashMap<TargetSelection, cc::Tool>,
     ar: HashMap<TargetSelection, PathBuf>,
     ranlib: HashMap<TargetSelection, PathBuf>,
+    wasi_sdk_path: Option<PathBuf>,
+
     // Miscellaneous
     // allow bidirectional lookups: both name -> path and path -> name
     crates: HashMap<String, Crate>,
@@ -468,6 +470,7 @@ impl Build {
             cxx: HashMap::new(),
             ar: HashMap::new(),
             ranlib: HashMap::new(),
+            wasi_sdk_path: env::var_os("WASI_SDK_PATH").map(PathBuf::from),
             crates: HashMap::new(),
             crate_paths: HashMap::new(),
             is_sudo,

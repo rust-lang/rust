@@ -221,7 +221,10 @@ fn default_compiler(
         }
 
         t if t.contains("-wasi") => {
-            let root = PathBuf::from(std::env::var_os("WASI_SDK_PATH")?);
+            let root = build
+                .wasi_sdk_path
+                .as_ref()
+                .expect("WASI_SDK_PATH mut be configured for a -wasi target");
             let compiler = match compiler {
                 Language::C => format!("{t}-clang"),
                 Language::CPlusPlus => format!("{t}-clang++"),
