@@ -20,7 +20,6 @@ pub struct FileAttr {
     size: u64,
 }
 
-#[derive(Debug)]
 pub struct Dir(!);
 
 pub struct ReadDir(!);
