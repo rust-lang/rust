@@ -539,28 +539,22 @@ fn insert_niche_check<'tcx>(
         user_ty: None,
         const_: Const::Val(ConstValue::from_u128(valid_range.start), tcx.types.u128),
     }));
-    let end_const = Operand::Constant(Box::new(ConstOperand {
+    let end_start_diff_const = Operand::Constant(Box::new(ConstOperand {
         span: source_info.span,
         user_ty: None,
-        const_: Const::Val(ConstValue::from_u128(valid_range.end), tcx.types.u128),
+        const_: Const::Val(
+            ConstValue::from_u128(u128::wrapping_sub(valid_range.end, valid_range.start)),
+            tcx.types.u128,
+        ),
     }));
 
-    let lower_boundary_ok: Place<'_> =
-        local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
+    let discr_diff: Place<'_> =
+        local_decls.push(LocalDecl::with_source_info(tcx.types.u128, source_info)).into();
     block_data.statements.push(Statement {
         source_info,
         kind: StatementKind::Assign(Box::new((
-            lower_boundary_ok,
-            Rvalue::BinaryOp(BinOp::Le, Box::new((start_const, Operand::Copy(discr)))),
-        ))),
-    });
-    let upper_boundary_ok: Place<'_> =
-        local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-    block_data.statements.push(Statement {
-        source_info,
-        kind: StatementKind::Assign(Box::new((
-            upper_boundary_ok,
-            Rvalue::BinaryOp(BinOp::Le, Box::new((Operand::Copy(discr), end_const))),
+            discr_diff,
+            Rvalue::BinaryOp(BinOp::Sub, Box::new((Operand::Copy(discr), start_const))),
         ))),
     });
 
@@ -572,8 +566,8 @@ fn insert_niche_check<'tcx>(
             is_ok,
             Rvalue::BinaryOp(
                 // This is a `WrappingRange`, so make sure to get the wrapping right.
-                if valid_range.start <= valid_range.end { BinOp::BitAnd } else { BinOp::BitOr },
-                Box::new((Operand::Copy(lower_boundary_ok), Operand::Copy(upper_boundary_ok))),
+                BinOp::Le,
+                Box::new((Operand::Copy(discr_diff), end_start_diff_const)),
             ),
         ))),
     });
