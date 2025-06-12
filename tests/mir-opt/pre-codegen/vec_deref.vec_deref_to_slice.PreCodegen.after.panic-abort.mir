@@ -39,7 +39,7 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
                 }
                 scope 15 (inlined std::mem::size_of::<u8>) {
                 }
-                scope 16 (inlined align_of::<u8>) {
+                scope 16 (inlined std::mem::align_of::<u8>) {
                 }
                 scope 17 (inlined slice_from_raw_parts::<u8>) {
                     debug data => _3;

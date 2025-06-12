@@ -11,8 +11,8 @@ LL |         unstable_intrinsic::size_of_val(&x);
 error[E0658]: use of unstable library feature `unstable`
   --> $DIR/const-unstable-intrinsic.rs:20:9
    |
-LL |         unstable_intrinsic::min_align_of_val(&x);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         unstable_intrinsic::align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #42 <https://github.com/rust-lang/rust/issues/42> for more information
    = help: add `#![feature(unstable)]` to the crate attributes to enable
@@ -29,11 +29,11 @@ help: add `#![feature(unstable)]` to the crate attributes to enable
 LL + #![feature(unstable)]
    |
 
-error: `min_align_of_val` is not yet stable as a const intrinsic
+error: `align_of_val` is not yet stable as a const intrinsic
   --> $DIR/const-unstable-intrinsic.rs:20:9
    |
-LL |         unstable_intrinsic::min_align_of_val(&x);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         unstable_intrinsic::align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: add `#![feature(unstable)]` to the crate attributes to enable
    |
@@ -55,8 +55,8 @@ LL | const fn const_main() {
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
   --> $DIR/const-unstable-intrinsic.rs:26:9
    |
-LL |         min_align_of_val(&x);
-   |         ^^^^^^^^^^^^^^^^^^^^
+LL |         align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^
    |
 help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
    |
