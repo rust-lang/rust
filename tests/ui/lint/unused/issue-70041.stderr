@@ -4,7 +4,7 @@ warning: unused macro definition: `regex`
 LL | macro_rules! regex {
    |              ^^^^^
    |
-   = note: `#[warn(unused_macros)]` on by default
+   = note: `#[warn(unused_macros)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused import: `regex`
   --> $DIR/issue-70041.rs:10:5
@@ -12,7 +12,7 @@ warning: unused import: `regex`
 LL | use regex;
    |     ^^^^^
    |
-   = note: `#[warn(unused_imports)]` on by default
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
 warning: 2 warnings emitted
 

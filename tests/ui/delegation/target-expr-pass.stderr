@@ -4,7 +4,7 @@ warning: trait `Trait` is never used
 LL | trait Trait {
    |       ^^^^^
    |
-   = note: `#[warn(dead_code)]` on by default
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: struct `F` is never constructed
   --> $DIR/target-expr-pass.rs:21:8

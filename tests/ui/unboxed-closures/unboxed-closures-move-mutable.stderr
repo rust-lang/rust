@@ -5,7 +5,7 @@ LL |         move || x += 1;
    |                 ^
    |
    = help: did you mean to capture by reference instead?
-   = note: `#[warn(unused_variables)]` on by default
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused variable: `x`
   --> $DIR/unboxed-closures-move-mutable.rs:20:17

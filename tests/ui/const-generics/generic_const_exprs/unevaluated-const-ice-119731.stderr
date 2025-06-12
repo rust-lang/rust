@@ -46,7 +46,7 @@ warning: type `v11` should have an upper camel case name
 LL |     pub type v11 = [[usize; v4]; v4];
    |              ^^^ help: convert the identifier to upper camel case (notice the capitalization): `V11`
    |
-   = note: `#[warn(non_camel_case_types)]` on by default
+   = note: `#[warn(non_camel_case_types)]` (part of `#[warn(nonstandard_style)]`) on by default
 
 warning: type `v17` should have an upper camel case name
   --> $DIR/unevaluated-const-ice-119731.rs:16:16

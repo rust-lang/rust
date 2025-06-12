@@ -42,6 +42,7 @@ use crate::config::{
     SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
+use crate::lint::LintId;
 use crate::parse::{ParseSess, add_feature_diagnostics};
 use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
@@ -137,7 +138,10 @@ pub struct CompilerIO {
     pub temps_dir: Option<PathBuf>,
 }
 
-pub trait LintStoreMarker: Any + DynSync + DynSend {}
+pub trait DynLintStore: Any + DynSync + DynSend {
+    /// Provides a way to access lint groups without depending on `rustc_lint`
+    fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
+}
 
 /// Represents the data associated with a compilation
 /// session for a single crate.
@@ -160,7 +164,7 @@ pub struct Session {
     pub code_stats: CodeStats,
 
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
-    pub lint_store: Option<Arc<dyn LintStoreMarker>>,
+    pub lint_store: Option<Arc<dyn DynLintStore>>,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -241,6 +245,12 @@ impl CodegenUnits {
             CodegenUnits::Default(n) => n,
         }
     }
+}
+
+pub struct LintGroup {
+    pub name: &'static str,
+    pub lints: Vec<LintId>,
+    pub is_externally_loaded: bool,
 }
 
 impl Session {
@@ -602,6 +612,13 @@ impl Session {
             ("", "")
         } else {
             (&*self.target.staticlib_prefix, &*self.target.staticlib_suffix)
+        }
+    }
+
+    pub fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_> {
+        match self.lint_store {
+            Some(ref lint_store) => lint_store.lint_groups_iter(),
+            None => Box::new(std::iter::empty()),
         }
     }
 }

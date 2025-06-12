@@ -19,7 +19,7 @@ note: `x` could also refer to the function imported here
 LL |     pub use self::c::*;
    |             ^^^^^^^^^^
    = help: consider adding an explicit import of `x` to disambiguate
-   = note: `#[warn(ambiguous_glob_imports)]` on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: 1 warning emitted
 
