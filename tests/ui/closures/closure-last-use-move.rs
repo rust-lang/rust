@@ -9,17 +9,17 @@
 
 //@ run-pass
 
-fn apply<T, F>(s: String, mut f: F) -> T 
-where 
-    F: FnMut(String) -> T 
+fn apply<T, F>(s: String, mut f: F) -> T
+where
+    F: FnMut(String) -> T
 {
-    fn g<T, F>(s: String, mut f: F) -> T 
-    where 
-        F: FnMut(String) -> T 
+    fn g<T, F>(s: String, mut f: F) -> T
+    where
+        F: FnMut(String) -> T
     {
         f(s)
     }
-    
+
     g(s, |v| {
         let r = f(v);
         r // This should be a move, not requiring copy

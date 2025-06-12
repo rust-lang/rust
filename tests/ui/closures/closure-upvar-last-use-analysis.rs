@@ -15,15 +15,15 @@ struct A {
 
 fn foo() -> Box<dyn FnMut() -> isize + 'static> {
     let k: Box<_> = Box::new(22);
-    
-    // This use of k.clone() should not be treated as a "last use" 
+
+    // This use of k.clone() should not be treated as a "last use"
     // even though the closure below doesn't actually capture k
     let _u = A { _a: k.clone() };
-    
+
     // The closure doesn't actually use k, but the analyzer needs to handle
     // the potential capture scenario correctly
     let result = || 22;
-    
+
     Box::new(result)
 }
 
