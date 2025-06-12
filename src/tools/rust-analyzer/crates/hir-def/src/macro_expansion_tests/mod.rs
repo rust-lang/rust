@@ -14,7 +14,7 @@ mod builtin_fn_macro;
 mod mbe;
 mod proc_macros;
 
-use std::{iter, ops::Range, sync};
+use std::{any::TypeId, iter, ops::Range, sync};
 
 use base_db::RootQueryDb;
 use expect_test::Expect;
@@ -379,5 +379,9 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         } else {
             panic!("got invalid macro input: {:?}", parse.errors());
         }
+    }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.type_id() == TypeId::of::<Self>()
     }
 }
