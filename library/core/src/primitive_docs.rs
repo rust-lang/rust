@@ -1847,6 +1847,8 @@ mod prim_ref {}
 /// - If `T` is guaranteed to be subject to the [null pointer
 ///   optimization](option/index.html#representation), and `E` is an enum satisfying the following
 ///   requirements, then `T` and `E` are ABI-compatible. Such an enum `E` is called "option-like".
+///   - The enum `E` uses the [`Rust` representation], and is not modified by the `align` or
+///     `packed` representation modifiers.
 ///   - The enum `E` has exactly two variants.
 ///   - One variant has exactly one field, of type `T`.
 ///   - All fields of the other variant are zero-sized with 1-byte alignment.
@@ -1920,6 +1922,7 @@ mod prim_ref {}
 /// [`Pointer`]: fmt::Pointer
 /// [`UnwindSafe`]: panic::UnwindSafe
 /// [`RefUnwindSafe`]: panic::RefUnwindSafe
+/// [`Rust` representation]: <https://doc.rust-lang.org/reference/type-layout.html#the-rust-representation>
 ///
 /// In addition, all *safe* function pointers implement [`Fn`], [`FnMut`], and [`FnOnce`], because
 /// these traits are specially known to the compiler.
