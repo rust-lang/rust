@@ -72,7 +72,7 @@ pub mod wfcheck;
 
 use std::num::NonZero;
 
-pub use check::{check_abi, check_abi_fn_ptr};
+pub use check::{check_abi, check_abi_fn_ptr, check_custom_abi};
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{Diag, ErrorGuaranteed, pluralize, struct_span_code_err};

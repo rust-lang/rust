@@ -71,6 +71,8 @@ impl AbiMap {
             (ExternAbi::RustCold, _) if self.os == OsKind::Windows => CanonAbi::Rust,
             (ExternAbi::RustCold, _) => CanonAbi::RustCold,
 
+            (ExternAbi::Custom, _) => CanonAbi::Custom,
+
             (ExternAbi::System { .. }, Arch::X86) if os == OsKind::Windows && !has_c_varargs => {
                 CanonAbi::X86(X86Call::Stdcall)
             }

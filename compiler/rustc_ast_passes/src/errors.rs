@@ -824,3 +824,67 @@ pub(crate) struct MissingAbi {
     #[suggestion(code = "extern \"<abi>\"", applicability = "has-placeholders")]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_abi_custom_safe_foreign_function)]
+pub(crate) struct AbiCustomSafeForeignFunction {
+    #[primary_span]
+    pub span: Span,
+
+    #[suggestion(
+        ast_passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "",
+        style = "verbose"
+    )]
+    pub safe_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_abi_custom_safe_function)]
+pub(crate) struct AbiCustomSafeFunction {
+    #[primary_span]
+    pub span: Span,
+
+    #[suggestion(
+        ast_passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "unsafe ",
+        style = "verbose"
+    )]
+    pub unsafe_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_abi_custom_coroutine)]
+pub(crate) struct AbiCustomCoroutine {
+    #[primary_span]
+    pub span: Span,
+
+    #[suggestion(
+        ast_passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "",
+        style = "verbose"
+    )]
+    pub coroutine_kind_span: Span,
+    pub coroutine_kind_str: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_abi_custom_invalid_signature)]
+#[note]
+pub(crate) struct AbiCustomInvalidSignature {
+    #[primary_span]
+    pub spans: Vec<Span>,
+
+    #[suggestion(
+        ast_passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "{padding}fn {symbol}()",
+        style = "verbose"
+    )]
+    pub suggestion_span: Span,
+    pub symbol: Symbol,
+    pub padding: &'static str,
+}
