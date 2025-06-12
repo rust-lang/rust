@@ -116,6 +116,9 @@ pub mod prelude {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
     #[doc(no_inline)]
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    pub use super::process::ChildExt;
+    #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::process::{CommandExt, ExitStatusExt};
     #[doc(no_inline)]
