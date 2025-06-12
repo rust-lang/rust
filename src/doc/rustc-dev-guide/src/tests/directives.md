@@ -202,6 +202,7 @@ settings:
   `//@ needs-crate-type: cdylib, proc-macro` will cause the test to be ignored
   on `wasm32-unknown-unknown` target because the target does not support the
   `proc-macro` crate type.
+- `needs-target-std` — ignores if target platform does not have std support.
 
 The following directives will check LLVM support:
 

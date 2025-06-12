@@ -108,7 +108,7 @@ use span::FileId;
 use stdx::impl_from;
 use syntax::{
     AstNode, AstPtr, SyntaxNode,
-    ast::{self, HasName},
+    ast::{self, HasAttrs, HasName},
 };
 use tt::TextRange;
 
@@ -411,8 +411,23 @@ impl SourceToDefCtx<'_, '_> {
             .map(|&(attr_id, call_id, ref ids)| (attr_id, call_id, &**ids))
     }
 
-    pub(super) fn has_derives(&mut self, adt: InFile<&ast::Adt>) -> bool {
+    // FIXME: Make this more fine grained! This should be a `adt_has_derives`!
+    pub(super) fn file_of_adt_has_derives(&mut self, adt: InFile<&ast::Adt>) -> bool {
         self.dyn_map(adt).as_ref().is_some_and(|map| !map[keys::DERIVE_MACRO_CALL].is_empty())
+    }
+
+    pub(super) fn derive_macro_calls<'slf>(
+        &'slf mut self,
+        adt: InFile<&ast::Adt>,
+    ) -> Option<impl Iterator<Item = (AttrId, MacroCallId, &'slf [Option<MacroCallId>])> + use<'slf>>
+    {
+        self.dyn_map(adt).as_ref().map(|&map| {
+            let dyn_map = &map[keys::DERIVE_MACRO_CALL];
+            adt.value
+                .attrs()
+                .filter_map(move |attr| dyn_map.get(&AstPtr::new(&attr)))
+                .map(|&(attr_id, call_id, ref ids)| (attr_id, call_id, &**ids))
+        })
     }
 
     fn to_def<Ast: AstNode + 'static, ID: Copy + 'static>(
@@ -616,14 +631,14 @@ impl SourceToDefCtx<'_, '_> {
             match &item {
                 ast::Item::Module(it) => self.module_to_def(container.with_value(it))?.into(),
                 ast::Item::Trait(it) => self.trait_to_def(container.with_value(it))?.into(),
-                ast::Item::TraitAlias(it) => {
-                    self.trait_alias_to_def(container.with_value(it))?.into()
-                }
                 ast::Item::Impl(it) => self.impl_to_def(container.with_value(it))?.into(),
                 ast::Item::Enum(it) => self.enum_to_def(container.with_value(it))?.into(),
-                ast::Item::TypeAlias(it) => {
-                    self.type_alias_to_def(container.with_value(it))?.into()
-                }
+                ast::Item::TypeAlias(it) => ChildContainer::GenericDefId(
+                    self.type_alias_to_def(container.with_value(it))?.into(),
+                ),
+                ast::Item::TraitAlias(it) => ChildContainer::GenericDefId(
+                    self.trait_alias_to_def(container.with_value(it))?.into(),
+                ),
                 ast::Item::Struct(it) => {
                     let def = self.struct_to_def(container.with_value(it))?;
                     let is_in_body = it.field_list().is_some_and(|it| {
@@ -723,11 +738,9 @@ pub(crate) enum ChildContainer {
     DefWithBodyId(DefWithBodyId),
     ModuleId(ModuleId),
     TraitId(TraitId),
-    TraitAliasId(TraitAliasId),
     ImplId(ImplId),
     EnumId(EnumId),
     VariantId(VariantId),
-    TypeAliasId(TypeAliasId),
     /// XXX: this might be the same def as, for example an `EnumId`. However,
     /// here the children are generic parameters, and not, eg enum variants.
     GenericDefId(GenericDefId),
@@ -736,11 +749,9 @@ impl_from! {
     DefWithBodyId,
     ModuleId,
     TraitId,
-    TraitAliasId,
     ImplId,
     EnumId,
     VariantId,
-    TypeAliasId,
     GenericDefId
     for ChildContainer
 }
@@ -752,11 +763,9 @@ impl ChildContainer {
             ChildContainer::DefWithBodyId(it) => it.child_by_source(db, file_id),
             ChildContainer::ModuleId(it) => it.child_by_source(db, file_id),
             ChildContainer::TraitId(it) => it.child_by_source(db, file_id),
-            ChildContainer::TraitAliasId(_) => DynMap::default(),
             ChildContainer::ImplId(it) => it.child_by_source(db, file_id),
             ChildContainer::EnumId(it) => it.child_by_source(db, file_id),
             ChildContainer::VariantId(it) => it.child_by_source(db, file_id),
-            ChildContainer::TypeAliasId(_) => DynMap::default(),
             ChildContainer::GenericDefId(it) => it.child_by_source(db, file_id),
         }
     }

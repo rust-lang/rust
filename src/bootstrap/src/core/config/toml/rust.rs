@@ -321,11 +321,11 @@ pub fn check_incompatible_options_for_ci_rustc(
         rpath,
         channel,
         description,
-        incremental,
         default_linker,
         std_features,
 
         // Rest of the options can simply be ignored.
+        incremental: _,
         debug: _,
         codegen_units: _,
         codegen_units_std: _,
@@ -389,7 +389,6 @@ pub fn check_incompatible_options_for_ci_rustc(
 
     warn!(current_rust_config.channel, channel, "rust");
     warn!(current_rust_config.description, description, "rust");
-    warn!(current_rust_config.incremental, incremental, "rust");
 
     Ok(())
 }

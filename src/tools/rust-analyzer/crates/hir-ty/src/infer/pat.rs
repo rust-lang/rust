@@ -143,7 +143,7 @@ impl InferenceContext<'_> {
                                 {
                                     self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                         field: inner.into(),
-                                        private: true,
+                                        private: Some(local_id),
                                         variant: def,
                                     });
                                 }
@@ -157,7 +157,7 @@ impl InferenceContext<'_> {
                             None => {
                                 self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                     field: inner.into(),
-                                    private: false,
+                                    private: None,
                                     variant: def,
                                 });
                                 self.err_ty()

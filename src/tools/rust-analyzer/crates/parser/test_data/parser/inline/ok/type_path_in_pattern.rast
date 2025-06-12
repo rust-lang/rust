@@ -19,10 +19,11 @@ SOURCE_FILE
             PATH
               PATH
                 PATH_SEGMENT
-                  L_ANGLE "<"
-                  INFER_TYPE
-                    UNDERSCORE "_"
-                  R_ANGLE ">"
+                  TYPE_ANCHOR
+                    L_ANGLE "<"
+                    INFER_TYPE
+                      UNDERSCORE "_"
+                    R_ANGLE ">"
               COLON2 "::"
               PATH_SEGMENT
                 NAME_REF

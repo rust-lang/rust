@@ -21,10 +21,13 @@ use stable_mir::abi::{
     ArgAbi, CallConvention, FieldsShape, IntegerLength, PassMode, Primitive, Scalar, ValueAbi,
     VariantsShape,
 };
+use stable_mir::mir::MirVisitor;
 use stable_mir::mir::mono::Instance;
 use stable_mir::target::MachineInfo;
+use stable_mir::ty::{AdtDef, RigidTy, Ty, TyKind};
 use stable_mir::{CrateDef, CrateItem, CrateItems, ItemKind};
 use std::assert_matches::assert_matches;
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -66,6 +69,17 @@ fn test_stable_mir() -> ControlFlow<()> {
     let ptr_variadic_fn_abi = args[1].ty.kind().fn_sig().unwrap().fn_ptr_abi().unwrap();
     assert!(ptr_variadic_fn_abi.c_variadic);
     assert_eq!(ptr_variadic_fn_abi.args.len(), 1);
+
+    let entry = stable_mir::entry_fn().unwrap();
+    let main_fn = Instance::try_from(entry).unwrap();
+    let mut visitor = AdtDefVisitor::default();
+    visitor.visit_body(&main_fn.body().unwrap());
+    let AdtDefVisitor { adt_defs } = visitor;
+    assert_eq!(adt_defs.len(), 1);
+
+    // Test ADT representation options
+    let repr_c_struct = adt_defs.iter().find(|def| def.trimmed_name() == "ReprCStruct").unwrap();
+    assert!(repr_c_struct.repr().flags.is_c);
 
     ControlFlow::Continue(())
 }
@@ -138,6 +152,20 @@ fn get_item<'a>(
     items.iter().find(|crate_item| (item.0 == crate_item.kind()) && crate_item.name() == item.1)
 }
 
+#[derive(Default)]
+struct AdtDefVisitor {
+    adt_defs: HashSet<AdtDef>,
+}
+
+impl MirVisitor for AdtDefVisitor {
+    fn visit_ty(&mut self, ty: &Ty, _location: stable_mir::mir::visit::Location) {
+        if let TyKind::RigidTy(RigidTy::Adt(adt, _)) = ty.kind() {
+            self.adt_defs.insert(adt);
+        }
+        self.super_ty(ty)
+    }
+}
+
 /// This test will generate and analyze a dummy crate using the stable mir.
 /// For that, it will first write the dummy crate into a file.
 /// Then it will create a `StableMir` using custom arguments and then
@@ -147,7 +175,7 @@ fn main() {
     generate_input(&path).unwrap();
     let args = &[
         "rustc".to_string(),
-        "--crate-type=lib".to_string(),
+        "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
         path.to_string(),
@@ -184,6 +212,13 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         pub fn fn_ptr_holder(complex_fn: ComplexFn, variadic_fn: VariadicFn) {{
             // We only care about the signature.
             todo!()
+        }}
+
+        fn main() {{
+            #[repr(C)]
+            struct ReprCStruct;
+
+            let _s = ReprCStruct;
         }}
         "#
     )?;

@@ -954,7 +954,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 tcx.ensure_ok().exportable_items(LOCAL_CRATE);
                 tcx.ensure_ok().stable_order_of_exportable_impls(LOCAL_CRATE);
                 tcx.par_hir_for_each_module(|module| {
-                    tcx.ensure_ok().check_mod_loops(module);
                     tcx.ensure_ok().check_mod_attrs(module);
                     tcx.ensure_ok().check_mod_unstable_api_usage(module);
                 });

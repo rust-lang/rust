@@ -1308,37 +1308,27 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::Transmute => {
-                        if let MirPhase::Runtime(..) = self.body.phase {
-                            // Unlike `mem::transmute`, a MIR `Transmute` is well-formed
-                            // for any two `Sized` types, just potentially UB to run.
+                        // Unlike `mem::transmute`, a MIR `Transmute` is well-formed
+                        // for any two `Sized` types, just potentially UB to run.
 
-                            if !self
-                                .tcx
-                                .normalize_erasing_regions(self.typing_env, op_ty)
-                                .is_sized(self.tcx, self.typing_env)
-                            {
-                                self.fail(
-                                    location,
-                                    format!("Cannot transmute from non-`Sized` type {op_ty}"),
-                                );
-                            }
-                            if !self
-                                .tcx
-                                .normalize_erasing_regions(self.typing_env, *target_type)
-                                .is_sized(self.tcx, self.typing_env)
-                            {
-                                self.fail(
-                                    location,
-                                    format!("Cannot transmute to non-`Sized` type {target_type:?}"),
-                                );
-                            }
-                        } else {
+                        if !self
+                            .tcx
+                            .normalize_erasing_regions(self.typing_env, op_ty)
+                            .is_sized(self.tcx, self.typing_env)
+                        {
                             self.fail(
                                 location,
-                                format!(
-                                    "Transmute is not supported in non-runtime phase {:?}.",
-                                    self.body.phase
-                                ),
+                                format!("Cannot transmute from non-`Sized` type {op_ty}"),
+                            );
+                        }
+                        if !self
+                            .tcx
+                            .normalize_erasing_regions(self.typing_env, *target_type)
+                            .is_sized(self.tcx, self.typing_env)
+                        {
+                            self.fail(
+                                location,
+                                format!("Cannot transmute to non-`Sized` type {target_type:?}"),
                             );
                         }
                     }

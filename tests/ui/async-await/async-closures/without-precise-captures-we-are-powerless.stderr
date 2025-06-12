@@ -106,11 +106,13 @@ LL | }
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/without-precise-captures-we-are-powerless.rs:38:5
    |
-LL | fn through_field_and_ref<'a>(x: &S<'a>) {
-   |                                 ------ help: add explicit lifetime `'a` to the type of `x`: `&'a S<'a>`
-...
 LL |     outlives::<'a>(call_once(c));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `x`
+   |
+LL | fn through_field_and_ref<'a>(x: &'a S<'a>) {
+   |                                  ++
 
 error[E0597]: `c` does not live long enough
   --> $DIR/without-precise-captures-we-are-powerless.rs:43:20
@@ -131,11 +133,13 @@ LL | }
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/without-precise-captures-we-are-powerless.rs:44:5
    |
-LL | fn through_field_and_ref_move<'a>(x: &S<'a>) {
-   |                                      ------ help: add explicit lifetime `'a` to the type of `x`: `&'a S<'a>`
-...
 LL |     outlives::<'a>(call_once(c));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `x`
+   |
+LL | fn through_field_and_ref_move<'a>(x: &'a S<'a>) {
+   |                                       ++
 
 error: aborting due to 10 previous errors
 

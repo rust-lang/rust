@@ -39,6 +39,16 @@ LL |     const { async {}.await }
    |           |          only allowed inside `async` functions and blocks
    |           this is not `async`
 
+error[E0572]: return statement outside of function body
+  --> $DIR/cross-const-control-flow-125846.rs:4:13
+   |
+LL | / fn foo() {
+LL | |     const { return }
+   | |           --^^^^^^-- the return is part of this body...
+LL | |
+LL | | }
+   | |_- ...not the enclosing function body
+
 error[E0268]: `break` outside of a loop or labeled block
   --> $DIR/cross-const-control-flow-125846.rs:9:19
    |
@@ -62,16 +72,6 @@ error[E0268]: `continue` outside of a loop
    |
 LL |         const { continue }
    |                 ^^^^^^^^ cannot `continue` outside of a loop
-
-error[E0572]: return statement outside of function body
-  --> $DIR/cross-const-control-flow-125846.rs:4:13
-   |
-LL | / fn foo() {
-LL | |     const { return }
-   | |           --^^^^^^-- the return is part of this body...
-LL | |
-LL | | }
-   | |_- ...not the enclosing function body
 
 error: aborting due to 9 previous errors
 

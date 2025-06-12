@@ -12,7 +12,7 @@
 //! - [`CombineAttributeParser`]: makes it easy to implement an attribute which should combine the
 //! contents of attributes, if an attribute appear multiple times in a list
 //!
-//! Attributes should be added to [`ATTRIBUTE_MAPPING`](crate::context::ATTRIBUTE_MAPPING) to be parsed.
+//! Attributes should be added to [`ATTRIBUTE_PARSERS`](crate::context::ATTRIBUTE_PARSERS) to be parsed.
 
 use std::marker::PhantomData;
 
@@ -51,6 +51,9 @@ type AcceptMapping<T> = &'static [(&'static [Symbol], AcceptFn<T>)];
 /// whether it has seen the attribute it has been looking for.
 ///
 /// The state machine is automatically reset to parse attributes on the next item.
+///
+/// For a simpler attribute parsing interface, consider using [`SingleAttributeParser`]
+/// or [`CombineAttributeParser`] instead.
 pub(crate) trait AttributeParser: Default + 'static {
     /// The symbols for the attributes that this parser is interested in.
     ///
@@ -59,6 +62,12 @@ pub(crate) trait AttributeParser: Default + 'static {
 
     /// The parser has gotten a chance to accept the attributes on an item,
     /// here it can produce an attribute.
+    ///
+    /// All finalize methods of all parsers are unconditionally called.
+    /// This means you can't unconditionally return `Some` here,
+    /// that'd be equivalent to unconditionally applying an attribute to
+    /// every single syntax item that could have attributes applied to it.
+    /// Your accept mappings should determine whether this returns something.
     fn finalize(self, cx: &FinalizeContext<'_>) -> Option<AttributeKind>;
 }
 

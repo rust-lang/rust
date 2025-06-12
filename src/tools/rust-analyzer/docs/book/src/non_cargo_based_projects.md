@@ -5,7 +5,7 @@ build system, you’ll have to describe the structure of your project for
 rust-analyzer in the `rust-project.json` format:
 
 ```typescript
-interface JsonProject {
+interface ProjectJson {
     /// Path to the sysroot directory.
     ///
     /// The sysroot is where rustc looks for the

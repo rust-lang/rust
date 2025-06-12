@@ -1,3 +1,5 @@
+//@ normalize-stderr: "you are using [0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?( \([^)]*\))?" -> "you are using $$RUSTC_VERSION"
+
 #![crate_type = "lib"]
 #![feature(no_coverage)] //~ ERROR feature has been removed [E0557]
 

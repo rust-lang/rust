@@ -2651,15 +2651,6 @@ pub const fn size_of<T>() -> usize;
 #[rustc_intrinsic]
 pub const fn min_align_of<T>() -> usize;
 
-/// The preferred alignment of a type.
-///
-/// This intrinsic does not have a stable counterpart.
-/// It's "tracking issue" is [#91971](https://github.com/rust-lang/rust/issues/91971).
-#[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_intrinsic]
-pub const unsafe fn pref_align_of<T>() -> usize;
-
 /// Returns the number of variants of the type `T` cast to a `usize`;
 /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
 ///

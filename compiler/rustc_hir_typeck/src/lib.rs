@@ -1,13 +1,11 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(never_type)]
-#![feature(try_blocks)]
 // tidy-alphabetical-end
 
 mod _match;
@@ -30,6 +28,7 @@ mod fallback;
 mod fn_ctxt;
 mod gather_locals;
 mod intrinsicck;
+mod loops;
 mod method;
 mod naked_functions;
 mod op;
@@ -150,7 +149,8 @@ fn typeck_with_inspect<'tcx>(
             tcx.fn_sig(def_id).instantiate_identity()
         };
 
-        check_abi(tcx, span, fn_sig.abi());
+        check_abi(tcx, id, span, fn_sig.abi());
+        loops::check(tcx, def_id, body);
 
         // Compute the function signature from point of view of inside the fn.
         let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
@@ -190,6 +190,8 @@ fn typeck_with_inspect<'tcx>(
         } else {
             tcx.type_of(def_id).instantiate_identity()
         };
+
+        loops::check(tcx, def_id, body);
 
         let expected_type = fcx.normalize(body.value.span, expected_type);
 

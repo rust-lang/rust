@@ -86,6 +86,10 @@ use crate::ty::{
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
+    fn next_trait_solver_globally(self) -> bool {
+        self.next_trait_solver_globally()
+    }
+
     type DefId = DefId;
     type LocalDefId = LocalDefId;
     type Span = Span;
@@ -177,6 +181,17 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
         f(&mut *self.new_solver_evaluation_cache.lock())
+    }
+
+    fn canonical_param_env_cache_get_or_insert<R>(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        f: impl FnOnce() -> ty::CanonicalParamEnvCacheEntry<Self>,
+        from_entry: impl FnOnce(&ty::CanonicalParamEnvCacheEntry<Self>) -> R,
+    ) -> R {
+        let mut cache = self.new_solver_canonical_param_env_cache.lock();
+        let entry = cache.entry(param_env).or_insert_with(f);
+        from_entry(entry)
     }
 
     fn evaluation_is_concurrent(&self) -> bool {
@@ -1444,6 +1459,8 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Caches the results of goal evaluation in the new solver.
     pub new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
+    pub new_solver_canonical_param_env_cache:
+        Lock<FxHashMap<ty::ParamEnv<'tcx>, ty::CanonicalParamEnvCacheEntry<TyCtxt<'tcx>>>>,
 
     pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
 
@@ -1692,6 +1709,7 @@ impl<'tcx> TyCtxt<'tcx> {
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
             new_solver_evaluation_cache: Default::default(),
+            new_solver_canonical_param_env_cache: Default::default(),
             canonical_param_env_cache: Default::default(),
             data_layout,
             alloc_map: interpret::AllocMap::new(),

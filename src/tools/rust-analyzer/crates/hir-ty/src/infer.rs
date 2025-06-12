@@ -35,7 +35,8 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, ConstId, DefWithBodyId, FieldId, FunctionId, GenericDefId, GenericParamId,
-    ImplId, ItemContainerId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
+    ImplId, ItemContainerId, LocalFieldId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId,
+    VariantId,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
@@ -135,6 +136,10 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
     Arc::new(ctx.resolve_all())
 }
 
+pub(crate) fn infer_cycle_result(_: &dyn HirDatabase, _: DefWithBodyId) -> Arc<InferenceResult> {
+    Arc::new(InferenceResult { has_errors: true, ..Default::default() })
+}
+
 /// Fully normalize all the types found within `ty` in context of `owner` body definition.
 ///
 /// This is appropriate to use only after type-check: it assumes
@@ -203,7 +208,7 @@ pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
 pub enum InferenceDiagnostic {
     NoSuchField {
         field: ExprOrPatId,
-        private: bool,
+        private: Option<LocalFieldId>,
         variant: VariantId,
     },
     PrivateField {
@@ -557,6 +562,9 @@ impl InferenceResult {
             ExprOrPatId::ExprId(id) => self.type_of_expr.get(id),
             ExprOrPatId::PatId(id) => self.type_of_pat.get(id),
         }
+    }
+    pub fn is_erroneous(&self) -> bool {
+        self.has_errors && self.type_of_expr.iter().count() == 0
     }
 }
 

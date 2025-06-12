@@ -25,6 +25,7 @@ use crate::{
 
 mod cfg;
 mod derive;
+mod diagnostic;
 mod lint;
 mod macro_use;
 mod repr;
@@ -40,23 +41,22 @@ pub(crate) fn complete_known_attribute_input(
     extern_crate: Option<&ast::ExternCrate>,
 ) -> Option<()> {
     let attribute = fake_attribute_under_caret;
-    let name_ref = match attribute.path() {
-        Some(p) => Some(p.as_single_name_ref()?),
-        None => None,
-    };
-    let (path, tt) = name_ref.zip(attribute.token_tree())?;
-    tt.l_paren_token()?;
+    let path = attribute.path()?;
+    let segments = path.segments().map(|s| s.name_ref()).collect::<Option<Vec<_>>>()?;
+    let segments = segments.iter().map(|n| n.text()).collect::<Vec<_>>();
+    let segments = segments.iter().map(|t| t.as_str()).collect::<Vec<_>>();
+    let tt = attribute.token_tree()?;
 
-    match path.text().as_str() {
-        "repr" => repr::complete_repr(acc, ctx, tt),
-        "feature" => lint::complete_lint(
+    match segments.as_slice() {
+        ["repr"] => repr::complete_repr(acc, ctx, tt),
+        ["feature"] => lint::complete_lint(
             acc,
             ctx,
             colon_prefix,
             &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
             FEATURES,
         ),
-        "allow" | "expect" | "deny" | "forbid" | "warn" => {
+        ["allow"] | ["expect"] | ["deny"] | ["forbid"] | ["warn"] => {
             let existing_lints = parse_tt_as_comma_sep_paths(tt, ctx.edition)?;
 
             let lints: Vec<Lint> = CLIPPY_LINT_GROUPS
@@ -70,13 +70,14 @@ pub(crate) fn complete_known_attribute_input(
 
             lint::complete_lint(acc, ctx, colon_prefix, &existing_lints, &lints);
         }
-        "cfg" => cfg::complete_cfg(acc, ctx),
-        "macro_use" => macro_use::complete_macro_use(
+        ["cfg"] => cfg::complete_cfg(acc, ctx),
+        ["macro_use"] => macro_use::complete_macro_use(
             acc,
             ctx,
             extern_crate,
             &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
         ),
+        ["diagnostic", "on_unimplemented"] => diagnostic::complete_on_unimplemented(acc, ctx, tt),
         _ => (),
     }
     Some(())
@@ -139,6 +140,8 @@ pub(crate) fn complete_attribute_path(
         }
         Qualified::TypeAnchor { .. } | Qualified::With { .. } => {}
     }
+    let qualifier_path =
+        if let Qualified::With { path, .. } = qualified { Some(path) } else { None };
 
     let attributes = annotated_item_kind.and_then(|kind| {
         if ast::Expr::can_cast(kind) {
@@ -149,18 +152,33 @@ pub(crate) fn complete_attribute_path(
     });
 
     let add_completion = |attr_completion: &AttrCompletion| {
-        let mut item = CompletionItem::new(
-            SymbolKind::Attribute,
-            ctx.source_range(),
-            attr_completion.label,
-            ctx.edition,
-        );
+        // if we don't already have the qualifiers of the completion, then
+        // add the missing parts to the label and snippet
+        let mut label = attr_completion.label.to_owned();
+        let mut snippet = attr_completion.snippet.map(|s| s.to_owned());
+        let segments = qualifier_path.iter().flat_map(|q| q.segments()).collect::<Vec<_>>();
+        let qualifiers = attr_completion.qualifiers;
+        let matching_qualifiers = segments
+            .iter()
+            .zip(qualifiers)
+            .take_while(|(s, q)| s.name_ref().is_some_and(|t| t.text() == **q))
+            .count();
+        if matching_qualifiers != qualifiers.len() {
+            let prefix = qualifiers[matching_qualifiers..].join("::");
+            label = format!("{prefix}::{label}");
+            if let Some(s) = snippet.as_mut() {
+                *s = format!("{prefix}::{s}");
+            }
+        }
+
+        let mut item =
+            CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label, ctx.edition);
 
         if let Some(lookup) = attr_completion.lookup {
             item.lookup_by(lookup);
         }
 
-        if let Some((snippet, cap)) = attr_completion.snippet.zip(ctx.config.snippet_cap) {
+        if let Some((snippet, cap)) = snippet.zip(ctx.config.snippet_cap) {
             item.insert_snippet(cap, snippet);
         }
 
@@ -184,12 +202,17 @@ struct AttrCompletion {
     label: &'static str,
     lookup: Option<&'static str>,
     snippet: Option<&'static str>,
+    qualifiers: &'static [&'static str],
     prefer_inner: bool,
 }
 
 impl AttrCompletion {
     fn key(&self) -> &'static str {
         self.lookup.unwrap_or(self.label)
+    }
+
+    const fn qualifiers(self, qualifiers: &'static [&'static str]) -> AttrCompletion {
+        AttrCompletion { qualifiers, ..self }
     }
 
     const fn prefer_inner(self) -> AttrCompletion {
@@ -202,7 +225,7 @@ const fn attr(
     lookup: Option<&'static str>,
     snippet: Option<&'static str>,
 ) -> AttrCompletion {
-    AttrCompletion { label, lookup, snippet, prefer_inner: false }
+    AttrCompletion { label, lookup, snippet, qualifiers: &[], prefer_inner: false }
 }
 
 macro_rules! attrs {
@@ -264,14 +287,14 @@ static KIND_TO_ATTRIBUTES: LazyLock<FxHashMap<SyntaxKind, &[&str]>> = LazyLock::
             FN,
             attrs!(
                 item, linkable,
-                "cold", "ignore", "inline", "must_use", "panic_handler", "proc_macro",
+                "cold", "ignore", "inline", "panic_handler", "proc_macro",
                 "proc_macro_derive", "proc_macro_attribute", "should_panic", "target_feature",
                 "test", "track_caller"
             ),
         ),
         (STATIC, attrs!(item, linkable, "global_allocator", "used")),
-        (TRAIT, attrs!(item, "must_use")),
-        (IMPL, attrs!(item, "automatically_derived")),
+        (TRAIT, attrs!(item, "diagnostic::on_unimplemented")),
+        (IMPL, attrs!(item, "automatically_derived", "diagnostic::do_not_recommend")),
         (ASSOC_ITEM_LIST, attrs!(item)),
         (EXTERN_BLOCK, attrs!(item, "link")),
         (EXTERN_ITEM_LIST, attrs!(item, "link")),
@@ -311,6 +334,14 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("deny(…)", Some("deny"), Some("deny(${0:lint})")),
     attr(r#"deprecated"#, Some("deprecated"), Some(r#"deprecated"#)),
     attr("derive(…)", Some("derive"), Some(r#"derive(${0:Debug})"#)),
+    attr("do_not_recommend", Some("diagnostic::do_not_recommend"), None)
+        .qualifiers(&["diagnostic"]),
+    attr(
+        "on_unimplemented",
+        Some("diagnostic::on_unimplemented"),
+        Some(r#"on_unimplemented(${0:keys})"#),
+    )
+    .qualifiers(&["diagnostic"]),
     attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
     attr(r#"doc(alias = "…")"#, Some("docalias"), Some(r#"doc(alias = "${0:docs}")"#)),
     attr(r#"doc(hidden)"#, Some("dochidden"), Some(r#"doc(hidden)"#)),

@@ -931,11 +931,12 @@ pub fn new() {
 //                             PATH_TYPE@23..26
 //                               PATH@23..26
 //                                 PATH_SEGMENT@23..26
-//                                   L_ANGLE@23..24 "<"
-//                                   PAREN_TYPE@24..26
-//                                     L_PAREN@24..25 "("
-//                                     ERROR@25..26
-//                                       INT_NUMBER@25..26 "8"
+//                                   TYPE_ANCHOR@23..26
+//                                     L_ANGLE@23..24 "<"
+//                                     PAREN_TYPE@24..26
+//                                       L_PAREN@24..25 "("
+//                                       ERROR@25..26
+//                                         INT_NUMBER@25..26 "8"
 //                           PLUS@26..27 "+"
 //                     CONST_ARG@27..28
 //                       LITERAL@27..28

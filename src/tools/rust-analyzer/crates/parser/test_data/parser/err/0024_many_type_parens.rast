@@ -186,13 +186,14 @@ SOURCE_FILE
               TUPLE_EXPR
                 L_PAREN "("
                 CLOSURE_EXPR
-                  FOR_KW "for"
-                  GENERIC_PARAM_LIST
-                    L_ANGLE "<"
-                    LIFETIME_PARAM
-                      LIFETIME
-                        LIFETIME_IDENT "'a"
-                    R_ANGLE ">"
+                  CLOSURE_BINDER
+                    FOR_KW "for"
+                    GENERIC_PARAM_LIST
+                      L_ANGLE "<"
+                      LIFETIME_PARAM
+                        LIFETIME
+                          LIFETIME_IDENT "'a"
+                      R_ANGLE ">"
                 WHITESPACE " "
                 BIN_EXPR
                   BIN_EXPR

@@ -5,10 +5,7 @@
 // source file from disk during compilation of a downstream crate.
 // See https://github.com/rust-lang/rust/issues/86480
 
-//@ ignore-none
-// Reason: no-std is not supported
-//@ ignore-nvptx64-nvidia-cuda
-// Reason: can't find crate for 'std'
+//@ needs-target-std
 
 use run_make_support::{rfs, rust_lib_name, rustc};
 

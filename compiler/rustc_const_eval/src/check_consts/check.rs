@@ -356,10 +356,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             hir::ConstContext::ConstFn => true,
             _ => {
                 // For indirect places, we are not creating a new permanent borrow, it's just as
-                // transient as the already existing one. For reborrowing references this is handled
-                // at the top of `visit_rvalue`, but for raw pointers we handle it here.
-                // Pointers/references to `static mut` and cases where the `*` is not the first
-                // projection also end up here.
+                // transient as the already existing one.
                 // Locals with StorageDead do not live beyond the evaluation and can
                 // thus safely be borrowed without being able to be leaked to the final
                 // value of the constant.
@@ -395,7 +392,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }
 
         let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(self.body.typing_env(tcx));
-        let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+        let ocx = ObligationCtxt::new(&infcx);
 
         let body_id = self.body.source.def_id().expect_local();
         let host_polarity = match self.const_kind() {

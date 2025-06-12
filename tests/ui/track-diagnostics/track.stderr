@@ -10,7 +10,7 @@ error[E0268]: `break` outside of a loop or labeled block
    |
 LL |     break rust
    |     ^^^^^^^^^^ cannot `break` outside of a loop or labeled block
--Ztrack-diagnostics: created at compiler/rustc_passes/src/loops.rs:LL:CC
+-Ztrack-diagnostics: created at compiler/rustc_hir_typeck/src/loops.rs:LL:CC
 
 error: internal compiler error: It looks like you're trying to break rust; would you like some ICE?
   --> $DIR/track.rs:LL:CC

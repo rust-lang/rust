@@ -72,6 +72,14 @@ macro_rules! uint_module {
                 assert_eq_const_safe!(u32: X.trailing_ones(), 0);
             }
 
+            fn test_bit_width() {
+                assert_eq_const_safe!(u32: A.bit_width(), 6);
+                assert_eq_const_safe!(u32: B.bit_width(), 6);
+                assert_eq_const_safe!(u32: C.bit_width(), 7);
+                assert_eq_const_safe!(u32: _0.bit_width(), 0);
+                assert_eq_const_safe!(u32: _1.bit_width(), $T::BITS);
+            }
+
             fn test_rotate() {
                 assert_eq_const_safe!($T: A.rotate_left(6).rotate_right(2).rotate_right(4), A);
                 assert_eq_const_safe!($T: B.rotate_left(3).rotate_left(2).rotate_right(5), B);
