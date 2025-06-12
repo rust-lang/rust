@@ -2718,7 +2718,7 @@ pub const fn type_name<T: ?Sized>() -> &'static str;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn type_id<T: ?Sized + 'static>() -> u128;
+pub const fn type_id<T: ?Sized + 'static>() -> crate::any::TypeId;
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///

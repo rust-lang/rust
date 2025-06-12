@@ -707,6 +707,7 @@ impl dyn Any + Send + Sync {
 /// ```
 #[derive(Clone, Copy, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[lang = "type_id"]
 pub struct TypeId {
     /// Quick accept: if pointers are the same, the ids are the same
     data: &'static TypeIdData,
@@ -766,15 +767,7 @@ impl TypeId {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
-        let data = &const {
-            let t: u128 = intrinsics::type_id::<T>();
-            TypeIdData { full_hash: t.to_ne_bytes() }
-        };
-
-        TypeId {
-            data,
-            partial_hash: crate::ptr::without_provenance(intrinsics::type_id::<T>() as usize),
-        }
+        const { intrinsics::type_id::<T>() }
     }
 
     fn as_u128(self) -> u128 {
