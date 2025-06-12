@@ -1458,11 +1458,15 @@ pub struct AttributeMap<'tcx> {
 }
 
 impl<'tcx> AttributeMap<'tcx> {
-    pub const EMPTY: &'static AttributeMap<'static> = &AttributeMap {
-        map: SortedMap::new(),
-        opt_hash: Some(Fingerprint::ZERO),
-        define_opaque: None,
-    };
+    pub const EMPTY: &'static AttributeMap<'static> = &Self::empty();
+
+    pub const fn empty() -> AttributeMap<'static> {
+        AttributeMap {
+            map: SortedMap::new(),
+            opt_hash: Some(Fingerprint::ZERO),
+            define_opaque: None,
+        }
+    }
 
     #[inline]
     pub fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
@@ -1563,8 +1567,7 @@ impl<'tcx> MaybeOwner<'tcx> {
 ///
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
-pub struct Crate<'hir> {
-    pub owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
+pub struct Crate {
     // Only present when incr. comp. is enabled.
     pub opt_hir_hash: Option<Fingerprint>,
 }

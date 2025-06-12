@@ -396,12 +396,9 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         V: Visitor<'tcx>,
     {
-        let krate = self.hir_crate(());
-        for info in krate.owners.iter() {
-            if let MaybeOwner::Owner(info) = info {
-                for attrs in info.attrs.map.values() {
-                    walk_list!(visitor, visit_attribute, *attrs);
-                }
+        for owner in self.hir_crate_items(()).owners().chain(Some(CRATE_OWNER_ID)) {
+            for attrs in self.hir_attr_map(owner).map.values() {
+                walk_list!(visitor, visit_attribute, *attrs);
             }
         }
         V::Result::output()

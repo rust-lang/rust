@@ -166,10 +166,17 @@ rustc_queries! {
     /// query gives you access to all other items. To avoid this fate, do not
     /// call `tcx.hir_crate(())`; instead, prefer wrappers like
     /// [`TyCtxt::hir_visit_all_item_likes_in_crate`].
-    query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
+    query hir_crate(key: ()) -> &'tcx Crate {
         arena_cache
         eval_always
         desc { "getting the crate HIR" }
+    }
+
+    /// A query decoupling the `hir_crate` query from everything else
+    query hir_owner(key: LocalDefId) -> rustc_hir::MaybeOwner<'tcx> {
+        no_hash
+        desc { |tcx| "getting HIR of `{}`", tcx.def_path_str(key) }
+        feedable
     }
 
     /// All items in the crate.
@@ -201,6 +208,7 @@ rustc_queries! {
     /// Avoid calling this query directly.
     query hir_owner_parent(key: hir::OwnerId) -> hir::HirId {
         desc { |tcx| "getting HIR parent of `{}`", tcx.def_path_str(key) }
+        feedable
     }
 
     /// Gives access to the HIR nodes and bodies inside `key` if it's a HIR owner.
@@ -1781,6 +1789,7 @@ rustc_queries! {
     query in_scope_traits_map(_: hir::OwnerId)
         -> Option<&'tcx ItemLocalMap<Box<[TraitCandidate]>>> {
         desc { "getting traits in scope at a block" }
+        feedable
     }
 
     /// Returns whether the impl or associated function has the `default` keyword.

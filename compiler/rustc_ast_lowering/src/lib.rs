@@ -52,8 +52,8 @@ use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{
-    self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem,
-    LifetimeSource, LifetimeSyntax, ParamName, TraitCandidate,
+    self as hir, AngleBrackets, AttributeMap, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem,
+    LifetimeSource, LifetimeSyntax, MaybeOwner, OwnerId, ParamName, TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -427,7 +427,7 @@ fn compute_hir_hash(
     })
 }
 
-pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
+pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate {
     let sess = tcx.sess;
     // Queries that borrow `resolver_for_lowering`.
     tcx.ensure_done().output_filenames(());
@@ -464,7 +464,27 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     // Don't hash unless necessary, because it's expensive.
     let opt_hir_hash =
         if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
-    hir::Crate { owners, opt_hir_hash }
+
+    for (def_id, owner) in owners.drain_enumerated(..) {
+        let feed = tcx.super_duper_perf_hack_experiment(def_id);
+        feed.hir_owner(owner);
+        tcx.super_duper_perf_hack_experiment2(OwnerId { def_id }).hir_attr_map(
+            match owner.as_owner() {
+                Some(o) => &o.attrs,
+                None => AttributeMap::EMPTY,
+            },
+        );
+        feed.opt_hir_owner_nodes(owner.as_owner().map(|i| &i.nodes));
+        match owner {
+            MaybeOwner::Owner(_) => feed.local_def_id_to_hir_id(HirId::make_owner(def_id)),
+            MaybeOwner::NonOwner(hir_id) => feed.local_def_id_to_hir_id(hir_id),
+            MaybeOwner::Phantom => {}
+        }
+        tcx.super_duper_perf_hack_experiment2(OwnerId { def_id })
+            .in_scope_traits_map(owner.as_owner().map(|owner_info| &owner_info.trait_map));
+    }
+
+    hir::Crate { opt_hir_hash }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]

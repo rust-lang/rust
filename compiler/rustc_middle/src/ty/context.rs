@@ -37,7 +37,9 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate};
+use rustc_hir::{
+    self as hir, Attribute, HirId, MaybeOwner, Node, OwnerId, OwnerInfo, TraitCandidate,
+};
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::cache::WithDepNode;
@@ -1290,6 +1292,16 @@ impl<'tcx> TyCtxt<'tcx> {
         TyCtxtFeed { tcx: self, key: () }
     }
 
+    pub fn super_duper_perf_hack_experiment(self, key: LocalDefId) -> TyCtxtFeed<'tcx, LocalDefId> {
+        self.dep_graph.assert_eval_always();
+        TyCtxtFeed { tcx: self, key }
+    }
+
+    pub fn super_duper_perf_hack_experiment2(self, key: OwnerId) -> TyCtxtFeed<'tcx, OwnerId> {
+        self.dep_graph.assert_eval_always();
+        TyCtxtFeed { tcx: self, key }
+    }
+
     /// Only used in the resolver to register the `CRATE_DEF_ID` `DefId` and feed
     /// some queries for it. It will panic if used twice.
     pub fn create_local_crate_def_id(self, span: Span) -> TyCtxtFeed<'tcx, LocalDefId> {
@@ -1344,24 +1356,25 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 
     // Fills in all the important parts needed by HIR queries
     pub fn feed_hir(&self) {
-        self.local_def_id_to_hir_id(HirId::make_owner(self.def_id()));
-
         let node = hir::OwnerNode::Synthetic;
         let bodies = Default::default();
-        let attrs = hir::AttributeMap::EMPTY;
-
+        let attrs = hir::AttributeMap::empty();
         let (opt_hash_including_bodies, _) =
             self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, attrs.define_opaque);
         let node = node.into();
-        self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes {
-            opt_hash_including_bodies,
-            nodes: IndexVec::from_elem_n(
-                hir::ParentedNode { parent: hir::ItemLocalId::INVALID, node },
-                1,
-            ),
-            bodies,
+        self.hir_owner(MaybeOwner::Owner(self.tcx.arena.alloc(OwnerInfo {
+            nodes: hir::OwnerNodes {
+                opt_hash_including_bodies,
+                nodes: IndexVec::from_elem_n(
+                    hir::ParentedNode { parent: hir::ItemLocalId::INVALID, node },
+                    1,
+                ),
+                bodies,
+            },
+            parenting: Default::default(),
+            attrs,
+            trait_map: Default::default(),
         })));
-        self.feed_owner_id().hir_attr_map(attrs);
     }
 }
 
