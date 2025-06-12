@@ -1,5 +1,5 @@
 error[E0390]: cannot define inherent `impl` for primitive types
-  --> $DIR/kinds-of-primitive-impl.rs:1:1
+  --> $DIR/inherent-impl-primitive-types-error.rs:3:1
    |
 LL | impl u8 {
    | ^^^^^^^
@@ -7,7 +7,7 @@ LL | impl u8 {
    = help: consider using an extension trait instead
 
 error[E0390]: cannot define inherent `impl` for primitive types
-  --> $DIR/kinds-of-primitive-impl.rs:6:1
+  --> $DIR/inherent-impl-primitive-types-error.rs:8:1
    |
 LL | impl str {
    | ^^^^^^^^
@@ -15,7 +15,7 @@ LL | impl str {
    = help: consider using an extension trait instead
 
 error[E0390]: cannot define inherent `impl` for primitive types
-  --> $DIR/kinds-of-primitive-impl.rs:12:1
+  --> $DIR/inherent-impl-primitive-types-error.rs:14:1
    |
 LL | impl char {
    | ^^^^^^^^^
@@ -23,7 +23,7 @@ LL | impl char {
    = help: consider using an extension trait instead
 
 error[E0390]: cannot define inherent `impl` for primitive types
-  --> $DIR/kinds-of-primitive-impl.rs:21:1
+  --> $DIR/inherent-impl-primitive-types-error.rs:23:1
    |
 LL | impl &MyType {
    | ^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL | impl &MyType {
    = note: you could also try moving the reference to uses of `MyType` (such as `self`) within the implementation
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/kinds-of-primitive-impl.rs:9:12
+  --> $DIR/inherent-impl-primitive-types-error.rs:11:12
    |
 LL |     fn bar(self) {}
    |            ^^^^ doesn't have a size known at compile-time
