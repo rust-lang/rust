@@ -1992,6 +1992,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     if (from..to).contains(offset) {
                         let uninit_child =
                             self.move_data.find_in_move_path_or_its_descendants(child_mpi, |mpi| {
+                                // FIXME(structural_init) you can't partially init an array element, right?
                                 maybe_uninits.contains(mpi)
                             });
 
@@ -2091,36 +2092,33 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
         let path = &self.move_data.move_paths[mpi];
 
-        let ty = path.place.ty(self.body(), tcx).ty;
+        let field_count = match path.place.ty(self.body(), tcx).ty.kind() {
+            ty::Adt(adt, _) if adt.is_struct() => {
+                let variant = adt.non_enum_variant();
 
-        let ty::Adt(adt, _) = ty.kind() else {
-            return true;
+                if variant.field_list_has_applicable_non_exhaustive() {
+                    return true;
+                }
+
+                variant.fields.len()
+            }
+            ty::Tuple(tys) => tys.len(),
+
+            _ => return true,
         };
-
-        if !adt.is_struct() {
-            return true;
-        }
-
-        let variant = adt.non_enum_variant();
-
-        if variant.field_list_has_applicable_non_exhaustive() {
-            return true;
-        }
 
         // FIXME: destructors?
 
-        // A structurally initialized ADT is "uninit" but all of it's fields are init.
+        // A structurally initialized type is "uninit" but all of it's fields are init.
         // This means all of it's fields must have MovePaths
         // because fields that are never written to will not have MovePaths.
         // Without this check, we may not detect that unwritten fields are uninit.
-        for field in variant.fields.indices() {
+        for field in (0..field_count).map(FieldIdx::from_usize) {
             // FIXME WrapUnsafeBinder?
             if self.move_data.rev_lookup.project(mpi, ProjectionElem::Field(field, ())).is_none() {
                 return true;
             }
         }
-
-        debug!("sucess!!");
 
         false
     }
