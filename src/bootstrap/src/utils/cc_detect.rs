@@ -39,7 +39,7 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
         // Compress debuginfo
         .flag_if_supported("-gz")
         .target(&target.triple)
-        .host(&build.build.triple);
+        .host(&build.host_target.triple);
     match build.crt_static(target) {
         Some(a) => {
             cfg.static_crt(a);
@@ -70,7 +70,7 @@ pub fn find(build: &Build) {
         | crate::Subcommand::Suggest { .. }
         | crate::Subcommand::Format { .. }
         | crate::Subcommand::Setup { .. } => {
-            build.hosts.iter().cloned().chain(iter::once(build.build)).collect()
+            build.hosts.iter().cloned().chain(iter::once(build.host_target)).collect()
         }
 
         _ => {
@@ -81,7 +81,7 @@ pub fn find(build: &Build) {
                 .iter()
                 .chain(&build.hosts)
                 .cloned()
-                .chain(iter::once(build.build))
+                .chain(iter::once(build.host_target))
                 .collect()
         }
     };

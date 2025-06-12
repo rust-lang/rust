@@ -46,7 +46,7 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
         .join(&thread::current().name().unwrap_or("unknown").replace(":", "-"));
     t!(fs::create_dir_all(&dir));
     config.out = dir;
-    config.build = TargetSelection::from_user(TEST_TRIPLE_1);
+    config.host_target = TargetSelection::from_user(TEST_TRIPLE_1);
     config.hosts = host.iter().map(|s| TargetSelection::from_user(s)).collect();
     config.targets = target.iter().map(|s| TargetSelection::from_user(s)).collect();
     config
@@ -1102,7 +1102,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let actual = drop_win_disk_prefix_if_present(actual);
     assert_eq!(expected, actual);
 
-    let actual = prebuilt_llvm_config(&builder, builder.config.build, false)
+    let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
         .llvm_result()
         .llvm_config
         .clone();
@@ -1120,15 +1120,15 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let build = Build::new(config.clone());
     let builder = Builder::new(&build);
 
-    let actual = prebuilt_llvm_config(&builder, builder.config.build, false)
+    let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
         .llvm_result()
         .llvm_config
         .clone();
     let expected = builder
         .out
-        .join(builder.config.build)
+        .join(builder.config.host_target)
         .join("llvm/bin")
-        .join(exe("llvm-config", builder.config.build));
+        .join(exe("llvm-config", builder.config.host_target));
     assert_eq!(expected, actual);
 
     let config = configure(
@@ -1143,15 +1143,15 @@ fn test_prebuilt_llvm_config_path_resolution() {
         let build = Build::new(config.clone());
         let builder = Builder::new(&build);
 
-        let actual = prebuilt_llvm_config(&builder, builder.config.build, false)
+        let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
             .llvm_result()
             .llvm_config
             .clone();
         let expected = builder
             .out
-            .join(builder.config.build)
+            .join(builder.config.host_target)
             .join("ci-llvm/bin")
-            .join(exe("llvm-config", builder.config.build));
+            .join(exe("llvm-config", builder.config.host_target));
         assert_eq!(expected, actual);
     }
 }
@@ -1163,7 +1163,7 @@ fn test_is_builder_target() {
 
     for (target1, target2) in [(target1, target2), (target2, target1)] {
         let mut config = configure("build", &[], &[]);
-        config.build = target1;
+        config.host_target = target1;
         let build = Build::new(config);
         let builder = Builder::new(&build);
 

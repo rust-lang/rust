@@ -221,7 +221,7 @@ pub struct Config {
 
     pub reproducible_artifacts: Vec<String>,
 
-    pub build: TargetSelection,
+    pub host_target: TargetSelection,
     pub hosts: Vec<TargetSelection>,
     pub targets: Vec<TargetSelection>,
     pub local_rebuild: bool,
@@ -346,7 +346,7 @@ impl Config {
             stderr_is_tty: std::io::stderr().is_terminal(),
 
             // set by build.rs
-            build: TargetSelection::from_user(env!("BUILD_TRIPLE")),
+            host_target: TargetSelection::from_user(env!("BUILD_TRIPLE")),
 
             src: {
                 let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -727,7 +727,7 @@ impl Config {
         config.jobs = Some(threads_from_config(flags.jobs.unwrap_or(jobs.unwrap_or(0))));
 
         if let Some(file_build) = build {
-            config.build = TargetSelection::from_user(&file_build);
+            config.host_target = TargetSelection::from_user(&file_build);
         };
 
         set(&mut config.out, flags.build_dir.or_else(|| build_dir.map(PathBuf::from)));
@@ -753,10 +753,10 @@ impl Config {
             config.download_beta_toolchain();
             config
                 .out
-                .join(config.build)
+                .join(config.host_target)
                 .join("stage0")
                 .join("bin")
-                .join(exe("rustc", config.build))
+                .join(exe("rustc", config.host_target))
         };
 
         config.initial_sysroot = t!(PathBuf::from_str(
@@ -777,7 +777,7 @@ impl Config {
             cargo
         } else {
             config.download_beta_toolchain();
-            config.initial_sysroot.join("bin").join(exe("cargo", config.build))
+            config.initial_sysroot.join("bin").join(exe("cargo", config.host_target))
         };
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
@@ -792,7 +792,7 @@ impl Config {
         } else if let Some(file_host) = host {
             file_host.iter().map(|h| TargetSelection::from_user(h)).collect()
         } else {
-            vec![config.build]
+            vec![config.host_target]
         };
         config.targets = if let Some(TargetSelectionList(arg_target)) = flags.target {
             arg_target
@@ -926,17 +926,19 @@ impl Config {
         }
 
         if config.llvm_from_ci {
-            let triple = &config.build.triple;
+            let triple = &config.host_target.triple;
             let ci_llvm_bin = config.ci_llvm_root().join("bin");
             let build_target = config
                 .target_config
-                .entry(config.build)
+                .entry(config.host_target)
                 .or_insert_with(|| Target::from_triple(triple));
 
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
-            build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", config.build)));
-            build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", config.build)));
+            build_target.llvm_config =
+                Some(ci_llvm_bin.join(exe("llvm-config", config.host_target)));
+            build_target.llvm_filecheck =
+                Some(ci_llvm_bin.join(exe("FileCheck", config.host_target)));
         }
 
         config.apply_dist_config(toml.dist);
@@ -953,7 +955,7 @@ impl Config {
             );
         }
 
-        if config.lld_enabled && config.is_system_llvm(config.build) {
+        if config.lld_enabled && config.is_system_llvm(config.host_target) {
             eprintln!(
                 "Warning: LLD is enabled when using external llvm-config. LLD will not be built and copied to the sysroot."
             );
@@ -1147,13 +1149,13 @@ impl Config {
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
         assert!(self.llvm_from_ci);
-        self.out.join(self.build).join("ci-llvm")
+        self.out.join(self.host_target).join("ci-llvm")
     }
 
     /// Directory where the extracted `rustc-dev` component is stored.
     pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
         assert!(self.download_rustc());
-        self.out.join(self.build).join("ci-rustc")
+        self.out.join(self.host_target).join("ci-rustc")
     }
 
     /// Determine whether llvm should be linked dynamically.
@@ -1237,7 +1239,7 @@ impl Config {
                         // Check the config compatibility
                         // FIXME: this doesn't cover `--set` flags yet.
                         let res = check_incompatible_options_for_ci_rustc(
-                            self.build,
+                            self.host_target,
                             current_config_toml,
                             ci_config_toml,
                         );
@@ -1473,7 +1475,7 @@ impl Config {
         debug_assertions_requested: bool,
         llvm_assertions: bool,
     ) -> Option<String> {
-        if !is_download_ci_available(&self.build.triple, llvm_assertions) {
+        if !is_download_ci_available(&self.host_target.triple, llvm_assertions) {
             return None;
         }
 
@@ -1709,7 +1711,7 @@ impl Config {
 
     /// Checks if the given target is the same as the host target.
     pub fn is_host_target(&self, target: TargetSelection) -> bool {
-        self.build == target
+        self.host_target == target
     }
 
     /// Returns `true` if this is an external version of LLVM not managed by bootstrap.

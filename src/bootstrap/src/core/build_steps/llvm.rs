@@ -132,14 +132,14 @@ pub fn prebuilt_llvm_config(
     let build_llvm_config = if let Some(build_llvm_config) = builder
         .config
         .target_config
-        .get(&builder.config.build)
+        .get(&builder.config.host_target)
         .and_then(|config| config.llvm_config.clone())
     {
         build_llvm_config
     } else {
-        let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
+        let mut llvm_config_ret_dir = builder.llvm_out(builder.config.host_target);
         llvm_config_ret_dir.push("bin");
-        llvm_config_ret_dir.join(exe("llvm-config", builder.config.build))
+        llvm_config_ret_dir.join(exe("llvm-config", builder.config.host_target))
     };
 
     let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
@@ -235,8 +235,8 @@ pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) ->
         ("x86_64-unknown-netbsd", false),
     ];
 
-    if !supported_platforms.contains(&(&*config.build.triple, asserts))
-        && (asserts || !supported_platforms.contains(&(&*config.build.triple, true)))
+    if !supported_platforms.contains(&(&*config.host_target.triple, asserts))
+        && (asserts || !supported_platforms.contains(&(&*config.host_target.triple, true)))
     {
         return false;
     }
@@ -480,7 +480,7 @@ impl Step for Llvm {
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if !builder.config.is_host_target(target) {
             let LlvmResult { llvm_config, .. } =
-                builder.ensure(Llvm { target: builder.config.build });
+                builder.ensure(Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
                 let llvm_bindir =
                     command(&llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
@@ -494,7 +494,8 @@ impl Step for Llvm {
             }
             cfg.define("LLVM_CONFIG_PATH", llvm_config);
             if builder.config.llvm_clang {
-                let build_bin = builder.llvm_out(builder.config.build).join("build").join("bin");
+                let build_bin =
+                    builder.llvm_out(builder.config.host_target).join("build").join("bin");
                 let clang_tblgen = build_bin.join("clang-tblgen").with_extension(EXE_EXTENSION);
                 if !builder.config.dry_run() && !clang_tblgen.exists() {
                     panic!("unable to find {}", clang_tblgen.display());
@@ -628,7 +629,7 @@ fn configure_cmake(
     if builder.ninja() {
         cfg.generator("Ninja");
     }
-    cfg.target(&target.triple).host(&builder.config.build.triple);
+    cfg.target(&target.triple).host(&builder.config.host_target.triple);
 
     if !builder.config.is_host_target(target) {
         cfg.define("CMAKE_CROSSCOMPILING", "True");
@@ -813,7 +814,7 @@ fn configure_cmake(
         ldflags.push_all(flags);
     }
 
-    if let Some(flags) = get_var("LDFLAGS", &builder.config.build.triple, &target.triple) {
+    if let Some(flags) = get_var("LDFLAGS", &builder.config.host_target.triple, &target.triple) {
         ldflags.push_all(&flags);
     }
 
@@ -1135,7 +1136,8 @@ impl Step for Sanitizers {
             return runtimes;
         }
 
-        let LlvmResult { llvm_config, .. } = builder.ensure(Llvm { target: builder.config.build });
+        let LlvmResult { llvm_config, .. } =
+            builder.ensure(Llvm { target: builder.config.host_target });
 
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
         let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -1345,7 +1347,7 @@ impl Step for CrtBeginEnd {
         cfg.cargo_metadata(false)
             .out_dir(&out_dir)
             .target(&self.target.triple)
-            .host(&builder.config.build.triple)
+            .host(&builder.config.host_target.triple)
             .warnings(false)
             .debug(false)
             .opt_level(3)
@@ -1424,7 +1426,7 @@ impl Step for Libunwind {
                 cfg.archiver(ar);
             }
             cfg.target(&self.target.triple);
-            cfg.host(&builder.config.build.triple);
+            cfg.host(&builder.config.host_target.triple);
             cfg.warnings(false);
             cfg.debug(false);
             // get_compiler() need set opt_level first.

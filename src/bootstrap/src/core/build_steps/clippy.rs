@@ -144,7 +144,7 @@ impl Step for Std {
         builder.require_submodule("library/stdarch", None);
 
         let target = self.target;
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -204,7 +204,7 @@ impl Step for Rustc {
     /// This will lint the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
         let target = self.target;
 
         if !builder.download_rustc() {
@@ -285,7 +285,7 @@ macro_rules! lint_any {
             }
 
             fn run(self, builder: &Builder<'_>) -> Self::Output {
-                let compiler = builder.compiler(builder.top_stage, builder.config.build);
+                let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
                 let target = self.target;
 
                 if !builder.download_rustc() {

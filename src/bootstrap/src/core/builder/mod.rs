@@ -137,7 +137,7 @@ pub struct RunConfig<'a> {
 
 impl RunConfig<'_> {
     pub fn build_triple(&self) -> TargetSelection {
-        self.builder.build.build
+        self.builder.build.host_target
     }
 
     /// Return a list of crate names selected by `run.paths`.
@@ -1297,10 +1297,10 @@ impl<'a> Builder<'a> {
     ) -> Compiler {
         let mut resolved_compiler = if self.build.force_use_stage2(stage) {
             trace!(target: "COMPILER_FOR", ?stage, "force_use_stage2");
-            self.compiler(2, self.config.build)
+            self.compiler(2, self.config.host_target)
         } else if self.build.force_use_stage1(stage, target) {
             trace!(target: "COMPILER_FOR", ?stage, "force_use_stage1");
-            self.compiler(1, self.config.build)
+            self.compiler(1, self.config.host_target)
         } else {
             trace!(target: "COMPILER_FOR", ?stage, ?host, "no force, fallback to `compiler()`");
             self.compiler(stage, host)
@@ -1358,7 +1358,7 @@ impl<'a> Builder<'a> {
     /// Windows.
     pub fn libdir_relative(&self, compiler: Compiler) -> &Path {
         if compiler.is_snapshot(self) {
-            libdir(self.config.build).as_ref()
+            libdir(self.config.host_target).as_ref()
         } else {
             match self.config.libdir_relative() {
                 Some(relative_libdir) if compiler.stage >= 1 => relative_libdir,
@@ -1439,9 +1439,10 @@ impl<'a> Builder<'a> {
             return cmd;
         }
 
-        let _ = self.ensure(tool::Clippy { compiler: run_compiler, target: self.build.build });
-        let cargo_clippy =
-            self.ensure(tool::CargoClippy { compiler: run_compiler, target: self.build.build });
+        let _ =
+            self.ensure(tool::Clippy { compiler: run_compiler, target: self.build.host_target });
+        let cargo_clippy = self
+            .ensure(tool::CargoClippy { compiler: run_compiler, target: self.build.host_target });
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
 
@@ -1454,9 +1455,10 @@ impl<'a> Builder<'a> {
     pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
         assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
         // Prepare the tools
-        let miri = self.ensure(tool::Miri { compiler: run_compiler, target: self.build.build });
+        let miri =
+            self.ensure(tool::Miri { compiler: run_compiler, target: self.build.host_target });
         let cargo_miri =
-            self.ensure(tool::CargoMiri { compiler: run_compiler, target: self.build.build });
+            self.ensure(tool::CargoMiri { compiler: run_compiler, target: self.build.host_target });
         // Invoke cargo-miri, make sure it can find miri and cargo.
         let mut cmd = command(cargo_miri.tool_path);
         cmd.env("MIRI", &miri.tool_path);
