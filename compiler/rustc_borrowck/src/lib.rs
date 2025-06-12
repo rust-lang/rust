@@ -1946,6 +1946,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
         debug!("check_if_full_path_is_moved place: {:?}", place_span.0);
         let (prefix, mpi) = self.move_path_closest_to(place_span.0);
+
+        if prefix == place_span.0 && !self.forbid_structural_initialization(mpi) {
+            return;
+        }
+
         if maybe_uninits.contains(mpi) {
             self.report_use_of_moved_or_uninitialized(
                 location,
@@ -2059,9 +2064,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
         debug!("check_if_path_or_subpath_is_moved place: {:?}", place_span.0);
         if let Some(mpi) = self.move_path_for_place(place_span.0) {
-            let uninit_mpi = self
-                .move_data
-                .find_in_move_path_or_its_descendants(mpi, |mpi| maybe_uninits.contains(mpi));
+            let uninit_mpi = self.move_data.find_in_move_path_or_its_descendants(mpi, |mpi| {
+                maybe_uninits.contains(mpi) && self.forbid_structural_initialization(mpi)
+            });
 
             if let Some(uninit_mpi) = uninit_mpi {
                 self.report_use_of_moved_or_uninitialized(
@@ -2073,6 +2078,51 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 return; // don't bother finding other problems.
             }
         }
+    }
+
+    fn forbid_structural_initialization(&self, mpi: MovePathIndex) -> bool {
+        // FIXME: cache this
+
+        let tcx = self.infcx.tcx;
+
+        if !tcx.features().structural_init() {
+            return true;
+        }
+
+        let path = &self.move_data.move_paths[mpi];
+
+        let ty = path.place.ty(self.body(), tcx).ty;
+
+        let ty::Adt(adt, _) = ty.kind() else {
+            return true;
+        };
+
+        if !adt.is_struct() {
+            return true;
+        }
+
+        let variant = adt.non_enum_variant();
+
+        if variant.field_list_has_applicable_non_exhaustive() {
+            return true;
+        }
+
+        // FIXME: destructors?
+
+        // A structurally initialized ADT is "uninit" but all of it's fields are init.
+        // This means all of it's fields must have MovePaths
+        // because fields that are never written to will not have MovePaths.
+        // Without this check, we may not detect that unwritten fields are uninit.
+        for field in variant.fields.indices() {
+            // FIXME WrapUnsafeBinder?
+            if self.move_data.rev_lookup.project(mpi, ProjectionElem::Field(field, ())).is_none() {
+                return true;
+            }
+        }
+
+        debug!("sucess!!");
+
+        false
     }
 
     /// Currently MoveData does not store entries for all places in
@@ -2164,7 +2214,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
                         // Once `let s; s.x = V; read(s.x);`,
                         // is allowed, remove this match arm.
-                        ty::Adt(..) | ty::Tuple(..) => {
+                        ty::Adt(..) | ty::Tuple(..) if !tcx.features().structural_init() => {
                             check_parent_of_field(self, location, place_base, span, state);
                         }
 
