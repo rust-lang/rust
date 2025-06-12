@@ -1,11 +1,11 @@
 error[E0425]: cannot find value `num` in this scope
-  --> $DIR/ice-unwrap-probe-many-result-125876.rs:4:24
+  --> $DIR/ice-unwrap-probe-many-result-125876.rs:5:24
    |
 LL |     std::ptr::from_ref(num).cast_mut().as_deref();
    |                        ^^^ not found in this scope
 
 warning: type annotations needed
-  --> $DIR/ice-unwrap-probe-many-result-125876.rs:4:29
+  --> $DIR/ice-unwrap-probe-many-result-125876.rs:5:29
    |
 LL |     std::ptr::from_ref(num).cast_mut().as_deref();
    |                             ^^^^^^^^
@@ -15,7 +15,7 @@ LL |     std::ptr::from_ref(num).cast_mut().as_deref();
    = note: `#[warn(tyvar_behind_raw_pointer)]` on by default
 
 warning: type annotations needed
-  --> $DIR/ice-unwrap-probe-many-result-125876.rs:4:40
+  --> $DIR/ice-unwrap-probe-many-result-125876.rs:5:40
    |
 LL |     std::ptr::from_ref(num).cast_mut().as_deref();
    |                                        ^^^^^^^^
@@ -24,7 +24,7 @@ LL |     std::ptr::from_ref(num).cast_mut().as_deref();
    = note: for more information, see issue #46906 <https://github.com/rust-lang/rust/issues/46906>
 
 error[E0599]: no method named `as_deref` found for raw pointer `*mut _` in the current scope
-  --> $DIR/ice-unwrap-probe-many-result-125876.rs:4:40
+  --> $DIR/ice-unwrap-probe-many-result-125876.rs:5:40
    |
 LL |     std::ptr::from_ref(num).cast_mut().as_deref();
    |                                        ^^^^^^^^

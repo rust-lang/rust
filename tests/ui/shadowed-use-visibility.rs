@@ -5,7 +5,7 @@ mod foo {
     pub fn f() {}
 
     pub use self::f as bar;
-    use foo as bar;
+    use crate::foo as bar;
 }
 
 fn main() {

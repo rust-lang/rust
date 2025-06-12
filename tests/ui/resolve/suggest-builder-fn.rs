@@ -32,7 +32,7 @@ impl Bar {
 }
 
 mod SomeMod {
-    use Bar;
+    use crate::Bar;
 
     impl Bar {
         // Public method. Should be suggested

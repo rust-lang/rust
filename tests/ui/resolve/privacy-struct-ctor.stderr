@@ -42,8 +42,8 @@ LL |     pub struct S(u8);
 error[E0603]: tuple struct constructor `Z` is private
   --> $DIR/privacy-struct-ctor.rs:18:12
    |
-LL |         pub(in m) struct Z(pub(in m::n) u8);
-   |                            --------------- a constructor is private if any of the fields is private
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |                                   ---------------------- a constructor is private if any of the fields is private
 ...
 LL |         n::Z;
    |            ^ private tuple struct constructor
@@ -51,12 +51,12 @@ LL |         n::Z;
 note: the tuple struct constructor `Z` is defined here
   --> $DIR/privacy-struct-ctor.rs:12:9
    |
-LL |         pub(in m) struct Z(pub(in m::n) u8);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider making the field publicly accessible
    |
-LL -         pub(in m) struct Z(pub(in m::n) u8);
-LL +         pub(in m) struct Z(pub u8);
+LL -         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+LL +         pub(in crate::m) struct Z(pub u8);
    |
 
 error[E0603]: tuple struct constructor `S` is private
@@ -100,8 +100,8 @@ LL |     pub struct S(pub u8);
 error[E0603]: tuple struct constructor `Z` is private
   --> $DIR/privacy-struct-ctor.rs:35:11
    |
-LL |         pub(in m) struct Z(pub(in m::n) u8);
-   |                            --------------- a constructor is private if any of the fields is private
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |                                   ---------------------- a constructor is private if any of the fields is private
 ...
 LL |     m::n::Z;
    |           ^ private tuple struct constructor
@@ -109,12 +109,12 @@ LL |     m::n::Z;
 note: the tuple struct constructor `Z` is defined here
   --> $DIR/privacy-struct-ctor.rs:12:9
    |
-LL |         pub(in m) struct Z(pub(in m::n) u8);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider making the field publicly accessible
    |
-LL -         pub(in m) struct Z(pub(in m::n) u8);
-LL +         pub(in m) struct Z(pub u8);
+LL -         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+LL +         pub(in crate::m) struct Z(pub u8);
    |
 
 error[E0603]: tuple struct constructor `S` is private
@@ -140,16 +140,16 @@ error[E0603]: tuple struct constructor `Z` is private
 LL |     xcrate::m::n::Z;
    |                   ^ private tuple struct constructor
    |
-  ::: $DIR/auxiliary/privacy-struct-ctor.rs:5:28
+  ::: $DIR/auxiliary/privacy-struct-ctor.rs:5:35
    |
-LL |         pub(in m) struct Z(pub(in m::n) u8);
-   |                            --------------- a constructor is private if any of the fields is private
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |                                   ---------------------- a constructor is private if any of the fields is private
    |
 note: the tuple struct constructor `Z` is defined here
   --> $DIR/auxiliary/privacy-struct-ctor.rs:5:9
    |
-LL |         pub(in m) struct Z(pub(in m::n) u8);
-   |         ^^^^^^^^^^^^^^^^^^
+LL |         pub(in crate::m) struct Z(pub(in crate::m::n) u8);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 10 previous errors
 

@@ -15,9 +15,9 @@ mod method {
         fn c(&self) { }
     }
 
-    impl A for ::S {}
-    impl B for ::S {}
-    impl C for ::S {}
+    impl A for crate::S {}
+    impl B for crate::S {}
+    impl C for crate::S {}
 }
 
 mod assoc_const {
@@ -33,9 +33,9 @@ mod assoc_const {
         const C: u8 = 0;
     }
 
-    impl A for ::S {}
-    impl B for ::S {}
-    impl C for ::S {}
+    impl A for crate::S {}
+    impl B for crate::S {}
+    impl C for crate::S {}
 }
 
 mod assoc_ty {
@@ -51,9 +51,9 @@ mod assoc_ty {
         type C = u8;
     }
 
-    impl A for ::S {}
-    impl B for ::S {}
-    impl C for ::S {}
+    impl A for crate::S {}
+    impl B for crate::S {}
+    impl C for crate::S {}
 }
 
 fn check_method() {

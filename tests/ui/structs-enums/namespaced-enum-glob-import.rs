@@ -14,7 +14,7 @@ mod m2 {
 }
 
 mod m {
-    pub use m2::Foo::*;
+    pub use crate::m2::Foo::*;
 }
 
 fn _f(f: m2::Foo) {
