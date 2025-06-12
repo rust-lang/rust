@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::VecDeque;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::LangItem;
@@ -219,7 +219,7 @@ pub struct BoundVarReplacer<'a, 'tcx> {
     // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
     mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
+    mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundVar>,
     // The current depth relative to *this* folding, *not* the entire normalization. In other words,
     // the depth of binders we've passed here.
     current_index: ty::DebruijnIndex,
@@ -239,12 +239,12 @@ impl<'a, 'tcx> BoundVarReplacer<'a, 'tcx> {
         T,
         FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
         FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-        BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
+        FxIndexMap<ty::PlaceholderConst, ty::BoundVar>,
     ) {
         let mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion> =
             FxIndexMap::default();
         let mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy> = FxIndexMap::default();
-        let mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar> = BTreeMap::new();
+        let mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundVar> = FxIndexMap::default();
 
         let mut replacer = BoundVarReplacer {
             infcx,
@@ -363,7 +363,7 @@ pub struct PlaceholderReplacer<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
+    mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundVar>,
     universe_indices: &'a [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
 }
@@ -373,7 +373,7 @@ impl<'a, 'tcx> PlaceholderReplacer<'a, 'tcx> {
         infcx: &'a InferCtxt<'tcx>,
         mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-        mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
+        mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundVar>,
         universe_indices: &'a [Option<ty::UniverseIndex>],
         value: T,
     ) -> T {
