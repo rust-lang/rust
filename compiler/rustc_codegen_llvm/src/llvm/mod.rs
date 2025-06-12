@@ -441,6 +441,7 @@ pub(crate) fn add_module_flag_str(
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn add_module_linker_option(module: &Module, value: &str) {
     unsafe {
         LLVMRustAddLinkerOptions(module, value.as_c_char_ptr(), value.len());

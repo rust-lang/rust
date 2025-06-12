@@ -114,25 +114,18 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         self.instances.borrow_mut().insert(instance, lldecl);
     }
 
-    fn weak_alias(&self, aliasee: Self::Function, aliasee_name: &str, name: &str) {
-        if self.tcx.sess.target.is_like_msvc {
-            llvm::add_module_linker_option(
-                self.llmod,
-                &format!("/alternatename:{name}={aliasee_name}"),
-            );
-        } else {
-            let ty = self.get_type_of_global(aliasee);
-            let alias = llvm::add_alias(
-                self.llmod,
-                ty,
-                AddressSpace::DATA,
-                aliasee,
-                &CString::new(name).unwrap(),
-            );
+    fn weak_alias(&self, aliasee: Self::Function, _aliasee_name: &str, name: &str) {
+        let ty = self.get_type_of_global(aliasee);
+        let alias = llvm::add_alias(
+            self.llmod,
+            ty,
+            AddressSpace::DATA,
+            aliasee,
+            &CString::new(name).unwrap(),
+        );
 
-            llvm::set_linkage(alias, llvm::Linkage::WeakAnyLinkage);
-            self.add_compiler_used_global(alias);
-        }
+        llvm::set_linkage(alias, llvm::Linkage::WeakAnyLinkage);
+        self.add_compiler_used_global(alias);
     }
 }
 
