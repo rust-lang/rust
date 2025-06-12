@@ -2147,7 +2147,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ty_id,
                 &None,
                 path,
-                ParamMode::Optional,
+                ParamMode::Explicit,
                 AllowReturnTypeNotation::No,
                 // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
@@ -2219,7 +2219,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 expr.id,
                 qself,
                 path,
-                ParamMode::Optional,
+                ParamMode::Explicit,
                 AllowReturnTypeNotation::No,
                 // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
