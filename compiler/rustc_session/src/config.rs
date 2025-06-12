@@ -3068,10 +3068,10 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AutoDiff, Offload, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
+        AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, OomStrategy, OptLevel, OutFileName,
+        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OomStrategy, OptLevel, OutFileName,
         OutputType, OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents,
         ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
         SymbolManglingVersion, WasiExecModel,

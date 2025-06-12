@@ -3,6 +3,7 @@ use std::ops::Deref;
 use std::{iter, ptr};
 
 pub(crate) mod autodiff;
+pub(crate) mod gpu_offload;
 
 use libc::{c_char, c_uint, size_t};
 use rustc_abi as abi;
