@@ -1,3 +1,5 @@
+//! Test that use items with cfg(false) are properly filtered out
+
 //@ run-pass
 
 pub fn main() {

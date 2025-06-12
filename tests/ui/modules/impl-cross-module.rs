@@ -1,3 +1,5 @@
+//! Test implementing methods for types defined in other modules
+
 //@ run-pass
 
 mod foo {
