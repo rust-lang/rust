@@ -35,8 +35,8 @@ use crate::{
     db::DefDatabase,
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
-        self, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId, ItemTreeNode, Macro2,
-        MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId, UseTreeKind,
+        self, AttrOwner, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId,
+        ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId, UseTreeKind,
     },
     macro_call_as_call_id,
     nameres::{
@@ -246,7 +246,7 @@ struct DefCollector<'a> {
     /// This also stores the attributes to skip when we resolve derive helpers and non-macro
     /// non-builtin attributes in general.
     // FIXME: There has to be a better way to do this
-    skip_attrs: FxHashMap<InFile<ModItem>, AttrId>,
+    skip_attrs: FxHashMap<InFile<FileAstId<ast::Item>>, AttrId>,
 }
 
 impl DefCollector<'_> {
@@ -472,7 +472,7 @@ impl DefCollector<'_> {
                         attr.path().clone(),
                     ));
 
-                    self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), attr.id);
+                    self.skip_attrs.insert(ast_id.ast_id.with_value(mod_item.ast_id()), attr.id);
 
                     Some((idx, directive, *mod_item, *tree))
                 }
@@ -1371,7 +1371,9 @@ impl DefCollector<'_> {
                     let mut recollect_without = |collector: &mut Self| {
                         // Remove the original directive since we resolved it.
                         let mod_dir = collector.mod_dirs[&directive.module_id].clone();
-                        collector.skip_attrs.insert(InFile::new(file_id, *mod_item), attr.id);
+                        collector
+                            .skip_attrs
+                            .insert(InFile::new(file_id, mod_item.ast_id()), attr.id);
 
                         let item_tree = tree.item_tree(self.db);
                         ModCollector {
@@ -1728,25 +1730,7 @@ impl ModCollector<'_, '_> {
             let attrs = self.item_tree.attrs(db, krate, item.into());
             if let Some(cfg) = attrs.cfg() {
                 if !self.is_cfg_enabled(&cfg) {
-                    let ast_id = match item {
-                        ModItem::Use(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::ExternCrate(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::ExternBlock(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::Function(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::Struct(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::Union(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::Enum(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::Const(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::Static(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::Trait(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::TraitAlias(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::Impl(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::TypeAlias(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::Mod(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::MacroCall(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::MacroRules(it) => self.item_tree[it].ast_id.erase(),
-                        ModItem::Macro2(it) => self.item_tree[it].ast_id.erase(),
-                    };
+                    let ast_id = item.ast_id().erase();
                     self.emit_unconfigured_diagnostic(InFile::new(self.file_id(), ast_id), &cfg);
                     return;
                 }
@@ -2256,8 +2240,11 @@ impl ModCollector<'_, '_> {
         mod_item: ModItem,
         container: ItemContainerId,
     ) -> Result<(), ()> {
-        let mut ignore_up_to =
-            self.def_collector.skip_attrs.get(&InFile::new(self.file_id(), mod_item)).copied();
+        let mut ignore_up_to = self
+            .def_collector
+            .skip_attrs
+            .get(&InFile::new(self.file_id(), mod_item.ast_id()))
+            .copied();
         let iter = attrs
             .iter()
             .dedup_by(|a, b| {
@@ -2309,7 +2296,7 @@ impl ModCollector<'_, '_> {
     fn collect_macro_rules(&mut self, id: ItemTreeAstId<MacroRules>, module: ModuleId) {
         let krate = self.def_collector.def_map.krate;
         let mac = &self.item_tree[id];
-        let attrs = self.item_tree.attrs(self.def_collector.db, krate, ModItem::from(id).into());
+        let attrs = self.item_tree.attrs(self.def_collector.db, krate, AttrOwner::Item(id.erase()));
         let ast_id = InFile::new(self.file_id(), mac.ast_id.upcast());
 
         let export_attr = || attrs.by_key(sym::macro_export);
@@ -2398,7 +2385,7 @@ impl ModCollector<'_, '_> {
 
         // Case 1: builtin macros
         let mut helpers_opt = None;
-        let attrs = self.item_tree.attrs(self.def_collector.db, krate, ModItem::from(id).into());
+        let attrs = self.item_tree.attrs(self.def_collector.db, krate, AttrOwner::Item(id.erase()));
         let expander = if attrs.by_key(sym::rustc_builtin_macro).exists() {
             if let Some(expander) = find_builtin_macro(&mac.name) {
                 match expander {

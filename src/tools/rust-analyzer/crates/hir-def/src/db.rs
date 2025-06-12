@@ -24,7 +24,7 @@ use crate::{
     },
     hir::generics::GenericParams,
     import_map::ImportMap,
-    item_tree::{AttrOwner, ItemTree},
+    item_tree::ItemTree,
     lang_item::{self, LangItem},
     nameres::{
         assoc::{ImplItems, TraitItems},
@@ -376,7 +376,7 @@ fn include_macro_invoc(
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: Crate) -> bool {
     let file = crate_id.data(db).root_file_id(db);
     let item_tree = db.file_item_tree(file.into());
-    let attrs = item_tree.raw_attrs(AttrOwner::TopLevel);
+    let attrs = item_tree.raw_attrs(crate::item_tree::AttrOwner::TopLevel);
     for attr in &**attrs {
         match attr.path().as_ident() {
             Some(ident) if *ident == sym::no_std => return true,

@@ -51,10 +51,10 @@ use hir_expand::{
     name::Name,
 };
 use intern::Interned;
-use la_arena::{Arena, Idx};
+use la_arena::Idx;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
+use span::{AstIdNode, Edition, ErasedFileAstId, FileAstId, SyntaxContext};
 use stdx::never;
 use syntax::{SyntaxKind, ast, match_ast};
 use triomphe::Arc;
@@ -90,6 +90,7 @@ impl fmt::Debug for RawVisibilityId {
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
     top_level: SmallVec<[ModItem; 1]>,
+    // Consider splitting this into top level RawAttrs and the map?
     attrs: FxHashMap<AttrOwner, RawAttrs>,
 
     data: Option<Box<ItemTreeData>>,
@@ -174,7 +175,7 @@ impl ItemTree {
 
     /// Returns an iterator over all items located at the top level of the `HirFileId` this
     /// `ItemTree` was created from.
-    pub fn top_level_items(&self) -> &[ModItem] {
+    pub(crate) fn top_level_items(&self) -> &[ModItem] {
         &self.top_level
     }
 
@@ -310,7 +311,7 @@ pub struct ItemTreeDataStats {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum AttrOwner {
     /// Attributes on an item.
-    ModItem(ModItem),
+    Item(ErasedFileAstId),
     /// Inner attributes of the source file.
     TopLevel,
 }
@@ -318,7 +319,7 @@ pub enum AttrOwner {
 impl From<ModItem> for AttrOwner {
     #[inline]
     fn from(value: ModItem) -> Self {
-        AttrOwner::ModItem(value)
+        AttrOwner::Item(value.ast_id().erase())
     }
 }
 
@@ -365,25 +366,25 @@ impl TreeId {
 }
 
 macro_rules! mod_items {
-    ( $( $typ:ident in $fld:ident -> $ast:ty ),+ $(,)? ) => {
+    ($mod_item:ident -> $( $typ:ident in $fld:ident -> $ast:ty ),+ $(,)? ) => {
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-        pub enum ModItem {
+        pub(crate) enum $mod_item {
             $(
                 $typ(FileAstId<$ast>),
             )+
         }
 
-        impl ModItem {
-            pub fn ast_id(self) -> FileAstId<ast::Item> {
+        impl $mod_item {
+            pub(crate) fn ast_id(self) -> FileAstId<ast::Item> {
                 match self {
-                    $(ModItem::$typ(it) => it.upcast()),+
+                    $($mod_item::$typ(it) => it.upcast()),+
                 }
             }
         }
 
         $(
-            impl From<FileAstId<$ast>> for ModItem {
-                fn from(id: FileAstId<$ast>) -> ModItem {
+            impl From<FileAstId<$ast>> for $mod_item {
+                fn from(id: FileAstId<$ast>) -> $mod_item {
                     ModItem::$typ(id)
                 }
             }
@@ -414,6 +415,7 @@ macro_rules! mod_items {
 }
 
 mod_items! {
+ModItem ->
     Use in uses -> ast::Use,
     ExternCrate in extern_crates -> ast::ExternCrate,
     ExternBlock in extern_blocks -> ast::ExternBlock,
@@ -539,7 +541,7 @@ pub struct ExternCrate {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ExternBlock {
     pub ast_id: FileAstId<ast::ExternBlock>,
-    pub children: Box<[ModItem]>,
+    pub(crate) children: Box<[ModItem]>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -647,12 +649,12 @@ pub struct TypeAlias {
 pub struct Mod {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub kind: ModKind,
+    pub(crate) kind: ModKind,
     pub ast_id: FileAstId<ast::Module>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum ModKind {
+pub(crate) enum ModKind {
     /// `mod m { ... }`
     Inline { items: Box<[ModItem]> },
     /// `mod m;`

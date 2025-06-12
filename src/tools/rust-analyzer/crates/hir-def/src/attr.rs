@@ -526,7 +526,7 @@ impl AttrsWithOwner {
                     ModuleOrigin::File { definition, declaration_tree_id, declaration, .. } => {
                         let decl_attrs = declaration_tree_id
                             .item_tree(db)
-                            .raw_attrs(AttrOwner::ModItem(declaration.into()))
+                            .raw_attrs(AttrOwner::Item(declaration.erase()))
                             .clone();
                         let tree = db.file_item_tree(definition.into());
                         let def_attrs = tree.raw_attrs(AttrOwner::TopLevel).clone();
@@ -538,7 +538,7 @@ impl AttrsWithOwner {
                     }
                     ModuleOrigin::Inline { definition_tree_id, definition } => definition_tree_id
                         .item_tree(db)
-                        .raw_attrs(AttrOwner::ModItem(definition.into()))
+                        .raw_attrs(AttrOwner::Item(definition.erase()))
                         .clone(),
                     ModuleOrigin::BlockExpr { id, .. } => {
                         let tree = db.block_item_tree(id);
