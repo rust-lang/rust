@@ -43,8 +43,7 @@ use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
 use tracing_subscriber::fmt::FmtContext;
 use tracing_subscriber::fmt::format::{self, FormatEvent, FormatFields};
 use tracing_subscriber::layer::SubscriberExt;
-// Re-export tracing_subscriber items so rustc_driver_impl doesn't need to depend on it.
-pub use tracing_subscriber::{Layer, Registry};
+use tracing_subscriber::{Layer, Registry};
 
 /// The values of all the environment variables that matter for configuring a logger.
 /// Errors are explicitly preserved so that we can share error handling.
@@ -77,6 +76,11 @@ pub fn init_logger(cfg: LoggerConfig) -> Result<(), Error> {
     init_logger_with_additional_layer(cfg, || Registry::default())
 }
 
+/// Trait alias for the complex return type of `build_subscriber` in
+/// [init_logger_with_additional_layer]. A [Registry] with any composition of [tracing::Subscriber]s
+/// (e.g. `Registry::default().with(custom_layer)`) should be compatible with this type.
+/// Having an alias is also useful so rustc_driver_impl does not need to explicitly depend on
+/// `tracing_subscriber`.
 pub trait BuildSubscriberRet:
     tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span> + Send + Sync
 {
@@ -89,7 +93,8 @@ impl<
 }
 
 /// Initialize the logger with the given values for the filter, coloring, and other options env variables.
-/// Additionally add a custom layer to collect logging and tracing events.
+/// Additionally add a custom layer to collect logging and tracing events via `build_subscriber`,
+/// for example: `|| Registry::default().with(custom_layer)`.
 pub fn init_logger_with_additional_layer<F, T>(
     cfg: LoggerConfig,
     build_subscriber: F,
