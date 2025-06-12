@@ -6,10 +6,9 @@ use span::{Edition, ErasedFileAstId};
 
 use crate::{
     item_tree::{
-        AttrOwner, Const, DefDatabase, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl,
-        ItemTree, Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, RawAttrs,
-        RawVisibilityId, Static, Struct, Trait, TraitAlias, TypeAlias, Union, Use, UseTree,
-        UseTreeKind,
+        Const, DefDatabase, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ItemTree,
+        Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, RawAttrs, RawVisibilityId, Static,
+        Struct, Trait, TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind,
     },
     visibility::RawVisibility,
 };
@@ -18,9 +17,7 @@ pub(super) fn print_item_tree(db: &dyn DefDatabase, tree: &ItemTree, edition: Ed
     let mut p =
         Printer { db, tree, buf: String::new(), indent_level: 0, needs_indent: true, edition };
 
-    if let Some(attrs) = tree.attrs.get(&AttrOwner::TopLevel) {
-        p.print_attrs(attrs, true, "\n");
-    }
+    p.print_attrs(&tree.top_attrs, true, "\n");
     p.blank();
 
     for item in tree.top_level_items() {
@@ -102,8 +99,8 @@ impl Printer<'_> {
         }
     }
 
-    fn print_attrs_of(&mut self, of: impl Into<AttrOwner>, separated_by: &str) {
-        if let Some(attrs) = self.tree.attrs.get(&of.into()) {
+    fn print_attrs_of(&mut self, of: ModItemId, separated_by: &str) {
+        if let Some(attrs) = self.tree.attrs.get(&of.ast_id()) {
             self.print_attrs(attrs, false, separated_by);
         }
     }

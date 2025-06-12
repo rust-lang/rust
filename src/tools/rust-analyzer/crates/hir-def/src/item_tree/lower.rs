@@ -10,7 +10,7 @@ use hir_expand::{
     span_map::{SpanMap, SpanMapRef},
 };
 use la_arena::Arena;
-use span::{AstIdMap, SyntaxContext};
+use span::{AstIdMap, FileAstId, SyntaxContext};
 use syntax::{
     AstNode,
     ast::{self, HasModuleItem, HasName},
@@ -20,10 +20,10 @@ use triomphe::Arc;
 use crate::{
     db::DefDatabase,
     item_tree::{
-        AttrOwner, Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ImportAlias,
-        Interned, ItemTree, ItemTreeAstId, Macro2, MacroCall, MacroRules, Mod, ModItem, ModItemId,
-        ModKind, ModPath, RawAttrs, RawVisibility, RawVisibilityId, Static, Struct, StructKind,
-        Trait, TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind, VisibilityExplicitness,
+        Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ImportAlias, Interned,
+        ItemTree, ItemTreeAstId, Macro2, MacroCall, MacroRules, Mod, ModItem, ModItemId, ModKind,
+        ModPath, RawAttrs, RawVisibility, RawVisibilityId, Static, Struct, StructKind, Trait,
+        TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind, VisibilityExplicitness,
     },
 };
 
@@ -97,7 +97,7 @@ impl<'a> Ctx<'a> {
     }
 
     pub(super) fn lower_block(mut self, block: &ast::BlockExpr) -> ItemTree {
-        self.tree.attrs.insert(AttrOwner::TopLevel, RawAttrs::new(self.db, block, self.span_map()));
+        self.tree.top_attrs = RawAttrs::new(self.db, block, self.span_map());
         self.top_level = block
             .statements()
             .filter_map(|stmt| match stmt {
@@ -144,12 +144,12 @@ impl<'a> Ctx<'a> {
             ast::Item::ExternBlock(ast) => self.lower_extern_block(ast).into(),
         };
         let attrs = RawAttrs::new(self.db, item, self.span_map());
-        self.add_attrs(mod_item.into(), attrs);
+        self.add_attrs(mod_item.ast_id(), attrs);
 
         Some(mod_item)
     }
 
-    fn add_attrs(&mut self, item: AttrOwner, attrs: RawAttrs) {
+    fn add_attrs(&mut self, item: FileAstId<ast::Item>, attrs: RawAttrs) {
         if !attrs.is_empty() {
             match self.tree.attrs.entry(item) {
                 Entry::Occupied(mut entry) => {
@@ -365,7 +365,7 @@ impl<'a> Ctx<'a> {
                         ast::ExternItem::MacroCall(call) => self.lower_macro_call(call)?.into(),
                     };
                     let attrs = RawAttrs::new(self.db, &item, self.span_map());
-                    self.add_attrs(mod_item.into(), attrs);
+                    self.add_attrs(mod_item.ast_id(), attrs);
                     Some(mod_item)
                 })
                 .collect()

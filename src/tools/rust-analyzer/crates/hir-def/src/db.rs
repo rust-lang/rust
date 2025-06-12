@@ -376,7 +376,7 @@ fn include_macro_invoc(
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: Crate) -> bool {
     let file = crate_id.data(db).root_file_id(db);
     let item_tree = db.file_item_tree(file.into());
-    let attrs = item_tree.raw_attrs(crate::item_tree::AttrOwner::TopLevel);
+    let attrs = item_tree.top_level_raw_attrs();
     for attr in &**attrs {
         match attr.path().as_ident() {
             Some(ident) if *ident == sym::no_std => return true,

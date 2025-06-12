@@ -35,8 +35,8 @@ use crate::{
     db::DefDatabase,
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
-        self, AttrOwner, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId,
-        ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, TreeId, UseTreeKind,
+        self, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId, ItemTreeNode, Macro2,
+        MacroCall, MacroRules, Mod, ModItemId, ModKind, TreeId, UseTreeKind,
     },
     macro_call_as_call_id,
     nameres::{
@@ -1727,7 +1727,7 @@ impl ModCollector<'_, '_> {
         };
 
         let mut process_mod_item = |item: ModItemId| {
-            let attrs = self.item_tree.attrs(db, krate, item.into());
+            let attrs = self.item_tree.attrs(db, krate, item.ast_id());
             if let Some(cfg) = attrs.cfg() {
                 if !self.is_cfg_enabled(&cfg) {
                     let ast_id = item.ast_id().erase();
@@ -2298,7 +2298,7 @@ impl ModCollector<'_, '_> {
     fn collect_macro_rules(&mut self, id: ItemTreeAstId<MacroRules>, module: ModuleId) {
         let krate = self.def_collector.def_map.krate;
         let mac = &self.item_tree[id];
-        let attrs = self.item_tree.attrs(self.def_collector.db, krate, AttrOwner::Item(id.erase()));
+        let attrs = self.item_tree.attrs(self.def_collector.db, krate, id.upcast());
         let ast_id = InFile::new(self.file_id(), mac.ast_id.upcast());
 
         let export_attr = || attrs.by_key(sym::macro_export);
@@ -2387,7 +2387,7 @@ impl ModCollector<'_, '_> {
 
         // Case 1: builtin macros
         let mut helpers_opt = None;
-        let attrs = self.item_tree.attrs(self.def_collector.db, krate, AttrOwner::Item(id.erase()));
+        let attrs = self.item_tree.attrs(self.def_collector.db, krate, id.upcast());
         let expander = if attrs.by_key(sym::rustc_builtin_macro).exists() {
             if let Some(expander) = find_builtin_macro(&mac.name) {
                 match expander {

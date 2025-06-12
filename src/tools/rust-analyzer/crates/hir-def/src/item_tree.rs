@@ -53,7 +53,7 @@ use hir_expand::{
 use intern::Interned;
 use la_arena::Idx;
 use rustc_hash::FxHashMap;
-use span::{AstIdNode, Edition, ErasedFileAstId, FileAstId, SyntaxContext};
+use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
 use stdx::never;
 use syntax::{SyntaxKind, ast, match_ast};
 use triomphe::Arc;
@@ -89,9 +89,8 @@ impl fmt::Debug for RawVisibilityId {
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
     top_level: Box<[ModItemId]>,
-    // Consider splitting this into top level RawAttrs and the map?
-    attrs: FxHashMap<AttrOwner, RawAttrs>,
-
+    top_attrs: RawAttrs,
+    attrs: FxHashMap<FileAstId<ast::Item>, RawAttrs>,
     vis: ItemVisibilities,
     // FIXME: They values store the key, turn this into a FxHashSet<ModItem> instead?
     data: FxHashMap<FileAstId<ast::Item>, ModItem>,
@@ -104,12 +103,13 @@ impl ItemTree {
 
         let ctx = lower::Ctx::new(db, file_id);
         let syntax = db.parse_or_expand(file_id);
-        let mut top_attrs = None;
         let mut item_tree = match_ast! {
             match syntax {
                 ast::SourceFile(file) => {
-                    top_attrs = Some(RawAttrs::new(db, &file, ctx.span_map()));
-                    ctx.lower_module_items(&file)
+                    let top_attrs = RawAttrs::new(db, &file, ctx.span_map());
+                    let mut item_tree = ctx.lower_module_items(&file);
+                    item_tree.top_attrs = top_attrs;
+                    item_tree
                 },
                 ast::MacroItems(items) => {
                     ctx.lower_module_items(&items)
@@ -128,10 +128,10 @@ impl ItemTree {
             }
         };
 
-        if let Some(attrs) = top_attrs {
-            item_tree.attrs.insert(AttrOwner::TopLevel, attrs);
-        }
-        if item_tree.data.is_empty() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
+        if item_tree.data.is_empty()
+            && item_tree.top_level.is_empty()
+            && item_tree.attrs.is_empty()
+            && item_tree.top_attrs.is_empty()
         {
             EMPTY
                 .get_or_init(|| {
@@ -139,6 +139,7 @@ impl ItemTree {
                         top_level: Box::new([]),
                         attrs: FxHashMap::default(),
                         data: FxHashMap::default(),
+                        top_attrs: RawAttrs::EMPTY,
                         vis: ItemVisibilities { arena: Box::new([]) },
                     })
                 })
@@ -158,7 +159,10 @@ impl ItemTree {
 
         let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
         let mut item_tree = ctx.lower_block(&block);
-        if item_tree.data.is_empty() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
+        if item_tree.data.is_empty()
+            && item_tree.top_level.is_empty()
+            && item_tree.attrs.is_empty()
+            && item_tree.top_attrs.is_empty()
         {
             EMPTY
                 .get_or_init(|| {
@@ -166,6 +170,7 @@ impl ItemTree {
                         top_level: Box::new([]),
                         attrs: FxHashMap::default(),
                         data: FxHashMap::default(),
+                        top_attrs: RawAttrs::EMPTY,
                         vis: ItemVisibilities { arena: Box::new([]) },
                     })
                 })
@@ -183,19 +188,25 @@ impl ItemTree {
     }
 
     /// Returns the inner attributes of the source file.
-    pub fn top_level_attrs(&self, db: &dyn DefDatabase, krate: Crate) -> Attrs {
-        Attrs::expand_cfg_attr(
-            db,
-            krate,
-            self.attrs.get(&AttrOwner::TopLevel).unwrap_or(&RawAttrs::EMPTY).clone(),
-        )
+    pub fn top_level_raw_attrs(&self) -> &RawAttrs {
+        &self.top_attrs
     }
 
-    pub(crate) fn raw_attrs(&self, of: AttrOwner) -> &RawAttrs {
+    /// Returns the inner attributes of the source file.
+    pub fn top_level_attrs(&self, db: &dyn DefDatabase, krate: Crate) -> Attrs {
+        Attrs::expand_cfg_attr(db, krate, self.top_attrs.clone())
+    }
+
+    pub(crate) fn raw_attrs(&self, of: FileAstId<ast::Item>) -> &RawAttrs {
         self.attrs.get(&of).unwrap_or(&RawAttrs::EMPTY)
     }
 
-    pub(crate) fn attrs(&self, db: &dyn DefDatabase, krate: Crate, of: AttrOwner) -> Attrs {
+    pub(crate) fn attrs(
+        &self,
+        db: &dyn DefDatabase,
+        krate: Crate,
+        of: FileAstId<ast::Item>,
+    ) -> Attrs {
         Attrs::expand_cfg_attr(db, krate, self.raw_attrs(of).clone())
     }
 
@@ -226,7 +237,7 @@ impl ItemTree {
     }
 
     fn shrink_to_fit(&mut self) {
-        let ItemTree { top_level: _, attrs, data, vis: _ } = self;
+        let ItemTree { top_level: _, attrs, data, vis: _, top_attrs: _ } = self;
         attrs.shrink_to_fit();
         data.shrink_to_fit();
     }
@@ -264,21 +275,6 @@ pub struct ItemTreeDataStats {
     pub mods: usize,
     pub macro_calls: usize,
     pub macro_rules: usize,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum AttrOwner {
-    /// Attributes on an item.
-    Item(ErasedFileAstId),
-    /// Inner attributes of the source file.
-    TopLevel,
-}
-
-impl From<ModItemId> for AttrOwner {
-    #[inline]
-    fn from(value: ModItemId) -> Self {
-        AttrOwner::Item(value.ast_id().erase())
-    }
 }
 
 /// Trait implemented by all nodes in the item tree.
