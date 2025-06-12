@@ -466,6 +466,7 @@ pub(crate) struct UnrecognizedReprHint {
 }
 
 pub(crate) enum AttributeParseErrorReason {
+    ExpectedNoArgs,
     ExpectedStringLiteral { byte_string: Option<Span> },
     ExpectedSingleArgument,
     ExpectedList,
@@ -519,6 +520,10 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
             }
             AttributeParseErrorReason::UnexpectedLiteral => {
                 diag.span_label(self.span, format!("didn't expect a literal here"));
+                diag.code(E0565);
+            }
+            AttributeParseErrorReason::ExpectedNoArgs => {
+                diag.span_label(self.span, format!("didn't expect any arguments here"));
                 diag.code(E0565);
             }
             AttributeParseErrorReason::ExpectedNameValue(None) => {
