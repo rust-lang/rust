@@ -63,13 +63,13 @@ use crate::{BlockId, Lookup, attr::Attrs, db::DefDatabase};
 pub(crate) use crate::item_tree::lower::{lower_use_tree, visibility_from_ast};
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub struct RawVisibilityId(u32);
+pub(crate) struct RawVisibilityId(u32);
 
 impl RawVisibilityId {
-    pub const PUB: Self = RawVisibilityId(u32::MAX);
-    pub const PRIV_IMPLICIT: Self = RawVisibilityId(u32::MAX - 1);
-    pub const PRIV_EXPLICIT: Self = RawVisibilityId(u32::MAX - 2);
-    pub const PUB_CRATE: Self = RawVisibilityId(u32::MAX - 3);
+    const PUB: Self = RawVisibilityId(u32::MAX);
+    const PRIV_IMPLICIT: Self = RawVisibilityId(u32::MAX - 1);
+    const PRIV_EXPLICIT: Self = RawVisibilityId(u32::MAX - 2);
+    const PUB_CRATE: Self = RawVisibilityId(u32::MAX - 3);
 }
 
 impl fmt::Debug for RawVisibilityId {
@@ -188,12 +188,12 @@ impl ItemTree {
     }
 
     /// Returns the inner attributes of the source file.
-    pub fn top_level_raw_attrs(&self) -> &RawAttrs {
+    pub(crate) fn top_level_raw_attrs(&self) -> &RawAttrs {
         &self.top_attrs
     }
 
     /// Returns the inner attributes of the source file.
-    pub fn top_level_attrs(&self, db: &dyn DefDatabase, krate: Crate) -> Attrs {
+    pub(crate) fn top_level_attrs(&self, db: &dyn DefDatabase, krate: Crate) -> Attrs {
         Attrs::expand_cfg_attr(db, krate, self.top_attrs.clone())
     }
 
@@ -278,17 +278,12 @@ pub struct ItemTreeDataStats {
 }
 
 /// Trait implemented by all nodes in the item tree.
-pub trait ItemTreeNode: Clone {
+pub(crate) trait ItemTreeNode: Clone {
     type Source: AstIdNode;
-
-    fn ast_id(&self) -> FileAstId<Self::Source>;
-
-    /// Looks up an instance of `Self` in an item tree.
-    fn lookup(tree: &ItemTree, index: FileAstId<Self::Source>) -> &Self;
 }
 
 #[allow(type_alias_bounds)]
-pub type ItemTreeAstId<T: ItemTreeNode> = FileAstId<T::Source>;
+pub(crate) type ItemTreeAstId<T: ItemTreeNode> = FileAstId<T::Source>;
 
 /// Identifies a particular [`ItemTree`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -298,11 +293,11 @@ pub struct TreeId {
 }
 
 impl TreeId {
-    pub fn new(file: HirFileId, block: Option<BlockId>) -> Self {
+    pub(crate) fn new(file: HirFileId, block: Option<BlockId>) -> Self {
         Self { file, block }
     }
 
-    pub fn item_tree(&self, db: &dyn DefDatabase) -> Arc<ItemTree> {
+    pub(crate) fn item_tree(&self, db: &dyn DefDatabase) -> Arc<ItemTree> {
         match self.block {
             Some(block) => db.block_item_tree(block),
             None => db.file_item_tree(self.file),
@@ -314,7 +309,7 @@ impl TreeId {
         self.file
     }
 
-    pub fn is_block(self) -> bool {
+    pub(crate) fn is_block(self) -> bool {
         self.block.is_some()
     }
 }
@@ -347,17 +342,6 @@ macro_rules! mod_items {
         $(
             impl ItemTreeNode for $typ {
                 type Source = $ast;
-
-                fn ast_id(&self) -> FileAstId<$ast> {
-                    self.ast_id
-                }
-
-                fn lookup(tree: &ItemTree, index: FileAstId<$ast>) -> &Self {
-                    match &tree.data[&index.upcast()] {
-                        ModItem::$typ(item) => item,
-                        _ => panic!("expected item of type `{}` at index `{:?}`", stringify!($typ), index),
-                    }
-                }
             }
 
             impl Index<FileAstId<$ast>> for ItemTree {
@@ -430,9 +414,9 @@ impl Index<RawVisibilityId> for ItemTree {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Use {
-    pub visibility: RawVisibilityId,
-    pub ast_id: FileAstId<ast::Use>,
-    pub use_tree: UseTree,
+    pub(crate) visibility: RawVisibilityId,
+    pub(crate) ast_id: FileAstId<ast::Use>,
+    pub(crate) use_tree: UseTree,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -494,7 +478,7 @@ pub enum UseTreeKind {
 pub struct ExternCrate {
     pub name: Name,
     pub alias: Option<ImportAlias>,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::ExternCrate>,
 }
 
@@ -507,14 +491,14 @@ pub struct ExternBlock {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Function {
     pub name: Name,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::Fn>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Struct {
     pub name: Name,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub shape: FieldsShape,
     pub ast_id: FileAstId<ast::Struct>,
 }
@@ -522,14 +506,14 @@ pub struct Struct {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Union {
     pub name: Name,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::Union>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Enum {
     pub name: Name,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::Enum>,
 }
 
@@ -568,28 +552,28 @@ impl VisibilityExplicitness {
 pub struct Const {
     /// `None` for `const _: () = ();`
     pub name: Option<Name>,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::Const>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Static {
     pub name: Name,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::Static>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Trait {
     pub name: Name,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::Trait>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TraitAlias {
     pub name: Name,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::TraitAlias>,
 }
 
@@ -601,14 +585,14 @@ pub struct Impl {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeAlias {
     pub name: Name,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::TypeAlias>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Mod {
     pub name: Name,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub(crate) kind: ModKind,
     pub ast_id: FileAstId<ast::Module>,
 }
@@ -641,7 +625,7 @@ pub struct MacroRules {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Macro2 {
     pub name: Name,
-    pub visibility: RawVisibilityId,
+    pub(crate) visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::MacroDef>,
 }
 

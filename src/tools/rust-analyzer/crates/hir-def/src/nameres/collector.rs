@@ -35,8 +35,8 @@ use crate::{
     db::DefDatabase,
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
-        self, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId, ItemTreeNode, Macro2,
-        MacroCall, MacroRules, Mod, ModItemId, ModKind, TreeId, UseTreeKind,
+        self, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId, Macro2, MacroCall,
+        MacroRules, Mod, ModItemId, ModKind, TreeId, UseTreeKind,
     },
     macro_call_as_call_id,
     nameres::{
@@ -1436,9 +1436,9 @@ impl DefCollector<'_> {
 
                         let item_tree = tree.item_tree(self.db);
                         let ast_adt_id: FileAstId<ast::Adt> = match *mod_item {
-                            ModItemId::Struct(strukt) => item_tree[strukt].ast_id().upcast(),
-                            ModItemId::Union(union) => item_tree[union].ast_id().upcast(),
-                            ModItemId::Enum(enum_) => item_tree[enum_].ast_id().upcast(),
+                            ModItemId::Struct(strukt) => item_tree[strukt].ast_id.upcast(),
+                            ModItemId::Union(union) => item_tree[union].ast_id.upcast(),
+                            ModItemId::Enum(enum_) => item_tree[enum_].ast_id.upcast(),
                             _ => {
                                 let diag = DefDiagnostic::invalid_derive_target(
                                     directive.module_id,
@@ -1889,7 +1889,7 @@ impl ModCollector<'_, '_> {
                         if let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name) {
                             self.def_collector.export_proc_macro(
                                 proc_macro,
-                                InFile::new(self.file_id(), self.item_tree[id].ast_id()),
+                                InFile::new(self.file_id(), self.item_tree[id].ast_id),
                                 fn_id,
                             );
                         }
@@ -2369,7 +2369,7 @@ impl ModCollector<'_, '_> {
         }
         .intern(self.def_collector.db);
         self.def_collector.def_map.macro_def_to_macro_id.insert(
-            InFile::new(self.file_id(), self.item_tree[id].ast_id()).erase(),
+            InFile::new(self.file_id(), self.item_tree[id].ast_id).erase(),
             macro_id.into(),
         );
         self.def_collector.define_macro_rules(
@@ -2437,7 +2437,7 @@ impl ModCollector<'_, '_> {
         }
         .intern(self.def_collector.db);
         self.def_collector.def_map.macro_def_to_macro_id.insert(
-            InFile::new(self.file_id(), self.item_tree[id].ast_id()).erase(),
+            InFile::new(self.file_id(), self.item_tree[id].ast_id).erase(),
             macro_id.into(),
         );
         self.def_collector.define_macro_def(
