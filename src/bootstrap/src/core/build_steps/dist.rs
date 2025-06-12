@@ -1555,7 +1555,7 @@ impl Step for Extended {
             compiler: builder.compiler(stage, target),
             backend: "cranelift".to_string(),
         });
-        add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {compiler, target});
+        add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {target});
 
         let etc = builder.src.join("src/etc/installer");
 
@@ -2323,7 +2323,6 @@ impl Step for LlvmTools {
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct LlvmBitcodeLinker {
-    pub compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -2338,24 +2337,12 @@ impl Step for LlvmBitcodeLinker {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(LlvmBitcodeLinker {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
-            target: run.target,
-        });
+        run.builder.ensure(LlvmBitcodeLinker { target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
         let target = self.target;
-
-        builder.ensure(compile::Rustc::new(compiler, target));
-
-        let llbc_linker =
-            builder.ensure(tool::LlvmBitcodeLinker { compiler, target, extra_features: vec![] });
+        let llbc_linker = builder.ensure(tool::LlvmBitcodeLinker { target });
 
         let self_contained_bin_dir = format!("lib/rustlib/{}/bin/self-contained", target.triple);
 

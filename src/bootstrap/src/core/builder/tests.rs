@@ -7,6 +7,7 @@ use llvm::prebuilt_llvm_config;
 use super::*;
 use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::build_steps::tool::LlvmBitcodeLinker;
 use crate::core::config::Config;
 use crate::utils::tests::git::{GitCtx, git_test};
 
@@ -1232,4 +1233,30 @@ fn any_debug() {
     assert_eq!(format!("{x:?}"), format!("{:?}", MyStruct { x: 7 }));
     // Downcasting to the underlying type should succeed.
     assert_eq!(x.downcast_ref::<MyStruct>(), Some(&MyStruct { x: 7 }));
+}
+
+/// Check that during a non-cross-compiling stage 2 build, we only compile rustc host tools
+/// (such as llvm-bitcode-linker) only once.
+#[test]
+fn llvm_bitcode_linker_compile_once() {
+    let mut cache = run_build(
+        &[],
+        configure_with_args(
+            &[
+                "build".to_string(),
+                "--stage".to_string(),
+                "2".to_string(),
+                "--set".to_string(),
+                "rust.llvm-bitcode-linker=true".to_string(),
+            ],
+            &[TEST_TRIPLE_1],
+            &[TEST_TRIPLE_2],
+        ),
+    );
+
+    // Check that llvm-bitcode-linker was built only once, and for host, not target
+    assert_eq!(
+        first(cache.all::<LlvmBitcodeLinker>()),
+        &[LlvmBitcodeLinker { target: TargetSelection::from_user(TEST_TRIPLE_1) }]
+    );
 }

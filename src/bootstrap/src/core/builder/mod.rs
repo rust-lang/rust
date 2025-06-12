@@ -15,6 +15,7 @@ use tracing::instrument;
 
 pub use self::cargo::{Cargo, cargo_profile_var};
 pub use crate::Compiler;
+use crate::core::build_steps::compile::Std;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
@@ -1312,6 +1313,20 @@ impl<'a> Builder<'a> {
 
         trace!(target: "COMPILER_FOR", ?resolved_compiler);
         resolved_compiler
+    }
+
+    /// Return the lowest stage compiler that can compile code for the given `target`.
+    pub fn compiler_for_target(&self, target: TargetSelection) -> Compiler {
+        // If we're not cross-compiling, we can always use the stage0 compiler
+        if self.config.build == target {
+            self.compiler(0, target)
+        } else {
+            // Otherwise, we have to build a stage 1 compiler that can compile code for `target`.
+            let compiler = self.compiler(1, self.config.build);
+            // FIXME(kobzol): get rid of this nonsense and create something like `RustcWithStdForTarget`
+            self.ensure(Std::new(compiler, target));
+            compiler
+        }
     }
 
     pub fn sysroot(&self, compiler: Compiler) -> PathBuf {
