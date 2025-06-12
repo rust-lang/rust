@@ -160,6 +160,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Align { align, span: repr_span }) => {
                     self.check_align(span, target, *align, *repr_span)
                 }
+                Attribute::Parsed(AttributeKind::Naked(attr_span)) => {
+                    self.check_naked(hir_id, *attr_span, span, target, attrs)
+                }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
@@ -217,7 +220,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::rustc_std_internal_symbol, ..] => {
                             self.check_rustc_std_internal_symbol(attr, span, target)
                         }
-                        [sym::naked, ..] => self.check_naked(hir_id, attr, span, target, attrs),
                         [sym::rustc_no_implicit_autorefs, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
@@ -623,7 +625,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_naked(
         &self,
         hir_id: HirId,
-        attr: &Attribute,
+        attr_span: Span,
         span: Span,
         target: Target,
         attrs: &[Attribute],
@@ -659,7 +661,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::link_section,
             sym::linkage,
             sym::no_mangle,
-            sym::naked,
             sym::instruction_set,
             sym::repr,
             sym::align,
@@ -703,13 +704,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | AttributeKind::NoMangle(..)
                             | AttributeKind::Cold(..)
                             | AttributeKind::MustUse { .. },
+                            | AttributeKind::Naked(..),
                         ) => {
                             continue;
                         }
                         Attribute::Parsed(AttributeKind::Inline(.., span)) => {
                             self.dcx().emit_err(errors::NakedFunctionIncompatibleAttribute {
                                 span: *span,
-                                naked_span: attr.span(),
+                                naked_span: attr_span,
                                 attr: sym::inline.to_string(),
                             });
 
@@ -746,7 +748,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
                         self.dcx().emit_err(errors::NakedFunctionIncompatibleAttribute {
                             span: other_attr.span(),
-                            naked_span: attr.span(),
+                            naked_span: attr_span,
                             attr: other_attr_name,
                         });
 
@@ -756,7 +758,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             _ => {
                 self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                    attr_span: attr.span(),
+                    attr_span,
                     defn_span: span,
                     on_crate: hir_id == CRATE_HIR_ID,
                 });

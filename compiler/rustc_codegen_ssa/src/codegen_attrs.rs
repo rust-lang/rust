@@ -121,6 +121,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         .max();
                 }
                 AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
+                AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
                 AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
                 AttributeKind::NoMangle(attr_span) => {
                     if tcx.opt_item_name(did.to_def_id()).is_some() {
@@ -165,7 +166,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::rustc_allocator_zeroed => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
             }
-            sym::naked => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
             sym::rustc_std_internal_symbol => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
             }
