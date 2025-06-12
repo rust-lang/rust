@@ -711,14 +711,23 @@ pub struct TypeId {
     /// Quick accept: if pointers are the same, the ids are the same
     data: &'static TypeIdData,
     /// Quick reject: if hashes are different, the ids are different
-    partial_hash: usize,
+    /// We use a raw pointer instead of a `usize`, because const eval
+    /// will be storing this as a fake pointer that will turn into the
+    /// appropriate bits at codegen time. This prevents users from inspecting
+    /// these bits at compile time.
+    partial_hash: *const (),
 }
+
+// SAFETY: the raw pointer is always an integer
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl Send for TypeId {}
+// SAFETY: the raw pointer is always an integer
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl Sync for TypeId {}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct TypeIdData {
     full_hash: [u8; 16],
-    #[cfg(feature = "debug_typeid")]
-    name: &'static str,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -759,15 +768,13 @@ impl TypeId {
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         let data = &const {
             let t: u128 = intrinsics::type_id::<T>();
-            TypeIdData {
-                full_hash: t.to_ne_bytes(),
-
-                #[cfg(feature = "debug_typeid")]
-                name: type_name::<T>(),
-            }
+            TypeIdData { full_hash: t.to_ne_bytes() }
         };
 
-        TypeId { data, partial_hash: intrinsics::type_id::<T>() as usize }
+        TypeId {
+            data,
+            partial_hash: crate::ptr::without_provenance(intrinsics::type_id::<T>() as usize),
+        }
     }
 
     fn as_u128(self) -> u128 {
@@ -803,15 +810,7 @@ impl hash::Hash for TypeId {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        #[cfg(feature = "debug_typeid")]
-        {
-            write!(f, "TypeId({:#034x} = {})", self.as_u128(), self.name)?;
-        }
-        #[cfg(not(feature = "debug_typeid"))]
-        {
-            write!(f, "TypeId({:#034x})", self.as_u128())?;
-        }
-        Ok(())
+        write!(f, "TypeId({:#034x})", self.as_u128())
     }
 }
 
