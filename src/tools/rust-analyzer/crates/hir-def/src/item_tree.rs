@@ -37,8 +37,8 @@ mod tests;
 
 use std::{
     fmt::{self, Debug},
-    hash::{Hash, Hasher},
-    ops::{Index, Range},
+    hash::Hash,
+    ops::Index,
     sync::OnceLock,
 };
 
@@ -51,7 +51,7 @@ use hir_expand::{
     name::Name,
 };
 use intern::Interned;
-use la_arena::{Arena, Idx, RawIdx};
+use la_arena::{Arena, Idx};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
@@ -277,23 +277,23 @@ struct ItemVisibilities {
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {
-    uses: Arena<Use>,
-    extern_crates: Arena<ExternCrate>,
-    extern_blocks: Arena<ExternBlock>,
-    functions: Arena<Function>,
-    structs: Arena<Struct>,
-    unions: Arena<Union>,
-    enums: Arena<Enum>,
-    consts: Arena<Const>,
-    statics: Arena<Static>,
-    traits: Arena<Trait>,
-    trait_aliases: Arena<TraitAlias>,
-    impls: Arena<Impl>,
-    type_aliases: Arena<TypeAlias>,
-    mods: Arena<Mod>,
-    macro_calls: Arena<MacroCall>,
-    macro_rules: Arena<MacroRules>,
-    macro_defs: Arena<Macro2>,
+    uses: FxHashMap<ItemTreeAstId<Use>, Use>,
+    extern_crates: FxHashMap<ItemTreeAstId<ExternCrate>, ExternCrate>,
+    extern_blocks: FxHashMap<ItemTreeAstId<ExternBlock>, ExternBlock>,
+    functions: FxHashMap<ItemTreeAstId<Function>, Function>,
+    structs: FxHashMap<ItemTreeAstId<Struct>, Struct>,
+    unions: FxHashMap<ItemTreeAstId<Union>, Union>,
+    enums: FxHashMap<ItemTreeAstId<Enum>, Enum>,
+    consts: FxHashMap<ItemTreeAstId<Const>, Const>,
+    statics: FxHashMap<ItemTreeAstId<Static>, Static>,
+    traits: FxHashMap<ItemTreeAstId<Trait>, Trait>,
+    trait_aliases: FxHashMap<ItemTreeAstId<TraitAlias>, TraitAlias>,
+    impls: FxHashMap<ItemTreeAstId<Impl>, Impl>,
+    type_aliases: FxHashMap<ItemTreeAstId<TypeAlias>, TypeAlias>,
+    mods: FxHashMap<ItemTreeAstId<Mod>, Mod>,
+    macro_calls: FxHashMap<ItemTreeAstId<MacroCall>, MacroCall>,
+    macro_rules: FxHashMap<ItemTreeAstId<MacroRules>, MacroRules>,
+    macro_defs: FxHashMap<ItemTreeAstId<Macro2>, Macro2>,
 
     vis: ItemVisibilities,
 }
@@ -329,51 +329,11 @@ pub trait ItemTreeNode: Clone {
     fn ast_id(&self) -> FileAstId<Self::Source>;
 
     /// Looks up an instance of `Self` in an item tree.
-    fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self;
+    fn lookup(tree: &ItemTree, index: FileAstId<Self::Source>) -> &Self;
 }
 
-pub struct FileItemTreeId<N>(Idx<N>);
-
-impl<N> FileItemTreeId<N> {
-    pub fn range_iter(range: Range<Self>) -> impl Iterator<Item = Self> + Clone {
-        (range.start.index().into_raw().into_u32()..range.end.index().into_raw().into_u32())
-            .map(RawIdx::from_u32)
-            .map(Idx::from_raw)
-            .map(Self)
-    }
-}
-
-impl<N> FileItemTreeId<N> {
-    pub fn index(&self) -> Idx<N> {
-        self.0
-    }
-}
-
-impl<N> Clone for FileItemTreeId<N> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-impl<N> Copy for FileItemTreeId<N> {}
-
-impl<N> PartialEq for FileItemTreeId<N> {
-    fn eq(&self, other: &FileItemTreeId<N>) -> bool {
-        self.0 == other.0
-    }
-}
-impl<N> Eq for FileItemTreeId<N> {}
-
-impl<N> Hash for FileItemTreeId<N> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state)
-    }
-}
-
-impl<N> fmt::Debug for FileItemTreeId<N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
+#[allow(type_alias_bounds)]
+pub type ItemTreeAstId<T: ItemTreeNode> = FileAstId<T::Source>;
 
 /// Identifies a particular [`ItemTree`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -409,21 +369,21 @@ macro_rules! mod_items {
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
         pub enum ModItem {
             $(
-                $typ(FileItemTreeId<$typ>),
+                $typ(FileAstId<$ast>),
             )+
         }
 
         impl ModItem {
-            pub fn ast_id(&self, tree: &ItemTree) -> FileAstId<ast::Item> {
+            pub fn ast_id(self) -> FileAstId<ast::Item> {
                 match self {
-                    $(ModItem::$typ(it) => tree[it.index()].ast_id().upcast()),+
+                    $(ModItem::$typ(it) => it.upcast()),+
                 }
             }
         }
 
         $(
-            impl From<FileItemTreeId<$typ>> for ModItem {
-                fn from(id: FileItemTreeId<$typ>) -> ModItem {
+            impl From<FileAstId<$ast>> for ModItem {
+                fn from(id: FileAstId<$ast>) -> ModItem {
                     ModItem::$typ(id)
                 }
             }
@@ -433,20 +393,20 @@ macro_rules! mod_items {
             impl ItemTreeNode for $typ {
                 type Source = $ast;
 
-                fn ast_id(&self) -> FileAstId<Self::Source> {
+                fn ast_id(&self) -> FileAstId<$ast> {
                     self.ast_id
                 }
 
-                fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self {
-                    &tree.data().$fld[index]
+                fn lookup(tree: &ItemTree, index: FileAstId<$ast>) -> &Self {
+                    &tree.data().$fld[&index]
                 }
             }
 
-            impl Index<Idx<$typ>> for ItemTree {
+            impl Index<FileAstId<$ast>> for ItemTree {
                 type Output = $typ;
 
-                fn index(&self, index: Idx<$typ>) -> &Self::Output {
-                    &self.data().$fld[index]
+                fn index(&self, index: FileAstId<$ast>) -> &Self::Output {
+                    &self.data().$fld[&index]
                 }
             }
         )+
@@ -503,13 +463,6 @@ impl Index<RawVisibilityId> for ItemTree {
             }),
             _ => &self.data().vis.arena[index.0 as usize],
         }
-    }
-}
-
-impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
-    type Output = N;
-    fn index(&self, id: FileItemTreeId<N>) -> &N {
-        N::lookup(self, id.index())
     }
 }
 

@@ -80,7 +80,7 @@ use crate::{
     LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
-    item_tree::{FileItemTreeId, Mod, TreeId},
+    item_tree::TreeId,
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicitness},
@@ -290,12 +290,10 @@ pub enum ModuleOrigin {
         is_mod_rs: bool,
         declaration: FileAstId<ast::Module>,
         declaration_tree_id: TreeId,
-        file_item_tree_id: FileItemTreeId<Mod>,
         definition: EditionedFileId,
     },
     Inline {
         definition_tree_id: TreeId,
-        file_item_tree_id: FileItemTreeId<Mod>,
         definition: FileAstId<ast::Module>,
     },
     /// Pseudo-module introduced by a block scope (contains only inner items).
@@ -311,7 +309,7 @@ impl ModuleOrigin {
             &ModuleOrigin::File { declaration, declaration_tree_id, .. } => {
                 Some(AstId::new(declaration_tree_id.file_id(), declaration))
             }
-            &ModuleOrigin::Inline { definition, definition_tree_id, file_item_tree_id: _ } => {
+            &ModuleOrigin::Inline { definition, definition_tree_id } => {
                 Some(AstId::new(definition_tree_id.file_id(), definition))
             }
             ModuleOrigin::CrateRoot { .. } | ModuleOrigin::BlockExpr { .. } => None,
@@ -343,14 +341,12 @@ impl ModuleOrigin {
                 let sf = db.parse(editioned_file_id).tree();
                 InFile::new(editioned_file_id.into(), ModuleSource::SourceFile(sf))
             }
-            &ModuleOrigin::Inline { definition, definition_tree_id, file_item_tree_id: _ } => {
-                InFile::new(
-                    definition_tree_id.file_id(),
-                    ModuleSource::Module(
-                        AstId::new(definition_tree_id.file_id(), definition).to_node(db),
-                    ),
-                )
-            }
+            &ModuleOrigin::Inline { definition, definition_tree_id } => InFile::new(
+                definition_tree_id.file_id(),
+                ModuleSource::Module(
+                    AstId::new(definition_tree_id.file_id(), definition).to_node(db),
+                ),
+            ),
             ModuleOrigin::BlockExpr { block, .. } => {
                 InFile::new(block.file_id, ModuleSource::BlockExpr(block.to_node(db)))
             }
@@ -777,12 +773,10 @@ impl ModuleData {
                     ErasedAstId::new(definition.into(), ROOT_ERASED_FILE_AST_ID).to_range(db),
                 )
             }
-            &ModuleOrigin::Inline { definition, definition_tree_id, file_item_tree_id: _ } => {
-                InFile::new(
-                    definition_tree_id.file_id(),
-                    AstId::new(definition_tree_id.file_id(), definition).to_range(db),
-                )
-            }
+            &ModuleOrigin::Inline { definition, definition_tree_id } => InFile::new(
+                definition_tree_id.file_id(),
+                AstId::new(definition_tree_id.file_id(), definition).to_range(db),
+            ),
             ModuleOrigin::BlockExpr { block, .. } => InFile::new(block.file_id, block.to_range(db)),
         }
     }
