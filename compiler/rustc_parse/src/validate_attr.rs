@@ -180,9 +180,14 @@ pub fn check_attribute_safety(
             let diag_span = attr_item.span();
 
             // Attributes can be safe in earlier editions, and become unsafe in later ones.
+            //
+            // Use the span of the attribute's name to determine the edition: the span of the
+            // attribute as a whole may be inaccurate if it was emitted by a macro.
+            //
+            // See https://github.com/rust-lang/rust/issues/142182.
             let emit_error = match unsafe_since {
                 None => true,
-                Some(unsafe_since) => attr.span.edition() >= unsafe_since,
+                Some(unsafe_since) => path_span.edition() >= unsafe_since,
             };
 
             if emit_error {
