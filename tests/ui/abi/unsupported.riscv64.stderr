@@ -186,6 +186,30 @@ error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current 
 LL | extern "C-cmse-nonsecure-entry" {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0570]: `"thiscall"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:165:17
+   |
+LL |     ptr: extern "thiscall" fn(),
+   |                 ^^^^^^^^^^
+
+error[E0570]: `"thiscall"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:170:16
+   |
+LL |     pub extern "thiscall" fn inherent_fn(self) {
+   |                ^^^^^^^^^^
+
+error[E0570]: `"thiscall"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:177:12
+   |
+LL |     extern "thiscall" fn trait_fn(self);
+   |            ^^^^^^^^^^
+
+error[E0570]: `"thiscall"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:182:12
+   |
+LL |     extern "thiscall" fn trait_fn(self) {
+   |            ^^^^^^^^^^
+
 warning: use of calling convention not supported on this target
   --> $DIR/unsupported.rs:123:17
    |
@@ -227,7 +251,7 @@ LL | extern "cdecl" fn cdecl() {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: use `extern "C"` instead
 
-error: aborting due to 30 previous errors; 4 warnings emitted
+error: aborting due to 34 previous errors; 4 warnings emitted
 
 For more information about this error, try `rustc --explain E0570`.
 Future incompatibility report: Future breakage diagnostic:
