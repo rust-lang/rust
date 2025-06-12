@@ -108,7 +108,8 @@ impl fmt::Debug for ErasedFileAstId {
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 enum ErasedFileAstIdKind {
-    Root,
+    /// This needs to not change because it's depended upon by the proc macro server.
+    Fixup,
     // The following are associated with `ErasedHasNameFileAstId`.
     Enum,
     Struct,
@@ -143,7 +144,7 @@ enum ErasedFileAstIdKind {
     /// Associated with [`BlockExprFileAstId`].
     BlockExpr,
     /// Keep this last.
-    Fixup,
+    Root,
 }
 
 // First hash, then index, then kind.
@@ -218,7 +219,7 @@ impl ErasedFileAstId {
     }
 
     #[inline]
-    pub fn from_raw(v: u32) -> Self {
+    pub const fn from_raw(v: u32) -> Self {
         Self(v)
     }
 }
