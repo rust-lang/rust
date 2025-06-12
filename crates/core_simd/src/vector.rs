@@ -195,7 +195,7 @@ where
 
     /// Returns a mutable array reference containing the entire SIMD vector.
     #[inline]
-    pub fn as_mut_array(&mut self) -> &mut [T; N] {
+    pub const fn as_mut_array(&mut self) -> &mut [T; N] {
         // SAFETY: `Simd<T, N>` is just an overaligned `[T; N]` with
         // potential padding at the end, so pointer casting to a
         // `&mut [T; N]` is safe.
@@ -324,7 +324,7 @@ where
     /// ```
     #[inline]
     #[track_caller]
-    pub fn copy_to_slice(self, slice: &mut [T]) {
+    pub const fn copy_to_slice(self, slice: &mut [T]) {
         assert!(
             slice.len() >= Self::LEN,
             "slice length must be at least the number of elements"
