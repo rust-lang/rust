@@ -4618,7 +4618,7 @@ dependencies = [
  "derive-where",
  "ena",
  "indexmap",
- "rustc-hash 1.1.0",
+ "rustc-hash 2.1.1",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_index",

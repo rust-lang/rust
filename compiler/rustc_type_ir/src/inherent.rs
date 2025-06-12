@@ -228,6 +228,8 @@ pub trait Region<I: Interner<Region = Self>>:
 
     fn new_static(interner: I) -> Self;
 
+    fn new_placeholder(interner: I, var: I::PlaceholderRegion) -> Self;
+
     fn is_bound(self) -> bool {
         matches!(self.kind(), ty::ReBound(..))
     }
@@ -253,6 +255,8 @@ pub trait Const<I: Interner<Const = Self>>:
     fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundConst) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
+
+    fn new_placeholder(interner: I, param: I::PlaceholderConst) -> Self;
 
     fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
 

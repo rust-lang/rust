@@ -12,5 +12,6 @@
 pub mod canonicalizer;
 pub mod coherence;
 pub mod delegate;
+pub mod placeholder;
 pub mod resolve;
 pub mod solve;
