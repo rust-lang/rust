@@ -15,11 +15,12 @@ static TEST_TRIPLE_2: &str = "i686-unknown-hurd-gnu";
 static TEST_TRIPLE_3: &str = "i686-unknown-netbsd";
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
-    configure_with_args(&[cmd.to_owned()], host, target)
+    configure_with_args(&[cmd], host, target)
 }
 
-fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config {
-    let mut config = Config::parse(Flags::parse(cmd));
+fn configure_with_args(cmd: &[&str], host: &[&str], target: &[&str]) -> Config {
+    let cmd = cmd.iter().copied().map(String::from).collect::<Vec<_>>();
+    let mut config = Config::parse(Flags::parse(&cmd));
     // don't save toolstates
     config.save_toolstates = None;
     config.set_dry_run(DryRun::SelfCheck);
@@ -67,7 +68,7 @@ fn run_build(paths: &[PathBuf], config: Config) -> Cache {
 fn check_cli<const N: usize>(paths: [&str; N]) {
     run_build(
         &paths.map(PathBuf::from),
-        configure_with_args(&paths.map(String::from), &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
+        configure_with_args(&paths, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
     );
 }
 
@@ -1000,8 +1001,7 @@ mod sysroot_target_dirs {
 /// cg_gcc tests instead.
 #[test]
 fn test_test_compiler() {
-    let cmd = &["test", "compiler"].map(str::to_owned);
-    let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+    let config = configure_with_args(&["test", "compiler"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
     let cache = run_build(&config.paths.clone(), config);
 
     let compiler = cache.contains::<test::CrateLibrustc>();
@@ -1034,8 +1034,7 @@ fn test_test_coverage() {
         // Print each test case so that if one fails, the most recently printed
         // case is the one that failed.
         println!("Testing case: {cmd:?}");
-        let cmd = cmd.iter().copied().map(str::to_owned).collect::<Vec<_>>();
-        let config = configure_with_args(&cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+        let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
         let mut cache = run_build(&config.paths.clone(), config);
 
         let modes =
@@ -1207,8 +1206,7 @@ fn test_get_tool_rustc_compiler() {
 /// of `Any { .. }`.
 #[test]
 fn step_cycle_debug() {
-    let cmd = ["run", "cyclic-step"].map(str::to_owned);
-    let config = configure_with_args(&cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+    let config = configure_with_args(&["run", "cyclic-step"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
 
     let err = panic::catch_unwind(|| run_build(&config.paths.clone(), config)).unwrap_err();
     let err = err.downcast_ref::<String>().unwrap().as_str();
