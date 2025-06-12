@@ -708,9 +708,15 @@ impl dyn Any + Send + Sync {
 #[derive(Clone, Copy, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
-    // We avoid using `u128` because that imposes higher alignment requirements on many platforms.
-    // See issue #115620 for more information.
-    t: (u64, u64),
+    /// Quick accept: if pointers are the same, the ids are the same
+    data: &'static TypeIdData,
+    /// Quick reject: if hashes are different, the ids are different
+    partial_hash: usize,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct TypeIdData {
+    full_hash: [u8; 16],
     #[cfg(feature = "debug_typeid")]
     name: &'static str,
 }
@@ -719,7 +725,16 @@ pub struct TypeId {
 impl PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.t == other.t
+        self.data as *const TypeIdData == other.data as *const TypeIdData
+            || (self.partial_hash == other.partial_hash
+                && self.data.full_hash == other.data.full_hash)
+    }
+
+    #[inline]
+    fn ne(&self, other: &Self) -> bool {
+        self.partial_hash != other.partial_hash
+            || (self.data as *const TypeIdData != other.data as *const TypeIdData
+                && self.data.full_hash != other.data.full_hash)
     }
 }
 
@@ -742,19 +757,21 @@ impl TypeId {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
-        let t: u128 = const { intrinsics::type_id::<T>() };
-        let t1 = (t >> 64) as u64;
-        let t2 = t as u64;
+        let data = &const {
+            let t: u128 = intrinsics::type_id::<T>();
+            TypeIdData {
+                full_hash: t.to_ne_bytes(),
 
-        TypeId {
-            t: (t1, t2),
-            #[cfg(feature = "debug_typeid")]
-            name: type_name::<T>(),
-        }
+                #[cfg(feature = "debug_typeid")]
+                name: type_name::<T>(),
+            }
+        };
+
+        TypeId { data, partial_hash: intrinsics::type_id::<T>() as usize }
     }
 
     fn as_u128(self) -> u128 {
-        u128::from(self.t.0) << 64 | u128::from(self.t.1)
+        u128::from_ne_bytes(self.data.full_hash)
     }
 }
 
@@ -774,7 +791,12 @@ impl hash::Hash for TypeId {
         // - It is correct to do so -- only hashing a subset of `self` is still
         //   compatible with an `Eq` implementation that considers the entire
         //   value, as ours does.
-        self.t.1.hash(state);
+        if cfg!(target_pointer_width = "64") {
+            self.partial_hash.hash(state);
+        } else {
+            let [_, _, _, _, _, _, _, _, data @ ..] = self.data.full_hash;
+            u64::from_ne_bytes(data).hash(state);
+        }
     }
 }
 
