@@ -35,7 +35,15 @@ LL |     let _: <() as Trait>::Output = ();
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 4 previous errors
+error[E0271]: type mismatch resolving `<() as Trait>::Output normalizes-to _`
+  --> $DIR/assoc-ty.rs:15:12
+   |
+LL |     let _: <() as Trait>::Output = ();
+   |            ^^^^^^^^^^^^^^^^^^^^^ types differ
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0271, E0380, E0658.
 For more information about an error, try `rustc --explain E0271`.

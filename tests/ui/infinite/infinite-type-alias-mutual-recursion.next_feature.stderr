@@ -1,0 +1,39 @@
+error[E0271]: type mismatch resolving `X3 normalizes-to _`
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:9:11
+   |
+LL | type X1 = X2;
+   |           ^^ types differ
+
+error[E0271]: type mismatch resolving `X2 normalizes-to _`
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:9:11
+   |
+LL | type X1 = X2;
+   |           ^^ types differ
+
+error[E0271]: type mismatch resolving `X1 normalizes-to _`
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:14:11
+   |
+LL | type X2 = X3;
+   |           ^^ types differ
+
+error[E0271]: type mismatch resolving `X3 normalizes-to _`
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:14:11
+   |
+LL | type X2 = X3;
+   |           ^^ types differ
+
+error[E0271]: type mismatch resolving `X2 normalizes-to _`
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:18:11
+   |
+LL | type X3 = X1;
+   |           ^^ types differ
+
+error[E0271]: type mismatch resolving `X1 normalizes-to _`
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:18:11
+   |
+LL | type X3 = X1;
+   |           ^^ types differ
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

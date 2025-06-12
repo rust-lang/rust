@@ -1,5 +1,5 @@
 error: overflow evaluating associated type `T::This`
-  --> $DIR/normalization-overflow.rs:9:17
+  --> $DIR/normalization-overflow.rs:12:17
    |
 LL |     type This = Self::This;
    |                 ^^^^^^^^^^

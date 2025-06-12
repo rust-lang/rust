@@ -18,11 +18,6 @@ help: this trait has no implementations, consider adding one
    |
 LL | trait Foo {}
    | ^^^^^^^^^
-note: required by a bound in `A`
-  --> $DIR/alias-bounds-when-not-wf.rs:8:11
-   |
-LL | type A<T: Foo> = T;
-   |           ^^^ required by this bound in `A`
 
 error[E0277]: the trait bound `usize: Foo` is not satisfied
   --> $DIR/alias-bounds-when-not-wf.rs:16:10

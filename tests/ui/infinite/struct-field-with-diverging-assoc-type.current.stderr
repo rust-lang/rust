@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating the requirement `<u8 as Trait>::Diverges<u8> == _`
+  --> $DIR/struct-field-with-diverging-assoc-type.rs:14:12
+   |
+LL |     field: Box<<u8 as Trait>::Diverges<u8>>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.
