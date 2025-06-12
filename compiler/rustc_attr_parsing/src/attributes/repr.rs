@@ -4,7 +4,7 @@ use rustc_attr_data_structures::{AttributeKind, IntType, ReprAttr};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use super::{CombineAttributeParser, ConvertFn};
-use crate::context::AcceptContext;
+use crate::context::{AcceptContext, Stage};
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemParser};
 use crate::session_diagnostics;
 use crate::session_diagnostics::IncorrectReprFormatGenericCause;
@@ -19,15 +19,15 @@ use crate::session_diagnostics::IncorrectReprFormatGenericCause;
 // FIXME(jdonszelmann): is a vec the right representation here even? isn't it just a struct?
 pub(crate) struct ReprParser;
 
-impl CombineAttributeParser for ReprParser {
+impl<S: Stage> CombineAttributeParser<S> for ReprParser {
     type Item = (ReprAttr, Span);
-    const PATH: &'static [Symbol] = &[sym::repr];
+    const PATH: &[Symbol] = &[sym::repr];
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::Repr;
 
-    fn extend<'a>(
-        cx: &'a AcceptContext<'a>,
-        args: &'a ArgParser<'a>,
-    ) -> impl IntoIterator<Item = Self::Item> + 'a {
+    fn extend<'c>(
+        cx: &'c mut AcceptContext<'_, '_, S>,
+        args: &'c ArgParser<'_>,
+    ) -> impl IntoIterator<Item = Self::Item> + 'c {
         let mut reprs = Vec::new();
 
         let Some(list) = args.list() else {
@@ -91,7 +91,10 @@ fn int_type_of_word(s: Symbol) -> Option<IntType> {
     }
 }
 
-fn parse_repr(cx: &AcceptContext<'_>, param: &MetaItemParser<'_>) -> Option<ReprAttr> {
+fn parse_repr<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
+    param: &MetaItemParser<'_>,
+) -> Option<ReprAttr> {
     use ReprAttr::*;
 
     // FIXME(jdonszelmann): invert the parsing here to match on the word first and then the
@@ -180,8 +183,8 @@ enum AlignKind {
     Align,
 }
 
-fn parse_repr_align(
-    cx: &AcceptContext<'_>,
+fn parse_repr_align<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
     list: &MetaItemListParser<'_>,
     param_span: Span,
     align_kind: AlignKind,

@@ -51,6 +51,7 @@ use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
+use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem,
     LifetimeSource, LifetimeSyntax, ParamName, TraitCandidate,
@@ -141,6 +142,8 @@ struct LoweringContext<'a, 'hir> {
     allow_for_await: Arc<[Symbol]>,
     allow_async_fn_traits: Arc<[Symbol]>,
 
+    delayed_lints: Vec<DelayedLint>,
+
     attribute_parser: AttributeParser<'hir>,
 }
 
@@ -190,11 +193,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
 
             attribute_parser: AttributeParser::new(tcx.sess, tcx.features(), registered_tools),
+            delayed_lints: Vec::new(),
         }
     }
 
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'hir> {
         self.tcx.dcx()
+    }
+}
+
+struct SpanLowerer {
+    is_incremental: bool,
+    def_id: LocalDefId,
+}
+
+impl SpanLowerer {
+    fn lower(&self, span: Span) -> Span {
+        if self.is_incremental {
+            span.with_parent(Some(self.def_id))
+        } else {
+            // Do not make spans relative when not using incremental compilation.
+            span
+        }
     }
 }
 
@@ -573,6 +593,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
         let current_impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
         let current_impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
+        let current_delayed_lints = std::mem::take(&mut self.delayed_lints);
 
         // Do not reset `next_node_id` and `node_id_to_def_id`:
         // we want `f` to be able to refer to the `LocalDefId`s that the caller created.
@@ -606,6 +627,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.item_local_id_counter = current_local_counter;
         self.impl_trait_defs = current_impl_trait_defs;
         self.impl_trait_bounds = current_impl_trait_bounds;
+        self.delayed_lints = current_delayed_lints;
 
         debug_assert!(!self.children.iter().any(|(id, _)| id == &owner_id.def_id));
         self.children.push((owner_id.def_id, hir::MaybeOwner::Owner(info)));
@@ -616,6 +638,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut bodies = std::mem::take(&mut self.bodies);
         let define_opaque = std::mem::take(&mut self.define_opaque);
         let trait_map = std::mem::take(&mut self.trait_map);
+        let delayed_lints = std::mem::take(&mut self.delayed_lints).into_boxed_slice();
 
         #[cfg(debug_assertions)]
         for (id, attrs) in attrs.iter() {
@@ -629,14 +652,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let bodies = SortedMap::from_presorted_elements(bodies);
 
         // Don't hash unless necessary, because it's expensive.
-        let (opt_hash_including_bodies, attrs_hash) =
-            self.tcx.hash_owner_nodes(node, &bodies, &attrs, define_opaque);
+        let (opt_hash_including_bodies, attrs_hash, delayed_lints_hash) =
+            self.tcx.hash_owner_nodes(node, &bodies, &attrs, &delayed_lints, define_opaque);
         let num_nodes = self.item_local_id_counter.as_usize();
         let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies, num_nodes);
         let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
         let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash, define_opaque };
+        let delayed_lints =
+            hir::lints::DelayedLints { lints: delayed_lints, opt_hash: delayed_lints_hash };
 
-        self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
+        self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map, delayed_lints })
     }
 
     /// This method allocates a new `HirId` for the given `NodeId`.
@@ -759,15 +784,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
+    fn span_lowerer(&self) -> SpanLowerer {
+        SpanLowerer {
+            is_incremental: self.tcx.sess.opts.incremental.is_some(),
+            def_id: self.current_hir_id_owner.def_id,
+        }
+    }
+
     /// Intercept all spans entering HIR.
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
-        if self.tcx.sess.opts.incremental.is_some() {
-            span.with_parent(Some(self.current_hir_id_owner.def_id))
-        } else {
-            // Do not make spans relative when not using incremental compilation.
-            span
-        }
+        self.span_lowerer().lower(span)
     }
 
     fn lower_ident(&self, ident: Ident) -> Ident {
@@ -889,7 +916,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if attrs.is_empty() {
             &[]
         } else {
-            let lowered_attrs = self.lower_attrs_vec(attrs, self.lower_span(target_span));
+            let lowered_attrs = self.lower_attrs_vec(attrs, self.lower_span(target_span), id);
 
             debug_assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(lowered_attrs);
@@ -909,9 +936,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_attrs_vec(&self, attrs: &[Attribute], target_span: Span) -> Vec<hir::Attribute> {
-        self.attribute_parser
-            .parse_attribute_list(attrs, target_span, OmitDoc::Lower, |s| self.lower_span(s))
+    fn lower_attrs_vec(
+        &mut self,
+        attrs: &[Attribute],
+        target_span: Span,
+        target_hir_id: HirId,
+    ) -> Vec<hir::Attribute> {
+        let l = self.span_lowerer();
+        self.attribute_parser.parse_attribute_list(
+            attrs,
+            target_span,
+            target_hir_id,
+            OmitDoc::Lower,
+            |s| l.lower(s),
+            |l| {
+                self.delayed_lints.push(DelayedLint::AttributeParsing(l));
+            },
+        )
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
