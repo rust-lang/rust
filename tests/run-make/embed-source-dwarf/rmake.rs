@@ -1,3 +1,4 @@
+//@ needs-target-std
 //@ ignore-windows
 //@ ignore-apple
 
