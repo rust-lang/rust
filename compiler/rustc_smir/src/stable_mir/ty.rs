@@ -9,6 +9,7 @@ use stable_mir::mir::mono::StaticDef;
 use stable_mir::target::MachineInfo;
 use stable_mir::{Filename, Opaque};
 
+use super::abi::ReprOptions;
 use super::mir::{Body, Mutability, Safety};
 use super::{DefId, Error, Symbol, with};
 use crate::stable_mir;
@@ -817,6 +818,10 @@ impl AdtDef {
 
     pub fn variant(&self, idx: VariantIdx) -> Option<VariantDef> {
         (idx.to_index() < self.num_variants()).then_some(VariantDef { idx, adt_def: *self })
+    }
+
+    pub fn repr(&self) -> ReprOptions {
+        with(|cx| cx.adt_repr(*self))
     }
 }
 

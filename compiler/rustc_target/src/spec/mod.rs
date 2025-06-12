@@ -62,7 +62,7 @@ mod abi_map;
 mod base;
 mod json;
 
-pub use abi_map::AbiMap;
+pub use abi_map::{AbiMap, AbiMapping};
 pub use base::apple;
 pub use base::avr::ef_avr_arch;
 
@@ -1697,6 +1697,12 @@ impl ToJson for BinaryFormat {
     }
 }
 
+impl ToJson for Align {
+    fn to_json(&self) -> Json {
+        self.bits().to_json()
+    }
+}
+
 macro_rules! supported_targets {
     ( $(($tuple:literal, $module:ident),)+ ) => {
         mod targets {
@@ -1981,6 +1987,8 @@ supported_targets! {
 
     ("sparc-unknown-none-elf", sparc_unknown_none_elf),
 
+    ("loongarch32-unknown-none", loongarch32_unknown_none),
+    ("loongarch32-unknown-none-softfloat", loongarch32_unknown_none_softfloat),
     ("loongarch64-unknown-none", loongarch64_unknown_none),
     ("loongarch64-unknown-none-softfloat", loongarch64_unknown_none_softfloat),
 
@@ -2513,7 +2521,7 @@ pub struct TargetOptions {
     pub stack_probes: StackProbeType,
 
     /// The minimum alignment for global symbols.
-    pub min_global_align: Option<u64>,
+    pub min_global_align: Option<Align>,
 
     /// Default number of codegen units to use in debug mode
     pub default_codegen_units: Option<u64>,
@@ -3502,6 +3510,7 @@ impl Target {
             "msp430" => (Architecture::Msp430, None),
             "hexagon" => (Architecture::Hexagon, None),
             "bpf" => (Architecture::Bpf, None),
+            "loongarch32" => (Architecture::LoongArch32, None),
             "loongarch64" => (Architecture::LoongArch64, None),
             "csky" => (Architecture::Csky, None),
             "arm64ec" => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),

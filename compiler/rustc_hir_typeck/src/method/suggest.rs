@@ -3494,7 +3494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             continue;
                         }
                         trait_in_other_version_found = self
-                            .detect_and_explain_multiple_crate_versions(
+                            .detect_and_explain_multiple_crate_versions_of_trait_item(
                                 err,
                                 pick.item.def_id,
                                 rcvr.hir_id,
@@ -3701,12 +3701,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // same crate.
 
             let rcvr_ty = self.node_ty_opt(ty.hir_id);
-            trait_in_other_version_found = self.detect_and_explain_multiple_crate_versions(
-                err,
-                assoc.def_id,
-                ty.hir_id,
-                rcvr_ty,
-            );
+            trait_in_other_version_found = self
+                .detect_and_explain_multiple_crate_versions_of_trait_item(
+                    err,
+                    assoc.def_id,
+                    ty.hir_id,
+                    rcvr_ty,
+                );
         }
         if !trait_in_other_version_found
             && self.suggest_valid_traits(err, item_name, valid_out_of_scope_traits, true)
@@ -4098,7 +4099,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn detect_and_explain_multiple_crate_versions(
+    fn detect_and_explain_multiple_crate_versions_of_trait_item(
         &self,
         err: &mut Diag<'_>,
         item_def_id: DefId,
@@ -4111,6 +4112,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         let trait_def_id = self.tcx.parent(item_def_id);
+        if !self.tcx.is_trait(trait_def_id) {
+            return false;
+        }
         let krate = self.tcx.crate_name(trait_def_id.krate);
         let name = self.tcx.item_name(trait_def_id);
         let candidates: Vec<_> = traits

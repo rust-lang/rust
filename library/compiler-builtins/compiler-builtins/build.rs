@@ -22,6 +22,9 @@ fn main() {
 
     println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
 
+    println!("cargo::rustc-check-cfg=cfg(kernel_user_helpers)");
+    println!("cargo::rustc-check-cfg=cfg(feature, values(\"mem-unaligned\"))");
+
     // Emscripten's runtime includes all the builtins
     if target.os == "emscripten" {
         return;
@@ -47,7 +50,6 @@ fn main() {
     }
 
     // These targets have hardware unaligned access support.
-    println!("cargo::rustc-check-cfg=cfg(feature, values(\"mem-unaligned\"))");
     if target.arch.contains("x86_64")
         || target.arch.contains("x86")
         || target.arch.contains("aarch64")
@@ -78,7 +80,6 @@ fn main() {
     // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures. This
     // includes the old androideabi. It is deprecated but it is available as a
     // rustc target (arm-linux-androideabi).
-    println!("cargo::rustc-check-cfg=cfg(kernel_user_helpers)");
     if llvm_target[0] == "armv4t"
         || llvm_target[0] == "armv5te"
         || target.triple == "arm-linux-androideabi"

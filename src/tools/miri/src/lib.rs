@@ -16,6 +16,7 @@
 #![feature(unqualified_local_imports)]
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
+#![feature(file_lock)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -113,7 +114,9 @@ pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,
 };
 pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
-pub use crate::borrow_tracker::{BorTag, BorrowTrackerMethod, EvalContextExt as _, RetagFields};
+pub use crate::borrow_tracker::{
+    BorTag, BorrowTrackerMethod, EvalContextExt as _, RetagFields, TreeBorrowsParams,
+};
 pub use crate::clock::{Instant, MonotonicClock};
 pub use crate::concurrency::cpu_affinity::MAX_CPUS;
 pub use crate::concurrency::data_race::{

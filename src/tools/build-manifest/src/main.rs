@@ -113,6 +113,8 @@ static TARGETS: &[&str] = &[
     "i686-unknown-uefi",
     "loongarch64-unknown-linux-gnu",
     "loongarch64-unknown-linux-musl",
+    "loongarch32-unknown-none",
+    "loongarch32-unknown-none-softfloat",
     "loongarch64-unknown-none",
     "loongarch64-unknown-none-softfloat",
     "m68k-unknown-linux-gnu",

@@ -1681,7 +1681,8 @@ impl Step for Extended {
             cmd.run(builder);
         }
 
-        if target.is_windows() {
+        // FIXME(mati865): `gnullvm` here is temporary, remove it once it can host itself
+        if target.is_windows() && !target.contains("gnullvm") {
             let exe = tmp.join("exe");
             let _ = fs::remove_dir_all(&exe);
 

@@ -150,11 +150,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 value
             }
-            sym::pref_align_of
-            | sym::needs_drop
-            | sym::type_id
-            | sym::type_name
-            | sym::variant_count => {
+            sym::needs_drop | sym::type_id | sym::type_name | sym::variant_count => {
                 let value = bx.tcx().const_eval_instance(bx.typing_env(), instance, span).unwrap();
                 OperandRef::from_const(bx, value, result.layout.ty).immediate_or_packed_pair(bx)
             }

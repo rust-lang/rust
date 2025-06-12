@@ -10,6 +10,7 @@
 
 use std::fmt;
 
+use intern::Symbol;
 use proc_macro::bridge;
 
 mod token_stream;
@@ -110,5 +111,137 @@ fn literal_kind_to_internal(kind: bridge::LitKind) -> tt::LitKind {
         bridge::LitKind::Integer => tt::LitKind::Integer,
         bridge::LitKind::Float => tt::LitKind::Float,
         bridge::LitKind::ErrWithGuar => tt::LitKind::Err(()),
+    }
+}
+
+pub(super) fn literal_from_str<Span: Copy>(
+    s: &str,
+    span: Span,
+) -> Result<bridge::Literal<Span, Symbol>, ()> {
+    use proc_macro::bridge::LitKind;
+    use rustc_lexer::{LiteralKind, Token, TokenKind};
+
+    let mut tokens = rustc_lexer::tokenize(s);
+    let minus_or_lit = tokens.next().unwrap_or(Token { kind: TokenKind::Eof, len: 0 });
+
+    let lit = if minus_or_lit.kind == TokenKind::Minus {
+        let lit = tokens.next().ok_or(())?;
+        if !matches!(
+            lit.kind,
+            TokenKind::Literal { kind: LiteralKind::Int { .. } | LiteralKind::Float { .. }, .. }
+        ) {
+            return Err(());
+        }
+        lit
+    } else {
+        minus_or_lit
+    };
+
+    if tokens.next().is_some() {
+        return Err(());
+    }
+
+    let TokenKind::Literal { kind, suffix_start } = lit.kind else { return Err(()) };
+    let (kind, start_offset, end_offset) = match kind {
+        LiteralKind::Int { .. } => (LitKind::Integer, 0, 0),
+        LiteralKind::Float { .. } => (LitKind::Float, 0, 0),
+        LiteralKind::Char { terminated } => (LitKind::Char, 1, terminated as usize),
+        LiteralKind::Byte { terminated } => (LitKind::Byte, 2, terminated as usize),
+        LiteralKind::Str { terminated } => (LitKind::Str, 1, terminated as usize),
+        LiteralKind::ByteStr { terminated } => (LitKind::ByteStr, 2, terminated as usize),
+        LiteralKind::CStr { terminated } => (LitKind::CStr, 2, terminated as usize),
+        LiteralKind::RawStr { n_hashes } => (
+            LitKind::StrRaw(n_hashes.unwrap_or_default()),
+            2 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+        LiteralKind::RawByteStr { n_hashes } => (
+            LitKind::ByteStrRaw(n_hashes.unwrap_or_default()),
+            3 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+        LiteralKind::RawCStr { n_hashes } => (
+            LitKind::CStrRaw(n_hashes.unwrap_or_default()),
+            3 + n_hashes.unwrap_or_default() as usize,
+            1 + n_hashes.unwrap_or_default() as usize,
+        ),
+    };
+
+    let (lit, suffix) = s.split_at(suffix_start as usize);
+    let lit = &lit[start_offset..lit.len() - end_offset];
+    let suffix = match suffix {
+        "" | "_" => None,
+        suffix => Some(Symbol::intern(suffix)),
+    };
+
+    Ok(bridge::Literal { kind, symbol: Symbol::intern(lit), suffix, span })
+}
+
+pub(super) fn from_token_tree<Span: Copy>(
+    tree: bridge::TokenTree<TokenStream<Span>, Span, Symbol>,
+) -> TokenStream<Span> {
+    match tree {
+        bridge::TokenTree::Group(group) => {
+            let group = TopSubtree::from_bridge(group);
+            TokenStream { token_trees: group.0 }
+        }
+
+        bridge::TokenTree::Ident(ident) => {
+            let text = ident.sym;
+            let ident: tt::Ident<Span> = tt::Ident {
+                sym: text,
+                span: ident.span,
+                is_raw: if ident.is_raw { tt::IdentIsRaw::Yes } else { tt::IdentIsRaw::No },
+            };
+            let leaf = tt::Leaf::from(ident);
+            let tree = tt::TokenTree::from(leaf);
+            TokenStream { token_trees: vec![tree] }
+        }
+
+        bridge::TokenTree::Literal(literal) => {
+            let token_trees =
+                if let Some((_minus, symbol)) = literal.symbol.as_str().split_once('-') {
+                    let punct = tt::Punct {
+                        spacing: tt::Spacing::Alone,
+                        span: literal.span,
+                        char: '-' as char,
+                    };
+                    let leaf: tt::Leaf<Span> = tt::Leaf::from(punct);
+                    let minus_tree = tt::TokenTree::from(leaf);
+
+                    let literal = tt::Literal {
+                        symbol: Symbol::intern(symbol),
+                        suffix: literal.suffix,
+                        span: literal.span,
+                        kind: literal_kind_to_internal(literal.kind),
+                    };
+                    let leaf: tt::Leaf<Span> = tt::Leaf::from(literal);
+                    let tree = tt::TokenTree::from(leaf);
+                    vec![minus_tree, tree]
+                } else {
+                    let literal = tt::Literal {
+                        symbol: literal.symbol,
+                        suffix: literal.suffix,
+                        span: literal.span,
+                        kind: literal_kind_to_internal(literal.kind),
+                    };
+
+                    let leaf: tt::Leaf<Span> = tt::Leaf::from(literal);
+                    let tree = tt::TokenTree::from(leaf);
+                    vec![tree]
+                };
+            TokenStream { token_trees }
+        }
+
+        bridge::TokenTree::Punct(p) => {
+            let punct = tt::Punct {
+                char: p.ch as char,
+                spacing: if p.joint { tt::Spacing::Joint } else { tt::Spacing::Alone },
+                span: p.span,
+            };
+            let leaf = tt::Leaf::from(punct);
+            let tree = tt::TokenTree::from(leaf);
+            TokenStream { token_trees: vec![tree] }
+        }
     }
 }

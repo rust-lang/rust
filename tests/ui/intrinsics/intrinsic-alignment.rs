@@ -23,18 +23,12 @@ use std::intrinsics as rusti;
 mod m {
     #[cfg(target_arch = "x86")]
     pub fn main() {
-        unsafe {
-            assert_eq!(crate::rusti::pref_align_of::<u64>(), 8);
-            assert_eq!(crate::rusti::min_align_of::<u64>(), 4);
-        }
+        assert_eq!(crate::rusti::min_align_of::<u64>(), 4);
     }
 
     #[cfg(not(target_arch = "x86"))]
     pub fn main() {
-        unsafe {
-            assert_eq!(crate::rusti::pref_align_of::<u64>(), 8);
-            assert_eq!(crate::rusti::min_align_of::<u64>(), 8);
-        }
+        assert_eq!(crate::rusti::min_align_of::<u64>(), 8);
     }
 }
 
@@ -42,30 +36,21 @@ mod m {
 mod m {
     #[cfg(target_arch = "x86_64")]
     pub fn main() {
-        unsafe {
-            assert_eq!(crate::rusti::pref_align_of::<u64>(), 8);
-            assert_eq!(crate::rusti::min_align_of::<u64>(), 8);
-        }
+        assert_eq!(crate::rusti::min_align_of::<u64>(), 8);
     }
 }
 
 #[cfg(target_os = "windows")]
 mod m {
     pub fn main() {
-        unsafe {
-            assert_eq!(crate::rusti::pref_align_of::<u64>(), 8);
-            assert_eq!(crate::rusti::min_align_of::<u64>(), 8);
-        }
+        assert_eq!(crate::rusti::min_align_of::<u64>(), 8);
     }
 }
 
 #[cfg(target_family = "wasm")]
 mod m {
     pub fn main() {
-        unsafe {
-            assert_eq!(crate::rusti::pref_align_of::<u64>(), 8);
-            assert_eq!(crate::rusti::min_align_of::<u64>(), 8);
-        }
+        assert_eq!(crate::rusti::min_align_of::<u64>(), 8);
     }
 }
 

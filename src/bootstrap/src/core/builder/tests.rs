@@ -22,7 +22,7 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
     let mut config = Config::parse(Flags::parse(cmd));
     // don't save toolstates
     config.save_toolstates = None;
-    config.dry_run = DryRun::SelfCheck;
+    config.set_dry_run(DryRun::SelfCheck);
 
     // Ignore most submodules, since we don't need them for a dry run, and the
     // tests run much faster without them.

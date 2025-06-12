@@ -9,7 +9,6 @@
 #![feature(debug_closure_helpers)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
-#![feature(string_from_utf8_lossy_owned)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

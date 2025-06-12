@@ -54,7 +54,6 @@
 #![feature(round_char_boundary)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
-#![feature(trusted_len)]
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
 #![feature(try_trait_v2_yeet)]

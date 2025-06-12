@@ -15,7 +15,6 @@
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(rustdoc_internals)]
-#![feature(string_from_utf8_lossy_owned)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end

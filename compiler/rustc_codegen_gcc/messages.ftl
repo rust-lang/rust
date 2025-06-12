@@ -2,9 +2,6 @@ codegen_gcc_unknown_ctarget_feature_prefix =
     unknown feature specified for `-Ctarget-feature`: `{$feature}`
     .note = features must begin with a `+` to enable or `-` to disable it
 
-codegen_gcc_invalid_minimum_alignment =
-    invalid minimum global alignment: {$err}
-
 codegen_gcc_forbidden_ctarget_feature =
     target feature `{$feature}` cannot be toggled with `-Ctarget-feature`: {$reason}
 

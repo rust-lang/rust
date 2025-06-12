@@ -800,4 +800,65 @@ foo();
                 foo();"#]],
         );
     }
+
+    #[test]
+    fn works_in_sig() {
+        check(
+            r#"
+macro_rules! foo {
+    () => { u32 };
+}
+fn foo() -> foo$0!() {
+    42
+}
+"#,
+            expect![[r#"
+                foo!
+                u32"#]],
+        );
+        check(
+            r#"
+macro_rules! foo {
+    () => { u32 };
+}
+fn foo(_: foo$0!() ) {}
+"#,
+            expect![[r#"
+                foo!
+                u32"#]],
+        );
+    }
+
+    #[test]
+    fn works_in_generics() {
+        check(
+            r#"
+trait Trait {}
+macro_rules! foo {
+    () => { Trait };
+}
+impl<const C: foo$0!()> Trait for () {}
+"#,
+            expect![[r#"
+                foo!
+                Trait"#]],
+        );
+    }
+
+    #[test]
+    fn works_in_fields() {
+        check(
+            r#"
+macro_rules! foo {
+    () => { u32 };
+}
+struct S {
+    field: foo$0!(),
+}
+"#,
+            expect![[r#"
+                foo!
+                u32"#]],
+        );
+    }
 }

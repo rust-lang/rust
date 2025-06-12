@@ -162,7 +162,7 @@ version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01667f6f40216b9a0b2945e05fed5f1ad0ab6470e69cb9378001e37b1c0668e4"
 dependencies = [
- "object",
+ "object 0.36.7",
 ]
 
 [[package]]
@@ -235,7 +235,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.36.7",
  "rustc-demangle",
  "windows-targets 0.52.6",
 ]
@@ -2326,7 +2326,6 @@ dependencies = [
  "tempfile",
  "tikv-jemalloc-sys",
  "ui_test",
- "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2509,7 +2508,19 @@ dependencies = [
  "indexmap",
  "memchr",
  "ruzstd",
- "wasmparser 0.222.1",
+]
+
+[[package]]
+name = "object"
+version = "0.37.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6273adb7096cf9ab4335f258e627d8230e69d40d45567d678f552dcec6245215"
+dependencies = [
+ "crc32fast",
+ "hashbrown",
+ "indexmap",
+ "memchr",
+ "wasmparser 0.232.0",
 ]
 
 [[package]]
@@ -3109,7 +3120,7 @@ dependencies = [
  "build_helper",
  "gimli",
  "libc",
- "object",
+ "object 0.36.7",
  "regex",
  "serde_json",
  "similar",
@@ -3118,11 +3129,12 @@ dependencies = [
 
 [[package]]
 name = "rustc-build-sysroot"
-version = "0.5.7"
+version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10edc2e4393515193bd766e2f6c050b0536a68e56f2b6d56c07ababfdc114ff0"
+checksum = "16d115ad7e26e0d1337f64ae6598f758194696afc2e9f34c8a6f24582529c3dc"
 dependencies = [
  "anyhow",
+ "regex",
  "rustc_version",
  "tempfile",
  "walkdir",
@@ -3422,7 +3434,7 @@ dependencies = [
  "itertools",
  "libc",
  "measureme",
- "object",
+ "object 0.37.0",
  "rustc-demangle",
  "rustc_abi",
  "rustc_ast",
@@ -3463,7 +3475,7 @@ dependencies = [
  "either",
  "itertools",
  "libc",
- "object",
+ "object 0.37.0",
  "pathdiff",
  "regex",
  "rustc_abi",
@@ -3640,6 +3652,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "smallvec",
  "tracing",
  "unic-langid",
 ]
@@ -3786,6 +3799,7 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
+ "rustc_target",
  "rustc_trait_selection",
  "smallvec",
  "tracing",
@@ -4495,7 +4509,7 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "object",
+ "object 0.37.0",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_fs_util",
@@ -5247,7 +5261,7 @@ checksum = "9e9c1e705f82a260173f3eec93f2ff6d7807f23ad5a8cc2e7316a891733ea7a1"
 dependencies = [
  "gimli",
  "hashbrown",
- "object",
+ "object 0.36.7",
  "tracing",
 ]
 
@@ -5910,15 +5924,6 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.222.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa210fd1788e6b37a1d1930f3389c48e1d6ebd1a013d34fa4b7f9e3e3bf03146"
-dependencies = [
- "bitflags",
-]
-
-[[package]]
-name = "wasmparser"
 version = "0.229.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc3b1f053f5d41aa55640a1fa9b6d1b8a9e4418d118ce308d20e24ff3575a8c"
@@ -5939,6 +5944,15 @@ dependencies = [
  "bitflags",
  "indexmap",
  "semver",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.232.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "917739b33bb1eb0e9a49bcd2637a351931be4578d0cc4d37b908d7a797784fbb"
+dependencies = [
+ "bitflags",
 ]
 
 [[package]]

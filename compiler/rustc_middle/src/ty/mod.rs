@@ -1116,10 +1116,7 @@ impl<'tcx> TypingEnv<'tcx> {
     }
 
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryParam<DefId>) -> TypingEnv<'tcx> {
-        TypingEnv {
-            typing_mode: TypingMode::PostAnalysis,
-            param_env: tcx.param_env_normalized_for_post_analysis(def_id),
-        }
+        tcx.typing_env_normalized_for_post_analysis(def_id)
     }
 
     /// Modify the `typing_mode` to `PostAnalysis` and eagerly reveal all
@@ -1133,7 +1130,7 @@ impl<'tcx> TypingEnv<'tcx> {
         // No need to reveal opaques with the new solver enabled,
         // since we have lazy norm.
         let param_env = if tcx.next_trait_solver_globally() {
-            ParamEnv::new(param_env.caller_bounds())
+            param_env
         } else {
             ParamEnv::new(tcx.reveal_opaque_types_in_bounds(param_env.caller_bounds()))
         };

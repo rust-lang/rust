@@ -28,7 +28,6 @@
 #![feature(iter_next_chunk)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array_transpose)]
-#![feature(nonnull_provenance)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_internals)]
 #![feature(sized_type_properties)]

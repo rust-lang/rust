@@ -8,7 +8,6 @@ use hir::Mutability;
 use ide_db::famous_defs::FamousDefs;
 
 use ide_db::text_edit::TextEditBuilder;
-use span::EditionedFileId;
 use syntax::ast::{self, AstNode};
 
 use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
@@ -17,7 +16,6 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
     pat: &ast::Pat,
 ) -> Option<()> {
     if !config.binding_mode_hints {

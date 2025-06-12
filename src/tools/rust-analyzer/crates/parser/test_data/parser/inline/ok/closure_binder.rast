@@ -1,0 +1,36 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        EXPR_STMT
+          CLOSURE_EXPR
+            CLOSURE_BINDER
+              FOR_KW "for"
+              GENERIC_PARAM_LIST
+                L_ANGLE "<"
+                LIFETIME_PARAM
+                  LIFETIME
+                    LIFETIME_IDENT "'a"
+                R_ANGLE ">"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

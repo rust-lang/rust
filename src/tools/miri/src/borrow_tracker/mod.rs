@@ -226,7 +226,13 @@ pub enum BorrowTrackerMethod {
     /// Stacked Borrows, as implemented in borrow_tracker/stacked_borrows
     StackedBorrows,
     /// Tree borrows, as implemented in borrow_tracker/tree_borrows
-    TreeBorrows,
+    TreeBorrows(TreeBorrowsParams),
+}
+
+/// Parameters that Tree Borrows can take.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct TreeBorrowsParams {
+    pub precise_interior_mut: bool,
 }
 
 impl BorrowTrackerMethod {
@@ -236,6 +242,13 @@ impl BorrowTrackerMethod {
             config.tracked_pointer_tags.clone(),
             config.retag_fields,
         ))
+    }
+
+    pub fn get_tree_borrows_params(self) -> TreeBorrowsParams {
+        match self {
+            BorrowTrackerMethod::TreeBorrows(params) => params,
+            _ => panic!("can only be called when `BorrowTrackerMethod` is `TreeBorrows`"),
+        }
     }
 }
 
@@ -252,7 +265,7 @@ impl GlobalStateInner {
                 AllocState::StackedBorrows(Box::new(RefCell::new(Stacks::new_allocation(
                     id, alloc_size, self, kind, machine,
                 )))),
-            BorrowTrackerMethod::TreeBorrows =>
+            BorrowTrackerMethod::TreeBorrows { .. } =>
                 AllocState::TreeBorrows(Box::new(RefCell::new(Tree::new_allocation(
                     id, alloc_size, self, kind, machine,
                 )))),
@@ -271,7 +284,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.sb_retag_ptr_value(kind, val),
-            BorrowTrackerMethod::TreeBorrows => this.tb_retag_ptr_value(kind, val),
+            BorrowTrackerMethod::TreeBorrows { .. } => this.tb_retag_ptr_value(kind, val),
         }
     }
 
@@ -284,7 +297,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.sb_retag_place_contents(kind, place),
-            BorrowTrackerMethod::TreeBorrows => this.tb_retag_place_contents(kind, place),
+            BorrowTrackerMethod::TreeBorrows { .. } => this.tb_retag_place_contents(kind, place),
         }
     }
 
@@ -293,7 +306,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.sb_protect_place(place),
-            BorrowTrackerMethod::TreeBorrows => this.tb_protect_place(place),
+            BorrowTrackerMethod::TreeBorrows { .. } => this.tb_protect_place(place),
         }
     }
 
@@ -302,7 +315,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.sb_expose_tag(alloc_id, tag),
-            BorrowTrackerMethod::TreeBorrows => this.tb_expose_tag(alloc_id, tag),
+            BorrowTrackerMethod::TreeBorrows { .. } => this.tb_expose_tag(alloc_id, tag),
         }
     }
 
@@ -319,7 +332,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.tcx.tcx.dcx().warn("Stacked Borrows does not support named pointers; `miri_pointer_name` is a no-op");
                 interp_ok(())
             }
-            BorrowTrackerMethod::TreeBorrows =>
+            BorrowTrackerMethod::TreeBorrows { .. } =>
                 this.tb_give_pointer_debug_name(ptr, nth_parent, name),
         }
     }
@@ -333,7 +346,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let method = borrow_tracker.borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.print_stacks(alloc_id),
-            BorrowTrackerMethod::TreeBorrows => this.print_tree(alloc_id, show_unnamed),
+            BorrowTrackerMethod::TreeBorrows { .. } => this.print_tree(alloc_id, show_unnamed),
         }
     }
 

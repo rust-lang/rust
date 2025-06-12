@@ -22,7 +22,7 @@ use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single};
 use crate::parser::{ArgParser, MetaItemParser};
 
-macro_rules! attribute_groups {
+macro_rules! attribute_parsers {
     (
         pub(crate) static $name: ident = [$($names: ty),* $(,)?];
     ) => {
@@ -63,8 +63,8 @@ macro_rules! attribute_groups {
     };
 }
 
-attribute_groups!(
-    pub(crate) static ATTRIBUTE_MAPPING = [
+attribute_parsers!(
+    pub(crate) static ATTRIBUTE_PARSERS = [
         // tidy-alphabetical-start
         BodyStabilityParser,
         ConfusablesParser,
@@ -90,7 +90,7 @@ attribute_groups!(
 ///
 /// Gives [`AttributeParser`]s enough information to create errors, for example.
 pub(crate) struct AcceptContext<'a> {
-    pub(crate) group_cx: &'a FinalizeContext<'a>,
+    pub(crate) finalize_cx: &'a FinalizeContext<'a>,
     /// The span of the attribute currently being parsed
     pub(crate) attr_span: Span,
 }
@@ -109,7 +109,7 @@ impl<'a> Deref for AcceptContext<'a> {
     type Target = FinalizeContext<'a>;
 
     fn deref(&self) -> &Self::Target {
-        &self.group_cx
+        &self.finalize_cx
     }
 }
 
@@ -219,7 +219,7 @@ impl<'sess> AttributeParser<'sess> {
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
 
-        let group_cx = FinalizeContext { cx: self, target_span };
+        let finalize_cx = FinalizeContext { cx: self, target_span };
 
         for attr in attrs {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
@@ -268,9 +268,11 @@ impl<'sess> AttributeParser<'sess> {
                     let args = parser.args();
                     let parts = path.segments().map(|i| i.name).collect::<Vec<_>>();
 
-                    if let Some(accept) = ATTRIBUTE_MAPPING.0.get(parts.as_slice()) {
-                        let cx =
-                            AcceptContext { group_cx: &group_cx, attr_span: lower_span(attr.span) };
+                    if let Some(accept) = ATTRIBUTE_PARSERS.0.get(parts.as_slice()) {
+                        let cx = AcceptContext {
+                            finalize_cx: &finalize_cx,
+                            attr_span: lower_span(attr.span),
+                        };
 
                         accept(&cx, &args)
                     } else {
@@ -302,8 +304,8 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         let mut parsed_attributes = Vec::new();
-        for f in &ATTRIBUTE_MAPPING.1 {
-            if let Some(attr) = f(&group_cx) {
+        for f in &ATTRIBUTE_PARSERS.1 {
+            if let Some(attr) = f(&finalize_cx) {
                 parsed_attributes.push(Attribute::Parsed(attr));
             }
         }

@@ -17,6 +17,7 @@ use hir_def::{
         DynMap,
         keys::{self, Key},
     },
+    hir::generics::GenericParams,
     item_scope::ItemScope,
     item_tree::ItemTreeNode,
     nameres::DefMap,
@@ -49,6 +50,12 @@ impl ChildBySource for TraitId {
         data.items.iter().for_each(|&(_, item)| {
             add_assoc_item(db, res, file_id, item);
         });
+        let (_, source_map) = db.trait_signature_with_source_map(*self);
+        source_map.expansions().filter(|(ast, _)| ast.file_id == file_id).for_each(
+            |(ast, &exp_id)| {
+                res[keys::MACRO_CALL].insert(ast.value, exp_id);
+            },
+        );
     }
 }
 
@@ -68,6 +75,12 @@ impl ChildBySource for ImplId {
         data.items.iter().for_each(|&(_, item)| {
             add_assoc_item(db, res, file_id, item);
         });
+        let (_, source_map) = db.impl_signature_with_source_map(*self);
+        source_map.expansions().filter(|(ast, _)| ast.file_id == file_id).for_each(
+            |(ast, &exp_id)| {
+                res[keys::MACRO_CALL].insert(ast.value, exp_id);
+            },
+        );
     }
 }
 
@@ -178,6 +191,8 @@ impl ChildBySource for VariantId {
                 Either::Right(source) => res[keys::RECORD_FIELD].insert(AstPtr::new(&source), id),
             }
         }
+        let (_, sm) = db.variant_fields_with_source_map(*self);
+        sm.expansions().for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
     }
 }
 
@@ -195,6 +210,11 @@ impl ChildBySource for EnumId {
             res[keys::ENUM_VARIANT]
                 .insert(ast_id_map.get(tree[variant.lookup(db).id.value].ast_id), variant);
         });
+        let (_, source_map) = db.enum_signature_with_source_map(*self);
+        source_map
+            .expansions()
+            .filter(|(ast, _)| ast.file_id == file_id)
+            .for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
     }
 }
 
@@ -225,7 +245,8 @@ impl ChildBySource for GenericDefId {
             return;
         }
 
-        let generic_params = db.generic_params(*self);
+        let (generic_params, _, source_map) =
+            GenericParams::generic_params_and_store_and_source_map(db, *self);
         let mut toc_idx_iter = generic_params.iter_type_or_consts().map(|(idx, _)| idx);
         let lts_idx_iter = generic_params.iter_lt().map(|(idx, _)| idx);
 
@@ -253,6 +274,11 @@ impl ChildBySource for GenericDefId {
                 res[keys::LIFETIME_PARAM].insert(AstPtr::new(&ast_param), id);
             }
         }
+
+        source_map
+            .expansions()
+            .filter(|(ast, _)| ast.file_id == file_id)
+            .for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
     }
 }
 

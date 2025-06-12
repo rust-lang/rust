@@ -151,6 +151,20 @@ pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFl
     }
 }
 
+/// Extend functionality of rustc_apfloat softfloats
+pub trait IeeeExt: rustc_apfloat::Float {
+    #[inline]
+    fn one() -> Self {
+        Self::from_u128(1).value
+    }
+
+    #[inline]
+    fn clamp(self, min: Self, max: Self) -> Self {
+        self.maximum(min).minimum(max)
+    }
+}
+impl<S: rustc_apfloat::ieee::Semantics> IeeeExt for IeeeFloat<S> {}
+
 #[cfg(test)]
 mod tests {
     use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};

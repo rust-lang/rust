@@ -48,12 +48,6 @@ pub(crate) struct UnwindingInlineAsm {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_gcc_invalid_minimum_alignment)]
-pub(crate) struct InvalidMinimumAlignment {
-    pub err: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_gcc_copy_bitcode)]
 pub(crate) struct CopyBitcode {
     pub err: std::io::Error,

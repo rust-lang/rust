@@ -58,7 +58,6 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     // Currently, we use a fulfillment context to completely resolve
     // all nested obligations. This is because they can inform the
     // inference of the impl's type parameters.
-    // FIXME(-Znext-solver): Doesn't need diagnostics if new solver.
     let ocx = ObligationCtxt::new(&infcx);
     let impl_source = selection.map(|obligation| {
         ocx.register_obligation(obligation);

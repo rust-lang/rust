@@ -812,11 +812,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             dest.write_cvalue(fx, val);
         }
 
-        sym::pref_align_of
-        | sym::needs_drop
-        | sym::type_id
-        | sym::type_name
-        | sym::variant_count => {
+        sym::needs_drop | sym::type_id | sym::type_name | sym::variant_count => {
             intrinsic_args!(fx, args => (); intrinsic);
 
             let const_val = fx

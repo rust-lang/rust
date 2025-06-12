@@ -148,9 +148,8 @@ pub struct MiriConfig {
     pub report_progress: Option<u32>,
     /// Whether Stacked Borrows and Tree Borrows retagging should recurse into fields of datatypes.
     pub retag_fields: RetagFields,
-    /// The location of a shared object file to load when calling external functions
-    /// FIXME! consider allowing users to specify paths to multiple files, or to a directory
-    pub native_lib: Option<PathBuf>,
+    /// The location of the shared object files to load when calling external functions
+    pub native_lib: Vec<PathBuf>,
     /// Run a garbage collector for BorTags every N basic blocks.
     pub gc_interval: u32,
     /// The number of CPUs to be reported by miri.
@@ -197,7 +196,7 @@ impl Default for MiriConfig {
             preemption_rate: 0.01, // 1%
             report_progress: None,
             retag_fields: RetagFields::Yes,
-            native_lib: None,
+            native_lib: vec![],
             gc_interval: 10_000,
             num_cpus: 1,
             page_size: None,
