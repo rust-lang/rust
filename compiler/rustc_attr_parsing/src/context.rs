@@ -235,9 +235,9 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         })
     }
 
-    pub(crate) fn expected_no_args(&self, span: Span) -> ErrorGuaranteed {
+    pub(crate) fn expected_no_args(&self, args_span: Span) -> ErrorGuaranteed {
         self.emit_err(AttributeParseError {
-            span,
+            span: args_span,
             attr_span: self.attr_span,
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
