@@ -2,12 +2,12 @@ use std::mem;
 
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
-use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::{AttributeParser, OmitDoc};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::span_bug;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
@@ -381,7 +381,11 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 // gets too long. We don't want these to show up in compiler
                 // output or built artifacts, so replace them here...
                 // Perhaps we should instead format APITs more robustly.
-                let name = Symbol::intern(&pprust::ty_to_string(ty).replace('\n', " "));
+                let name = *self
+                    .resolver
+                    .impl_trait_names
+                    .get(id)
+                    .unwrap_or_else(|| span_bug!(ty.span, "expected this opaque to be named"));
                 let kind = match self.invocation_parent.impl_trait_context {
                     ImplTraitContext::Universal => DefKind::TyParam,
                     ImplTraitContext::Existential => DefKind::OpaqueTy,
