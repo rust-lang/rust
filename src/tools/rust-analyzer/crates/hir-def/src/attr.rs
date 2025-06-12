@@ -523,10 +523,15 @@ impl AttrsWithOwner {
                 let mod_data = &def_map[module.local_id];
 
                 let raw_attrs = match mod_data.origin {
-                    ModuleOrigin::File { definition, declaration_tree_id, .. } => {
+                    ModuleOrigin::File {
+                        definition,
+                        declaration_tree_id,
+                        file_item_tree_id,
+                        ..
+                    } => {
                         let decl_attrs = declaration_tree_id
                             .item_tree(db)
-                            .raw_attrs(AttrOwner::ModItem(declaration_tree_id.value.into()))
+                            .raw_attrs(AttrOwner::ModItem(file_item_tree_id.into()))
                             .clone();
                         let tree = db.file_item_tree(definition.into());
                         let def_attrs = tree.raw_attrs(AttrOwner::TopLevel).clone();
@@ -536,10 +541,12 @@ impl AttrsWithOwner {
                         let tree = db.file_item_tree(definition.into());
                         tree.raw_attrs(AttrOwner::TopLevel).clone()
                     }
-                    ModuleOrigin::Inline { definition_tree_id, .. } => definition_tree_id
-                        .item_tree(db)
-                        .raw_attrs(AttrOwner::ModItem(definition_tree_id.value.into()))
-                        .clone(),
+                    ModuleOrigin::Inline { definition_tree_id, file_item_tree_id, .. } => {
+                        definition_tree_id
+                            .item_tree(db)
+                            .raw_attrs(AttrOwner::ModItem(file_item_tree_id.into()))
+                            .clone()
+                    }
                     ModuleOrigin::BlockExpr { id, .. } => {
                         let tree = db.block_item_tree(id);
                         tree.raw_attrs(AttrOwner::TopLevel).clone()

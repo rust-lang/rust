@@ -35,8 +35,8 @@ use crate::{
     db::DefDatabase,
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
-        self, FieldsShape, FileItemTreeId, ImportAlias, ImportKind, ItemTree, ItemTreeId,
-        ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId, UseTreeKind,
+        self, FieldsShape, FileItemTreeId, ImportAlias, ImportKind, ItemTree, ItemTreeNode, Macro2,
+        MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId, UseTreeKind,
     },
     macro_call_as_call_id,
     nameres::{
@@ -140,7 +140,8 @@ struct ImportSource {
     id: UseId,
     is_prelude: bool,
     kind: ImportKind,
-    item_tree_id: ItemTreeId<item_tree::Use>,
+    tree: TreeId,
+    item: FileItemTreeId<item_tree::Use>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -154,19 +155,20 @@ struct Import {
 impl Import {
     fn from_use(
         tree: &ItemTree,
-        item_tree_id: ItemTreeId<item_tree::Use>,
+        tree_id: TreeId,
+        item: FileItemTreeId<item_tree::Use>,
         id: UseId,
         is_prelude: bool,
         mut cb: impl FnMut(Self),
     ) {
-        let it = &tree[item_tree_id.value];
+        let it = &tree[item];
         let visibility = &tree[it.visibility];
         it.use_tree.expand(|idx, path, kind, alias| {
             cb(Self {
                 path,
                 alias,
                 visibility: visibility.clone(),
-                source: ImportSource { use_tree: idx, id, is_prelude, kind, item_tree_id },
+                source: ImportSource { use_tree: idx, id, is_prelude, kind, tree: tree_id, item },
             });
         });
     }
@@ -860,7 +862,8 @@ impl DefCollector<'_> {
                 kind: kind @ (ImportKind::Plain | ImportKind::TypeOnly),
                 id,
                 use_tree,
-                item_tree_id,
+                tree,
+                item,
                 ..
             } => {
                 let name = match &import.alias {
@@ -893,8 +896,8 @@ impl DefCollector<'_> {
                         let Some(ImportOrExternCrate::ExternCrate(_)) = def.import else {
                             return false;
                         };
-                        let item_tree = item_tree_id.item_tree(self.db);
-                        let use_kind = item_tree[item_tree_id.value].use_tree.kind();
+                        let item_tree = tree.item_tree(self.db);
+                        let use_kind = item_tree[item].use_tree.kind();
                         let UseTreeKind::Single { path, .. } = use_kind else {
                             return false;
                         };
@@ -1643,7 +1646,7 @@ impl DefCollector<'_> {
                     Import {
                         ref path,
                         source:
-                            ImportSource { use_tree, id, is_prelude: _, kind: _, item_tree_id: _ },
+                            ImportSource { use_tree, id, is_prelude: _, kind: _, tree: _, item: _ },
                         ..
                     },
                 ..
@@ -1771,7 +1774,8 @@ impl ModCollector<'_, '_> {
                     let is_prelude = attrs.by_key(sym::prelude_import).exists();
                     Import::from_use(
                         self.item_tree,
-                        ItemTreeId::new(self.tree_id, item_tree_id),
+                        self.tree_id,
+                        item_tree_id,
                         id,
                         is_prelude,
                         |import| {
@@ -2207,13 +2211,15 @@ impl ModCollector<'_, '_> {
         let origin = match definition {
             None => ModuleOrigin::Inline {
                 definition: declaration,
-                definition_tree_id: ItemTreeId::new(self.tree_id, mod_tree_id),
+                definition_tree_id: self.tree_id,
+                file_item_tree_id: mod_tree_id,
             },
             Some((definition, is_mod_rs)) => ModuleOrigin::File {
                 declaration,
                 definition,
                 is_mod_rs,
-                declaration_tree_id: ItemTreeId::new(self.tree_id, mod_tree_id),
+                declaration_tree_id: self.tree_id,
+                file_item_tree_id: mod_tree_id,
             },
         };
 

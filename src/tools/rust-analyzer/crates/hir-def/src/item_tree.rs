@@ -404,59 +404,6 @@ impl TreeId {
     }
 }
 
-#[derive(Debug)]
-pub struct ItemTreeId<N> {
-    tree: TreeId,
-    pub value: FileItemTreeId<N>,
-}
-
-impl<N> ItemTreeId<N> {
-    pub fn new(tree: TreeId, idx: FileItemTreeId<N>) -> Self {
-        Self { tree, value: idx }
-    }
-
-    pub fn file_id(self) -> HirFileId {
-        self.tree.file
-    }
-
-    pub fn tree_id(self) -> TreeId {
-        self.tree
-    }
-
-    pub fn item_tree(self, db: &dyn DefDatabase) -> Arc<ItemTree> {
-        self.tree.item_tree(db)
-    }
-
-    pub fn resolved<R>(self, db: &dyn DefDatabase, cb: impl FnOnce(&N) -> R) -> R
-    where
-        ItemTree: Index<FileItemTreeId<N>, Output = N>,
-    {
-        cb(&self.tree.item_tree(db)[self.value])
-    }
-}
-
-impl<N> Copy for ItemTreeId<N> {}
-impl<N> Clone for ItemTreeId<N> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<N> PartialEq for ItemTreeId<N> {
-    fn eq(&self, other: &Self) -> bool {
-        self.tree == other.tree && self.value == other.value
-    }
-}
-
-impl<N> Eq for ItemTreeId<N> {}
-
-impl<N> Hash for ItemTreeId<N> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.tree.hash(state);
-        self.value.hash(state);
-    }
-}
-
 macro_rules! mod_items {
     ( $( $typ:ident in $fld:ident -> $ast:ty ),+ $(,)? ) => {
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
