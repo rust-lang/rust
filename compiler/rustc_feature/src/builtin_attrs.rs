@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_span::edition::Edition;
 use rustc_span::{Symbol, sym};
 
-use crate::{Features, Stability};
+use crate::Features;
 
 type GateFn = fn(&Features) -> bool;
 
@@ -94,32 +94,21 @@ pub enum AttributeSafety {
     Unsafe { unsafe_since: Option<Edition> },
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Debug, Copy)]
 pub enum AttributeGate {
-    /// Is gated by a given feature gate, reason
-    /// and function to check if enabled
-    Gated(Stability, Symbol, &'static str, fn(&Features) -> bool),
-
+    /// A gated attribute which requires a feature gate to be enabled.
+    Gated {
+        /// The feature gate, for example `#![feature(rustc_attrs)]` for rustc_* attributes.
+        feature: Symbol,
+        /// The error message displayed when an attempt is made to use the attribute without its feature gate.
+        message: &'static str,
+        /// Check function to be called during the `PostExpansionVisitor` pass.
+        check: fn(&Features) -> bool,
+        /// Notes to be displayed when an attempt is made to use the attribute without its feature gate.
+        notes: &'static [&'static str],
+    },
     /// Ungated attribute, can be used on all release channels
     Ungated,
-}
-
-// fn() is not Debug
-impl std::fmt::Debug for AttributeGate {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Self::Gated(ref stab, name, expl, _) => {
-                write!(fmt, "Gated({stab:?}, {name}, {expl})")
-            }
-            Self::Ungated => write!(fmt, "Ungated"),
-        }
-    }
-}
-
-impl AttributeGate {
-    fn is_deprecated(&self) -> bool {
-        matches!(*self, Self::Gated(Stability::Deprecated(_, _), ..))
-    }
 }
 
 /// A template that the attribute input must match.
@@ -247,7 +236,7 @@ macro_rules! ungated {
 }
 
 macro_rules! gated {
-    (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $gate:ident, $msg:expr $(,)?) => {
+    (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $gate:ident, $message:expr $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
@@ -255,10 +244,15 @@ macro_rules! gated {
             safety: AttributeSafety::Unsafe { unsafe_since: None },
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$gate, $msg, Features::$gate),
+            gate: Gated {
+                feature: sym::$gate,
+                message: $message,
+                check: Features::$gate,
+                notes: &[],
+            },
         }
     };
-    (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $msg:expr $(,)?) => {
+    (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $message:expr $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
@@ -266,10 +260,15 @@ macro_rules! gated {
             safety: AttributeSafety::Unsafe { unsafe_since: None },
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$attr, $msg, Features::$attr),
+            gate: Gated {
+                feature: sym::$attr,
+                message: $message,
+                check: Features::$attr,
+                notes: &[],
+            },
         }
     };
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $gate:ident, $msg:expr $(,)?) => {
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $gate:ident, $message:expr $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
@@ -277,10 +276,15 @@ macro_rules! gated {
             safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$gate, $msg, Features::$gate),
+            gate: Gated {
+                feature: sym::$gate,
+                message: $message,
+                check: Features::$gate,
+                notes: &[],
+            },
         }
     };
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $msg:expr $(,)?) => {
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $message:expr $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
@@ -288,7 +292,12 @@ macro_rules! gated {
             safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$attr, $msg, Features::$attr),
+            gate: Gated {
+                feature: sym::$attr,
+                message: $message,
+                check: Features::$attr,
+                notes: &[],
+            },
         }
     };
 }
@@ -304,12 +313,11 @@ macro_rules! rustc_attr {
             concat!(
                 "the `#[",
                 stringify!($attr),
-                "]` attribute is just used for rustc unit tests \
-                and will never be stable",
+                "]` attribute is used for rustc unit tests"
             ),
         )
     };
-    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $msg:expr $(,)?) => {
+    ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $($notes:expr),* $(,)?) => {
         BuiltinAttribute {
             name: sym::$attr,
             encode_cross_crate: $encode_cross_crate,
@@ -317,7 +325,17 @@ macro_rules! rustc_attr {
             safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::rustc_attrs, $msg, Features::rustc_attrs),
+            gate: Gated {
+                feature: sym::rustc_attrs,
+                message: "use of an internal attribute",
+                check: Features::rustc_attrs,
+                notes: &[
+                    concat!("the `#[",
+                    stringify!($attr),
+                    "]` attribute is an internal implementation detail that will never be stable"),
+                    $($notes),*
+                    ]
+            },
         }
     };
 }
@@ -327,9 +345,6 @@ macro_rules! experimental {
         concat!("the `#[", stringify!($attr), "]` attribute is an experimental feature")
     };
 }
-
-const IMPL_DETAIL: &str = "internal implementation detail";
-const INTERNAL_UNSTABLE: &str = "this is an internal attribute that will never be stable";
 
 #[derive(PartialEq)]
 pub enum EncodeCrossCrate {
@@ -668,7 +683,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_deprecated_safe_2024, Normal, template!(List: r#"audit_that = "...""#),
         ErrorFollowing, EncodeCrossCrate::Yes,
-        "rustc_deprecated_safe_2024 is supposed to be used in libstd only",
+        "`#[rustc_deprecated_safe_2024]` is used to declare functions unsafe across the edition 2024 boundary",
     ),
     rustc_attr!(
         rustc_pub_transparent, Normal, template!(Word),
@@ -695,7 +710,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorFollowing,
         EncodeCrossCrate::No,
         "`rustc_never_type_options` is used to experiment with never type fallback and work on \
-         never type stabilization, and will never be stable"
+         never type stabilization"
     ),
 
     // ==========================================================================
@@ -704,23 +719,23 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(
         rustc_allocator, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, IMPL_DETAIL
+        EncodeCrossCrate::No,
     ),
     rustc_attr!(
         rustc_nounwind, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, IMPL_DETAIL
+        EncodeCrossCrate::No,
     ),
     rustc_attr!(
         rustc_reallocator, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, IMPL_DETAIL
+        EncodeCrossCrate::No,
     ),
     rustc_attr!(
         rustc_deallocator, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, IMPL_DETAIL
+        EncodeCrossCrate::No,
     ),
     rustc_attr!(
         rustc_allocator_zeroed, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, IMPL_DETAIL
+        EncodeCrossCrate::No,
     ),
     gated!(
         default_lib_allocator, Normal, template!(Word), WarnFollowing,
@@ -762,7 +777,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_std_internal_symbol, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, INTERNAL_UNSTABLE
+        EncodeCrossCrate::No,
     ),
 
     // ==========================================================================
@@ -772,11 +787,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_builtin_macro, Normal,
         template!(Word, List: "name, /*opt*/ attributes(name1, name2, ...)"), ErrorFollowing,
-        EncodeCrossCrate::Yes, IMPL_DETAIL
+        EncodeCrossCrate::Yes,
     ),
     rustc_attr!(
         rustc_proc_macro_decls, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, INTERNAL_UNSTABLE
+        EncodeCrossCrate::No,
     ),
     rustc_attr!(
         rustc_macro_transparency, Normal,
@@ -786,7 +801,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_autodiff, Normal,
         template!(Word, List: r#""...""#), DuplicatesOk,
-        EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+        EncodeCrossCrate::Yes,
     ),
     // Traces that are left when `cfg` and `cfg_attr` attributes are expanded.
     // The attributes are not gated, to avoid stability errors, but they cannot be used in stable
@@ -812,54 +827,53 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             NameValueStr: "message"
         ),
         ErrorFollowing, EncodeCrossCrate::Yes,
-        INTERNAL_UNSTABLE
+        "see `#[diagnostic::on_unimplemented]` for the stable equivalent of this attribute"
     ),
     rustc_attr!(
         rustc_confusables, Normal,
         template!(List: r#""name1", "name2", ..."#),
         ErrorFollowing, EncodeCrossCrate::Yes,
-        INTERNAL_UNSTABLE,
     ),
     // Enumerates "identity-like" conversion methods to suggest on type mismatch.
     rustc_attr!(
         rustc_conversion_suggestion, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+        WarnFollowing, EncodeCrossCrate::Yes,
     ),
     // Prevents field reads in the marked trait or method to be considered
     // during dead code analysis.
     rustc_attr!(
         rustc_trivial_field_reads, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+        WarnFollowing, EncodeCrossCrate::Yes,
     ),
     // Used by the `rustc::potential_query_instability` lint to warn methods which
     // might not be stable during incremental compilation.
     rustc_attr!(
         rustc_lint_query_instability, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+        WarnFollowing, EncodeCrossCrate::Yes,
     ),
     // Used by the `rustc::untracked_query_information` lint to warn methods which
     // might not be stable during incremental compilation.
     rustc_attr!(
         rustc_lint_untracked_query_information, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+        WarnFollowing, EncodeCrossCrate::Yes,
     ),
     // Used by the `rustc::diagnostic_outside_of_impl` lints to assist in changes to diagnostic
     // APIs. Any function with this attribute will be checked by that lint.
     rustc_attr!(
         rustc_lint_diagnostics, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+        WarnFollowing, EncodeCrossCrate::Yes,
     ),
     // Used by the `rustc::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
     // types (as well as any others in future).
     rustc_attr!(
         rustc_lint_opt_ty, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+        WarnFollowing, EncodeCrossCrate::Yes,
     ),
     // Used by the `rustc::bad_opt_access` lint on fields
     // types (as well as any others in future).
     rustc_attr!(
         rustc_lint_opt_deny_field_access, Normal, template!(List: "message"),
-        WarnFollowing, EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+        WarnFollowing, EncodeCrossCrate::Yes,
     ),
 
     // ==========================================================================
@@ -868,28 +882,30 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(
         rustc_promotable, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, IMPL_DETAIL),
+        EncodeCrossCrate::No, ),
     rustc_attr!(
         rustc_legacy_const_generics, Normal, template!(List: "N"), ErrorFollowing,
-        EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+        EncodeCrossCrate::Yes,
     ),
     // Do not const-check this function's body. It will always get replaced during CTFE.
     rustc_attr!(
         rustc_do_not_const_check, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+        EncodeCrossCrate::Yes, "`#[rustc_do_not_const_check]` skips const-check for this function's body",
     ),
-    // Ensure the argument to this function is &&str during const-check.
     rustc_attr!(
         rustc_const_panic_str, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+        EncodeCrossCrate::Yes, "`#[rustc_const_panic_str]` ensures the argument to this function is &&str during const-check",
     ),
     rustc_attr!(
         rustc_const_stable_indirect, Normal,
-        template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
+        template!(Word),
+        WarnFollowing,
+        EncodeCrossCrate::No,
+        "this is an internal implementation detail",
     ),
     rustc_attr!(
         rustc_intrinsic_const_stable_indirect, Normal,
-        template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
+        template!(Word), WarnFollowing, EncodeCrossCrate::No,  "this is an internal implementation detail",
     ),
     gated!(
         rustc_allow_const_fn_unstable, Normal,
@@ -905,21 +921,21 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_layout_scalar_valid_range_start, Normal, template!(List: "value"), ErrorFollowing,
         EncodeCrossCrate::Yes,
         "the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable \
-        niche optimizations in libcore and libstd and will never be stable",
+        niche optimizations in the standard library",
     ),
     rustc_attr!(
         rustc_layout_scalar_valid_range_end, Normal, template!(List: "value"), ErrorFollowing,
         EncodeCrossCrate::Yes,
         "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
-        niche optimizations in libcore and libstd and will never be stable",
+        niche optimizations in the standard library",
     ),
     rustc_attr!(
         rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::Yes,
         "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to document \
-        guaranteed niche optimizations in libcore and libstd and will never be stable\n\
-        (note that the compiler does not even check whether the type indeed is being non-null-optimized; \
-        it is your responsibility to ensure that the attribute is only used on types that are optimized)",
+        guaranteed niche optimizations in the standard library",
+        "the compiler does not even check whether the type indeed is being non-null-optimized; \
+        it is your responsibility to ensure that the attribute is only used on types that are optimized",
     ),
 
     // ==========================================================================
@@ -932,17 +948,17 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_as_ptr, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
-        "#[rustc_as_ptr] is used to mark functions returning pointers to their inner allocations."
+        "`#[rustc_as_ptr]` is used to mark functions returning pointers to their inner allocations."
     ),
     rustc_attr!(
         rustc_pass_by_value, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
-        "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
+        "`#[rustc_pass_by_value]` is used to mark types that must be passed by value instead of reference."
     ),
     rustc_attr!(
         rustc_never_returns_null_ptr, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
-        "#[rustc_never_returns_null_ptr] is used to mark functions returning non-null pointers."
+        "`#[rustc_never_returns_null_ptr]` is used to mark functions returning non-null pointers."
     ),
     rustc_attr!(
         rustc_no_implicit_autorefs, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
@@ -950,15 +966,15 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
-        "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
+        "`#![rustc_coherence_is_core]` allows inherent methods on builtin types, only intended to be used in `core`."
     ),
     rustc_attr!(
         rustc_coinductive, AttributeType::Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
-        "#![rustc_coinductive] changes a trait to be coinductive, allowing cycles in the trait solver."
+        "`#[rustc_coinductive]` changes a trait to be coinductive, allowing cycles in the trait solver."
     ),
     rustc_attr!(
         rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
-        "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
+        "`#[rustc_allow_incoherent_impl]` has to be added to all impl items of an incoherent inherent impl."
     ),
     rustc_attr!(
         rustc_preserve_ub_checks, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
@@ -970,7 +986,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word),
         ErrorFollowing,
         EncodeCrossCrate::No,
-        "#[rustc_deny_explicit_impl] enforces that a trait can have no user-provided impls"
+        "`#[rustc_deny_explicit_impl]` enforces that a trait can have no user-provided impls"
     ),
     rustc_attr!(
         rustc_do_not_implement_via_object,
@@ -978,14 +994,14 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word),
         ErrorFollowing,
         EncodeCrossCrate::No,
-        "#[rustc_do_not_implement_via_object] opts out of the automatic trait impl for trait objects \
+        "`#[rustc_do_not_implement_via_object]` opts out of the automatic trait impl for trait objects \
         (`impl Trait for dyn Trait`)"
     ),
     rustc_attr!(
         rustc_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word),
         ErrorFollowing, EncodeCrossCrate::Yes,
-        "#[rustc_has_incoherent_inherent_impls] allows the addition of incoherent inherent impls for \
-         the given type by annotating all impl items with #[rustc_allow_incoherent_impl]."
+        "`#[rustc_has_incoherent_inherent_impls]` allows the addition of incoherent inherent impls for \
+         the given type by annotating all impl items with `#[rustc_allow_incoherent_impl]`."
     ),
 
     BuiltinAttribute {
@@ -996,12 +1012,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         safety: AttributeSafety::Normal,
         template: template!(NameValueStr: "name"),
         duplicates: ErrorFollowing,
-        gate: Gated(
-            Stability::Unstable,
-            sym::rustc_attrs,
-            "diagnostic items compiler internal support for linting",
-            Features::rustc_attrs,
-        ),
+        gate: Gated{
+            feature: sym::rustc_attrs,
+            message: "use of an internal attribute",
+            check: Features::rustc_attrs,
+            notes: &["the `#[rustc_diagnostic_item]` attribute allows the compiler to reference types \
+            from the standard library for diagnostic purposes"],
+        },
     },
     gated!(
         // Used in resolve:
@@ -1015,14 +1032,14 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_inherit_overflow_checks, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
         "the `#[rustc_inherit_overflow_checks]` attribute is just used to control \
-        overflow checking behavior of several libcore functions that are inlined \
-        across crates and will never be stable",
+        overflow checking behavior of several functions in the standard library that are inlined \
+        across crates",
     ),
     rustc_attr!(
         rustc_reservation_impl, Normal,
         template!(NameValueStr: "reservation message"), ErrorFollowing, EncodeCrossCrate::Yes,
         "the `#[rustc_reservation_impl]` attribute is internally used \
-         for reserving for `for<T> From<!> for T` impl"
+        for reserving `impl<T> From<!> for T` as part of the effort to stabilize `!`"
     ),
     rustc_attr!(
         rustc_test_marker, Normal, template!(NameValueStr: "name"), WarnFollowing,
@@ -1053,12 +1070,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_must_implement_one_of, Normal, template!(List: "function1, function2, ..."),
         ErrorFollowing, EncodeCrossCrate::No,
         "the `#[rustc_must_implement_one_of]` attribute is used to change minimal complete \
-        definition of a trait, it's currently in experimental form and should be changed before \
-        being exposed outside of the std"
+        definition of a trait. Its syntax and semantics are highly experimental and will be \
+        subject to change before stabilization",
     ),
     rustc_attr!(
         rustc_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
-        EncodeCrossCrate::Yes, r#"`rustc_doc_primitive` is a rustc internal attribute"#,
+        EncodeCrossCrate::Yes, "the `#[rustc_doc_primitive]` attribute is used by the standard library \
+        to provide a way to generate documentation for primitive types",
     ),
     gated!(
         rustc_intrinsic, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
@@ -1066,11 +1084,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_no_mir_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
-        "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
+        "`#[rustc_no_mir_inline]` prevents the MIR inliner from inlining a function while not affecting codegen"
     ),
     rustc_attr!(
         rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
-        "#[rustc_force_inline] forces a free function to be inlined"
+        "`#[rustc_force_inline]` forces a free function to be inlined"
     ),
 
     // ==========================================================================
@@ -1208,10 +1226,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorFollowing, EncodeCrossCrate::No,
     ),
 ];
-
-pub fn deprecated_attributes() -> Vec<&'static BuiltinAttribute> {
-    BUILTIN_ATTRIBUTES.iter().filter(|attr| attr.gate.is_deprecated()).collect()
-}
 
 pub fn is_builtin_attr_name(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()

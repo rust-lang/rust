@@ -17,7 +17,7 @@ use rustc_feature::{GateIssue, UnstableFeatures, find_feature_issue};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::Session;
 use crate::config::{Cfg, CheckCfg};
@@ -192,8 +192,11 @@ pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
         } else {
             err.subdiagnostic(FeatureDiagnosticHelp { feature });
         }
-
-        if sess.opts.unstable_opts.ui_testing {
+        if feature == sym::rustc_attrs {
+            // We're unlikely to stabilize something out of `rustc_attrs`
+            // without at least renaming it, so pointing out how old
+            // the compiler is will do little good.
+        } else if sess.opts.unstable_opts.ui_testing {
             err.subdiagnostic(SuggestUpgradeCompiler::ui_testing());
         } else if let Some(suggestion) = SuggestUpgradeCompiler::new() {
             err.subdiagnostic(suggestion);
