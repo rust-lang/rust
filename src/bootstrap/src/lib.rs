@@ -591,14 +591,6 @@ impl Build {
         }
     }
 
-    /// Updates all submodules, and exits with an error if submodule
-    /// management is disabled and the submodule does not exist.
-    pub fn require_and_update_all_submodules(&self) {
-        for submodule in build_helper::util::parse_gitmodules(&self.src) {
-            self.require_submodule(submodule, None);
-        }
-    }
-
     /// If any submodule has been initialized already, sync it unconditionally.
     /// This avoids contributors checking in a submodule change by accident.
     fn update_existing_submodules(&self) {
