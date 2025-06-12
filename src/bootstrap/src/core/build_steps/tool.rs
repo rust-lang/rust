@@ -136,17 +136,16 @@ impl Step for ToolBuild {
             _ => panic!("unexpected Mode for tool build"),
         }
 
-        // build.tool-config.TOOL_NAME.features in bootstrap.toml allows specifying which features
-        // to enable for a specific tool. `extra_features` instead is not controlled by the toml
-        // instead provides features that are always enabled for a specific tool (e.g.
-        // "in-rust-tree" for rust-analyzer). Finally, `prepare_tool_cargo` might add more features
-        // to adapt the build to the chosen flags (e.g. "all-static" for cargo if
-        // `cargo_native_static` is true).
+        // build.tool.TOOL_NAME.features in bootstrap.toml allows specifying which features to
+        // enable for a specific tool. `extra_features` instead is not controlled by the toml and
+        // provides features that are always enabled for a specific tool (e.g. "in-rust-tree" for
+        // rust-analyzer). Finally, `prepare_tool_cargo` might add more features to adapt the build
+        // to the chosen flags (e.g. "all-static" for cargo if `cargo_native_static` is true).
         let mut features = builder
             .config
-            .tool_config
+            .tool
             .get(self.tool)
-            .and_then(|tool_config| tool_config.features.clone())
+            .and_then(|tool| tool.features.clone())
             .unwrap_or_default();
         features.extend(self.extra_features.clone());
 

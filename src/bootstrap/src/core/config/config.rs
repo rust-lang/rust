@@ -35,7 +35,7 @@ pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags};
 use crate::core::config::target_selection::TargetSelectionList;
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::toml::build::{Build, ToolConfig};
+use crate::core::config::toml::build::{Build, Tool};
 use crate::core::config::toml::change_id::ChangeId;
 use crate::core::config::toml::rust::{
     LldMode, RustOptimize, check_incompatible_options_for_ci_rustc,
@@ -114,7 +114,9 @@ pub struct Config {
     pub bootstrap_cache_path: Option<PathBuf>,
     pub extended: bool,
     pub tools: Option<HashSet<String>>,
-    pub tool_config: HashMap<String, ToolConfig>,
+    /// Specify build configuration specific for some tool, such as enabled features, see [Tool].
+    /// The key in the map is the name of the tool, and the value is tool-specific configuration.
+    pub tool: HashMap<String, Tool>,
     pub sanitizers: bool,
     pub profiler: bool,
     pub omit_git_hash: bool,
@@ -690,7 +692,7 @@ impl Config {
             bootstrap_cache_path,
             extended,
             tools,
-            tool_config,
+            tool,
             verbose,
             sanitizers,
             profiler,
@@ -837,7 +839,7 @@ impl Config {
         set(&mut config.full_bootstrap, full_bootstrap);
         set(&mut config.extended, extended);
         config.tools = tools;
-        set(&mut config.tool_config, tool_config);
+        set(&mut config.tool, tool);
         set(&mut config.verbose, verbose);
         set(&mut config.sanitizers, sanitizers);
         set(&mut config.profiler, profiler);

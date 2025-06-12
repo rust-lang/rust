@@ -44,7 +44,7 @@ define_config! {
         bootstrap_cache_path: Option<PathBuf> = "bootstrap-cache-path",
         extended: Option<bool> = "extended",
         tools: Option<HashSet<String>> = "tools",
-        tool_config: Option<HashMap<String, ToolConfig>> = "tool-config",
+        tool: Option<HashMap<String, Tool>> = "tool",
         verbose: Option<usize> = "verbose",
         sanitizers: Option<bool> = "sanitizers",
         profiler: Option<bool> = "profiler",
@@ -75,8 +75,9 @@ define_config! {
 }
 
 define_config! {
+    /// Configuration specific for some tool, e.g. which features to enable during build.
     #[derive(Default, Clone)]
-    struct ToolConfig {
+    struct Tool {
         features: Option<Vec<String>> = "features",
     }
 }

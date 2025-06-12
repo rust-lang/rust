@@ -424,6 +424,6 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 142379,
         severity: ChangeSeverity::Info,
-        summary: "Added new option `tool-config.TOOL_NAME.features` to specify the features to compile a tool with",
+        summary: "Added new option `tool.TOOL_NAME.features` to specify the features to compile a tool with",
     },
 ];
