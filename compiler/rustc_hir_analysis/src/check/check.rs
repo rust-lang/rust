@@ -51,8 +51,9 @@ fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T
 }
 
 pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
-    // FIXME: this should be checked earlier, e.g. in `rustc_ast_lowering`, to fix
-    // things like #86232.
+    // FIXME: This should be checked earlier, e.g. in `rustc_ast_lowering`, as this
+    // currently only guards function imports, function definitions, and function pointer types.
+    // Functions in trait declarations can still use "deprecated" ABIs without any warning.
 
     match AbiMap::from_target(&tcx.sess.target).canonize_abi(abi, false) {
         AbiMapping::Direct(..) => (),
