@@ -15,6 +15,10 @@ pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
     val: F,
     err_scale: i32,
 ) -> F {
+    if !ecx.machine.float_nondet {
+        return val;
+    }
+
     let rng = ecx.machine.rng.get_mut();
     // Generate a random integer in the range [0, 2^PREC).
     // (When read as binary, the position of the first `1` determines the exponent,
