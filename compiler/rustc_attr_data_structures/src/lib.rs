@@ -8,6 +8,8 @@ mod attributes;
 mod stability;
 mod version;
 
+pub mod lints;
+
 use std::num::NonZero;
 
 pub use attributes::*;

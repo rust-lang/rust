@@ -221,6 +221,14 @@ rustc_queries! {
         feedable
     }
 
+    /// Gives access to lints emitted during ast lowering.
+    ///
+    /// This can be conveniently accessed by `tcx.hir_*` methods.
+    /// Avoid calling this query directly.
+    query opt_ast_lowering_delayed_lints(key: hir::OwnerId) -> Option<&'tcx hir::lints::DelayedLints> {
+        desc { |tcx| "getting AST lowering delayed lints in `{}`", tcx.def_path_str(key) }
+    }
+
     /// Returns the *default* of the const pararameter given by `DefId`.
     ///
     /// E.g., given `struct Ty<const N: usize = 3>;` this returns `3` for `N`.
