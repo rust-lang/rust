@@ -1,5 +1,5 @@
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/impl-unused-rps-in-assoc-type.rs:11:6
+  --> $DIR/unconstrained-lifetime-assoc-type.rs:13:6
    |
 LL | impl<'a> Fun for Holder {
    |      ^^ unconstrained lifetime parameter
