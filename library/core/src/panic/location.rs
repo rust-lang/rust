@@ -1,5 +1,6 @@
 use crate::ffi::CStr;
 use crate::fmt;
+use crate::marker::PhantomData;
 
 /// A struct containing information about the location of a panic.
 ///
@@ -33,14 +34,13 @@ use crate::fmt;
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub struct Location<'a> {
-    // Note: this filename will have exactly one nul byte at its end, but otherwise
-    // it must never contain interior nul bytes. This is relied on for the conversion
-    // to `CStr` below.
-    //
-    // The prefix of the string without the trailing nul byte will be a regular UTF8 `str`.
-    file_bytes_with_nul: &'a [u8],
+    // A raw pointer is used rather than a reference because the pointer is valid for one more byte
+    // than the length stored in this pointer; the additional byte is the NUL-terminator used by
+    // `Location::file_with_nul`.
+    filename: *const str,
     line: u32,
     col: u32,
+    _filename: PhantomData<&'a str>,
 }
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
@@ -143,10 +143,8 @@ impl<'a> Location<'a> {
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_location_fields", since = "1.79.0")]
     pub const fn file(&self) -> &str {
-        let str_len = self.file_bytes_with_nul.len() - 1;
-        // SAFETY: `file_bytes_with_nul` without the trailing nul byte is guaranteed to be
-        // valid UTF8.
-        unsafe { crate::str::from_raw_parts(self.file_bytes_with_nul.as_ptr(), str_len) }
+        // SAFETY: The filename is valid.
+        unsafe { &*self.filename }
     }
 
     /// Returns the name of the source file as a nul-terminated `CStr`.
@@ -157,9 +155,15 @@ impl<'a> Location<'a> {
     #[unstable(feature = "file_with_nul", issue = "141727")]
     #[inline]
     pub const fn file_with_nul(&self) -> &CStr {
-        // SAFETY: `file_bytes_with_nul` is guaranteed to have a trailing nul byte and no
-        // interior nul bytes.
-        unsafe { CStr::from_bytes_with_nul_unchecked(self.file_bytes_with_nul) }
+        // SAFETY: The filename is valid for `filename_len+1` bytes, so this addition can't
+        // overflow.
+        let cstr_len = unsafe { crate::mem::size_of_val_raw(self.filename).unchecked_add(1) };
+
+        // SAFETY: The filename is valid for `filename_len+1` bytes.
+        let slice = unsafe { crate::slice::from_raw_parts(self.filename as *const _, cstr_len) };
+
+        // SAFETY: The filename is guaranteed to have a trailing nul byte and no interior nul bytes.
+        unsafe { CStr::from_bytes_with_nul_unchecked(slice) }
     }
 
     /// Returns the line number from which the panic originated.
@@ -220,3 +224,8 @@ impl fmt::Display for Location<'_> {
         write!(formatter, "{}:{}:{}", self.file(), self.line, self.col)
     }
 }
+
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+unsafe impl Send for Location<'_> {}
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+unsafe impl Sync for Location<'_> {}
