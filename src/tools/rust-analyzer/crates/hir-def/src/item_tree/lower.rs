@@ -21,10 +21,9 @@ use crate::{
     db::DefDatabase,
     item_tree::{
         AttrOwner, Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ImportAlias,
-        Interned, ItemTree, ItemTreeAstId, ItemTreeData, Macro2, MacroCall, MacroRules, Mod,
-        ModItem, ModKind, ModPath, RawAttrs, RawVisibility, RawVisibilityId, Static, Struct,
-        StructKind, Trait, TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind,
-        VisibilityExplicitness,
+        Interned, ItemTree, ItemTreeAstId, Macro2, MacroCall, MacroRules, Mod, ModItem, ModItemId,
+        ModKind, ModPath, RawAttrs, RawVisibility, RawVisibilityId, Static, Struct, StructKind,
+        Trait, TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind, VisibilityExplicitness,
     },
 };
 
@@ -56,9 +55,7 @@ impl<'a> Ctx<'a> {
     pub(super) fn lower_module_items(mut self, item_owner: &dyn HasModuleItem) -> ItemTree {
         self.tree.top_level =
             item_owner.items().flat_map(|item| self.lower_mod_item(&item)).collect();
-        if let Some(data) = &mut self.tree.data {
-            data.vis.arena = self.visibilities.into_iter().collect();
-        }
+        self.tree.vis.arena = self.visibilities.into_iter().collect();
         self.tree
     }
 
@@ -92,9 +89,7 @@ impl<'a> Ctx<'a> {
             }
         }
 
-        if let Some(data) = &mut self.tree.data {
-            data.vis.arena = self.visibilities.into_iter().collect();
-        }
+        self.tree.vis.arena = self.visibilities.into_iter().collect();
         self.tree
     }
 
@@ -120,18 +115,12 @@ impl<'a> Ctx<'a> {
                 }
             }
         }
-        if let Some(data) = &mut self.tree.data {
-            data.vis.arena = self.visibilities.into_iter().collect();
-        }
+        self.tree.vis.arena = self.visibilities.into_iter().collect();
         self.tree
     }
 
-    fn data(&mut self) -> &mut ItemTreeData {
-        self.tree.data_mut()
-    }
-
-    fn lower_mod_item(&mut self, item: &ast::Item) -> Option<ModItem> {
-        let mod_item: ModItem = match item {
+    fn lower_mod_item(&mut self, item: &ast::Item) -> Option<ModItemId> {
+        let mod_item: ModItemId = match item {
             ast::Item::Struct(ast) => self.lower_struct(ast)?.into(),
             ast::Item::Union(ast) => self.lower_union(ast)?.into(),
             ast::Item::Enum(ast) => self.lower_enum(ast)?.into(),
@@ -175,7 +164,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(strukt);
         let shape = adt_shape(strukt.kind());
         let res = Struct { name, visibility, shape, ast_id };
-        self.data().structs.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::Struct(res));
 
         Some(ast_id)
     }
@@ -185,7 +174,7 @@ impl<'a> Ctx<'a> {
         let name = union.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(union);
         let res = Union { name, visibility, ast_id };
-        self.data().unions.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::Union(res));
         Some(ast_id)
     }
 
@@ -194,7 +183,7 @@ impl<'a> Ctx<'a> {
         let name = enum_.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(enum_);
         let res = Enum { name, visibility, ast_id };
-        self.data().enums.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::Enum(res));
         Some(ast_id)
     }
 
@@ -206,7 +195,7 @@ impl<'a> Ctx<'a> {
 
         let res = Function { name, visibility, ast_id };
 
-        self.data().functions.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::Function(res));
         Some(ast_id)
     }
 
@@ -218,7 +207,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
         let res = TypeAlias { name, visibility, ast_id };
-        self.data().type_aliases.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::TypeAlias(res));
         Some(ast_id)
     }
 
@@ -227,7 +216,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(static_);
         let ast_id = self.source_ast_id_map.ast_id(static_);
         let res = Static { name, visibility, ast_id };
-        self.data().statics.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::Static(res));
         Some(ast_id)
     }
 
@@ -236,7 +225,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(konst);
         let ast_id = self.source_ast_id_map.ast_id(konst);
         let res = Const { name, visibility, ast_id };
-        self.data().consts.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::Const(res));
         ast_id
     }
 
@@ -258,7 +247,7 @@ impl<'a> Ctx<'a> {
         };
         let ast_id = self.source_ast_id_map.ast_id(module);
         let res = Mod { name, visibility, kind, ast_id };
-        self.data().mods.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::Mod(res));
         Some(ast_id)
     }
 
@@ -268,7 +257,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
 
         let def = Trait { name, visibility, ast_id };
-        self.data().traits.insert(ast_id, def);
+        self.tree.data.insert(ast_id.upcast(), ModItem::Trait(def));
         Some(ast_id)
     }
 
@@ -281,7 +270,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(trait_alias_def);
 
         let alias = TraitAlias { name, visibility, ast_id };
-        self.data().trait_aliases.insert(ast_id, alias);
+        self.tree.data.insert(ast_id.upcast(), ModItem::TraitAlias(alias));
         Some(ast_id)
     }
 
@@ -290,7 +279,7 @@ impl<'a> Ctx<'a> {
         // Note that trait impls don't get implicit `Self` unlike traits, because here they are a
         // type alias rather than a type parameter, so this is handled by the resolver.
         let res = Impl { ast_id };
-        self.data().impls.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::Impl(res));
         ast_id
     }
 
@@ -302,7 +291,7 @@ impl<'a> Ctx<'a> {
         })?;
 
         let res = Use { visibility, ast_id, use_tree };
-        self.data().uses.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::Use(res));
         Some(ast_id)
     }
 
@@ -318,7 +307,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(extern_crate);
 
         let res = ExternCrate { name, alias, visibility, ast_id };
-        self.data().extern_crates.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::ExternCrate(res));
         Some(ast_id)
     }
 
@@ -332,7 +321,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(m);
         let expand_to = hir_expand::ExpandTo::from_call_site(m);
         let res = MacroCall { path, ast_id, expand_to, ctxt: span_map.span_for_range(range).ctx };
-        self.data().macro_calls.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::MacroCall(res));
         Some(ast_id)
     }
 
@@ -341,7 +330,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(m);
 
         let res = MacroRules { name: name.as_name(), ast_id };
-        self.data().macro_rules.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::MacroRules(res));
         Some(ast_id)
     }
 
@@ -352,7 +341,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(m);
 
         let res = Macro2 { name: name.as_name(), ast_id, visibility };
-        self.data().macro_defs.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::Macro2(res));
         Some(ast_id)
     }
 
@@ -365,7 +354,7 @@ impl<'a> Ctx<'a> {
                     // (in other words, the knowledge that they're in an extern block must not be used).
                     // This is because an extern block can contain macros whose ItemTree's top-level items
                     // should be considered to be in an extern block too.
-                    let mod_item: ModItem = match &item {
+                    let mod_item: ModItemId = match &item {
                         ast::ExternItem::Fn(ast) => self.lower_function(ast)?.into(),
                         ast::ExternItem::Static(ast) => self.lower_static(ast)?.into(),
                         ast::ExternItem::TypeAlias(ty) => self.lower_type_alias(ty)?.into(),
@@ -379,7 +368,7 @@ impl<'a> Ctx<'a> {
         });
 
         let res = ExternBlock { ast_id, children };
-        self.data().extern_blocks.insert(ast_id, res);
+        self.tree.data.insert(ast_id.upcast(), ModItem::ExternBlock(res));
         ast_id
     }
 

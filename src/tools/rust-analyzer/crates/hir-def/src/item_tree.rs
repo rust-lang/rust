@@ -89,11 +89,12 @@ impl fmt::Debug for RawVisibilityId {
 /// The item tree of a source file.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
-    top_level: SmallVec<[ModItem; 1]>,
+    top_level: SmallVec<[ModItemId; 1]>,
     // Consider splitting this into top level RawAttrs and the map?
     attrs: FxHashMap<AttrOwner, RawAttrs>,
 
-    data: Option<Box<ItemTreeData>>,
+    vis: ItemVisibilities,
+    data: FxHashMap<FileAstId<ast::Item>, ModItem>,
 }
 
 impl ItemTree {
@@ -130,14 +131,15 @@ impl ItemTree {
         if let Some(attrs) = top_attrs {
             item_tree.attrs.insert(AttrOwner::TopLevel, attrs);
         }
-        if item_tree.data.is_none() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
+        if item_tree.data.is_empty() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
         {
             EMPTY
                 .get_or_init(|| {
                     Arc::new(ItemTree {
                         top_level: SmallVec::new_const(),
                         attrs: FxHashMap::default(),
-                        data: None,
+                        data: FxHashMap::default(),
+                        vis: ItemVisibilities { arena: Box::new([]) },
                     })
                 })
                 .clone()
@@ -156,14 +158,15 @@ impl ItemTree {
 
         let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
         let mut item_tree = ctx.lower_block(&block);
-        if item_tree.data.is_none() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
+        if item_tree.data.is_empty() && item_tree.top_level.is_empty() && item_tree.attrs.is_empty()
         {
             EMPTY
                 .get_or_init(|| {
                     Arc::new(ItemTree {
                         top_level: SmallVec::new_const(),
                         attrs: FxHashMap::default(),
-                        data: None,
+                        data: FxHashMap::default(),
+                        vis: ItemVisibilities { arena: Box::new([]) },
                     })
                 })
                 .clone()
@@ -175,7 +178,7 @@ impl ItemTree {
 
     /// Returns an iterator over all items located at the top level of the `HirFileId` this
     /// `ItemTree` was created from.
-    pub(crate) fn top_level_items(&self) -> &[ModItem] {
+    pub(crate) fn top_level_items(&self) -> &[ModItemId] {
         &self.top_level
     }
 
@@ -200,74 +203,33 @@ impl ItemTree {
     ///
     /// For more detail, see [`ItemTreeDataStats`].
     pub fn item_tree_stats(&self) -> ItemTreeDataStats {
-        match self.data {
-            Some(ref data) => ItemTreeDataStats {
-                traits: data.traits.len(),
-                impls: data.impls.len(),
-                mods: data.mods.len(),
-                macro_calls: data.macro_calls.len(),
-                macro_rules: data.macro_rules.len(),
-            },
-            None => ItemTreeDataStats::default(),
+        let mut traits = 0;
+        let mut impls = 0;
+        let mut mods = 0;
+        let mut macro_calls = 0;
+        let mut macro_rules = 0;
+        for item in self.data.values() {
+            match item {
+                ModItem::Trait(_) => traits += 1,
+                ModItem::Impl(_) => impls += 1,
+                ModItem::Mod(_) => mods += 1,
+                ModItem::MacroCall(_) => macro_calls += 1,
+                ModItem::MacroRules(_) => macro_rules += 1,
+                _ => {}
+            }
         }
+        ItemTreeDataStats { traits, impls, mods, macro_calls, macro_rules }
     }
 
     pub fn pretty_print(&self, db: &dyn DefDatabase, edition: Edition) -> String {
         pretty::print_item_tree(db, self, edition)
     }
 
-    fn data(&self) -> &ItemTreeData {
-        self.data.as_ref().expect("attempted to access data of empty ItemTree")
-    }
-
-    fn data_mut(&mut self) -> &mut ItemTreeData {
-        self.data.get_or_insert_with(Box::default)
-    }
-
     fn shrink_to_fit(&mut self) {
-        let ItemTree { top_level, attrs, data } = self;
+        let ItemTree { top_level, attrs, data, vis: _ } = self;
         top_level.shrink_to_fit();
         attrs.shrink_to_fit();
-        if let Some(data) = data {
-            let ItemTreeData {
-                uses,
-                extern_crates,
-                extern_blocks,
-                functions,
-                structs,
-                unions,
-                enums,
-                consts,
-                statics,
-                traits,
-                trait_aliases,
-                impls,
-                type_aliases,
-                mods,
-                macro_calls,
-                macro_rules,
-                macro_defs,
-                vis: _,
-            } = &mut **data;
-
-            uses.shrink_to_fit();
-            extern_crates.shrink_to_fit();
-            extern_blocks.shrink_to_fit();
-            functions.shrink_to_fit();
-            structs.shrink_to_fit();
-            unions.shrink_to_fit();
-            enums.shrink_to_fit();
-            consts.shrink_to_fit();
-            statics.shrink_to_fit();
-            traits.shrink_to_fit();
-            trait_aliases.shrink_to_fit();
-            impls.shrink_to_fit();
-            type_aliases.shrink_to_fit();
-            mods.shrink_to_fit();
-            macro_calls.shrink_to_fit();
-            macro_rules.shrink_to_fit();
-            macro_defs.shrink_to_fit();
-        }
+        data.shrink_to_fit();
     }
 }
 
@@ -276,29 +238,26 @@ struct ItemVisibilities {
     arena: Box<[RawVisibility]>,
 }
 
-#[derive(Default, Debug, Eq, PartialEq)]
-struct ItemTreeData {
-    uses: FxHashMap<ItemTreeAstId<Use>, Use>,
-    extern_crates: FxHashMap<ItemTreeAstId<ExternCrate>, ExternCrate>,
-    extern_blocks: FxHashMap<ItemTreeAstId<ExternBlock>, ExternBlock>,
-    functions: FxHashMap<ItemTreeAstId<Function>, Function>,
-    structs: FxHashMap<ItemTreeAstId<Struct>, Struct>,
-    unions: FxHashMap<ItemTreeAstId<Union>, Union>,
-    enums: FxHashMap<ItemTreeAstId<Enum>, Enum>,
-    consts: FxHashMap<ItemTreeAstId<Const>, Const>,
-    statics: FxHashMap<ItemTreeAstId<Static>, Static>,
-    traits: FxHashMap<ItemTreeAstId<Trait>, Trait>,
-    trait_aliases: FxHashMap<ItemTreeAstId<TraitAlias>, TraitAlias>,
-    impls: FxHashMap<ItemTreeAstId<Impl>, Impl>,
-    type_aliases: FxHashMap<ItemTreeAstId<TypeAlias>, TypeAlias>,
-    mods: FxHashMap<ItemTreeAstId<Mod>, Mod>,
-    macro_calls: FxHashMap<ItemTreeAstId<MacroCall>, MacroCall>,
-    macro_rules: FxHashMap<ItemTreeAstId<MacroRules>, MacroRules>,
-    macro_defs: FxHashMap<ItemTreeAstId<Macro2>, Macro2>,
-
-    vis: ItemVisibilities,
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum ModItem {
+    Const(Const),
+    Enum(Enum),
+    ExternBlock(ExternBlock),
+    ExternCrate(ExternCrate),
+    Function(Function),
+    Impl(Impl),
+    Macro2(Macro2),
+    MacroCall(MacroCall),
+    MacroRules(MacroRules),
+    Mod(Mod),
+    Static(Static),
+    Struct(Struct),
+    Trait(Trait),
+    TraitAlias(TraitAlias),
+    TypeAlias(TypeAlias),
+    Union(Union),
+    Use(Use),
 }
-
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct ItemTreeDataStats {
     pub traits: usize,
@@ -316,9 +275,9 @@ pub enum AttrOwner {
     TopLevel,
 }
 
-impl From<ModItem> for AttrOwner {
+impl From<ModItemId> for AttrOwner {
     #[inline]
-    fn from(value: ModItem) -> Self {
+    fn from(value: ModItemId) -> Self {
         AttrOwner::Item(value.ast_id().erase())
     }
 }
@@ -385,7 +344,7 @@ macro_rules! mod_items {
         $(
             impl From<FileAstId<$ast>> for $mod_item {
                 fn from(id: FileAstId<$ast>) -> $mod_item {
-                    ModItem::$typ(id)
+                    ModItemId::$typ(id)
                 }
             }
         )+
@@ -399,7 +358,10 @@ macro_rules! mod_items {
                 }
 
                 fn lookup(tree: &ItemTree, index: FileAstId<$ast>) -> &Self {
-                    &tree.data().$fld[&index]
+                    match &tree.data[&index.upcast()] {
+                        ModItem::$typ(item) => item,
+                        _ => panic!("expected item of type `{}` at index `{:?}`", stringify!($typ), index),
+                    }
                 }
             }
 
@@ -407,7 +369,10 @@ macro_rules! mod_items {
                 type Output = $typ;
 
                 fn index(&self, index: FileAstId<$ast>) -> &Self::Output {
-                    &self.data().$fld[&index]
+                    match &self.data[&index.upcast()] {
+                        ModItem::$typ(item) => item,
+                        _ => panic!("expected item of type `{}` at index `{:?}`", stringify!($typ), index),
+                    }
                 }
             }
         )+
@@ -415,7 +380,7 @@ macro_rules! mod_items {
 }
 
 mod_items! {
-ModItem ->
+ModItemId ->
     Use in uses -> ast::Use,
     ExternCrate in extern_crates -> ast::ExternCrate,
     ExternBlock in extern_blocks -> ast::ExternBlock,
@@ -463,7 +428,7 @@ impl Index<RawVisibilityId> for ItemTree {
                     VisibilityExplicitness::Explicit,
                 )
             }),
-            _ => &self.data().vis.arena[index.0 as usize],
+            _ => &self.vis.arena[index.0 as usize],
         }
     }
 }
@@ -541,7 +506,7 @@ pub struct ExternCrate {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ExternBlock {
     pub ast_id: FileAstId<ast::ExternBlock>,
-    pub(crate) children: Box<[ModItem]>,
+    pub(crate) children: Box<[ModItemId]>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -656,7 +621,7 @@ pub struct Mod {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum ModKind {
     /// `mod m { ... }`
-    Inline { items: Box<[ModItem]> },
+    Inline { items: Box<[ModItemId]> },
     /// `mod m;`
     Outline,
 }
