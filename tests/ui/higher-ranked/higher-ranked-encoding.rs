@@ -1,9 +1,7 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/15924
+
 //@ run-pass
 
-#![allow(unused_imports)]
-#![allow(unused_must_use)]
-
-use std::fmt;
 use std::marker::PhantomData;
 
 trait Encoder {
@@ -26,9 +24,8 @@ impl Encoder for JsonEncoder<'_> {
     type Error = ();
 }
 
-fn encode_json<T: for<'r> Encodable<JsonEncoder<'r>>>(
-    object: &T,
-) -> Result<String, ()> {
+// This function uses higher-ranked trait bounds, which previously caused ICE
+fn encode_json<T: for<'r> Encodable<JsonEncoder<'r>>>(object: &T) -> Result<String, ()> {
     let s = String::new();
     {
         let mut encoder = JsonEncoder(PhantomData);
@@ -37,13 +34,15 @@ fn encode_json<T: for<'r> Encodable<JsonEncoder<'r>>>(
     Ok(s)
 }
 
+// Structure with HRTB constraint that was problematic
 struct Foo<T: for<'a> Encodable<JsonEncoder<'a>>> {
     v: T,
 }
 
+// Drop implementation that exercises the HRTB bounds
 impl<T: for<'a> Encodable<JsonEncoder<'a>>> Drop for Foo<T> {
     fn drop(&mut self) {
-        encode_json(&self.v);
+        let _ = encode_json(&self.v);
     }
 }
 
