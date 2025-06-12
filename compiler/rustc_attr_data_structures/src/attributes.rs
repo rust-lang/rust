@@ -202,6 +202,9 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[cold]`.
+    Cold(Span),
+
     /// Represents `#[rustc_confusables]`.
     Confusables {
         symbols: ThinVec<Symbol>,

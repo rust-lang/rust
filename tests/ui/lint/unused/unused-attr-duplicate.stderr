@@ -103,18 +103,6 @@ LL | #[automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:77:1
-   |
-LL | #[cold]
-   | ^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:76:1
-   |
-LL | #[cold]
-   | ^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:79:1
    |
 LL | #[track_caller]
@@ -288,6 +276,18 @@ note: attribute also specified here
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:77:1
+   |
+LL | #[cold]
+   | ^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:76:1
+   |
+LL | #[cold]
+   | ^^^^^^^
 
 error: aborting due to 23 previous errors
 

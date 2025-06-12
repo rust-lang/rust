@@ -15,7 +15,7 @@ use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
-use crate::attributes::codegen_attrs::OptimizeParser;
+use crate::attributes::codegen_attrs::{ColdParser, OptimizeParser};
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
@@ -106,6 +106,7 @@ attribute_parsers!(
 
         // tidy-alphabetical-start
         Single<AsPtrParser>,
+        Single<ColdParser>,
         Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
         Single<InlineParser>,
@@ -231,6 +232,16 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedList,
+        })
+    }
+
+    pub(crate) fn expected_no_args(&self, span: Span) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::ExpectedNoArgs,
         })
     }
 
