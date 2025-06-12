@@ -1,0 +1,8 @@
+error: cannot find macro `iamnotanextensionthatexists` in this scope
+  --> $DIR/nonexistent-macro.rs:4:5
+   |
+LL |     iamnotanextensionthatexists!("");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
