@@ -12,7 +12,6 @@
 
 use either::Either;
 use hir_expand::{
-    Lookup,
     mod_path::{ModPath, PathKind},
     name::Name,
 };
@@ -529,23 +528,22 @@ impl DefMap {
                     // enum variant
                     cov_mark::hit!(can_import_enum_variant);
 
-                    let res =
-                        db.enum_variants(e).variants.iter().find(|(_, name)| name == segment).map(
-                            |&(variant, _)| {
-                                let item_tree_id = variant.lookup(db).id;
-                                match item_tree_id.item_tree(db)[item_tree_id.value].shape {
-                                    FieldsShape::Record => {
-                                        PerNs::types(variant.into(), Visibility::Public, None)
-                                    }
-                                    FieldsShape::Tuple | FieldsShape::Unit => PerNs::both(
-                                        variant.into(),
-                                        variant.into(),
-                                        Visibility::Public,
-                                        None,
-                                    ),
-                                }
-                            },
-                        );
+                    let res = db
+                        .enum_variants(e)
+                        .variants
+                        .iter()
+                        .find(|(_, name, _)| name == segment)
+                        .map(|&(variant, _, shape)| match shape {
+                            FieldsShape::Record => {
+                                PerNs::types(variant.into(), Visibility::Public, None)
+                            }
+                            FieldsShape::Tuple | FieldsShape::Unit => PerNs::both(
+                                variant.into(),
+                                variant.into(),
+                                Visibility::Public,
+                                None,
+                            ),
+                        });
                     // FIXME: Need to filter visibility here and below? Not sure.
                     return match res {
                         Some(res) => {

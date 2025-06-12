@@ -479,7 +479,7 @@ pub(crate) fn visit_module(
                     visit_body(db, &body, cb);
                 }
                 ModuleDefId::AdtId(hir_def::AdtId::EnumId(it)) => {
-                    db.enum_variants(it).variants.iter().for_each(|&(it, _)| {
+                    db.enum_variants(it).variants.iter().for_each(|&(it, _, _)| {
                         let body = db.body(it.into());
                         cb(it.into());
                         visit_body(db, &body, cb);

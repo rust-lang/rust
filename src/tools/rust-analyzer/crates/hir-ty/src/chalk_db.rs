@@ -817,7 +817,7 @@ pub(crate) fn adt_datum_query(
                 .enum_variants(id)
                 .variants
                 .iter()
-                .map(|&(variant_id, _)| variant_id_to_fields(variant_id.into()))
+                .map(|&(variant_id, _, _)| variant_id_to_fields(variant_id.into()))
                 .collect();
             (rust_ir::AdtKind::Enum, variants)
         }

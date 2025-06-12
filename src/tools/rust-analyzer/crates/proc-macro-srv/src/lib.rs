@@ -41,7 +41,7 @@ use std::{
 };
 
 use paths::{Utf8Path, Utf8PathBuf};
-use span::{Span, TokenId};
+use span::{ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, Span, TokenId};
 
 use crate::server_impl::TokenStream;
 
@@ -57,11 +57,16 @@ pub const RUSTC_VERSION_STRING: &str = env!("RUSTC_VERSION");
 pub struct ProcMacroSrv<'env> {
     expanders: Mutex<HashMap<Utf8PathBuf, Arc<dylib::Expander>>>,
     env: &'env EnvSnapshot,
+    fixup_ast_id: ErasedFileAstId,
 }
 
 impl<'env> ProcMacroSrv<'env> {
     pub fn new(env: &'env EnvSnapshot) -> Self {
-        Self { expanders: Default::default(), env }
+        Self { expanders: Default::default(), env, fixup_ast_id: FIXUP_ERASED_FILE_AST_ID_MARKER }
+    }
+
+    pub fn set_fixup_ast_id(&mut self, fixup_ast_id: u32) {
+        self.fixup_ast_id = ErasedFileAstId::from_raw(fixup_ast_id);
     }
 }
 
@@ -101,6 +106,7 @@ impl ProcMacroSrv<'_> {
                             def_site,
                             call_site,
                             mixed_site,
+                            self.fixup_ast_id,
                         )
                         .map(|tt| tt.0)
                 });
@@ -156,25 +162,41 @@ impl ProcMacroSrv<'_> {
 
 pub trait ProcMacroSrvSpan: Copy + Send {
     type Server: proc_macro::bridge::server::Server<TokenStream = TokenStream<Self>>;
-    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server;
+    fn make_server(
+        call_site: Self,
+        def_site: Self,
+        mixed_site: Self,
+        fixup_ast_id: ErasedFileAstId,
+    ) -> Self::Server;
 }
 
 impl ProcMacroSrvSpan for TokenId {
     type Server = server_impl::token_id::TokenIdServer;
 
-    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
+    fn make_server(
+        call_site: Self,
+        def_site: Self,
+        mixed_site: Self,
+        _fixup_ast_id: ErasedFileAstId,
+    ) -> Self::Server {
         Self::Server { call_site, def_site, mixed_site }
     }
 }
 impl ProcMacroSrvSpan for Span {
     type Server = server_impl::rust_analyzer_span::RaSpanServer;
-    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
+    fn make_server(
+        call_site: Self,
+        def_site: Self,
+        mixed_site: Self,
+        fixup_ast_id: ErasedFileAstId,
+    ) -> Self::Server {
         Self::Server {
             call_site,
             def_site,
             mixed_site,
             tracked_env_vars: Default::default(),
             tracked_paths: Default::default(),
+            fixup_ast_id,
         }
     }
 }

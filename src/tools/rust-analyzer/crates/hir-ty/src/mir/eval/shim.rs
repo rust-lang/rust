@@ -65,9 +65,7 @@ impl Evaluator<'_> {
                 Some(abi) => *abi == sym::rust_dash_intrinsic,
                 None => match def.lookup(self.db).container {
                     hir_def::ItemContainerId::ExternBlockId(block) => {
-                        let id = block.lookup(self.db).id;
-                        id.item_tree(self.db)[id.value].abi.as_ref()
-                            == Some(&sym::rust_dash_intrinsic)
+                        self.db.extern_block_abi(block) == Some(sym::rust_dash_intrinsic)
                     }
                     _ => false,
                 },
@@ -87,8 +85,7 @@ impl Evaluator<'_> {
         }
         let is_extern_c = match def.lookup(self.db).container {
             hir_def::ItemContainerId::ExternBlockId(block) => {
-                let id = block.lookup(self.db).id;
-                id.item_tree(self.db)[id.value].abi.as_ref() == Some(&sym::C)
+                self.db.extern_block_abi(block) == Some(sym::C)
             }
             _ => false,
         };

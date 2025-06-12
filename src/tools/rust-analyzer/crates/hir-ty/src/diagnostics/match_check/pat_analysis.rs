@@ -465,7 +465,7 @@ impl PatCx for MatchCheckCtx<'_> {
                     ConstructorSet::NoConstructors
                 } else {
                     let mut variants = IndexVec::with_capacity(enum_data.variants.len());
-                    for &(variant, _) in enum_data.variants.iter() {
+                    for &(variant, _, _) in enum_data.variants.iter() {
                         let is_uninhabited = is_enum_variant_uninhabited_from(
                             cx.db,
                             variant,

@@ -6,6 +6,7 @@ use base_db::Crate;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::AstId;
+use hir_expand::span_map::SpanMapRef;
 use hir_expand::{
     ExpandError, ExpandErrorKind, ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
     eager::EagerCallBackFn, mod_path::ModPath, span_map::SpanMap,
@@ -223,8 +224,14 @@ impl Expander {
         }
     }
 
+    #[inline]
     pub(super) fn ast_id_map(&self) -> &AstIdMap {
         &self.ast_id_map
+    }
+
+    #[inline]
+    pub(super) fn span_map(&self) -> SpanMapRef<'_> {
+        self.span_map.as_ref()
     }
 }
 

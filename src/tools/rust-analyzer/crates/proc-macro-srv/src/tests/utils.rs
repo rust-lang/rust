@@ -1,7 +1,10 @@
 //! utils used in proc-macro tests
 
 use expect_test::Expect;
-use span::{EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContext, TokenId};
+use span::{
+    EditionedFileId, FIXUP_ERASED_FILE_AST_ID_MARKER, FileId, ROOT_ERASED_FILE_AST_ID, Span,
+    SpanAnchor, SyntaxContext, TokenId,
+};
 use tt::TextRange;
 
 use crate::{EnvSnapshot, ProcMacroSrv, dylib, proc_macro_test_dylib_path};
@@ -65,8 +68,17 @@ fn assert_expand_impl(
     let input_ts_string = format!("{input_ts:?}");
     let attr_ts_string = attr_ts.as_ref().map(|it| format!("{it:?}"));
 
-    let res =
-        expander.expand(macro_name, input_ts, attr_ts, def_site, call_site, mixed_site).unwrap();
+    let res = expander
+        .expand(
+            macro_name,
+            input_ts,
+            attr_ts,
+            def_site,
+            call_site,
+            mixed_site,
+            FIXUP_ERASED_FILE_AST_ID_MARKER,
+        )
+        .unwrap();
     expect.assert_eq(&format!(
         "{input_ts_string}\n\n{}\n\n{res:?}",
         attr_ts_string.unwrap_or_default()
@@ -76,7 +88,7 @@ fn assert_expand_impl(
         range: TextRange::new(0.into(), 150.into()),
         anchor: SpanAnchor {
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
-            ast_id: ErasedFileAstId::from_raw(1),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
         },
         ctx: SyntaxContext::root(span::Edition::CURRENT),
     };
@@ -84,7 +96,7 @@ fn assert_expand_impl(
         range: TextRange::new(0.into(), 100.into()),
         anchor: SpanAnchor {
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
-            ast_id: ErasedFileAstId::from_raw(2),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
         },
         ctx: SyntaxContext::root(span::Edition::CURRENT),
     };
@@ -98,7 +110,17 @@ fn assert_expand_impl(
     let fixture_string = format!("{fixture:?}");
     let attr_string = attr.as_ref().map(|it| format!("{it:?}"));
 
-    let res = expander.expand(macro_name, fixture, attr, def_site, call_site, mixed_site).unwrap();
+    let res = expander
+        .expand(
+            macro_name,
+            fixture,
+            attr,
+            def_site,
+            call_site,
+            mixed_site,
+            FIXUP_ERASED_FILE_AST_ID_MARKER,
+        )
+        .unwrap();
     expect_spanned
         .assert_eq(&format!("{fixture_string}\n\n{}\n\n{res:#?}", attr_string.unwrap_or_default()));
 }

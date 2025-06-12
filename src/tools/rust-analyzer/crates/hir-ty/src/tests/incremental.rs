@@ -353,6 +353,7 @@ impl SomeStruct {
             "impl_self_ty_with_diagnostics_shim".to_owned(),
             "struct_signature_shim".to_owned(),
             "struct_signature_with_source_map_shim".to_owned(),
+            "attrs_shim".to_owned(),
             "type_for_adt_tracked".to_owned(),
         ];
 
@@ -442,6 +443,6 @@ fn main() {
                 let _inference_result = db.infer(def);
             }
         });
-        assert!(format!("{events:?}").contains("trait_solve_shim"))
+        assert!(!format!("{events:?}").contains("trait_solve_shim"))
     }
 }
