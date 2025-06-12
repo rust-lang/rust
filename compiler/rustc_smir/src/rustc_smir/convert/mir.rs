@@ -754,6 +754,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::GlobalAlloc<'tcx> {
             }
             mir::interpret::GlobalAlloc::Memory(alloc) => GlobalAlloc::Memory(alloc.stable(tables)),
             mir::interpret::GlobalAlloc::Type(_) => todo!(),
+            mir::interpret::GlobalAlloc::PartialHash(_) => todo!(),
         }
     }
 }

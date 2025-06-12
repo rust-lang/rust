@@ -342,8 +342,18 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                                 Scalar::from_u128(type_id),
                             )
                             .unwrap();
+                        alloc.mutability = Mutability::Not;
                         let init = const_alloc_to_llvm(self, &alloc, /*static*/ false);
                         self.static_addr_of_impl(init, alloc.align, None)
+                    }
+                    GlobalAlloc::PartialHash(ty) => {
+                        assert!(matches!(layout.primitive(), Pointer(_)));
+                        let bytes = self.tcx.type_id_hash(ty).truncate().as_u64().to_be_bytes();
+                        let bits = self.tcx.data_layout.pointer_size.bits();
+                        let mask = u64::MAX >> (64 - bits);
+                        // It doesn't matter which bits we pick as long as the scheme is the same with the same compiler.
+                        let llval = self.const_usize(u64::from_be_bytes(bytes) & mask);
+                        return unsafe { llvm::LLVMConstIntToPtr(llval, llty) };
                     }
                 };
                 let base_addr_space = global_alloc.address_space(self);
