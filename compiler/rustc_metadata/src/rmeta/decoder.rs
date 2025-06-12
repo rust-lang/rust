@@ -1649,34 +1649,7 @@ impl<'a> CrateMetadataRef<'a> {
                         old_name
                     && let Ok(rest) = virtual_name.strip_prefix(virtual_dir)
                 {
-                    // The std library crates are in
-                    // `$sysroot/lib/rustlib/src/rust/library`, whereas other crates
-                    // may be in `$sysroot/lib/rustlib/src/rust/` directly. So we
-                    // detect crates from the std libs and handle them specially.
-                    const STD_LIBS: &[&str] = &[
-                        "core",
-                        "alloc",
-                        "std",
-                        "test",
-                        "term",
-                        "unwind",
-                        "proc_macro",
-                        "panic_abort",
-                        "panic_unwind",
-                        "profiler_builtins",
-                        "rtstartup",
-                        "rustc-std-workspace-core",
-                        "rustc-std-workspace-alloc",
-                        "rustc-std-workspace-std",
-                        "backtrace",
-                    ];
-                    let is_std_lib = STD_LIBS.iter().any(|l| rest.starts_with(l));
-
-                    let new_path = if is_std_lib {
-                        real_dir.join("library").join(rest)
-                    } else {
-                        real_dir.join(rest)
-                    };
+                    let new_path = real_dir.join(rest);
 
                     debug!(
                         "try_to_translate_virtual_to_real: `{}` -> `{}`",
