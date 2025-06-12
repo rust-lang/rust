@@ -17,6 +17,7 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -208,25 +209,30 @@ pub static INTERNER: LazyLock<Interner> = LazyLock::new(Interner::default);
 /// any type in its output. It is a write-once cache; values are never evicted,
 /// which means that references to the value can safely be returned from the
 /// `get()` method.
-#[derive(Debug)]
-pub struct Cache(
-    RefCell<
+#[derive(Debug, Default)]
+pub struct Cache {
+    cache: RefCell<
         HashMap<
             TypeId,
             Box<dyn Any>, // actually a HashMap<Step, Interned<Step::Output>>
         >,
     >,
-);
+    #[cfg(test)]
+    /// Contains steps in the same order in which they were executed
+    /// Useful for tests
+    /// Tuples (step, step output)
+    executed_steps: RefCell<Vec<(Box<dyn Any>, Box<dyn Any>)>>,
+}
 
 impl Cache {
     /// Creates a new empty cache.
     pub fn new() -> Cache {
-        Cache(RefCell::new(HashMap::new()))
+        Cache::default()
     }
 
     /// Stores the result of a computation step in the cache.
     pub fn put<S: Step>(&self, step: S, value: S::Output) {
-        let mut cache = self.0.borrow_mut();
+        let mut cache = self.cache.borrow_mut();
         let type_id = TypeId::of::<S>();
         let stepcache = cache
             .entry(type_id)
@@ -234,12 +240,20 @@ impl Cache {
             .downcast_mut::<HashMap<S, S::Output>>()
             .expect("invalid type mapped");
         assert!(!stepcache.contains_key(&step), "processing {step:?} a second time");
+
+        #[cfg(test)]
+        {
+            let step: Box<dyn Any> = Box::new(step.clone());
+            let output: Box<dyn Any> = Box::new(value.clone());
+            self.executed_steps.borrow_mut().push((step, output));
+        }
+
         stepcache.insert(step, value);
     }
 
     /// Retrieves a cached result for the given step, if available.
     pub fn get<S: Step>(&self, step: &S) -> Option<S::Output> {
-        let mut cache = self.0.borrow_mut();
+        let mut cache = self.cache.borrow_mut();
         let type_id = TypeId::of::<S>();
         let stepcache = cache
             .entry(type_id)
@@ -252,8 +266,8 @@ impl Cache {
 
 #[cfg(test)]
 impl Cache {
-    pub fn all<S: Ord + Clone + Step>(&mut self) -> Vec<(S, S::Output)> {
-        let cache = self.0.get_mut();
+    pub fn all<S: Ord + Step>(&mut self) -> Vec<(S, S::Output)> {
+        let cache = self.cache.get_mut();
         let type_id = TypeId::of::<S>();
         let mut v = cache
             .remove(&type_id)
@@ -265,7 +279,12 @@ impl Cache {
     }
 
     pub fn contains<S: Step>(&self) -> bool {
-        self.0.borrow().contains_key(&TypeId::of::<S>())
+        self.cache.borrow().contains_key(&TypeId::of::<S>())
+    }
+
+    #[cfg(test)]
+    pub fn into_executed_steps(mut self) -> Vec<(Box<dyn Any>, Box<dyn Any>)> {
+        mem::take(&mut self.executed_steps.borrow_mut())
     }
 }
 
