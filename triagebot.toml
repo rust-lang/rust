@@ -1229,6 +1229,7 @@ compiler = [
     "@oli-obk",
     "@petrochenkov",
     "@SparrowLii",
+    "@WaffleLapkin",
     "@wesleywiser",
 ]
 libs = [
@@ -1259,6 +1260,7 @@ codegen = [
     "@dianqk",
     "@saethlin",
     "@workingjubilee",
+    "@WaffleLapkin",
 ]
 query-system = [
     "@oli-obk",
