@@ -735,12 +735,8 @@ impl<T> Vec<T> {
         unsafe { Self::from_parts_in(ptr, length, capacity, Global) }
     }
 
-    /// Returns a mutable reference to the greatest item in the binary heap, or
+    /// Returns a mutable reference to the last item in the vector, or
     /// `None` if it is empty.
-    ///
-    /// Note: If the `PeekMut` value is leaked, some heap elements might get
-    /// leaked along with it, but the remaining elements will remain a valid
-    /// heap.
     ///
     /// # Examples
     ///

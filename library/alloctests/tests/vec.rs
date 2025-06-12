@@ -2708,6 +2708,8 @@ fn test_peek_mut() {
         assert_eq!(*p, 2);
         *p = 0;
         assert_eq!(*p, 0);
+        p.pop();
+        assert_eq!(vec.len(), 1);
     } else {
         unreachable!()
     }
