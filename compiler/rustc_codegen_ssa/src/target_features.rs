@@ -178,8 +178,9 @@ fn parse_rust_feature_flag<'a>(
         if let Some(base_feature) = feature.strip_prefix('+') {
             callback(base_feature, sess.target.implied_target_features(base_feature), true)
         } else if let Some(base_feature) = feature.strip_prefix('-') {
-            // If `f1` implies `f2`, then `!f2` implies `!f1` -- this is standard logical contraposition.
-            // So we have to find all the reverse implications of `base_feature` and disable them, too.
+            // If `f1` implies `f2`, then `!f2` implies `!f1` -- this is standard logical
+            // contraposition. So we have to find all the reverse implications of `base_feature` and
+            // disable them, too.
 
             let inverse_implied_features = inverse_implied_features.get_or_insert_with(|| {
                 let mut set: FxHashMap<&str, FxHashSet<&str>> = FxHashMap::default();
@@ -191,7 +192,7 @@ fn parse_rust_feature_flag<'a>(
                 set
             });
 
-            // Inverse mplied target features have their own inverse implied target features, so we
+            // Inverse implied target features have their own inverse implied target features, so we
             // traverse the map until there are no more features to add.
             let mut features = FxHashSet::default();
             let mut new_features = vec![base_feature];
@@ -214,8 +215,8 @@ fn parse_rust_feature_flag<'a>(
 /// to populate `sess.unstable_target_features` and `sess.target_features` (these are the first and
 /// 2nd component of the return value, respectively).
 ///
-/// `target_base_has_feature` should check whether the given feature (a Rust feature name!) is enabled
-/// in the "base" target machine, i.e., without applying `-Ctarget-feature`.
+/// `target_base_has_feature` should check whether the given feature (a Rust feature name!) is
+/// enabled in the "base" target machine, i.e., without applying `-Ctarget-feature`.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled elsewhere.
 pub fn cfg_target_feature(
@@ -231,6 +232,8 @@ pub fn cfg_target_feature(
         .filter(|(feature, _, _)| {
             // Skip checking special features, those are not known to the backend.
             if RUSTC_SPECIAL_FEATURES.contains(feature) {
+                // FIXME: `true` here means we'll always think the feature is enabled.
+                // Does that really make sense?
                 return true;
             }
             target_base_has_feature(feature)
@@ -241,7 +244,10 @@ pub fn cfg_target_feature(
     // Add enabled and remove disabled features.
     parse_rust_feature_flag(
         sess,
-        /* err_callback */ |_| {},
+        /* err_callback */
+        |_| {
+            // Errors are already emitted in `flag_to_backend_features`; avoid duplicates.
+        },
         |_base_feature, new_features, enabled| {
             // Iteration order is irrelevant since this only influences an `UnordSet`.
             #[allow(rustc::potential_query_instability)]
@@ -339,8 +345,8 @@ pub fn flag_to_backend_features<'a, const N: usize>(
                 let feature_state = known_features.iter().find(|&&(v, _, _)| v == base_feature);
                 match feature_state {
                     None => {
-                        // This is definitely not a valid Rust feature name. Maybe it is a backend feature name?
-                        // If so, give a better error message.
+                        // This is definitely not a valid Rust feature name. Maybe it is a backend
+                        // feature name? If so, give a better error message.
                         let rust_feature =
                             known_features.iter().find_map(|&(rust_feature, _, _)| {
                                 let backend_features = to_backend_features(rust_feature);
@@ -452,7 +458,8 @@ pub(crate) fn provide(providers: &mut Providers) {
                                     Stability::Unstable { .. } | Stability::Forbidden { .. },
                                 )
                                 | (Stability::Forbidden { .. }, Stability::Forbidden { .. }) => {
-                                    // The stability in the entry is at least as good as the new one, just keep it.
+                                    // The stability in the entry is at least as good as the new
+                                    // one, just keep it.
                                 }
                                 _ => {
                                     // Overwrite stabilite.
