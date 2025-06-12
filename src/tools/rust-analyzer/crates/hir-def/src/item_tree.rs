@@ -53,7 +53,6 @@ use hir_expand::{
 use intern::Interned;
 use la_arena::Idx;
 use rustc_hash::FxHashMap;
-use smallvec::SmallVec;
 use span::{AstIdNode, Edition, ErasedFileAstId, FileAstId, SyntaxContext};
 use stdx::never;
 use syntax::{SyntaxKind, ast, match_ast};
@@ -89,11 +88,12 @@ impl fmt::Debug for RawVisibilityId {
 /// The item tree of a source file.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
-    top_level: SmallVec<[ModItemId; 1]>,
+    top_level: Box<[ModItemId]>,
     // Consider splitting this into top level RawAttrs and the map?
     attrs: FxHashMap<AttrOwner, RawAttrs>,
 
     vis: ItemVisibilities,
+    // FIXME: They values store the key, turn this into a FxHashSet<ModItem> instead?
     data: FxHashMap<FileAstId<ast::Item>, ModItem>,
 }
 
@@ -136,7 +136,7 @@ impl ItemTree {
             EMPTY
                 .get_or_init(|| {
                     Arc::new(ItemTree {
-                        top_level: SmallVec::new_const(),
+                        top_level: Box::new([]),
                         attrs: FxHashMap::default(),
                         data: FxHashMap::default(),
                         vis: ItemVisibilities { arena: Box::new([]) },
@@ -163,7 +163,7 @@ impl ItemTree {
             EMPTY
                 .get_or_init(|| {
                     Arc::new(ItemTree {
-                        top_level: SmallVec::new_const(),
+                        top_level: Box::new([]),
                         attrs: FxHashMap::default(),
                         data: FxHashMap::default(),
                         vis: ItemVisibilities { arena: Box::new([]) },
@@ -226,8 +226,7 @@ impl ItemTree {
     }
 
     fn shrink_to_fit(&mut self) {
-        let ItemTree { top_level, attrs, data, vis: _ } = self;
-        top_level.shrink_to_fit();
+        let ItemTree { top_level: _, attrs, data, vis: _ } = self;
         attrs.shrink_to_fit();
         data.shrink_to_fit();
     }

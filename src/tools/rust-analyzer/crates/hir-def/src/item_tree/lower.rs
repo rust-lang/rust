@@ -33,6 +33,7 @@ pub(super) struct Ctx<'a> {
     source_ast_id_map: Arc<AstIdMap>,
     span_map: OnceCell<SpanMap>,
     file: HirFileId,
+    top_level: Vec<ModItemId>,
     visibilities: FxIndexSet<RawVisibility>,
 }
 
@@ -45,6 +46,7 @@ impl<'a> Ctx<'a> {
             file,
             span_map: OnceCell::new(),
             visibilities: FxIndexSet::default(),
+            top_level: Vec::new(),
         }
     }
 
@@ -53,14 +55,14 @@ impl<'a> Ctx<'a> {
     }
 
     pub(super) fn lower_module_items(mut self, item_owner: &dyn HasModuleItem) -> ItemTree {
-        self.tree.top_level =
-            item_owner.items().flat_map(|item| self.lower_mod_item(&item)).collect();
+        self.top_level = item_owner.items().flat_map(|item| self.lower_mod_item(&item)).collect();
         self.tree.vis.arena = self.visibilities.into_iter().collect();
+        self.tree.top_level = self.top_level.into_boxed_slice();
         self.tree
     }
 
     pub(super) fn lower_macro_stmts(mut self, stmts: ast::MacroStmts) -> ItemTree {
-        self.tree.top_level = stmts
+        self.top_level = stmts
             .statements()
             .filter_map(|stmt| {
                 match stmt {
@@ -84,18 +86,19 @@ impl<'a> Ctx<'a> {
             if let Some(call) = tail_macro.macro_call() {
                 cov_mark::hit!(macro_stmt_with_trailing_macro_expr);
                 if let Some(mod_item) = self.lower_mod_item(&call.into()) {
-                    self.tree.top_level.push(mod_item);
+                    self.top_level.push(mod_item);
                 }
             }
         }
 
         self.tree.vis.arena = self.visibilities.into_iter().collect();
+        self.tree.top_level = self.top_level.into_boxed_slice();
         self.tree
     }
 
     pub(super) fn lower_block(mut self, block: &ast::BlockExpr) -> ItemTree {
         self.tree.attrs.insert(AttrOwner::TopLevel, RawAttrs::new(self.db, block, self.span_map()));
-        self.tree.top_level = block
+        self.top_level = block
             .statements()
             .filter_map(|stmt| match stmt {
                 ast::Stmt::Item(item) => self.lower_mod_item(&item),
@@ -111,11 +114,12 @@ impl<'a> Ctx<'a> {
         if let Some(ast::Expr::MacroExpr(expr)) = block.tail_expr() {
             if let Some(call) = expr.macro_call() {
                 if let Some(mod_item) = self.lower_mod_item(&call.into()) {
-                    self.tree.top_level.push(mod_item);
+                    self.top_level.push(mod_item);
                 }
             }
         }
         self.tree.vis.arena = self.visibilities.into_iter().collect();
+        self.tree.top_level = self.top_level.into_boxed_slice();
         self.tree
     }
 
