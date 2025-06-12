@@ -1,5 +1,5 @@
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/inline-disallow-on-variant.rs:2:5
+  --> $DIR/inline-attribute-enum-variant-error.rs:4:5
    |
 LL |     #[inline]
    |     ^^^^^^^^^
