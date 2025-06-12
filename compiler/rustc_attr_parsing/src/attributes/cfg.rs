@@ -1,6 +1,7 @@
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr_data_structures::RustcVersion;
+use rustc_errors::Applicability;
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
@@ -8,6 +9,7 @@ use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::lint::{BuiltinLintDiag, Lint};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
+use rustc_target::spec::apple;
 
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
 use crate::{fluent_generated, parse_version};
@@ -149,6 +151,129 @@ pub fn eval_condition(
                 RustcVersion::current_overridable() >= min_version
             }
         }
+        MetaItemKind::List(mis) if cfg.name_or_empty() == sym::os_version_min => {
+            try_gate_cfg(sym::os_version_min, cfg.span, sess, features);
+
+            let (platform, version) = match &mis[..] {
+                [platform, version] => (platform, version),
+                [..] => {
+                    dcx.emit_err(session_diagnostics::ExpectedPlatformAndVersionLiterals {
+                        span: cfg.span,
+                    });
+                    return false;
+                }
+            };
+
+            let (platform_sym, platform_span) = match platform {
+                MetaItemInner::Lit(MetaItemLit {
+                    kind: LitKind::Str(platform_sym, ..),
+                    span: platform_span,
+                    ..
+                }) => (platform_sym, platform_span),
+                MetaItemInner::Lit(MetaItemLit { span, .. })
+                | MetaItemInner::MetaItem(MetaItem { span, .. }) => {
+                    dcx.emit_err(session_diagnostics::ExpectedPlatformLiteral { span: *span });
+                    return false;
+                }
+            };
+
+            let (version_sym, version_span) = match version {
+                MetaItemInner::Lit(MetaItemLit {
+                    kind: LitKind::Str(version_sym, ..),
+                    span: version_span,
+                    ..
+                }) => (version_sym, version_span),
+                MetaItemInner::Lit(MetaItemLit { span, .. })
+                | MetaItemInner::MetaItem(MetaItem { span, .. }) => {
+                    dcx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
+                    return false;
+                }
+            };
+
+            // Always parse version, regardless of current target platform.
+            let version = match *platform_sym {
+                // Apple platforms follow the same versioning schema.
+                sym::macos | sym::ios | sym::tvos | sym::watchos | sym::visionos => {
+                    match version_sym.as_str().parse() {
+                        Ok(version) => {
+                            let os_min = apple::OSVersion::os_minimum_deployment_target(
+                                &platform_sym.as_str(),
+                            );
+
+                            // It's unnecessary to specify `cfg_target_os(...)` for a platform
+                            // version that is lower than the minimum targetted by `rustc` (instead,
+                            // make the item always available).
+                            //
+                            // This is correct _now_, but once we bump versions next time, we should
+                            // maybe make this a lint so that users can opt-in to supporting older
+                            // `rustc` versions? Or perhaps only fire the warning when Cargo's
+                            // `rust-version` field is above the version where the bump happened? Or
+                            // perhaps keep the version we check against low for a sufficiently long
+                            // time?
+                            if version <= os_min {
+                                sess.dcx()
+                                    .create_warn(
+                                        session_diagnostics::AppleVersionUnnecessarilyLow {
+                                            span: *version_span,
+                                            os_min: os_min.fmt_pretty().to_string(),
+                                        },
+                                    )
+                                    .with_span_suggestion(
+                                        cfg.span,
+                                        "use `target_os` instead",
+                                        format!("target_os = \"{platform_sym}\""),
+                                        Applicability::MachineApplicable,
+                                    )
+                                    .emit();
+                            }
+
+                            PlatformVersion::Apple { os: *platform_sym, version }
+                        }
+                        Err(error) => {
+                            sess.dcx().emit_err(session_diagnostics::AppleVersionInvalid {
+                                span: *version_span,
+                                error,
+                            });
+                            return false;
+                        }
+                    }
+                }
+                // FIXME(madsmtm): Handle further platforms as specified in the RFC.
+                sym::windows | sym::libc => {
+                    #[allow(rustc::untranslatable_diagnostic)] // Temporary
+                    dcx.span_err(*platform_span, "unimplemented platform");
+                    return false;
+                }
+                _ => {
+                    // Unknown platform. This is intentionally a warning (and not an error) to be
+                    // future-compatible with later additions.
+                    let known_platforms = [
+                        sym::macos,
+                        sym::ios,
+                        sym::tvos,
+                        sym::watchos,
+                        sym::visionos,
+                        // sym::windows,
+                        // sym::libc,
+                    ];
+                    dcx.emit_warn(session_diagnostics::UnknownPlatformLiteral {
+                        span: *platform_span,
+                        possibilities: known_platforms.into_iter().collect(),
+                    });
+                    return false;
+                }
+            };
+
+            // Figure out actual cfg-status based on current platform.
+            match version {
+                PlatformVersion::Apple { os, version } if os.as_str() == sess.target.os => {
+                    let deployment_target = sess.apple_deployment_target();
+                    version <= deployment_target
+                }
+                // If a `cfg`-value does not apply to a specific platform, assume
+                _ => false,
+            }
+        }
         MetaItemKind::List(mis) => {
             for mi in mis.iter() {
                 if mi.meta_item_or_bool().is_none() {
@@ -244,4 +369,9 @@ pub fn eval_condition(
             })
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum PlatformVersion {
+    Apple { os: Symbol, version: apple::OSVersion },
 }
