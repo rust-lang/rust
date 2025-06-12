@@ -9,6 +9,7 @@ use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
 use hir::def_id::CRATE_DEF_ID;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, ItemLocalMap};
@@ -122,6 +123,8 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// These are stored here so we may collect them when canonicalizing user
     /// type ascriptions later.
     pub(super) trait_ascriptions: RefCell<ItemLocalMap<Vec<ty::Clause<'tcx>>>>,
+
+    pub(super) normalization_cache: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -150,6 +153,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             diverging_fallback_behavior,
             diverging_block_behavior,
             trait_ascriptions: Default::default(),
+            normalization_cache: Default::default(),
         }
     }
 
