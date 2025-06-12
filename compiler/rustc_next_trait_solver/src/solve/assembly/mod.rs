@@ -1039,7 +1039,7 @@ where
 {
     type Result = ControlFlow<Result<(), NoSolution>>;
 
-    fn visit_binder<T: TypeFoldable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
         self.universes.push(None);
         t.super_visit_with(self)?;
         self.universes.pop();
