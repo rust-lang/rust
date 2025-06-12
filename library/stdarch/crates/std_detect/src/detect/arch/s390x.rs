@@ -22,8 +22,29 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] high_word: "high-word";
     /// s390x high-word facility
     #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] message_security_assist_extension3: "message-security-assist-extension3";
+    /// s390x message-security-assist-extension3 facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] message_security_assist_extension4: "message-security-assist-extension4";
+    /// s390x message-security-assist-extension4 facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] message_security_assist_extension5: "message-security-assist-extension5";
+    /// s390x message-security-assist-extension5 facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] message_security_assist_extension8: "message-security-assist-extension8";
+    /// s390x message-security-assist-extension8 facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] message_security_assist_extension9: "message-security-assist-extension9";
+    /// s390x message-security-assist-extension9 facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
     @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] message_security_assist_extension12: "message-security-assist-extension12";
     /// s390x message-security-assist-extension12 facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] miscellaneous_extensions_2: "miscellaneous-extensions-2";
+    /// s390x miscellaneous-extensions-2 facility
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] miscellaneous_extensions_3: "miscellaneous-extensions-3";
+    /// s390x miscellaneous-extensions-3 facility
     #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
     @FEATURE: #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")] miscellaneous_extensions_4: "miscellaneous-extensions-4";
     /// s390x miscellaneous-extensions-4 facility
