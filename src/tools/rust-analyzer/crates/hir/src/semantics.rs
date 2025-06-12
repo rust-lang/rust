@@ -25,7 +25,6 @@ use hir_expand::{
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::{FileRangeWrapper, HirFileRange, InRealFile},
-    inert_attr_macro::find_builtin_attr_idx,
     mod_path::{ModPath, PathKind},
     name::AsName,
 };
@@ -969,13 +968,6 @@ impl<'db> SemanticsImpl<'db> {
             let Some(item) = ast::Item::cast(ancestor) else {
                 return false;
             };
-            // Optimization to skip the semantic check.
-            if item.attrs().all(|attr| {
-                attr.simple_name()
-                    .is_some_and(|attr| find_builtin_attr_idx(&Symbol::intern(&attr)).is_some())
-            }) {
-                return false;
-            }
             self.with_ctx(|ctx| {
                 if ctx.item_to_macro_call(token.with_value(&item)).is_some() {
                     return true;
