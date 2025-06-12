@@ -337,42 +337,6 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:131:17
-   |
-LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
-   |                 ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C"` instead
-   = note: `#[warn(unsupported_calling_conventions)]` on by default
-
-Future breakage diagnostic:
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:136:1
-   |
-LL | extern "cdecl" {}
-   | ^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C"` instead
-   = note: `#[warn(unsupported_calling_conventions)]` on by default
-
-Future breakage diagnostic:
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:139:1
-   |
-LL | extern "cdecl-unwind" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C-unwind"` instead
-   = note: `#[warn(unsupported_calling_conventions)]` on by default
-
-Future breakage diagnostic:
 warning: the calling convention "vectorcall" is not supported on this target
   --> $DIR/unsupported.rs:145:22
    |
@@ -404,16 +368,4 @@ LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
    = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
-
-Future breakage diagnostic:
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:128:1
-   |
-LL | extern "cdecl" fn cdecl() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: use `extern "C"` instead
-   = note: `#[warn(unsupported_calling_conventions)]` on by default
 
