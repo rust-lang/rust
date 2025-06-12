@@ -89,7 +89,7 @@ impl Step for Std {
         let stage = self.custom_stage.unwrap_or(builder.top_stage);
 
         let target = self.target;
-        let compiler = builder.compiler(stage, builder.config.build);
+        let compiler = builder.compiler(stage, builder.config.host_target);
 
         if stage == 0 {
             let mut is_explicitly_called =
@@ -244,7 +244,7 @@ impl Step for Rustc {
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
         let target = self.target;
 
         if compiler.stage != 0 {
@@ -327,7 +327,7 @@ impl Step for CodegenBackend {
             return;
         }
 
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
         let target = self.target;
         let backend = self.backend;
 
@@ -382,7 +382,7 @@ impl Step for RustAnalyzer {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
         let target = self.target;
 
         builder.ensure(Rustc::new(target, builder));
@@ -448,7 +448,7 @@ impl Step for Compiletest {
 
         let compiler = builder.compiler(
             if mode == Mode::ToolBootstrap { 0 } else { builder.top_stage },
-            builder.config.build,
+            builder.config.host_target,
         );
 
         if mode != Mode::ToolBootstrap {
@@ -527,7 +527,7 @@ fn run_tool_check_step(
     path: &str,
 ) {
     let display_name = path.rsplit('/').next().unwrap();
-    let compiler = builder.compiler(builder.top_stage, builder.config.build);
+    let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
 
     builder.ensure(Rustc::new(target, builder));
 
@@ -614,7 +614,7 @@ impl Step for CoverageDump {
         // Make sure we haven't forgotten any fields, if there are any.
         let Self {} = self;
         let display_name = "coverage-dump";
-        let host = builder.config.build;
+        let host = builder.config.host_target;
         let target = host;
         let mode = Mode::ToolBootstrap;
 

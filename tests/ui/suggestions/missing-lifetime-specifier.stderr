@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifiers
-  --> $DIR/missing-lifetime-specifier.rs:27:44
+  --> $DIR/missing-lifetime-specifier.rs:26:44
    |
 LL |     static a: RefCell<HashMap<i32, Vec<Vec<Foo>>>> = RefCell::new(HashMap::new());
    |                                            ^^^ expected 2 lifetime parameters
@@ -11,21 +11,21 @@ LL |     static a: RefCell<HashMap<i32, Vec<Vec<Foo<'static, 'static>>>>> = RefC
    |                                               ++++++++++++++++++
 
 error[E0106]: missing lifetime specifiers
-  --> $DIR/missing-lifetime-specifier.rs:31:44
+  --> $DIR/missing-lifetime-specifier.rs:30:44
    |
-LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^ expected 2 lifetime parameters
+LL |     static b: RefCell<HashMap<i32, Vec<Vec<&dyn Bar>>>> = RefCell::new(HashMap::new());
+   |                                            ^    ^^^ expected 2 lifetime parameters
    |                                            |
    |                                            expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
-LL |     static b: RefCell<HashMap<i32, Vec<Vec<&'static Bar<'static, 'static>>>>> = RefCell::new(HashMap::new());
-   |                                             +++++++    ++++++++++++++++++
+LL |     static b: RefCell<HashMap<i32, Vec<Vec<&'static dyn Bar<'static, 'static>>>>> = RefCell::new(HashMap::new());
+   |                                             +++++++        ++++++++++++++++++
 
 error[E0106]: missing lifetime specifiers
-  --> $DIR/missing-lifetime-specifier.rs:35:47
+  --> $DIR/missing-lifetime-specifier.rs:34:47
    |
 LL |     static c: RefCell<HashMap<i32, Vec<Vec<Qux<i32>>>>> = RefCell::new(HashMap::new());
    |                                               ^ expected 2 lifetime parameters
@@ -37,33 +37,38 @@ LL |     static c: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'static, i32>>>>> =
    |                                                +++++++++++++++++
 
 error[E0106]: missing lifetime specifiers
-  --> $DIR/missing-lifetime-specifier.rs:39:44
+  --> $DIR/missing-lifetime-specifier.rs:38:44
    |
-LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(HashMap::new());
-   |                                            ^   ^ expected 2 lifetime parameters
+LL |     static d: RefCell<HashMap<i32, Vec<Vec<&dyn Tar<i32>>>>> = RefCell::new(HashMap::new());
+   |                                            ^       ^ expected 2 lifetime parameters
    |                                            |
    |                                            expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
-LL |     static d: RefCell<HashMap<i32, Vec<Vec<&'static Tar<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                             +++++++     +++++++++++++++++
+LL |     static d: RefCell<HashMap<i32, Vec<Vec<&'static dyn Tar<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
+   |                                             +++++++         +++++++++++++++++
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/missing-lifetime-specifier.rs:48:44
+  --> $DIR/missing-lifetime-specifier.rs:47:44
    |
-LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
+LL |     static f: RefCell<HashMap<i32, Vec<Vec<&dyn Tar<'static, i32>>>>> =
    |                                            ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
-LL |     static f: RefCell<HashMap<i32, Vec<Vec<&'static Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
+LL |     static f: RefCell<HashMap<i32, Vec<Vec<&'static dyn Tar<'static, i32>>>>> =
    |                                             +++++++
+help: instead, you are more likely to want to return an owned value
+   |
+LL -     static f: RefCell<HashMap<i32, Vec<Vec<&dyn Tar<'static, i32>>>>> =
+LL +     static f: RefCell<HashMap<i32, Vec<Vec<dyn Tar<'static, i32>>>>> =
+   |
 
 error[E0107]: union takes 2 lifetime arguments but 1 lifetime argument was supplied
-  --> $DIR/missing-lifetime-specifier.rs:44:44
+  --> $DIR/missing-lifetime-specifier.rs:43:44
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, i32>>>>> = RefCell::new(HashMap::new());
    |                                            ^^^ ------- supplied 1 lifetime argument
@@ -71,7 +76,7 @@ LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, i32>>>>> = RefCell:
    |                                            expected 2 lifetime arguments
    |
 note: union defined here, with 2 lifetime parameters: `'t`, `'k`
-  --> $DIR/missing-lifetime-specifier.rs:20:11
+  --> $DIR/missing-lifetime-specifier.rs:19:11
    |
 LL | pub union Qux<'t, 'k, I> {
    |           ^^^ --  --
@@ -81,22 +86,22 @@ LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'static, i32>>>>> =
    |                                                       +++++++++
 
 error[E0107]: trait takes 2 lifetime arguments but 1 lifetime argument was supplied
-  --> $DIR/missing-lifetime-specifier.rs:48:45
+  --> $DIR/missing-lifetime-specifier.rs:47:49
    |
-LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                             ^^^ ------- supplied 1 lifetime argument
-   |                                             |
-   |                                             expected 2 lifetime arguments
+LL |     static f: RefCell<HashMap<i32, Vec<Vec<&dyn Tar<'static, i32>>>>> =
+   |                                                 ^^^ ------- supplied 1 lifetime argument
+   |                                                 |
+   |                                                 expected 2 lifetime arguments
    |
 note: trait defined here, with 2 lifetime parameters: `'t`, `'k`
-  --> $DIR/missing-lifetime-specifier.rs:24:7
+  --> $DIR/missing-lifetime-specifier.rs:23:7
    |
 LL | trait Tar<'t, 'k, I> {}
    |       ^^^ --  --
 help: add missing lifetime argument
    |
-LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                        +++++++++
+LL |     static f: RefCell<HashMap<i32, Vec<Vec<&dyn Tar<'static, 'static, i32>>>>> =
+   |                                                            +++++++++
 
 error: aborting due to 7 previous errors
 

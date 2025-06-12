@@ -11,8 +11,8 @@ LL | impl const S {}
 error: inherent impls cannot be `const`
   --> $DIR/inherent-impl.rs:10:12
    |
-LL | impl const T {}
-   |      ----- ^ inherent impl for this type
+LL | impl const dyn T {}
+   |      ----- ^^^^^ inherent impl for this type
    |      |
    |      `const` because of this
    |

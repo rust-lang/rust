@@ -1,3 +1,5 @@
+//! Test format! macro functionality in no_std environment
+
 //@ run-pass
 //@ ignore-emscripten no no_std executables
 //@ ignore-wasm different `main` convention
@@ -9,7 +11,8 @@
 // Import global allocator and panic handler.
 extern crate std as other;
 
-#[macro_use] extern crate alloc;
+#[macro_use]
+extern crate alloc;
 
 use alloc::string::ToString;
 
@@ -21,7 +24,7 @@ extern "C" fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ff
     let s = format!("test");
     assert_eq!(s, "test".to_string());
 
-    let s = format!("{test}", test=3_isize);
+    let s = format!("{test}", test = 3_isize);
     assert_eq!(s, "3".to_string());
 
     let s = format!("hello {}", "world");

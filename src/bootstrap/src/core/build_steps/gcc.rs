@@ -285,7 +285,7 @@ pub fn add_cg_gcc_cargo_flags(cargo: &mut Cargo, gcc: &GccOutput) {
 /// The absolute path to the downloaded GCC artifacts.
 #[cfg(not(test))]
 fn ci_gcc_root(config: &crate::Config) -> PathBuf {
-    config.out.join(config.build).join("ci-gcc")
+    config.out.join(config.host_target).join("ci-gcc")
 }
 
 /// Detect whether GCC sources have been modified locally or not.

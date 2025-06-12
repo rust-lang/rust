@@ -1,5 +1,5 @@
 warning: trait `T` is never used
-  --> $DIR/empty-type-parameter-list.rs:6:7
+  --> $DIR/empty-generic-brackets-equiv.rs:9:7
    |
 LL | trait T<> {}
    |       ^

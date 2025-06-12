@@ -3,7 +3,8 @@ use crate::layout;
 /// Context necessary to answer the question "Are these types transmutable?".
 pub(crate) trait QueryContext {
     type Def: layout::Def;
-    type Ref: layout::Ref;
+    type Region: layout::Region;
+    type Type: layout::Type;
 }
 
 #[cfg(test)]
@@ -12,9 +13,9 @@ pub(crate) mod test {
 
     use super::QueryContext;
 
-    pub(crate) struct UltraMinimal<R = !>(PhantomData<R>);
+    pub(crate) struct UltraMinimal<R = !, T = !>(PhantomData<(R, T)>);
 
-    impl<R> Default for UltraMinimal<R> {
+    impl<R, T> Default for UltraMinimal<R, T> {
         fn default() -> Self {
             Self(PhantomData)
         }
@@ -32,20 +33,26 @@ pub(crate) mod test {
         }
     }
 
-    impl<R: crate::layout::Ref> QueryContext for UltraMinimal<R> {
+    impl<R, T> QueryContext for UltraMinimal<R, T>
+    where
+        R: crate::layout::Region,
+        T: crate::layout::Type,
+    {
         type Def = Def;
-        type Ref = R;
+        type Region = R;
+        type Type = T;
     }
 }
 
 #[cfg(feature = "rustc")]
 mod rustc {
-    use rustc_middle::ty::TyCtxt;
+    use rustc_middle::ty::{Region, Ty, TyCtxt};
 
     use super::*;
 
     impl<'tcx> super::QueryContext for TyCtxt<'tcx> {
         type Def = layout::rustc::Def<'tcx>;
-        type Ref = layout::rustc::Ref<'tcx>;
+        type Region = Region<'tcx>;
+        type Type = Ty<'tcx>;
     }
 }

@@ -1,28 +1,39 @@
+//! Regression test for issue #38412: interaction between stability attributes and privacy
+//!
+//! Tests that the compiler correctly handles the interaction between feature gates
+//! and privacy/visibility rules. Specifically verifies that enabled unstable features
+//! are accessible while disabled ones are properly rejected.
+
 //@ aux-build:pub-and-stability.rs
 
-// A big point of this test is that we *enable* `unstable_declared`,
-// but do *not* enable `unstable_undeclared`. This way we can check
-// that the compiler is letting in uses of enabled feature-gated
-// stuff but still rejecting uses of disabled feature-gated stuff.
+// Enable `unstable_declared` but not `unstable_undeclared` to test
+// that the compiler allows enabled features but rejects disabled ones
 #![feature(unstable_declared)]
 
 extern crate pub_and_stability;
 use pub_and_stability::{Record, Trait, Tuple};
 
 fn main() {
-    // Okay
+    // Test struct field access patterns
     let Record { .. } = Record::new();
 
-    // Okay
-    let Record { a_stable_pub: _, a_unstable_declared_pub: _, .. } = Record::new();
+    let Record {
+        a_stable_pub: _,
+        a_unstable_declared_pub: _,
+        ..
+    } = Record::new();
 
-    let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_undeclared_pub: _, .. } =
-        Record::new();
-    //~^^ ERROR use of unstable library feature `unstable_undeclared`
+    let Record {
+        a_stable_pub: _,
+        a_unstable_declared_pub: _,
+        a_unstable_undeclared_pub: _,  //~ ERROR use of unstable library feature `unstable_undeclared`
+        ..
+    } = Record::new();
 
     let r = Record::new();
     let t = Tuple::new();
 
+    // Test field access with different stability/privacy combinations
     r.a_stable_pub;
     r.a_unstable_declared_pub;
     r.a_unstable_undeclared_pub; //~ ERROR use of unstable library feature
@@ -37,10 +48,12 @@ fn main() {
     t.4;                         //~ ERROR is private
     t.5;                         //~ ERROR is private
 
+    // Test trait method access
     r.stable_trait_method();
     r.unstable_declared_trait_method();
     r.unstable_undeclared_trait_method(); //~ ERROR use of unstable library feature
 
+    // Test inherent method access
     r.stable();
     r.unstable_declared();
     r.unstable_undeclared();              //~ ERROR use of unstable library feature
@@ -49,6 +62,7 @@ fn main() {
     r.pub_mod();                          //~ ERROR `pub_mod` is private
     r.private();                          //~ ERROR `private` is private
 
+    // Repeat tests for tuple struct
     let t = Tuple::new();
     t.stable_trait_method();
     t.unstable_declared_trait_method();

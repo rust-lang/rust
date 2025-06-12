@@ -59,7 +59,7 @@ pub struct Flags {
     pub build_dir: Option<PathBuf>,
 
     #[arg(global = true, long, value_hint = clap::ValueHint::Other, value_name = "BUILD")]
-    /// build target of the stage0 compiler
+    /// host target of the stage0 compiler
     pub build: Option<String>,
 
     #[arg(global = true, long, value_hint = clap::ValueHint::Other, value_name = "HOST", value_parser = target_selection_list)]

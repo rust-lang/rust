@@ -9,13 +9,12 @@
 
 use std::ops::ControlFlow;
 
-use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, Upcast, elaborate};
+use rustc_middle::ty::{self, GenericArgsRef, Region, Ty, TyCtxt, Upcast, elaborate};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use thin_vec::thin_vec;
@@ -286,99 +285,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
         use rustc_transmute::{Answer, Assume, Condition};
 
-        /// Generate sub-obligations for reference-to-reference transmutations.
-        fn reference_obligations<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            obligation: &PolyTraitObligation<'tcx>,
-            (src_lifetime, src_ty, src_mut): (ty::Region<'tcx>, Ty<'tcx>, Mutability),
-            (dst_lifetime, dst_ty, dst_mut): (ty::Region<'tcx>, Ty<'tcx>, Mutability),
-            assume: Assume,
-        ) -> PredicateObligations<'tcx> {
-            let make_transmute_obl = |src, dst| {
-                let transmute_trait = obligation.predicate.def_id();
-                let assume = obligation.predicate.skip_binder().trait_ref.args.const_at(2);
-                let trait_ref = ty::TraitRef::new(
-                    tcx,
-                    transmute_trait,
-                    [
-                        ty::GenericArg::from(dst),
-                        ty::GenericArg::from(src),
-                        ty::GenericArg::from(assume),
-                    ],
-                );
-                Obligation::with_depth(
-                    tcx,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    obligation.param_env,
-                    trait_ref,
-                )
-            };
-
-            let make_freeze_obl = |ty| {
-                let trait_ref = ty::TraitRef::new(
-                    tcx,
-                    tcx.require_lang_item(LangItem::Freeze, obligation.cause.span),
-                    [ty::GenericArg::from(ty)],
-                );
-                Obligation::with_depth(
-                    tcx,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    obligation.param_env,
-                    trait_ref,
-                )
-            };
-
-            let make_outlives_obl = |target, region| {
-                let outlives = ty::OutlivesPredicate(target, region);
-                Obligation::with_depth(
-                    tcx,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    obligation.param_env,
-                    outlives,
-                )
-            };
-
-            // Given a transmutation from `&'a (mut) Src` and `&'dst (mut) Dst`,
-            // it is always the case that `Src` must be transmutable into `Dst`,
-            // and that that `'src` must outlive `'dst`.
-            let mut obls = PredicateObligations::with_capacity(1);
-            obls.push(make_transmute_obl(src_ty, dst_ty));
-            if !assume.lifetimes {
-                obls.push(make_outlives_obl(src_lifetime, dst_lifetime));
-            }
-
-            // Given a transmutation from `&Src`, both `Src` and `Dst` must be
-            // `Freeze`, otherwise, using the transmuted value could lead to
-            // data races.
-            if src_mut == Mutability::Not {
-                obls.extend([make_freeze_obl(src_ty), make_freeze_obl(dst_ty)])
-            }
-
-            // Given a transmutation into `&'dst mut Dst`, it also must be the
-            // case that `Dst` is transmutable into `Src`. For example,
-            // transmuting bool -> u8 is OK as long as you can't update that u8
-            // to be > 1, because you could later transmute the u8 back to a
-            // bool and get undefined behavior. It also must be the case that
-            // `'dst` lives exactly as long as `'src`.
-            if dst_mut == Mutability::Mut {
-                obls.push(make_transmute_obl(dst_ty, src_ty));
-                if !assume.lifetimes {
-                    obls.push(make_outlives_obl(dst_lifetime, src_lifetime));
-                }
-            }
-
-            obls
-        }
-
         /// Flatten the `Condition` tree into a conjunction of obligations.
         #[instrument(level = "debug", skip(tcx, obligation))]
         fn flatten_answer_tree<'tcx>(
             tcx: TyCtxt<'tcx>,
             obligation: &PolyTraitObligation<'tcx>,
-            cond: Condition<rustc_transmute::layout::rustc::Ref<'tcx>>,
+            cond: Condition<Region<'tcx>, Ty<'tcx>>,
             assume: Assume,
         ) -> PredicateObligations<'tcx> {
             match cond {
@@ -388,13 +300,50 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .into_iter()
                     .flat_map(|cond| flatten_answer_tree(tcx, obligation, cond, assume))
                     .collect(),
-                Condition::IfTransmutable { src, dst } => reference_obligations(
-                    tcx,
-                    obligation,
-                    (src.lifetime, src.ty, src.mutability),
-                    (dst.lifetime, dst.ty, dst.mutability),
-                    assume,
-                ),
+                Condition::Immutable { ty } => {
+                    let trait_ref = ty::TraitRef::new(
+                        tcx,
+                        tcx.require_lang_item(LangItem::Freeze, obligation.cause.span),
+                        [ty::GenericArg::from(ty)],
+                    );
+                    thin_vec![Obligation::with_depth(
+                        tcx,
+                        obligation.cause.clone(),
+                        obligation.recursion_depth + 1,
+                        obligation.param_env,
+                        trait_ref,
+                    )]
+                }
+                Condition::Outlives { long, short } => {
+                    let outlives = ty::OutlivesPredicate(long, short);
+                    thin_vec![Obligation::with_depth(
+                        tcx,
+                        obligation.cause.clone(),
+                        obligation.recursion_depth + 1,
+                        obligation.param_env,
+                        outlives,
+                    )]
+                }
+                Condition::Transmutable { src, dst } => {
+                    let transmute_trait = obligation.predicate.def_id();
+                    let assume = obligation.predicate.skip_binder().trait_ref.args.const_at(2);
+                    let trait_ref = ty::TraitRef::new(
+                        tcx,
+                        transmute_trait,
+                        [
+                            ty::GenericArg::from(dst),
+                            ty::GenericArg::from(src),
+                            ty::GenericArg::from(assume),
+                        ],
+                    );
+                    thin_vec![Obligation::with_depth(
+                        tcx,
+                        obligation.cause.clone(),
+                        obligation.recursion_depth + 1,
+                        obligation.param_env,
+                        trait_ref,
+                    )]
+                }
             }
         }
 

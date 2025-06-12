@@ -4,7 +4,7 @@ error: generic parameters may not be used in const operations
 LL | struct Break0<const N: usize>([u8; { N + 1 }]);
    |                                      ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
@@ -13,7 +13,7 @@ error: generic parameters may not be used in const operations
 LL | struct Break1<const N: usize>([u8; { { N } }]);
    |                                        ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
@@ -22,7 +22,7 @@ error: generic parameters may not be used in const operations
 LL |     let _: [u8; N + 1];
    |                 ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
@@ -31,7 +31,7 @@ error: generic parameters may not be used in const operations
 LL |     let _ = [0; N + 1];
    |                 ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
