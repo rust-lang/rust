@@ -1266,6 +1266,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | RiscvInterruptS
         | CCmseNonSecureCall
         | CCmseNonSecureEntry
+        | Custom
         | Unadjusted => false,
         Rust | RustCall | RustCold => tcx.sess.panic_strategy() == PanicStrategy::Unwind,
     }
