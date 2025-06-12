@@ -237,6 +237,9 @@ pub enum AttributeKind {
     /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
     MayDangle(Span),
 
+    /// Represents #[naked]
+    Naked(Span),
+
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 
