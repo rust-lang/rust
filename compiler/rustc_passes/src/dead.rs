@@ -14,7 +14,7 @@ use rustc_errors::MultiSpan;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, Node, PatKind, QPath, TyKind};
+use rustc_hir::{self as hir, ImplItem, ImplItemKind, Node, PatKind, QPath, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
@@ -936,7 +936,9 @@ enum ShouldWarnAboutField {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum ReportOn {
+    /// Report on something that hasn't got a proper name to refer to
     TupleField,
+    /// Report on something that has got a name, which could be a field but also a method
     NamedField,
 }
 
@@ -1061,6 +1063,31 @@ impl<'tcx> DeadVisitor<'tcx> {
                 None
             };
 
+        let enum_variants_with_same_name = dead_codes
+            .iter()
+            .filter_map(|dead_item| {
+                if let Node::ImplItem(ImplItem {
+                    kind: ImplItemKind::Fn(..) | ImplItemKind::Const(..),
+                    ..
+                }) = tcx.hir_node_by_def_id(dead_item.def_id)
+                    && let Some(impl_did) = tcx.opt_parent(dead_item.def_id.to_def_id())
+                    && let DefKind::Impl { of_trait: false } = tcx.def_kind(impl_did)
+                    && let ty::Adt(maybe_enum, _) = tcx.type_of(impl_did).skip_binder().kind()
+                    && maybe_enum.is_enum()
+                    && let Some(variant) =
+                        maybe_enum.variants().iter().find(|i| i.name == dead_item.name)
+                {
+                    Some(crate::errors::EnumVariantSameName {
+                        descr: tcx.def_descr(dead_item.def_id.to_def_id()),
+                        dead_name: dead_item.name,
+                        variant_span: tcx.def_span(variant.def_id),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         let diag = match report_on {
             ReportOn::TupleField => {
                 let tuple_fields = if let Some(parent_id) = parent_item
@@ -1114,6 +1141,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                 name_list,
                 parent_info,
                 ignored_derived_impls,
+                enum_variants_with_same_name,
             },
         };
 
