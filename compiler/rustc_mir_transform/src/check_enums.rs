@@ -49,24 +49,19 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                     let new_block = split_block(basic_blocks, location);
 
                     match check {
-                        EnumCheckType::Direct {
-                            source_op,
-                            discr_ty,
-                            discr_size,
-                            op_size,
-                            valid_discrs,
-                        } => insert_direct_enum_check(
-                            tcx,
-                            local_decls,
-                            &mut basic_blocks[block],
-                            source_op,
-                            discr_ty,
-                            discr_size,
-                            op_size,
-                            valid_discrs,
-                            source_info,
-                            new_block,
-                        ),
+                        EnumCheckType::Direct { source_op, discr, op_size, valid_discrs } => {
+                            insert_direct_enum_check(
+                                tcx,
+                                local_decls,
+                                &mut basic_blocks[block],
+                                source_op,
+                                discr,
+                                op_size,
+                                valid_discrs,
+                                source_info,
+                                new_block,
+                            )
+                        }
                         EnumCheckType::Uninhabited => insert_uninhabited_enum_check(
                             tcx,
                             local_decls,
@@ -76,8 +71,7 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                         ),
                         EnumCheckType::WithNiche {
                             source_op,
-                            discr_ty,
-                            discr_size,
+                            discr,
                             op_size,
                             offset,
                             valid_range,
@@ -87,8 +81,7 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                             &mut basic_blocks[block],
                             source_op,
                             valid_range,
-                            discr_ty,
-                            discr_size,
+                            discr,
                             op_size,
                             offset,
                             source_info,
@@ -113,20 +106,23 @@ enum EnumCheckType<'tcx> {
     /// the valid discriminants.
     Direct {
         source_op: Operand<'tcx>,
-        discr_ty: Ty<'tcx>,
-        discr_size: Size,
+        discr: TyAndSize<'tcx>,
         op_size: Size,
         valid_discrs: Vec<u128>,
     },
     /// We try to construct an enum that has a niche.
     WithNiche {
         source_op: Operand<'tcx>,
-        discr_ty: Ty<'tcx>,
-        discr_size: Size,
+        discr: TyAndSize<'tcx>,
         op_size: Size,
         offset: Size,
         valid_range: WrappingRange,
     },
+}
+
+struct TyAndSize<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub size: Size,
 }
 
 /// A [Visitor] that finds the construction of enums and evaluates which checks
@@ -155,7 +151,7 @@ impl<'a, 'tcx> EnumFinder<'a, 'tcx> {
     /// In some cases the enum discriminant is stored in a tag that is represented by
     /// primitive. This method returns the actual discriminant type and size for that
     /// tag.
-    fn tag_type_and_size_for_primitive(&self, primitive: Primitive) -> (Ty<'tcx>, Size) {
+    fn tag_type_and_size_for_primitive(&self, primitive: Primitive) -> TyAndSize<'tcx> {
         let discr_ty = match primitive {
             Primitive::Int(Integer::I8, false) => self.tcx.types.u8,
             Primitive::Int(Integer::I8, true) => self.tcx.types.i8,
@@ -171,7 +167,7 @@ impl<'a, 'tcx> EnumFinder<'a, 'tcx> {
         let Ok(discr_layout) = self.tcx.layout_of(self.typing_env.as_query_input(discr_ty)) else {
             bug!("Invalid discriminant {:#?}", primitive);
         };
-        (discr_ty, discr_layout.size)
+        TyAndSize { ty: discr_ty, size: discr_layout.size }
     }
 }
 
@@ -215,11 +211,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EnumFinder<'a, 'tcx> {
                     let valid_discrs =
                         adt_def.discriminants(self.tcx).map(|(_, discr)| discr.val).collect();
 
-                    let (discr_ty, discr_size) = self.tag_type_and_size_for_primitive(value);
+                    let discr = self.tag_type_and_size_for_primitive(value);
                     self.enums.push(EnumCheckType::Direct {
                         source_op: op.to_copy(),
-                        discr_ty,
-                        discr_size,
+                        discr,
                         op_size: op_layout.size,
                         valid_discrs,
                     });
@@ -231,11 +226,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EnumFinder<'a, 'tcx> {
                     tag_field,
                     ..
                 } => {
-                    let (discr_ty, discr_size) = self.tag_type_and_size_for_primitive(value);
+                    let discr = self.tag_type_and_size_for_primitive(value);
                     self.enums.push(EnumCheckType::WithNiche {
                         source_op: op.to_copy(),
-                        discr_ty,
-                        discr_size,
+                        discr,
                         op_size: op_layout.size,
                         offset: enum_layout.fields.offset(tag_field.as_usize()),
                         valid_range,
@@ -271,8 +265,7 @@ fn insert_discr_cast_to_u128<'tcx>(
     local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
     block_data: &mut BasicBlockData<'tcx>,
     source_op: Operand<'tcx>,
-    discr_ty: Ty<'tcx>,
-    discr_size: Size,
+    discr: TyAndSize<'tcx>,
     op_size: Size,
     offset: Option<Size>,
     source_info: SourceInfo,
@@ -288,7 +281,7 @@ fn insert_discr_cast_to_u128<'tcx>(
         }
     };
 
-    let (cast_kind, discr_ty_bits) = if discr_size.bytes() < op_size.bytes() {
+    let (cast_kind, discr_ty_bits) = if discr.size.bytes() < op_size.bytes() {
         // The discriminant is less wide than the operand, cast the operand into
         // [MaybeUninit; N] and then index into it.
         let mu = Ty::new_maybe_uninit(tcx, tcx.types.u8);
@@ -308,7 +301,7 @@ fn insert_discr_cast_to_u128<'tcx>(
         let smaller_mu_array = mu_array.project_deeper(
             &[ProjectionElem::Subslice {
                 from: offset.bytes(),
-                to: offset.bytes() + discr_size.bytes(),
+                to: offset.bytes() + discr.size.bytes(),
                 from_end: false,
             }],
             tcx,
@@ -330,9 +323,9 @@ fn insert_discr_cast_to_u128<'tcx>(
     };
 
     // Cast the resulting value to the actual discriminant integer type.
-    let rvalue = Rvalue::Cast(cast_kind, discr_ty_bits, discr_ty);
+    let rvalue = Rvalue::Cast(cast_kind, discr_ty_bits, discr.ty);
     let discr_in_discr_ty =
-        local_decls.push(LocalDecl::with_source_info(discr_ty, source_info)).into();
+        local_decls.push(LocalDecl::with_source_info(discr.ty, source_info)).into();
     block_data.statements.push(Statement {
         source_info,
         kind: StatementKind::Assign(Box::new((discr_in_discr_ty, rvalue))),
@@ -372,8 +365,7 @@ fn insert_direct_enum_check<'tcx>(
     local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
     block_data: &mut BasicBlockData<'tcx>,
     source_op: Operand<'tcx>,
-    discr_ty: Ty<'tcx>,
-    discr_size: Size,
+    discr: TyAndSize<'tcx>,
     op_size: Size,
     discriminants: Vec<u128>,
     source_info: SourceInfo,
@@ -384,8 +376,7 @@ fn insert_direct_enum_check<'tcx>(
         local_decls,
         block_data,
         source_op,
-        discr_ty,
-        discr_size,
+        discr,
         op_size,
         None,
         source_info,
@@ -514,8 +505,7 @@ fn insert_niche_check<'tcx>(
     block_data: &mut BasicBlockData<'tcx>,
     source_op: Operand<'tcx>,
     valid_range: WrappingRange,
-    discr_ty: Ty<'tcx>,
-    discr_size: Size,
+    discr: TyAndSize<'tcx>,
     op_size: Size,
     offset: Size,
     source_info: SourceInfo,
@@ -526,8 +516,7 @@ fn insert_niche_check<'tcx>(
         local_decls,
         block_data,
         source_op,
-        discr_ty,
-        discr_size,
+        discr,
         op_size,
         Some(offset),
         source_info,
