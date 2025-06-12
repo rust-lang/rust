@@ -11,37 +11,38 @@ LL | #[rustc::unknown]
    |   ^^^^^^^^^^^^^^ not an attribute
 
 error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
-  --> $DIR/feature-gate-rustc-attrs.rs:13:12
+  --> $DIR/feature-gate-rustc-attrs.rs:14:12
    |
 LL | #[unknown::rustc]
    |            ^^^^^
 
 error: expected attribute, found macro `unknown::rustc`
-  --> $DIR/feature-gate-rustc-attrs.rs:13:3
+  --> $DIR/feature-gate-rustc-attrs.rs:14:3
    |
 LL | #[unknown::rustc]
    |   ^^^^^^^^^^^^^^ not an attribute
 
 error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
-  --> $DIR/feature-gate-rustc-attrs.rs:20:3
+  --> $DIR/feature-gate-rustc-attrs.rs:24:3
    |
 LL | #[rustc_unknown]
    |   ^^^^^^^^^^^^^
 
 error: cannot find attribute `rustc_unknown` in this scope
-  --> $DIR/feature-gate-rustc-attrs.rs:20:3
+  --> $DIR/feature-gate-rustc-attrs.rs:24:3
    |
 LL | #[rustc_unknown]
    |   ^^^^^^^^^^^^^
 
-error[E0658]: the `#[rustc_dummy]` attribute is just used for rustc unit tests and will never be stable
-  --> $DIR/feature-gate-rustc-attrs.rs:18:1
+error[E0658]: use of an internal attribute
+  --> $DIR/feature-gate-rustc-attrs.rs:20:1
    |
 LL | #[rustc_dummy]
    | ^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: the `#[rustc_dummy]` attribute is an internal implementation detail that will never be stable
+   = note: the `#[rustc_dummy]` attribute is used for rustc unit tests
 
 error: aborting due to 7 previous errors
 
