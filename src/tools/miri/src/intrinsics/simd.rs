@@ -321,7 +321,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let b = b.to_f32()?;
                             let c = c.to_f32()?;
                             let res = if fuse {
-                                a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                                a.mul_add(b, c).value
                             } else {
                                 ((a * b).value + c).value
                             };
@@ -333,7 +333,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let b = b.to_f64()?;
                             let c = c.to_f64()?;
                             let res = if fuse {
-                                a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
+                                a.mul_add(b, c).value
                             } else {
                                 ((a * b).value + c).value
                             };
