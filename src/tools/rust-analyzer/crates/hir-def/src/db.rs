@@ -24,7 +24,7 @@ use crate::{
     },
     hir::generics::GenericParams,
     import_map::ImportMap,
-    item_tree::ItemTree,
+    item_tree::{ItemTree, file_item_tree_query},
     lang_item::{self, LangItem},
     nameres::{
         assoc::{ImplItems, TraitItems},
@@ -108,11 +108,9 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     fn expand_proc_attr_macros(&self) -> bool;
 
     /// Computes an [`ItemTree`] for the given file or macro expansion.
-    #[salsa::invoke(ItemTree::file_item_tree_query)]
-    fn file_item_tree(&self, file_id: HirFileId) -> Arc<ItemTree>;
-
-    #[salsa::invoke(ItemTree::block_item_tree_query)]
-    fn block_item_tree(&self, block_id: BlockId) -> Arc<ItemTree>;
+    #[salsa::invoke(file_item_tree_query)]
+    #[salsa::transparent]
+    fn file_item_tree(&self, file_id: HirFileId) -> &ItemTree;
 
     /// Turns a MacroId into a MacroDefId, describing the macro's definition post name resolution.
     #[salsa::invoke(macro_def)]

@@ -26,6 +26,7 @@ use crate::{
     AdtId, AstIdLoc, AttrDefId, GenericParamId, HasModule, LocalFieldId, Lookup, MacroId,
     VariantId,
     db::DefDatabase,
+    item_tree::block_item_tree_query,
     lang_item::LangItem,
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource},
@@ -539,7 +540,7 @@ impl AttrsWithOwner {
                         definition_tree_id.item_tree(db).raw_attrs(definition.upcast()).clone()
                     }
                     ModuleOrigin::BlockExpr { id, .. } => {
-                        let tree = db.block_item_tree(id);
+                        let tree = block_item_tree_query(db, id);
                         tree.top_level_raw_attrs().clone()
                     }
                 };

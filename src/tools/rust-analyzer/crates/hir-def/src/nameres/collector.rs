@@ -357,7 +357,7 @@ impl DefCollector<'_> {
             macro_depth: 0,
             module_id: DefMap::ROOT,
             tree_id: TreeId::new(file_id.into(), None),
-            item_tree: &item_tree,
+            item_tree,
             mod_dir: ModDir::root(),
         }
         .collect_in_top_module(item_tree.top_level_items());
@@ -378,7 +378,7 @@ impl DefCollector<'_> {
                 macro_depth: 0,
                 module_id: DefMap::ROOT,
                 tree_id,
-                item_tree: &item_tree,
+                item_tree,
                 mod_dir: ModDir::root(),
             }
             .collect_in_top_module(item_tree.top_level_items());
@@ -1381,7 +1381,7 @@ impl DefCollector<'_> {
                             macro_depth: directive.depth,
                             module_id: directive.module_id,
                             tree_id: *tree,
-                            item_tree: &item_tree,
+                            item_tree,
                             mod_dir,
                         }
                         .collect(&[*mod_item], directive.container);
@@ -1570,7 +1570,7 @@ impl DefCollector<'_> {
             macro_depth: depth,
             tree_id: TreeId::new(file_id, None),
             module_id,
-            item_tree: &item_tree,
+            item_tree,
             mod_dir,
         }
         .collect(item_tree.top_level_items(), container);
@@ -2142,7 +2142,7 @@ impl ModCollector<'_, '_> {
                                     macro_depth: self.macro_depth,
                                     module_id,
                                     tree_id: TreeId::new(file_id.into(), None),
-                                    item_tree: &item_tree,
+                                    item_tree,
                                     mod_dir,
                                 }
                                 .collect_in_top_module(item_tree.top_level_items());

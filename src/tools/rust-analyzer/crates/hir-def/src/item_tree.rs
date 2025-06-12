@@ -85,6 +85,74 @@ impl fmt::Debug for RawVisibilityId {
     }
 }
 
+#[salsa_macros::tracked(returns(ref))]
+pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> ItemTree {
+    let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
+
+    let ctx = lower::Ctx::new(db, file_id);
+    let syntax = db.parse_or_expand(file_id);
+    let mut item_tree = match_ast! {
+        match syntax {
+            ast::SourceFile(file) => {
+                let top_attrs = RawAttrs::new(db, &file, ctx.span_map());
+                let mut item_tree = ctx.lower_module_items(&file);
+                item_tree.top_attrs = top_attrs;
+                item_tree
+            },
+            ast::MacroItems(items) => {
+                ctx.lower_module_items(&items)
+            },
+            ast::MacroStmts(stmts) => {
+                // The produced statements can include items, which should be added as top-level
+                // items.
+                ctx.lower_macro_stmts(stmts)
+            },
+            _ => {
+                if never!(syntax.kind() == SyntaxKind::ERROR, "{:?} from {:?} {}", file_id, syntax, syntax) {
+                    return Default::default();
+                }
+                panic!("cannot create item tree for file {file_id:?} from {syntax:?} {syntax}");
+            },
+        }
+    };
+
+    item_tree.shrink_to_fit();
+    item_tree
+}
+
+#[salsa_macros::tracked(returns(ref))]
+pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
+    let _p = tracing::info_span!("block_item_tree_query", ?block).entered();
+    // Blocks have a tendency to be empty due to macro calls that do not expand to items,
+    // so deduplicate this case via `Arc` to reduce the size of the query storage here.
+    static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
+
+    let loc = block.lookup(db);
+    let block = loc.ast_id.to_node(db);
+
+    let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
+    let mut item_tree = ctx.lower_block(&block);
+    if item_tree.data.is_empty()
+        && item_tree.top_level.is_empty()
+        && item_tree.attrs.is_empty()
+        && item_tree.top_attrs.is_empty()
+    {
+        EMPTY
+            .get_or_init(|| {
+                Arc::new(ItemTree {
+                    top_level: Box::new([]),
+                    attrs: FxHashMap::default(),
+                    data: FxHashMap::default(),
+                    top_attrs: RawAttrs::EMPTY,
+                    vis: ItemVisibilities { arena: Box::new([]) },
+                })
+            })
+            .clone()
+    } else {
+        item_tree.shrink_to_fit();
+        Arc::new(item_tree)
+    }
+}
 /// The item tree of a source file.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
@@ -97,90 +165,6 @@ pub struct ItemTree {
 }
 
 impl ItemTree {
-    pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
-        let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
-        static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
-
-        let ctx = lower::Ctx::new(db, file_id);
-        let syntax = db.parse_or_expand(file_id);
-        let mut item_tree = match_ast! {
-            match syntax {
-                ast::SourceFile(file) => {
-                    let top_attrs = RawAttrs::new(db, &file, ctx.span_map());
-                    let mut item_tree = ctx.lower_module_items(&file);
-                    item_tree.top_attrs = top_attrs;
-                    item_tree
-                },
-                ast::MacroItems(items) => {
-                    ctx.lower_module_items(&items)
-                },
-                ast::MacroStmts(stmts) => {
-                    // The produced statements can include items, which should be added as top-level
-                    // items.
-                    ctx.lower_macro_stmts(stmts)
-                },
-                _ => {
-                    if never!(syntax.kind() == SyntaxKind::ERROR, "{:?} from {:?} {}", file_id, syntax, syntax) {
-                        return Default::default();
-                    }
-                    panic!("cannot create item tree for file {file_id:?} from {syntax:?} {syntax}");
-                },
-            }
-        };
-
-        if item_tree.data.is_empty()
-            && item_tree.top_level.is_empty()
-            && item_tree.attrs.is_empty()
-            && item_tree.top_attrs.is_empty()
-        {
-            EMPTY
-                .get_or_init(|| {
-                    Arc::new(ItemTree {
-                        top_level: Box::new([]),
-                        attrs: FxHashMap::default(),
-                        data: FxHashMap::default(),
-                        top_attrs: RawAttrs::EMPTY,
-                        vis: ItemVisibilities { arena: Box::new([]) },
-                    })
-                })
-                .clone()
-        } else {
-            item_tree.shrink_to_fit();
-            Arc::new(item_tree)
-        }
-    }
-
-    pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
-        let _p = tracing::info_span!("block_item_tree_query", ?block).entered();
-        static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
-
-        let loc = block.lookup(db);
-        let block = loc.ast_id.to_node(db);
-
-        let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
-        let mut item_tree = ctx.lower_block(&block);
-        if item_tree.data.is_empty()
-            && item_tree.top_level.is_empty()
-            && item_tree.attrs.is_empty()
-            && item_tree.top_attrs.is_empty()
-        {
-            EMPTY
-                .get_or_init(|| {
-                    Arc::new(ItemTree {
-                        top_level: Box::new([]),
-                        attrs: FxHashMap::default(),
-                        data: FxHashMap::default(),
-                        top_attrs: RawAttrs::EMPTY,
-                        vis: ItemVisibilities { arena: Box::new([]) },
-                    })
-                })
-                .clone()
-        } else {
-            item_tree.shrink_to_fit();
-            Arc::new(item_tree)
-        }
-    }
-
     /// Returns an iterator over all items located at the top level of the `HirFileId` this
     /// `ItemTree` was created from.
     pub(crate) fn top_level_items(&self) -> &[ModItemId] {
@@ -297,10 +281,10 @@ impl TreeId {
         Self { file, block }
     }
 
-    pub(crate) fn item_tree(&self, db: &dyn DefDatabase) -> Arc<ItemTree> {
+    pub(crate) fn item_tree<'db>(&self, db: &'db dyn DefDatabase) -> &'db ItemTree {
         match self.block {
-            Some(block) => db.block_item_tree(block),
-            None => db.file_item_tree(self.file),
+            Some(block) => block_item_tree_query(db, block),
+            None => file_item_tree_query(db, self.file),
         }
     }
 
