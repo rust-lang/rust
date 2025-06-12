@@ -38,3 +38,30 @@ fn test_union_info_roundtrip() {
     let decoded: ItemEnum = bincode::deserialize(&encoded).unwrap();
     assert_eq!(u, decoded);
 }
+
+// The memory used by a `Crate` can get large. These types are the ones that
+// contribute the most to its size. Ideally we'd use static assertions for
+// these tests but that would require adding some kind of dependency that we
+// don't want to rustdoc-json-types.
+#[test]
+#[cfg(target_pointer_width = "64")]
+fn test_type_sizes() {
+    // tidy-alphabetical-start
+    assert_eq!(size_of::<AssocItemConstraint>(), 112);
+    assert_eq!(size_of::<Crate>(), 184);
+    assert_eq!(size_of::<ExternalCrate>(), 48);
+    assert_eq!(size_of::<FunctionPointer>(), 168);
+    assert_eq!(size_of::<GenericArg>(), 80);
+    assert_eq!(size_of::<GenericArgs>(), 104);
+    assert_eq!(size_of::<GenericBound>(), 72);
+    assert_eq!(size_of::<GenericParamDef>(), 136);
+    assert_eq!(size_of::<Impl>(), 304);
+    assert_eq!(size_of::<Item>(), 552);
+    assert_eq!(size_of::<ItemSummary>(), 32);
+    assert_eq!(size_of::<PolyTrait>(), 64);
+    assert_eq!(size_of::<PreciseCapturingArg>(), 32);
+    assert_eq!(size_of::<TargetFeature>(), 80);
+    assert_eq!(size_of::<Type>(), 80);
+    assert_eq!(size_of::<WherePredicate>(), 160);
+    // tidy-alphabetical-end
+}
