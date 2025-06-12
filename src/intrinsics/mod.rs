@@ -812,11 +812,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             dest.write_cvalue(fx, val);
         }
 
-        sym::pref_align_of
-        | sym::needs_drop
-        | sym::type_id
-        | sym::type_name
-        | sym::variant_count => {
+        sym::needs_drop | sym::type_id | sym::type_name | sym::variant_count => {
             intrinsic_args!(fx, args => (); intrinsic);
 
             let const_val = fx
@@ -875,7 +871,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let ptr = ptr.load_scalar(fx);
 
             let ty = generic_args.type_at(0);
-            let _ord = generic_args.const_at(1).to_value(); // FIXME: forward this to cranelift once they support that
             match ty.kind() {
                 ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
                     // FIXME implement 128bit atomics
@@ -906,7 +901,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let val = CValue::by_val(val, fx.layout_of(ty));
             ret.write_cvalue(fx, val);
         }
-        _ if intrinsic.as_str().starts_with("atomic_store") => {
+        sym::atomic_store => {
             intrinsic_args!(fx, args => (ptr, val); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -939,7 +934,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             fx.bcx.ins().atomic_store(MemFlags::trusted(), val, ptr);
         }
-        _ if intrinsic.as_str().starts_with("atomic_xchg") => {
+        sym::atomic_xchg => {
             intrinsic_args!(fx, args => (ptr, new); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -960,8 +955,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_cxchg") => {
-            // both atomic_cxchg_* and atomic_cxchgweak_*
+        sym::atomic_cxchg | sym::atomic_cxchgweak => {
             intrinsic_args!(fx, args => (ptr, test_old, new); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -984,7 +978,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, ret_val)
         }
 
-        _ if intrinsic.as_str().starts_with("atomic_xadd") => {
+        sym::atomic_xadd => {
             intrinsic_args!(fx, args => (ptr, amount); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1006,7 +1000,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_xsub") => {
+        sym::atomic_xsub => {
             intrinsic_args!(fx, args => (ptr, amount); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1028,7 +1022,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_and") => {
+        sym::atomic_and => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1049,7 +1043,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_or") => {
+        sym::atomic_or => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1070,7 +1064,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_xor") => {
+        sym::atomic_xor => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1091,7 +1085,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_nand") => {
+        sym::atomic_nand => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1112,7 +1106,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_max") => {
+        sym::atomic_max => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1133,7 +1127,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_umax") => {
+        sym::atomic_umax => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1154,7 +1148,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_min") => {
+        sym::atomic_min => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
@@ -1175,7 +1169,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         }
-        _ if intrinsic.as_str().starts_with("atomic_umin") => {
+        sym::atomic_umin => {
             intrinsic_args!(fx, args => (ptr, src); intrinsic);
             let ptr = ptr.load_scalar(fx);
 
