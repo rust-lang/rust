@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 
 use crate::builder::{SBuilder, UNNAMED};
 use crate::common::AsCCharPtr;
@@ -29,6 +29,9 @@ pub(crate) fn gen_image_wrapper_module<'ll>(
         let ti8 = cx.type_i8();
         let dl_cstr = llvm::LLVMGetDataLayoutStr(old_cx.llmod);
         llvm::LLVMSetDataLayout(llmod, dl_cstr);
+        let target_cstr = llvm::LLVMGetTarget(old_cx.llmod);
+        let target = CStr::from_ptr(target_cstr).to_string_lossy().into_owned();
+        llvm::LLVMSetTarget(llmod, target_cstr);
         //  target triple = "x86_64-unknown-linux-gnu"
 
         let mut entry_fields = [ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];

@@ -1016,6 +1016,9 @@ unsafe extern "C" {
     ) -> &Module;
     pub(crate) fn LLVMCloneModule(M: &Module) -> &Module;
 
+    pub(crate) fn LLVMGetTarget(M: &Module) -> *const c_char;
+    pub(crate) fn LLVMSetTarget(M: &Module, Name: *const c_char);
+
     /// Data layout. See Module::getDataLayout.
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
     pub(crate) fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
