@@ -1,29 +1,27 @@
-//@ revisions: OPT2 OPT3 OPT3_S390X
-//@[OPT2] compile-flags: -Copt-level=2
-//@[OPT3] compile-flags: -C opt-level=3
-// some targets don't do the opt we are looking for
-//@[OPT3] only-64bit
-//@[OPT3] ignore-s390x
-//@[OPT3_S390X] compile-flags: -C opt-level=3 -C target-cpu=z13
-//@[OPT3_S390X] only-s390x
+//@ revisions: AARCH64 X86_64 Z13
+//@ compile-flags: -Copt-level=3
+//@[AARCH64] only-aarch64
+//@[X86_64] only-x86_64
+//@[Z13] only-s390x
+//@[Z13] compile-flags: -Ctarget-cpu=z13
 
 #![crate_type = "lib"]
 #![no_std]
 
+// This test is paired with the arch-neutral -opt2.rs test
+
 // The code is from https://github.com/rust-lang/rust/issues/122805.
 // Ensure we do not generate the shufflevector instruction
 // to avoid complicating the code.
+
 // CHECK-LABEL: define{{.*}}void @convert(
 // CHECK-NOT: shufflevector
+
 // On higher opt levels, this should just be a bswap:
-// OPT3: load <8 x i16>
-// OPT3-NEXT: call <8 x i16> @llvm.bswap
-// OPT3-NEXT: store <8 x i16>
-// OPT3-NEXT: ret void
-// OPT3_S390X: load <8 x i16>
-// OPT3_S390X-NEXT: call <8 x i16> @llvm.bswap
-// OPT3_S390X-NEXT: store <8 x i16>
-// OPT3_S390X-NEXT: ret void
+// CHECK: load <8 x i16>
+// CHECK-NEXT: call <8 x i16> @llvm.bswap
+// CHECK-NEXT: store <8 x i16>
+// CHECK-NEXT: ret void
 #[no_mangle]
 pub fn convert(value: [u16; 8]) -> [u8; 16] {
     #[cfg(target_endian = "little")]
