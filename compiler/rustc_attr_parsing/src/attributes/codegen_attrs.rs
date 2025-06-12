@@ -49,7 +49,7 @@ impl<S: Stage> SingleAttributeParser<S> for ColdParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         if !args.no_args() {
-            cx.expected_no_args(cx.attr_span);
+            cx.expected_no_args(args.span().unwrap_or(cx.attr_span));
             return None;
         };
 
