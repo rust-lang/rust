@@ -25,7 +25,7 @@ LL |     type LineStream<'c, 'd> = impl Stream;
    |
    = note: `LineStream` must be used in combination with a concrete type within the same impl
 
-error[E0271]: type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> == ()`
+error[E0271]: type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> normalizes-to ()`
   --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:29:43
    |
 LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {}
