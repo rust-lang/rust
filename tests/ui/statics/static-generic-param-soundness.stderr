@@ -1,5 +1,5 @@
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/inner-static-type-parameter.rs:6:19
+  --> $DIR/static-generic-param-soundness.rs:16:19
    |
 LL | fn foo<T>() {
    |        - type parameter from outer item
@@ -9,9 +9,9 @@ LL |     static a: Bar<T> = Bar::What;
    = note: a `static` is a separate item from the item that contains it
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/inner-static-type-parameter.rs:3:10
+  --> $DIR/static-generic-param-soundness.rs:10:10
    |
-LL | enum Bar<T> { What }
+LL | enum Bar<T> {
    |          ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
