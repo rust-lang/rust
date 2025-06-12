@@ -17,7 +17,7 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 #![cfg_attr(test, allow(unused))]
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
@@ -190,10 +190,10 @@ pub struct Build {
 
     // Runtime state filled in later on
     // C/C++ compilers and archiver for all targets
-    cc: RefCell<HashMap<TargetSelection, cc::Tool>>,
-    cxx: RefCell<HashMap<TargetSelection, cc::Tool>>,
-    ar: RefCell<HashMap<TargetSelection, PathBuf>>,
-    ranlib: RefCell<HashMap<TargetSelection, PathBuf>>,
+    cc: HashMap<TargetSelection, cc::Tool>,
+    cxx: HashMap<TargetSelection, cc::Tool>,
+    ar: HashMap<TargetSelection, PathBuf>,
+    ranlib: HashMap<TargetSelection, PathBuf>,
     // Miscellaneous
     // allow bidirectional lookups: both name -> path and path -> name
     crates: HashMap<String, Crate>,
@@ -464,10 +464,10 @@ impl Build {
             enzyme_info,
             in_tree_llvm_info,
             in_tree_gcc_info,
-            cc: RefCell::new(HashMap::new()),
-            cxx: RefCell::new(HashMap::new()),
-            ar: RefCell::new(HashMap::new()),
-            ranlib: RefCell::new(HashMap::new()),
+            cc: HashMap::new(),
+            cxx: HashMap::new(),
+            ar: HashMap::new(),
+            ranlib: HashMap::new(),
             crates: HashMap::new(),
             crate_paths: HashMap::new(),
             is_sudo,
@@ -493,7 +493,7 @@ impl Build {
         }
 
         build.verbose(|| println!("finding compilers"));
-        utils::cc_detect::find(&build);
+        utils::cc_detect::fill_compilers(&mut build);
         // When running `setup`, the profile is about to change, so any requirements we have now may
         // be different on the next invocation. Don't check for them until the next time x.py is
         // run. This is ok because `setup` never runs any build commands, so it won't fail if commands are missing.
@@ -1133,17 +1133,17 @@ impl Build {
         if self.config.dry_run() {
             return PathBuf::new();
         }
-        self.cc.borrow()[&target].path().into()
+        self.cc[&target].path().into()
     }
 
     /// Returns the internal `cc::Tool` for the C compiler.
     fn cc_tool(&self, target: TargetSelection) -> Tool {
-        self.cc.borrow()[&target].clone()
+        self.cc[&target].clone()
     }
 
     /// Returns the internal `cc::Tool` for the C++ compiler.
     fn cxx_tool(&self, target: TargetSelection) -> Tool {
-        self.cxx.borrow()[&target].clone()
+        self.cxx[&target].clone()
     }
 
     /// Returns C flags that `cc-rs` thinks should be enabled for the
@@ -1153,8 +1153,8 @@ impl Build {
             return Vec::new();
         }
         let base = match c {
-            CLang::C => self.cc.borrow()[&target].clone(),
-            CLang::Cxx => self.cxx.borrow()[&target].clone(),
+            CLang::C => self.cc[&target].clone(),
+            CLang::Cxx => self.cxx[&target].clone(),
         };
 
         // Filter out -O and /O (the optimization flags) that we picked up
@@ -1207,7 +1207,7 @@ impl Build {
         if self.config.dry_run() {
             return None;
         }
-        self.ar.borrow().get(&target).cloned()
+        self.ar.get(&target).cloned()
     }
 
     /// Returns the path to the `ranlib` utility for the target specified.
@@ -1215,7 +1215,7 @@ impl Build {
         if self.config.dry_run() {
             return None;
         }
-        self.ranlib.borrow().get(&target).cloned()
+        self.ranlib.get(&target).cloned()
     }
 
     /// Returns the path to the C++ compiler for the target specified.
@@ -1223,7 +1223,7 @@ impl Build {
         if self.config.dry_run() {
             return Ok(PathBuf::new());
         }
-        match self.cxx.borrow().get(&target) {
+        match self.cxx.get(&target) {
             Some(p) => Ok(p.path().into()),
             None => Err(format!("target `{target}` is not configured as a host, only as a target")),
         }
@@ -1240,7 +1240,7 @@ impl Build {
         } else if target.contains("vxworks") {
             // need to use CXX compiler as linker to resolve the exception functions
             // that are only existed in CXX libraries
-            Some(self.cxx.borrow()[&target].path().into())
+            Some(self.cxx[&target].path().into())
         } else if !self.config.is_host_target(target)
             && helpers::use_host_linker(target)
             && !target.is_msvc()
