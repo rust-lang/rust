@@ -51,7 +51,7 @@ use hir_expand::{
     name::Name,
 };
 use intern::Interned;
-use la_arena::Idx;
+use la_arena::{Idx, RawIdx};
 use rustc_hash::FxHashMap;
 use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
 use stdx::never;
@@ -437,10 +437,10 @@ pub struct Use {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UseTree {
-    pub index: Idx<ast::UseTree>,
     kind: UseTreeKind,
 }
 
+// FIXME: Would be nice to encode `None` into this
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportAlias {
     /// Unnamed alias, as in `use Foo as _;`
@@ -655,15 +655,17 @@ pub enum ImportKind {
     TypeOnly,
 }
 
-impl UseTree {
+impl Use {
     /// Expands the `UseTree` into individually imported `ModPath`s.
     pub fn expand(
         &self,
         mut cb: impl FnMut(Idx<ast::UseTree>, ModPath, ImportKind, Option<ImportAlias>),
     ) {
-        self.expand_impl(None, &mut cb)
+        self.use_tree.expand_impl(None, &mut 0, &mut cb)
     }
+}
 
+impl UseTree {
     /// The [`UseTreeKind`] of this `UseTree`.
     pub fn kind(&self) -> &UseTreeKind {
         &self.kind
@@ -672,6 +674,7 @@ impl UseTree {
     fn expand_impl(
         &self,
         prefix: Option<ModPath>,
+        counting_index: &mut u32,
         cb: &mut impl FnMut(Idx<ast::UseTree>, ModPath, ImportKind, Option<ImportAlias>),
     ) {
         fn concat_mod_paths(
@@ -707,17 +710,27 @@ impl UseTree {
         match &self.kind {
             UseTreeKind::Single { path, alias } => {
                 if let Some((path, kind)) = concat_mod_paths(prefix, path) {
-                    cb(self.index, path, kind, alias.clone());
+                    cb(Idx::from_raw(RawIdx::from_u32(*counting_index)), path, kind, alias.clone());
                 }
             }
             UseTreeKind::Glob { path: Some(path) } => {
                 if let Some((path, _)) = concat_mod_paths(prefix, path) {
-                    cb(self.index, path, ImportKind::Glob, None);
+                    cb(
+                        Idx::from_raw(RawIdx::from_u32(*counting_index)),
+                        path,
+                        ImportKind::Glob,
+                        None,
+                    );
                 }
             }
             UseTreeKind::Glob { path: None } => {
                 if let Some(prefix) = prefix {
-                    cb(self.index, prefix, ImportKind::Glob, None);
+                    cb(
+                        Idx::from_raw(RawIdx::from_u32(*counting_index)),
+                        prefix,
+                        ImportKind::Glob,
+                        None,
+                    );
                 }
             }
             UseTreeKind::Prefixed { prefix: additional_prefix, list } => {
@@ -729,7 +742,8 @@ impl UseTree {
                     None => prefix,
                 };
                 for tree in &**list {
-                    tree.expand_impl(prefix.clone(), cb);
+                    *counting_index += 1;
+                    tree.expand_impl(prefix.clone(), counting_index, cb);
                 }
             }
         }

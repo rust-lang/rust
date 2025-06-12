@@ -112,6 +112,7 @@ impl TaggedArcPtr {
     }
 }
 
+// FIXME: This should have more than one niche
 #[derive(PartialEq, Eq, Hash)]
 pub struct Symbol {
     repr: TaggedArcPtr,

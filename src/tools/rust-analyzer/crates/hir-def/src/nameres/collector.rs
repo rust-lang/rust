@@ -163,7 +163,7 @@ impl Import {
     ) {
         let it = &tree[item];
         let visibility = &tree[it.visibility];
-        it.use_tree.expand(|idx, path, kind, alias| {
+        it.expand(|idx, path, kind, alias| {
             cb(Self {
                 path,
                 alias,
