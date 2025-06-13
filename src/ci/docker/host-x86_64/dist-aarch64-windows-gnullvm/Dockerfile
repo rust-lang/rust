@@ -41,7 +41,7 @@ ENV RUST_CONFIGURE_ARGS \
     --set llvm.download-ci-llvm=false \
     --set rust.llvm-tools=false
 # LLVM cross tools are not installed into expected location so copying fails.
-# Probably will solve itself when building from Windows.
+# Probably will solve itself once this target can host itself on Windows.
 # --enable-full-tools \
 
 ENV SCRIPT python3 ../x.py dist --host $HOST --target $HOST
