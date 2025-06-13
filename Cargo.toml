@@ -70,3 +70,10 @@ harness = false
 [[test]]
 name = "dogfood"
 harness = false
+
+# quine-mc_cluskey makes up a significant part of the runtime in dogfood
+# due to the number of conditions in the clippy_lints crate
+# and enabling optimizations for that specific dependency helps a bit
+# without increasing total build times.
+[profile.dev.package.quine-mc_cluskey]
+opt-level = 3
