@@ -20,10 +20,11 @@ use triomphe::Arc;
 use crate::{
     db::DefDatabase,
     item_tree::{
-        Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ImportAlias, Interned,
-        ItemTree, ItemTreeAstId, Macro2, MacroCall, MacroRules, Mod, ModItem, ModItemId, ModKind,
-        ModPath, RawAttrs, RawVisibility, RawVisibilityId, Static, Struct, StructKind, Trait,
-        TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind, VisibilityExplicitness,
+        BigModItem, Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl,
+        ImportAlias, Interned, ItemTree, ItemTreeAstId, Macro2, MacroCall, MacroRules, Mod,
+        ModItemId, ModKind, ModPath, RawAttrs, RawVisibility, RawVisibilityId, SmallModItem,
+        Static, Struct, StructKind, Trait, TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind,
+        VisibilityExplicitness,
     },
 };
 
@@ -168,7 +169,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(strukt);
         let shape = adt_shape(strukt.kind());
         let res = Struct { name, visibility, shape, ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::Struct(res));
+        self.tree.big_data.insert(ast_id.upcast(), BigModItem::Struct(res));
 
         Some(ast_id)
     }
@@ -178,7 +179,7 @@ impl<'a> Ctx<'a> {
         let name = union.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(union);
         let res = Union { name, visibility, ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::Union(res));
+        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Union(res));
         Some(ast_id)
     }
 
@@ -187,7 +188,7 @@ impl<'a> Ctx<'a> {
         let name = enum_.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(enum_);
         let res = Enum { name, visibility, ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::Enum(res));
+        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Enum(res));
         Some(ast_id)
     }
 
@@ -199,7 +200,7 @@ impl<'a> Ctx<'a> {
 
         let res = Function { name, visibility, ast_id };
 
-        self.tree.data.insert(ast_id.upcast(), ModItem::Function(res));
+        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Function(res));
         Some(ast_id)
     }
 
@@ -211,7 +212,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
         let res = TypeAlias { name, visibility, ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::TypeAlias(res));
+        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::TypeAlias(res));
         Some(ast_id)
     }
 
@@ -220,7 +221,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(static_);
         let ast_id = self.source_ast_id_map.ast_id(static_);
         let res = Static { name, visibility, ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::Static(res));
+        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Static(res));
         Some(ast_id)
     }
 
@@ -229,7 +230,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(konst);
         let ast_id = self.source_ast_id_map.ast_id(konst);
         let res = Const { name, visibility, ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::Const(res));
+        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Const(res));
         ast_id
     }
 
@@ -251,7 +252,7 @@ impl<'a> Ctx<'a> {
         };
         let ast_id = self.source_ast_id_map.ast_id(module);
         let res = Mod { name, visibility, kind, ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::Mod(res));
+        self.tree.big_data.insert(ast_id.upcast(), BigModItem::Mod(res));
         Some(ast_id)
     }
 
@@ -261,7 +262,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
 
         let def = Trait { name, visibility, ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::Trait(def));
+        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Trait(def));
         Some(ast_id)
     }
 
@@ -274,7 +275,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(trait_alias_def);
 
         let alias = TraitAlias { name, visibility, ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::TraitAlias(alias));
+        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::TraitAlias(alias));
         Some(ast_id)
     }
 
@@ -283,7 +284,7 @@ impl<'a> Ctx<'a> {
         // Note that trait impls don't get implicit `Self` unlike traits, because here they are a
         // type alias rather than a type parameter, so this is handled by the resolver.
         let res = Impl { ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::Impl(res));
+        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Impl(res));
         ast_id
     }
 
@@ -295,7 +296,7 @@ impl<'a> Ctx<'a> {
         })?;
 
         let res = Use { visibility, ast_id, use_tree };
-        self.tree.data.insert(ast_id.upcast(), ModItem::Use(res));
+        self.tree.big_data.insert(ast_id.upcast(), BigModItem::Use(res));
         Some(ast_id)
     }
 
@@ -311,7 +312,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(extern_crate);
 
         let res = ExternCrate { name, alias, visibility, ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::ExternCrate(res));
+        self.tree.big_data.insert(ast_id.upcast(), BigModItem::ExternCrate(res));
         Some(ast_id)
     }
 
@@ -325,7 +326,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(m);
         let expand_to = hir_expand::ExpandTo::from_call_site(m);
         let res = MacroCall { path, ast_id, expand_to, ctxt: span_map.span_for_range(range).ctx };
-        self.tree.data.insert(ast_id.upcast(), ModItem::MacroCall(res));
+        self.tree.big_data.insert(ast_id.upcast(), BigModItem::MacroCall(res));
         Some(ast_id)
     }
 
@@ -334,7 +335,7 @@ impl<'a> Ctx<'a> {
         let ast_id = self.source_ast_id_map.ast_id(m);
 
         let res = MacroRules { name: name.as_name(), ast_id };
-        self.tree.data.insert(ast_id.upcast(), ModItem::MacroRules(res));
+        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::MacroRules(res));
         Some(ast_id)
     }
 
@@ -345,7 +346,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(m);
 
         let res = Macro2 { name: name.as_name(), ast_id, visibility };
-        self.tree.data.insert(ast_id.upcast(), ModItem::Macro2(res));
+        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Macro2(res));
         Some(ast_id)
     }
 
@@ -372,7 +373,7 @@ impl<'a> Ctx<'a> {
         });
 
         let res = ExternBlock { ast_id, children };
-        self.tree.data.insert(ast_id.upcast(), ModItem::ExternBlock(res));
+        self.tree.big_data.insert(ast_id.upcast(), BigModItem::ExternBlock(res));
         ast_id
     }
 

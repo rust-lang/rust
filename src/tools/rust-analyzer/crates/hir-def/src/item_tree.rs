@@ -133,7 +133,8 @@ pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc
 
     let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
     let mut item_tree = ctx.lower_block(&block);
-    if item_tree.data.is_empty()
+    if item_tree.small_data.is_empty()
+        && item_tree.big_data.is_empty()
         && item_tree.top_level.is_empty()
         && item_tree.attrs.is_empty()
         && item_tree.top_attrs.is_empty()
@@ -143,7 +144,8 @@ pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc
                 Arc::new(ItemTree {
                     top_level: Box::new([]),
                     attrs: FxHashMap::default(),
-                    data: FxHashMap::default(),
+                    small_data: FxHashMap::default(),
+                    big_data: FxHashMap::default(),
                     top_attrs: RawAttrs::EMPTY,
                     vis: ItemVisibilities { arena: ThinVec::new() },
                 })
@@ -162,7 +164,8 @@ pub struct ItemTree {
     attrs: FxHashMap<FileAstId<ast::Item>, RawAttrs>,
     vis: ItemVisibilities,
     // FIXME: They values store the key, turn this into a FxHashSet<ModItem> instead?
-    data: FxHashMap<FileAstId<ast::Item>, ModItem>,
+    big_data: FxHashMap<FileAstId<ast::Item>, BigModItem>,
+    small_data: FxHashMap<FileAstId<ast::Item>, SmallModItem>,
 }
 
 impl ItemTree {
@@ -204,13 +207,18 @@ impl ItemTree {
         let mut mods = 0;
         let mut macro_calls = 0;
         let mut macro_rules = 0;
-        for item in self.data.values() {
+        for item in self.small_data.values() {
             match item {
-                ModItem::Trait(_) => traits += 1,
-                ModItem::Impl(_) => impls += 1,
-                ModItem::Mod(_) => mods += 1,
-                ModItem::MacroCall(_) => macro_calls += 1,
-                ModItem::MacroRules(_) => macro_rules += 1,
+                SmallModItem::Trait(_) => traits += 1,
+                SmallModItem::Impl(_) => impls += 1,
+                SmallModItem::MacroRules(_) => macro_rules += 1,
+                _ => {}
+            }
+        }
+        for item in self.big_data.values() {
+            match item {
+                BigModItem::Mod(_) => mods += 1,
+                BigModItem::MacroCall(_) => macro_calls += 1,
                 _ => {}
             }
         }
@@ -222,9 +230,10 @@ impl ItemTree {
     }
 
     fn shrink_to_fit(&mut self) {
-        let ItemTree { top_level: _, attrs, data, vis: _, top_attrs: _ } = self;
+        let ItemTree { top_level: _, attrs, big_data, small_data, vis: _, top_attrs: _ } = self;
         attrs.shrink_to_fit();
-        data.shrink_to_fit();
+        big_data.shrink_to_fit();
+        small_data.shrink_to_fit();
     }
 }
 
@@ -234,35 +243,37 @@ struct ItemVisibilities {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-enum ModItem {
+enum SmallModItem {
     Const(Const),
     Enum(Enum),
-    // 32
-    ExternBlock(ExternBlock),
-    // 40
-    ExternCrate(ExternCrate),
     Function(Function),
     Impl(Impl),
     Macro2(Macro2),
-    // 32
-    MacroCall(MacroCall),
     MacroRules(MacroRules),
-    // 40
-    Mod(Mod),
     Static(Static),
-    // 32
-    Struct(Struct),
     Trait(Trait),
     TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     Union(Union),
-    // 40
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum BigModItem {
+    ExternBlock(ExternBlock),
+    ExternCrate(ExternCrate),
+    MacroCall(MacroCall),
+    Mod(Mod),
+    Struct(Struct),
     Use(Use),
 }
 
-// `ModItem` is stored a bunch in `ItemTree`'s so we pay the max for each item. It should stay as small as possible.
+// `ModItem` is stored a bunch in `ItemTree`'s so we pay the max for each item. It should stay as
+// small as possible which is why we split them in two, most common ones are 3 usize but some rarer
+// ones are 5.
 #[cfg(target_pointer_width = "64")]
-const _: [(); std::mem::size_of::<ModItem>()] = [(); std::mem::size_of::<[usize; 5]>()];
+const _: [(); std::mem::size_of::<BigModItem>()] = [(); std::mem::size_of::<[usize; 5]>()];
+#[cfg(target_pointer_width = "64")]
+const _: [(); std::mem::size_of::<SmallModItem>()] = [(); std::mem::size_of::<[usize; 3]>()];
 
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct ItemTreeDataStats {
@@ -343,9 +354,12 @@ macro_rules! mod_items {
             impl Index<FileAstId<$ast>> for ItemTree {
                 type Output = $typ;
 
+                #[allow(unused_imports)]
                 fn index(&self, index: FileAstId<$ast>) -> &Self::Output {
-                    match &self.data[&index.upcast()] {
-                        ModItem::$typ(item) => item,
+                    use BigModItem::*;
+                    use SmallModItem::*;
+                    match &self.$fld[&index.upcast()] {
+                        $typ(item) => item,
                         _ => panic!("expected item of type `{}` at index `{:?}`", stringify!($typ), index),
                     }
                 }
@@ -356,23 +370,23 @@ macro_rules! mod_items {
 
 mod_items! {
 ModItemId ->
-    Use in uses -> ast::Use,
-    ExternCrate in extern_crates -> ast::ExternCrate,
-    ExternBlock in extern_blocks -> ast::ExternBlock,
-    Function in functions -> ast::Fn,
-    Struct in structs -> ast::Struct,
-    Union in unions -> ast::Union,
-    Enum in enums -> ast::Enum,
-    Const in consts -> ast::Const,
-    Static in statics -> ast::Static,
-    Trait in traits -> ast::Trait,
-    TraitAlias in trait_aliases -> ast::TraitAlias,
-    Impl in impls -> ast::Impl,
-    TypeAlias in type_aliases -> ast::TypeAlias,
-    Mod in mods -> ast::Module,
-    MacroCall in macro_calls -> ast::MacroCall,
-    MacroRules in macro_rules -> ast::MacroRules,
-    Macro2 in macro_defs -> ast::MacroDef,
+    Use in big_data -> ast::Use,
+    ExternCrate in big_data -> ast::ExternCrate,
+    ExternBlock in big_data -> ast::ExternBlock,
+    Function in small_data -> ast::Fn,
+    Struct in big_data -> ast::Struct,
+    Union in small_data -> ast::Union,
+    Enum in small_data -> ast::Enum,
+    Const in small_data -> ast::Const,
+    Static in small_data -> ast::Static,
+    Trait in small_data -> ast::Trait,
+    TraitAlias in small_data -> ast::TraitAlias,
+    Impl in small_data -> ast::Impl,
+    TypeAlias in small_data -> ast::TypeAlias,
+    Mod in big_data -> ast::Module,
+    MacroCall in big_data -> ast::MacroCall,
+    MacroRules in small_data -> ast::MacroRules,
+    Macro2 in small_data -> ast::MacroDef,
 }
 
 impl Index<RawVisibilityId> for ItemTree {
@@ -421,6 +435,7 @@ pub struct UseTree {
 }
 
 // FIXME: Would be nice to encode `None` into this
+// We could just use a `Name` where `_` well means `_` ..
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportAlias {
     /// Unnamed alias, as in `use Foo as _;`
