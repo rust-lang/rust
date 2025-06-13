@@ -53,10 +53,10 @@ LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `EthernetWorker`
 
 error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
-  --> $DIR/issue-89118.rs:22:20
+  --> $DIR/issue-89118.rs:22:5
    |
 LL |     type Handler = Ctx<C::Dispatcher>;
-   |                    ^^^^^^^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`
+   |     ^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/issue-89118.rs:1:1

@@ -328,23 +328,14 @@ fn check_trait_item<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let def_id = trait_item.owner_id.def_id;
 
-    let span = match trait_item.kind {
-        hir::TraitItemKind::Type(_bounds, Some(ty)) => ty.span,
-        _ => trait_item.span,
-    };
-
     // Check that an item definition in a subtrait is shadowing a supertrait item.
     lint_item_shadowing_supertrait_item(tcx, def_id);
 
-    let mut res = check_associated_item(tcx, def_id, span);
+    let mut res = check_associated_item(tcx, def_id);
 
     if matches!(trait_item.kind, hir::TraitItemKind::Fn(..)) {
         for &assoc_ty_def_id in tcx.associated_types_for_impl_traits_in_associated_fn(def_id) {
-            res = res.and(check_associated_item(
-                tcx,
-                assoc_ty_def_id.expect_local(),
-                tcx.def_span(assoc_ty_def_id),
-            ));
+            res = res.and(check_associated_item(tcx, assoc_ty_def_id.expect_local()));
         }
     }
     res
@@ -827,12 +818,7 @@ fn check_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_item: &'tcx hir::ImplItem<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let span = match impl_item.kind {
-        // Constrain binding and overflow error spans to `<Ty>` in `type foo = <Ty>`.
-        hir::ImplItemKind::Type(ty) if ty.span != DUMMY_SP => ty.span,
-        _ => impl_item.span,
-    };
-    check_associated_item(tcx, impl_item.owner_id.def_id, span)
+    check_associated_item(tcx, impl_item.owner_id.def_id)
 }
 
 fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), ErrorGuaranteed> {
@@ -960,12 +946,8 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
     }
 }
 
-#[instrument(level = "debug", skip(tcx, span))]
-fn check_associated_item(
-    tcx: TyCtxt<'_>,
-    item_id: LocalDefId,
-    span: Span,
-) -> Result<(), ErrorGuaranteed> {
+#[instrument(level = "debug", skip(tcx))]
+fn check_associated_item(tcx: TyCtxt<'_>, item_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let loc = Some(WellFormedLoc::Ty(item_id));
     enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
         let item = tcx.associated_item(item_id);
@@ -981,6 +963,8 @@ fn check_associated_item(
                 tcx.type_of(item.container_id(tcx)).instantiate_identity()
             }
         };
+
+        let span = tcx.def_span(item_id);
 
         match item.kind {
             ty::AssocKind::Const { .. } => {
