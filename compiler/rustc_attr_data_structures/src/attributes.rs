@@ -234,7 +234,7 @@ pub enum AttributeKind {
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
 
-    /// Represents #[naked]
+    /// Represents `#[naked]`
     Naked(Span),
 
     /// Represents `#[optimize(size|speed)]`

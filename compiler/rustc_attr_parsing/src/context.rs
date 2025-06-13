@@ -26,7 +26,7 @@ use crate::attributes::stability::{
 };
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single};
-use crate::parser::{ArgParser, MetaItemParser};
+use crate::parser::{ArgParser, MetaItemParser, PathParser};
 use crate::session_diagnostics::{AttributeParseError, AttributeParseErrorReason, UnknownMetaItem};
 
 macro_rules! group_type {
@@ -95,6 +95,7 @@ attribute_parsers!(
         BodyStabilityParser,
         ConfusablesParser,
         ConstStabilityParser,
+        NakedParser,
         StabilityParser,
         // tidy-alphabetical-end
 
@@ -110,7 +111,6 @@ attribute_parsers!(
         Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
         Single<InlineParser>,
-        Single<NakedParser>,
         Single<OptimizeParser>,
         Single<RustcForceInlineParser>,
         Single<TransparencyParser>,
@@ -169,7 +169,7 @@ pub struct Late;
 ///
 /// Gives [`AttributeParser`]s enough information to create errors, for example.
 pub(crate) struct AcceptContext<'f, 'sess, S: Stage> {
-    pub(crate) finalize_cx: FinalizeContext<'f, 'sess, S>,
+    pub(crate) shared: SharedContext<'f, 'sess, S>,
     /// The span of the attribute currently being parsed
     pub(crate) attr_span: Span,
 
@@ -182,7 +182,7 @@ pub(crate) struct AcceptContext<'f, 'sess, S: Stage> {
     pub(crate) attr_path: AttrPath,
 }
 
-impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
+impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
         S::emit_err(&self.sess, diag)
     }
@@ -220,7 +220,9 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             unused_span,
         )
     }
+}
 
+impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     pub(crate) fn unknown_key(
         &self,
         span: Span,
@@ -353,16 +355,16 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
 }
 
 impl<'f, 'sess, S: Stage> Deref for AcceptContext<'f, 'sess, S> {
-    type Target = FinalizeContext<'f, 'sess, S>;
+    type Target = SharedContext<'f, 'sess, S>;
 
     fn deref(&self) -> &Self::Target {
-        &self.finalize_cx
+        &self.shared
     }
 }
 
 impl<'f, 'sess, S: Stage> DerefMut for AcceptContext<'f, 'sess, S> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.finalize_cx
+        &mut self.shared
     }
 }
 
@@ -370,7 +372,7 @@ impl<'f, 'sess, S: Stage> DerefMut for AcceptContext<'f, 'sess, S> {
 ///
 /// Gives [`AttributeParser`](crate::attributes::AttributeParser)s enough information to create
 /// errors, for example.
-pub(crate) struct FinalizeContext<'p, 'sess, S: Stage> {
+pub(crate) struct SharedContext<'p, 'sess, S: Stage> {
     /// The parse context, gives access to the session and the
     /// diagnostics context.
     pub(crate) cx: &'p mut AttributeParser<'sess, S>,
@@ -379,10 +381,40 @@ pub(crate) struct FinalizeContext<'p, 'sess, S: Stage> {
     /// The id ([`NodeId`] if `S` is `Early`, [`HirId`] if `S` is `Late`) of the syntactical component this attribute was applied to
     pub(crate) target_id: S::Id,
 
-    pub(crate) emit_lint: &'p mut dyn FnMut(AttributeLint<S::Id>),
+    emit_lint: &'p mut dyn FnMut(AttributeLint<S::Id>),
+}
+
+/// Context given to every attribute parser during finalization.
+///
+/// Gives [`AttributeParser`](crate::attributes::AttributeParser)s enough information to create
+/// errors, for example.
+pub(crate) struct FinalizeContext<'p, 'sess, S: Stage> {
+    pub(crate) shared: SharedContext<'p, 'sess, S>,
+
+    /// A list of all attribute on this syntax node.
+    ///
+    /// Useful for allowlists in finalize.
+    ///
+    /// Usually, you should use normal attribute parsing logic instead,
+    /// especially when making a *denylist* of other attributes.
+    pub(crate) all_attrs: &'p [PathParser<'p>],
 }
 
 impl<'p, 'sess: 'p, S: Stage> Deref for FinalizeContext<'p, 'sess, S> {
+    type Target = SharedContext<'p, 'sess, S>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.shared
+    }
+}
+
+impl<'p, 'sess: 'p, S: Stage> DerefMut for FinalizeContext<'p, 'sess, S> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.shared
+    }
+}
+
+impl<'p, 'sess: 'p, S: Stage> Deref for SharedContext<'p, 'sess, S> {
     type Target = AttributeParser<'sess, S>;
 
     fn deref(&self) -> &Self::Target {
@@ -390,7 +422,7 @@ impl<'p, 'sess: 'p, S: Stage> Deref for FinalizeContext<'p, 'sess, S> {
     }
 }
 
-impl<'p, 'sess: 'p, S: Stage> DerefMut for FinalizeContext<'p, 'sess, S> {
+impl<'p, 'sess: 'p, S: Stage> DerefMut for SharedContext<'p, 'sess, S> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.cx
     }
@@ -494,6 +526,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         mut emit_lint: impl FnMut(AttributeLint<S::Id>),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
+        let mut attr_paths = Vec::new();
 
         for attr in attrs {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
@@ -537,6 +570,8 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 //     }))
                 // }
                 ast::AttrKind::Normal(n) => {
+                    attr_paths.push(PathParser::Ast(&n.item.path));
+
                     let parser = MetaItemParser::from_attr(n, self.dcx());
                     let path = parser.path();
                     let args = parser.args();
@@ -545,7 +580,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     if let Some(accepts) = S::parsers().0.get(parts.as_slice()) {
                         for (template, accept) in accepts {
                             let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
-                                finalize_cx: FinalizeContext {
+                                shared: SharedContext {
                                     cx: self,
                                     target_span,
                                     target_id,
@@ -589,10 +624,13 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         let mut parsed_attributes = Vec::new();
         for f in &S::parsers().1 {
             if let Some(attr) = f(&mut FinalizeContext {
-                cx: self,
-                target_span,
-                target_id,
-                emit_lint: &mut emit_lint,
+                shared: SharedContext {
+                    cx: self,
+                    target_span,
+                    target_id,
+                    emit_lint: &mut emit_lint,
+                },
+                all_attrs: &attr_paths,
             }) {
                 parsed_attributes.push(Attribute::Parsed(attr));
             }
