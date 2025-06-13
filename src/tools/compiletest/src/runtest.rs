@@ -2413,6 +2413,11 @@ impl<'test> TestCx<'test> {
                 })
                 .into_owned();
 
+        // Normalize thread IDs in panic messages
+        normalized = static_regex!(r"thread '(?P<name>.*?)' \(\d+\) panicked")
+            .replace_all(&normalized, "thread '$name' ($$TID) panicked")
+            .into_owned();
+
         normalized = normalized.replace("\t", "\\t"); // makes tabs visible
 
         // Remove test annotations like `//~ ERROR text` from the output,
