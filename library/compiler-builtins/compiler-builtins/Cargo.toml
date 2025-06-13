@@ -6,6 +6,7 @@ description = "Compiler intrinsics used by the Rust compiler."
 repository = "https://github.com/rust-lang/compiler-builtins"
 license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
 edition = "2024"
+publish = false
 links = "compiler-rt"
 
 [lib]
