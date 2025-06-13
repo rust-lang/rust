@@ -94,6 +94,12 @@ static EXPRS: &[&str] = &[
     "#[attr] (1 as T)",
     "#[attr] (x = 1)",
     "#[attr] (x += 1)",
+    // If the attribute were not present on the binary operation, it would be
+    // legal to render this without not just the inner parentheses, but also the
+    // outer ones. `return x + .. .field` (Yes, really.) Currently the
+    // pretty-printer does not take advantage of this edge case.
+    "(return #[attr] (x + ..)).field",
+    "(return x + ..).field",
     // Grammar restriction: break value starting with a labeled loop is not
     // allowed, except if the break is also labeled.
     "break 'outer 'inner: loop {} + 2",
