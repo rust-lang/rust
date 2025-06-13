@@ -1,4 +1,4 @@
-use crate::ffi::CStr;
+use crate::ffi::c_char;
 use crate::fmt;
 use crate::marker::PhantomData;
 
@@ -36,7 +36,7 @@ use crate::marker::PhantomData;
 pub struct Location<'a> {
     // A raw pointer is used rather than a reference because the pointer is valid for one more byte
     // than the length stored in this pointer; the additional byte is the NUL-terminator used by
-    // `Location::file_with_nul`.
+    // `Location::file_ptr`.
     filename: *const str,
     line: u32,
     col: u32,
@@ -132,27 +132,22 @@ impl<'a> Location<'a> {
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_location_fields", since = "1.79.0")]
     pub const fn file(&self) -> &str {
-        // SAFETY: The filename is valid.
+        // SAFETY: The compiler generates a pointer to a valid readable filename.
         unsafe { &*self.filename }
     }
 
-    /// Returns the name of the source file as a nul-terminated `CStr`.
+    /// Returns the name of the source file as a nul-terminated string.
     ///
     /// This is useful for interop with APIs that expect C/C++ `__FILE__` or
     /// `std::source_location::file_name`, both of which return a nul-terminated `const char*`.
+    ///
+    /// The pointer is guaranteed to reference the same string as [`Location::file`] with an
+    /// additional nul-byte at the end.
     #[must_use]
     #[unstable(feature = "file_with_nul", issue = "141727")]
     #[inline]
-    pub const fn file_with_nul(&self) -> &CStr {
-        // SAFETY: The filename is valid for `filename_len+1` bytes, so this addition can't
-        // overflow.
-        let cstr_len = unsafe { crate::mem::size_of_val_raw(self.filename).unchecked_add(1) };
-
-        // SAFETY: The filename is valid for `filename_len+1` bytes.
-        let slice = unsafe { crate::slice::from_raw_parts(self.filename as *const _, cstr_len) };
-
-        // SAFETY: The filename is guaranteed to have a trailing nul byte and no interior nul bytes.
-        unsafe { CStr::from_bytes_with_nul_unchecked(slice) }
+    pub const fn file_ptr(&self) -> *const c_char {
+        self.filename as *const c_char
     }
 
     /// Returns the line number from which the panic originated.
