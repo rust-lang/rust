@@ -1,5 +1,9 @@
 //! Compiler intrinsics.
 //!
+//! The functions in this module are implementation details of `core` and should
+//! not be used outside of the standard library. We generally provide access to
+//! intrinsics via stable wrapper functions. Use these instead.
+//!
 //! These are the imports making intrinsics available to Rust code. The actual implementations live in the compiler.
 //! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
 //! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
