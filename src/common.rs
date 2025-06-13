@@ -265,6 +265,19 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                 let alloc_id = prov.alloc_id();
                 let base_addr = match self.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
+                        // For ZSTs directly codegen an aligned pointer.
+                        // This avoids generating a zero-sized constant value and actually needing a
+                        // real address at runtime.
+                        if alloc.inner().len() == 0 {
+                            assert_eq!(offset.bytes(), 0);
+                            let val = self.const_usize(alloc.inner().align.bytes());
+                            return if matches!(layout.primitive(), Pointer(_)) {
+                                self.context.new_cast(None, val, ty)
+                            } else {
+                                self.const_bitcast(val, ty)
+                            };
+                        }
+
                         let init = self.const_data_from_alloc(alloc);
                         let alloc = alloc.inner();
                         let value = match alloc.mutability {
