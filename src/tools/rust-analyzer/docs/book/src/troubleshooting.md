@@ -46,5 +46,4 @@ It is especially useful when the `repo` doesn’t use external crates or
 the standard library.
 
 If you want to go as far as to modify the source code to debug the
-problem, be sure to take a look at the [dev
-docs](https://github.com/rust-lang/rust-analyzer/tree/master/docs/dev)!
+problem, be sure to take a look at the [contribution guide](contributing/index.html)!
