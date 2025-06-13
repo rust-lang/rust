@@ -158,7 +158,7 @@ extern "C-cmse-nonsecure-entry" {}
 #[cfg(windows)]
 #[link(name = "foo", kind = "raw-dylib")]
 extern "cdecl" {}
-//[x64_win]~^ WARN use of calling convention not supported on this target
+//[x64_win]~^ WARN unsupported_calling_conventions
 //[x64_win]~^^ WARN this was previously accepted
 
 struct FnPtrBearer {

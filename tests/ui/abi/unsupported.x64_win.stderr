@@ -160,7 +160,7 @@ error[E0570]: `"thiscall"` is not a supported ABI for the current target
 LL |     extern "thiscall" fn trait_fn(self) {
    |            ^^^^^^^^^^
 
-warning: use of calling convention not supported on this target
+warning: "stdcall" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:105:19
    |
 LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
@@ -171,7 +171,7 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
-warning: use of calling convention not supported on this target
+warning: "stdcall" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:111:1
    |
 LL | extern "stdcall" {}
@@ -181,7 +181,7 @@ LL | extern "stdcall" {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
-warning: use of calling convention not supported on this target
+warning: "stdcall-unwind" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:115:1
    |
 LL | extern "stdcall-unwind" {}
@@ -191,7 +191,7 @@ LL | extern "stdcall-unwind" {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: if you need `extern "stdcall-unwind"` on win32 and `extern "C-unwind"` everywhere else, use `extern "system-unwind"`
 
-warning: use of calling convention not supported on this target
+warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:123:17
    |
 LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
@@ -201,7 +201,7 @@ LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: use `extern "C"` instead
 
-warning: use of calling convention not supported on this target
+warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:128:1
    |
 LL | extern "cdecl" {}
@@ -211,7 +211,7 @@ LL | extern "cdecl" {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: use `extern "C"` instead
 
-warning: use of calling convention not supported on this target
+warning: "cdecl-unwind" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:131:1
    |
 LL | extern "cdecl-unwind" {}
@@ -221,7 +221,7 @@ LL | extern "cdecl-unwind" {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: use `extern "C-unwind"` instead
 
-warning: use of calling convention not supported on this target
+warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:160:1
    |
 LL | extern "cdecl" {}
@@ -231,7 +231,7 @@ LL | extern "cdecl" {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: use `extern "C"` instead
 
-warning: use of calling convention not supported on this target
+warning: "stdcall" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:101:1
    |
 LL | extern "stdcall" fn stdcall() {}
@@ -241,7 +241,7 @@ LL | extern "stdcall" fn stdcall() {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
-warning: use of calling convention not supported on this target
+warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:120:1
    |
 LL | extern "cdecl" fn cdecl() {}
@@ -255,7 +255,7 @@ error: aborting due to 27 previous errors; 9 warnings emitted
 
 For more information about this error, try `rustc --explain E0570`.
 Future incompatibility report: Future breakage diagnostic:
-warning: use of calling convention not supported on this target
+warning: "stdcall" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:105:19
    |
 LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
@@ -267,7 +267,7 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: use of calling convention not supported on this target
+warning: "stdcall" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:111:1
    |
 LL | extern "stdcall" {}
@@ -279,7 +279,7 @@ LL | extern "stdcall" {}
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: use of calling convention not supported on this target
+warning: "stdcall-unwind" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:115:1
    |
 LL | extern "stdcall-unwind" {}
@@ -291,7 +291,7 @@ LL | extern "stdcall-unwind" {}
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: use of calling convention not supported on this target
+warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:123:17
    |
 LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
@@ -303,7 +303,7 @@ LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: use of calling convention not supported on this target
+warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:128:1
    |
 LL | extern "cdecl" {}
@@ -315,7 +315,7 @@ LL | extern "cdecl" {}
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: use of calling convention not supported on this target
+warning: "cdecl-unwind" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:131:1
    |
 LL | extern "cdecl-unwind" {}
@@ -327,7 +327,7 @@ LL | extern "cdecl-unwind" {}
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: use of calling convention not supported on this target
+warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:160:1
    |
 LL | extern "cdecl" {}
@@ -339,7 +339,7 @@ LL | extern "cdecl" {}
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: use of calling convention not supported on this target
+warning: "stdcall" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:101:1
    |
 LL | extern "stdcall" fn stdcall() {}
@@ -351,7 +351,7 @@ LL | extern "stdcall" fn stdcall() {}
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 Future breakage diagnostic:
-warning: use of calling convention not supported on this target
+warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:120:1
    |
 LL | extern "cdecl" fn cdecl() {}
