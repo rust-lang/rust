@@ -26,9 +26,8 @@ pub(super) struct StackEntry<X: Cx> {
     /// The available depth of a given goal, immutable.
     pub available_depth: AvailableDepth,
 
-    /// The maximum depth reached by this stack entry, only up-to date
-    /// for the top of the stack and lazily updated for the rest.
-    pub reached_depth: StackDepth,
+    /// The maximum depth required while evaluating this goal.
+    pub required_depth: usize,
 
     /// All cycle heads this goal depends on. Lazily updated and only
     /// up-to date for the top of the stack.

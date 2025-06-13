@@ -19,7 +19,6 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 
 use derive_where::derive_where;
-use rustc_index::{Idx, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use tracing::debug;
@@ -497,14 +496,14 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     fn update_parent_goal(
         stack: &mut Stack<X>,
         step_kind_from_parent: PathKind,
-        reached_depth: StackDepth,
+        required_depth_for_nested: usize,
         heads: &CycleHeads,
         encountered_overflow: bool,
         context: UpdateParentGoalCtxt<'_, X>,
     ) {
         if let Some(parent_index) = stack.last_index() {
             let parent = &mut stack[parent_index];
-            parent.reached_depth = parent.reached_depth.max(reached_depth);
+            parent.required_depth = parent.required_depth.max(required_depth_for_nested + 1);
             parent.encountered_overflow |= encountered_overflow;
 
             parent.heads.extend_from_child(parent_index, step_kind_from_parent, heads);
@@ -612,20 +611,18 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             return result;
         }
 
-        // Unfortunate, it looks like we actually have to compute this goalrar.
-        let depth = self.stack.next_index();
-        let entry = StackEntry {
+        // Unfortunate, it looks like we actually have to compute this goal.
+        self.stack.push(StackEntry {
             input,
             step_kind_from_parent,
             available_depth,
-            reached_depth: depth,
+            required_depth: 0,
             heads: Default::default(),
             encountered_overflow: false,
             has_been_used: None,
             nested_goals: Default::default(),
             provisional_result: None,
-        };
-        assert_eq!(self.stack.push(entry), depth);
+        });
 
         // This is for global caching, so we properly track query dependencies.
         // Everything that affects the `result` should be performed within this
@@ -642,7 +639,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         Self::update_parent_goal(
             &mut self.stack,
             final_entry.step_kind_from_parent,
-            final_entry.reached_depth,
+            final_entry.required_depth,
             &final_entry.heads,
             final_entry.encountered_overflow,
             UpdateParentGoalCtxt::Ordinary(&final_entry.nested_goals),
@@ -824,14 +821,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             // A provisional cache entry is only valid if the current path from its
             // highest cycle head to the goal is the same.
             if path_from_head == Self::cycle_path_kind(&self.stack, step_kind_from_parent, head) {
-                // While we don't have to track the full depth of the provisional cache entry,
-                // we do have to increment the required depth by one as we'd have already failed
-                // with overflow otherwise
-                let next_index = self.stack.next_index();
                 Self::update_parent_goal(
                     &mut self.stack,
                     step_kind_from_parent,
-                    next_index,
+                    0,
                     heads,
                     encountered_overflow,
                     UpdateParentGoalCtxt::ProvisionalCacheHit,
@@ -947,7 +940,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         available_depth: AvailableDepth,
     ) -> Option<X::Result> {
         cx.with_global_cache(|cache| {
-            let CacheData { result, additional_depth, encountered_overflow, nested_goals } = cache
+            let CacheData { result, required_depth, encountered_overflow, nested_goals } = cache
                 .get(cx, input, available_depth, |nested_goals| {
                     Self::candidate_is_applicable(
                         &self.stack,
@@ -957,23 +950,19 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     )
                 })?;
 
-            // Update the reached depth of the current goal to make sure
-            // its state is the same regardless of whether we've used the
-            // global cache or not.
-            let reached_depth = self.stack.next_index().plus(additional_depth);
             // We don't move cycle participants to the global cache, so the
             // cycle heads are always empty.
             let heads = Default::default();
             Self::update_parent_goal(
                 &mut self.stack,
                 step_kind_from_parent,
-                reached_depth,
+                required_depth,
                 &heads,
                 encountered_overflow,
                 UpdateParentGoalCtxt::Ordinary(nested_goals),
             );
 
-            debug!(?additional_depth, "global cache hit");
+            debug!(?required_depth, "global cache hit");
             Some(result)
         })
     }
@@ -999,10 +988,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
         // Subtle: when encountering a cyclic goal, we still first checked for overflow,
         // so we have to update the reached depth.
-        let next_index = self.stack.next_index();
         let last_index = self.stack.last_index().unwrap();
         let last = &mut self.stack[last_index];
-        last.reached_depth = last.reached_depth.max(next_index);
+        last.required_depth = last.required_depth.max(1);
 
         last.nested_goals.insert(input, step_kind_from_parent.into());
         last.nested_goals.insert(last.input, PathsToNested::EMPTY);
@@ -1137,7 +1125,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         result: X::Result,
         dep_node: X::DepNodeIndex,
     ) {
-        let additional_depth = final_entry.reached_depth.as_usize() - self.stack.len();
         debug!(?final_entry, ?result, "insert global cache");
         cx.with_global_cache(|cache| {
             cache.insert(
@@ -1145,7 +1132,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 input,
                 result,
                 dep_node,
-                additional_depth,
+                final_entry.required_depth,
                 final_entry.encountered_overflow,
                 final_entry.nested_goals,
             )
