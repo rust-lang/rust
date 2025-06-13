@@ -671,7 +671,6 @@ pub(crate) struct RustcUnstableFeatureBound {
     pub span: Span,
 }
 
-
 #[derive(Diagnostic)]
 #[diag(passes_rustc_std_internal_symbol)]
 pub(crate) struct RustcStdInternalSymbol {
