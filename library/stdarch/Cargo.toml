@@ -1,0 +1,19 @@
+[workspace]
+resolver = "1"
+members = [
+  "crates/*",
+  "examples",
+]
+exclude = [
+  "crates/wasm-assert-instr-tests"
+]
+
+[profile.release]
+debug = true
+opt-level = 3
+incremental = true
+
+[profile.bench]
+debug = 1
+opt-level = 3
+incremental = true
