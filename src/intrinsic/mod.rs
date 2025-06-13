@@ -643,7 +643,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
     fn type_checked_load(
         &mut self,
-        _llvtable: Self::Value,
+        _vtable: Self::Value,
         _vtable_byte_offset: u64,
         _typeid: Self::Value,
     ) -> Self::Value {
@@ -750,23 +750,23 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 // We instead thus allocate some scratch space...
                 let scratch_size = cast.size(bx);
                 let scratch_align = cast.align(bx);
-                let llscratch = bx.alloca(scratch_size, scratch_align);
-                bx.lifetime_start(llscratch, scratch_size);
+                let scratch = bx.alloca(scratch_size, scratch_align);
+                bx.lifetime_start(scratch, scratch_size);
 
                 // ... where we first store the value...
-                bx.store(val, llscratch, scratch_align);
+                bx.store(val, scratch, scratch_align);
 
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.val.llval,
                     self.layout.align.abi,
-                    llscratch,
+                    scratch,
                     scratch_align,
                     bx.const_usize(self.layout.size.bytes()),
                     MemFlags::empty(),
                 );
 
-                bx.lifetime_end(llscratch, scratch_size);
+                bx.lifetime_end(scratch, scratch_size);
             }
         } else {
             OperandValue::Immediate(val).store(bx, dst);
