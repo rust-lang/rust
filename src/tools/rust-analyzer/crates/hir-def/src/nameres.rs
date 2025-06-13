@@ -80,7 +80,7 @@ use crate::{
     LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
-    item_tree::{ItemTreeId, Mod, TreeId},
+    item_tree::TreeId,
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicitness},
@@ -289,11 +289,11 @@ pub enum ModuleOrigin {
     File {
         is_mod_rs: bool,
         declaration: FileAstId<ast::Module>,
-        declaration_tree_id: ItemTreeId<Mod>,
+        declaration_tree_id: TreeId,
         definition: EditionedFileId,
     },
     Inline {
-        definition_tree_id: ItemTreeId<Mod>,
+        definition_tree_id: TreeId,
         definition: FileAstId<ast::Module>,
     },
     /// Pseudo-module introduced by a block scope (contains only inner items).

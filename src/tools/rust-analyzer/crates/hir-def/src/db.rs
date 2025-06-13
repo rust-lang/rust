@@ -24,7 +24,7 @@ use crate::{
     },
     hir::generics::GenericParams,
     import_map::ImportMap,
-    item_tree::{AttrOwner, ItemTree},
+    item_tree::{ItemTree, file_item_tree_query},
     lang_item::{self, LangItem},
     nameres::{
         assoc::{ImplItems, TraitItems},
@@ -108,11 +108,9 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     fn expand_proc_attr_macros(&self) -> bool;
 
     /// Computes an [`ItemTree`] for the given file or macro expansion.
-    #[salsa::invoke(ItemTree::file_item_tree_query)]
-    fn file_item_tree(&self, file_id: HirFileId) -> Arc<ItemTree>;
-
-    #[salsa::invoke(ItemTree::block_item_tree_query)]
-    fn block_item_tree(&self, block_id: BlockId) -> Arc<ItemTree>;
+    #[salsa::invoke(file_item_tree_query)]
+    #[salsa::transparent]
+    fn file_item_tree(&self, file_id: HirFileId) -> &ItemTree;
 
     /// Turns a MacroId into a MacroDefId, describing the macro's definition post name resolution.
     #[salsa::invoke(macro_def)]
@@ -376,7 +374,7 @@ fn include_macro_invoc(
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: Crate) -> bool {
     let file = crate_id.data(db).root_file_id(db);
     let item_tree = db.file_item_tree(file.into());
-    let attrs = item_tree.raw_attrs(AttrOwner::TopLevel);
+    let attrs = item_tree.top_level_raw_attrs();
     for attr in &**attrs {
         match attr.path().as_ident() {
             Some(ident) if *ident == sym::no_std => return true,

@@ -26,7 +26,7 @@ use crate::{
     AdtId, AstIdLoc, AttrDefId, GenericParamId, HasModule, LocalFieldId, Lookup, MacroId,
     VariantId,
     db::DefDatabase,
-    item_tree::AttrOwner,
+    item_tree::block_item_tree_query,
     lang_item::LangItem,
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource},
@@ -523,26 +523,25 @@ impl AttrsWithOwner {
                 let mod_data = &def_map[module.local_id];
 
                 let raw_attrs = match mod_data.origin {
-                    ModuleOrigin::File { definition, declaration_tree_id, .. } => {
+                    ModuleOrigin::File { definition, declaration_tree_id, declaration, .. } => {
                         let decl_attrs = declaration_tree_id
                             .item_tree(db)
-                            .raw_attrs(AttrOwner::ModItem(declaration_tree_id.value.into()))
+                            .raw_attrs(declaration.upcast())
                             .clone();
                         let tree = db.file_item_tree(definition.into());
-                        let def_attrs = tree.raw_attrs(AttrOwner::TopLevel).clone();
+                        let def_attrs = tree.top_level_raw_attrs().clone();
                         decl_attrs.merge(def_attrs)
                     }
                     ModuleOrigin::CrateRoot { definition } => {
                         let tree = db.file_item_tree(definition.into());
-                        tree.raw_attrs(AttrOwner::TopLevel).clone()
+                        tree.top_level_raw_attrs().clone()
                     }
-                    ModuleOrigin::Inline { definition_tree_id, .. } => definition_tree_id
-                        .item_tree(db)
-                        .raw_attrs(AttrOwner::ModItem(definition_tree_id.value.into()))
-                        .clone(),
+                    ModuleOrigin::Inline { definition_tree_id, definition } => {
+                        definition_tree_id.item_tree(db).raw_attrs(definition.upcast()).clone()
+                    }
                     ModuleOrigin::BlockExpr { id, .. } => {
-                        let tree = db.block_item_tree(id);
-                        tree.raw_attrs(AttrOwner::TopLevel).clone()
+                        let tree = block_item_tree_query(db, id);
+                        tree.top_level_raw_attrs().clone()
                     }
                 };
                 Attrs::expand_cfg_attr(db, module.krate, raw_attrs)

@@ -348,7 +348,7 @@ m!(Z);
             assert_eq!(module_data.scope.resolutions().count(), 4);
         });
         let n_recalculated_item_trees =
-            events.iter().filter(|it| it.contains("file_item_tree_shim")).count();
+            events.iter().filter(|it| it.contains("file_item_tree_query")).count();
         assert_eq!(n_recalculated_item_trees, 6);
         let n_reparsed_macros =
             events.iter().filter(|it| it.contains("parse_macro_expansion_shim")).count();
@@ -370,7 +370,7 @@ m!(Z);
             assert_eq!(module_data.scope.resolutions().count(), 4);
         });
         let n_recalculated_item_trees =
-            events.iter().filter(|it| it.contains("file_item_tree_shim")).count();
+            events.iter().filter(|it| it.contains("file_item_tree_query")).count();
         assert_eq!(n_recalculated_item_trees, 1, "{events:#?}");
         let n_reparsed_macros =
             events.iter().filter(|it| it.contains("parse_macro_expansion_shim")).count();
@@ -405,10 +405,10 @@ pub type Ty = ();
             db.file_item_tree(pos.file_id.into());
         });
         let n_calculated_item_trees =
-            events.iter().filter(|it| it.contains("file_item_tree_shim")).count();
-        assert_eq!(n_calculated_item_trees, 1);
+            events.iter().filter(|it| it.contains("file_item_tree_query")).count();
+        assert_eq!(n_calculated_item_trees, 1, "{events:#?}");
         let n_parsed_files = events.iter().filter(|it| it.contains("parse")).count();
-        assert_eq!(n_parsed_files, 1);
+        assert_eq!(n_parsed_files, 1, "{events:#?}");
     }
 
     // FIXME(salsa-transition): bring this back
@@ -446,6 +446,6 @@ pub type Ty = ();
             }
         });
         let n_reparsed_files = events.iter().filter(|it| it.contains("parse(")).count();
-        assert_eq!(n_reparsed_files, 0);
+        assert_eq!(n_reparsed_files, 0, "{events:?}");
     }
 }

@@ -156,7 +156,7 @@ pub struct NewStruct {
         let expected = vec![
             "parse_shim".to_owned(),
             "ast_id_map_shim".to_owned(),
-            "file_item_tree_shim".to_owned(),
+            "file_item_tree_query".to_owned(),
             "real_span_map_shim".to_owned(),
             "crate_local_def_map".to_owned(),
             "trait_impls_in_crate_shim".to_owned(),
@@ -216,7 +216,7 @@ pub enum SomeEnum {
         let expected = vec![
             "parse_shim".to_owned(),
             "ast_id_map_shim".to_owned(),
-            "file_item_tree_shim".to_owned(),
+            "file_item_tree_query".to_owned(),
             "real_span_map_shim".to_owned(),
             "crate_local_def_map".to_owned(),
             "trait_impls_in_crate_shim".to_owned(),
@@ -273,7 +273,7 @@ fn bar() -> f32 {
         let expected = vec![
             "parse_shim".to_owned(),
             "ast_id_map_shim".to_owned(),
-            "file_item_tree_shim".to_owned(),
+            "file_item_tree_query".to_owned(),
             "real_span_map_shim".to_owned(),
             "crate_local_def_map".to_owned(),
             "trait_impls_in_crate_shim".to_owned(),
@@ -342,7 +342,7 @@ impl SomeStruct {
         let expected = vec![
             "parse_shim".to_owned(),
             "ast_id_map_shim".to_owned(),
-            "file_item_tree_shim".to_owned(),
+            "file_item_tree_query".to_owned(),
             "real_span_map_shim".to_owned(),
             "crate_local_def_map".to_owned(),
             "trait_impls_in_crate_shim".to_owned(),
