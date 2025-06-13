@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
         }
 
         match item.kind {
-            ItemKind::Enum(_, def, _) if def.variants.len() > 1 => {
+            ItemKind::Enum(_, _, def) if def.variants.len() > 1 => {
                 let iter = def.variants.iter().filter_map(|v| {
                     (matches!(v.data, VariantData::Unit(_, _)) && is_doc_hidden(cx.tcx.hir_attrs(v.hir_id)))
                         .then_some((v.def_id, v.span))
@@ -98,7 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                     self.potential_enums.push((item.owner_id.def_id, id, item.span, span));
                 }
             },
-            ItemKind::Struct(_, variant_data, _) => {
+            ItemKind::Struct(_, _, variant_data) => {
                 let fields = variant_data.fields();
                 let private_fields = fields
                     .iter()

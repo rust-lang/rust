@@ -535,10 +535,10 @@ impl LateLintPass<'_> for ItemNameRepetitions {
 
         if span_is_local(item.span) {
             match item.kind {
-                ItemKind::Enum(_, def, _) => {
+                ItemKind::Enum(_, _, def) => {
                     self.check_variants(cx, item, &def);
                 },
-                ItemKind::Struct(_, VariantData::Struct { fields, .. }, _) => {
+                ItemKind::Struct(_, _, VariantData::Struct { fields, .. }) => {
                     self.check_fields(cx, item, fields);
                 },
                 _ => (),

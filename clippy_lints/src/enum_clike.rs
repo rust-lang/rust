@@ -38,7 +38,7 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
         if cx.tcx.data_layout.pointer_size.bits() != 64 {
             return;
         }
-        if let ItemKind::Enum(_, def, _) = &item.kind {
+        if let ItemKind::Enum(_, _, def) = &item.kind {
             for var in def.variants {
                 if let Some(anon_const) = &var.disr_expr {
                     let def_id = cx.tcx.hir_body_owner_def_id(anon_const.body);

@@ -306,10 +306,13 @@ fn local_item_child_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, ns: PathNS, n
             let item = tcx.hir_item(item_id);
             if let ItemKind::Use(path, UseKind::Single(ident)) = item.kind {
                 if ident.name == name {
-                    path.res
-                        .iter()
-                        .find(|res| ns.matches(res.ns()))
-                        .and_then(Res::opt_def_id)
+                    let opt_def_id = |ns: Option<Res>| ns.and_then(|res| res.opt_def_id());
+                    match ns {
+                        PathNS::Type => opt_def_id(path.res.type_ns),
+                        PathNS::Value => opt_def_id(path.res.value_ns),
+                        PathNS::Macro => opt_def_id(path.res.macro_ns),
+                        PathNS::Arbitrary => unreachable!(),
+                    }
                 } else {
                     None
                 }

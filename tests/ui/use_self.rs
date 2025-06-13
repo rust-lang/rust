@@ -69,7 +69,7 @@ mod lifetimes {
     impl<'a> Foo<'a> {
         // Cannot use `Self` as return type, because the function is actually `fn foo<'b>(s: &'b str) ->
         // Foo<'b>`
-        fn foo(s: &str) -> Foo {
+        fn foo(s: &str) -> Foo<'_> {
             Foo { foo_str: s }
         }
         // cannot replace with `Self`, because that's `Foo<'a>`

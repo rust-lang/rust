@@ -249,7 +249,7 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::ForeignMod { .. } => (Pat::Str("extern"), Pat::Str("}")),
         ItemKind::TyAlias(..) => (Pat::Str("type"), Pat::Str(";")),
         ItemKind::Enum(..) => (Pat::Str("enum"), Pat::Str("}")),
-        ItemKind::Struct(_, VariantData::Struct { .. }, _) => (Pat::Str("struct"), Pat::Str("}")),
+        ItemKind::Struct(_, _, VariantData::Struct { .. }) => (Pat::Str("struct"), Pat::Str("}")),
         ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),
         ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
         ItemKind::Trait(_, Safety::Unsafe, ..)

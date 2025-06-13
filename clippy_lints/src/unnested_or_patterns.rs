@@ -426,7 +426,7 @@ fn drain_matching(
         // Check if we should extract, but only if `idx >= start`.
         if idx > start && predicate(&alternatives[i].kind) {
             let pat = alternatives.remove(i);
-            tail_or.push(extract(pat.into_inner().kind));
+            tail_or.push(extract(pat.kind));
         } else {
             i += 1;
         }
