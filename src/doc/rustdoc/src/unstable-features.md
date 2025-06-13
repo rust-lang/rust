@@ -211,6 +211,23 @@ To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 mod empty_mod {}
 ```
 
+### Document builtin attributes
+
+This is for Rust compiler internal use only.
+
+Rust builtin attributes are documented in the standard library (look for `repr` for example).
+
+To do so, the `#[doc(attribute = "...")]` attribute is used. Example:
+
+```rust
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+
+/// Some documentation about the attribute.
+#[doc(attribute = "repr")]
+mod empty_mod {}
+```
+
 ### Use the Rust logo as the crate logo
 
 This is for official Rust project use only.
