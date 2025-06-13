@@ -87,6 +87,14 @@ impl<'a> PathParser<'a> {
     pub fn word_is(&self, sym: Symbol) -> bool {
         self.word().map(|i| i.name == sym).unwrap_or(false)
     }
+
+    /// Checks whether the first segments match the givens.
+    ///
+    /// Unlike [`segments_is`](Self::segments_is),
+    /// `self` may contain more segments than the number matched  against.
+    pub fn starts_with(&self, segments: &[Symbol]) -> bool {
+        segments.len() < self.len() && self.segments().zip(segments).all(|(a, b)| a.name == *b)
+    }
 }
 
 impl Display for PathParser<'_> {

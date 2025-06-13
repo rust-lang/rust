@@ -2,7 +2,6 @@ use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
 use rustc_abi::FieldIdx;
-use rustc_attr_data_structures::AttributeKind;
 use rustc_attr_data_structures::ReprAttr::ReprPacked;
 use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::unord::{UnordMap, UnordSet};

@@ -244,7 +244,7 @@ pub enum AttributeKind {
         reason: Option<Symbol>,
     },
 
-    /// Represents #[naked]
+    /// Represents `#[naked]`
     Naked(Span),
 
     /// Represents `#[no_mangle]`
