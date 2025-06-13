@@ -1894,7 +1894,9 @@ fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_ty
                 sess.dcx().emit_fatal(errors::LinkScriptWriteFailure { path, error });
             }
 
-            cmd.link_arg("--script").link_arg(path);
+            // "--script" feels nice and explicit, but -T is supported by gcc **and clang**.
+            // Amusingly, lld supports --script just fine, it's only clang that doesn't.
+            cmd.link_arg("-T").link_arg(path);
         }
         _ => {}
     }
