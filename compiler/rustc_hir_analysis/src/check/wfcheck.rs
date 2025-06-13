@@ -328,8 +328,6 @@ fn check_trait_item<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let def_id = trait_item.owner_id.def_id;
 
-    crate::collect::lower_trait_item(tcx, trait_item.trait_item_id());
-
     let (method_sig, span) = match trait_item.kind {
         hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
         hir::TraitItemKind::Type(_bounds, Some(ty)) => (None, ty.span),
@@ -831,8 +829,6 @@ fn check_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_item: &'tcx hir::ImplItem<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    crate::collect::lower_impl_item(tcx, impl_item.impl_item_id());
-
     let (method_sig, span) = match impl_item.kind {
         hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),
         // Constrain binding and overflow error spans to `<Ty>` in `type foo = <Ty>`.
