@@ -13,7 +13,7 @@ use std::error::Report;
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::SystemTime;
 use std::vec;
 
 use derive_setters::Setters;
@@ -62,8 +62,6 @@ pub struct JsonEmitter {
     macro_backtrace: bool,
     track_diagnostics: bool,
     terminal_url: TerminalUrl,
-    #[setters(skip)]
-    start_timestamp: Instant,
 }
 
 impl JsonEmitter {
@@ -89,7 +87,6 @@ impl JsonEmitter {
             macro_backtrace: false,
             track_diagnostics: false,
             terminal_url: TerminalUrl::No,
-            start_timestamp: Instant::now(),
         }
     }
 
@@ -109,7 +106,7 @@ impl JsonEmitter {
 enum EmitTyped<'a> {
     Diagnostic(Diagnostic),
     Artifact(ArtifactNotification<'a>),
-    SectionTimestamp(SectionTimestamp<'a>),
+    SectionTiming(SectionTimestamp<'a>),
     FutureIncompat(FutureIncompatReport<'a>),
     UnusedExtern(UnusedExterns<'a>),
 }
@@ -149,13 +146,12 @@ impl Emitter for JsonEmitter {
         let name = match section {
             TimingSection::Linking => "link",
         };
-        let time = Instant::now();
-        let data = SectionTimestamp {
-            name,
-            kind,
-            timestamp: time.duration_since(self.start_timestamp).as_micros(),
-        };
-        let result = self.emit(EmitTyped::SectionTimestamp(data));
+        let timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("system time should always be greater than the unix epoch")
+            .as_micros();
+        let data = SectionTimestamp { name, kind, timestamp };
+        let result = self.emit(EmitTyped::SectionTiming(data));
         if let Err(e) = result {
             panic!("failed to print timing section: {e:?}");
         }

@@ -1141,7 +1141,7 @@ pub fn build_session(
         .as_ref()
         .map(|_| rng().next_u32().to_base_fixed_len(CASE_INSENSITIVE).to_string());
 
-    let timings = TimingSectionHandler::new(sopts.json_section_timings);
+    let timings = TimingSectionHandler::new(sopts.json_timings);
 
     let sess = Session {
         target,
