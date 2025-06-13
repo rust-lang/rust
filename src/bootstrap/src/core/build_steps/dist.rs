@@ -2616,3 +2616,49 @@ impl Step for Gcc {
         tarball.generate()
     }
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct RelnotesApiList {
+    pub host: TargetSelection,
+}
+
+impl Step for RelnotesApiList {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let default = run.builder.config.docs;
+        run.alias("relnotes-api-list").default_condition(default)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RelnotesApiList { host: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let host = self.host;
+        let dest = builder.out.join("dist").join(format!("relnotes-api-list-{host}.json"));
+        builder.create_dir(dest.parent().unwrap());
+
+        if std::env::var_os("EMILY_SKIP_DOC").is_none() { // TODO: remove the condition
+            builder.ensure(
+                crate::core::build_steps::doc::Std::new(
+                    builder.top_stage,
+                    host,
+                    DocumentationFormat::Json,
+                )
+                // Crates containing symbols exported by any std crate:
+                .add_extra_crate("rustc-literal-escaper")
+                .add_extra_crate("std_detect"),
+            );
+        }
+
+        builder.info("Generating the API list for the release notes");
+        builder
+            .tool_cmd(Tool::RelnotesApiList)
+            .arg(builder.json_doc_out(host))
+            .arg(&dest)
+            .run(builder);
+        builder.info(&format!("API list for the release notes available at {}", dest.display()));
+    }
+}
