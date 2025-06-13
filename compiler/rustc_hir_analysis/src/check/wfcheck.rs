@@ -328,16 +328,15 @@ fn check_trait_item<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let def_id = trait_item.owner_id.def_id;
 
-    let (method_sig, span) = match trait_item.kind {
-        hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
-        hir::TraitItemKind::Type(_bounds, Some(ty)) => (None, ty.span),
-        _ => (None, trait_item.span),
+    let span = match trait_item.kind {
+        hir::TraitItemKind::Type(_bounds, Some(ty)) => ty.span,
+        _ => trait_item.span,
     };
 
     // Check that an item definition in a subtrait is shadowing a supertrait item.
     lint_item_shadowing_supertrait_item(tcx, def_id);
 
-    let mut res = check_associated_item(tcx, def_id, span, method_sig);
+    let mut res = check_associated_item(tcx, def_id, span);
 
     if matches!(trait_item.kind, hir::TraitItemKind::Fn(..)) {
         for &assoc_ty_def_id in tcx.associated_types_for_impl_traits_in_associated_fn(def_id) {
@@ -345,7 +344,6 @@ fn check_trait_item<'tcx>(
                 tcx,
                 assoc_ty_def_id.expect_local(),
                 tcx.def_span(assoc_ty_def_id),
-                None,
             ));
         }
     }
@@ -829,13 +827,12 @@ fn check_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_item: &'tcx hir::ImplItem<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let (method_sig, span) = match impl_item.kind {
-        hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),
+    let span = match impl_item.kind {
         // Constrain binding and overflow error spans to `<Ty>` in `type foo = <Ty>`.
-        hir::ImplItemKind::Type(ty) if ty.span != DUMMY_SP => (None, ty.span),
-        _ => (None, impl_item.span),
+        hir::ImplItemKind::Type(ty) if ty.span != DUMMY_SP => ty.span,
+        _ => impl_item.span,
     };
-    check_associated_item(tcx, impl_item.owner_id.def_id, span, method_sig)
+    check_associated_item(tcx, impl_item.owner_id.def_id, span)
 }
 
 fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), ErrorGuaranteed> {
@@ -963,12 +960,11 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
     }
 }
 
-#[instrument(level = "debug", skip(tcx, span, sig_if_method))]
+#[instrument(level = "debug", skip(tcx, span))]
 fn check_associated_item(
     tcx: TyCtxt<'_>,
     item_id: LocalDefId,
     span: Span,
-    sig_if_method: Option<&hir::FnSig<'_>>,
 ) -> Result<(), ErrorGuaranteed> {
     let loc = Some(WellFormedLoc::Ty(item_id));
     enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
@@ -1002,7 +998,8 @@ fn check_associated_item(
             }
             ty::AssocKind::Fn { .. } => {
                 let sig = tcx.fn_sig(item.def_id).instantiate_identity();
-                let hir_sig = sig_if_method.expect("bad signature for method");
+                let hir_sig =
+                    tcx.hir_node_by_def_id(item_id).fn_sig().expect("bad signature for method");
                 check_fn_or_method(wfcx, sig, hir_sig.decl, item.def_id.expect_local());
                 check_method_receiver(wfcx, hir_sig, item, self_ty)
             }
