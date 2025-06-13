@@ -13,7 +13,7 @@ To learn more about how rust-analyzer works, see [Architecture](architecture.md)
 It also explains the high-level layout of the source code.
 Do skim through that document.
 
-We also publish rustdoc docs to pages: https://rust-lang.github.io/rust-analyzer/ide/.
+We also publish rustdoc docs to <https://rust-lang.github.io/rust-analyzer/ide/>.
 Note though, that the internal documentation is very incomplete.
 
 Various organizational and process issues are discussed in this document.
