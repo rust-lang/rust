@@ -92,6 +92,15 @@ static EXPRS: &[&str] = &[
     "#[attr] loop {}.field",
     "(#[attr] loop {}).field",
     "loop { #![attr] }.field",
+    // Attributes on a Binary, Cast, Assign, AssignOp, and Range expression
+    // require parentheses. Without parentheses `#[attr] lo..hi` means
+    // `(#[attr] lo)..hi`, and `#[attr] ..hi` is invalid syntax.
+    "#[attr] (1 + 1)",
+    "#[attr] (1 as T)",
+    "#[attr] (x = 1)",
+    "#[attr] (x += 1)",
+    "#[attr] (lo..hi)",
+    "#[attr] (..hi)",
     // Grammar restriction: break value starting with a labeled loop is not
     // allowed, except if the break is also labeled.
     "break 'outer 'inner: loop {} + 2",
