@@ -1,12 +1,13 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{clip, peel_hir_expr_refs, unsext};
+use clippy_utils::{ExprUseNode, clip, expr_use_ctxt, peel_hir_expr_refs, unsext};
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{BinOpKind, Expr, ExprKind, Node, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, kw};
 
 use super::IDENTITY_OP;
 
@@ -165,11 +166,19 @@ fn needs_parenthesis(cx: &LateContext<'_>, binary: &Expr<'_>, child: &Expr<'_>) 
     Parens::Needed
 }
 
-fn is_allowed(cx: &LateContext<'_>, expr: &Expr<'_>, cmp: BinOpKind, left: &Expr<'_>, right: &Expr<'_>) -> bool {
-    // Exclude case where the left or right side is a call to `Default::default()`
-    // and the expression is not a let binding's init expression and the let binding has a type
-    // annotation, or a function's return value.
-    if (is_default_call(cx, left) || is_default_call(cx, right)) && !is_expr_with_type_annotation(cx, expr.hir_id) {
+fn is_allowed<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    cmp: BinOpKind,
+    left: &Expr<'tcx>,
+    right: &Expr<'tcx>,
+) -> bool {
+    // Exclude case where the left or right side is associated function call returns a type which is
+    // `Self` that is not given explicitly, and the expression is not a let binding's init
+    // expression and the let binding has a type annotation, or a function's return value.
+    if (is_assoc_fn_without_type_instance(cx, left) || is_assoc_fn_without_type_instance(cx, right))
+        && !is_expr_used_with_type_annotation(cx, expr)
+    {
         return false;
     }
 
@@ -180,20 +189,6 @@ fn is_allowed(cx: &LateContext<'_>, expr: &Expr<'_>, cmp: BinOpKind, left: &Expr
         && !(cmp == BinOpKind::Shl
             && ConstEvalCtxt::new(cx).eval_simple(right) == Some(Constant::Int(0))
             && ConstEvalCtxt::new(cx).eval_simple(left) == Some(Constant::Int(1)))
-}
-
-/// Check if the expression is a call to `Default::default()`
-fn is_default_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let ExprKind::Call(func, []) = peel_hir_expr_refs(expr).0.kind
-        && let ExprKind::Path(qpath) = func.kind
-        // Detect and ignore <Foo as Default>::default() because these calls do explicitly name the type.
-        && let QPath::Resolved(None, _path) = qpath
-        && let Some(def_id) = cx.qpath_res(&qpath, func.hir_id).opt_def_id()
-        && cx.tcx.is_diagnostic_item(sym::default_fn, def_id)
-    {
-        return true;
-    }
-    false
 }
 
 fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span: Span, arg: Span) {
@@ -256,38 +251,40 @@ fn span_ineffective_operation(
     );
 }
 
-/// Check if the expression is a let binding's init expression and the let binding has a type
-/// annotation. Also check if the expression is a function's return value.
-fn is_expr_with_type_annotation(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    // Get the parent node of the expression
-    if let Some((_, parent)) = cx.tcx.hir_parent_iter(hir_id).next() {
-        match parent {
-            Node::LetStmt(local) => {
-                // Check if this expression is the init expression of the let binding
-                if let Some(init) = local.init
-                    && init.hir_id == hir_id
-                {
-                    // Check if the let binding has an explicit type annotation
-                    return local.ty.is_some();
-                }
-            },
-            Node::Block(block) => {
-                // If the parent node is a block, we can make sure the expression is the last expression in the
-                // block.
-                return is_expr_with_type_annotation(cx, block.hir_id);
-            },
-            Node::Expr(expr) => {
-                return is_expr_with_type_annotation(cx, expr.hir_id);
-            },
-            Node::Item(Item {
-                kind: ItemKind::Fn { .. },
+fn is_expr_used_with_type_annotation<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    match expr_use_ctxt(cx, expr).use_node(cx) {
+        ExprUseNode::LetStmt(letstmt) => letstmt.ty.is_some(),
+        ExprUseNode::Return(_) => true,
+        _ => false,
+    }
+}
+
+/// Check if the expression is an associated function without a type instance.
+/// Example:
+/// ```
+/// Default::default()
+/// // Or
+/// trait Def {
+///    fn def() -> Self;
+/// }
+/// Def::def()
+/// ```
+fn is_assoc_fn_without_type_instance<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
+    if let ExprKind::Call(func, _) = peel_hir_expr_refs(expr).0.kind
+        && let ExprKind::Path(QPath::Resolved(
+            // If it's not None, don't need to go further.
+            None,
+            Path {
+                res: Res::Def(DefKind::AssocFn, def_id),
                 ..
-            }) => {
-                // Every function has a return type, so we can return true.
-                return true;
             },
-            _ => {},
-        }
+        )) = func.kind
+        && let output_ty = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder().output()
+        && let ty::Param(ty::ParamTy {
+            name: kw::SelfUpper, ..
+        }) = output_ty.kind()
+    {
+        return true;
     }
     false
 }
