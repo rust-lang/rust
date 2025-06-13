@@ -237,9 +237,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
-    fn intern_callable_def(&self, callable_def: CallableDefId) -> InternedCallableDefId;
-
-    #[salsa::interned]
     fn intern_type_or_const_param_id(
         &self,
         param_id: TypeOrConstParamId,
@@ -347,7 +344,3 @@ impl_intern_key!(InternedClosureId, InternedClosure);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct InternedCoroutine(pub DefWithBodyId, pub ExprId);
 impl_intern_key!(InternedCoroutineId, InternedCoroutine);
-
-// This exists just for Chalk, because Chalk just has a single `FnDefId` where
-// we have different IDs for struct and enum variant constructors.
-impl_intern_key!(InternedCallableDefId, CallableDefId);
