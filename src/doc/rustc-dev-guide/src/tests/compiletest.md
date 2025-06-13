@@ -115,7 +115,7 @@ default behavior without any commands is to:
 2. Run `rustc -Zunpretty=normal` on the output of the previous step.
 3. The output of the previous two steps should be the same.
 4. Run `rustc -Zno-codegen` on the output to make sure that it can type check
-   (this is similar to running `cargo check`).
+   (similar to `cargo check`).
 
 If any of the commands above fail, then the test fails.
 
