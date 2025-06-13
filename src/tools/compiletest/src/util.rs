@@ -29,6 +29,7 @@ fn path_div() -> &'static str {
 pub fn logv(config: &Config, s: String) {
     debug!("{}", s);
     if config.verbose {
+        // Note: `./x test ... --verbose --no-capture` is needed to see this print.
         println!("{}", s);
     }
 }
