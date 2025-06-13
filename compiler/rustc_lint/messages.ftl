@@ -72,9 +72,6 @@ lint_builtin_const_no_mangle = const items should never be `#[no_mangle]`
 lint_builtin_decl_unsafe_fn = declaration of an `unsafe` function
 lint_builtin_decl_unsafe_method = declaration of an `unsafe` method
 
-lint_builtin_deprecated_attr_link = use of deprecated attribute `{$name}`: {$reason}. See {$link}
-    .msg_suggestion = {$msg}
-    .default_suggestion = remove this attribute
 lint_builtin_deref_nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
 
