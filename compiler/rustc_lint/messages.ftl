@@ -530,8 +530,6 @@ lint_mismatched_lifetime_syntaxes_suggestion_implicit =
 lint_mismatched_lifetime_syntaxes_suggestion_mixed =
     one option is to remove the lifetime for references and use the anonymous lifetime for paths
 
-lint_missing_fragment_specifier = missing fragment specifier
-
 lint_missing_unsafe_on_extern = extern blocks should be unsafe
     .suggestion = needs `unsafe` before the extern keyword
 

@@ -3542,6 +3542,38 @@ impl FnHeader {
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
     }
+
+    /// Return a span encompassing the header, or none if all options are default.
+    pub fn span(&self) -> Option<Span> {
+        fn append(a: &mut Option<Span>, b: Span) {
+            *a = match a {
+                None => Some(b),
+                Some(x) => Some(x.to(b)),
+            }
+        }
+
+        let mut full_span = None;
+
+        match self.safety {
+            Safety::Unsafe(span) | Safety::Safe(span) => append(&mut full_span, span),
+            Safety::Default => {}
+        };
+
+        if let Some(coroutine_kind) = self.coroutine_kind {
+            append(&mut full_span, coroutine_kind.span());
+        }
+
+        if let Const::Yes(span) = self.constness {
+            append(&mut full_span, span);
+        }
+
+        match self.ext {
+            Extern::Implicit(span) | Extern::Explicit(_, span) => append(&mut full_span, span),
+            Extern::None => {}
+        }
+
+        full_span
+    }
 }
 
 impl Default for FnHeader {

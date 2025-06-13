@@ -9,6 +9,7 @@ avr-interrupt
 avr-non-blocking-interrupt
 cdecl
 cdecl-unwind
+custom
 efiapi
 fastcall
 fastcall-unwind

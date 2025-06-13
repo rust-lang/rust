@@ -5,10 +5,6 @@ macro_rules! foo {
     ( $($i:ident)* ) => { $($i)+ }; //~ WARN meta-variable repeats with different Kleene operator
 }
 
-#[warn(missing_fragment_specifier)]
-macro_rules! m { ($i) => {} } //~ WARN missing fragment specifier
-                              //~| WARN this was previously accepted
-
 #[deprecated = "reason"]
 macro_rules! deprecated {
     () => {}

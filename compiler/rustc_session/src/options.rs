@@ -290,6 +290,14 @@ macro_rules! top_level_options {
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
             }
+
+            pub fn target_feature_flag_enabled(&self, flag: &str) -> bool {
+                match flag {
+                    "retpoline" => self.unstable_opts.retpoline,
+                    "retpoline-external-thunk" => self.unstable_opts.retpoline_external_thunk,
+                    _ => false,
+                }
+            }
         }
     );
 }
@@ -2448,6 +2456,11 @@ options! {
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),
+    retpoline: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+        "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
+    retpoline_external_thunk: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+        "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
+        target features (default: no)"),
     sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
         "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
