@@ -3,7 +3,7 @@ use std::ops::{Index, IndexMut};
 use derive_where::derive_where;
 use rustc_index::IndexVec;
 
-use crate::search_graph::{AvailableDepth, Cx, CycleHeads, NestedGoals, PathKind, UsageKind};
+use crate::search_graph::{AvailableDepth, Cx, CycleHeads, NestedGoals, PathKind, UsageKind, tree};
 
 rustc_index::newtype_index! {
     #[orderable]
@@ -15,6 +15,8 @@ rustc_index::newtype_index! {
 /// when popping a child goal or completely immutable.
 #[derive_where(Debug; X: Cx)]
 pub(super) struct StackEntry<X: Cx> {
+    pub node_id: tree::NodeId,
+
     pub input: X::Input,
 
     /// Whether proving this goal is a coinductive step.
@@ -48,7 +50,7 @@ pub(super) struct StackEntry<X: Cx> {
     pub nested_goals: NestedGoals<X>,
 }
 
-#[derive_where(Default; X: Cx)]
+#[derive_where(Debug, Default; X: Cx)]
 pub(super) struct Stack<X: Cx> {
     entries: IndexVec<StackDepth, StackEntry<X>>,
 }
@@ -85,6 +87,10 @@ impl<X: Cx> Stack<X> {
         self.entries.push(entry)
     }
 
+    pub(super) fn get(&self, depth: StackDepth) -> Option<&StackEntry<X>> {
+        self.entries.get(depth)
+    }
+
     pub(super) fn pop(&mut self) -> StackEntry<X> {
         self.entries.pop().unwrap()
     }
@@ -95,6 +101,10 @@ impl<X: Cx> Stack<X> {
 
     pub(super) fn iter(&self) -> impl Iterator<Item = &StackEntry<X>> {
         self.entries.iter()
+    }
+
+    pub(super) fn iter_enumerated(&self) -> impl Iterator<Item = (StackDepth, &StackEntry<X>)> {
+        self.entries.iter_enumerated()
     }
 
     pub(super) fn find(&self, input: X::Input) -> Option<StackDepth> {
