@@ -23,6 +23,7 @@ fn create_struct_ty<'ll>(
         entry_struct
     }
 }
+//const DATA_NULL: &[u8] = c"111111";
 
 // We don't copy types from other functions because we generate a new module and context.
 // Bringing in types from other contexts would likely cause issues.
@@ -100,10 +101,43 @@ pub(crate) fn gen_image_wrapper_module<'ll>(
             llvm::Visibility::Default,
             mapper_fn_ty,
         );
+        let baz = crate::declare::declare_simple_fn(
+            &cx,
+            &"atexit",
+            llvm::CallConv::CCallConv,
+            llvm::UnnamedAddr::No,
+            llvm::Visibility::Default,
+            cx.type_func(&[tptr], ti32),
+        );
 
-        // @__start_omp_offloading_entries = external hidden constant [0 x %struct.__tgt_offload_entry]
-        // @__stop_omp_offloading_entries = external hidden constant [0 x %struct.__tgt_offload_entry]
-        // @__dummy.omp_offloading_entries = internal constant [0 x %struct.__tgt_offload_entry] zeroinitializer, section "omp_offloading_entries"
+        let unknown_txt = "11111111111111";
+        let c_entry_name = CString::new(unknown_txt).unwrap();
+        let c_val = c_entry_name.as_bytes_with_nul();
+        let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
+        let llglobal =
+            add_unnamed_global(&cx, &".omp_offloading.device_image", initializer, InternalLinkage);
+        let c_section_name = CString::new(".llvm.offloading").unwrap();
+        llvm::set_section(llglobal, &c_section_name);
+        llvm::set_alignment(llglobal, Align::EIGHT);
+
+        //@.omp_offloading.device_image = internal unnamed_addr constant [4040 x i8] c"111111111", section ".llvm.offloading", align 8
+        // TODO
+        //  @.omp_offloading.device_images = internal unnamed_addr constant [1 x %__tgt_device_image] [%__tgt_device_image { ptr getelementptr ([4040 x i8], ptr @.omp_offloading.device_image, i64 0, i64 144), ptr getelementptr ([4040 x i8], ptr @.omp_offloading.device_image, i64 0, i64 4040), ptr @__start_omp_offloading_entries, ptr @__stop_omp_offloading_entries }]
+        //  @.omp_offloading.descriptor = internal constant %__tgt_bin_desc { i32 1, ptr @.omp_offloading.device_images, ptr @__start_omp_offloading_entries, ptr @__stop_omp_offloading_entries }
+        //  @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 101, ptr @.omp_offloading.descriptor_reg, ptr null }]
+        //
+        //  define internal void @.omp_offloading.descriptor_reg() section ".text.startup" {
+        //  entry:
+        //    call void @__tgt_register_lib(ptr @.omp_offloading.descriptor)
+        //    %0 = call i32 @atexit(ptr @.omp_offloading.descriptor_unreg)
+        //    ret void
+        //  }
+        //
+        //  define internal void @.omp_offloading.descriptor_unreg() section ".text.startup" {
+        //  entry:
+        //    call void @__tgt_unregister_lib(ptr @.omp_offloading.descriptor)
+        //    ret void
+        //  }
 
         llvm::LLVMPrintModuleToFile(
             llmod,
