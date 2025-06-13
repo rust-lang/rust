@@ -74,6 +74,15 @@ pub(crate) fn gen_image_wrapper_module<'ll>(
         let zeroinit = cx.const_null(offload_entry_arr);
         llvm::set_initializer(llglobal, zeroinit);
 
+        let c_name = CString::new("llvm.compiler.used").unwrap();
+        let arr_val = cx.const_array(tptr, &[llglobal]);
+        let c_section_name = CString::new("llvm.metadata").unwrap();
+        let llglobal = add_global(&cx, "llvm.compiler.used", arr_val, AppendingLinkage);
+        llvm::set_section(llglobal, &c_section_name);
+        llvm::set_global_constant(llglobal, false);
+
+        //@llvm.compiler.used = appending global [1 x ptr] [ptr @__dummy.omp_offloading_entries], section "llvm.metadata"
+
         let mapper_fn_ty = cx.type_func(&[tptr], cx.type_void());
         let foo = crate::declare::declare_simple_fn(
             &cx,
