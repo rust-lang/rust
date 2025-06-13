@@ -117,6 +117,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: crate-ci/typos@v1.32.0
+      - uses: streetsidesoftware/cspell-action@v7
 
   build_system:
     runs-on: ubuntu-24.04
