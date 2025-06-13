@@ -76,7 +76,6 @@ generate! {
     Visitor,
     Weak,
     abs,
-    align_of,
     ambiguous_glob_reexports,
     append,
     arg,

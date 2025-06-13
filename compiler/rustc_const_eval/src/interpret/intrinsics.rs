@@ -120,7 +120,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.copy_op(&val, dest)?;
             }
 
-            sym::min_align_of_val | sym::size_of_val => {
+            sym::align_of_val | sym::size_of_val => {
                 // Avoid `deref_pointer` -- this is not a deref, the ptr does not have to be
                 // dereferenceable!
                 let place = self.ref_to_mplace(&self.read_immediate(&args[0])?)?;
@@ -129,7 +129,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     .ok_or_else(|| err_unsup_format!("`extern type` does not have known layout"))?;
 
                 let result = match intrinsic_name {
-                    sym::min_align_of_val => align.bytes(),
+                    sym::align_of_val => align.bytes(),
                     sym::size_of_val => size.bytes(),
                     _ => bug!(),
                 };

@@ -412,7 +412,7 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(note = "use `align_of` instead", since = "1.2.0", suggestion = "align_of")]
 pub fn min_align_of<T>() -> usize {
-    intrinsics::min_align_of::<T>()
+    intrinsics::align_of::<T>()
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
@@ -436,7 +436,7 @@ pub fn min_align_of<T>() -> usize {
 #[deprecated(note = "use `align_of_val` instead", since = "1.2.0", suggestion = "align_of_val")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: val is a reference, so it's a valid raw pointer
-    unsafe { intrinsics::min_align_of_val(val) }
+    unsafe { intrinsics::align_of_val(val) }
 }
 
 /// Returns the [ABI]-required minimum alignment of a type in bytes.
@@ -458,7 +458,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_align_of", since = "1.24.0")]
 pub const fn align_of<T>() -> usize {
-    intrinsics::min_align_of::<T>()
+    intrinsics::align_of::<T>()
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
@@ -477,10 +477,9 @@ pub const fn align_of<T>() -> usize {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_align_of_val", since = "1.85.0")]
-#[allow(deprecated)]
 pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: val is a reference, so it's a valid raw pointer
-    unsafe { intrinsics::min_align_of_val(val) }
+    unsafe { intrinsics::align_of_val(val) }
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
@@ -527,7 +526,7 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
 pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
-    unsafe { intrinsics::min_align_of_val(val) }
+    unsafe { intrinsics::align_of_val(val) }
 }
 
 /// Returns `true` if dropping values of type `T` matters.
@@ -637,8 +636,6 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 #[inline(always)]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated_in_future)]
-#[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
 #[track_caller]
 #[rustc_const_stable(feature = "const_mem_zeroed", since = "1.75.0")]
@@ -677,8 +674,6 @@ pub const unsafe fn zeroed<T>() -> T {
 #[must_use]
 #[deprecated(since = "1.39.0", note = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated_in_future)]
-#[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_uninitialized"]
 #[track_caller]
 pub unsafe fn uninitialized<T>() -> T {

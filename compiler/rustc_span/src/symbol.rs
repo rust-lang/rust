@@ -429,6 +429,8 @@ symbols! {
         aggregate_raw_ptr,
         alias,
         align,
+        align_of,
+        align_of_val,
         alignment,
         all,
         alloc,
@@ -1353,8 +1355,6 @@ symbols! {
         message,
         meta,
         metadata_type,
-        min_align_of,
-        min_align_of_val,
         min_const_fn,
         min_const_generics,
         min_const_unsafe_fn,
@@ -2677,7 +2677,7 @@ impl Interner {
         assert_eq!(
             strings.len(),
             init.len() + extra.len(),
-            "`init` or `extra` contain duplicate symbols",
+            "there are duplicate symbols in the rustc symbol list and the extra symbols added by the driver",
         );
         Interner(Lock::new(InternerInner { arena: Default::default(), strings }))
     }

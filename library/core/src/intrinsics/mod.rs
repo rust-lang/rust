@@ -926,8 +926,7 @@ pub const unsafe fn slice_get_unchecked<
 pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 
 /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
-/// a size of `count` * `size_of::<T>()` and an alignment of
-/// `min_align_of::<T>()`
+/// a size of `count` * `size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
 /// This intrinsic does not have a stable counterpart.
 /// # Safety
@@ -941,8 +940,7 @@ pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
 /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
-/// a size of `count * size_of::<T>()` and an alignment of
-/// `min_align_of::<T>()`
+/// a size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
 /// The volatile parameter is set to `true`, so it will not be optimized out
 /// unless size is equal to zero.
@@ -952,8 +950,7 @@ pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
 /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
-/// size of `count * size_of::<T>()` and an alignment of
-/// `min_align_of::<T>()`.
+/// size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
 /// This intrinsic does not have a stable counterpart.
 /// # Safety
@@ -2649,7 +2646,7 @@ pub const fn size_of<T>() -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn min_align_of<T>() -> usize;
+pub const fn align_of<T>() -> usize;
 
 /// Returns the number of variants of the type `T` cast to a `usize`;
 /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
@@ -2689,7 +2686,7 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
-pub const unsafe fn min_align_of_val<T: ?Sized>(ptr: *const T) -> usize;
+pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 
 /// Gets a static string slice containing the name of a type.
 ///
