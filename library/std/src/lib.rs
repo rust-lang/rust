@@ -277,7 +277,6 @@
 #![feature(allow_internal_unstable)]
 #![feature(asm_experimental_arch)]
 #![feature(autodiff)]
-#![feature(cfg_match)]
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
