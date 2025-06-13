@@ -212,13 +212,13 @@ impl ItemTree {
                 SmallModItem::Trait(_) => traits += 1,
                 SmallModItem::Impl(_) => impls += 1,
                 SmallModItem::MacroRules(_) => macro_rules += 1,
+                SmallModItem::MacroCall(_) => macro_calls += 1,
                 _ => {}
             }
         }
         for item in self.big_data.values() {
             match item {
                 BigModItem::Mod(_) => mods += 1,
-                BigModItem::MacroCall(_) => macro_calls += 1,
                 _ => {}
             }
         }
@@ -246,11 +246,14 @@ struct ItemVisibilities {
 enum SmallModItem {
     Const(Const),
     Enum(Enum),
+    ExternBlock(ExternBlock),
     Function(Function),
     Impl(Impl),
     Macro2(Macro2),
+    MacroCall(MacroCall),
     MacroRules(MacroRules),
     Static(Static),
+    Struct(Struct),
     Trait(Trait),
     TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
@@ -259,11 +262,8 @@ enum SmallModItem {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum BigModItem {
-    ExternBlock(ExternBlock),
     ExternCrate(ExternCrate),
-    MacroCall(MacroCall),
     Mod(Mod),
-    Struct(Struct),
     Use(Use),
 }
 
@@ -370,23 +370,23 @@ macro_rules! mod_items {
 
 mod_items! {
 ModItemId ->
-    Use in big_data -> ast::Use,
-    ExternCrate in big_data -> ast::ExternCrate,
-    ExternBlock in big_data -> ast::ExternBlock,
-    Function in small_data -> ast::Fn,
-    Struct in big_data -> ast::Struct,
-    Union in small_data -> ast::Union,
-    Enum in small_data -> ast::Enum,
     Const in small_data -> ast::Const,
+    Enum in small_data -> ast::Enum,
+    ExternBlock in small_data -> ast::ExternBlock,
+    ExternCrate in big_data -> ast::ExternCrate,
+    Function in small_data -> ast::Fn,
+    Impl in small_data -> ast::Impl,
+    Macro2 in small_data -> ast::MacroDef,
+    MacroCall in small_data -> ast::MacroCall,
+    MacroRules in small_data -> ast::MacroRules,
+    Mod in big_data -> ast::Module,
     Static in small_data -> ast::Static,
+    Struct in small_data -> ast::Struct,
     Trait in small_data -> ast::Trait,
     TraitAlias in small_data -> ast::TraitAlias,
-    Impl in small_data -> ast::Impl,
     TypeAlias in small_data -> ast::TypeAlias,
-    Mod in big_data -> ast::Module,
-    MacroCall in big_data -> ast::MacroCall,
-    MacroRules in small_data -> ast::MacroRules,
-    Macro2 in small_data -> ast::MacroDef,
+    Union in small_data -> ast::Union,
+    Use in big_data -> ast::Use,
 }
 
 impl Index<RawVisibilityId> for ItemTree {
@@ -425,7 +425,6 @@ impl Index<RawVisibilityId> for ItemTree {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Use {
     pub(crate) visibility: RawVisibilityId,
-    pub(crate) ast_id: FileAstId<ast::Use>,
     pub(crate) use_tree: UseTree,
 }
 
@@ -490,12 +489,10 @@ pub struct ExternCrate {
     pub name: Name,
     pub alias: Option<ImportAlias>,
     pub(crate) visibility: RawVisibilityId,
-    pub ast_id: FileAstId<ast::ExternCrate>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ExternBlock {
-    pub ast_id: FileAstId<ast::ExternBlock>,
     pub(crate) children: Box<[ModItemId]>,
 }
 
@@ -503,7 +500,6 @@ pub struct ExternBlock {
 pub struct Function {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
-    pub ast_id: FileAstId<ast::Fn>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -511,21 +507,18 @@ pub struct Struct {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
     pub shape: FieldsShape,
-    pub ast_id: FileAstId<ast::Struct>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Union {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
-    pub ast_id: FileAstId<ast::Union>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Enum {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
-    pub ast_id: FileAstId<ast::Enum>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -564,40 +557,33 @@ pub struct Const {
     /// `None` for `const _: () = ();`
     pub name: Option<Name>,
     pub(crate) visibility: RawVisibilityId,
-    pub ast_id: FileAstId<ast::Const>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Static {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
-    pub ast_id: FileAstId<ast::Static>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Trait {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
-    pub ast_id: FileAstId<ast::Trait>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TraitAlias {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
-    pub ast_id: FileAstId<ast::TraitAlias>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Impl {
-    pub ast_id: FileAstId<ast::Impl>,
-}
+pub struct Impl {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeAlias {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
-    pub ast_id: FileAstId<ast::TypeAlias>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -605,7 +591,6 @@ pub struct Mod {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
     pub(crate) kind: ModKind,
-    pub ast_id: FileAstId<ast::Module>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -620,7 +605,6 @@ pub(crate) enum ModKind {
 pub struct MacroCall {
     /// Path to the called macro.
     pub path: Interned<ModPath>,
-    pub ast_id: FileAstId<ast::MacroCall>,
     pub expand_to: ExpandTo,
     pub ctxt: SyntaxContext,
 }
@@ -629,7 +613,6 @@ pub struct MacroCall {
 pub struct MacroRules {
     /// The name of the declared macro.
     pub name: Name,
-    pub ast_id: FileAstId<ast::MacroRules>,
 }
 
 /// "Macros 2.0" macro definition.
@@ -637,7 +620,6 @@ pub struct MacroRules {
 pub struct Macro2 {
     pub name: Name,
     pub(crate) visibility: RawVisibilityId,
-    pub ast_id: FileAstId<ast::MacroDef>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

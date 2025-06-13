@@ -161,16 +161,16 @@ impl Printer<'_> {
         self.print_attrs_of(item, "\n");
 
         match item {
-            ModItemId::Use(it) => {
-                let Use { visibility, use_tree, ast_id } = &self.tree[it];
+            ModItemId::Use(ast_id) => {
+                let Use { visibility, use_tree } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "use ");
                 self.print_use_tree(use_tree);
                 wln!(self, ";");
             }
-            ModItemId::ExternCrate(it) => {
-                let ExternCrate { name, alias, visibility, ast_id } = &self.tree[it];
+            ModItemId::ExternCrate(ast_id) => {
+                let ExternCrate { name, alias, visibility } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "extern crate {}", name.display(self.db, self.edition));
@@ -179,8 +179,8 @@ impl Printer<'_> {
                 }
                 wln!(self, ";");
             }
-            ModItemId::ExternBlock(it) => {
-                let ExternBlock { ast_id, children } = &self.tree[it];
+            ModItemId::ExternBlock(ast_id) => {
+                let ExternBlock { children } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 w!(self, "extern {{");
                 self.indented(|this| {
@@ -190,14 +190,14 @@ impl Printer<'_> {
                 });
                 wln!(self, "}}");
             }
-            ModItemId::Function(it) => {
-                let Function { name, visibility, ast_id } = &self.tree[it];
+            ModItemId::Function(ast_id) => {
+                let Function { name, visibility } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 wln!(self, "fn {};", name.display(self.db, self.edition));
             }
-            ModItemId::Struct(it) => {
-                let Struct { visibility, name, shape: kind, ast_id } = &self.tree[it];
+            ModItemId::Struct(ast_id) => {
+                let Struct { visibility, name, shape: kind } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "struct {}", name.display(self.db, self.edition));
@@ -208,22 +208,22 @@ impl Printer<'_> {
                     wln!(self, ";");
                 }
             }
-            ModItemId::Union(it) => {
-                let Union { name, visibility, ast_id } = &self.tree[it];
+            ModItemId::Union(ast_id) => {
+                let Union { name, visibility } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "union {}", name.display(self.db, self.edition));
                 self.print_fields(FieldsShape::Record);
                 wln!(self);
             }
-            ModItemId::Enum(it) => {
-                let Enum { name, visibility, ast_id } = &self.tree[it];
+            ModItemId::Enum(ast_id) => {
+                let Enum { name, visibility } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "enum {} {{ ... }}", name.display(self.db, self.edition));
             }
-            ModItemId::Const(it) => {
-                let Const { name, visibility, ast_id } = &self.tree[it];
+            ModItemId::Const(ast_id) => {
+                let Const { name, visibility } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "const ");
@@ -233,8 +233,8 @@ impl Printer<'_> {
                 }
                 wln!(self, " = _;");
             }
-            ModItemId::Static(it) => {
-                let Static { name, visibility, ast_id } = &self.tree[it];
+            ModItemId::Static(ast_id) => {
+                let Static { name, visibility } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "static ");
@@ -242,33 +242,33 @@ impl Printer<'_> {
                 w!(self, " = _;");
                 wln!(self);
             }
-            ModItemId::Trait(it) => {
-                let Trait { name, visibility, ast_id } = &self.tree[it];
+            ModItemId::Trait(ast_id) => {
+                let Trait { name, visibility } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "trait {} {{ ... }}", name.display(self.db, self.edition));
             }
-            ModItemId::TraitAlias(it) => {
-                let TraitAlias { name, visibility, ast_id } = &self.tree[it];
+            ModItemId::TraitAlias(ast_id) => {
+                let TraitAlias { name, visibility } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 wln!(self, "trait {} = ..;", name.display(self.db, self.edition));
             }
-            ModItemId::Impl(it) => {
-                let Impl { ast_id } = &self.tree[it];
+            ModItemId::Impl(ast_id) => {
+                let Impl {} = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 w!(self, "impl {{ ... }}");
             }
-            ModItemId::TypeAlias(it) => {
-                let TypeAlias { name, visibility, ast_id } = &self.tree[it];
+            ModItemId::TypeAlias(ast_id) => {
+                let TypeAlias { name, visibility } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "type {}", name.display(self.db, self.edition));
                 w!(self, ";");
                 wln!(self);
             }
-            ModItemId::Mod(it) => {
-                let Mod { name, visibility, kind, ast_id } = &self.tree[it];
+            ModItemId::Mod(ast_id) => {
+                let Mod { name, visibility, kind } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "mod {}", name.display(self.db, self.edition));
@@ -287,8 +287,8 @@ impl Printer<'_> {
                     }
                 }
             }
-            ModItemId::MacroCall(it) => {
-                let MacroCall { path, ast_id, expand_to, ctxt } = &self.tree[it];
+            ModItemId::MacroCall(ast_id) => {
+                let MacroCall { path, expand_to, ctxt } = &self.tree[ast_id];
                 let _ = writeln!(
                     self,
                     "// AstId: {:#?}, SyntaxContextId: {}, ExpandTo: {:?}",
@@ -298,13 +298,13 @@ impl Printer<'_> {
                 );
                 wln!(self, "{}!(...);", path.display(self.db, self.edition));
             }
-            ModItemId::MacroRules(it) => {
-                let MacroRules { name, ast_id } = &self.tree[it];
+            ModItemId::MacroRules(ast_id) => {
+                let MacroRules { name } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 wln!(self, "macro_rules! {} {{ ... }}", name.display(self.db, self.edition));
             }
-            ModItemId::Macro2(it) => {
-                let Macro2 { name, visibility, ast_id } = &self.tree[it];
+            ModItemId::Macro2(ast_id) => {
+                let Macro2 { name, visibility } = &self.tree[ast_id];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 wln!(self, "macro {} {{ ... }}", name.display(self.db, self.edition));
