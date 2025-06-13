@@ -19,7 +19,7 @@ LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, 5 + || ());
 help: try using a const generic argument instead
    |
 LL -     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, 5 + || ());
-LL +     std::arch::x86_64::_mm_blend_ps::<{ 5 + (|| ()) }>(loop {}, loop {});
+LL +     std::arch::x86_64::_mm_blend_ps::<{ 5 + || () }>(loop {}, loop {});
    |
 
 error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
@@ -81,7 +81,7 @@ LL |     std::arch::x86_64::_mm_inserti_si64(loop {}, loop {}, || (), 1 + || ())
 help: try using a const generic argument instead
    |
 LL -     std::arch::x86_64::_mm_inserti_si64(loop {}, loop {}, || (), 1 + || ());
-LL +     std::arch::x86_64::_mm_inserti_si64::<{ || () }, { 1 + (|| ()) }>(loop {}, loop {});
+LL +     std::arch::x86_64::_mm_inserti_si64::<{ || () }, { 1 + || () }>(loop {}, loop {});
    |
 
 error: aborting due to 7 previous errors
