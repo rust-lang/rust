@@ -26,6 +26,8 @@ use tracing::debug;
 
 use crate::data_structures::HashMap;
 
+mod stack;
+use stack::{Stack, StackDepth, StackEntry};
 mod global_cache;
 use global_cache::CacheData;
 pub use global_cache::GlobalCache;
@@ -225,9 +227,9 @@ impl AvailableDepth {
     /// in case there is exponential blowup.
     fn allowed_depth_for_nested<D: Delegate>(
         root_depth: AvailableDepth,
-        stack: &IndexVec<StackDepth, StackEntry<D::Cx>>,
+        stack: &Stack<D::Cx>,
     ) -> Option<AvailableDepth> {
-        if let Some(last) = stack.raw.last() {
+        if let Some(last) = stack.last() {
             if last.available_depth.0 == 0 {
                 return None;
             }
@@ -433,50 +435,6 @@ impl<X: Cx> NestedGoals<X> {
     }
 }
 
-rustc_index::newtype_index! {
-    #[orderable]
-    #[gate_rustc_only]
-    pub struct StackDepth {}
-}
-
-/// Stack entries of the evaluation stack. Its fields tend to be lazily
-/// when popping a child goal or completely immutable.
-#[derive_where(Debug; X: Cx)]
-struct StackEntry<X: Cx> {
-    input: X::Input,
-
-    /// Whether proving this goal is a coinductive step.
-    ///
-    /// This is used when encountering a trait solver cycle to
-    /// decide whether the initial provisional result of the cycle.
-    step_kind_from_parent: PathKind,
-
-    /// The available depth of a given goal, immutable.
-    available_depth: AvailableDepth,
-
-    /// The maximum depth reached by this stack entry, only up-to date
-    /// for the top of the stack and lazily updated for the rest.
-    reached_depth: StackDepth,
-
-    /// All cycle heads this goal depends on. Lazily updated and only
-    /// up-to date for the top of the stack.
-    heads: CycleHeads,
-
-    /// Whether evaluating this goal encountered overflow. Lazily updated.
-    encountered_overflow: bool,
-
-    /// Whether this goal has been used as the root of a cycle. This gets
-    /// eagerly updated when encountering a cycle.
-    has_been_used: Option<UsageKind>,
-
-    /// The nested goals of this goal, see the doc comment of the type.
-    nested_goals: NestedGoals<X>,
-
-    /// Starts out as `None` and gets set when rerunning this
-    /// goal in case we encounter a cycle.
-    provisional_result: Option<X::Result>,
-}
-
 /// A provisional result of an already computed goals which depends on other
 /// goals still on the stack.
 #[derive_where(Debug; X: Cx)]
@@ -498,7 +456,7 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
     /// The stack of goals currently being computed.
     ///
     /// An element is *deeper* in the stack if its index is *lower*.
-    stack: IndexVec<StackDepth, StackEntry<X>>,
+    stack: Stack<X>,
     /// The provisional cache contains entries for already computed goals which
     /// still depend on goals higher-up in the stack. We don't move them to the
     /// global cache and track them locally instead. A provisional cache entry
@@ -537,7 +495,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// and using existing global cache entries to make sure they
     /// have the same impact on the remaining evaluation.
     fn update_parent_goal(
-        stack: &mut IndexVec<StackDepth, StackEntry<X>>,
+        stack: &mut Stack<X>,
         step_kind_from_parent: PathKind,
         reached_depth: StackDepth,
         heads: &CycleHeads,
@@ -588,13 +546,11 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// the stack which completes the cycle. This given an inductive step AB which then cycles
     /// coinductively with A, we need to treat this cycle as coinductive.
     fn cycle_path_kind(
-        stack: &IndexVec<StackDepth, StackEntry<X>>,
+        stack: &Stack<X>,
         step_kind_to_head: PathKind,
         head: StackDepth,
     ) -> PathKind {
-        stack.raw[head.index() + 1..]
-            .iter()
-            .fold(step_kind_to_head, |curr, entry| curr.extend(entry.step_kind_from_parent))
+        stack.cycle_step_kinds(head).fold(step_kind_to_head, |curr, step| curr.extend(step))
     }
 
     /// Probably the most involved method of the whole solver.
@@ -728,7 +684,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         input: X::Input,
         inspect: &mut D::ProofTreeBuilder,
     ) -> X::Result {
-        if let Some(last) = self.stack.raw.last_mut() {
+        if let Some(last) = self.stack.last_mut() {
             last.encountered_overflow = true;
             // If computing a goal `B` depends on another goal `A` and
             // `A` has a nested goal which overflows, then computing `B`
@@ -859,7 +815,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 // apply provisional cache entries which encountered overflow once the
                 // current goal is already part of the same cycle. This check could be
                 // improved but seems to be good enough for now.
-                let last = self.stack.raw.last().unwrap();
+                let last = self.stack.last().unwrap();
                 if last.heads.opt_lowest_cycle_head().is_none_or(|lowest| lowest > head) {
                     continue;
                 }
@@ -893,7 +849,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// evaluating this entry would not have ended up depending on either a goal
     /// already on the stack or a provisional cache entry.
     fn candidate_is_applicable(
-        stack: &IndexVec<StackDepth, StackEntry<X>>,
+        stack: &Stack<X>,
         step_kind_from_parent: PathKind,
         provisional_cache: &HashMap<X::Input, Vec<ProvisionalCacheEntry<X>>>,
         nested_goals: &NestedGoals<X>,
@@ -1028,7 +984,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         input: X::Input,
         step_kind_from_parent: PathKind,
     ) -> Option<X::Result> {
-        let (head, _stack_entry) = self.stack.iter_enumerated().find(|(_, e)| e.input == input)?;
+        let head = self.stack.find(input)?;
         // We have a nested goal which directly relies on a goal deeper in the stack.
         //
         // We start by tagging all cycle participants, as that's necessary for caching.
@@ -1095,7 +1051,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         let mut i = 0;
         loop {
             let result = evaluate_goal(self, inspect);
-            let stack_entry = self.stack.pop().unwrap();
+            let stack_entry = self.stack.pop();
             debug_assert_eq!(stack_entry.input, input);
 
             // If the current goal is not the root of a cycle, we are done.
