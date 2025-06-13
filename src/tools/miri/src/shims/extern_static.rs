@@ -66,7 +66,7 @@ impl<'tcx> MiriMachine<'tcx> {
                     ecx,
                     &["__cxa_thread_atexit_impl", "__clock_gettime64"],
                 )?;
-                Self::weak_symbol_extern_statics(ecx, &["getrandom", "statx"])?;
+                Self::weak_symbol_extern_statics(ecx, &["getrandom", "gettid", "statx"])?;
             }
             "freebsd" => {
                 Self::null_ptr_extern_statics(ecx, &["__cxa_thread_atexit_impl"])?;

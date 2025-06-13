@@ -274,15 +274,52 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_u32(this.get_pid()))
     }
 
-    fn linux_gettid(&mut self) -> InterpResult<'tcx, Scalar> {
+    /// The `gettid`-like function for Unix platforms that take no parameters and return a 32-bit
+    /// integer. It is not always named "gettid".
+    fn unix_gettid(&mut self, link_name: &str) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_ref();
-        this.assert_target_os("linux", "gettid");
+        this.assert_target_os_is_unix(link_name);
 
-        let index = this.machine.threads.active_thread().to_u32();
+        // For most platforms the return type is an `i32`, but some are unsigned. The TID
+        // will always be positive so we don't need to differentiate.
+        interp_ok(Scalar::from_u32(this.get_current_tid()))
+    }
 
-        // Compute a TID for this thread, ensuring that the main thread has PID == TID.
-        let tid = this.get_pid().strict_add(index);
+    /// The Apple-specific `int pthread_threadid_np(pthread_t thread, uint64_t *thread_id)`, which
+    /// allows querying the ID for arbitrary threads, identified by their pthread_t.
+    ///
+    /// API documentation: <https://www.manpagez.com/man/3/pthread_threadid_np/>.
+    fn apple_pthread_threadip_np(
+        &mut self,
+        thread_op: &OpTy<'tcx>,
+        tid_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+        this.assert_target_os("macos", "pthread_threadip_np");
 
-        interp_ok(Scalar::from_u32(tid))
+        let tid_dest = this.read_pointer(tid_op)?;
+        if this.ptr_is_null(tid_dest)? {
+            // If NULL is passed, an error is immediately returned
+            return interp_ok(this.eval_libc("EINVAL"));
+        }
+
+        let thread = this.read_scalar(thread_op)?.to_int(this.libc_ty_layout("pthread_t").size)?;
+        let thread = if thread == 0 {
+            // Null thread ID indicates that we are querying the active thread.
+            this.machine.threads.active_thread()
+        } else {
+            // Our pthread_t is just the raw ThreadId.
+            let Ok(thread) = this.thread_id_try_from(thread) else {
+                return interp_ok(this.eval_libc("ESRCH"));
+            };
+            thread
+        };
+
+        let tid = this.get_tid(thread);
+        let tid_dest = this.deref_pointer_as(tid_op, this.machine.layouts.u64)?;
+        this.write_int(tid, &tid_dest)?;
+
+        // Possible errors have been handled, return success.
+        interp_ok(Scalar::from_u32(0))
     }
 }

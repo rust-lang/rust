@@ -1337,7 +1337,6 @@ where
 
 /// Check that the number of varargs is at least the minimum what we expect.
 /// Fixed args should not be included.
-/// Use `check_vararg_fixed_arg_count` to extract the varargs slice from full function arguments.
 pub fn check_min_vararg_count<'a, 'tcx, const N: usize>(
     name: &'a str,
     args: &'a [OpTy<'tcx>],
