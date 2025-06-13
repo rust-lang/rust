@@ -24,9 +24,11 @@ const fn lim_for_ty<T: Approx + Copy>(_x: T) -> T {
     T::LIM
 }
 
+// We have runtime ("rt") and const versions of these macros.
+
 /// Verify that floats are within a tolerance of each other.
-macro_rules! assert_approx_eq_ {
-    ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, $crate::floats::lim_for_ty($a)) }};
+macro_rules! assert_approx_eq_rt {
+    ($a:expr, $b:expr) => {{ assert_approx_eq_rt!($a, $b, $crate::floats::lim_for_ty($a)) }};
     ($a:expr, $b:expr, $lim:expr) => {{
         let (a, b) = (&$a, &$b);
         let diff = (*a - *b).abs();
@@ -37,11 +39,18 @@ macro_rules! assert_approx_eq_ {
         );
     }};
 }
-pub(crate) use assert_approx_eq_ as assert_approx_eq;
+macro_rules! assert_approx_eq_const {
+    ($a:expr, $b:expr) => {{ assert_approx_eq_const!($a, $b, $crate::floats::lim_for_ty($a)) }};
+    ($a:expr, $b:expr, $lim:expr) => {{
+        let (a, b) = (&$a, &$b);
+        let diff = (*a - *b).abs();
+        assert!(diff <= $lim);
+    }};
+}
 
 /// Verify that floats have the same bitwise representation. Used to avoid the default `0.0 == -0.0`
 /// behavior, as well as to ensure exact NaN bitpatterns.
-macro_rules! assert_biteq_ {
+macro_rules! assert_biteq_rt {
     (@inner $left:expr, $right:expr, $msg_sep:literal, $($tt:tt)*) => {{
         let l = $left;
         let r = $right;
@@ -69,54 +78,45 @@ macro_rules! assert_biteq_ {
         }
     }};
     ($left:expr, $right:expr , $($tt:tt)*) => {
-        assert_biteq_!(@inner $left, $right, "\n", $($tt)*)
+        assert_biteq_rt!(@inner $left, $right, "\n", $($tt)*)
     };
     ($left:expr, $right:expr $(,)?) => {
-        assert_biteq_!(@inner $left, $right, "", "")
+        assert_biteq_rt!(@inner $left, $right, "", "")
     };
 }
-pub(crate) use assert_biteq_ as assert_biteq;
+macro_rules! assert_biteq_const {
+    (@inner $left:expr, $right:expr, $msg_sep:literal, $($tt:tt)*) => {{
+        let l = $left;
+        let r = $right;
 
-mod const_asserts {
-    // Shadow some assert implementations that would otherwise not compile in a const-context.
-    // Every macro added here also needs to be added in the `float_test!` macro below.
+        // Hack to coerce left and right to the same type
+        let mut _eq_ty = l;
+        _eq_ty = r;
 
-    macro_rules! assert_biteq {
-        (@inner $left:expr, $right:expr, $msg_sep:literal, $($tt:tt)*) => {{
-            let l = $left;
-            let r = $right;
+        assert!(l.to_bits() == r.to_bits());
 
-            // Hack to coerce left and right to the same type
-            let mut _eq_ty = l;
-            _eq_ty = r;
-
-            assert!(l.to_bits() == r.to_bits());
-
-            if !l.is_nan() && !r.is_nan() {
-                // Also check that standard equality holds, since most tests use `assert_biteq` rather
-                // than `assert_eq`.
-                assert!(l == r);
-            }
-        }};
-        ($left:expr, $right:expr , $($tt:tt)*) => {
-            assert_biteq!(@inner $left, $right, "\n", $($tt)*)
-        };
-        ($left:expr, $right:expr $(,)?) => {
-            assert_biteq!(@inner $left, $right, "", "")
-        };
-    }
-    pub(crate) use assert_biteq;
-
-    macro_rules! assert_approx_eq {
-        ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, $crate::floats::lim_for_ty($a)) }};
-        ($a:expr, $b:expr, $lim:expr) => {{
-            let (a, b) = (&$a, &$b);
-            let diff = (*a - *b).abs();
-            assert!(diff <= $lim);
-        }};
-    }
-    pub(crate) use assert_approx_eq;
+        if !l.is_nan() && !r.is_nan() {
+            // Also check that standard equality holds, since most tests use `assert_biteq` rather
+            // than `assert_eq`.
+            assert!(l == r);
+        }
+    }};
+    ($left:expr, $right:expr , $($tt:tt)*) => {
+        assert_biteq_const!(@inner $left, $right, "\n", $($tt)*)
+    };
+    ($left:expr, $right:expr $(,)?) => {
+        assert_biteq_const!(@inner $left, $right, "", "")
+    };
 }
+
+// Use the runtime version by default.
+// This way, they can be shadowed by the const versions.
+pub(crate) use {assert_approx_eq_rt as assert_approx_eq, assert_biteq_rt as assert_biteq};
+
+// Also make the const version available for re-exports.
+#[rustfmt::skip]
+pub(crate) use assert_biteq_const;
+pub(crate) use assert_approx_eq_const;
 
 /// Generate float tests for all our float types, for compile-time and run-time behavior.
 ///
@@ -135,6 +135,7 @@ mod const_asserts {
 ///         /* write tests here, using `Float` as the type */
 ///     }
 /// }
+/// ```
 macro_rules! float_test {
     (
         name: $name:ident,
@@ -186,8 +187,12 @@ macro_rules! float_test {
             mod const_ {
                 #[allow(unused)]
                 use super::Approx;
+                // Shadow the runtime versions of the macro with const-compatible versions.
                 #[allow(unused)]
-                use $crate::floats::const_asserts::{assert_biteq, assert_approx_eq};
+                use $crate::floats::{
+                    assert_approx_eq_const as assert_approx_eq,
+                    assert_biteq_const as assert_biteq,
+                };
 
                 #[test]
                 $( $( #[$f16_const_meta] )+ )?
