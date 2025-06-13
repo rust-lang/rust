@@ -633,21 +633,31 @@ fn characteristic_def_id_of_mono_item<'tcx>(
     match mono_item {
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
-                ty::InstanceKind::Item(def) => def,
+                ty::InstanceKind::Item(..) => instance.def_id(),
                 ty::InstanceKind::VTableShim(..)
                 | ty::InstanceKind::ReifyShim(..)
-                | ty::InstanceKind::FnPtrShim(..)
+                | ty::InstanceKind::Virtual(..)
                 | ty::InstanceKind::ClosureOnceShim { .. }
                 | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-                | ty::InstanceKind::Intrinsic(..)
-                | ty::InstanceKind::DropGlue(..)
-                | ty::InstanceKind::Virtual(..)
-                | ty::InstanceKind::CloneShim(..)
-                | ty::InstanceKind::ThreadLocalShim(..)
+                | ty::InstanceKind::CloneShim(..) => {
+                    let def_id = instance.def_id();
+                    if def_id.is_local() {
+                        def_id
+                    } else {
+                        return None;
+                    }
+                }
+                ty::InstanceKind::ThreadLocalShim(def_id) => def_id,
+                ty::InstanceKind::Intrinsic(..)
+                | ty::InstanceKind::FnPtrShim(..)
                 | ty::InstanceKind::FnPtrAddrShim(..)
                 | ty::InstanceKind::FutureDropPollShim(..)
                 | ty::InstanceKind::AsyncDropGlue(..)
-                | ty::InstanceKind::AsyncDropGlueCtorShim(..) => return None,
+                | ty::InstanceKind::AsyncDropGlueCtorShim(..)
+                | ty::InstanceKind::DropGlue(_, None) => return None,
+                ty::InstanceKind::DropGlue(_, Some(ty)) => {
+                    return characteristic_def_id_of_type(ty);
+                }
             };
 
             // If this is a method, we want to put it into the same module as
@@ -661,17 +671,6 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             }
 
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
-                if tcx.sess.opts.incremental.is_some()
-                    && tcx
-                        .trait_id_of_impl(impl_def_id)
-                        .is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Drop))
-                {
-                    // Put `Drop::drop` into the same cgu as `drop_in_place`
-                    // since `drop_in_place` is the only thing that can
-                    // call it.
-                    return None;
-                }
-
                 // This is a method within an impl, find out what the self-type is:
                 let impl_self_ty = tcx.instantiate_and_normalize_erasing_regions(
                     instance.args,
