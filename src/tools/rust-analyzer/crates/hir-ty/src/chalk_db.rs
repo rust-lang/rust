@@ -261,9 +261,19 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         &self,
         well_known_trait: WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<Interner>> {
-        let lang_attr = lang_item_from_well_known_trait(well_known_trait);
-        let trait_ = lang_attr.resolve_trait(self.db, self.krate)?;
+        let lang_item = lang_item_from_well_known_trait(well_known_trait);
+        let trait_ = lang_item.resolve_trait(self.db, self.krate)?;
         Some(to_chalk_trait_id(trait_))
+    }
+    fn well_known_assoc_type_id(
+        &self,
+        assoc_type: rust_ir::WellKnownAssocType,
+    ) -> Option<chalk_ir::AssocTypeId<Interner>> {
+        let lang_item = match assoc_type {
+            rust_ir::WellKnownAssocType::AsyncFnOnceOutput => LangItem::AsyncFnOnceOutput,
+        };
+        let alias = lang_item.resolve_type_alias(self.db, self.krate)?;
+        Some(to_assoc_type_id(alias))
     }
 
     fn program_clauses_for_env(
