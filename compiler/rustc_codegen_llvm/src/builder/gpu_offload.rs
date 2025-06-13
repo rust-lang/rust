@@ -65,6 +65,15 @@ pub(crate) fn gen_image_wrapper_module<'ll>(
         llvm::set_linkage(llglobal, ExternalLinkage);
         llvm::set_visibility(llglobal, Visibility::Hidden);
 
+        let c_name = CString::new("__dummy.omp_offloading_entries").unwrap();
+        let llglobal = llvm::add_global(cx.llmod, offload_entry_arr, &c_name);
+        llvm::set_global_constant(llglobal, true);
+        llvm::set_linkage(llglobal, InternalLinkage);
+        let c_section_name = CString::new("omp_offloading_entries").unwrap();
+        llvm::set_section(llglobal, &c_section_name);
+        let zeroinit = cx.const_null(offload_entry_arr);
+        llvm::set_initializer(llglobal, zeroinit);
+
         // @__start_omp_offloading_entries = external hidden constant [0 x %struct.__tgt_offload_entry]
         // @__stop_omp_offloading_entries = external hidden constant [0 x %struct.__tgt_offload_entry]
         // @__dummy.omp_offloading_entries = internal constant [0 x %struct.__tgt_offload_entry] zeroinitializer, section "omp_offloading_entries"
