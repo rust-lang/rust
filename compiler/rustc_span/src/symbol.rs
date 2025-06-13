@@ -1512,6 +1512,7 @@ symbols! {
         offset_of_nested,
         offset_of_slice,
         ok_or_else,
+        old_name,
         omit_gdb_pretty_printer_section,
         on,
         on_unimplemented,
