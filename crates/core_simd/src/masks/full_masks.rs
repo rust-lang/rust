@@ -102,7 +102,8 @@ where
 {
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub(crate) fn splat(value: bool) -> Self {
+    #[rustc_const_unstable(feature = "portable_simd", issue = "86656")]
+    pub(crate) const fn splat(value: bool) -> Self {
         Self(Simd::splat(if value { T::TRUE } else { T::FALSE }))
     }
 

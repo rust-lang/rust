@@ -139,7 +139,8 @@ where
 {
     /// Constructs a mask by setting all elements to the given value.
     #[inline]
-    pub fn splat(value: bool) -> Self {
+    #[rustc_const_unstable(feature = "portable_simd", issue = "86656")]
+    pub const fn splat(value: bool) -> Self {
         Self(mask_impl::Mask::splat(value))
     }
 

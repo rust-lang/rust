@@ -18,7 +18,11 @@ impl<const N: usize> LaneCount<N> {
 /// Only SIMD vectors with supported lane counts are constructable.
 pub trait SupportedLaneCount: Sealed {
     #[doc(hidden)]
-    type BitMask: Copy + Default + AsRef<[u8]> + AsMut<[u8]>;
+    type BitMask: Copy + AsRef<[u8]> + AsMut<[u8]>;
+    #[doc(hidden)]
+    const EMPTY_BIT_MASK: Self::BitMask;
+    #[doc(hidden)]
+    const FULL_BIT_MASK: Self::BitMask;
 }
 
 impl<const N: usize> Sealed for LaneCount<N> {}
@@ -28,6 +32,15 @@ macro_rules! supported_lane_count {
         $(
             impl SupportedLaneCount for LaneCount<$lanes> {
                 type BitMask = [u8; ($lanes + 7) / 8];
+                const EMPTY_BIT_MASK: Self::BitMask = [0; ($lanes + 7) / 8];
+                const FULL_BIT_MASK: Self::BitMask = {
+                    const LEN: usize = ($lanes + 7) / 8;
+                    let mut array = [!0u8; LEN];
+                    if $lanes % 8 > 0 {
+                        array[LEN - 1] = (!0) >> (8 - $lanes % 8);
+                    }
+                    array
+                };
             }
         )+
     };
