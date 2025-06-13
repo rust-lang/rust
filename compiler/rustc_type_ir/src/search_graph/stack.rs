@@ -3,7 +3,7 @@ use std::ops::{Index, IndexMut};
 use derive_where::derive_where;
 use rustc_index::IndexVec;
 
-use super::{AvailableDepth, Cx, CycleHeads, NestedGoals, PathKind, UsageKind};
+use crate::search_graph::{AvailableDepth, Cx, CycleHeads, NestedGoals, PathKind, UsageKind, tree};
 
 rustc_index::newtype_index! {
     #[orderable]
@@ -15,6 +15,8 @@ rustc_index::newtype_index! {
 /// when popping a child goal or completely immutable.
 #[derive_where(Debug; X: Cx)]
 pub(super) struct StackEntry<X: Cx> {
+    pub node_id: tree::NodeId,
+
     pub input: X::Input,
 
     /// Whether proving this goal is a coinductive step.

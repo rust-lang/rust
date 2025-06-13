@@ -28,8 +28,10 @@ use crate::data_structures::HashMap;
 mod stack;
 use stack::{Stack, StackDepth, StackEntry};
 mod global_cache;
+mod tree;
 use global_cache::CacheData;
 pub use global_cache::GlobalCache;
+use tree::SearchTree;
 
 /// The search graph does not simply use `Interner` directly
 /// to enable its fuzzing without having to stub the rest of
@@ -443,6 +445,7 @@ impl<X: Cx> NestedGoals<X> {
 /// goals still on the stack.
 #[derive_where(Debug; X: Cx)]
 struct ProvisionalCacheEntry<X: Cx> {
+    entry_node_id: tree::NodeId,
     /// Whether evaluating the goal encountered overflow. This is used to
     /// disable the cache entry except if the last goal on the stack is
     /// already involved in this cycle.
@@ -466,6 +469,7 @@ struct ProvisionalCacheEntry<X: Cx> {
 /// evaluation.
 #[derive_where(Debug; X: Cx)]
 struct EvaluationResult<X: Cx> {
+    node_id: tree::NodeId,
     encountered_overflow: bool,
     required_depth: usize,
     heads: CycleHeads,
@@ -486,7 +490,8 @@ impl<X: Cx> EvaluationResult<X> {
             required_depth: final_entry.required_depth,
             heads: final_entry.heads,
             nested_goals: final_entry.nested_goals,
-            // We only care about the final result.
+            // We only care about the result and the `node_id` of the final iteration.
+            node_id: final_entry.node_id,
             result,
         }
     }
@@ -503,6 +508,8 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
     /// global cache and track them locally instead. A provisional cache entry
     /// is only valid until the result of one of its cycle heads changes.
     provisional_cache: HashMap<X::Input, Vec<ProvisionalCacheEntry<X>>>,
+
+    tree: SearchTree<X>,
 
     _marker: PhantomData<D>,
 }
@@ -527,6 +534,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             root_depth: AvailableDepth(root_depth),
             stack: Default::default(),
             provisional_cache: Default::default(),
+            tree: Default::default(),
             _marker: PhantomData,
         }
     }
@@ -612,6 +620,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             return self.handle_overflow(cx, input, inspect);
         };
 
+        let node_id =
+            self.tree.create_node(&self.stack, input, step_kind_from_parent, available_depth);
+
         // We check the provisional cache before checking the global cache. This simplifies
         // the implementation as we can avoid worrying about cases where both the global and
         // provisional cache may apply, e.g. consider the following example
@@ -620,7 +631,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         // - A
         //     - BA cycle
         //     - CB :x:
-        if let Some(result) = self.lookup_provisional_cache(input, step_kind_from_parent) {
+        if let Some(result) = self.lookup_provisional_cache(node_id, input, step_kind_from_parent) {
             return result;
         }
 
@@ -637,7 +648,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 .inspect(|expected| debug!(?expected, "validate cache entry"))
                 .map(|r| (scope, r))
         } else if let Some(result) =
-            self.lookup_global_cache(cx, input, step_kind_from_parent, available_depth)
+            self.lookup_global_cache(cx, node_id, input, step_kind_from_parent, available_depth)
         {
             return result;
         } else {
@@ -648,13 +659,14 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         // avoid iterating over the stack in case a goal has already been computed.
         // This may not have an actual performance impact and we could reorder them
         // as it may reduce the number of `nested_goals` we need to track.
-        if let Some(result) = self.check_cycle_on_stack(cx, input, step_kind_from_parent) {
+        if let Some(result) = self.check_cycle_on_stack(cx, node_id, input, step_kind_from_parent) {
             debug_assert!(validate_cache.is_none(), "global cache and cycle on stack: {input:?}");
             return result;
         }
 
         // Unfortunate, it looks like we actually have to compute this goal.
         self.stack.push(StackEntry {
+            node_id,
             input,
             step_kind_from_parent,
             available_depth,
@@ -701,6 +713,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             debug_assert!(validate_cache.is_none(), "unexpected non-root: {input:?}");
             let entry = self.provisional_cache.entry(input).or_default();
             let EvaluationResult {
+                node_id,
                 encountered_overflow,
                 required_depth: _,
                 heads,
@@ -712,8 +725,13 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 step_kind_from_parent,
                 heads.highest_cycle_head(),
             );
-            let provisional_cache_entry =
-                ProvisionalCacheEntry { encountered_overflow, heads, path_from_head, result };
+            let provisional_cache_entry = ProvisionalCacheEntry {
+                entry_node_id: node_id,
+                encountered_overflow,
+                heads,
+                path_from_head,
+                result,
+            };
             debug!(?provisional_cache_entry);
             entry.push(provisional_cache_entry);
         } else {
@@ -787,6 +805,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         self.provisional_cache.retain(|&input, entries| {
             entries.retain_mut(|entry| {
                 let ProvisionalCacheEntry {
+                    entry_node_id: _,
                     encountered_overflow: _,
                     heads,
                     path_from_head,
@@ -838,6 +857,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
     fn lookup_provisional_cache(
         &mut self,
+        node_id: tree::NodeId,
         input: X::Input,
         step_kind_from_parent: PathKind,
     ) -> Option<X::Result> {
@@ -846,8 +866,13 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         }
 
         let entries = self.provisional_cache.get(&input)?;
-        for &ProvisionalCacheEntry { encountered_overflow, ref heads, path_from_head, result } in
-            entries
+        for &ProvisionalCacheEntry {
+            entry_node_id,
+            encountered_overflow,
+            ref heads,
+            path_from_head,
+            result,
+        } in entries
         {
             let head = heads.highest_cycle_head();
             if encountered_overflow {
@@ -879,6 +904,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 );
                 debug_assert!(self.stack[head].has_been_used.is_some());
                 debug!(?head, ?path_from_head, "provisional cache hit");
+                self.tree.provisional_cache_hit(node_id, entry_node_id);
                 return Some(result);
             }
         }
@@ -919,6 +945,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             // A provisional cache entry is applicable if the path to
             // its highest cycle head is equal to the expected path.
             for &ProvisionalCacheEntry {
+                entry_node_id: _,
                 encountered_overflow,
                 ref heads,
                 path_from_head: head_to_provisional,
@@ -977,6 +1004,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     fn lookup_global_cache(
         &mut self,
         cx: X,
+        node_id: tree::NodeId,
         input: X::Input,
         step_kind_from_parent: PathKind,
         available_depth: AvailableDepth,
@@ -1000,6 +1028,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             );
 
             debug!(?required_depth, "global cache hit");
+            self.tree.global_cache_hit(node_id);
             Some(result)
         })
     }
@@ -1007,6 +1036,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     fn check_cycle_on_stack(
         &mut self,
         cx: X,
+        node_id: tree::NodeId,
         input: X::Input,
         step_kind_from_parent: PathKind,
     ) -> Option<X::Result> {
@@ -1037,11 +1067,11 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
         // Return the provisional result or, if we're in the first iteration,
         // start with no constraints.
-        if let Some(result) = self.stack[head].provisional_result {
-            Some(result)
-        } else {
-            Some(D::initial_provisional_result(cx, path_kind, input))
-        }
+        let result = self.stack[head]
+            .provisional_result
+            .unwrap_or_else(|| D::initial_provisional_result(cx, path_kind, input));
+        self.tree.cycle_on_stack(node_id, self.stack[head].node_id, result);
+        Some(result)
     }
 
     /// Whether we've reached a fixpoint when evaluating a cycle head.
@@ -1083,6 +1113,15 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             let stack_entry = self.stack.pop();
             encountered_overflow |= stack_entry.encountered_overflow;
             debug_assert_eq!(stack_entry.input, input);
+            // FIXME: Cloning the cycle heads here is quite ass. We should make cycle heads
+            // CoW and use reference counting.
+            self.tree.finish_evaluate(
+                stack_entry.node_id,
+                stack_entry.provisional_result,
+                stack_entry.encountered_overflow,
+                stack_entry.heads.clone(),
+                result,
+            );
 
             // If the current goal is not the root of a cycle, we are done.
             //
@@ -1143,7 +1182,14 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             self.clear_dependent_provisional_results();
 
             debug!(?result, "fixpoint changed provisional results");
+            let node_id = self.tree.create_node(
+                &self.stack,
+                stack_entry.input,
+                stack_entry.step_kind_from_parent,
+                stack_entry.available_depth,
+            );
             self.stack.push(StackEntry {
+                node_id,
                 input,
                 step_kind_from_parent: stack_entry.step_kind_from_parent,
                 available_depth: stack_entry.available_depth,

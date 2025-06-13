@@ -47,8 +47,14 @@ impl<X: Cx> GlobalCache<X> {
         evaluation_result: EvaluationResult<X>,
         dep_node: X::DepNodeIndex,
     ) {
-        let EvaluationResult { encountered_overflow, required_depth, heads, nested_goals, result } =
-            evaluation_result;
+        let EvaluationResult {
+            node_id: _,
+            encountered_overflow,
+            required_depth,
+            heads,
+            nested_goals,
+            result,
+        } = evaluation_result;
         debug_assert!(heads.is_empty());
         let result = cx.mk_tracked(result, dep_node);
         let entry = self.map.entry(input).or_default();
