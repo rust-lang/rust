@@ -54,9 +54,9 @@ use crate::time::Duration;
 /// } // the stream is closed here
 /// ```
 ///
-/// # SIGPIPE
+/// # Platform-specific Behavior
 ///
-/// Writes to the underlying socket in `SOCK_STREAM` mode are made with `MSG_NOSIGNAL` flag.
+/// On Unix writes to the underlying socket in `SOCK_STREAM` mode are made with `MSG_NOSIGNAL` flag.
 /// This suppresses the emission of the  `SIGPIPE` signal when writing to disconnected socket.
 /// In some cases getting a `SIGPIPE` would trigger process termination.
 #[stable(feature = "rust1", since = "1.0.0")]
