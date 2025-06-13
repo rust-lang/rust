@@ -3223,36 +3223,24 @@ macro_rules! atomic_int {
                 unsafe { atomic_xor(self.v.get(), val, order) }
             }
 
-            /// Fetches the value, and applies a function to it that returns an optional
-            /// new value. Returns a `Result` of `Ok(previous_value)` if the function returned `Some(_)`, else
-            /// `Err(previous_value)`.
+            /// Loads the current value, applies a closure to it, and optionally tries to store a new value.
+            /// If the closure ever returns None, this method will immediately return `Err(current value)`.
+            /// If the closure returns Some(new value), then this method calls
+            #[doc = concat!("[`", stringify!($atomic_type), "::compare_exchange_weak`]")]
+            /// to try to store the new value.
+            /// If storing a new value fails, because another thread changed the current value,
+            /// then the given closure will be called again on the new current value
+            /// (that was just returned by compare_exchange_weak),
+            /// until either the closure returns None,
+            /// or compare_exchange_weak succeeds in storing a new value.
+            /// Returns `Ok(previous value)` if it ever succeeds in storing a new value.
+            /// Takes a success and a failure [`Ordering`] to pass on to compare_exchange_weak,
+            /// and also uses the failure ordering for the initial load.
             ///
-            /// Note: This may call the function multiple times if the value has been changed from other threads in
-            /// the meantime, as long as the function returns `Some(_)`, but the function will have been applied
-            /// only once to the stored value.
-            ///
-            /// `fetch_update` takes two [`Ordering`] arguments to describe the memory ordering of this operation.
-            /// The first describes the required ordering for when the operation finally succeeds while the second
-            /// describes the required ordering for loads. These correspond to the success and failure orderings of
-            #[doc = concat!("[`", stringify!($atomic_type), "::compare_exchange`]")]
-            /// respectively.
-            ///
-            /// Using [`Acquire`] as success ordering makes the store part
-            /// of this operation [`Relaxed`], and using [`Release`] makes the final successful load
-            /// [`Relaxed`]. The (failed) load ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`].
+            /// Note: susceptible to the [ABA Problem](https://en.wikipedia.org/wiki/ABA_problem).
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
             #[doc = concat!("[`", $s_int_type, "`].")]
-            ///
-            /// # Considerations
-            ///
-            /// This method is not magic; it is not provided by the hardware.
-            /// It is implemented in terms of
-            #[doc = concat!("[`", stringify!($atomic_type), "::compare_exchange_weak`],")]
-            /// and suffers from the same drawbacks.
-            /// In particular, this method will not circumvent the [ABA Problem].
-            ///
-            /// [ABA Problem]: https://en.wikipedia.org/wiki/ABA_problem
             ///
             /// # Examples
             ///
@@ -3270,13 +3258,13 @@ macro_rules! atomic_int {
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_update<F>(&self,
-                                   set_order: Ordering,
-                                   fetch_order: Ordering,
+                                   success: Ordering,
+                                   failure: Ordering,
                                    mut f: F) -> Result<$int_type, $int_type>
             where F: FnMut($int_type) -> Option<$int_type> {
-                let mut prev = self.load(fetch_order);
+                let mut prev = self.load(failure);
                 while let Some(next) = f(prev) {
-                    match self.compare_exchange_weak(prev, next, set_order, fetch_order) {
+                    match self.compare_exchange_weak(prev, next, success, failure) {
                         x @ Ok(_) => return x,
                         Err(next_prev) => prev = next_prev
                     }
