@@ -86,9 +86,10 @@ impl fmt::Debug for RawVisibilityId {
     }
 }
 
-#[salsa_macros::tracked(returns(ref))]
-pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> ItemTree {
+#[salsa_macros::tracked(returns(deref))]
+pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
     let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
+    static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
 
     let ctx = lower::Ctx::new(db, file_id);
     let syntax = db.parse_or_expand(file_id);
@@ -116,16 +117,35 @@ pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> 
             },
         }
     };
-
-    item_tree.shrink_to_fit();
-    item_tree
+    let ItemTree { top_level, top_attrs, attrs, vis, big_data, small_data } = &item_tree;
+    if small_data.is_empty()
+        && big_data.is_empty()
+        && top_level.is_empty()
+        && attrs.is_empty()
+        && top_attrs.is_empty()
+        && vis.arena.is_empty()
+    {
+        EMPTY
+            .get_or_init(|| {
+                Arc::new(ItemTree {
+                    top_level: Box::new([]),
+                    attrs: FxHashMap::default(),
+                    small_data: FxHashMap::default(),
+                    big_data: FxHashMap::default(),
+                    top_attrs: RawAttrs::EMPTY,
+                    vis: ItemVisibilities { arena: ThinVec::new() },
+                })
+            })
+            .clone()
+    } else {
+        item_tree.shrink_to_fit();
+        Arc::new(item_tree)
+    }
 }
 
-#[salsa_macros::tracked(returns(ref))]
+#[salsa_macros::tracked(returns(deref))]
 pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
     let _p = tracing::info_span!("block_item_tree_query", ?block).entered();
-    // Blocks have a tendency to be empty due to macro calls that do not expand to items,
-    // so deduplicate this case via `Arc` to reduce the size of the query storage here.
     static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
 
     let loc = block.lookup(db);
@@ -133,11 +153,13 @@ pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc
 
     let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
     let mut item_tree = ctx.lower_block(&block);
-    if item_tree.small_data.is_empty()
-        && item_tree.big_data.is_empty()
-        && item_tree.top_level.is_empty()
-        && item_tree.attrs.is_empty()
-        && item_tree.top_attrs.is_empty()
+    let ItemTree { top_level, top_attrs, attrs, vis, big_data, small_data } = &item_tree;
+    if small_data.is_empty()
+        && big_data.is_empty()
+        && top_level.is_empty()
+        && attrs.is_empty()
+        && top_attrs.is_empty()
+        && vis.arena.is_empty()
     {
         EMPTY
             .get_or_init(|| {
@@ -163,7 +185,6 @@ pub struct ItemTree {
     top_attrs: RawAttrs,
     attrs: FxHashMap<FileAstId<ast::Item>, RawAttrs>,
     vis: ItemVisibilities,
-    // FIXME: They values store the key, turn this into a FxHashSet<ModItem> instead?
     big_data: FxHashMap<FileAstId<ast::Item>, BigModItem>,
     small_data: FxHashMap<FileAstId<ast::Item>, SmallModItem>,
 }
