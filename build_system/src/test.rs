@@ -1089,19 +1089,18 @@ where
 }
 
 fn test_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    //test_rustc_inner(env, args, |_| Ok(false), false, "run-make")?;
+    test_rustc_inner(env, args, |_| Ok(false), false, "run-make")?;
     test_rustc_inner(env, args, |_| Ok(false), false, "ui")
 }
 
 fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    let result1 = Ok(());
-    /*test_rustc_inner(
+    let result1 = test_rustc_inner(
         env,
         args,
         retain_files_callback("tests/failing-run-make-tests.txt", "run-make"),
         false,
         "run-make",
-    )*/
+    );
 
     let result2 = test_rustc_inner(
         env,
@@ -1122,14 +1121,13 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         false,
         "ui",
     )?;
-    Ok(())
-    /*test_rustc_inner(
+    test_rustc_inner(
         env,
         args,
         remove_files_callback("tests/failing-run-make-tests.txt", "run-make"),
         false,
         "run-make",
-    )*/
+    )
 }
 
 fn test_failing_ui_pattern_tests(env: &Env, args: &TestArg) -> Result<(), String> {
