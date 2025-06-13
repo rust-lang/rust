@@ -249,3 +249,21 @@ fn issue14634() {
     };
     //~^^^ match_single_binding
 }
+
+mod issue14991 {
+    struct AnnoConstWOBlock {
+        inner: [(); match 1 {
+            //~^ match_single_binding
+            _n => 42,
+        }],
+    }
+
+    struct AnnoConstWBlock {
+        inner: [(); {
+            match 1 {
+                //~^ match_single_binding
+                _n => 42,
+            }
+        }],
+    }
+}

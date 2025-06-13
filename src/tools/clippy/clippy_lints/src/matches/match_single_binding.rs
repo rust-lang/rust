@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::HirNode;
 use clippy_utils::source::{indent_of, snippet, snippet_block_with_context, snippet_with_context};
-use clippy_utils::{get_parent_expr, is_refutable, peel_blocks};
+use clippy_utils::{is_refutable, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, Expr, ExprKind, Node, PatKind, StmtKind};
 use rustc_lint::LateContext;
@@ -9,6 +9,7 @@ use rustc_span::Span;
 
 use super::MATCH_SINGLE_BINDING;
 
+#[derive(Debug)]
 enum AssignmentExpr {
     Assign { span: Span, match_span: Span },
     Local { span: Span, pat_span: Span },
@@ -160,6 +161,17 @@ fn opt_parent_assign_span<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<Ass
     None
 }
 
+fn expr_parent_requires_curlies<'a>(cx: &LateContext<'a>, match_expr: &Expr<'a>) -> bool {
+    let parent = cx.tcx.parent_hir_node(match_expr.hir_id);
+    matches!(
+        parent,
+        Node::Expr(Expr {
+            kind: ExprKind::Closure { .. },
+            ..
+        }) | Node::AnonConst(..)
+    )
+}
+
 fn sugg_with_curlies<'a>(
     cx: &LateContext<'a>,
     (ex, match_expr): (&Expr<'a>, &Expr<'a>),
@@ -172,9 +184,7 @@ fn sugg_with_curlies<'a>(
     let mut indent = " ".repeat(indent_of(cx, ex.span).unwrap_or(0));
 
     let (mut cbrace_start, mut cbrace_end) = (String::new(), String::new());
-    if let Some(parent_expr) = get_parent_expr(cx, match_expr)
-        && let ExprKind::Closure { .. } = parent_expr.kind
-    {
+    if expr_parent_requires_curlies(cx, match_expr) {
         cbrace_end = format!("\n{indent}}}");
         // Fix body indent due to the closure
         indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));

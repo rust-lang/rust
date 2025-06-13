@@ -17,7 +17,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad
     ///
-    /// A reference does not need to be owned in order to used as a slice.
+    /// A reference does not need to be owned in order to be used as a slice.
     ///
     /// ### Known problems
     ///
