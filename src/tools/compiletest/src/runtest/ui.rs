@@ -148,9 +148,9 @@ impl TestCx<'_> {
                 self.fatal_proc_rec("test run succeeded!", &new_proc_res);
             }
 
-            (self.get_output(&new_proc_res), new_proc_res)
+            (self.get_output(&new_proc_res), new_proc_res.clone())
         } else {
-            (self.get_output(&proc_res), proc_res)
+            (self.get_output(&proc_res), proc_res.clone())
         };
 
         debug!(
