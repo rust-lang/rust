@@ -1185,6 +1185,12 @@ unsafe extern "C" {
     // Operations on global variables
     pub(crate) fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMAddGlobal<'a>(M: &'a Module, Ty: &'a Type, Name: *const c_char) -> &'a Value;
+    pub(crate) fn LLVMAddGlobalInAddressSpace<'a>(
+        M: &'a Module,
+        Ty: &'a Type,
+        Name: *const c_char,
+        addrspace: c_uint,
+    ) -> &'a Value;
     pub(crate) fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
     pub(crate) fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
