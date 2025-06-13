@@ -1832,7 +1832,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::TyVar(_)) => false,
 
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
+                bug!("`has_trivial_sizedness` applied to unexpected type: {:?}", self)
             }
         }
     }
@@ -1893,6 +1893,52 @@ impl<'tcx> Ty<'tcx> {
             ty::Param(..) | ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(..) => {
                 false
             }
+        }
+    }
+
+    pub fn is_trivially_wf(self, tcx: TyCtxt<'tcx>) -> bool {
+        match *self.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Never
+            | ty::Param(_)
+            | ty::Placeholder(_)
+            | ty::Bound(..) => true,
+
+            ty::Slice(ty) => {
+                ty.is_trivially_wf(tcx) && ty.has_trivial_sizedness(tcx, SizedTraitKind::Sized)
+            }
+            ty::RawPtr(ty, _) => ty.is_trivially_wf(tcx),
+
+            ty::FnPtr(sig_tys, _) => {
+                sig_tys.skip_binder().inputs_and_output.iter().all(|ty| ty.is_trivially_wf(tcx))
+            }
+            ty::Ref(_, ty, _) => ty.is_global() && ty.is_trivially_wf(tcx),
+
+            ty::Infer(infer) => match infer {
+                ty::TyVar(_) => false,
+                ty::IntVar(_) | ty::FloatVar(_) => true,
+                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => true,
+            },
+
+            ty::Adt(_, _)
+            | ty::Tuple(_)
+            | ty::Array(..)
+            | ty::Foreign(_)
+            | ty::Pat(_, _)
+            | ty::FnDef(..)
+            | ty::UnsafeBinder(..)
+            | ty::Dynamic(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Alias(..)
+            | ty::Error(_) => false,
         }
     }
 

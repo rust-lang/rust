@@ -1046,6 +1046,13 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    pub fn shallow_resolve_term(&self, term: ty::Term<'tcx>) -> ty::Term<'tcx> {
+        match term.kind() {
+            ty::TermKind::Ty(ty) => self.shallow_resolve(ty).into(),
+            ty::TermKind::Const(ct) => self.shallow_resolve_const(ct).into(),
+        }
+    }
+
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
         self.inner.borrow_mut().type_variables().root_var(var)
     }
