@@ -290,6 +290,43 @@ macro_rules! top_level_options {
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
             }
+
+            pub fn target_feature_flag_enabled(&self, flag: &str) -> bool {
+                match flag {
+                    "retpoline" => self.unstable_opts.retpoline,
+                    "retpoline-external-thunk" => self.unstable_opts.retpoline_external_thunk,
+                    _ => false,
+                }
+            }
+
+            pub fn fill_target_features_by_flags(
+                unstable_opts: &UnstableOptions, cg: &mut CodegenOptions
+            ) {
+                // -Zretpoline without -Zretpoline-external-thunk enables
+                // retpoline-indirect-branches and retpoline-indirect-calls target features
+                if unstable_opts.retpoline && !unstable_opts.retpoline_external_thunk {
+                    if !cg.target_feature.is_empty() {
+                        cg.target_feature.push(',');
+                    }
+                    cg.target_feature.push_str(
+                        "+retpoline-indirect-branches,\
+                        +retpoline-indirect-calls"
+                    );
+                }
+                // -Zretpoline-external-thunk (maybe, with -Zretpoline too) enables
+                // retpoline-external-thunk, retpoline-indirect-branches and
+                // retpoline-indirect-calls target features
+                if unstable_opts.retpoline_external_thunk {
+                    if !cg.target_feature.is_empty() {
+                        cg.target_feature.push(',');
+                    }
+                    cg.target_feature.push_str(
+                        "+retpoline-external-thunk,\
+                        +retpoline-indirect-branches,\
+                        +retpoline-indirect-calls"
+                    );
+                }
+            }
         }
     );
 }
@@ -2249,6 +2286,8 @@ options! {
         - hashes of green query instances
         - hash collisions of query keys
         - hash collisions when creating dep-nodes"),
+    indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+        "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2448,6 +2487,11 @@ options! {
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),
+    retpoline: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+        "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
+    retpoline_external_thunk: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+        "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
+        target features (default: no)"),
     sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
         "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],

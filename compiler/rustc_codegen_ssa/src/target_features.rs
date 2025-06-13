@@ -66,7 +66,9 @@ pub(crate) fn from_target_feature_attr(
 
             // Only allow target features whose feature gates have been enabled
             // and which are permitted to be toggled.
-            if let Err(reason) = stability.toggle_allowed() {
+            if let Err(reason) =
+                stability.toggle_allowed(|flag| tcx.sess.opts.target_feature_flag_enabled(flag))
+            {
                 tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
                     span: item.span(),
                     feature,
