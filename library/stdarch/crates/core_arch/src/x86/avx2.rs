@@ -18,8 +18,6 @@
 //! [wiki_avx]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
-
-
 use crate::core_arch::{simd::*, x86::*};
 use crate::intrinsics::simd::*;
 
@@ -170,8 +168,7 @@ pub fn _mm256_adds_epu16(a: __m256i, b: __m256i) -> __m256i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_alignr_epi8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
-    
-    
+
     // If palignr is shifting the pair of vectors more than the size of two
     // lanes, emit zero.
     if IMM8 >= 32 {
@@ -185,20 +182,20 @@ pub fn _mm256_alignr_epi8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
         (a, b)
     };
     unsafe {
-	if IMM8 == 16 {
-	    return transmute(a)
-	}
+        if IMM8 == 16 {
+            return transmute(a);
+        }
     }
     const fn mask(shift: u32, i: u32) -> u32 {
-	let shift = shift % 16;
-	let mod_i = i%16;
-	if mod_i < (16 - shift) {
-	    i + shift
-	} else {
-	    i + 16 + shift
-	} 
+        let shift = shift % 16;
+        let mod_i = i % 16;
+        if mod_i < (16 - shift) {
+            i + shift
+        } else {
+            i + 16 + shift
+        }
     }
-    
+
     unsafe {
         let r: i8x32 = simd_shuffle!(
             b.as_i8x32(),
@@ -220,7 +217,7 @@ pub fn _mm256_alignr_epi8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
                 mask(IMM8 as u32, 13),
                 mask(IMM8 as u32, 14),
                 mask(IMM8 as u32, 15),
-		mask(IMM8 as u32, 16),
+                mask(IMM8 as u32, 16),
                 mask(IMM8 as u32, 17),
                 mask(IMM8 as u32, 18),
                 mask(IMM8 as u32, 19),
