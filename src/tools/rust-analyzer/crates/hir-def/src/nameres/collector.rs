@@ -36,7 +36,7 @@ use crate::{
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
         self, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId, Macro2, MacroCall,
-        MacroRules, Mod, ModItemId, ModKind, TreeId, UseTreeKind,
+        MacroRules, Mod, ModItemId, ModKind, TreeId,
     },
     macro_call_as_call_id,
     nameres::{
@@ -140,8 +140,6 @@ struct ImportSource {
     id: UseId,
     is_prelude: bool,
     kind: ImportKind,
-    tree: TreeId,
-    item: FileAstId<ast::Use>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -155,7 +153,6 @@ struct Import {
 impl Import {
     fn from_use(
         tree: &ItemTree,
-        tree_id: TreeId,
         item: FileAstId<ast::Use>,
         id: UseId,
         is_prelude: bool,
@@ -168,7 +165,7 @@ impl Import {
                 path,
                 alias,
                 visibility: visibility.clone(),
-                source: ImportSource { use_tree: idx, id, is_prelude, kind, tree: tree_id, item },
+                source: ImportSource { use_tree: idx, id, is_prelude, kind },
             });
         });
     }
@@ -183,15 +180,15 @@ struct ImportDirective {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct MacroDirective {
+struct MacroDirective<'db> {
     module_id: LocalModuleId,
     depth: usize,
-    kind: MacroDirectiveKind,
+    kind: MacroDirectiveKind<'db>,
     container: ItemContainerId,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum MacroDirectiveKind {
+enum MacroDirectiveKind<'db> {
     FnLike {
         ast_id: AstIdWithPath<ast::MacroCall>,
         expand_to: ExpandTo,
@@ -210,28 +207,29 @@ enum MacroDirectiveKind {
         attr: Attr,
         mod_item: ModItemId,
         /* is this needed? */ tree: TreeId,
+        item_tree: &'db ItemTree,
     },
 }
 
 /// Walks the tree of module recursively
-struct DefCollector<'a> {
-    db: &'a dyn DefDatabase,
+struct DefCollector<'db> {
+    db: &'db dyn DefDatabase,
     def_map: DefMap,
     local_def_map: LocalDefMap,
     /// Set only in case of blocks.
-    crate_local_def_map: Option<&'a LocalDefMap>,
+    crate_local_def_map: Option<&'db LocalDefMap>,
     // The dependencies of the current crate, including optional deps like `test`.
     deps: FxHashMap<Name, BuiltDependency>,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility, GlobId)>>,
     unresolved_imports: Vec<ImportDirective>,
     indeterminate_imports: Vec<(ImportDirective, PerNs)>,
-    unresolved_macros: Vec<MacroDirective>,
+    unresolved_macros: Vec<MacroDirective<'db>>,
     // We'd like to avoid emitting a diagnostics avalanche when some `extern crate` doesn't
     // resolve. When we emit diagnostics for unresolved imports, we only do so if the import
     // doesn't start with an unresolved crate's name.
     unresolved_extern_crates: FxHashSet<Name>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
-    cfg_options: &'a CfgOptions,
+    cfg_options: &'db CfgOptions,
     /// List of procedural macros defined by this crate. This is read from the dynamic library
     /// built by the build system, and is the list of proc-macros we can actually expand. It is
     /// empty when proc-macro support is disabled (in which case we still do name resolution for
@@ -249,7 +247,7 @@ struct DefCollector<'a> {
     skip_attrs: FxHashMap<InFile<FileAstId<ast::Item>>, AttrId>,
 }
 
-impl DefCollector<'_> {
+impl<'db> DefCollector<'db> {
     fn seed_with_top_level(&mut self) {
         let _p = tracing::info_span!("seed_with_top_level").entered();
 
@@ -461,7 +459,7 @@ impl DefCollector<'_> {
             self.unresolved_macros.iter().enumerate().find_map(|(idx, directive)| match &directive
                 .kind
             {
-                MacroDirectiveKind::Attr { ast_id, mod_item, attr, tree } => {
+                MacroDirectiveKind::Attr { ast_id, mod_item, attr, tree, item_tree } => {
                     self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                         directive.module_id,
                         MacroCallKind::Attr {
@@ -474,14 +472,20 @@ impl DefCollector<'_> {
 
                     self.skip_attrs.insert(ast_id.ast_id.with_value(mod_item.ast_id()), attr.id);
 
-                    Some((idx, directive, *mod_item, *tree))
+                    Some((idx, directive, *mod_item, *tree, *item_tree))
                 }
                 _ => None,
             });
 
         match unresolved_attr {
-            Some((pos, &MacroDirective { module_id, depth, container, .. }, mod_item, tree_id)) => {
-                let item_tree = &tree_id.item_tree(self.db);
+            Some((
+                pos,
+                &MacroDirective { module_id, depth, container, .. },
+                mod_item,
+                tree_id,
+                item_tree,
+            )) => {
+                // FIXME: Remove this clone
                 let mod_dir = self.mod_dirs[&module_id].clone();
                 ModCollector {
                     def_collector: self,
@@ -862,8 +866,6 @@ impl DefCollector<'_> {
                 kind: kind @ (ImportKind::Plain | ImportKind::TypeOnly),
                 id,
                 use_tree,
-                tree,
-                item,
                 ..
             } => {
                 let name = match &import.alias {
@@ -896,13 +898,11 @@ impl DefCollector<'_> {
                         let Some(ImportOrExternCrate::ExternCrate(_)) = def.import else {
                             return false;
                         };
-                        let item_tree = tree.item_tree(self.db);
-                        let use_kind = item_tree[item].use_tree.kind();
-                        let UseTreeKind::Single { path, .. } = use_kind else {
+                        if kind == ImportKind::Glob {
                             return false;
-                        };
-                        matches!(path.kind, PathKind::Plain | PathKind::SELF)
-                            && path.segments().len() < 2
+                        }
+                        matches!(import.path.kind, PathKind::Plain | PathKind::SELF)
+                            && import.path.segments().len() < 2
                     };
                     if is_extern_crate_reimport_without_prefix() {
                         def.vis = vis;
@@ -1256,7 +1256,7 @@ impl DefCollector<'_> {
     fn resolve_macros(&mut self) -> ReachedFixedPoint {
         let mut macros = mem::take(&mut self.unresolved_macros);
         let mut resolved = Vec::new();
-        let mut push_resolved = |directive: &MacroDirective, call_id| {
+        let mut push_resolved = |directive: &MacroDirective<'_>, call_id| {
             resolved.push((directive.module_id, directive.depth, directive.container, call_id));
         };
 
@@ -1269,7 +1269,7 @@ impl DefCollector<'_> {
         let mut eager_callback_buffer = vec![];
         let mut res = ReachedFixedPoint::Yes;
         // Retain unresolved macros after this round of resolution.
-        let mut retain = |directive: &MacroDirective| {
+        let mut retain = |directive: &MacroDirective<'db>| {
             let subns = match &directive.kind {
                 MacroDirectiveKind::FnLike { .. } => MacroSubNs::Bang,
                 MacroDirectiveKind::Attr { .. } | MacroDirectiveKind::Derive { .. } => {
@@ -1364,7 +1364,13 @@ impl DefCollector<'_> {
                         return Resolved::Yes;
                     }
                 }
-                MacroDirectiveKind::Attr { ast_id: file_ast_id, mod_item, attr, tree } => {
+                MacroDirectiveKind::Attr {
+                    ast_id: file_ast_id,
+                    mod_item,
+                    attr,
+                    tree,
+                    item_tree,
+                } => {
                     let &AstIdWithPath { ast_id, ref path } = file_ast_id;
                     let file_id = ast_id.file_id;
 
@@ -1375,7 +1381,6 @@ impl DefCollector<'_> {
                             .skip_attrs
                             .insert(InFile::new(file_id, mod_item.ast_id()), attr.id);
 
-                        let item_tree = tree.item_tree(self.db);
                         ModCollector {
                             def_collector: collector,
                             macro_depth: directive.depth,
@@ -1646,8 +1651,7 @@ impl DefCollector<'_> {
                 import:
                     Import {
                         ref path,
-                        source:
-                            ImportSource { use_tree, id, is_prelude: _, kind: _, tree: _, item: _ },
+                        source: ImportSource { use_tree, id, is_prelude: _, kind: _ },
                         ..
                     },
                 ..
@@ -1671,12 +1675,12 @@ impl DefCollector<'_> {
 }
 
 /// Walks a single module, populating defs, imports and macros
-struct ModCollector<'a, 'b> {
-    def_collector: &'a mut DefCollector<'b>,
+struct ModCollector<'a, 'db> {
+    def_collector: &'a mut DefCollector<'db>,
     macro_depth: usize,
     module_id: LocalModuleId,
     tree_id: TreeId,
-    item_tree: &'a ItemTree,
+    item_tree: &'db ItemTree,
     mod_dir: ModDir,
 }
 
@@ -1753,20 +1757,13 @@ impl ModCollector<'_, '_> {
                         UseLoc { container: module, id: InFile::new(self.file_id(), item_tree_id) }
                             .intern(db);
                     let is_prelude = attrs.by_key(sym::prelude_import).exists();
-                    Import::from_use(
-                        self.item_tree,
-                        self.tree_id,
-                        item_tree_id,
-                        id,
-                        is_prelude,
-                        |import| {
-                            self.def_collector.unresolved_imports.push(ImportDirective {
-                                module_id: self.module_id,
-                                import,
-                                status: PartialResolvedImport::Unresolved,
-                            });
-                        },
-                    )
+                    Import::from_use(self.item_tree, item_tree_id, id, is_prelude, |import| {
+                        self.def_collector.unresolved_imports.push(ImportDirective {
+                            module_id: self.module_id,
+                            import,
+                            status: PartialResolvedImport::Unresolved,
+                        });
+                    })
                 }
                 ModItemId::ExternCrate(item_tree_id) => {
                     let item_tree::ExternCrate { name, visibility, alias } =
@@ -2268,6 +2265,7 @@ impl ModCollector<'_, '_> {
                     attr: attr.clone(),
                     mod_item,
                     tree: self.tree_id,
+                    item_tree: self.item_tree,
                 },
                 container,
             });
