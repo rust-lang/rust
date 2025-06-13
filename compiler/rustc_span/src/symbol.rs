@@ -537,6 +537,7 @@ symbols! {
         att_syntax,
         attr,
         attr_literals,
+        attribute,
         attributes,
         audit_that,
         augmented_assignments,

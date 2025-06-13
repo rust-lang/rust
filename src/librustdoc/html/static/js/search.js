@@ -78,6 +78,7 @@ const itemTypes = [
     "derive",
     "traitalias", // 25
     "generic",
+    "attribute",
 ];
 
 // used for special search precedence
@@ -2703,7 +2704,7 @@ class DocSearch {
                 displayPath = item.path + "::";
                 href = this.rootPath + item.path.replace(/::/g, "/") +
                     "/index.html#reexport." + name;
-            } else if (type === "primitive" || type === "keyword") {
+            } else if (type === "primitive" || type === "keyword" || type === "attribute") {
                 displayPath = "";
                 exactPath = "";
                 href = this.rootPath + path.replace(/::/g, "/") +
@@ -4690,6 +4691,8 @@ const longItemTypes = [
     "attribute macro",
     "derive macro",
     "trait alias",
+    "",
+    "attribute",
 ];
 // @ts-expect-error
 let currentResults;
