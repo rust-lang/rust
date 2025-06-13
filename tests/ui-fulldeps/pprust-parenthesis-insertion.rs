@@ -88,6 +88,12 @@ static EXPRS: &[&str] = &[
     // expressions.
     "match 2 { _ => 1 - 1 }",
     "match 2 { _ => ({ 1 }) - 1 }",
+    // Attributes on a Binary, Cast, Assign, and AssignOp expression require
+    // parentheses.
+    "#[attr] (1 + 1)",
+    "#[attr] (1 as T)",
+    "#[attr] (x = 1)",
+    "#[attr] (x += 1)",
     // Grammar restriction: break value starting with a labeled loop is not
     // allowed, except if the break is also labeled.
     "break 'outer 'inner: loop {} + 2",
