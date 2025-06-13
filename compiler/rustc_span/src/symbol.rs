@@ -2288,6 +2288,7 @@ symbols! {
         usize_legacy_fn_max_value,
         usize_legacy_fn_min_value,
         usize_legacy_mod,
+        v1,
         v8plus,
         va_arg,
         va_copy,
