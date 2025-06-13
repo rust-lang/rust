@@ -74,6 +74,24 @@ pub(crate) fn gen_image_wrapper_module<'ll>(
         let zeroinit = cx.const_null(offload_entry_arr);
         llvm::set_initializer(llglobal, zeroinit);
 
+        let mapper_fn_ty = cx.type_func(&[tptr], cx.type_void());
+        let foo = crate::declare::declare_simple_fn(
+            &cx,
+            &"__tgt_unregister_lib",
+            llvm::CallConv::CCallConv,
+            llvm::UnnamedAddr::No,
+            llvm::Visibility::Default,
+            mapper_fn_ty,
+        );
+        let bar = crate::declare::declare_simple_fn(
+            &cx,
+            &"__tgt_register_lib",
+            llvm::CallConv::CCallConv,
+            llvm::UnnamedAddr::No,
+            llvm::Visibility::Default,
+            mapper_fn_ty,
+        );
+
         // @__start_omp_offloading_entries = external hidden constant [0 x %struct.__tgt_offload_entry]
         // @__stop_omp_offloading_entries = external hidden constant [0 x %struct.__tgt_offload_entry]
         // @__dummy.omp_offloading_entries = internal constant [0 x %struct.__tgt_offload_entry] zeroinitializer, section "omp_offloading_entries"
