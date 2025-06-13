@@ -97,17 +97,26 @@ pub struct Path {
     pub tokens: Option<LazyAttrTokenStream>,
 }
 
+// Succeeds if the path has a single segment that is arg-free and matches the given symbol.
 impl PartialEq<Symbol> for Path {
     #[inline]
     fn eq(&self, name: &Symbol) -> bool {
         if let [segment] = self.segments.as_ref()
-            && segment.args.is_none()
-            && segment.ident.name == *name
+            && segment == name
         {
             true
         } else {
             false
         }
+    }
+}
+
+// Succeeds if the path has segments that are arg-free and match the given symbols.
+impl PartialEq<&[Symbol]> for Path {
+    #[inline]
+    fn eq(&self, names: &&[Symbol]) -> bool {
+        self.segments.len() == names.len()
+            && self.segments.iter().zip(names.iter()).all(|(s1, s2)| s1 == s2)
     }
 }
 
@@ -164,6 +173,14 @@ pub struct PathSegment {
     /// but it can be empty (`Path<>`).
     /// `P` is used as a size optimization for the common case with no parameters.
     pub args: Option<P<GenericArgs>>,
+}
+
+// Succeeds if the path segment is arg-free and matches the given symbol.
+impl PartialEq<Symbol> for PathSegment {
+    #[inline]
+    fn eq(&self, name: &Symbol) -> bool {
+        self.args.is_none() && self.ident.name == *name
+    }
 }
 
 impl PathSegment {
@@ -1441,11 +1458,15 @@ impl Expr {
                 }
             }
 
-            ExprKind::Break(..)
-            | ExprKind::Ret(..)
-            | ExprKind::Yield(..)
-            | ExprKind::Yeet(..)
-            | ExprKind::Become(..) => ExprPrecedence::Jump,
+            ExprKind::Break(_ /*label*/, value)
+            | ExprKind::Ret(value)
+            | ExprKind::Yield(YieldKind::Prefix(value))
+            | ExprKind::Yeet(value) => match value {
+                Some(_) => ExprPrecedence::Jump,
+                None => ExprPrecedence::Unambiguous,
+            },
+
+            ExprKind::Become(_) => ExprPrecedence::Jump,
 
             // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to
             // parse, instead of parsing as `(x .. x) = x`. Giving `Range` a lower precedence
@@ -1502,6 +1523,7 @@ impl Expr {
             | ExprKind::Underscore
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::While(..)
+            | ExprKind::Yield(YieldKind::Postfix(..))
             | ExprKind::Err(_)
             | ExprKind::Dummy => ExprPrecedence::Unambiguous,
         }

@@ -719,6 +719,9 @@ passes_unknown_external_lang_item =
 passes_unknown_feature =
     unknown feature `{$feature}`
 
+passes_unknown_feature_alias =
+    feature `{$alias}` has been renamed to `{$feature}`
+
 passes_unknown_lang_item =
     definition of an unknown lang item: `{$name}`
     .label = definition of unknown lang item `{$name}`

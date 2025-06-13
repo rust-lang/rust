@@ -655,9 +655,9 @@ pub mod intrinsics {
     #[rustc_intrinsic]
     pub unsafe fn size_of_val<T: ?::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
-    pub fn min_align_of<T>() -> usize;
+    pub fn align_of<T>() -> usize;
     #[rustc_intrinsic]
-    pub unsafe fn min_align_of_val<T: ?::Sized>(val: *const T) -> usize;
+    pub unsafe fn align_of_val<T: ?::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
     pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
     #[rustc_intrinsic]
