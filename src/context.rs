@@ -443,8 +443,8 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // `rust_eh_personality` function, but rather we wired it up to the
         // CRT's custom personality function, which forces LLVM to consider
         // landing pads as "landing pads for SEH".
-        if let Some(llpersonality) = self.eh_personality.get() {
-            return llpersonality;
+        if let Some(personality_func) = self.eh_personality.get() {
+            return personality_func;
         }
         let tcx = self.tcx;
         let func = match tcx.lang_items().eh_personality() {

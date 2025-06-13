@@ -1034,13 +1034,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             let b_offset = a.size(self).align_to(b.align(self).abi);
 
             let mut load = |i, scalar: &abi::Scalar, align| {
-                let llptr = if i == 0 {
+                let ptr = if i == 0 {
                     place.val.llval
                 } else {
                     self.inbounds_ptradd(place.val.llval, self.const_usize(b_offset.bytes()))
                 };
                 let llty = place.layout.scalar_pair_element_gcc_type(self, i);
-                let load = self.load(llty, llptr, align);
+                let load = self.load(llty, ptr, align);
                 scalar_load_metadata(self, load, scalar);
                 if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
             };
