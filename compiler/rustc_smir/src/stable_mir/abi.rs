@@ -430,6 +430,8 @@ pub enum CallConvention {
     PreserveMost,
     PreserveAll,
 
+    Custom,
+
     // Target-specific calling conventions.
     ArmAapcs,
     CCmseNonSecureCall,
