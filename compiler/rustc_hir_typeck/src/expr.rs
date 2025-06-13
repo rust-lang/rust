@@ -6,6 +6,7 @@
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx};
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
@@ -17,7 +18,7 @@ use rustc_errors::{
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, HirId, QPath};
+use rustc_hir::{Attribute, ExprKind, HirId, QPath};
 use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
 use rustc_infer::infer;
@@ -54,6 +55,30 @@ use crate::{
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub(crate) fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
+        let for_each_attr = |id: HirId, callback: &mut dyn FnMut(&Attribute)| {
+            for attr in self.tcx.hir_attrs(id) {
+                // For the purpose of rendering suggestions, disregard attributes
+                // that originate from desugaring of any kind. For example, `x?`
+                // desugars to `#[allow(unreachable_code)] match ...`. Failing to
+                // ignore the prefix attribute in the desugaring would cause this
+                // suggestion:
+                //
+                //     let y: u32 = x?.try_into().unwrap();
+                //                    ++++++++++++++++++++
+                //
+                // to be rendered as:
+                //
+                //     let y: u32 = (x?).try_into().unwrap();
+                //                  +  +++++++++++++++++++++
+                if attr.span().desugaring_kind().is_none() {
+                    callback(attr);
+                }
+            }
+        };
+        expr.precedence(&for_each_attr)
+    }
+
     /// Check an expr with an expectation type, and also demand that the expr's
     /// evaluated type is a subtype of the expectation at the end. This is a
     /// *hard* requirement.
