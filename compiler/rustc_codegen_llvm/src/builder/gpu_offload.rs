@@ -3,13 +3,26 @@ use std::ffi::{CStr, CString};
 use crate::builder::{SBuilder, UNNAMED};
 use crate::common::AsCCharPtr;
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, Linkage, build_string};
+use crate::llvm::{self, Linkage, Visibility, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 
 use llvm::Linkage::*;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
+
+fn create_struct_ty<'ll>(
+    cx: &'ll SimpleCx<'_>,
+    name: &str,
+    tys: &[&'ll llvm::Type],
+) -> &'ll llvm::Type {
+    let entry_struct_name = CString::new(name).unwrap();
+    unsafe {
+        let entry_struct = llvm::LLVMStructCreateNamed(cx.llcx, entry_struct_name.as_ptr());
+        llvm::LLVMStructSetBody(entry_struct, tys.as_ptr(), tys.len() as u32, 0);
+        entry_struct
+    }
+}
 
 // We don't copy types from other functions because we generate a new module and context.
 // Bringing in types from other contexts would likely cause issues.
@@ -32,18 +45,29 @@ pub(crate) fn gen_image_wrapper_module<'ll>(
         let target_cstr = llvm::LLVMGetTarget(old_cx.llmod);
         let target = CStr::from_ptr(target_cstr).to_string_lossy().into_owned();
         llvm::LLVMSetTarget(llmod, target_cstr);
-        //  target triple = "x86_64-unknown-linux-gnu"
 
         let mut entry_fields = [ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
+        let tgt_entry = create_struct_ty(&cx, "__tgt_offload_entry", &entry_fields);
+        let tgt_image = create_struct_ty(&cx, "__tgt_device_image", &[tptr, tptr, tptr, tptr]);
+        let tgt_desc = create_struct_ty(&cx, "__tgt_bin_desc", &[ti32, tptr, tptr, tptr]);
 
-        let entry_struct_name = CString::new("__tgt_offload_entry").unwrap();
-        let entry_struct = llvm::LLVMStructCreateNamed(llcx, entry_struct_name.as_ptr());
-        llvm::LLVMStructSetBody(
-            entry_struct,
-            entry_fields.as_mut_ptr(),
-            entry_fields.len() as u32,
-            0,
-        );
+        let offload_entry_ty = add_tgt_offload_entry(&cx);
+        let offload_entry_arr = cx.type_array(offload_entry_ty, 0);
+
+        let c_name = CString::new("__start_omp_offloading_entries").unwrap();
+        let llglobal = llvm::add_global(cx.llmod, offload_entry_arr, &c_name);
+        llvm::set_global_constant(llglobal, true);
+        llvm::set_linkage(llglobal, ExternalLinkage);
+        llvm::set_visibility(llglobal, Visibility::Hidden);
+        let c_name = CString::new("__stop_omp_offloading_entries").unwrap();
+        let llglobal = llvm::add_global(cx.llmod, offload_entry_arr, &c_name);
+        llvm::set_global_constant(llglobal, true);
+        llvm::set_linkage(llglobal, ExternalLinkage);
+        llvm::set_visibility(llglobal, Visibility::Hidden);
+
+        // @__start_omp_offloading_entries = external hidden constant [0 x %struct.__tgt_offload_entry]
+        // @__stop_omp_offloading_entries = external hidden constant [0 x %struct.__tgt_offload_entry]
+        // @__dummy.omp_offloading_entries = internal constant [0 x %struct.__tgt_offload_entry] zeroinitializer, section "omp_offloading_entries"
 
         llvm::LLVMPrintModuleToFile(
             llmod,
@@ -57,9 +81,6 @@ pub(crate) fn gen_image_wrapper_module<'ll>(
     }
 }
 
-// first we need to add all the fun to the host module
-// %struct.__tgt_offload_entry = type { i64, i16, i16, i32, ptr, ptr, i64, i64, ptr }
-// %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
 pub(crate) fn handle_gpu_code<'ll>(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     cx: &'ll SimpleCx<'_>,
@@ -85,6 +106,19 @@ pub(crate) fn handle_gpu_code<'ll>(
     }
 }
 
+fn add_tgt_offload_entry<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Type {
+    let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
+    let tptr = cx.type_ptr();
+    let ti64 = cx.type_i64();
+    let ti32 = cx.type_i32();
+    let ti16 = cx.type_i16();
+    let ti8 = cx.type_i8();
+    let tarr = cx.type_array(ti32, 3);
+    let entry_elements = vec![ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
+    cx.set_struct_body(offload_entry_ty, &entry_elements, false);
+    offload_entry_ty
+}
+
 fn gen_globals<'ll>(
     cx: &'ll SimpleCx<'_>,
 ) -> (
@@ -95,7 +129,7 @@ fn gen_globals<'ll>(
     &'ll llvm::Value,
     &'ll llvm::Type,
 ) {
-    let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
+    let offload_entry_ty = add_tgt_offload_entry(&cx);
     let kernel_arguments_ty = cx.type_named_struct("struct.__tgt_kernel_arguments");
     let tptr = cx.type_ptr();
     let ti64 = cx.type_i64();
@@ -139,17 +173,13 @@ fn gen_globals<'ll>(
     //   uint64_t Data;
     //   void *AuxAddr;
     // } __tgt_offload_entry;
-    let entry_elements = vec![ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
     let kernel_elements =
         vec![ti32, ti32, tptr, tptr, tptr, tptr, tptr, tptr, ti64, ti64, tarr, tarr, ti32];
 
-    cx.set_struct_body(offload_entry_ty, &entry_elements, false);
     cx.set_struct_body(kernel_arguments_ty, &kernel_elements, false);
-    let global = cx.declare_global("my_struct_global", offload_entry_ty);
     let global = cx.declare_global("my_struct_global2", kernel_arguments_ty);
     //@my_struct_global = external global %struct.__tgt_offload_entry
     //@my_struct_global2 = external global %struct.__tgt_kernel_arguments
-    dbg!(&offload_entry_ty);
     dbg!(&kernel_arguments_ty);
     //LLVMTypeRef elements[9] = {i64Ty, i16Ty, i16Ty, i32Ty, ptrTy, ptrTy, i64Ty, i64Ty, ptrTy};
     //LLVMStructSetBody(structTy, elements, 9, 0);
