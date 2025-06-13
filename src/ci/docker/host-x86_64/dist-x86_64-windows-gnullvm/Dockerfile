@@ -30,9 +30,9 @@ ENV TARGETS=i686-pc-windows-gnullvm,x86_64-pc-windows-gnullvm
 # We are bootstrapping this target and cannot use previously built artifacts.
 # Without this option Clang is given `"-I/checkout/obj/build/aarch64-pc-windows-gnullvm/ci-llvm/include"`
 # despite no such directory existing:
-# ❯ ls obj/dist-windows-gnullvm/build/aarch64-pc-windows-gnullvm/ -1
-#  llvm
-#  stage2
+# $ ls obj/dist-windows-gnullvm/build/aarch64-pc-windows-gnullvm/ -1
+# llvm
+# stage2
 ENV NO_DOWNLOAD_CI_LLVM 1
 
 ENV RUST_CONFIGURE_ARGS \
