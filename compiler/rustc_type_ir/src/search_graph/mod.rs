@@ -653,7 +653,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 // the global cache.
                 assert_eq!(result, expected, "input={input:?}");
             } else if D::inspect_is_noop(inspect) {
-                self.insert_global_cache(cx, input, final_entry, result, dep_node)
+                self.insert_global_cache(cx, final_entry, result, dep_node)
             }
         } else if D::ENABLE_PROVISIONAL_CACHE {
             debug_assert!(validate_cache.is_none(), "unexpected non-root: {input:?}");
@@ -1120,7 +1120,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     fn insert_global_cache(
         &mut self,
         cx: X,
-        input: X::Input,
         final_entry: StackEntry<X>,
         result: X::Result,
         dep_node: X::DepNodeIndex,
@@ -1129,7 +1128,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         cx.with_global_cache(|cache| {
             cache.insert(
                 cx,
-                input,
+                final_entry.input,
                 result,
                 dep_node,
                 final_entry.required_depth,
