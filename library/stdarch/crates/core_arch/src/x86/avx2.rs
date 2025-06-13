@@ -18,7 +18,7 @@
 //! [wiki_avx]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
-use core::hint::unreachable_unchecked;
+
 
 use crate::core_arch::{simd::*, x86::*};
 use crate::intrinsics::simd::*;
@@ -170,158 +170,74 @@ pub fn _mm256_adds_epu16(a: __m256i, b: __m256i) -> __m256i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_alignr_epi8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
+    
+    
+    // If palignr is shifting the pair of vectors more than the size of two
+    // lanes, emit zero.
+    if IMM8 >= 32 {
+        return _mm256_setzero_si256();
+    }
+    // If palignr is shifting the pair of input vectors more than one lane,
+    // but less than two lanes, convert to shifting in zeroes.
+    let (a, b) = if IMM8 > 16 {
+        (_mm256_setzero_si256(), a)
+    } else {
+        (a, b)
+    };
     unsafe {
-        // If palignr is shifting the pair of vectors more than the size of two
-        // lanes, emit zero.
-        if IMM8 >= 32 {
-            return _mm256_setzero_si256();
-        }
-        // If palignr is shifting the pair of input vectors more than one lane,
-        // but less than two lanes, convert to shifting in zeroes.
-        let (a, b) = if IMM8 > 16 {
-            (_mm256_setzero_si256(), a)
-        } else {
-            (a, b)
-        };
-
-        let a = a.as_i8x32();
-        let b = b.as_i8x32();
-
-        if IMM8 == 16 {
-            return transmute(a);
-        }
-
-        let r: i8x32 = match IMM8 % 16 {
-            0 => simd_shuffle!(
-                b,
-                a,
-                [
-                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-                    22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-                ],
-            ),
-            1 => simd_shuffle!(
-                b,
-                a,
-                [
-                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 17, 18, 19, 20, 21, 22,
-                    23, 24, 25, 26, 27, 28, 29, 30, 31, 48,
-                ],
-            ),
-            2 => simd_shuffle!(
-                b,
-                a,
-                [
-                    2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 33, 18, 19, 20, 21, 22, 23,
-                    24, 25, 26, 27, 28, 29, 30, 31, 48, 49,
-                ],
-            ),
-            3 => simd_shuffle!(
-                b,
-                a,
-                [
-                    3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 33, 34, 19, 20, 21, 22, 23,
-                    24, 25, 26, 27, 28, 29, 30, 31, 48, 49, 50,
-                ],
-            ),
-            4 => simd_shuffle!(
-                b,
-                a,
-                [
-                    4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 33, 34, 35, 20, 21, 22, 23, 24,
-                    25, 26, 27, 28, 29, 30, 31, 48, 49, 50, 51,
-                ],
-            ),
-            5 => simd_shuffle!(
-                b,
-                a,
-                [
-                    5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 33, 34, 35, 36, 21, 22, 23, 24, 25,
-                    26, 27, 28, 29, 30, 31, 48, 49, 50, 51, 52,
-                ],
-            ),
-            6 => simd_shuffle!(
-                b,
-                a,
-                [
-                    6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 33, 34, 35, 36, 37, 22, 23, 24, 25, 26,
-                    27, 28, 29, 30, 31, 48, 49, 50, 51, 52, 53,
-                ],
-            ),
-            7 => simd_shuffle!(
-                b,
-                a,
-                [
-                    7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 33, 34, 35, 36, 37, 38, 23, 24, 25, 26,
-                    27, 28, 29, 30, 31, 48, 49, 50, 51, 52, 53, 54,
-                ],
-            ),
-            8 => simd_shuffle!(
-                b,
-                a,
-                [
-                    8, 9, 10, 11, 12, 13, 14, 15, 32, 33, 34, 35, 36, 37, 38, 39, 24, 25, 26, 27,
-                    28, 29, 30, 31, 48, 49, 50, 51, 52, 53, 54, 55,
-                ],
-            ),
-            9 => simd_shuffle!(
-                b,
-                a,
-                [
-                    9, 10, 11, 12, 13, 14, 15, 32, 33, 34, 35, 36, 37, 38, 39, 40, 25, 26, 27, 28,
-                    29, 30, 31, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-                ],
-            ),
-            10 => simd_shuffle!(
-                b,
-                a,
-                [
-                    10, 11, 12, 13, 14, 15, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 26, 27, 28, 29,
-                    30, 31, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
-                ],
-            ),
-            11 => simd_shuffle!(
-                b,
-                a,
-                [
-                    11, 12, 13, 14, 15, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 27, 28, 29, 30,
-                    31, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58,
-                ],
-            ),
-            12 => simd_shuffle!(
-                b,
-                a,
-                [
-                    12, 13, 14, 15, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 28, 29, 30, 31,
-                    48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
-                ],
-            ),
-            13 => simd_shuffle!(
-                b,
-                a,
-                [
-                    13, 14, 15, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 29, 30, 31, 48,
-                    49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
-                ],
-            ),
-            14 => simd_shuffle!(
-                b,
-                a,
-                [
-                    14, 15, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 30, 31, 48, 49,
-                    50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
-                ],
-            ),
-            15 => simd_shuffle!(
-                b,
-                a,
-                [
-                    15, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 31, 48, 49, 50,
-                    51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
-                ],
-            ),
-            _ => unreachable_unchecked(),
-        };
+	if IMM8 == 16 {
+	    return transmute(a)
+	}
+    }
+    const fn mask(shift: u32, i: u32) -> u32 {
+	let shift = shift % 16;
+	let mod_i = i%16;
+	if mod_i < (16 - shift) {
+	    i + shift
+	} else {
+	    i + 16 + shift
+	} 
+    }
+    
+    unsafe {
+        let r: i8x32 = simd_shuffle!(
+            b.as_i8x32(),
+            a.as_i8x32(),
+            [
+                mask(IMM8 as u32, 0),
+                mask(IMM8 as u32, 1),
+                mask(IMM8 as u32, 2),
+                mask(IMM8 as u32, 3),
+                mask(IMM8 as u32, 4),
+                mask(IMM8 as u32, 5),
+                mask(IMM8 as u32, 6),
+                mask(IMM8 as u32, 7),
+                mask(IMM8 as u32, 8),
+                mask(IMM8 as u32, 9),
+                mask(IMM8 as u32, 10),
+                mask(IMM8 as u32, 11),
+                mask(IMM8 as u32, 12),
+                mask(IMM8 as u32, 13),
+                mask(IMM8 as u32, 14),
+                mask(IMM8 as u32, 15),
+		mask(IMM8 as u32, 16),
+                mask(IMM8 as u32, 17),
+                mask(IMM8 as u32, 18),
+                mask(IMM8 as u32, 19),
+                mask(IMM8 as u32, 20),
+                mask(IMM8 as u32, 21),
+                mask(IMM8 as u32, 22),
+                mask(IMM8 as u32, 23),
+                mask(IMM8 as u32, 24),
+                mask(IMM8 as u32, 25),
+                mask(IMM8 as u32, 26),
+                mask(IMM8 as u32, 27),
+                mask(IMM8 as u32, 28),
+                mask(IMM8 as u32, 29),
+                mask(IMM8 as u32, 30),
+                mask(IMM8 as u32, 31),
+            ],
+        );
         transmute(r)
     }
 }
