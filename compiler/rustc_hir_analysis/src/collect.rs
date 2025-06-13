@@ -615,53 +615,6 @@ fn get_new_lifetime_name<'tcx>(
     (1..).flat_map(a_to_z_repeat_n).find(|lt| !existing_lifetimes.contains(lt.as_str())).unwrap()
 }
 
-pub(crate) fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
-    let trait_item = tcx.hir_trait_item(trait_item_id);
-    let def_id = trait_item_id.owner_id;
-    tcx.ensure_ok().generics_of(def_id);
-
-    match trait_item.kind {
-        hir::TraitItemKind::Fn(..) => {
-            tcx.ensure_ok().codegen_fn_attrs(def_id);
-            tcx.ensure_ok().type_of(def_id);
-            tcx.ensure_ok().fn_sig(def_id);
-        }
-
-        hir::TraitItemKind::Const(..) => {
-            tcx.ensure_ok().type_of(def_id);
-        }
-
-        hir::TraitItemKind::Type(_, Some(_)) => {
-            tcx.ensure_ok().item_bounds(def_id);
-            tcx.ensure_ok().item_self_bounds(def_id);
-            tcx.ensure_ok().type_of(def_id);
-        }
-
-        hir::TraitItemKind::Type(_, None) => {
-            tcx.ensure_ok().item_bounds(def_id);
-            tcx.ensure_ok().item_self_bounds(def_id);
-        }
-    };
-
-    tcx.ensure_ok().predicates_of(def_id);
-}
-
-pub(super) fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
-    let def_id = impl_item_id.owner_id;
-    tcx.ensure_ok().generics_of(def_id);
-    tcx.ensure_ok().type_of(def_id);
-    tcx.ensure_ok().predicates_of(def_id);
-    let impl_item = tcx.hir_impl_item(impl_item_id);
-    match impl_item.kind {
-        hir::ImplItemKind::Fn(..) => {
-            tcx.ensure_ok().codegen_fn_attrs(def_id);
-            tcx.ensure_ok().fn_sig(def_id);
-        }
-        hir::ImplItemKind::Type(_) => {}
-        hir::ImplItemKind::Const(..) => {}
-    }
-}
-
 pub(super) fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     tcx.ensure_ok().generics_of(def_id);
     tcx.ensure_ok().type_of(def_id);
