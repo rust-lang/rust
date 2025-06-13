@@ -56,7 +56,6 @@ tests/ui/sanitizer/kcfi-mangling.rs
 tests/ui/statics/const_generics.rs
 tests/ui/backtrace/dylib-dep.rs
 tests/ui/delegation/fn-header.rs
-tests/ui/consts/zst_no_llvm_alloc.rs
 tests/ui/consts/const-eval/parse_ints.rs
 tests/ui/simd/intrinsic/generic-as.rs
 tests/ui/runtime/rt-explody-panic-payloads.rs
