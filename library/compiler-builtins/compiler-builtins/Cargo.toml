@@ -1,14 +1,11 @@
 [package]
-authors = ["Jorge Aparicio <japaricious@gmail.com>"]
 name = "compiler_builtins"
 version = "0.1.160"
-license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
-readme = "README.md"
-repository = "https://github.com/rust-lang/compiler-builtins"
-homepage = "https://github.com/rust-lang/compiler-builtins"
-documentation = "https://docs.rs/compiler_builtins"
-edition = "2024"
+authors = ["Jorge Aparicio <japaricious@gmail.com>"]
 description = "Compiler intrinsics used by the Rust compiler."
+repository = "https://github.com/rust-lang/compiler-builtins"
+license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
+edition = "2024"
 links = "compiler-rt"
 
 [lib]
