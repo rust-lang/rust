@@ -1,10 +1,7 @@
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:7:5
    |
-LL |       for n in x {
-   |       ^        - help: try: `x.into_iter().flatten()`
-   |  _____|
-   | |
+LL | /     for n in x {
 LL | |
 LL | |
 LL | |         if let Some(y) = n {
@@ -12,7 +9,7 @@ LL | |         if let Some(y) = n {
 LL | |     }
    | |_____^
    |
-help: ...and remove the `if let` statement in the for loop
+help: try `.flatten()` and remove the `if let` statement in the for loop
   --> tests/ui/manual_flatten.rs:10:9
    |
 LL | /         if let Some(y) = n {
@@ -21,14 +18,17 @@ LL | |         }
    | |_________^
    = note: `-D clippy::manual-flatten` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_flatten)]`
+help: try
+   |
+LL ~     for y in x.into_iter().flatten() {
+LL +         println!("{}", y);
+LL +     }
+   |
 
 error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:17:5
    |
-LL |       for n in y.clone() {
-   |       ^        --------- help: try: `y.clone().into_iter().flatten()`
-   |  _____|
-   | |
+LL | /     for n in y.clone() {
 LL | |
 LL | |
 LL | |         if let Ok(n) = n {
@@ -37,21 +37,24 @@ LL | |         };
 LL | |     }
    | |_____^
    |
-help: ...and remove the `if let` statement in the for loop
+help: try `.flatten()` and remove the `if let` statement in the for loop
   --> tests/ui/manual_flatten.rs:20:9
    |
 LL | /         if let Ok(n) = n {
 LL | |             println!("{}", n);
 LL | |         };
    | |_________^
+help: try
+   |
+LL ~     for n in y.clone().into_iter().flatten() {
+LL +         println!("{}", n);
+LL +     }
+   |
 
 error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:26:5
    |
-LL |       for n in &y {
-   |       ^        -- help: try: `y.iter().flatten()`
-   |  _____|
-   | |
+LL | /     for n in &y {
 LL | |
 LL | |
 LL | |         if let Ok(n) = n {
@@ -59,21 +62,24 @@ LL | |         if let Ok(n) = n {
 LL | |     }
    | |_____^
    |
-help: ...and remove the `if let` statement in the for loop
+help: try `.flatten()` and remove the `if let` statement in the for loop
   --> tests/ui/manual_flatten.rs:29:9
    |
 LL | /         if let Ok(n) = n {
 LL | |             println!("{}", n);
 LL | |         }
    | |_________^
+help: try
+   |
+LL ~     for n in y.iter().flatten() {
+LL +         println!("{}", n);
+LL +     }
+   |
 
 error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:36:5
    |
-LL |       for n in z {
-   |       ^        - help: try: `z.iter().flatten()`
-   |  _____|
-   | |
+LL | /     for n in z {
 LL | |
 LL | |
 LL | |         if let Ok(n) = n {
@@ -81,21 +87,24 @@ LL | |         if let Ok(n) = n {
 LL | |     }
    | |_____^
    |
-help: ...and remove the `if let` statement in the for loop
+help: try `.flatten()` and remove the `if let` statement in the for loop
   --> tests/ui/manual_flatten.rs:39:9
    |
 LL | /         if let Ok(n) = n {
 LL | |             println!("{}", n);
 LL | |         }
    | |_________^
+help: try
+   |
+LL ~     for n in z.iter().flatten() {
+LL +         println!("{}", n);
+LL +     }
+   |
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:47:5
    |
-LL |       for n in z {
-   |       ^        - help: try: `z.flatten()`
-   |  _____|
-   | |
+LL | /     for n in z {
 LL | |
 LL | |
 LL | |         if let Some(m) = n {
@@ -103,21 +112,24 @@ LL | |         if let Some(m) = n {
 LL | |     }
    | |_____^
    |
-help: ...and remove the `if let` statement in the for loop
+help: try `.flatten()` and remove the `if let` statement in the for loop
   --> tests/ui/manual_flatten.rs:50:9
    |
 LL | /         if let Some(m) = n {
 LL | |             println!("{}", m);
 LL | |         }
    | |_________^
+help: try
+   |
+LL ~     for m in z.flatten() {
+LL +         println!("{}", m);
+LL +     }
+   |
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:82:5
    |
-LL |       for n in &vec_of_ref {
-   |       ^        ----------- help: try: `vec_of_ref.iter().copied().flatten()`
-   |  _____|
-   | |
+LL | /     for n in &vec_of_ref {
 LL | |
 LL | |
 LL | |         if let Some(n) = n {
@@ -125,21 +137,24 @@ LL | |         if let Some(n) = n {
 LL | |     }
    | |_____^
    |
-help: ...and remove the `if let` statement in the for loop
+help: try `.flatten()` and remove the `if let` statement in the for loop
   --> tests/ui/manual_flatten.rs:85:9
    |
 LL | /         if let Some(n) = n {
 LL | |             println!("{:?}", n);
 LL | |         }
    | |_________^
+help: try
+   |
+LL ~     for n in vec_of_ref.iter().copied().flatten() {
+LL +         println!("{:?}", n);
+LL +     }
+   |
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:91:5
    |
-LL |       for n in vec_of_ref {
-   |       ^        ---------- help: try: `vec_of_ref.iter().copied().flatten()`
-   |  _____|
-   | |
+LL | /     for n in vec_of_ref {
 LL | |
 LL | |
 LL | |         if let Some(n) = n {
@@ -147,21 +162,24 @@ LL | |         if let Some(n) = n {
 LL | |     }
    | |_____^
    |
-help: ...and remove the `if let` statement in the for loop
+help: try `.flatten()` and remove the `if let` statement in the for loop
   --> tests/ui/manual_flatten.rs:94:9
    |
 LL | /         if let Some(n) = n {
 LL | |             println!("{:?}", n);
 LL | |         }
    | |_________^
+help: try
+   |
+LL ~     for n in vec_of_ref.iter().copied().flatten() {
+LL +         println!("{:?}", n);
+LL +     }
+   |
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:100:5
    |
-LL |       for n in slice_of_ref {
-   |       ^        ------------ help: try: `slice_of_ref.iter().copied().flatten()`
-   |  _____|
-   | |
+LL | /     for n in slice_of_ref {
 LL | |
 LL | |
 LL | |         if let Some(n) = n {
@@ -169,16 +187,47 @@ LL | |         if let Some(n) = n {
 LL | |     }
    | |_____^
    |
-help: ...and remove the `if let` statement in the for loop
+help: try `.flatten()` and remove the `if let` statement in the for loop
   --> tests/ui/manual_flatten.rs:103:9
    |
 LL | /         if let Some(n) = n {
 LL | |             println!("{:?}", n);
 LL | |         }
    | |_________^
+help: try
+   |
+LL ~     for n in slice_of_ref.iter().copied().flatten() {
+LL +         println!("{:?}", n);
+LL +     }
+   |
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
-  --> tests/ui/manual_flatten.rs:139:5
+  --> tests/ui/manual_flatten.rs:161:5
+   |
+LL | /     for n in z {
+LL | |
+LL | |
+LL | |         if let Some(n) = n {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try `.flatten()` and remove the `if let` statement in the for loop
+  --> tests/ui/manual_flatten.rs:164:9
+   |
+LL | /         if let Some(n) = n {
+LL | |             println!("{:?}", n);
+LL | |         }
+   | |_________^
+help: try
+   |
+LL ~     for n in z.into_iter().flatten() {
+LL +         println!("{:?}", n);
+LL +     }
+   |
+
+error: unnecessary `if let` since only the `Some` variant of the iterator element is used
+  --> tests/ui/manual_flatten.rs:176:5
    |
 LL | /     for n in vec![
 LL | |
@@ -188,8 +237,8 @@ LL | |         Some(1),
 LL | |     }
    | |_____^
    |
-help: remove the `if let` statement in the for loop and then...
-  --> tests/ui/manual_flatten.rs:146:9
+help: try `.flatten()` and remove the `if let` statement in the for loop
+  --> tests/ui/manual_flatten.rs:183:9
    |
 LL | /         if let Some(n) = n {
 LL | |             println!("{:?}", n);
@@ -201,7 +250,9 @@ LL |     for n in vec![
 ...
 LL |         Some(3)
 LL ~     ].iter().flatten() {
+LL +         println!("{:?}", n);
+LL +     }
    |
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
