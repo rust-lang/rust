@@ -89,3 +89,24 @@ fn issue11503() {
     let _: Vec<usize> = bools.iter().enumerate().filter_map(|(i, b)| b.then(|| i)).collect();
     //~^ filter_map_bool_then
 }
+
+fn issue15047() {
+    #[derive(Clone, Copy)]
+    enum MyEnum {
+        A,
+        B,
+        C,
+    }
+
+    macro_rules! foo {
+        ($e:expr) => {
+            $e + 1
+        };
+    }
+
+    let x = 1;
+    let _ = [(MyEnum::A, "foo", 1i32)]
+        .iter()
+        .filter_map(|(t, s, i)| matches!(t, MyEnum::A if s.starts_with("bar")).then(|| foo!(x)));
+    //~^ filter_map_bool_then
+}
