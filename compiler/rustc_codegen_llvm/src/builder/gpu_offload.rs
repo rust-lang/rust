@@ -25,7 +25,6 @@ fn create_struct_ty<'ll>(
     }
 }
 
-//weak_odr hidden local_unnamed_addr addrspace(1) constant i32 0
 pub(crate) fn gen_asdf<'ll>(cgcx: &CodegenContext<LlvmCodegenBackend>, old_cx: &SimpleCx<'ll>) {
     let llcx = unsafe { llvm::LLVMRustContextCreate(false) };
     let module_name = CString::new("offload.wrapper.module").unwrap();
@@ -236,7 +235,7 @@ pub(crate) fn handle_gpu_code<'ll>(
     cx: &'ll SimpleCx<'_>,
 ) {
     if cx.get_function("gen_tgt_offload").is_some() {
-        let (offload_entry_ty, at_one, begin, update, end, fn_ty) = gen_globals(&cx);
+        let (offload_entry_ty, at_one, begin, update, end, tgt_bin_desc, fn_ty) = gen_globals(&cx);
 
         dbg!("created struct");
         let mut o_types = vec![];
@@ -249,7 +248,7 @@ pub(crate) fn handle_gpu_code<'ll>(
             }
         }
         dbg!("gen_call_handling");
-        gen_call_handling(&cx, &kernels, at_one, begin, update, end, fn_ty, &o_types);
+        gen_call_handling(&cx, &kernels, at_one, begin, update, end, tgt_bin_desc, fn_ty, &o_types);
         gen_image_wrapper_module(&cgcx, &cx);
         gen_asdf(&cgcx, &cx);
     } else {
@@ -278,6 +277,7 @@ fn gen_globals<'ll>(
     &'ll llvm::Value,
     &'ll llvm::Value,
     &'ll llvm::Value,
+    &'ll llvm::Type,
     &'ll llvm::Type,
 ) {
     let offload_entry_ty = add_tgt_offload_entry(&cx);
@@ -311,6 +311,11 @@ fn gen_globals<'ll>(
     cx.set_struct_body(struct_ident_ty, &struct_elems_ty, false);
     let at_one = add_unnamed_global(&cx, &"", initializer, PrivateLinkage);
     llvm::set_alignment(at_one, Align::EIGHT);
+
+    // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
+    let tgt_bin_desc_ty = vec![ti32, tptr, tptr, tptr];
+    let tgt_bin_desc_name = cx.type_named_struct("struct.__tgt_bin_desc");
+    cx.set_struct_body(tgt_bin_desc_name, &tgt_bin_desc_ty, false);
 
     // coppied from LLVM
     // typedef struct {
@@ -379,7 +384,7 @@ fn gen_globals<'ll>(
     attributes::apply_to_llfn(bar, Function, &[nounwind]);
     attributes::apply_to_llfn(baz, Function, &[nounwind]);
 
-    (offload_entry_ty, at_one, foo, bar, baz, mapper_fn_ty)
+    (offload_entry_ty, at_one, foo, bar, baz, tgt_bin_desc_name, mapper_fn_ty)
 }
 
 fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'ll llvm::Value {
@@ -561,6 +566,7 @@ fn gen_call_handling<'ll>(
     begin: &'ll llvm::Value,
     update: &'ll llvm::Value,
     end: &'ll llvm::Value,
+    tgt_bin_desc: &'ll llvm::Type,
     fn_ty: &'ll llvm::Type,
     o_types: &[&'ll llvm::Value],
 ) {
@@ -586,7 +592,18 @@ fn gen_call_handling<'ll>(
         let mut names: Vec<&llvm::Value> = Vec::with_capacity(num_args as usize);
 
         // Step 0)
+        // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
+        // %6 = alloca %struct.__tgt_bin_desc, align 8
         unsafe { llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, main_fn) };
+
+        let tgt_bin_desc_alloca = builder.my_alloca2(tgt_bin_desc, Align::EIGHT, "EmptyDesc");
+        //fill_byte: &'ll Value,
+        //size: &'ll Value,
+        //align: Align,
+        //flags: MemFlags,
+        // call void @llvm.memset.p0.i64(ptr align 8 %EmptyDesc, i8 0, i64 32, i1 false)
+        // mem
+
         let ty = cx.type_array(cx.type_ptr(), num_args);
         // Baseptr are just the input pointer to the kernel, stored in a local alloca
         let a1 = builder.my_alloca2(ty, Align::EIGHT, ".offload_baseptrs");
@@ -616,6 +633,46 @@ fn gen_call_handling<'ll>(
 
         // Step 1)
         unsafe { llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call) };
+        builder.memset(
+            tgt_bin_desc_alloca,
+            cx.get_const_i8(0),
+            cx.get_const_i64(32),
+            Align::from_bytes(8).unwrap(),
+        );
+
+        let tptr = cx.type_ptr();
+        let mapper_fn_ty = cx.type_func(&[tptr], cx.type_void());
+        let foo = crate::declare::declare_simple_fn(
+            &cx,
+            &"__tgt_register_lib",
+            llvm::CallConv::CCallConv,
+            llvm::UnnamedAddr::No,
+            llvm::Visibility::Default,
+            mapper_fn_ty,
+        );
+        let bar = crate::declare::declare_simple_fn(
+            &cx,
+            &"__tgt_unregister_lib",
+            llvm::CallConv::CCallConv,
+            llvm::UnnamedAddr::No,
+            llvm::Visibility::Default,
+            mapper_fn_ty,
+        );
+        let init_ty = cx.type_func(&[], cx.type_void());
+        let baz = crate::declare::declare_simple_fn(
+            &cx,
+            &"__tgt_init_all_rtls",
+            llvm::CallConv::CCallConv,
+            llvm::UnnamedAddr::No,
+            llvm::Visibility::Default,
+            init_ty,
+        );
+
+        builder.call(mapper_fn_ty, foo, &[tgt_bin_desc_alloca], None);
+        builder.call(init_ty, baz, &[], None);
+
+        // call void @__tgt_register_lib(ptr noundef %6)
+        // call void @__tgt_init_all_rtls()
         for i in 0..num_args {
             let idx = cx.get_const_i32(i);
             let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, idx]);
@@ -667,6 +724,7 @@ fn gen_call_handling<'ll>(
             nullptr,
         ];
         builder.call(fn_ty, end, &args, None);
+        builder.call(mapper_fn_ty, bar, &[tgt_bin_desc_alloca], None);
 
         // call void @__tgt_target_data_begin_mapper(ptr @1, i64 -1, i32 3, ptr %27, ptr %28, ptr %29, ptr @.offload_maptypes, ptr null, ptr null)
         // call void @__tgt_target_data_update_mapper(ptr @1, i64 -1, i32 2, ptr %46, ptr %47, ptr %48, ptr @.offload_maptypes.1, ptr null, ptr null)
