@@ -7,7 +7,7 @@ LL |         <Self>::Assoc();
 help: to construct a value of type `T`, use the explicit path
    |
 LL -         <Self>::Assoc();
-LL +         <T();
+LL +         T();
    |
 
 error: aborting due to 1 previous error

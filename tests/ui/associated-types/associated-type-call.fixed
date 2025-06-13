@@ -14,7 +14,7 @@ impl Trait for () {
     type Assoc = T;
 
     fn f() {
-        <T();
+        T();
         //~^ ERROR no associated item named `Assoc` found for unit type `()` in the current scope
     }
 }

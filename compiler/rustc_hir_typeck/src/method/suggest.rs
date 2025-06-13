@@ -724,7 +724,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 let def_path = tcx.def_path_str(adt_def.did());
                 err.span_suggestion(
-                    ty.span.to(item_ident.span),
+                    sugg_span,
                     format!("to construct a value of type `{}`, use the explicit path", def_path),
                     def_path,
                     Applicability::MachineApplicable,
