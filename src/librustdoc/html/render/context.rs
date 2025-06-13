@@ -218,7 +218,7 @@ impl<'tcx> Context<'tcx> {
         } else {
             it.name.as_ref().unwrap().as_str()
         };
-        if !it.is_primitive() && !it.is_keyword() {
+        if !it.is_primitive() && !it.is_keyword() && !it.is_attribute() {
             if !is_module {
                 title.push_str(" in ");
             }

@@ -373,8 +373,8 @@ pub fn inner_docs(attrs: &[impl AttributeExt]) -> bool {
     true
 }
 
-/// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]`.
-pub fn has_primitive_or_keyword_docs(attrs: &[impl AttributeExt]) -> bool {
+/// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]` or `#[doc(attribute)]`.
+pub fn has_primitive_or_keyword_or_attribute_docs(attrs: &[impl AttributeExt]) -> bool {
     for attr in attrs {
         if attr.has_name(sym::rustc_doc_primitive) {
             return true;
@@ -382,7 +382,7 @@ pub fn has_primitive_or_keyword_docs(attrs: &[impl AttributeExt]) -> bool {
             && let Some(items) = attr.meta_item_list()
         {
             for item in items {
-                if item.has_name(sym::keyword) {
+                if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
                     return true;
                 }
             }
