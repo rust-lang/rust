@@ -1,14 +1,14 @@
 use rustc_data_structures::fx::FxHashMap;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::paths;
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{paths, sym};
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
 
 use super::{NONSENSICAL_OPEN_OPTIONS, SUSPICIOUS_OPEN_OPTIONS};
 
@@ -87,23 +87,23 @@ fn get_open_options(
                 _ => Argument::Unknown,
             };
 
-            match path.ident.as_str() {
-                "create" => {
+            match path.ident.name {
+                sym::create => {
                     options.push((OpenOption::Create, argument_option, span));
                 },
-                "create_new" => {
+                sym::create_new => {
                     options.push((OpenOption::CreateNew, argument_option, span));
                 },
-                "append" => {
+                sym::append => {
                     options.push((OpenOption::Append, argument_option, span));
                 },
-                "truncate" => {
+                sym::truncate => {
                     options.push((OpenOption::Truncate, argument_option, span));
                 },
-                "read" => {
+                sym::read => {
                     options.push((OpenOption::Read, argument_option, span));
                 },
-                "write" => {
+                sym::write => {
                     options.push((OpenOption::Write, argument_option, span));
                 },
                 _ => {

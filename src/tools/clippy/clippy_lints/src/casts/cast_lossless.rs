@@ -76,19 +76,20 @@ fn should_lint(cx: &LateContext<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: M
         return false;
     }
 
-    match (cast_from.is_integral(), cast_to.is_integral()) {
-        (true, true) => {
+    match (
+        utils::int_ty_to_nbits(cx.tcx, cast_from),
+        utils::int_ty_to_nbits(cx.tcx, cast_to),
+    ) {
+        (Some(from_nbits), Some(to_nbits)) => {
             let cast_signed_to_unsigned = cast_from.is_signed() && !cast_to.is_signed();
-            let from_nbits = utils::int_ty_to_nbits(cast_from, cx.tcx);
-            let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
             !is_isize_or_usize(cast_from)
                 && !is_isize_or_usize(cast_to)
                 && from_nbits < to_nbits
                 && !cast_signed_to_unsigned
         },
 
-        (true, false) => {
-            let from_nbits = utils::int_ty_to_nbits(cast_from, cx.tcx);
+        (Some(from_nbits), None) => {
+            // FIXME: handle `f16` and `f128`
             let to_nbits = if let ty::Float(FloatTy::F32) = cast_to.kind() {
                 32
             } else {
@@ -96,9 +97,7 @@ fn should_lint(cx: &LateContext<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: M
             };
             !is_isize_or_usize(cast_from) && from_nbits < to_nbits
         },
-        (false, true) if matches!(cast_from.kind(), ty::Bool) && msrv.meets(cx, msrvs::FROM_BOOL) => true,
-        (_, _) => {
-            matches!(cast_from.kind(), ty::Float(FloatTy::F32)) && matches!(cast_to.kind(), ty::Float(FloatTy::F64))
-        },
+        (None, Some(_)) if cast_from.is_bool() && msrv.meets(cx, msrvs::FROM_BOOL) => true,
+        _ => matches!(cast_from.kind(), ty::Float(FloatTy::F32)) && matches!(cast_to.kind(), ty::Float(FloatTy::F64)),
     }
 }

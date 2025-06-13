@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::{
-    SpanlessEq, eq_expr_value, higher, is_in_const_context, is_integer_literal, peel_blocks, peel_blocks_with_stmt,
+    SpanlessEq, eq_expr_value, higher, is_in_const_context, is_integer_literal, peel_blocks, peel_blocks_with_stmt, sym,
 };
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::packed::Pu128;
@@ -11,7 +11,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{AssignOpKind, BinOp, BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -325,7 +325,7 @@ fn check_with_condition<'tcx>(
         }
 
         // Get the variable name
-        let var_name = ares_path.segments[0].ident.name.as_str();
+        let var_name = ares_path.segments[0].ident.name;
         match cond_num_val.kind {
             ExprKind::Lit(cond_lit) => {
                 // Check if the constant is zero
@@ -337,7 +337,7 @@ fn check_with_condition<'tcx>(
                 }
             },
             ExprKind::Path(QPath::TypeRelative(_, name)) => {
-                if name.ident.as_str() == "MIN"
+                if name.ident.name == sym::MIN
                     && let Some(const_id) = cx.typeck_results().type_dependent_def_id(cond_num_val.hir_id)
                     && let Some(impl_id) = cx.tcx.impl_of_method(const_id)
                     && let None = cx.tcx.impl_trait_ref(impl_id) // An inherent impl
@@ -348,7 +348,7 @@ fn check_with_condition<'tcx>(
             },
             ExprKind::Call(func, []) => {
                 if let ExprKind::Path(QPath::TypeRelative(_, name)) = func.kind
-                    && name.ident.as_str() == "min_value"
+                    && name.ident.name == sym::min_value
                     && let Some(func_id) = cx.typeck_results().type_dependent_def_id(func.hir_id)
                     && let Some(impl_id) = cx.tcx.impl_of_method(func_id)
                     && let None = cx.tcx.impl_trait_ref(impl_id) // An inherent impl
@@ -383,7 +383,7 @@ fn subtracts_one<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a Exp
     }
 }
 
-fn print_lint_and_sugg(cx: &LateContext<'_>, var_name: &str, expr: &Expr<'_>) {
+fn print_lint_and_sugg(cx: &LateContext<'_>, var_name: Symbol, expr: &Expr<'_>) {
     span_lint_and_sugg(
         cx,
         IMPLICIT_SATURATING_SUB,
