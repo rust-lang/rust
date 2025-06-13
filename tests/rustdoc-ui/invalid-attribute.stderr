@@ -1,0 +1,18 @@
+error: nonexistent builtin attribute `foo df` used in `#[doc(attribute = "...")]`
+  --> $DIR/invalid-attribute.rs:6:19
+   |
+LL | #[doc(attribute = "foo df")]
+   |                   ^^^^^^^^
+   |
+   = help: only existing builtin attributes are allowed in core/std
+
+error: nonexistent builtin attribute `fooyi` used in `#[doc(attribute = "...")]`
+  --> $DIR/invalid-attribute.rs:9:19
+   |
+LL | #[doc(attribute = "fooyi")]
+   |                   ^^^^^^^
+   |
+   = help: only existing builtin attributes are allowed in core/std
+
+error: aborting due to 2 previous errors
+
