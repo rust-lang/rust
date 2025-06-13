@@ -560,11 +560,17 @@ pub struct Std {
     pub target: TargetSelection,
     pub format: DocumentationFormat,
     crates: Vec<String>,
+    extra_crates: Vec<String>,
 }
 
 impl Std {
     pub(crate) fn new(stage: u32, target: TargetSelection, format: DocumentationFormat) -> Self {
-        Std { stage, target, format, crates: vec![] }
+        Std { stage, target, format, crates: vec![], extra_crates: vec![] }
+    }
+
+    pub(crate) fn add_extra_crate(mut self, krate: &str) -> Self {
+        self.extra_crates.push(krate.to_string());
+        self
     }
 }
 
@@ -592,6 +598,7 @@ impl Step for Std {
                 DocumentationFormat::Html
             },
             crates,
+            extra_crates: vec![],
         });
     }
 
@@ -602,7 +609,7 @@ impl Step for Std {
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let target = self.target;
-        let crates = if self.crates.is_empty() {
+        let mut crates = if self.crates.is_empty() {
             builder
                 .in_tree_crates("sysroot", Some(target))
                 .iter()
@@ -611,6 +618,7 @@ impl Step for Std {
         } else {
             self.crates
         };
+        crates.extend(self.extra_crates.iter().cloned());
 
         let out = match self.format {
             DocumentationFormat::Html => builder.doc_out(target),

@@ -30,6 +30,7 @@ members = [
   "src/tools/miri/cargo-miri",
   "src/tools/miropt-test-tools",
   "src/tools/opt-dist",
+  "src/tools/relnotes-api-list",
   "src/tools/remote-test-client",
   "src/tools/remote-test-server",
   "src/tools/replace-version-placeholder",
