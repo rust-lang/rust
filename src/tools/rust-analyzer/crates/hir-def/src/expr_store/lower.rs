@@ -11,7 +11,7 @@ use base_db::FxIndexSet;
 use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
-    HirFileId, InFile, MacroDefId,
+    HirFileId, InFile, Intern, MacroDefId,
     mod_path::tool_path,
     name::{AsName, Name},
     span_map::SpanMapRef,
@@ -2148,7 +2148,7 @@ impl ExprCollector<'_> {
     ) -> ExprId {
         let block_id = self.expander.ast_id_map().ast_id_for_block(&block).map(|file_local_id| {
             let ast_id = self.expander.in_file(file_local_id);
-            self.db.intern_block(BlockLoc { ast_id, module: self.module })
+            BlockLoc { ast_id, module: self.module }.intern(self.db)
         });
 
         let (module, def_map) =
