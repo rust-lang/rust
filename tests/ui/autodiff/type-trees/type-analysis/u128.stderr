@@ -1,0 +1,14 @@
+analyzing function callee
+ + knowndata: ptr %X : {[-1]:Pointer} - {}
+ + retdata: {[-1]:Integer}
+updating analysis of val: ptr %X current: {} new {[-1]:Pointer} from ptr %X Changed=1 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from ptr %X Changed=0 legal=1
+updating analysis of val:   %X = mul i128 %X, %X, !dbg !N current: {} new {[-1]:Integer} from   %X = mul i128 %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = mul i128 %X, %X, !dbg !N current: {[-1]:Integer} new {[-1]:Integer} from   %X = mul i128 %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer} from   %X = load i128, ptr %X, align 16, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load i128, ptr %X, align 16, !dbg !N, !noundef !N current: {} new {} from   %X = load i128, ptr %X, align 16, !dbg !N, !noundef !N Changed=0 legal=1
+updating analysis of val:   %X = load i128, ptr %X, align 16, !dbg !N, !noundef !N current: {} new {[-1]:Integer} from   %X = mul i128 %X, %X, !dbg !N Changed=1 legal=1
+updating analysis of val:   %X = load i128, ptr %X, align 16, !dbg !N, !noundef !N current: {[-1]:Integer} new {[-1]:Integer} from   %X = mul i128 %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val:   %X = mul i128 %X, %X, !dbg !N current: {[-1]:Integer} new {} from   %X = mul i128 %X, %X, !dbg !N Changed=0 legal=1
+updating analysis of val: ptr %X current: {[-1]:Pointer} new {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer, [-1,8]:Integer, [-1,9]:Integer, [-1,10]:Integer, [-1,11]:Integer, [-1,12]:Integer, [-1,13]:Integer, [-1,14]:Integer, [-1,15]:Integer} from   %X = load i128, ptr %X, align 16, !dbg !N, !noundef !N Changed=1 legal=1
+updating analysis of val:   %X = load i128, ptr %X, align 16, !dbg !N, !noundef !N current: {[-1]:Integer} new {[-1]:Integer} from   %X = load i128, ptr %X, align 16, !dbg !N, !noundef !N Changed=0 legal=1

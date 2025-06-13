@@ -1,0 +1,68 @@
+callee - {[-1]:Float@float} |{[-1]:Pointer}:{} 
+ptr %X: {[-1]:Pointer, [-1,0]:Float@float}
+
+  br label %X, !dbg !N: {}
+
+  %X = phi float [ %X, %X ], !dbg !N: {[-1]:Float@float}
+  br i1 %X, label %X, label %X, !dbg !N: {}
+
+  %X = phi float [ %X, %X ], !dbg !N: {[-1]:Float@float}
+  ret float %X, !dbg !N: {}
+
+  %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]: {[-1]:Float@float}
+  %X = phi i1 [ true, %X ], [ false, %X ]: {[-1]:Integer}
+  %X = phi i64 [ 0, %X ], [ 1, %X ]: {[-1]:Integer}
+  %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X: {[-1]:Pointer, [-1,0]:Float@float}
+  br label %X, !dbg !N: {}
+
+  %X = phi float [ %X, %X ], !dbg !N: {[-1]:Float@float}
+  br i1 %X, label %X, label %X, !dbg !N: {}
+
+  %X = phi float [ %X, %X ], [ %X, %X ]: {[-1]:Float@float}
+  %X = phi i1 [ true, %X ], [ false, %X ]: {[-1]:Integer}
+  %X = phi i64 [ 0, %X ], [ 1, %X ]: {[-1]:Integer}
+  %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X: {[-1]:Pointer, [-1,0]:Float@float}
+  br label %X, !dbg !N: {}
+
+  %X = phi float [ %X, %X ], [ %X, %X ]: {[-1]:Float@float}
+  %X = phi i1 [ true, %X ], [ false, %X ]: {[-1]:Integer}
+  %X = phi i64 [ 0, %X ], [ 1, %X ]: {[-1]:Integer}
+  %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N: {[-1]:Pointer, [-1,0]:Float@float}
+  %X = load float, ptr %X, align 4, !dbg !N, !noundef !N: {[-1]:Float@float}
+  %X = fmul float %X, %X, !dbg !N: {[-1]:Float@float}
+  %X = fadd float %X, %X, !dbg !N: {[-1]:Float@float}
+  br i1 %X, label %X, label %X, !dbg !N: {}
+callee - {[-1]:Float@float} |{[-1]:Pointer, [-1,0]:Float@float}:{} 
+ptr %X: {[-1]:Pointer, [-1,0]:Float@float}
+
+  br label %X, !dbg !N: {}
+
+  %X = phi float [ %X, %X ], !dbg !N: {[-1]:Float@float}
+  br i1 %X, label %X, label %X, !dbg !N: {}
+
+  %X = phi float [ %X, %X ], !dbg !N: {[-1]:Float@float}
+  ret float %X, !dbg !N: {}
+
+  %X = phi float [ 0.000000e+00, %X ], [ %X, %X ]: {[-1]:Float@float}
+  %X = phi i1 [ true, %X ], [ false, %X ]: {[-1]:Integer}
+  %X = phi i64 [ 0, %X ], [ 1, %X ]: {[-1]:Integer}
+  %X = getelementptr inbounds nuw [2 x [2 x float]], ptr %X, i64 %X: {[-1]:Pointer, [-1,0]:Float@float}
+  br label %X, !dbg !N: {}
+
+  %X = phi float [ %X, %X ], !dbg !N: {[-1]:Float@float}
+  br i1 %X, label %X, label %X, !dbg !N: {}
+
+  %X = phi float [ %X, %X ], [ %X, %X ]: {[-1]:Float@float}
+  %X = phi i1 [ true, %X ], [ false, %X ]: {[-1]:Integer}
+  %X = phi i64 [ 0, %X ], [ 1, %X ]: {[-1]:Integer}
+  %X = getelementptr inbounds nuw [2 x float], ptr %X, i64 %X: {[-1]:Pointer, [-1,0]:Float@float}
+  br label %X, !dbg !N: {}
+
+  %X = phi float [ %X, %X ], [ %X, %X ]: {[-1]:Float@float}
+  %X = phi i1 [ true, %X ], [ false, %X ]: {[-1]:Integer}
+  %X = phi i64 [ 0, %X ], [ 1, %X ]: {[-1]:Integer}
+  %X = getelementptr inbounds nuw float, ptr %X, i64 %X, !dbg !N: {[-1]:Pointer, [-1,0]:Float@float}
+  %X = load float, ptr %X, align 4, !dbg !N, !noundef !N: {[-1]:Float@float}
+  %X = fmul float %X, %X, !dbg !N: {[-1]:Float@float}
+  %X = fadd float %X, %X, !dbg !N: {[-1]:Float@float}
+  br i1 %X, label %X, label %X, !dbg !N: {}

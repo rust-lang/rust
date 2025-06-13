@@ -1,0 +1,12 @@
+callee - {[-1]:Float@double} |{[-1]:Pointer}:{} 
+ptr %X: {[-1]:Pointer, [-1,0]:Float@double}
+
+  %X = load double, ptr %X, align 8, !dbg !N, !noundef !N: {[-1]:Float@double}
+  %X = fmul double %X, %X, !dbg !N: {[-1]:Float@double}
+  ret double %X, !dbg !N: {}
+callee - {[-1]:Float@double} |{[-1]:Pointer, [-1,0]:Float@double}:{} 
+ptr %X: {[-1]:Pointer, [-1,0]:Float@double}
+
+  %X = load double, ptr %X, align 8, !dbg !N, !noundef !N: {[-1]:Float@double}
+  %X = fmul double %X, %X, !dbg !N: {[-1]:Float@double}
+  ret double %X, !dbg !N: {}
