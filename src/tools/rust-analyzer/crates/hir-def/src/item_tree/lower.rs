@@ -383,8 +383,8 @@ impl<'a> Ctx<'a> {
         });
         match &vis {
             RawVisibility::Public => RawVisibilityId::PUB,
-            RawVisibility::Module(path, explicitiy) if path.segments().is_empty() => {
-                match (path.kind, explicitiy) {
+            RawVisibility::Module(path, explicitness) if path.segments().is_empty() => {
+                match (path.kind, explicitness) {
                     (PathKind::SELF, VisibilityExplicitness::Explicit) => {
                         RawVisibilityId::PRIV_EXPLICIT
                     }
