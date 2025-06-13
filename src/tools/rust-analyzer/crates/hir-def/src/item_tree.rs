@@ -56,6 +56,7 @@ use rustc_hash::FxHashMap;
 use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
 use stdx::never;
 use syntax::{SyntaxKind, ast, match_ast};
+use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{BlockId, Lookup, attr::Attrs, db::DefDatabase};
@@ -144,7 +145,7 @@ pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc
                     attrs: FxHashMap::default(),
                     data: FxHashMap::default(),
                     top_attrs: RawAttrs::EMPTY,
-                    vis: ItemVisibilities { arena: Box::new([]) },
+                    vis: ItemVisibilities { arena: ThinVec::new() },
                 })
             })
             .clone()
@@ -229,29 +230,40 @@ impl ItemTree {
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemVisibilities {
-    arena: Box<[RawVisibility]>,
+    arena: ThinVec<RawVisibility>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum ModItem {
     Const(Const),
     Enum(Enum),
+    // 32
     ExternBlock(ExternBlock),
+    // 40
     ExternCrate(ExternCrate),
     Function(Function),
     Impl(Impl),
     Macro2(Macro2),
+    // 32
     MacroCall(MacroCall),
     MacroRules(MacroRules),
+    // 40
     Mod(Mod),
     Static(Static),
+    // 32
     Struct(Struct),
     Trait(Trait),
     TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     Union(Union),
+    // 40
     Use(Use),
 }
+
+// `ModItem` is stored a bunch in `ItemTree`'s so we pay the max for each item. It should stay as small as possible.
+#[cfg(target_pointer_width = "64")]
+const _: [(); std::mem::size_of::<ModItem>()] = [(); std::mem::size_of::<[usize; 5]>()];
+
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct ItemTreeDataStats {
     pub traits: usize,
