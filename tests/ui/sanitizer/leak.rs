@@ -2,6 +2,7 @@
 //@ needs-sanitizer-leak
 //
 //@ compile-flags: -Z sanitizer=leak -O
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //
 //@ run-fail
 //@ error-pattern: LeakSanitizer: detected memory leaks

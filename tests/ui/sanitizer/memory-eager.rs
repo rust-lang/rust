@@ -1,6 +1,8 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-memory
 //
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//
 //@ revisions: unoptimized optimized
 //
 //@ [optimized]compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins -O

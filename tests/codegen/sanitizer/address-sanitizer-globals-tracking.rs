@@ -20,6 +20,7 @@
 //
 //@ revisions:ASAN ASAN-FAT-LTO
 //@                compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static
+//@                compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //@[ASAN]          compile-flags:
 //@[ASAN-FAT-LTO]  compile-flags: -Cprefer-dynamic=false -Clto=fat
 
