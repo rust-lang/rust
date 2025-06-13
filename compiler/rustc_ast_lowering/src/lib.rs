@@ -523,7 +523,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
     ) -> LocalDefId {
         let parent = self.current_hir_id_owner.def_id;
-        debug_assert_ne!(node_id, ast::DUMMY_NODE_ID);
+        assert_ne!(node_id, ast::DUMMY_NODE_ID);
         assert!(
             self.opt_local_def_id(node_id).is_none(),
             "adding a def'n for node-id {:?} and def kind {:?} but a previous def'n exists: {:?}",
@@ -607,10 +607,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let item = f(self);
-        debug_assert_eq!(owner_id, item.def_id());
+        assert_eq!(owner_id, item.def_id());
         // `f` should have consumed all the elements in these vectors when constructing `item`.
-        debug_assert!(self.impl_trait_defs.is_empty());
-        debug_assert!(self.impl_trait_bounds.is_empty());
+        assert!(self.impl_trait_defs.is_empty());
+        assert!(self.impl_trait_bounds.is_empty());
         let info = self.make_owner_info(item);
 
         self.attrs = current_attrs;
@@ -918,7 +918,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             let lowered_attrs = self.lower_attrs_vec(attrs, self.lower_span(target_span), id);
 
-            debug_assert_eq!(id.owner, self.current_hir_id_owner);
+            assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(lowered_attrs);
 
             // this is possible if an item contained syntactical attribute,
@@ -956,10 +956,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
-        debug_assert_eq!(id.owner, self.current_hir_id_owner);
-        debug_assert_eq!(target_id.owner, self.current_hir_id_owner);
+        assert_eq!(id.owner, self.current_hir_id_owner);
+        assert_eq!(target_id.owner, self.current_hir_id_owner);
         if let Some(&a) = self.attrs.get(&target_id.local_id) {
-            debug_assert!(!a.is_empty());
+            assert!(!a.is_empty());
             self.attrs.insert(id.local_id, a);
         }
     }
@@ -1438,7 +1438,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let id = if let Some(LifetimeRes::ElidedAnchor { start, end }) =
                     self.resolver.get_lifetime_res(t.id)
                 {
-                    debug_assert_eq!(start.plus(1), end);
+                    assert_eq!(start.plus(1), end);
                     start
                 } else {
                     self.next_node_id()
@@ -1846,16 +1846,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let res = match res {
             LifetimeRes::Param { param, .. } => hir::LifetimeKind::Param(param),
             LifetimeRes::Fresh { param, .. } => {
-                debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
+                assert_eq!(ident.name, kw::UnderscoreLifetime);
                 let param = self.local_def_id(param);
                 hir::LifetimeKind::Param(param)
             }
             LifetimeRes::Infer => {
-                debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
+                assert_eq!(ident.name, kw::UnderscoreLifetime);
                 hir::LifetimeKind::Infer
             }
             LifetimeRes::Static { .. } => {
-                debug_assert!(matches!(ident.name, kw::StaticLifetime | kw::UnderscoreLifetime));
+                assert!(matches!(ident.name, kw::StaticLifetime | kw::UnderscoreLifetime));
                 hir::LifetimeKind::Static
             }
             LifetimeRes::Error => hir::LifetimeKind::Error,
@@ -2285,7 +2285,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::Stmt<'hir> {
         let hir_id = self.next_id();
         if let Some(a) = attrs {
-            debug_assert!(!a.is_empty());
+            assert!(!a.is_empty());
             self.attrs.insert(hir_id.local_id, a);
         }
         let local = hir::LetStmt {
