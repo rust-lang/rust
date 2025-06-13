@@ -158,7 +158,12 @@ struct Unparenthesize;
 impl MutVisitor for Unparenthesize {
     fn visit_expr(&mut self, e: &mut Expr) {
         while let ExprKind::Paren(paren) = &mut e.kind {
+            let paren_attrs = mem::take(&mut e.attrs);
             *e = mem::replace(paren, Expr::dummy());
+            if !paren_attrs.is_empty() {
+                assert!(e.attrs.is_empty());
+                e.attrs = paren_attrs;
+            }
         }
         mut_visit::walk_expr(self, e);
     }
