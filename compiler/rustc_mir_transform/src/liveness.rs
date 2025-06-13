@@ -34,19 +34,14 @@ enum CaptureKind {
     None,
 }
 
-struct AssignmentResult {
-    /// Set of locals that are live at least once. This is used to report fully unused locals.
-    ever_live: DenseBitSet<PlaceIndex>,
-    /// Set of locals that have a non-trivial drop. This is used to skip reporting unused
-    /// assignment if it would be used by the `Drop` impl.
-    ever_dropped: DenseBitSet<PlaceIndex>,
-    /// Set of assignments for each local. Here, assignment is understood in the AST sense. Any
-    /// MIR that may look like an assignment (Assign, DropAndReplace, Yield, Call) are considered.
-    ///
-    /// For each local, we return a map: for each source position, whether the statement is live
-    /// and which kind of access it performs. When we encounter multiple statements at the same
-    /// location, we only increase the liveness, in order to avoid false positives.
-    assignments: IndexVec<PlaceIndex, FxIndexMap<SourceInfo, (bool, AccessKind)>>,
+#[derive(Copy, Clone, Debug)]
+struct Access {
+    /// Describe the current access.
+    kind: AccessKind,
+    /// Is the accessed place is live at the current statement?
+    /// When we encounter multiple statements at the same location, we only increase the liveness,
+    /// in order to avoid false positives.
+    live: bool,
 }
 
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
@@ -139,261 +134,15 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
             .iterate_to_fixpoint(tcx, body, None)
             .into_results_cursor(body);
 
-    let AssignmentResult { mut ever_live, ever_dropped, mut assignments } =
-        find_dead_assignments(tcx, &checked_places, &mut live, body);
+    let mut assignments =
+        AssignmentResult::find_dead_assignments(tcx, &checked_places, &mut live, body);
 
-    // Match guards introduce a different local to freeze the guarded value as immutable.
-    // Having two locals, we need to make sure that we do not report an unused_variable
-    // when the guard local is used but not the arm local, or vice versa, like in this example.
-    //
-    //    match 5 {
-    //      x if x > 2 => {}
-    //      ^    ^- This is `local`
-    //      +------ This is `arm_local`
-    //      _ => {}
-    //    }
-    //
-    for (index, place) in checked_places.iter() {
-        let local = place.local;
-        if let &LocalInfo::User(BindingForm::RefForGuard(arm_local)) =
-            body.local_decls[local].local_info()
-        {
-            debug_assert!(place.projection.is_empty());
+    assignments.merge_guards(&checked_places, body);
 
-            // Local to use in the arm.
-            let Some((arm_index, _proj)) = checked_places.get(arm_local.into()) else { continue };
-            debug_assert_ne!(index, arm_index);
-            debug_assert_eq!(_proj, &[]);
+    let dead_captures = assignments.compute_dead_captures(&checked_places, num_captures);
 
-            // Mark the arm local as used if the guard local is used.
-            if ever_live.contains(index) {
-                ever_live.insert(arm_index);
-            }
-
-            // Some assignments are common to both locals in the source code.
-            // Sadly, we can only detect this using the `source_info`.
-            // Therefore, we loop over all the assignments we have for the guard local:
-            // - if they already appeared for the arm local, the assignment is live if one of the
-            //   two versions is live;
-            // - if it does not appear for the arm local, it happened inside the guard, so we add
-            //   it as-is.
-            let guard_assignments = std::mem::take(&mut assignments[index]);
-            let arm_assignments = &mut assignments[arm_index];
-            for (source_info, (live, kind)) in guard_assignments {
-                match arm_assignments.entry(source_info) {
-                    IndexEntry::Vacant(v) => {
-                        v.insert((live, kind));
-                    }
-                    IndexEntry::Occupied(mut o) => {
-                        o.get_mut().0 |= live;
-                    }
-                }
-            }
-        }
-    }
-
-    // Report to caller the set of dead captures.
-    let mut dead_captures = DenseBitSet::new_empty(num_captures);
-
-    // First, report fully unused locals.
-    for (index, place) in checked_places.iter() {
-        if ever_live.contains(index) {
-            continue;
-        }
-
-        // This is a capture: let the enclosing function report the unused variable.
-        if is_capture(*place) {
-            debug_assert_eq!(place.local, ty::CAPTURE_STRUCT_LOCAL);
-            for p in place.projection {
-                if let PlaceElem::Field(f, _) = p {
-                    dead_captures.insert(*f);
-                    break;
-                }
-            }
-            continue;
-        }
-
-        let Some((ref name, def_span)) = checked_places.names[index] else { continue };
-        if name.is_empty() || name.starts_with('_') || name == "self" {
-            continue;
-        }
-
-        let local = place.local;
-        let decl = &body.local_decls[local];
-
-        if decl.from_compiler_desugaring() {
-            continue;
-        }
-
-        // Only report actual user-defined binding from now on.
-        let LocalInfo::User(BindingForm::Var(binding)) = decl.local_info() else { continue };
-        let Some(hir_id) = decl.source_info.scope.lint_root(&body.source_scopes) else { continue };
-
-        let introductions = &binding.introductions;
-
-        // #117284, when `ident_span` and `def_span` have different contexts
-        // we can't provide a good suggestion, instead we pointed out the spans from macro
-        let from_macro = def_span.from_expansion()
-            && introductions.iter().any(|intro| intro.span.eq_ctxt(def_span));
-
-        let statements = &mut assignments[index];
-        if statements.is_empty() {
-            let sugg = if from_macro {
-                errors::UnusedVariableSugg::NoSugg { span: def_span, name: name.clone() }
-            } else {
-                errors::UnusedVariableSugg::TryPrefix { spans: vec![def_span], name: name.clone() }
-            };
-            tcx.emit_node_span_lint(
-                lint::builtin::UNUSED_VARIABLES,
-                hir_id,
-                def_span,
-                errors::UnusedVariable {
-                    name: name.clone(),
-                    string_interp: maybe_suggest_literal_matching_name(body, name),
-                    sugg,
-                },
-            );
-            continue;
-        }
-
-        // Idiomatic rust assigns a value to a local upon definition. However, we do not want to
-        // warn twice, for the unused local and for the unused assignment. Therefore, we remove
-        // from the list of assignments the ones that happen at the definition site.
-        statements.retain(|source_info, _| {
-            source_info.span.find_ancestor_inside(binding.pat_span).is_none()
-        });
-
-        // Extra assignments that we recognize thanks to the initialization span. We need to
-        // take care of macro contexts here to be accurate.
-        if let Some((_, initializer_span)) = binding.opt_match_place {
-            statements.retain(|source_info, _| {
-                let within = source_info.span.find_ancestor_inside(initializer_span);
-                let outer_initializer_span =
-                    initializer_span.find_ancestor_in_same_ctxt(source_info.span);
-                within.is_none()
-                    && outer_initializer_span.map_or(true, |s| !s.contains(source_info.span))
-            });
-        }
-
-        if !statements.is_empty() {
-            // We have a dead local with outstanding assignments and with non-trivial drop.
-            // This is probably a drop-guard, so we do not issue a warning there.
-            if ever_dropped.contains(index) {
-                continue;
-            }
-
-            tcx.emit_node_span_lint(
-                lint::builtin::UNUSED_VARIABLES,
-                hir_id,
-                def_span,
-                errors::UnusedVarAssignedOnly { name: name.clone() },
-            );
-            continue;
-        }
-
-        // We do not have outstanding assignments, suggest renaming the binding.
-        let spans = introductions.iter().map(|intro| intro.span).collect::<Vec<_>>();
-
-        let any_shorthand = introductions.iter().any(|intro| intro.is_shorthand);
-
-        let sugg = if any_shorthand {
-            errors::UnusedVariableSugg::TryIgnore {
-                name: name.clone(),
-                shorthands: introductions
-                    .iter()
-                    .filter_map(|intro| if intro.is_shorthand { Some(intro.span) } else { None })
-                    .collect(),
-                non_shorthands: introductions
-                    .iter()
-                    .filter_map(|intro| if !intro.is_shorthand { Some(intro.span) } else { None })
-                    .collect(),
-            }
-        } else if from_macro {
-            errors::UnusedVariableSugg::NoSugg { span: def_span, name: name.clone() }
-        } else if !introductions.is_empty() {
-            errors::UnusedVariableSugg::TryPrefix {
-                name: name.clone(),
-                spans: introductions.iter().map(|intro| intro.span).collect(),
-            }
-        } else {
-            errors::UnusedVariableSugg::TryPrefix { name: name.clone(), spans: vec![def_span] }
-        };
-
-        tcx.emit_node_span_lint(
-            lint::builtin::UNUSED_VARIABLES,
-            hir_id,
-            spans,
-            errors::UnusedVariable {
-                name: name.clone(),
-                string_interp: maybe_suggest_literal_matching_name(body, name),
-                sugg,
-            },
-        );
-    }
-
-    // Second, report unused assignments that do not correspond to initialization.
-    // Initializations have been removed in the previous loop reporting unused variables.
-    for (index, statements) in assignments.into_iter_enumerated() {
-        if statements.is_empty() {
-            continue;
-        }
-
-        let Some((ref name, decl_span)) = checked_places.names[index] else { continue };
-        if name.is_empty() || name.starts_with('_') || name == "self" {
-            continue;
-        }
-
-        // We have outstanding assignments and with non-trivial drop.
-        // This is probably a drop-guard, so we do not issue a warning there.
-        if ever_dropped.contains(index) {
-            continue;
-        }
-
-        // We probed MIR in reverse order for dataflow.
-        // We revert the vector to give a consistent order to the user.
-        for (source_info, (live, kind)) in statements.into_iter().rev() {
-            if live {
-                continue;
-            }
-
-            // Report the dead assignment.
-            let Some(hir_id) = source_info.scope.lint_root(&body.source_scopes) else { continue };
-
-            match kind {
-                AccessKind::Assign => {
-                    let suggestion = annotate_mut_binding_to_immutable_binding(
-                        tcx,
-                        checked_places.places[index],
-                        def_id,
-                        source_info.span,
-                        body,
-                    );
-                    tcx.emit_node_span_lint(
-                        lint::builtin::UNUSED_ASSIGNMENTS,
-                        hir_id,
-                        source_info.span,
-                        errors::UnusedAssign {
-                            name: name.clone(),
-                            help: suggestion.is_none(),
-                            suggestion,
-                        },
-                    )
-                }
-                AccessKind::Param => tcx.emit_node_span_lint(
-                    lint::builtin::UNUSED_ASSIGNMENTS,
-                    hir_id,
-                    source_info.span,
-                    errors::UnusedAssignPassed { name: name.clone() },
-                ),
-                AccessKind::Capture => tcx.emit_node_span_lint(
-                    lint::builtin::UNUSED_ASSIGNMENTS,
-                    hir_id,
-                    decl_span,
-                    errors::UnusedCaptureMaybeCaptureRef { name: name.clone() },
-                ),
-            }
-        }
-    }
+    assignments.report_fully_unused(tcx, &checked_places, body);
+    assignments.report_unused_assignments(tcx, def_id, &checked_places, body);
 
     dead_captures
 }
@@ -788,139 +537,459 @@ impl<'tcx> PlaceSet<'tcx> {
     }
 }
 
-/// Collect all assignments to checked locals.
-///
-/// Assignments are collected, even if they are live. Dead assignments are reported, and live
-/// assignments are used to make diagnostics correct for match guards.
-fn find_dead_assignments<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    checked_places: &PlaceSet<'tcx>,
-    cursor: &mut ResultsCursor<'_, 'tcx, MaybeLivePlaces<'_, 'tcx>>,
-    body: &Body<'tcx>,
-) -> AssignmentResult {
-    let mut ever_live = DenseBitSet::new_empty(checked_places.len());
-    let mut ever_dropped = DenseBitSet::new_empty(checked_places.len());
-    let mut assignments = IndexVec::<PlaceIndex, FxIndexMap<_, _>>::from_elem(
-        Default::default(),
-        &checked_places.places,
-    );
+struct AssignmentResult {
+    /// Set of locals that are live at least once. This is used to report fully unused locals.
+    ever_live: DenseBitSet<PlaceIndex>,
+    /// Set of locals that have a non-trivial drop. This is used to skip reporting unused
+    /// assignment if it would be used by the `Drop` impl.
+    ever_dropped: DenseBitSet<PlaceIndex>,
+    /// Set of assignments for each local. Here, assignment is understood in the AST sense. Any
+    /// MIR that may look like an assignment (Assign, DropAndReplace, Yield, Call) are considered.
+    ///
+    /// For each local, we return a map: for each source position, whether the statement is live
+    /// and which kind of access it performs. When we encounter multiple statements at the same
+    /// location, we only increase the liveness, in order to avoid false positives.
+    assignments: IndexVec<PlaceIndex, FxIndexMap<SourceInfo, Access>>,
+}
 
-    let mut check_place =
-        |place: Place<'tcx>, kind, source_info: SourceInfo, live: &DenseBitSet<PlaceIndex>| {
-            if let Some((index, extra_projections)) = checked_places.get(place.as_ref()) {
-                if !is_indirect(extra_projections) {
-                    match assignments[index].entry(source_info) {
-                        IndexEntry::Vacant(v) => {
-                            v.insert((live.contains(index), kind));
-                        }
-                        IndexEntry::Occupied(mut o) => {
-                            // There were already a sighting. Mark this statement as live if it was,
-                            // to avoid false positives.
-                            o.get_mut().0 |= live.contains(index);
+impl AssignmentResult {
+    /// Collect all assignments to checked locals.
+    ///
+    /// Assignments are collected, even if they are live. Dead assignments are reported, and live
+    /// assignments are used to make diagnostics correct for match guards.
+    fn find_dead_assignments<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        checked_places: &PlaceSet<'tcx>,
+        cursor: &mut ResultsCursor<'_, 'tcx, MaybeLivePlaces<'_, 'tcx>>,
+        body: &Body<'tcx>,
+    ) -> AssignmentResult {
+        let mut ever_live = DenseBitSet::new_empty(checked_places.len());
+        let mut ever_dropped = DenseBitSet::new_empty(checked_places.len());
+        let mut assignments = IndexVec::<PlaceIndex, FxIndexMap<_, _>>::from_elem(
+            Default::default(),
+            &checked_places.places,
+        );
+
+        let mut check_place =
+            |place: Place<'tcx>, kind, source_info: SourceInfo, live: &DenseBitSet<PlaceIndex>| {
+                if let Some((index, extra_projections)) = checked_places.get(place.as_ref()) {
+                    if !is_indirect(extra_projections) {
+                        match assignments[index].entry(source_info) {
+                            IndexEntry::Vacant(v) => {
+                                let access = Access { kind, live: live.contains(index) };
+                                v.insert(access);
+                            }
+                            IndexEntry::Occupied(mut o) => {
+                                // There were already a sighting. Mark this statement as live if it
+                                // was, to avoid false positives.
+                                o.get_mut().live |= live.contains(index);
+                            }
                         }
                     }
+                }
+            };
+
+        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+        let mut record_drop = |place: Place<'tcx>| {
+            if let Some((index, &[])) = checked_places.get(place.as_ref()) {
+                let ty = place.ty(&body.local_decls, tcx).ty;
+                let needs_drop = matches!(
+                    ty.kind(),
+                    ty::Closure(..)
+                        | ty::Coroutine(..)
+                        | ty::Tuple(..)
+                        | ty::Adt(..)
+                        | ty::Dynamic(..)
+                        | ty::Array(..)
+                        | ty::Slice(..)
+                        | ty::Alias(ty::Opaque, ..)
+                ) && ty.needs_drop(tcx, typing_env);
+                if needs_drop {
+                    ever_dropped.insert(index);
                 }
             }
         };
 
-    let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
-    let mut record_drop = |place: Place<'tcx>| {
-        if let Some((index, &[])) = checked_places.get(place.as_ref()) {
-            let ty = place.ty(&body.local_decls, tcx).ty;
-            let needs_drop = matches!(
-                ty.kind(),
-                ty::Closure(..)
-                    | ty::Coroutine(..)
-                    | ty::Tuple(..)
-                    | ty::Adt(..)
-                    | ty::Dynamic(..)
-                    | ty::Array(..)
-                    | ty::Slice(..)
-                    | ty::Alias(ty::Opaque, ..)
-            ) && ty.needs_drop(tcx, typing_env);
-            if needs_drop {
-                ever_dropped.insert(index);
+        for (bb, bb_data) in traversal::postorder(body) {
+            cursor.seek_to_block_end(bb);
+            let live = cursor.get();
+            ever_live.union(live);
+
+            let terminator = bb_data.terminator();
+            match &terminator.kind {
+                TerminatorKind::Call { destination: place, .. }
+                | TerminatorKind::Yield { resume_arg: place, .. } => {
+                    check_place(*place, AccessKind::Assign, terminator.source_info, live);
+                    record_drop(*place)
+                }
+                TerminatorKind::Drop { place, .. } => record_drop(*place),
+                TerminatorKind::InlineAsm { operands, .. } => {
+                    for operand in operands {
+                        if let InlineAsmOperand::Out { place: Some(place), .. }
+                        | InlineAsmOperand::InOut { out_place: Some(place), .. } = operand
+                        {
+                            check_place(*place, AccessKind::Assign, terminator.source_info, live);
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
+                cursor.seek_before_primary_effect(Location { block: bb, statement_index });
+                let live = cursor.get();
+                ever_live.union(live);
+                match &statement.kind {
+                    StatementKind::Assign(box (place, _))
+                    | StatementKind::Deinit(box place)
+                    | StatementKind::SetDiscriminant { box place, .. } => {
+                        check_place(*place, AccessKind::Assign, statement.source_info, live);
+                    }
+                    StatementKind::Retag(_, _)
+                    | StatementKind::StorageLive(_)
+                    | StatementKind::StorageDead(_)
+                    | StatementKind::Coverage(_)
+                    | StatementKind::Intrinsic(_)
+                    | StatementKind::Nop
+                    | StatementKind::FakeRead(_)
+                    | StatementKind::PlaceMention(_)
+                    | StatementKind::ConstEvalCounter
+                    | StatementKind::BackwardIncompatibleDropHint { .. }
+                    | StatementKind::AscribeUserType(_, _) => (),
+                }
             }
         }
-    };
 
-    for (bb, bb_data) in traversal::postorder(body) {
-        cursor.seek_to_block_end(bb);
-        let live = cursor.get();
-        ever_live.union(live);
+        // Check liveness of function arguments on entry.
+        {
+            cursor.seek_to_block_start(START_BLOCK);
+            let live = cursor.get();
+            ever_live.union(live);
 
-        let terminator = bb_data.terminator();
-        match &terminator.kind {
-            TerminatorKind::Call { destination: place, .. }
-            | TerminatorKind::Yield { resume_arg: place, .. } => {
-                check_place(*place, AccessKind::Assign, terminator.source_info, live);
-                record_drop(*place)
+            // Verify that arguments and captured values are useful.
+            for (index, place) in checked_places.iter() {
+                let kind = if is_capture(*place) {
+                    // This is a by-ref capture, an assignment to it will modify surrounding
+                    // environment, so we do not report it.
+                    if place.projection.last() == Some(&PlaceElem::Deref) {
+                        continue;
+                    }
+
+                    AccessKind::Capture
+                } else if body.local_kind(place.local) == LocalKind::Arg {
+                    AccessKind::Param
+                } else {
+                    continue;
+                };
+                let source_info = body.local_decls[place.local].source_info;
+                let access = Access { kind, live: live.contains(index) };
+                assignments[index].insert(source_info, access);
             }
-            TerminatorKind::Drop { place, .. } => record_drop(*place),
-            TerminatorKind::InlineAsm { operands, .. } => {
-                for operand in operands {
-                    if let InlineAsmOperand::Out { place: Some(place), .. }
-                    | InlineAsmOperand::InOut { out_place: Some(place), .. } = operand
-                    {
-                        check_place(*place, AccessKind::Assign, terminator.source_info, live);
+        }
+
+        AssignmentResult { ever_live, ever_dropped, assignments }
+    }
+
+    /// Match guards introduce a different local to freeze the guarded value as immutable.
+    /// Having two locals, we need to make sure that we do not report an unused_variable
+    /// when the guard local is used but not the arm local, or vice versa, like in this example.
+    ///
+    ///    match 5 {
+    ///      x if x > 2 => {}
+    ///      ^    ^- This is `local`
+    ///      +------ This is `arm_local`
+    ///      _ => {}
+    ///    }
+    ///
+    fn merge_guards<'tcx>(&mut self, checked_places: &PlaceSet<'tcx>, body: &Body<'_>) {
+        for (index, place) in checked_places.iter() {
+            let local = place.local;
+            if let &LocalInfo::User(BindingForm::RefForGuard(arm_local)) =
+                body.local_decls[local].local_info()
+            {
+                debug_assert!(place.projection.is_empty());
+
+                // Local to use in the arm.
+                let Some((arm_index, _proj)) = checked_places.get(arm_local.into()) else {
+                    continue;
+                };
+                debug_assert_ne!(index, arm_index);
+                debug_assert_eq!(_proj, &[]);
+
+                // Mark the arm local as used if the guard local is used.
+                if self.ever_live.contains(index) {
+                    self.ever_live.insert(arm_index);
+                }
+
+                // Some assignments are common to both locals in the source code.
+                // Sadly, we can only detect this using the `source_info`.
+                // Therefore, we loop over all the assignments we have for the guard local:
+                // - if they already appeared for the arm local, the assignment is live if one of the
+                //   two versions is live;
+                // - if it does not appear for the arm local, it happened inside the guard, so we add
+                //   it as-is.
+                let guard_assignments = std::mem::take(&mut self.assignments[index]);
+                let arm_assignments = &mut self.assignments[arm_index];
+                for (source_info, access) in guard_assignments {
+                    match arm_assignments.entry(source_info) {
+                        IndexEntry::Vacant(v) => {
+                            v.insert(access);
+                        }
+                        IndexEntry::Occupied(mut o) => {
+                            o.get_mut().live |= access.live;
+                        }
                     }
                 }
             }
-            _ => {}
-        }
-
-        for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
-            cursor.seek_before_primary_effect(Location { block: bb, statement_index });
-            let live = cursor.get();
-            ever_live.union(live);
-            match &statement.kind {
-                StatementKind::Assign(box (place, _))
-                | StatementKind::Deinit(box place)
-                | StatementKind::SetDiscriminant { box place, .. } => {
-                    check_place(*place, AccessKind::Assign, statement.source_info, live);
-                }
-                StatementKind::Retag(_, _)
-                | StatementKind::StorageLive(_)
-                | StatementKind::StorageDead(_)
-                | StatementKind::Coverage(_)
-                | StatementKind::Intrinsic(_)
-                | StatementKind::Nop
-                | StatementKind::FakeRead(_)
-                | StatementKind::PlaceMention(_)
-                | StatementKind::ConstEvalCounter
-                | StatementKind::BackwardIncompatibleDropHint { .. }
-                | StatementKind::AscribeUserType(_, _) => (),
-            }
         }
     }
 
-    // Check liveness of function arguments on entry.
-    {
-        cursor.seek_to_block_start(START_BLOCK);
-        let live = cursor.get();
-        ever_live.union(live);
-
-        // Verify that arguments and captured values are useful.
+    /// Compute captures that are fully dead.
+    fn compute_dead_captures<'tcx>(
+        &self,
+        checked_places: &PlaceSet<'tcx>,
+        num_captures: usize,
+    ) -> DenseBitSet<FieldIdx> {
+        // Report to caller the set of dead captures.
+        let mut dead_captures = DenseBitSet::new_empty(num_captures);
         for (index, place) in checked_places.iter() {
-            let kind = if is_capture(*place) {
-                // This is a by-ref capture, an assignment to it will modify surrounding
-                // environment, so we do not report it.
-                if place.projection.last() == Some(&PlaceElem::Deref) {
+            if self.ever_live.contains(index) {
+                continue;
+            }
+
+            // This is a capture: pass information to the enclosing function.
+            if is_capture(*place) {
+                for p in place.projection {
+                    if let PlaceElem::Field(f, _) = p {
+                        dead_captures.insert(*f);
+                        break;
+                    }
+                }
+                continue;
+            }
+        }
+
+        dead_captures
+    }
+
+    /// Report fully unused locals, and forget the corresponding assignments.
+    fn report_fully_unused<'tcx>(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        checked_places: &PlaceSet<'tcx>,
+        body: &Body<'tcx>,
+    ) {
+        // First, report fully unused locals.
+        for (index, place) in checked_places.iter() {
+            if self.ever_live.contains(index) {
+                continue;
+            }
+
+            // this is a capture: let the enclosing function report the unused variable.
+            if is_capture(*place) {
+                continue;
+            }
+
+            let Some((ref name, def_span)) = checked_places.names[index] else { continue };
+            if name.is_empty() || name.starts_with('_') || name == "self" {
+                continue;
+            }
+
+            let local = place.local;
+            let decl = &body.local_decls[local];
+
+            if decl.from_compiler_desugaring() {
+                continue;
+            }
+
+            // Only report actual user-defined binding from now on.
+            let LocalInfo::User(BindingForm::Var(binding)) = decl.local_info() else { continue };
+            let Some(hir_id) = decl.source_info.scope.lint_root(&body.source_scopes) else {
+                continue;
+            };
+
+            let introductions = &binding.introductions;
+
+            // #117284, when `ident_span` and `def_span` have different contexts
+            // we can't provide a good suggestion, instead we pointed out the spans from macro
+            let from_macro = def_span.from_expansion()
+                && introductions.iter().any(|intro| intro.span.eq_ctxt(def_span));
+
+            let statements = &mut self.assignments[index];
+            if statements.is_empty() {
+                let sugg = if from_macro {
+                    errors::UnusedVariableSugg::NoSugg { span: def_span, name: name.clone() }
+                } else {
+                    errors::UnusedVariableSugg::TryPrefix {
+                        spans: vec![def_span],
+                        name: name.clone(),
+                    }
+                };
+                tcx.emit_node_span_lint(
+                    lint::builtin::UNUSED_VARIABLES,
+                    hir_id,
+                    def_span,
+                    errors::UnusedVariable {
+                        name: name.clone(),
+                        string_interp: maybe_suggest_literal_matching_name(body, name),
+                        sugg,
+                    },
+                );
+                continue;
+            }
+
+            // Idiomatic rust assigns a value to a local upon definition. However, we do not want to
+            // warn twice, for the unused local and for the unused assignment. Therefore, we remove
+            // from the list of assignments the ones that happen at the definition site.
+            statements.retain(|source_info, _| {
+                source_info.span.find_ancestor_inside(binding.pat_span).is_none()
+            });
+
+            // Extra assignments that we recognize thanks to the initialization span. We need to
+            // take care of macro contexts here to be accurate.
+            if let Some((_, initializer_span)) = binding.opt_match_place {
+                statements.retain(|source_info, _| {
+                    let within = source_info.span.find_ancestor_inside(initializer_span);
+                    let outer_initializer_span =
+                        initializer_span.find_ancestor_in_same_ctxt(source_info.span);
+                    within.is_none()
+                        && outer_initializer_span.map_or(true, |s| !s.contains(source_info.span))
+                });
+            }
+
+            if !statements.is_empty() {
+                // We have a dead local with outstanding assignments and with non-trivial drop.
+                // This is probably a drop-guard, so we do not issue a warning there.
+                if self.ever_dropped.contains(index) {
                     continue;
                 }
 
-                AccessKind::Capture
-            } else if body.local_kind(place.local) == LocalKind::Arg {
-                AccessKind::Param
-            } else {
+                tcx.emit_node_span_lint(
+                    lint::builtin::UNUSED_VARIABLES,
+                    hir_id,
+                    def_span,
+                    errors::UnusedVarAssignedOnly { name: name.clone() },
+                );
                 continue;
+            }
+
+            // We do not have outstanding assignments, suggest renaming the binding.
+            let spans = introductions.iter().map(|intro| intro.span).collect::<Vec<_>>();
+
+            let any_shorthand = introductions.iter().any(|intro| intro.is_shorthand);
+
+            let sugg = if any_shorthand {
+                errors::UnusedVariableSugg::TryIgnore {
+                    name: name.clone(),
+                    shorthands: introductions
+                        .iter()
+                        .filter_map(
+                            |intro| if intro.is_shorthand { Some(intro.span) } else { None },
+                        )
+                        .collect(),
+                    non_shorthands: introductions
+                        .iter()
+                        .filter_map(
+                            |intro| {
+                                if !intro.is_shorthand { Some(intro.span) } else { None }
+                            },
+                        )
+                        .collect(),
+                }
+            } else if from_macro {
+                errors::UnusedVariableSugg::NoSugg { span: def_span, name: name.clone() }
+            } else if !introductions.is_empty() {
+                errors::UnusedVariableSugg::TryPrefix { name: name.clone(), spans: spans.clone() }
+            } else {
+                errors::UnusedVariableSugg::TryPrefix { name: name.clone(), spans: vec![def_span] }
             };
-            let source_info = body.local_decls[place.local].source_info;
-            assignments[index].insert(source_info, (live.contains(index), kind));
+
+            tcx.emit_node_span_lint(
+                lint::builtin::UNUSED_VARIABLES,
+                hir_id,
+                spans,
+                errors::UnusedVariable {
+                    name: name.clone(),
+                    string_interp: maybe_suggest_literal_matching_name(body, name),
+                    sugg,
+                },
+            );
         }
     }
 
-    AssignmentResult { ever_live, ever_dropped, assignments }
+    /// Second, report unused assignments that do not correspond to initialization.
+    /// Initializations have been removed in the previous loop reporting unused variables.
+    fn report_unused_assignments<'tcx>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body_def_id: LocalDefId,
+        checked_places: &PlaceSet<'tcx>,
+        body: &Body<'tcx>,
+    ) {
+        for (index, statements) in self.assignments.into_iter_enumerated() {
+            if statements.is_empty() {
+                continue;
+            }
+
+            let Some((ref name, decl_span)) = checked_places.names[index] else { continue };
+            if name.is_empty() || name.starts_with('_') || name == "self" {
+                continue;
+            }
+
+            // We have outstanding assignments and with non-trivial drop.
+            // This is probably a drop-guard, so we do not issue a warning there.
+            if self.ever_dropped.contains(index) {
+                continue;
+            }
+
+            // We probed MIR in reverse order for dataflow.
+            // We revert the vector to give a consistent order to the user.
+            for (source_info, Access { live, kind }) in statements.into_iter().rev() {
+                if live {
+                    continue;
+                }
+
+                // Report the dead assignment.
+                let Some(hir_id) = source_info.scope.lint_root(&body.source_scopes) else {
+                    continue;
+                };
+
+                match kind {
+                    AccessKind::Assign => {
+                        let suggestion = annotate_mut_binding_to_immutable_binding(
+                            tcx,
+                            checked_places.places[index],
+                            body_def_id,
+                            source_info.span,
+                            body,
+                        );
+                        tcx.emit_node_span_lint(
+                            lint::builtin::UNUSED_ASSIGNMENTS,
+                            hir_id,
+                            source_info.span,
+                            errors::UnusedAssign {
+                                name: name.clone(),
+                                help: suggestion.is_none(),
+                                suggestion,
+                            },
+                        )
+                    }
+                    AccessKind::Param => tcx.emit_node_span_lint(
+                        lint::builtin::UNUSED_ASSIGNMENTS,
+                        hir_id,
+                        source_info.span,
+                        errors::UnusedAssignPassed { name: name.clone() },
+                    ),
+                    AccessKind::Capture => tcx.emit_node_span_lint(
+                        lint::builtin::UNUSED_ASSIGNMENTS,
+                        hir_id,
+                        decl_span,
+                        errors::UnusedCaptureMaybeCaptureRef { name: name.clone() },
+                    ),
+                }
+            }
+        }
+    }
 }
 
 rustc_index::newtype_index! {
