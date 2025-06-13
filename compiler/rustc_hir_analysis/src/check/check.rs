@@ -64,7 +64,9 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
         }
         AbiMapping::Deprecated(..) => {
             tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message("use of calling convention not supported on this target");
+                lint.primary_message(format!(
+                    "{abi} is not a supported ABI for the current target"
+                ));
                 add_abi_diag_help(abi, lint);
             });
         }
