@@ -195,7 +195,7 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
     res = res.and(match node {
         hir::Node::Crate(_) => bug!("check_well_formed cannot be applied to the crate root"),
         hir::Node::Item(item) => check_item(tcx, item),
-        hir::Node::TraitItem(item) => check_trait_item(tcx, item),
+        hir::Node::TraitItem(..) => Ok(()),
         hir::Node::ImplItem(item) => check_impl_item(tcx, item),
         hir::Node::ForeignItem(item) => check_foreign_item(tcx, item),
         hir::Node::ConstBlock(_) | hir::Node::Expr(_) | hir::Node::OpaqueTy(_) => Ok(()),
@@ -322,18 +322,16 @@ fn check_foreign_item<'tcx>(
     }
 }
 
-fn check_trait_item<'tcx>(
+pub(crate) fn check_trait_item<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_item: &'tcx hir::TraitItem<'tcx>,
+    def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let def_id = trait_item.owner_id.def_id;
-
     // Check that an item definition in a subtrait is shadowing a supertrait item.
     lint_item_shadowing_supertrait_item(tcx, def_id);
 
     let mut res = check_associated_item(tcx, def_id);
 
-    if matches!(trait_item.kind, hir::TraitItemKind::Fn(..)) {
+    if matches!(tcx.def_kind(def_id), DefKind::AssocFn) {
         for &assoc_ty_def_id in tcx.associated_types_for_impl_traits_in_associated_fn(def_id) {
             res = res.and(check_associated_item(tcx, assoc_ty_def_id.expect_local()));
         }
