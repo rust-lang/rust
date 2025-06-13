@@ -4,8 +4,6 @@ use crate::{
     ptr,
 };
 
-
-
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
@@ -11304,33 +11302,32 @@ pub fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
 #[rustc_legacy_const_generics(2)]
 pub fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     const fn mask(shift: u32, i: u32) -> u32 {
-	let shift = shift % 16;
-	let mod_i = i%16;
-	if mod_i < (16 - shift) {
-	    i + shift
-	} else {
-	    i + 48 + shift
-	} 
+        let shift = shift % 16;
+        let mod_i = i % 16;
+        if mod_i < (16 - shift) {
+            i + shift
+        } else {
+            i + 48 + shift
+        }
     }
 
-        // If palignr is shifting the pair of vectors more than the size of two
-        // lanes, emit zero.
-        if IMM8 >= 32 {
-            return _mm512_setzero_si512();
-        }
-        // If palignr is shifting the pair of input vectors more than one lane,
-        // but less than two lanes, convert to shifting in zeroes.
-        let (a, b) = if IMM8 > 16 {
-            (_mm512_setzero_si512(), a)
-        } else {
-            (a, b)
-        };
+    // If palignr is shifting the pair of vectors more than the size of two
+    // lanes, emit zero.
+    if IMM8 >= 32 {
+        return _mm512_setzero_si512();
+    }
+    // If palignr is shifting the pair of input vectors more than one lane,
+    // but less than two lanes, convert to shifting in zeroes.
+    let (a, b) = if IMM8 > 16 {
+        (_mm512_setzero_si512(), a)
+    } else {
+        (a, b)
+    };
     unsafe {
         if IMM8 == 16 {
             return transmute(a);
         }
-	
-	
+
         let r: i8x64 = simd_shuffle!(
             b.as_i8x64(),
             a.as_i8x64(),
@@ -11351,7 +11348,7 @@ pub fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
                 mask(IMM8 as u32, 13),
                 mask(IMM8 as u32, 14),
                 mask(IMM8 as u32, 15),
-		mask(IMM8 as u32, 16),
+                mask(IMM8 as u32, 16),
                 mask(IMM8 as u32, 17),
                 mask(IMM8 as u32, 18),
                 mask(IMM8 as u32, 19),
@@ -11367,7 +11364,7 @@ pub fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
                 mask(IMM8 as u32, 29),
                 mask(IMM8 as u32, 30),
                 mask(IMM8 as u32, 31),
-		mask(IMM8 as u32, 32),
+                mask(IMM8 as u32, 32),
                 mask(IMM8 as u32, 33),
                 mask(IMM8 as u32, 34),
                 mask(IMM8 as u32, 35),
@@ -11383,7 +11380,7 @@ pub fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
                 mask(IMM8 as u32, 45),
                 mask(IMM8 as u32, 46),
                 mask(IMM8 as u32, 47),
-		mask(IMM8 as u32, 48),
+                mask(IMM8 as u32, 48),
                 mask(IMM8 as u32, 49),
                 mask(IMM8 as u32, 50),
                 mask(IMM8 as u32, 51),
@@ -11493,7 +11490,7 @@ pub fn _mm_mask_alignr_epi8<const IMM8: i32>(
     a: __m128i,
     b: __m128i,
 ) -> __m128i {
-    unsafe {`
+    unsafe {
         static_assert_uimm_bits!(IMM8, 8);
         let r = _mm_alignr_epi8::<IMM8>(a, b);
         transmute(simd_select_bitmask(k, r.as_i8x16(), src.as_i8x16()))
