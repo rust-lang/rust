@@ -45,7 +45,7 @@ impl AlmostStandardFormulation {
 impl<'tcx> LateLintPass<'tcx> for AlmostStandardFormulation {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let mut check_next = false;
-        if let ItemKind::Static(_, ty, Mutability::Not, _) = item.kind {
+        if let ItemKind::Static(Mutability::Not, _, ty, _) = item.kind {
             let lines = cx
                 .tcx
                 .hir_attrs(item.hir_id())

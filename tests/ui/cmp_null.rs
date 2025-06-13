@@ -33,3 +33,9 @@ fn main() {
     let _ = x as *const () == ptr::null();
     //~^ cmp_null
 }
+
+fn issue15010() {
+    let f: *mut i32 = std::ptr::null_mut();
+    debug_assert!(f != std::ptr::null_mut());
+    //~^ cmp_null
+}
