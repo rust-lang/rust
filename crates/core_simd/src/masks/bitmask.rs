@@ -78,17 +78,16 @@ where
 {
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub(crate) fn splat(value: bool) -> Self {
-        let mut mask = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
-        if value {
-            mask.as_mut().fill(u8::MAX)
-        } else {
-            mask.as_mut().fill(u8::MIN)
-        }
-        if N % 8 > 0 {
-            *mask.as_mut().last_mut().unwrap() &= u8::MAX >> (8 - N % 8);
-        }
-        Self(mask, PhantomData)
+    #[rustc_const_unstable(feature = "portable_simd", issue = "86656")]
+    pub(crate) const fn splat(value: bool) -> Self {
+        Self(
+            if value {
+                <LaneCount<N> as SupportedLaneCount>::FULL_BIT_MASK
+            } else {
+                <LaneCount<N> as SupportedLaneCount>::EMPTY_BIT_MASK
+            },
+            PhantomData,
+        )
     }
 
     #[inline]
@@ -131,7 +130,7 @@ where
 
     #[inline]
     pub(crate) fn from_bitmask_integer(bitmask: u64) -> Self {
-        let mut bytes = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
+        let mut bytes = <LaneCount<N> as SupportedLaneCount>::BitMask::EMPTY_BIT_MASK;
         let len = bytes.as_mut().len();
         bytes
             .as_mut()
