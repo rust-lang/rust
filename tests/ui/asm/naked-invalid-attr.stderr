@@ -4,6 +4,15 @@ error[E0433]: failed to resolve: use of unresolved module or unlinked crate `a`
 LL | #[::a]
    |     ^ use of unresolved module or unlinked crate `a`
 
+error[E0736]: attribute incompatible with `#[unsafe(naked)]`
+  --> $DIR/naked-invalid-attr.rs:56:3
+   |
+LL | #[::a]
+   |   ^^^ the `{{root}}::a` attribute is incompatible with `#[unsafe(naked)]`
+...
+LL | #[unsafe(naked)]
+   | ---------------- function marked with `#[unsafe(naked)]` here
+
 error: attribute should be applied to a function definition
   --> $DIR/naked-invalid-attr.rs:13:1
    |
@@ -32,15 +41,6 @@ LL |     #[unsafe(naked)]
    |     ^^^^^^^^^^^^^^^^
 LL |     || {};
    |     ----- not a function definition
-
-error[E0736]: attribute incompatible with `#[unsafe(naked)]`
-  --> $DIR/naked-invalid-attr.rs:56:1
-   |
-LL | #[::a]
-   | ^^^^^^ the `::a` attribute is incompatible with `#[unsafe(naked)]`
-...
-LL | #[unsafe(naked)]
-   | ---------------- function marked with `#[unsafe(naked)]` here
 
 error: attribute should be applied to a function definition
   --> $DIR/naked-invalid-attr.rs:22:5
