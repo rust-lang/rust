@@ -262,8 +262,78 @@ macro_rules! or {
     };
 }
 
-// See `generate_aarch64_outlined_atomics` in build.rs.
-include!(concat!(env!("OUT_DIR"), "/outlined_atomics.rs"));
+#[macro_export]
+macro_rules! foreach_ordering {
+    ($macro:path, $bytes:tt, $name:ident) => {
+        $macro!( Relaxed, $bytes, ${concat($name, _relax)} );
+        $macro!( Acquire, $bytes, ${concat($name, _acq)} );
+        $macro!( Release, $bytes, ${concat($name, _rel)} );
+        $macro!( AcqRel, $bytes, ${concat($name, _acq_rel)} );
+    };
+    ($macro:path, $name:ident) => {
+        $macro!( Relaxed, ${concat($name, _relax)} );
+        $macro!( Acquire, ${concat($name, _acq)} );
+        $macro!( Release, ${concat($name, _rel)} );
+        $macro!( AcqRel, ${concat($name, _acq_rel)} );
+    };
+}
+
+#[macro_export]
+macro_rules! foreach_bytes {
+    ($macro:path, $name:ident) => {
+        foreach_ordering!( $macro, 1, ${concat(__aarch64_, $name, "1")} );
+        foreach_ordering!( $macro, 2, ${concat(__aarch64_, $name, "2")} );
+        foreach_ordering!( $macro, 4, ${concat(__aarch64_, $name, "4")} );
+        foreach_ordering!( $macro, 8, ${concat(__aarch64_, $name, "8")} );
+    };
+}
+
+/// Generate different macros for cas/swp/add/clr/eor/set so that we can test them separately.
+#[macro_export]
+macro_rules! foreach_cas {
+    ($macro:path) => {
+        foreach_bytes!($macro, cas);
+    };
+}
+
+/// Only CAS supports 16 bytes, and it has a different implementation that uses a different macro.
+#[macro_export]
+macro_rules! foreach_cas16 {
+    ($macro:path) => {
+        foreach_ordering!($macro, __aarch64_cas16);
+    };
+}
+#[macro_export]
+macro_rules! foreach_swp {
+    ($macro:path) => {
+        foreach_bytes!($macro, swp);
+    };
+}
+#[macro_export]
+macro_rules! foreach_ldadd {
+    ($macro:path) => {
+        foreach_bytes!($macro, ldadd);
+    };
+}
+#[macro_export]
+macro_rules! foreach_ldclr {
+    ($macro:path) => {
+        foreach_bytes!($macro, ldclr);
+    };
+}
+#[macro_export]
+macro_rules! foreach_ldeor {
+    ($macro:path) => {
+        foreach_bytes!($macro, ldeor);
+    };
+}
+#[macro_export]
+macro_rules! foreach_ldset {
+    ($macro:path) => {
+        foreach_bytes!($macro, ldset);
+    };
+}
+
 foreach_cas!(compare_and_swap);
 foreach_cas16!(compare_and_swap_i128);
 foreach_swp!(swap);
