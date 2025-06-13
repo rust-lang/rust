@@ -449,12 +449,15 @@ where
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
-        let canonical_result = self.search_graph.evaluate_goal(
-            self.cx(),
-            canonical_goal,
-            self.step_kind_for_source(source),
-            &mut goal_evaluation,
-        );
+        let canonical_result = self
+            .search_graph
+            .evaluate_goal(
+                self.cx(),
+                canonical_goal,
+                self.step_kind_for_source(source),
+                &mut goal_evaluation,
+            )
+            .1;
         goal_evaluation.query_result(canonical_result);
         self.inspect.goal_evaluation(goal_evaluation);
         let response = match canonical_result {
