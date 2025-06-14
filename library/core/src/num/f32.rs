@@ -443,6 +443,15 @@ impl f32 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX: f32 = 3.40282347e+38_f32;
 
+    
+    /// Largest negative normal `f32` value.
+    ///
+    /// Equal to &minus;2<sup>[`MIN_EXP`]&nbsp;&minus;&nbsp;1</sup>.
+    ///
+    /// [`MIN_EXP`]: f32::MIN_EXP
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    pub const MAX_NEGATIVE: f32 = -1.17549435e-38_f32;
+
     /// One greater than the minimum possible *normal* power of 2 exponent
     /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
     ///
