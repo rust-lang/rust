@@ -11,7 +11,7 @@ use std::path::Path;
 use super::execution_context::ExecutionContext;
 use super::helpers;
 use crate::Build;
-use crate::utils::helpers::{start_process, t};
+use crate::utils::helpers::t;
 
 #[derive(Clone, Default)]
 pub enum GitInfo {
@@ -46,7 +46,7 @@ impl GitInfo {
 
         let mut git_command = helpers::git(Some(dir));
         git_command.arg("rev-parse");
-        let output = git_command.allow_failure().run_capture(exec_ctx);
+        let output = git_command.allow_failure().run_capture(&exec_ctx);
 
         if output.is_failure() {
             return GitInfo::Absent;
@@ -59,24 +59,35 @@ impl GitInfo {
         }
 
         // Ok, let's scrape some info
-        let ver_date = start_process(
-            helpers::git(Some(dir))
-                .arg("log")
-                .arg("-1")
-                .arg("--date=short")
-                .arg("--pretty=format:%cd")
-                .as_command_mut(),
-        );
-        let ver_hash =
-            start_process(helpers::git(Some(dir)).arg("rev-parse").arg("HEAD").as_command_mut());
-        let short_ver_hash = start_process(
-            helpers::git(Some(dir)).arg("rev-parse").arg("--short=9").arg("HEAD").as_command_mut(),
-        );
-        GitInfo::Present(Some(Info {
-            commit_date: ver_date().trim().to_string(),
-            sha: ver_hash().trim().to_string(),
-            short_sha: short_ver_hash().trim().to_string(),
-        }))
+        let commit_date = helpers::git(Some(dir))
+            .arg("log")
+            .arg("-1")
+            .arg("--date=short")
+            .arg("--pretty=format:%cd")
+            .run_always()
+            .run_capture_stdout(&exec_ctx)
+            .stdout()
+            .trim()
+            .to_owned();
+        let sha = helpers::git(Some(dir))
+            .arg("rev-parse")
+            .arg("HEAD")
+            .run_always()
+            .run_capture_stdout(&exec_ctx)
+            .stdout()
+            .trim()
+            .to_owned();
+        let short_sha = helpers::git(Some(dir))
+            .arg("rev-parse")
+            .arg("--short=9")
+            .arg("HEAD")
+            .run_always()
+            .run_capture_stdout(&exec_ctx)
+            .stdout()
+            .trim()
+            .to_owned();
+
+        GitInfo::Present(Some(Info { commit_date, sha, short_sha }))
     }
 
     pub fn info(&self) -> Option<&Info> {
