@@ -46,6 +46,10 @@ runners:
     os: windows-2025-8core-32gb
     <<: *base-job
 
+  - &job-windows-aarch64
+    os: windows-11-arm
+    <<: *base-job
+
   - &job-aarch64-linux
     # Free some disk space to avoid running out of space during the build.
     free_disk: true
@@ -539,6 +543,19 @@ auto:
       SCRIPT: make ci-msvc-ps1
     <<: *job-windows
 
+  # aarch64-msvc is split into two jobs to run tests in parallel.
+  - name: aarch64-msvc-1
+    env:
+      RUST_CONFIGURE_ARGS: --build=aarch64-pc-windows-msvc
+      SCRIPT: make ci-msvc-py
+    <<: *job-windows-aarch64
+
+  - name: aarch64-msvc-2
+    env:
+      RUST_CONFIGURE_ARGS: --build=aarch64-pc-windows-msvc
+      SCRIPT: make ci-msvc-ps1
+    <<: *job-windows-aarch64
+
   # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
   - name: x86_64-msvc-ext1
     env:
@@ -634,14 +651,14 @@ auto:
   - name: dist-aarch64-msvc
     env:
       RUST_CONFIGURE_ARGS: >-
-        --build=x86_64-pc-windows-msvc
+        --build=aarch64-pc-windows-msvc
         --host=aarch64-pc-windows-msvc
         --target=aarch64-pc-windows-msvc,arm64ec-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
-    <<: *job-windows
+    <<: *job-windows-aarch64
 
   - name: dist-i686-mingw
     env:
