@@ -135,14 +135,17 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
             .iterate_to_fixpoint(tcx, body, None)
             .into_results_cursor(body);
 
-    let mut assignments = AssignmentResult::find_dead_assignments(&checked_places, &mut live, body);
+    let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
 
-    assignments.merge_guards(&checked_places, body);
+    let mut assignments =
+        AssignmentResult::find_dead_assignments(tcx, typing_env, &checked_places, &mut live, body);
 
-    let dead_captures = assignments.compute_dead_captures(&checked_places, num_captures);
+    assignments.merge_guards();
 
-    assignments.report_fully_unused(tcx, &checked_places, body);
-    assignments.report_unused_assignments(tcx, def_id, &checked_places, body);
+    let dead_captures = assignments.compute_dead_captures(num_captures);
+
+    assignments.report_fully_unused();
+    assignments.report_unused_assignments();
 
     dead_captures
 }
@@ -551,6 +554,7 @@ impl<'tcx> PlaceSet<'tcx> {
         }
     }
 
+    #[inline]
     fn get(&self, place: PlaceRef<'tcx>) -> Option<(PlaceIndex, &'tcx [PlaceElem<'tcx>])> {
         if let Some(index) = self.locals[place.local] {
             return Some((index, place.projection));
@@ -584,7 +588,11 @@ impl<'tcx> PlaceSet<'tcx> {
     }
 }
 
-struct AssignmentResult {
+struct AssignmentResult<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    checked_places: &'a PlaceSet<'tcx>,
+    body: &'a Body<'tcx>,
     /// Set of locals that are live at least once. This is used to report fully unused locals.
     ever_live: DenseBitSet<PlaceIndex>,
     /// Set of locals that have a non-trivial drop. This is used to skip reporting unused
@@ -599,16 +607,18 @@ struct AssignmentResult {
     assignments: IndexVec<PlaceIndex, FxIndexMap<SourceInfo, Access>>,
 }
 
-impl AssignmentResult {
+impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
     /// Collect all assignments to checked locals.
     ///
     /// Assignments are collected, even if they are live. Dead assignments are reported, and live
     /// assignments are used to make diagnostics correct for match guards.
-    fn find_dead_assignments<'tcx>(
-        checked_places: &PlaceSet<'tcx>,
+    fn find_dead_assignments(
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        checked_places: &'a PlaceSet<'tcx>,
         cursor: &mut ResultsCursor<'_, 'tcx, MaybeLivePlaces<'_, 'tcx>>,
-        body: &Body<'tcx>,
-    ) -> AssignmentResult {
+        body: &'a Body<'tcx>,
+    ) -> AssignmentResult<'a, 'tcx> {
         let mut ever_live = DenseBitSet::new_empty(checked_places.len());
         let mut ever_dropped = DenseBitSet::new_empty(checked_places.len());
         let mut assignments = IndexVec::<PlaceIndex, FxIndexMap<_, _>>::from_elem(
@@ -718,7 +728,15 @@ impl AssignmentResult {
             }
         }
 
-        AssignmentResult { ever_live, ever_dropped, assignments }
+        AssignmentResult {
+            tcx,
+            typing_env,
+            checked_places,
+            ever_live,
+            ever_dropped,
+            assignments,
+            body,
+        }
     }
 
     /// Match guards introduce a different local to freeze the guarded value as immutable.
@@ -732,16 +750,16 @@ impl AssignmentResult {
     ///      _ => {}
     ///    }
     ///
-    fn merge_guards<'tcx>(&mut self, checked_places: &PlaceSet<'tcx>, body: &Body<'_>) {
-        for (index, place) in checked_places.iter() {
+    fn merge_guards(&mut self) {
+        for (index, place) in self.checked_places.iter() {
             let local = place.local;
             if let &LocalInfo::User(BindingForm::RefForGuard(arm_local)) =
-                body.local_decls[local].local_info()
+                self.body.local_decls[local].local_info()
             {
                 debug_assert!(place.projection.is_empty());
 
                 // Local to use in the arm.
-                let Some((arm_index, _proj)) = checked_places.get(arm_local.into()) else {
+                let Some((arm_index, _proj)) = self.checked_places.get(arm_local.into()) else {
                     continue;
                 };
                 debug_assert_ne!(index, arm_index);
@@ -776,14 +794,10 @@ impl AssignmentResult {
     }
 
     /// Compute captures that are fully dead.
-    fn compute_dead_captures<'tcx>(
-        &self,
-        checked_places: &PlaceSet<'tcx>,
-        num_captures: usize,
-    ) -> DenseBitSet<FieldIdx> {
+    fn compute_dead_captures(&self, num_captures: usize) -> DenseBitSet<FieldIdx> {
         // Report to caller the set of dead captures.
         let mut dead_captures = DenseBitSet::new_empty(num_captures);
-        for (index, place) in checked_places.iter() {
+        for (index, place) in self.checked_places.iter() {
             if self.ever_live.contains(index) {
                 continue;
             }
@@ -804,16 +818,11 @@ impl AssignmentResult {
     }
 
     /// Report fully unused locals, and forget the corresponding assignments.
-    fn report_fully_unused<'tcx>(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        checked_places: &PlaceSet<'tcx>,
-        body: &Body<'tcx>,
-    ) {
-        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+    fn report_fully_unused(&mut self) {
+        let tcx = self.tcx;
 
         // First, report fully unused locals.
-        for (index, place) in checked_places.iter() {
+        for (index, place) in self.checked_places.iter() {
             if self.ever_live.contains(index) {
                 continue;
             }
@@ -824,7 +833,7 @@ impl AssignmentResult {
             }
 
             let local = place.local;
-            let decl = &body.local_decls[local];
+            let decl = &self.body.local_decls[local];
 
             if decl.from_compiler_desugaring() {
                 continue;
@@ -832,13 +841,13 @@ impl AssignmentResult {
 
             // Only report actual user-defined binding from now on.
             let LocalInfo::User(BindingForm::Var(binding)) = decl.local_info() else { continue };
-            let Some(hir_id) = decl.source_info.scope.lint_root(&body.source_scopes) else {
+            let Some(hir_id) = decl.source_info.scope.lint_root(&self.body.source_scopes) else {
                 continue;
             };
 
             let introductions = &binding.introductions;
 
-            let Some((name, def_span)) = checked_places.names[index] else { continue };
+            let Some((name, def_span)) = self.checked_places.names[index] else { continue };
 
             // #117284, when `ident_span` and `def_span` have different contexts
             // we can't provide a good suggestion, instead we pointed out the spans from macro
@@ -858,7 +867,7 @@ impl AssignmentResult {
                     def_span,
                     errors::UnusedVariable {
                         name,
-                        string_interp: maybe_suggest_literal_matching_name(body, name),
+                        string_interp: maybe_suggest_literal_matching_name(self.body, name),
                         sugg,
                     },
                 );
@@ -889,11 +898,11 @@ impl AssignmentResult {
                 // This is probably a drop-guard, so we do not issue a warning there.
                 if maybe_drop_guard(
                     tcx,
-                    typing_env,
+                    self.typing_env,
                     index,
                     &self.ever_dropped,
-                    checked_places,
-                    body,
+                    self.checked_places,
+                    self.body,
                 ) {
                     statements.clear();
                     continue;
@@ -945,7 +954,7 @@ impl AssignmentResult {
                 spans,
                 errors::UnusedVariable {
                     name,
-                    string_interp: maybe_suggest_literal_matching_name(body, name),
+                    string_interp: maybe_suggest_literal_matching_name(self.body, name),
                     sugg,
                 },
             );
@@ -954,25 +963,26 @@ impl AssignmentResult {
 
     /// Second, report unused assignments that do not correspond to initialization.
     /// Initializations have been removed in the previous loop reporting unused variables.
-    fn report_unused_assignments<'tcx>(
-        self,
-        tcx: TyCtxt<'tcx>,
-        body_def_id: LocalDefId,
-        checked_places: &PlaceSet<'tcx>,
-        body: &Body<'tcx>,
-    ) {
-        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+    fn report_unused_assignments(self) {
+        let tcx = self.tcx;
 
         for (index, statements) in self.assignments.into_iter_enumerated() {
             if statements.is_empty() {
                 continue;
             }
 
-            let Some((name, decl_span)) = checked_places.names[index] else { continue };
+            let Some((name, decl_span)) = self.checked_places.names[index] else { continue };
 
             // We have outstanding assignments and with non-trivial drop.
             // This is probably a drop-guard, so we do not issue a warning there.
-            if maybe_drop_guard(tcx, typing_env, index, &self.ever_dropped, checked_places, body) {
+            if maybe_drop_guard(
+                tcx,
+                self.typing_env,
+                index,
+                &self.ever_dropped,
+                self.checked_places,
+                self.body,
+            ) {
                 continue;
             }
 
@@ -984,7 +994,7 @@ impl AssignmentResult {
                 }
 
                 // Report the dead assignment.
-                let Some(hir_id) = source_info.scope.lint_root(&body.source_scopes) else {
+                let Some(hir_id) = source_info.scope.lint_root(&self.body.source_scopes) else {
                     continue;
                 };
 
@@ -992,10 +1002,10 @@ impl AssignmentResult {
                     AccessKind::Assign => {
                         let suggestion = annotate_mut_binding_to_immutable_binding(
                             tcx,
-                            checked_places.places[index],
-                            body_def_id,
+                            self.checked_places.places[index],
+                            self.body.source.def_id().expect_local(),
                             source_info.span,
-                            body,
+                            self.body,
                         );
                         tcx.emit_node_span_lint(
                             lint::builtin::UNUSED_ASSIGNMENTS,
