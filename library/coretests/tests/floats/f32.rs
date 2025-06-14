@@ -2,6 +2,8 @@ use core::f32;
 use core::f32::consts;
 use core::num::FpCategory as Fp;
 
+use super::{assert_approx_eq, assert_biteq};
+
 /// Smallest number
 const TINY_BITS: u32 = 0x1;
 
@@ -31,30 +33,6 @@ const APPROX_DELTA: f32 = if cfg!(miri) { 1e-4 } else { 1e-6 };
 #[test]
 fn test_num_f32() {
     super::test_num(10f32, 2f32);
-}
-
-#[test]
-fn test_min_nan() {
-    assert_biteq!(f32::NAN.min(2.0), 2.0);
-    assert_biteq!(2.0f32.min(f32::NAN), 2.0);
-}
-
-#[test]
-fn test_max_nan() {
-    assert_biteq!(f32::NAN.max(2.0), 2.0);
-    assert_biteq!(2.0f32.max(f32::NAN), 2.0);
-}
-
-#[test]
-fn test_minimum() {
-    assert!(f32::NAN.minimum(2.0).is_nan());
-    assert!(2.0f32.minimum(f32::NAN).is_nan());
-}
-
-#[test]
-fn test_maximum() {
-    assert!(f32::NAN.maximum(2.0).is_nan());
-    assert!(2.0f32.maximum(f32::NAN).is_nan());
 }
 
 #[test]
@@ -206,92 +184,6 @@ fn test_classify() {
     assert_eq!(1f32.classify(), Fp::Normal);
     assert_eq!(1e-37f32.classify(), Fp::Normal);
     assert_eq!(1e-38f32.classify(), Fp::Subnormal);
-}
-
-#[test]
-fn test_floor() {
-    assert_biteq!(f32::math::floor(1.0f32), 1.0f32);
-    assert_biteq!(f32::math::floor(1.3f32), 1.0f32);
-    assert_biteq!(f32::math::floor(1.5f32), 1.0f32);
-    assert_biteq!(f32::math::floor(1.7f32), 1.0f32);
-    assert_biteq!(f32::math::floor(0.0f32), 0.0f32);
-    assert_biteq!(f32::math::floor(-0.0f32), -0.0f32);
-    assert_biteq!(f32::math::floor(-1.0f32), -1.0f32);
-    assert_biteq!(f32::math::floor(-1.3f32), -2.0f32);
-    assert_biteq!(f32::math::floor(-1.5f32), -2.0f32);
-    assert_biteq!(f32::math::floor(-1.7f32), -2.0f32);
-}
-
-#[test]
-fn test_ceil() {
-    assert_biteq!(f32::math::ceil(1.0f32), 1.0f32);
-    assert_biteq!(f32::math::ceil(1.3f32), 2.0f32);
-    assert_biteq!(f32::math::ceil(1.5f32), 2.0f32);
-    assert_biteq!(f32::math::ceil(1.7f32), 2.0f32);
-    assert_biteq!(f32::math::ceil(0.0f32), 0.0f32);
-    assert_biteq!(f32::math::ceil(-0.0f32), -0.0f32);
-    assert_biteq!(f32::math::ceil(-1.0f32), -1.0f32);
-    assert_biteq!(f32::math::ceil(-1.3f32), -1.0f32);
-    assert_biteq!(f32::math::ceil(-1.5f32), -1.0f32);
-    assert_biteq!(f32::math::ceil(-1.7f32), -1.0f32);
-}
-
-#[test]
-fn test_round() {
-    assert_biteq!(f32::math::round(2.5f32), 3.0f32);
-    assert_biteq!(f32::math::round(1.0f32), 1.0f32);
-    assert_biteq!(f32::math::round(1.3f32), 1.0f32);
-    assert_biteq!(f32::math::round(1.5f32), 2.0f32);
-    assert_biteq!(f32::math::round(1.7f32), 2.0f32);
-    assert_biteq!(f32::math::round(0.0f32), 0.0f32);
-    assert_biteq!(f32::math::round(-0.0f32), -0.0f32);
-    assert_biteq!(f32::math::round(-1.0f32), -1.0f32);
-    assert_biteq!(f32::math::round(-1.3f32), -1.0f32);
-    assert_biteq!(f32::math::round(-1.5f32), -2.0f32);
-    assert_biteq!(f32::math::round(-1.7f32), -2.0f32);
-}
-
-#[test]
-fn test_round_ties_even() {
-    assert_biteq!(f32::math::round_ties_even(2.5f32), 2.0f32);
-    assert_biteq!(f32::math::round_ties_even(1.0f32), 1.0f32);
-    assert_biteq!(f32::math::round_ties_even(1.3f32), 1.0f32);
-    assert_biteq!(f32::math::round_ties_even(1.5f32), 2.0f32);
-    assert_biteq!(f32::math::round_ties_even(1.7f32), 2.0f32);
-    assert_biteq!(f32::math::round_ties_even(0.0f32), 0.0f32);
-    assert_biteq!(f32::math::round_ties_even(-0.0f32), -0.0f32);
-    assert_biteq!(f32::math::round_ties_even(-1.0f32), -1.0f32);
-    assert_biteq!(f32::math::round_ties_even(-1.3f32), -1.0f32);
-    assert_biteq!(f32::math::round_ties_even(-1.5f32), -2.0f32);
-    assert_biteq!(f32::math::round_ties_even(-1.7f32), -2.0f32);
-}
-
-#[test]
-fn test_trunc() {
-    assert_biteq!(f32::math::trunc(1.0f32), 1.0f32);
-    assert_biteq!(f32::math::trunc(1.3f32), 1.0f32);
-    assert_biteq!(f32::math::trunc(1.5f32), 1.0f32);
-    assert_biteq!(f32::math::trunc(1.7f32), 1.0f32);
-    assert_biteq!(f32::math::trunc(0.0f32), 0.0f32);
-    assert_biteq!(f32::math::trunc(-0.0f32), -0.0f32);
-    assert_biteq!(f32::math::trunc(-1.0f32), -1.0f32);
-    assert_biteq!(f32::math::trunc(-1.3f32), -1.0f32);
-    assert_biteq!(f32::math::trunc(-1.5f32), -1.0f32);
-    assert_biteq!(f32::math::trunc(-1.7f32), -1.0f32);
-}
-
-#[test]
-fn test_fract() {
-    assert_biteq!(f32::math::fract(1.0f32), 0.0f32);
-    assert_biteq!(f32::math::fract(1.3f32), 0.29999995f32);
-    assert_biteq!(f32::math::fract(1.5f32), 0.5f32);
-    assert_biteq!(f32::math::fract(1.7f32), 0.70000005f32);
-    assert_biteq!(f32::math::fract(0.0f32), 0.0f32);
-    assert_biteq!(f32::math::fract(-0.0f32), 0.0f32);
-    assert_biteq!(f32::math::fract(-1.0f32), 0.0f32);
-    assert_biteq!(f32::math::fract(-1.3f32), -0.29999995f32);
-    assert_biteq!(f32::math::fract(-1.5f32), -0.5f32);
-    assert_biteq!(f32::math::fract(-1.7f32), -0.70000005f32);
 }
 
 #[test]
