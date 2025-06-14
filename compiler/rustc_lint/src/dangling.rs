@@ -1,4 +1,5 @@
 use rustc_ast::visit::{visit_opt, walk_list};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, LangItem};
@@ -133,7 +134,7 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let ty = cx.typeck_results().expr_ty(receiver)
         && owns_allocation(cx.tcx, ty)
         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && cx.tcx.has_attr(fn_id, sym::rustc_as_ptr)
+        && find_attr!(cx.tcx.get_all_attrs(fn_id), AttributeKind::AsPtr(_))
     {
         // FIXME: use `emit_node_lint` when `#[primary_span]` is added.
         cx.tcx.emit_node_span_lint(

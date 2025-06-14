@@ -158,6 +158,9 @@ pub enum AttributeKind {
     /// Represents `#[allow_internal_unstable]`.
     AllowInternalUnstable(ThinVec<(Symbol, Span)>),
 
+    /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
+    AsPtr(Span),
+
     /// Represents `#[rustc_default_body_unstable]`.
     BodyStability {
         stability: DefaultBodyStability,
