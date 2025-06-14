@@ -1096,12 +1096,10 @@ pub fn libm() {
     test_snan_nondet!(f32::powf(1.0, SNAN_F32));
     test_snan_nondet!(f64::powf(1.0, SNAN_F64));
 
-
-    // For pown (powi in rust) the C standard says:
-    // x^0 = 1 for all x even a sNaN
-    // FIXME(#4286): this does not match the behavior of all implementations.
-    assert_eq!(SNAN_F32.powi(0), 1.0);
-    assert_eq!(SNAN_F64.powi(0), 1.0);
+    // same as powf (keep it consistent):
+    // x^(SNaN) = (1 | NaN)
+    test_snan_nondet!(f32::powi(SNAN_F32, 0));
+    test_snan_nondet!(f64::powi(SNAN_F64, 0));
 
     assert_eq!(0f32.powi(10), 0.0);
     assert_eq!(0f64.powi(100), 0.0);

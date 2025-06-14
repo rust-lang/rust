@@ -362,7 +362,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f = this.read_scalar(f)?.to_f32()?;
                 let i = this.read_scalar(i)?.to_i32()?;
 
-                let res = fixed_powi_float_value(f, i).unwrap_or_else(|| {
+                let res = fixed_powi_float_value(this, f, i).unwrap_or_else(|| {
                     // Using host floats (but it's fine, this operation does not have guaranteed precision).
                     let res = f.to_host().powi(i).to_soft();
 
@@ -380,7 +380,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f = this.read_scalar(f)?.to_f64()?;
                 let i = this.read_scalar(i)?.to_i32()?;
 
-                let res = fixed_powi_float_value(f, i).unwrap_or_else(|| {
+                let res = fixed_powi_float_value(this, f, i).unwrap_or_else(|| {
                     // Using host floats (but it's fine, this operation does not have guaranteed precision).
                     let res = f.to_host().powi(i).to_soft();
 
@@ -540,8 +540,8 @@ fn random_nan<S: Semantics>(rng: &mut StdRng) -> IeeeFloat<S> {
 /// and the C standard leaves behavior for SNaNs unspecified.
 ///
 /// Miri chooses to adhere to both implementations and returns either one of them non-deterministically.
-fn fixed_float_value<'tcx, S: Semantics>(
-    ecx: &mut MiriInterpCx<'tcx>,
+fn fixed_float_value<S: Semantics>(
+    ecx: &mut MiriInterpCx<'_>,
     intrinsic_name: &str,
     args: &[IeeeFloat<S>],
 ) -> Option<IeeeFloat<S>> {
@@ -562,6 +562,7 @@ fn fixed_float_value<'tcx, S: Semantics>(
             // Handle both the musl and glibc cases non-deterministically.
             if !exp.is_signaling() || rng.random() { one } else { random_nan(rng) }
         }
+
         // x^(±0) = 1 for any x, even a NaN, *but* not a SNaN
         ("powf32" | "powf64", [base, exp]) if exp.is_zero() => {
             // Handle both the musl and glibc cases non-deterministically.
@@ -581,13 +582,21 @@ fn fixed_float_value<'tcx, S: Semantics>(
 
 /// Returns `Some(output)` if `powi` (called `pown` in C) results in a fixed value specified in the C standard
 /// (specifically, C23 annex F.10.4.6) when doing `base^exp`. Otherwise, returns `None`.
-fn fixed_powi_float_value<S: Semantics>(base: IeeeFloat<S>, exp: i32) -> Option<IeeeFloat<S>> {
-    match (base.category(), exp) {
-        // x^0 = 1, if x is not a Signaling NaN
-        // FIXME(#4286): The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
-        // the NaN. We should return either 1 or the NaN non-deterministically here.
-        // But for now, just handle them all the same.
-        (_, 0) => Some(IeeeFloat::<S>::one()),
+// REVIEW: I'm not sure what I should document here about pown(1, SNaN) since musl and glibc do the same and the C standard is explicit here.
+fn fixed_powi_float_value<S: Semantics>(
+    ecx: &mut MiriInterpCx<'_>,
+    base: IeeeFloat<S>,
+    exp: i32,
+) -> Option<IeeeFloat<S>> {
+    match exp {
+        0 => {
+            let one = IeeeFloat::<S>::one();
+            let rng = ecx.machine.rng.get_mut();
+            Some(
+                // Handle both the musl and glibc powf cases non-deterministically.
+                if !base.is_signaling() || rng.random() { one } else { random_nan(rng) },
+            )
+        }
 
         _ => None,
     }
