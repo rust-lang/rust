@@ -2,7 +2,7 @@
 
 <!-- toc -->
 
-As described in [the high-level overview of the compiler][hl], the Rust compiler
+As described in [Overview of the compiler], the Rust compiler
 is still (as of <!-- date-check --> July 2021) transitioning from a
 traditional "pass-based" setup to a "demand-driven" system. The compiler query
 system is the key to rustc's demand-driven organization.
@@ -13,7 +13,7 @@ there is a query called `type_of` that, given the [`DefId`] of
 some item, will compute the type of that item and return it to you.
 
 [`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/def_id/struct.DefId.html
-[hl]: ./compiler-src.md
+[Overview of the compiler]: overview.md#queries
 
 Query execution is *memoized*. The first time you invoke a
 query, it will go do the computation, but the next time, the result is
