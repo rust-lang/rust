@@ -1520,22 +1520,20 @@ impl<'a> Parser<'a> {
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
             } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
+                let at_async = this.check_keyword(exp!(Async));
+                // check for `gen {}` and `gen move {}`
+                // or `async gen {}` and `async gen move {}`
+                // FIXME: (async) gen closures aren't yet parsed.
+                // FIXME(gen_blocks): Parse `gen async` and suggest swap
                 if this.token_uninterpolated_span().at_least_rust_2024()
-                    // check for `gen {}` and `gen move {}`
-                    // or `async gen {}` and `async gen move {}`
-                    && (this.is_gen_block(kw::Gen, 0)
-                        || (this.check_keyword(exp!(Async)) && this.is_gen_block(kw::Gen, 1)))
+                    && this.is_gen_block(kw::Gen, at_async as usize)
                 {
-                    // FIXME: (async) gen closures aren't yet parsed.
                     this.parse_gen_block()
-                } else if this.check_keyword(exp!(Async)) {
-                    // FIXME(gen_blocks): Parse `gen async` and suggest swap
-                    if this.is_gen_block(kw::Async, 0) {
-                        // Check for `async {` and `async move {`,
-                        this.parse_gen_block()
-                    } else {
-                        this.parse_expr_closure()
-                    }
+                // Check for `async {` and `async move {`,
+                } else if this.is_gen_block(kw::Async, 0) {
+                    this.parse_gen_block()
+                } else if at_async {
+                    this.parse_expr_closure()
                 } else if this.eat_keyword_noexpect(kw::Await) {
                     this.recover_incorrect_await_syntax(lo)
                 } else {
@@ -2406,6 +2404,14 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+
+        if let ClosureBinder::NotPresent = binder
+            && coroutine_kind.is_some()
+        {
+            // coroutine closures and generators can have the same qualifiers, so we might end up
+            // in here if there is a missing `|` but also no `{`. Adjust the expectations in that case.
+            self.expected_token_types.insert(TokenType::OpenBrace);
+        }
 
         let capture_clause = self.parse_capture_clause()?;
         let (fn_decl, fn_arg_span) = self.parse_fn_block_decl()?;

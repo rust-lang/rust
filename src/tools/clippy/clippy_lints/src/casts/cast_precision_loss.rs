@@ -7,15 +7,14 @@ use rustc_middle::ty::{self, FloatTy, Ty};
 use super::{CAST_PRECISION_LOSS, utils};
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
-    if !cast_from.is_integral() || cast_to.is_integral() {
+    let Some(from_nbits) = utils::int_ty_to_nbits(cx.tcx, cast_from) else {
         return;
-    }
+    };
 
-    let from_nbits = utils::int_ty_to_nbits(cast_from, cx.tcx);
-    let to_nbits = if cast_to.kind() == &ty::Float(FloatTy::F32) {
-        32
-    } else {
-        64
+    // FIXME: handle `f16` and `f128`
+    let to_nbits = match cast_to.kind() {
+        ty::Float(f @ (FloatTy::F32 | FloatTy::F64)) => f.bit_width(),
+        _ => return,
     };
 
     if !(is_isize_or_usize(cast_from) || from_nbits >= to_nbits) {
@@ -29,9 +28,10 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
     let from_nbits_str = if arch_dependent {
         "64".to_owned()
     } else if is_isize_or_usize(cast_from) {
+        // FIXME: handle 16 bits `usize` type
         "32 or 64".to_owned()
     } else {
-        utils::int_ty_to_nbits(cast_from, cx.tcx).to_string()
+        from_nbits.to_string()
     };
 
     span_lint(

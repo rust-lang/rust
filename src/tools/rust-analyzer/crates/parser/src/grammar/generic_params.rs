@@ -201,6 +201,17 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
             }
             if paths::is_use_path_start(p) {
                 types::path_type_bounds(p, false);
+                // test_err type_bounds_macro_call_recovery
+                // fn foo<T: T![], T: T!, T: T!{}>() -> Box<T! + T!{}> {}
+                if p.at(T![!]) {
+                    let m = p.start();
+                    p.bump(T![!]);
+                    p.error("unexpected `!` in type path, macro calls are not allowed here");
+                    if p.at_ts(TokenSet::new(&[T!['{'], T!['['], T!['(']])) {
+                        items::token_tree(p);
+                    }
+                    m.complete(p, ERROR);
+                }
             } else {
                 m.abandon(p);
                 return false;

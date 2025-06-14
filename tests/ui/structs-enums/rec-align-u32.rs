@@ -34,12 +34,12 @@ pub fn main() {
         // Send it through the shape code
         let y = format!("{:?}", x);
 
-        println!("align inner = {:?}", intrinsics::min_align_of::<Inner>());
+        println!("align inner = {:?}", intrinsics::align_of::<Inner>());
         println!("size outer = {:?}", mem::size_of::<Outer>());
         println!("y = {:?}", y);
 
         // per clang/gcc the alignment of `inner` is 4 on x86.
-        assert_eq!(intrinsics::min_align_of::<Inner>(), m::align());
+        assert_eq!(intrinsics::align_of::<Inner>(), m::align());
 
         // per clang/gcc the size of `outer` should be 12
         // because `inner`s alignment was 4.

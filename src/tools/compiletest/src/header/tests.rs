@@ -945,3 +945,14 @@ fn test_ignore_auxiliary() {
     let config = cfg().build();
     assert!(check_ignore(&config, "//@ ignore-auxiliary"));
 }
+
+#[test]
+fn test_needs_target_std() {
+    // Cherry-picks two targets:
+    // 1. `x86_64-unknown-none`: Tier 2, intentionally never supports std.
+    // 2. `x86_64-unknown-linux-gnu`: Tier 1, always supports std.
+    let config = cfg().target("x86_64-unknown-none").build();
+    assert!(check_ignore(&config, "//@ needs-target-std"));
+    let config = cfg().target("x86_64-unknown-linux-gnu").build();
+    assert!(!check_ignore(&config, "//@ needs-target-std"));
+}

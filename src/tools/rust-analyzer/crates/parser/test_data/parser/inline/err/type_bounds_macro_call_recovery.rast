@@ -1,0 +1,112 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "T"
+            ERROR
+              BANG "!"
+              TOKEN_TREE
+                L_BRACK "["
+                R_BRACK "]"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "T"
+            ERROR
+              BANG "!"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "T"
+            ERROR
+              BANG "!"
+              TOKEN_TREE
+                L_CURLY "{"
+                R_CURLY "}"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "Box"
+            GENERIC_ARG_LIST
+              L_ANGLE "<"
+              TYPE_ARG
+                DYN_TRAIT_TYPE
+                  TYPE_BOUND_LIST
+                    TYPE_BOUND
+                      MACRO_TYPE
+                        MACRO_CALL
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "T"
+                          BANG "!"
+                    WHITESPACE " "
+                    PLUS "+"
+                    WHITESPACE " "
+                    TYPE_BOUND
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "T"
+                      ERROR
+                        BANG "!"
+                        TOKEN_TREE
+                          L_CURLY "{"
+                          R_CURLY "}"
+              R_ANGLE ">"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 12: unexpected `!` in type path, macro calls are not allowed here
+error 21: unexpected `!` in type path, macro calls are not allowed here
+error 28: unexpected `!` in type path, macro calls are not allowed here
+error 43: expected `{`, `[`, `(`
+error 48: unexpected `!` in type path, macro calls are not allowed here

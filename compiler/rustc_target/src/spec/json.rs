@@ -80,6 +80,12 @@ impl Target {
                     base.$key_name = s;
                 }
             } );
+            ($key_name:ident = $json_name:expr, u64 as $int_ty:ty) => ( {
+                let name = $json_name;
+                if let Some(s) = obj.remove(name).and_then(|b| b.as_u64()) {
+                    base.$key_name = s as $int_ty;
+                }
+            } );
             ($key_name:ident, bool) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.remove(&name).and_then(|b| b.as_bool()) {
@@ -554,7 +560,7 @@ impl Target {
             }
         }
 
-        key!(c_int_width = "target-c-int-width");
+        key!(c_int_width = "target-c-int-width", u64 as u16);
         key!(c_enum_min_bits, Option<u64>); // if None, matches c_int_width
         key!(os);
         key!(env);

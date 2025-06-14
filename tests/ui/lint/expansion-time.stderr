@@ -12,20 +12,6 @@ note: the lint level is defined here
 LL | #[warn(meta_variable_misuse)]
    |        ^^^^^^^^^^^^^^^^^^^^
 
-warning: missing fragment specifier
-  --> $DIR/expansion-time.rs:9:19
-   |
-LL | macro_rules! m { ($i) => {} }
-   |                   ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
-note: the lint level is defined here
-  --> $DIR/expansion-time.rs:8:8
-   |
-LL | #[warn(missing_fragment_specifier)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 warning: include macro expected single expression in source
   --> $DIR/expansion-time-include.rs:4:1
    |
@@ -33,25 +19,10 @@ LL | 2
    | ^
    |
 note: the lint level is defined here
-  --> $DIR/expansion-time.rs:22:8
+  --> $DIR/expansion-time.rs:18:8
    |
 LL | #[warn(incomplete_include)]
    |        ^^^^^^^^^^^^^^^^^^
 
-warning: 3 warnings emitted
-
-Future incompatibility report: Future breakage diagnostic:
-warning: missing fragment specifier
-  --> $DIR/expansion-time.rs:9:19
-   |
-LL | macro_rules! m { ($i) => {} }
-   |                   ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
-note: the lint level is defined here
-  --> $DIR/expansion-time.rs:8:8
-   |
-LL | #[warn(missing_fragment_specifier)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+warning: 2 warnings emitted
 

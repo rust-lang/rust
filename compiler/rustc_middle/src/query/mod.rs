@@ -221,6 +221,14 @@ rustc_queries! {
         feedable
     }
 
+    /// Gives access to lints emitted during ast lowering.
+    ///
+    /// This can be conveniently accessed by `tcx.hir_*` methods.
+    /// Avoid calling this query directly.
+    query opt_ast_lowering_delayed_lints(key: hir::OwnerId) -> Option<&'tcx hir::lints::DelayedLints> {
+        desc { |tcx| "getting AST lowering delayed lints in `{}`", tcx.def_path_str(key) }
+    }
+
     /// Returns the *default* of the const pararameter given by `DefId`.
     ///
     /// E.g., given `struct Ty<const N: usize = 3>;` this returns `3` for `N`.
@@ -1115,11 +1123,6 @@ rustc_queries! {
         desc { |tcx| "checking for unstable API usage in {}", describe_as_module(key, tcx) }
     }
 
-    /// Checks the loops in the module.
-    query check_mod_loops(key: LocalModDefId) {
-        desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
-    }
-
     query check_mod_privacy(key: LocalModDefId) {
         desc { |tcx| "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }
@@ -1571,7 +1574,7 @@ rustc_queries! {
     /// Like `param_env`, but returns the `ParamEnv` after all opaque types have been
     /// replaced with their hidden type. This is used in the old trait solver
     /// when in `PostAnalysis` mode and should not be called directly.
-    query param_env_normalized_for_post_analysis(def_id: DefId) -> ty::ParamEnv<'tcx> {
+    query typing_env_normalized_for_post_analysis(def_id: DefId) -> ty::TypingEnv<'tcx> {
         desc { |tcx| "computing revealed normalized predicates of `{}`", tcx.def_path_str(def_id) }
     }
 

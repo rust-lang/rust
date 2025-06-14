@@ -64,12 +64,18 @@ jobs:
         uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
         with:
           workspaces: src/ci/citool
+      - name: Test citool
+        # Only test citool on the auto branch, to reduce latency of the calculate matrix job
+        # on PR/try builds.
+        if: ${{ github.ref == 'refs/heads/auto' }}
+        run: |
+          cd src/ci/citool
+          CARGO_INCREMENTAL=0 cargo test
       - name: Calculate the CI job matrix
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           cd src/ci/citool
-          CARGO_INCREMENTAL=0 cargo test
           CARGO_INCREMENTAL=0 cargo run calculate-job-matrix >> $GITHUB_OUTPUT
         id: jobs
   job:

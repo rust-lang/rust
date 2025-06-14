@@ -44,29 +44,6 @@ remove_labels = ["S-waiting-on-author"]
 # Those labels are added when PR author requests a review from an assignee
 add_labels = ["S-waiting-on-review"]
 
-[ping.icebreakers-llvm]
-message = """\
-Hey LLVM ICE-breakers! This bug has been identified as a good
-"LLVM ICE-breaking candidate". In case it's useful, here are some
-[instructions] for tackling these sorts of bugs. Maybe take a look?
-Thanks! <3
-
-[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/llvm.html
-"""
-label = "ICEBreaker-LLVM"
-
-[ping.icebreakers-cleanup-crew]
-alias = ["cleanup", "cleanups", "cleanup-crew", "shrink", "reduce", "bisect"]
-message = """\
-Hey Cleanup Crew ICE-breakers! This bug has been identified as a good
-"Cleanup ICE-breaking candidate". In case it's useful, here are some
-[instructions] for tackling these sorts of bugs. Maybe take a look?
-Thanks! <3
-
-[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/cleanup-crew.html
-"""
-label = "ICEBreaker-Cleanup-Crew"
-
 [ping.windows]
 message = """\
 Hey Windows Group! This bug has been identified as a good "Windows candidate".
@@ -729,6 +706,41 @@ don't know
 ]
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
 
+[notify-zulip."beta-nominated".bootstrap]
+required_labels = ["T-bootstrap"]
+zulip_stream = 507486 # #t-infra/bootstrap/backports
+topic = "#{number}: beta-nominated"
+message_on_add = [
+    """\
+@*T-bootstrap* PR #{number} "{title}" has been nominated for beta backport.
+""",
+    """\
+/poll Approve beta backport of #{number}?
+approve
+decline
+don't know
+""",
+]
+message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."stable-nominated".bootstrap]
+required_labels = ["T-bootstrap"]
+zulip_stream = 507486 # #t-infra/bootstrap/backports
+topic = "#{number}: stable-nominated"
+message_on_add = [
+    """\
+@*T-bootstrap* PR #{number} "{title}" has been nominated for stable backport.
+""",
+    """\
+/poll Approve stable backport of #{number}?
+approve
+approve (but does not justify new dot release on its own)
+decline
+don't know
+""",
+]
+message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
 [notify-zulip."A-edition-2021"]
 required_labels = ["C-bug"]
 zulip_stream = 268952 # #edition
@@ -1217,6 +1229,7 @@ compiler = [
     "@oli-obk",
     "@petrochenkov",
     "@SparrowLii",
+    "@WaffleLapkin",
     "@wesleywiser",
 ]
 libs = [
@@ -1227,14 +1240,6 @@ libs = [
     "@tgross35",
     "@thomcc",
     "@ibraheemdev",
-]
-bootstrap = [
-    "@Mark-Simulacrum",
-    "@albertlarsan68",
-    "@onur-ozkan",
-    "@kobzol",
-    "@jieyouxu",
-    "@clubby789",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
@@ -1255,6 +1260,7 @@ codegen = [
     "@dianqk",
     "@saethlin",
     "@workingjubilee",
+    "@WaffleLapkin",
 ]
 query-system = [
     "@oli-obk",
@@ -1424,8 +1430,8 @@ compiletest = [
 "/src/tools/rustdoc-themes" =                            ["rustdoc"]
 "/src/tools/tidy" =                                      ["bootstrap"]
 "/src/tools/x" =                                         ["bootstrap"]
-"/src/tools/rustdoc-gui-test" =                          ["bootstrap", "@onur-ozkan"]
-"/src/tools/libcxx-version" =                            ["@onur-ozkan"]
+"/src/tools/rustdoc-gui-test" =                          ["bootstrap"]
+"/src/tools/libcxx-version" =                            ["bootstrap"]
 
 # Enable review queue tracking
 # Documentation at: https://forge.rust-lang.org/triagebot/review-queue-tracking.html

@@ -1,11 +1,13 @@
 error[E0621]: explicit lifetime required in the type of `other`
   --> $DIR/ex1-return-one-existing-name-early-bound-in-struct.rs:11:21
    |
-LL |     fn bar(&self, other: Foo) -> Foo<'a> {
-   |                          --- help: add explicit lifetime `'a` to the type of `other`: `Foo<'a>`
-...
 LL |                     other
    |                     ^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `other`
+   |
+LL |     fn bar(&self, other: Foo<'a>) -> Foo<'a> {
+   |                             ++++
 
 error: aborting due to 1 previous error
 

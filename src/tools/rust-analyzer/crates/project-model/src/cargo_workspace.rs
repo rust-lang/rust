@@ -431,12 +431,6 @@ impl CargoWorkspace {
                 .ok_or(cargo_metadata::Error::NoJson)?;
             Ok((cargo_metadata::MetadataCommand::parse(stdout)?, None))
         })()
-        .map(|(metadata, error)| {
-            (
-                metadata,
-                error.map(|e| e.context(format!("Failed to run `{:?}`", meta.cargo_command()))),
-            )
-        })
         .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))
     }
 

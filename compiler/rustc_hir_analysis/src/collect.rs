@@ -494,7 +494,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
                 // Only visit the type looking for `_` if we didn't fix the type above
                 visitor.visit_ty_unambig(a);
-                self.lowerer().lower_arg_ty(a, None)
+                self.lowerer().lower_ty(a)
             })
             .collect();
 

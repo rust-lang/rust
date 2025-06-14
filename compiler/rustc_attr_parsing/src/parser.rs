@@ -115,7 +115,7 @@ impl<'a> ArgParser<'a> {
         }
     }
 
-    pub fn from_attr_args(value: &'a AttrArgs, dcx: DiagCtxtHandle<'a>) -> Self {
+    pub fn from_attr_args<'sess>(value: &'a AttrArgs, dcx: DiagCtxtHandle<'sess>) -> Self {
         match value {
             AttrArgs::Empty => Self::NoArgs,
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
@@ -235,7 +235,7 @@ impl<'a> Debug for MetaItemParser<'a> {
 impl<'a> MetaItemParser<'a> {
     /// Create a new parser from a [`NormalAttr`], which is stored inside of any
     /// [`ast::Attribute`](rustc_ast::Attribute)
-    pub fn from_attr(attr: &'a NormalAttr, dcx: DiagCtxtHandle<'a>) -> Self {
+    pub fn from_attr<'sess>(attr: &'a NormalAttr, dcx: DiagCtxtHandle<'sess>) -> Self {
         Self {
             path: PathParser::Ast(&attr.item.path),
             args: ArgParser::from_attr_args(&attr.item.args, dcx),
@@ -320,13 +320,13 @@ fn expr_to_lit(dcx: DiagCtxtHandle<'_>, expr: &Expr, span: Span) -> MetaItemLit 
     }
 }
 
-struct MetaItemListParserContext<'a> {
+struct MetaItemListParserContext<'a, 'sess> {
     // the tokens inside the delimiters, so `#[some::attr(a b c)]` would have `a b c` inside
     inside_delimiters: Peekable<TokenStreamIter<'a>>,
-    dcx: DiagCtxtHandle<'a>,
+    dcx: DiagCtxtHandle<'sess>,
 }
 
-impl<'a> MetaItemListParserContext<'a> {
+impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
     fn done(&mut self) -> bool {
         self.inside_delimiters.peek().is_none()
     }
@@ -507,11 +507,11 @@ pub struct MetaItemListParser<'a> {
 }
 
 impl<'a> MetaItemListParser<'a> {
-    fn new(delim: &'a DelimArgs, dcx: DiagCtxtHandle<'a>) -> MetaItemListParser<'a> {
+    fn new<'sess>(delim: &'a DelimArgs, dcx: DiagCtxtHandle<'sess>) -> Self {
         MetaItemListParser::new_tts(delim.tokens.iter(), delim.dspan.entire(), dcx)
     }
 
-    fn new_tts(tts: TokenStreamIter<'a>, span: Span, dcx: DiagCtxtHandle<'a>) -> Self {
+    fn new_tts<'sess>(tts: TokenStreamIter<'a>, span: Span, dcx: DiagCtxtHandle<'sess>) -> Self {
         MetaItemListParserContext { inside_delimiters: tts.peekable(), dcx }.parse(span)
     }
 

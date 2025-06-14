@@ -24,7 +24,7 @@ use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
 use build_helper::exit;
-use build_helper::git::{GitConfig, PathFreshness, check_path_modifications, output_result};
+use build_helper::git::{GitConfig, PathFreshness, check_path_modifications};
 use serde::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
@@ -35,7 +35,7 @@ pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags};
 use crate::core::config::target_selection::TargetSelectionList;
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::toml::build::Build;
+use crate::core::config::toml::build::{Build, Tool};
 use crate::core::config::toml::change_id::ChangeId;
 use crate::core::config::toml::rust::{
     LldMode, RustOptimize, check_incompatible_options_for_ci_rustc,
@@ -47,42 +47,31 @@ use crate::core::config::{
 };
 use crate::core::download::is_download_ci_available;
 use crate::utils::channel;
+use crate::utils::exec::command;
+use crate::utils::execution_context::ExecutionContext;
 use crate::utils::helpers::exe;
-use crate::{Command, GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, output, t};
+use crate::{GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, t};
 
-/// Each path from this function is considered "allowed" in the `download-rustc="if-unchanged"` logic.
+/// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build
 /// when "if-unchanged" is set.
-pub fn rustc_if_unchanged_allowed_paths() -> Vec<&'static str> {
-    // NOTE: Paths must have the ":!" prefix to tell git to ignore changes in those paths during
-    // the diff check.
-    //
-    // WARNING: Be cautious when adding paths to this list. If a path that influences the compiler build
-    // is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
-    // For example, "src/bootstrap" should never be included in this list as it plays a crucial role in the
-    // final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
-    let mut paths = vec![
-        ":!library",
-        ":!src/tools",
-        ":!src/librustdoc",
-        ":!src/rustdoc-json-types",
-        ":!tests",
-        ":!triagebot.toml",
-    ];
-
-    if !CiEnv::is_ci() {
-        // When a dependency is added/updated/removed in the library tree (or in some tools),
-        // `Cargo.lock` will be updated by `cargo`. This update will incorrectly invalidate the
-        // `download-rustc=if-unchanged` cache.
-        //
-        // To prevent this, add `Cargo.lock` to the list of allowed paths when not running on CI.
-        // This is generally safe because changes to dependencies typically involve modifying
-        // `Cargo.toml`, which would already invalidate the CI-rustc cache on non-allowed paths.
-        paths.push(":!Cargo.lock");
-    }
-
-    paths
-}
+///
+/// NOTE: Paths must have the ":!" prefix to tell git to ignore changes in those paths during
+/// the diff check.
+///
+/// WARNING: Be cautious when adding paths to this list. If a path that influences the compiler build
+/// is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
+/// For example, "src/bootstrap" should never be included in this list as it plays a crucial role in the
+/// final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
+#[rustfmt::skip] // We don't want rustfmt to oneline this list
+pub const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
+    ":!library",
+    ":!src/tools",
+    ":!src/librustdoc",
+    ":!src/rustdoc-json-types",
+    ":!tests",
+    ":!triagebot.toml",
+];
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -112,6 +101,9 @@ pub struct Config {
     pub bootstrap_cache_path: Option<PathBuf>,
     pub extended: bool,
     pub tools: Option<HashSet<String>>,
+    /// Specify build configuration specific for some tool, such as enabled features, see [Tool].
+    /// The key in the map is the name of the tool, and the value is tool-specific configuration.
+    pub tool: HashMap<String, Tool>,
     pub sanitizers: bool,
     pub profiler: bool,
     pub omit_git_hash: bool,
@@ -142,7 +134,6 @@ pub struct Config {
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
-    pub dry_run: DryRun,
     pub dump_bootstrap_shims: bool,
     /// Arguments appearing after `--` to be forwarded to tools,
     /// e.g. `--fix-broken` or test arguments.
@@ -233,7 +224,7 @@ pub struct Config {
 
     pub reproducible_artifacts: Vec<String>,
 
-    pub build: TargetSelection,
+    pub host_target: TargetSelection,
     pub hosts: Vec<TargetSelection>,
     pub targets: Vec<TargetSelection>,
     pub local_rebuild: bool,
@@ -317,6 +308,8 @@ pub struct Config {
     /// This is mostly for RA as building the stage1 compiler to check the library tree
     /// on each code change might be too much for some computers.
     pub skip_std_check_if_no_download_rustc: bool,
+
+    pub exec_ctx: ExecutionContext,
 }
 
 impl Config {
@@ -356,7 +349,7 @@ impl Config {
             stderr_is_tty: std::io::stderr().is_terminal(),
 
             // set by build.rs
-            build: TargetSelection::from_user(env!("BUILD_TRIPLE")),
+            host_target: TargetSelection::from_user(env!("BUILD_TRIPLE")),
 
             src: {
                 let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -371,6 +364,14 @@ impl Config {
 
             ..Default::default()
         }
+    }
+
+    pub fn set_dry_run(&mut self, dry_run: DryRun) {
+        self.exec_ctx.set_dry_run(dry_run);
+    }
+
+    pub fn get_dry_run(&self) -> &DryRun {
+        self.exec_ctx.get_dry_run()
     }
 
     #[cfg_attr(
@@ -395,6 +396,11 @@ impl Config {
         get_toml: impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
     ) -> Config {
         let mut config = Config::default_opts();
+        let mut exec_ctx = ExecutionContext::new();
+        exec_ctx.set_verbose(flags.verbose);
+        exec_ctx.set_fail_fast(flags.cmd.fail_fast());
+
+        config.exec_ctx = exec_ctx;
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
@@ -423,7 +429,7 @@ impl Config {
         config.on_fail = flags.on_fail;
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
-        config.dry_run = if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled };
+        config.set_dry_run(if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled });
         config.dump_bootstrap_shims = flags.dump_bootstrap_shims;
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
@@ -453,14 +459,9 @@ impl Config {
             // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
             cmd.arg("rev-parse").arg("--show-cdup");
             // Discard stderr because we expect this to fail when building from a tarball.
-            let output = cmd
-                .as_command_mut()
-                .stderr(std::process::Stdio::null())
-                .output()
-                .ok()
-                .and_then(|output| if output.status.success() { Some(output) } else { None });
-            if let Some(output) = output {
-                let git_root_relative = String::from_utf8(output.stdout).unwrap();
+            let output = cmd.allow_failure().run_capture_stdout(&config);
+            if output.is_success() {
+                let git_root_relative = output.stdout();
                 // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
                 // and to resolve any relative components.
                 let git_root = env::current_dir()
@@ -555,7 +556,7 @@ impl Config {
             build.cargo = build.cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
         }
 
-        if GitInfo::new(false, &config.src).is_from_tarball() && toml.profile.is_none() {
+        if config.git_info(false, &config.src).is_from_tarball() && toml.profile.is_none() {
             toml.profile = Some("dist".into());
         }
 
@@ -678,6 +679,7 @@ impl Config {
             bootstrap_cache_path,
             extended,
             tools,
+            tool,
             verbose,
             sanitizers,
             profiler,
@@ -729,7 +731,7 @@ impl Config {
         config.jobs = Some(threads_from_config(flags.jobs.unwrap_or(jobs.unwrap_or(0))));
 
         if let Some(file_build) = build {
-            config.build = TargetSelection::from_user(&file_build);
+            config.host_target = TargetSelection::from_user(&file_build);
         };
 
         set(&mut config.out, flags.build_dir.or_else(|| build_dir.map(PathBuf::from)));
@@ -755,14 +757,19 @@ impl Config {
             config.download_beta_toolchain();
             config
                 .out
-                .join(config.build)
+                .join(config.host_target)
                 .join("stage0")
                 .join("bin")
-                .join(exe("rustc", config.build))
+                .join(exe("rustc", config.host_target))
         };
 
         config.initial_sysroot = t!(PathBuf::from_str(
-            output(Command::new(&config.initial_rustc).args(["--print", "sysroot"])).trim()
+            command(&config.initial_rustc)
+                .args(["--print", "sysroot"])
+                .run_always()
+                .run_capture_stdout(&config)
+                .stdout()
+                .trim()
         ));
 
         config.initial_cargo_clippy = cargo_clippy;
@@ -774,7 +781,7 @@ impl Config {
             cargo
         } else {
             config.download_beta_toolchain();
-            config.initial_sysroot.join("bin").join(exe("cargo", config.build))
+            config.initial_sysroot.join("bin").join(exe("cargo", config.host_target))
         };
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
@@ -789,7 +796,7 @@ impl Config {
         } else if let Some(file_host) = host {
             file_host.iter().map(|h| TargetSelection::from_user(h)).collect()
         } else {
-            vec![config.build]
+            vec![config.host_target]
         };
         config.targets = if let Some(TargetSelectionList(arg_target)) = flags.target {
             arg_target
@@ -819,6 +826,7 @@ impl Config {
         set(&mut config.full_bootstrap, full_bootstrap);
         set(&mut config.extended, extended);
         config.tools = tools;
+        set(&mut config.tool, tool);
         set(&mut config.verbose, verbose);
         set(&mut config.sanitizers, sanitizers);
         set(&mut config.profiler, profiler);
@@ -858,19 +866,21 @@ impl Config {
         let default = config.channel == "dev";
         config.omit_git_hash = toml.rust.as_ref().and_then(|r| r.omit_git_hash).unwrap_or(default);
 
-        config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
-        config.cargo_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/cargo"));
+        config.rust_info = config.git_info(config.omit_git_hash, &config.src);
+        config.cargo_info =
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/cargo"));
         config.rust_analyzer_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rust-analyzer"));
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/rust-analyzer"));
         config.clippy_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/clippy"));
-        config.miri_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/miri"));
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/clippy"));
+        config.miri_info =
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/miri"));
         config.rustfmt_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
         config.enzyme_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
-        config.in_tree_llvm_info = GitInfo::new(false, &config.src.join("src/llvm-project"));
-        config.in_tree_gcc_info = GitInfo::new(false, &config.src.join("src/gcc"));
+            config.git_info(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
+        config.in_tree_llvm_info = config.git_info(false, &config.src.join("src/llvm-project"));
+        config.in_tree_gcc_info = config.git_info(false, &config.src.join("src/gcc"));
 
         config.vendor = vendor.unwrap_or(
             config.rust_info.is_from_tarball()
@@ -921,17 +931,19 @@ impl Config {
         }
 
         if config.llvm_from_ci {
-            let triple = &config.build.triple;
+            let triple = &config.host_target.triple;
             let ci_llvm_bin = config.ci_llvm_root().join("bin");
             let build_target = config
                 .target_config
-                .entry(config.build)
+                .entry(config.host_target)
                 .or_insert_with(|| Target::from_triple(triple));
 
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
-            build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", config.build)));
-            build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", config.build)));
+            build_target.llvm_config =
+                Some(ci_llvm_bin.join(exe("llvm-config", config.host_target)));
+            build_target.llvm_filecheck =
+                Some(ci_llvm_bin.join(exe("FileCheck", config.host_target)));
         }
 
         config.apply_dist_config(toml.dist);
@@ -948,7 +960,7 @@ impl Config {
             );
         }
 
-        if config.lld_enabled && config.is_system_llvm(config.build) {
+        if config.lld_enabled && config.is_system_llvm(config.host_target) {
             eprintln!(
                 "Warning: LLD is enabled when using external llvm-config. LLD will not be built and copied to the sysroot."
             );
@@ -1030,26 +1042,11 @@ impl Config {
     }
 
     pub fn dry_run(&self) -> bool {
-        match self.dry_run {
-            DryRun::Disabled => false,
-            DryRun::SelfCheck | DryRun::UserSelected => true,
-        }
+        self.exec_ctx.dry_run()
     }
 
     pub fn is_explicit_stage(&self) -> bool {
         self.explicit_stage_from_cli || self.explicit_stage_from_config
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    /// Exits if the command failed to execute at all, otherwise returns its
-    /// `status.success()`.
-    #[deprecated = "use `Builder::try_run` instead where possible"]
-    pub(crate) fn try_run(&self, cmd: &mut Command) -> Result<(), ()> {
-        if self.dry_run() {
-            return Ok(());
-        }
-        self.verbose(|| println!("running: {cmd:?}"));
-        build_helper::util::try_run(cmd, self.is_verbose())
     }
 
     pub(crate) fn test_args(&self) -> Vec<&str> {
@@ -1085,7 +1082,7 @@ impl Config {
 
         let mut git = helpers::git(Some(&self.src));
         git.arg("show").arg(format!("{commit}:{}", file.to_str().unwrap()));
-        output(git.as_command_mut())
+        git.run_capture_stdout(self).stdout()
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -1157,13 +1154,13 @@ impl Config {
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
         assert!(self.llvm_from_ci);
-        self.out.join(self.build).join("ci-llvm")
+        self.out.join(self.host_target).join("ci-llvm")
     }
 
     /// Directory where the extracted `rustc-dev` component is stored.
     pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
         assert!(self.download_rustc());
-        self.out.join(self.build).join("ci-rustc")
+        self.out.join(self.host_target).join("ci-rustc")
     }
 
     /// Determine whether llvm should be linked dynamically.
@@ -1247,7 +1244,7 @@ impl Config {
                         // Check the config compatibility
                         // FIXME: this doesn't cover `--set` flags yet.
                         let res = check_incompatible_options_for_ci_rustc(
-                            self.build,
+                            self.host_target,
                             current_config_toml,
                             ci_config_toml,
                         );
@@ -1273,9 +1270,7 @@ impl Config {
 
     /// Runs a function if verbosity is greater than 0
     pub fn verbose(&self, f: impl Fn()) {
-        if self.is_verbose() {
-            f()
-        }
+        self.exec_ctx.verbose(f);
     }
 
     pub fn any_sanitizers_to_build(&self) -> bool {
@@ -1337,7 +1332,7 @@ impl Config {
 
         // NOTE: The check for the empty directory is here because when running x.py the first time,
         // the submodule won't be checked out. Check it out now so we can build it.
-        if !GitInfo::new(false, &absolute_path).is_managed_git_subrepository()
+        if !self.git_info(false, &absolute_path).is_managed_git_subrepository()
             && !helpers::dir_is_empty(&absolute_path)
         {
             return;
@@ -1356,16 +1351,16 @@ impl Config {
         };
 
         // Determine commit checked out in submodule.
-        let checked_out_hash = output(submodule_git().args(["rev-parse", "HEAD"]).as_command_mut());
+        let checked_out_hash =
+            submodule_git().args(["rev-parse", "HEAD"]).run_capture_stdout(self).stdout();
         let checked_out_hash = checked_out_hash.trim_end();
         // Determine commit that the submodule *should* have.
-        let recorded = output(
-            helpers::git(Some(&self.src))
-                .run_always()
-                .args(["ls-tree", "HEAD"])
-                .arg(relative_path)
-                .as_command_mut(),
-        );
+        let recorded = helpers::git(Some(&self.src))
+            .run_always()
+            .args(["ls-tree", "HEAD"])
+            .arg(relative_path)
+            .run_capture_stdout(self)
+            .stdout();
 
         let actual_hash = recorded
             .split_whitespace()
@@ -1389,21 +1384,20 @@ impl Config {
         let update = |progress: bool| {
             // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
             // even though that has no relation to the upstream for the submodule.
-            let current_branch = output_result(
-                helpers::git(Some(&self.src))
-                    .allow_failure()
-                    .run_always()
-                    .args(["symbolic-ref", "--short", "HEAD"])
-                    .as_command_mut(),
-            )
-            .map(|b| b.trim().to_owned());
+            let current_branch = helpers::git(Some(&self.src))
+                .allow_failure()
+                .run_always()
+                .args(["symbolic-ref", "--short", "HEAD"])
+                .run_capture(self);
 
             let mut git = helpers::git(Some(&self.src)).allow_failure();
             git.run_always();
-            if let Ok(branch) = current_branch {
+            if current_branch.is_success() {
                 // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
                 // This syntax isn't accepted by `branch.{branch}`. Strip it.
-                let branch = branch.strip_prefix("heads/").unwrap_or(&branch);
+                let branch = current_branch.stdout();
+                let branch = branch.trim();
+                let branch = branch.strip_prefix("heads/").unwrap_or(branch);
                 git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
             }
             git.args(["submodule", "update", "--init", "--recursive", "--depth=1"]);
@@ -1448,7 +1442,8 @@ impl Config {
             return;
         }
 
-        let stage0_output = output(Command::new(program_path).arg("--version"));
+        let stage0_output =
+            command(program_path).arg("--version").run_capture_stdout(self).stdout();
         let mut stage0_output = stage0_output.lines().next().unwrap().split(' ');
 
         let stage0_name = stage0_output.next().unwrap();
@@ -1485,7 +1480,7 @@ impl Config {
         debug_assertions_requested: bool,
         llvm_assertions: bool,
     ) -> Option<String> {
-        if !is_download_ci_available(&self.build.triple, llvm_assertions) {
+        if !is_download_ci_available(&self.host_target.triple, llvm_assertions) {
             return None;
         }
 
@@ -1516,7 +1511,7 @@ impl Config {
         let commit = if self.rust_info.is_managed_git_subrepository() {
             // Look for a version to compare to based on the current commit.
             // Only commits merged by bors will have CI artifacts.
-            let freshness = self.check_path_modifications(&rustc_if_unchanged_allowed_paths());
+            let freshness = self.check_path_modifications(RUSTC_IF_UNCHANGED_ALLOWED_PATHS);
             self.verbose(|| {
                 eprintln!("rustc freshness: {freshness:?}");
             });
@@ -1721,7 +1716,7 @@ impl Config {
 
     /// Checks if the given target is the same as the host target.
     pub fn is_host_target(&self, target: TargetSelection) -> bool {
-        self.build == target
+        self.host_target == target
     }
 
     /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
@@ -1753,5 +1748,19 @@ impl Config {
             // This only has our patches if it's downloaded from CI or built from source.
             _ => !self.is_system_llvm(target),
         }
+    }
+
+    pub fn exec_ctx(&self) -> &ExecutionContext {
+        &self.exec_ctx
+    }
+
+    pub fn git_info(&self, omit_git_hash: bool, dir: &Path) -> GitInfo {
+        GitInfo::new(omit_git_hash, dir, self)
+    }
+}
+
+impl AsRef<ExecutionContext> for Config {
+    fn as_ref(&self) -> &ExecutionContext {
+        &self.exec_ctx
     }
 }

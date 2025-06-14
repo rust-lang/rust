@@ -147,7 +147,7 @@ impl Config {
         }
 
         let builder_config_path =
-            self.out.join(self.build.triple).join(build_name).join(BUILDER_CONFIG_FILENAME);
+            self.out.join(self.host_target.triple).join(build_name).join(BUILDER_CONFIG_FILENAME);
         Self::get_toml(&builder_config_path)
     }
 

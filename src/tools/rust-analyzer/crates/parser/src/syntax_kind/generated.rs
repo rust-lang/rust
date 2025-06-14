@@ -291,6 +291,7 @@ pub enum SyntaxKind {
     TUPLE_STRUCT_PAT,
     TUPLE_TYPE,
     TYPE_ALIAS,
+    TYPE_ANCHOR,
     TYPE_ARG,
     TYPE_BOUND,
     TYPE_BOUND_LIST,
@@ -463,6 +464,7 @@ impl SyntaxKind {
             | TUPLE_STRUCT_PAT
             | TUPLE_TYPE
             | TYPE_ALIAS
+            | TYPE_ANCHOR
             | TYPE_ARG
             | TYPE_BOUND
             | TYPE_BOUND_LIST

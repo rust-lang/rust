@@ -255,10 +255,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 }
 
-fn param_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
-    // This is a bit ugly but the easiest way to avoid code duplication.
-    let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
-    typing_env.with_post_analysis_normalized(tcx).param_env
+fn typing_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TypingEnv<'_> {
+    ty::TypingEnv::non_body_analysis(tcx, def_id).with_post_analysis_normalized(tcx)
 }
 
 /// Check if a function is async.
@@ -374,7 +372,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         asyncness,
         adt_sized_constraint,
         param_env,
-        param_env_normalized_for_post_analysis,
+        typing_env_normalized_for_post_analysis,
         defaultness,
         unsizing_params_for_adt,
         impl_self_is_guaranteed_unsized,

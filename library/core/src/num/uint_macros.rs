@@ -213,6 +213,30 @@ macro_rules! uint_impl {
             (!self).trailing_zeros()
         }
 
+        /// Returns the minimum number of bits required to represent `self`.
+        ///
+        /// This method returns zero if `self` is zero.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(uint_bit_width)]
+        ///
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".bit_width(), 0);")]
+        #[doc = concat!("assert_eq!(0b111_", stringify!($SelfT), ".bit_width(), 3);")]
+        #[doc = concat!("assert_eq!(0b1110_", stringify!($SelfT), ".bit_width(), 4);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.bit_width(), ", stringify!($BITS), ");")]
+        /// ```
+        #[unstable(feature = "uint_bit_width", issue = "142326")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn bit_width(self) -> u32 {
+            Self::BITS - self.leading_zeros()
+        }
+
         /// Returns `self` with only the most significant bit set, or `0` if
         /// the input is `0`.
         ///

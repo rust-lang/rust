@@ -1135,7 +1135,7 @@ impl ExpnKind {
 }
 
 /// The kind of macro invocation or definition.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
