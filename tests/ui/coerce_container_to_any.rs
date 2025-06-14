@@ -3,7 +3,7 @@
 use std::any::Any;
 
 fn main() {
-    let x: Box<dyn Any> = Box::new(());
+    let mut x: Box<dyn Any> = Box::new(());
     let ref_x = &x;
 
     f(&x);
@@ -15,9 +15,16 @@ fn main() {
     let _: &dyn Any = &x;
     //~^ coerce_container_to_any
 
+    let _: &dyn Any = &mut x;
+    //~^ coerce_container_to_any
+
+    let _: &mut dyn Any = &mut x;
+    //~^ coerce_container_to_any
+
     f(&42);
     f(&Box::new(()));
     f(&Box::new(Box::new(())));
+    let ref_x = &x;
     f(&**ref_x);
     f(&*x);
     let _: &dyn Any = &*x;

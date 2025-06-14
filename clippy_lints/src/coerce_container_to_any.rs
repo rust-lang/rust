@@ -79,15 +79,18 @@ impl<'tcx> LateLintPass<'tcx> for CoerceContainerToAny {
             ExprKind::AddrOf(_, _, referent) => (referent, depth),
             _ => (e, depth + 1),
         };
+        let ty::Ref(_, _, mutability) = *cx.typeck_results().expr_ty_adjusted(e).kind() else {
+            return;
+        };
         let sugg = sugg::make_unop(
-            &format!("&{}", str::repeat("*", deref_count)),
+            &format!("{}{}", mutability.ref_prefix_str(), str::repeat("*", deref_count)),
             Sugg::hir(cx, target_expr, ".."),
         );
         span_lint_and_sugg(
             cx,
             COERCE_CONTAINER_TO_ANY,
             e.span,
-            format!("coercing `{expr_ty}` to `&dyn Any`"),
+            format!("coercing `{expr_ty}` to `{}dyn Any`", mutability.ref_prefix_str()),
             "consider dereferencing",
             sugg.to_string(),
             Applicability::MaybeIncorrect,
