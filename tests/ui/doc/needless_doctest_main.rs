@@ -20,3 +20,19 @@
 fn foo() {}
 
 fn main() {}
+
+fn issue8244() -> Result<(), ()> {
+    //! ```compile_fail
+    //! fn test() -> Result< {}
+    //! ```
+    Ok(())
+}
+
+/// # Examples
+///
+/// ```
+/// use std::error::Error;
+/// fn main() -> Result<(), Box<dyn Error>/* > */ {
+/// }
+/// ```
+fn issue15041() {}

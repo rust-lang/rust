@@ -105,7 +105,10 @@ pub fn check(
                         },
                         Ok(None) => break,
                         Err(e) => {
-                            e.cancel();
+                            // See issue #15041. When calling `.cancel()` on the `Diag`, Clippy will unexpectedly panic
+                            // when the `Diag` is unwinded. Meanwhile, we can just call `.emit()`, since the `DiagCtxt`
+                            // is just a sink, nothing will be printed.
+                            e.emit();
                             return (false, test_attr_spans);
                         },
                     }
