@@ -404,6 +404,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::AliasRelate(..) => {
                     bug!("AliasRelate is only used by the new solver")
                 }
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {
+                   unreachable!("unexpected higher ranked `UnstableFeature` goal")
+                }
             },
             Some(pred) => match pred {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
@@ -758,6 +761,31 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     TypeError::ConstMismatch(expected_found),
                                 ))
                             }
+                        }
+                    }
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                    // Iterate through all goals in param_env to find the one that has the same symbol.
+                    for pred in obligation.param_env.caller_bounds().iter() {
+                        if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
+                            if sym == symbol {
+                                return ProcessResult::Changed(Default::default());
+                            }
+                        }
+                    }
+
+                    if self.selcx.tcx().features().impl_stability() {
+                        // If we are in std/core, and the feature is not enabled through #[unstable_feature_bound(..)].
+                        return ProcessResult::Unchanged;
+                    } else {
+                        // Outside of std/core, check if feature is enabled at crate level with #[feature(..)]
+                        // or if we are currently in codegen.
+                        if self.selcx.tcx().features().enabled(symbol)
+                            || (self.selcx.infcx.typing_mode() == TypingMode::PostAnalysis)
+                        {
+                            return ProcessResult::Changed(Default::default());
+                        } else {
+                            return ProcessResult::Unchanged;
                         }
                     }
                 }

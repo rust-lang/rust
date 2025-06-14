@@ -142,6 +142,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 Attribute::Parsed(AttributeKind::Repr(_)) => { /* handled below this loop and elsewhere */
                 }
+                Attribute::Parsed(AttributeKind::AllowUnstableFeature(syms)) => {
+                    self.check_unstable_feature_bound(syms.first().unwrap().1, span, target)
+                }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
@@ -2270,6 +2273,45 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx
                     .dcx()
                     .emit_err(errors::RustcAllowConstFnUnstable { attr_span: attr.span(), span });
+            }
+        }
+    }
+
+    fn check_unstable_feature_bound(&self, attr_span: Span, span: Span, target: Target) {
+        match target {
+            Target::Fn | Target::Impl => {}
+            Target::ExternCrate
+            | Target::Use
+            | Target::Static
+            | Target::Const
+            | Target::Closure
+            | Target::Mod
+            | Target::ForeignMod
+            | Target::GlobalAsm
+            | Target::TyAlias
+            | Target::Enum
+            | Target::Variant
+            | Target::Struct
+            | Target::Field
+            | Target::Union
+            | Target::Trait
+            | Target::TraitAlias
+            | Target::Expression
+            | Target::Statement
+            | Target::Arm
+            | Target::AssocConst
+            | Target::Method(_)
+            | Target::AssocTy
+            | Target::ForeignFn
+            | Target::ForeignStatic
+            | Target::ForeignTy
+            | Target::GenericParam(_)
+            | Target::MacroDef
+            | Target::Param
+            | Target::PatField
+            | Target::ExprField
+            | Target::WherePredicate => {
+                self.tcx.dcx().emit_err(errors::RustcUnstableFeatureBound { attr_span, span });
             }
         }
     }
