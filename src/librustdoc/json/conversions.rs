@@ -46,7 +46,7 @@ impl JsonRenderer<'_> {
         let clean::ItemInner { name, item_id, .. } = *item.inner;
         let id = self.id_from_item(&item);
         let inner = match item.kind {
-            clean::KeywordItem => return None,
+            clean::KeywordItem | clean::AttributeItem => return None,
             clean::StrippedItem(ref inner) => {
                 match &**inner {
                     // We document stripped modules as with `Module::is_stripped` set to
@@ -110,7 +110,7 @@ impl JsonRenderer<'_> {
     fn ids(&self, items: impl IntoIterator<Item = clean::Item>) -> Vec<Id> {
         items
             .into_iter()
-            .filter(|x| !x.is_stripped() && !x.is_keyword())
+            .filter(|x| !x.is_stripped() && !x.is_keyword() && !x.is_attribute())
             .map(|i| self.id_from_item(&i))
             .collect()
     }
@@ -121,7 +121,10 @@ impl JsonRenderer<'_> {
     ) -> Vec<Option<Id>> {
         items
             .into_iter()
-            .map(|i| (!i.is_stripped() && !i.is_keyword()).then(|| self.id_from_item(&i)))
+            .map(|i| {
+                (!i.is_stripped() && !i.is_keyword() && !i.is_attribute())
+                    .then(|| self.id_from_item(&i))
+            })
             .collect()
     }
 }
@@ -298,8 +301,8 @@ fn from_clean_item(item: clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
             bounds: b.into_json(renderer),
             type_: Some(t.item_type.unwrap_or(t.type_).into_json(renderer)),
         },
-        // `convert_item` early returns `None` for stripped items and keywords.
-        KeywordItem => unreachable!(),
+        // `convert_item` early returns `None` for stripped items, keywords and attributes.
+        KeywordItem | AttributeItem => unreachable!(),
         StrippedItem(inner) => {
             match *inner {
                 ModuleItem(m) => ItemEnum::Module(Module {
@@ -849,6 +852,7 @@ impl FromClean<ItemType> for ItemKind {
             AssocType => ItemKind::AssocType,
             ForeignType => ItemKind::ExternType,
             Keyword => ItemKind::Keyword,
+            Attribute => ItemKind::Attribute,
             TraitAlias => ItemKind::TraitAlias,
             ProcAttribute => ItemKind::ProcAttribute,
             ProcDerive => ItemKind::ProcDerive,

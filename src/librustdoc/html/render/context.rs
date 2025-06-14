@@ -206,7 +206,7 @@ impl<'tcx> Context<'tcx> {
         if !is_module {
             title.push_str(it.name.unwrap().as_str());
         }
-        if !it.is_primitive() && !it.is_keyword() {
+        if !it.is_fake_item() {
             if !is_module {
                 title.push_str(" in ");
             }

@@ -161,6 +161,10 @@ pub enum AnEnum {
 /// Some keyword.
 pub mod keyword {}
 
+#[doc(attribute = "forbid")]
+/// Some attribute.
+pub mod repr {}
+
 /// Just some type alias.
 pub type SomeType = u32;
 
