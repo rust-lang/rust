@@ -4,29 +4,41 @@ error[E0541]: unknown meta item 'reason'
 LL |     #[stable(feature = "a", since = "4.4.4", reason)]
    |                                              ^^^^^^ expected one of `feature`, `since`
 
-error[E0539]: expected a quoted string literal
-  --> $DIR/stability-attribute-sanity.rs:11:29
+error[E0539]: malformed `stable` attribute input
+  --> $DIR/stability-attribute-sanity.rs:11:5
    |
 LL |     #[stable(feature = "a", since)]
-   |                             ^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^-----^^
+   |     |                       |
+   |     |                       expected this to be of the form `since = "..."`
+   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
 
-error[E0539]: expected a quoted string literal
-  --> $DIR/stability-attribute-sanity.rs:14:14
+error[E0539]: malformed `stable` attribute input
+  --> $DIR/stability-attribute-sanity.rs:14:5
    |
 LL |     #[stable(feature, since = "3.3.3")]
-   |              ^^^^^^^
+   |     ^^^^^^^^^-------^^^^^^^^^^^^^^^^^^^
+   |     |        |
+   |     |        expected this to be of the form `feature = "..."`
+   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
 
-error[E0539]: expected a quoted string literal
-  --> $DIR/stability-attribute-sanity.rs:17:29
+error[E0539]: malformed `stable` attribute input
+  --> $DIR/stability-attribute-sanity.rs:17:5
    |
 LL |     #[stable(feature = "a", since(b))]
-   |                             ^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^--------^^
+   |     |                       |
+   |     |                       expected this to be of the form `since = "..."`
+   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
 
-error[E0539]: expected a quoted string literal
-  --> $DIR/stability-attribute-sanity.rs:20:14
+error[E0539]: malformed `stable` attribute input
+  --> $DIR/stability-attribute-sanity.rs:20:5
    |
 LL |     #[stable(feature(b), since = "3.3.3")]
-   |              ^^^^^^^^^^
+   |     ^^^^^^^^^----------^^^^^^^^^^^^^^^^^^^
+   |     |        |
+   |     |        expected this to be of the form `feature = "..."`
+   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
 
 error[E0546]: missing 'feature'
   --> $DIR/stability-attribute-sanity.rs:25:5
