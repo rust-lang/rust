@@ -9,8 +9,8 @@ use xz2::bufread::XzDecoder;
 
 use crate::core::config::BUILDER_CONFIG_FILENAME;
 use crate::utils::build_stamp::BuildStamp;
-use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{check_run, exe, hex_encode, move_file};
+use crate::utils::exec::command;
+use crate::utils::helpers::{exe, hex_encode, move_file};
 use crate::{Config, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
@@ -63,17 +63,6 @@ impl Config {
         let tmp = self.out.join("tmp");
         t!(fs::create_dir_all(&tmp));
         tmp
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    /// Returns false if do not execute at all, otherwise returns its
-    /// `status.success()`.
-    pub(crate) fn check_run(&self, cmd: &mut BootstrapCommand) -> bool {
-        if self.dry_run() && !cmd.run_always {
-            return true;
-        }
-        self.verbose(|| println!("running: {cmd:?}"));
-        check_run(cmd, self.is_verbose())
     }
 
     /// Whether or not `fix_bin_or_dylib` needs to be run; can only be true
