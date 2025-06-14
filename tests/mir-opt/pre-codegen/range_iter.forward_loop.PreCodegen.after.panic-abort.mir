@@ -69,13 +69,16 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     }
 
     bb4: {
+        StorageLive(_7);
         _7 = copy _4;
         StorageLive(_8);
         _8 = AddUnchecked(copy _7, const 1_u32);
         _4 = move _8;
         StorageDead(_8);
         _9 = Option::<u32>::Some(copy _7);
+        StorageDead(_7);
         StorageDead(_6);
+        StorageLive(_10);
         _10 = copy ((_9 as Some).0: u32);
         StorageLive(_11);
         _11 = &_3;
@@ -87,6 +90,7 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     bb5: {
         StorageDead(_12);
         StorageDead(_11);
+        StorageDead(_10);
         StorageDead(_9);
         goto -> bb1;
     }
