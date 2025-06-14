@@ -138,6 +138,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 &mut candidates,
                             );
                         }
+                        Some(LangItem::PointerLike) => {
+                            self.assemble_pointer_like_candidates(obligation, &mut candidates);
+                        }
                         Some(LangItem::AsyncFn | LangItem::AsyncFnMut | LangItem::AsyncFnOnce) => {
                             self.assemble_async_closure_candidates(obligation, &mut candidates);
                         }
@@ -497,6 +500,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     candidates.vec.push(AsyncClosureCandidate);
                 }
             }
+            _ => {}
+        }
+    }
+
+    fn assemble_pointer_like_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match obligation.self_ty().skip_binder().kind() {
+            ty::Pat(..) => candidates.vec.push(PointerLikeCandidate),
             _ => {}
         }
     }
