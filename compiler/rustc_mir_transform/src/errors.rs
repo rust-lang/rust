@@ -121,20 +121,20 @@ pub(crate) struct FnItemRef {
 #[diag(mir_transform_unused_capture_maybe_capture_ref)]
 #[help]
 pub(crate) struct UnusedCaptureMaybeCaptureRef {
-    pub name: String,
+    pub name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(mir_transform_unused_var_assigned_only)]
 #[note]
 pub(crate) struct UnusedVarAssignedOnly {
-    pub name: String,
+    pub name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(mir_transform_unused_assign)]
 pub(crate) struct UnusedAssign {
-    pub name: String,
+    pub name: Symbol,
     #[subdiagnostic]
     pub suggestion: Option<UnusedAssignSuggestion>,
     #[help]
@@ -159,13 +159,13 @@ pub(crate) struct UnusedAssignSuggestion {
 #[diag(mir_transform_unused_assign_passed)]
 #[help]
 pub(crate) struct UnusedAssignPassed {
-    pub name: String,
+    pub name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(mir_transform_unused_variable)]
 pub(crate) struct UnusedVariable {
-    pub name: String,
+    pub name: Symbol,
     #[subdiagnostic]
     pub string_interp: Vec<UnusedVariableStringInterp>,
     #[subdiagnostic]
@@ -183,7 +183,7 @@ pub(crate) enum UnusedVariableSugg {
         shorthands: Vec<Span>,
         #[suggestion_part(code = "_")]
         non_shorthands: Vec<Span>,
-        name: String,
+        name: Symbol,
     },
 
     #[multipart_suggestion(
@@ -193,14 +193,14 @@ pub(crate) enum UnusedVariableSugg {
     TryPrefix {
         #[suggestion_part(code = "_{name}")]
         spans: Vec<Span>,
-        name: String,
+        name: Symbol,
     },
 
     #[help(mir_transform_unused_variable_args_in_macro)]
     NoSugg {
         #[primary_span]
         span: Span,
-        name: String,
+        name: Symbol,
     },
 }
 
