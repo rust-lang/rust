@@ -1,6 +1,3 @@
-#![feature(unsized_locals)]
-//~^ WARN the feature `unsized_locals` is incomplete
-
 pub trait Foo {
     fn foo(self) -> String
     where
@@ -16,7 +13,7 @@ impl Foo for A {
 }
 
 fn main() {
-    let x = *(Box::new(A) as Box<dyn Foo>);
+    let x = *(Box::new(A) as Box<dyn Foo>); //~ERROR the size for values of type `dyn Foo` cannot be known at compilation time [E0277]
     x.foo();
     //~^ERROR the `foo` method cannot be invoked on a trait object
 }
