@@ -212,7 +212,7 @@ pub(crate) fn size_and_align_of<'tcx>(
             // load size/align from vtable
             (
                 crate::vtable::size_of_obj(fx, info.unwrap()),
-                crate::vtable::min_align_of_obj(fx, info.unwrap()),
+                crate::vtable::align_of_obj(fx, info.unwrap()),
             )
         }
         ty::Slice(_) | ty::Str => {
