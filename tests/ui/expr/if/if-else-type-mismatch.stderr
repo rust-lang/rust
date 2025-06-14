@@ -92,13 +92,16 @@ LL | |     };
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/if-else-type-mismatch.rs:37:9
    |
-LL |       let _ = if true {
-   |  _____________________-
-LL | |
-LL | |     } else {
-   | |_____- expected because of this
-LL |           11u32
-   |           ^^^^^ expected `()`, found `u32`
+LL |        let _ = if true {
+   |  ______________-       -
+   | | _____________________|
+LL | ||
+LL | ||     } else {
+   | ||_____- expected because of this
+LL | |          11u32
+   | |          ^^^^^ expected `()`, found `u32`
+LL | |      };
+   | |______- `if` and `else` have incompatible types
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/if-else-type-mismatch.rs:42:12

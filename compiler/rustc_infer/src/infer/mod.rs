@@ -35,7 +35,7 @@ use rustc_middle::ty::{
     PseudoCanonicalInput, Term, TermKind, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
-use rustc_span::{Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
@@ -1557,15 +1557,16 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    /// Given a [`hir::HirId`] for a block, get the span of its last expression
-    /// or statement, peeling off any inner blocks.
+    /// Given a [`hir::HirId`] for a block (or an expr of a block), get the span
+    /// of its last expression or statement, peeling off any inner blocks.
     pub fn find_block_span_from_hir_id(&self, hir_id: hir::HirId) -> Span {
         match self.tcx.hir_node(hir_id) {
-            hir::Node::Block(blk) => self.find_block_span(blk),
-            // The parser was in a weird state if either of these happen, but
-            // it's better not to panic.
+            hir::Node::Block(blk)
+            | hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::Block(blk, _), .. }) => {
+                self.find_block_span(blk)
+            }
             hir::Node::Expr(e) => e.span,
-            _ => rustc_span::DUMMY_SP,
+            _ => DUMMY_SP,
         }
     }
 }

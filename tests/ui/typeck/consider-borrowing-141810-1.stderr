@@ -1,20 +1,17 @@
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/consider-borrowing-141810-1.rs:4:12
    |
-LL |        let x = if true {
-   |  ______________-
-LL | |          &true
-   | |          ----- expected because of this
-LL | |      } else if false {
-   | | ____________^
-LL | ||         true
-LL | ||     } else {
-LL | ||         true
-LL | ||     };
-   | ||     ^
-   | ||_____|
-   |  |_____`if` and `else` have incompatible types
-   |        expected `&bool`, found `bool`
+LL |       let x = if true {
+   |               ------- `if` and `else` have incompatible types
+LL |           &true
+   |           ----- expected because of this
+LL |       } else if false {
+   |  ____________^
+LL | |         true
+LL | |     } else {
+LL | |         true
+LL | |     };
+   | |_____^ expected `&bool`, found `bool`
    |
 help: consider borrowing here
    |
