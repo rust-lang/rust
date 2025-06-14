@@ -34,7 +34,7 @@ impl ChangeMethodNameTrait for Foo {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 pub trait ChangeMethodNameTrait {
     #[rustc_clean(cfg="cfail3")]

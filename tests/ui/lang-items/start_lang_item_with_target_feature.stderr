@@ -1,5 +1,5 @@
 error: `start` lang item function is not allowed to have `#[target_feature]`
-  --> $DIR/start_lang_item_with_target_feature.rs:13:1
+  --> $DIR/start_lang_item_with_target_feature.rs:20:1
    |
 LL | #[target_feature(enable = "avx2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -462,6 +462,7 @@ fn impl_intersection_has_negative_obligation(
     let param_env = infcx.resolve_vars_if_possible(param_env);
 
     util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
+        .elaborate_sized()
         .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
 }
 

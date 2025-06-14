@@ -14,7 +14,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{self, GenericArgsRef, Region, Ty, TyCtxt, Upcast, elaborate};
+use rustc_middle::ty::{
+    self, GenericArgsRef, Region, SizedTraitKind, Ty, TyCtxt, Upcast, elaborate,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use thin_vec::thin_vec;
@@ -164,10 +166,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             )
             .break_value()
             .expect("expected to index into clause that exists");
-        let candidate = candidate_predicate
+        let candidate_predicate = candidate_predicate
             .as_trait_clause()
-            .expect("projection candidate is not a trait predicate")
-            .map_bound(|t| t.trait_ref);
+            .expect("projection candidate is not a trait predicate");
+        let candidate_predicate =
+            util::lazily_elaborate_sizedness_candidate(self.infcx, obligation, candidate_predicate);
+
+        let candidate = candidate_predicate.map_bound(|t| t.trait_ref);
 
         let candidate = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
@@ -224,6 +229,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> PredicateObligations<'tcx> {
         debug!(?obligation, ?param, "confirm_param_candidate");
 
+        let param = util::lazily_elaborate_sizedness_candidate(
+            self.infcx,
+            obligation,
+            param.upcast(self.infcx.tcx),
+        )
+        .map_bound(|p| p.trait_ref);
+
         // During evaluation, we already checked that this
         // where-clause trait-ref could be unified with the obligation
         // trait-ref. Repeat that unification now without any
@@ -251,7 +263,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let obligations = if has_nested {
             let trait_def = obligation.predicate.def_id();
             let conditions = match tcx.as_lang_item(trait_def) {
-                Some(LangItem::Sized) => self.sized_conditions(obligation),
+                Some(LangItem::Sized) => {
+                    self.sizedness_conditions(obligation, SizedTraitKind::Sized)
+                }
+                Some(LangItem::MetaSized) => {
+                    self.sizedness_conditions(obligation, SizedTraitKind::MetaSized)
+                }
+                Some(LangItem::PointeeSized) => {
+                    bug!("`PointeeSized` is removing during lowering");
+                }
                 Some(LangItem::Copy | LangItem::Clone) => self.copy_clone_conditions(obligation),
                 Some(LangItem::FusedIterator) => self.fused_iterator_conditions(obligation),
                 other => bug!("unexpected builtin trait {trait_def:?} ({other:?})"),

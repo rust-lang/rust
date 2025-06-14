@@ -13,7 +13,7 @@ use std::marker::DiscriminantKind;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::{Decodable, Encodable, PointeeSized};
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, SpanDecoder, SpanEncoder};
 
@@ -96,7 +96,7 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::Predicate
 ///
 /// `Decodable` can still be implemented in cases where `Decodable` is required
 /// by a trait bound.
-pub trait RefDecodable<'tcx, D: TyDecoder<'tcx>> {
+pub trait RefDecodable<'tcx, D: TyDecoder<'tcx>>: PointeeSized {
     fn decode(d: &mut D) -> &'tcx Self;
 }
 

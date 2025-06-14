@@ -4,6 +4,13 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
 LL | impl<T: ?Sized> Every for Thing {
    |      ^ unconstrained type parameter
 
-error: aborting due to 1 previous error
+error[E0282]: type annotations needed
+  --> $DIR/unconstrained-projection-normalization-2.rs:19:11
+   |
+LL | fn foo(_: <Thing as Every>::Assoc) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for associated type `<Thing as Every>::Assoc`
 
-For more information about this error, try `rustc --explain E0207`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0207, E0282.
+For more information about an error, try `rustc --explain E0207`.

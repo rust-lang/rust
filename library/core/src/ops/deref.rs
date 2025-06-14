@@ -1,3 +1,5 @@
+use crate::marker::PointeeSized;
+
 /// Used for immutable dereferencing operations, like `*v`.
 ///
 /// In addition to being used for explicit dereferencing operations with the
@@ -135,7 +137,7 @@
 #[rustc_diagnostic_item = "Deref"]
 #[const_trait]
 #[rustc_const_unstable(feature = "const_deref", issue = "88955")]
-pub trait Deref {
+pub trait Deref: PointeeSized {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "deref_target"]
@@ -267,7 +269,7 @@ impl<T: ?Sized> const Deref for &mut T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[const_trait]
 #[rustc_const_unstable(feature = "const_deref", issue = "88955")]
-pub trait DerefMut: ~const Deref {
+pub trait DerefMut: ~const Deref + PointeeSized {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "deref_mut_method"]
@@ -293,7 +295,7 @@ impl<T: ?Sized> const DerefMut for &mut T {
 /// unchanged.
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 #[lang = "deref_pure"]
-pub unsafe trait DerefPure {}
+pub unsafe trait DerefPure: PointeeSized {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized> DerefPure for &T {}
@@ -366,7 +368,7 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 /// ```
 #[lang = "receiver"]
 #[unstable(feature = "arbitrary_self_types", issue = "44874")]
-pub trait Receiver {
+pub trait Receiver: PointeeSized {
     /// The target type on which the method may be called.
     #[rustc_diagnostic_item = "receiver_target"]
     #[lang = "receiver_target"]
@@ -393,12 +395,12 @@ where
 #[lang = "legacy_receiver"]
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 #[doc(hidden)]
-pub trait LegacyReceiver {
+pub trait LegacyReceiver: PointeeSized {
     // Empty.
 }
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
-impl<T: ?Sized> LegacyReceiver for &T {}
+impl<T: PointeeSized> LegacyReceiver for &T {}
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
-impl<T: ?Sized> LegacyReceiver for &mut T {}
+impl<T: PointeeSized> LegacyReceiver for &mut T {}

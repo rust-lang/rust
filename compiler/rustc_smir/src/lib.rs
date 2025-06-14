@@ -9,6 +9,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::usage_of_ty_tykind)]
+#![cfg_attr(not(bootstrap), feature(sized_hierarchy))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(allow(unused_variables), deny(warnings)))
