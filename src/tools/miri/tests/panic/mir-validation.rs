@@ -8,6 +8,12 @@
 // Somehow on rustc Windows CI, the "Miri caused an ICE" message is not shown
 // and we don't even get a regular panic; rustc aborts with a different exit code instead.
 //@ignore-host: windows
+
+// FIXME: output is different between stage1 and stage2. This should be possible to remove
+// when stages get bumped.
+// For the grep: cfg(bootstrap)
+//@normalize-stderr-test: "thread 'rustc' panicked" -> "thread 'rustc' ($$TID) panicked"
+
 #![feature(custom_mir, core_intrinsics)]
 use core::intrinsics::mir::*;
 

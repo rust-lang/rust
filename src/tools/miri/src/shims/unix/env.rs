@@ -7,6 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_span::Symbol;
 
 use crate::*;
 
@@ -275,15 +276,56 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_u32(this.get_pid()))
     }
 
-    fn linux_gettid(&mut self) -> InterpResult<'tcx, Scalar> {
+    /// The `gettid`-like function for Unix platforms that take no parameters and return a 32-bit
+    /// integer. It is not always named "gettid".
+    fn unix_gettid(&mut self, link_name: Symbol) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_ref();
-        this.assert_target_os("linux", "gettid");
+        let target_os = &self.eval_context_ref().tcx.sess.target.os;
 
-        let index = this.machine.threads.active_thread().to_u32();
+        // Various platforms have a similar function with different names.
+        match (target_os.as_ref(), link_name.as_str()) {
+            ("linux" | "android", "gettid") => (),
+            ("openbsd", "getthrid") => (),
+            ("freebsd", "pthread_getthreadid_np") => (),
+            ("netbsd", "_lwp_self") => (),
+            (_, name) => panic!("`{name}` is not supported on {target_os}"),
+        };
 
-        // Compute a TID for this thread, ensuring that the main thread has PID == TID.
-        let tid = this.get_pid().strict_add(index);
+        // For most platforms the return type is an `i32`, but some are unsigned. The TID
+        // will always be positive so we don't need to differentiate.
+        interp_ok(Scalar::from_u32(this.get_current_tid()))
+    }
 
-        interp_ok(Scalar::from_u32(tid))
+    /// The Apple-specific `int pthread_threadid_np(pthread_t thread, uint64_t *thread_id)`, which
+    /// allows querying the ID for arbitrary threads.
+    fn apple_pthread_threadip_np(
+        &mut self,
+        thread_op: &OpTy<'tcx>,
+        tid_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let target_vendor = &this.tcx.sess.target.vendor;
+        assert_eq!(
+            target_vendor, "apple",
+            "`pthread_threadid_np` is not supported on target vendor {target_vendor}",
+        );
+
+        let thread = this.read_scalar(thread_op)?.to_int(this.libc_ty_layout("pthread_t").size)?;
+        let thread = if thread == 0 {
+            // Null thread ID indicates that we are querying the active thread.
+            this.machine.threads.active_thread()
+        } else {
+            let Ok(thread) = this.thread_id_try_from(thread) else {
+                return interp_ok(this.eval_libc("ESRCH"));
+            };
+            thread
+        };
+
+        let tid_dest = this.deref_pointer_as(tid_op, this.machine.layouts.u64)?;
+        this.write_int(this.get_tid(thread), &tid_dest)?;
+
+        // Never an error if we only ever check the current thread.
+        interp_ok(Scalar::from_u32(0))
     }
 }
