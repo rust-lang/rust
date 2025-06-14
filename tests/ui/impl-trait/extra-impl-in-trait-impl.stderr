@@ -1,23 +1,23 @@
 error: unexpected `impl` keyword
-  --> $DIR/extra-impl-in-trait-impl.rs:6:18
+  --> $DIR/extra-impl-in-trait-impl.rs:7:18
    |
 LL | impl<T: Default> impl Default for S<T> {
    |                  ^^^^^ help: remove the extra `impl`
    |
 note: this is parsed as an `impl Trait` type, but a trait is expected at this position
-  --> $DIR/extra-impl-in-trait-impl.rs:6:18
+  --> $DIR/extra-impl-in-trait-impl.rs:7:18
    |
 LL | impl<T: Default> impl Default for S<T> {
    |                  ^^^^^^^^^^^^
 
 error: unexpected `impl` keyword
-  --> $DIR/extra-impl-in-trait-impl.rs:12:6
+  --> $DIR/extra-impl-in-trait-impl.rs:13:6
    |
 LL | impl impl Default for S2 {
    |      ^^^^^ help: remove the extra `impl`
    |
 note: this is parsed as an `impl Trait` type, but a trait is expected at this position
-  --> $DIR/extra-impl-in-trait-impl.rs:12:6
+  --> $DIR/extra-impl-in-trait-impl.rs:13:6
    |
 LL | impl impl Default for S2 {
    |      ^^^^^^^^^^^^
