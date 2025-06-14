@@ -732,54 +732,48 @@ pub struct RefCell<T: ?Sized> {
 /// An error returned by [`RefCell::try_borrow`].
 #[stable(feature = "try_borrow", since = "1.13.0")]
 #[non_exhaustive]
+#[derive(Debug)]
 pub struct BorrowError {
     #[cfg(feature = "debug_refcell")]
     location: &'static crate::panic::Location<'static>,
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
-impl Debug for BorrowError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut builder = f.debug_struct("BorrowError");
-
-        #[cfg(feature = "debug_refcell")]
-        builder.field("location", self.location);
-
-        builder.finish()
-    }
-}
-
-#[stable(feature = "try_borrow", since = "1.13.0")]
 impl Display for BorrowError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt("already mutably borrowed", f)
+        #[cfg(feature = "debug_refcell")]
+        let res = write!(
+            f,
+            "RefCell already mutably borrowed; a previous borrow was at {}",
+            self.location
+        );
+
+        #[cfg(not(feature = "debug_refcell"))]
+        let res = Display::fmt("RefCell already mutably borrowed", f);
+
+        res
     }
 }
 
 /// An error returned by [`RefCell::try_borrow_mut`].
 #[stable(feature = "try_borrow", since = "1.13.0")]
 #[non_exhaustive]
+#[derive(Debug)]
 pub struct BorrowMutError {
     #[cfg(feature = "debug_refcell")]
     location: &'static crate::panic::Location<'static>,
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
-impl Debug for BorrowMutError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut builder = f.debug_struct("BorrowMutError");
-
-        #[cfg(feature = "debug_refcell")]
-        builder.field("location", self.location);
-
-        builder.finish()
-    }
-}
-
-#[stable(feature = "try_borrow", since = "1.13.0")]
 impl Display for BorrowMutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt("already borrowed", f)
+        #[cfg(feature = "debug_refcell")]
+        let res = write!(f, "RefCell already borrowed; a previous borrow was at {}", self.location);
+
+        #[cfg(not(feature = "debug_refcell"))]
+        let res = Display::fmt("RefCell already borrowed", f);
+
+        res
     }
 }
 
@@ -788,7 +782,7 @@ impl Display for BorrowMutError {
 #[track_caller]
 #[cold]
 fn panic_already_borrowed(err: BorrowMutError) -> ! {
-    panic!("already borrowed: {:?}", err)
+    panic!("{err}")
 }
 
 // This ensures the panicking code is outlined from `borrow` for `RefCell`.
@@ -796,7 +790,7 @@ fn panic_already_borrowed(err: BorrowMutError) -> ! {
 #[track_caller]
 #[cold]
 fn panic_already_mutably_borrowed(err: BorrowError) -> ! {
-    panic!("already mutably borrowed: {:?}", err)
+    panic!("{err}")
 }
 
 // Positive values represent the number of `Ref` active. Negative values
