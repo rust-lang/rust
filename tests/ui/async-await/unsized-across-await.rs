@@ -1,8 +1,5 @@
 //@ edition: 2021
 
-#![feature(unsized_locals)]
-//~^ WARN the feature `unsized_locals` is incomplete
-
 async fn f() {}
 
 async fn g(x: Box<dyn std::fmt::Display>) {
