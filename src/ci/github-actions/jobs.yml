@@ -256,7 +256,7 @@ auto:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist-alt.sh
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-8c
 
   - name: dist-x86_64-musl
     env:
