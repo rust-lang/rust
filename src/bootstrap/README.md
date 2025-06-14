@@ -200,6 +200,10 @@ please file issues on the [Rust issue tracker][rust-issue-tracker].
 [rust-bootstrap-zulip]: https://rust-lang.zulipchat.com/#narrow/stream/t-infra.2Fbootstrap
 [rust-issue-tracker]: https://github.com/rust-lang/rust/issues
 
+## Testing
+
+To run bootstrap tests, execute `x test bootstrap`. If you want to bless snapshot tests, then install `cargo-insta` (`cargo install cargo-insta`) and then run `cargo insta review --manifest-path src/bootstrap/Cargo.toml`.
+
 ## Changelog
 
 Because we do not release bootstrap with versions, we also do not maintain CHANGELOG files. To
