@@ -378,7 +378,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::ctlz | sym::cttz => {
                         let y = self.const_bool(false);
                         let ret = self.call_intrinsic(
-                            &format!("llvm.{name}"),
+                            format!("llvm.{name}"),
                             &[llty],
                             &[args[0].immediate(), y],
                         );
@@ -423,7 +423,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         // always uses `u32`.
                         let raw_shift = self.intcast(raw_shift, self.val_ty(val), false);
 
-                        self.call_intrinsic(&llvm_name, &[llty], &[val, val, raw_shift])
+                        self.call_intrinsic(llvm_name, &[llty], &[val, val, raw_shift])
                     }
                     sym::saturating_add | sym::saturating_sub => {
                         let is_add = name == sym::saturating_add;
@@ -434,7 +434,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             if signed { 's' } else { 'u' },
                             if is_add { "add" } else { "sub" },
                         );
-                        self.call_intrinsic(&llvm_name, &[llty], &[lhs, rhs])
+                        self.call_intrinsic(llvm_name, &[llty], &[lhs, rhs])
                     }
                     _ => bug!(),
                 }
@@ -2393,7 +2393,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
-        return Ok(bx.call_intrinsic(&llvm_intrinsic, &[vec_ty], &[lhs, rhs]));
+        return Ok(bx.call_intrinsic(llvm_intrinsic, &[vec_ty], &[lhs, rhs]));
     }
 
     span_bug!(span, "unknown SIMD intrinsic");
