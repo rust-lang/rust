@@ -2573,7 +2573,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// #![feature(push_mut)]
     ///
     /// let mut vec = vec![1, 2];
-    /// let last = vec.push(3);
+    /// let last = vec.push_mut(3);
     /// assert_eq!(vec, [1, 2, 3]);
     /// *last = 4;
     /// assert_eq!(vec, [1, 2, 4]);
