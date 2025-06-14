@@ -21,6 +21,10 @@ fn main() {
     f(&**ref_x);
     f(&*x);
     let _: &dyn Any = &*x;
+
+    // https://github.com/rust-lang/rust-clippy/issues/15045
+    #[allow(clippy::needless_borrow)]
+    (&x).downcast_ref::<()>().unwrap();
 }
 
 fn f(_: &dyn Any) {}

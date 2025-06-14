@@ -4,6 +4,7 @@ use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
 use rustc_middle::ty::{self, ExistentialPredicate, Ty, TyCtxt};
 use rustc_session::declare_lint_pass;
 
@@ -49,23 +50,18 @@ declare_lint_pass!(CoerceContainerToAny => [COERCE_CONTAINER_TO_ANY]);
 
 impl<'tcx> LateLintPass<'tcx> for CoerceContainerToAny {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        // If this expression has an effective type of `&dyn Any` ...
-        {
-            let coerced_ty = cx.typeck_results().expr_ty_adjusted(e);
-
-            let ty::Ref(_, coerced_ref_ty, _) = *coerced_ty.kind() else {
-                return;
-            };
-            if !is_dyn_any(cx.tcx, coerced_ref_ty) {
-                return;
-            }
+        // If this expression was coerced to `&dyn Any` ...
+        if !cx.typeck_results().expr_adjustments(e).last().is_some_and(|adj| {
+            matches!(adj.kind, Adjust::Pointer(PointerCoercion::Unsize)) && is_ref_dyn_any(cx.tcx, adj.target)
+        }) {
+            return;
         }
 
         let expr_ty = cx.typeck_results().expr_ty(e);
         let ty::Ref(_, expr_ref_ty, _) = *expr_ty.kind() else {
             return;
         };
-        // ... but only due to coercion ...
+        // ... but it's not actually `&dyn Any` ...
         if is_dyn_any(cx.tcx, expr_ref_ty) {
             return;
         }
@@ -89,10 +85,17 @@ impl<'tcx> LateLintPass<'tcx> for CoerceContainerToAny {
             e.span,
             format!("coercing `{expr_ty}` to `&dyn Any`"),
             "consider dereferencing",
-            format!("&{}{}", str::repeat("*", deref_count), snippet(cx, span, "x")),
+            format!("&{}{}", str::repeat("*", deref_count), snippet(cx, span, "..")),
             Applicability::MaybeIncorrect,
         );
     }
+}
+
+fn is_ref_dyn_any(tcx: TyCtxt<'_>, ty: Ty<'_>) -> bool {
+    let ty::Ref(_, ref_ty, _) = *ty.kind() else {
+        return false;
+    };
+    is_dyn_any(tcx, ref_ty)
 }
 
 fn is_dyn_any(tcx: TyCtxt<'_>, ty: Ty<'_>) -> bool {
