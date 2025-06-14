@@ -580,7 +580,24 @@ impl FromClean<clean::Path> for Path {
         Path {
             path: path.whole_name(),
             id: renderer.id_from_item_default(path.def_id().into()),
-            args: path.segments.last().map(|args| Box::new(args.args.into_json(renderer))),
+            args: {
+                if let Some((final_seg, rest_segs)) = path.segments.split_last() {
+                    // In general, `clean::Path` can hold things like
+                    // `std::vec::Vec::<u32>::new`, where generic args appear
+                    // in a middle segment. But for the places where `Path` is
+                    // used by rustdoc-json-types, generic args can only be
+                    // used in the final segment, e.g. `std::vec::Vec<u32>`. So
+                    // check that the non-final segments have no generic args.
+                    assert!(rest_segs.iter().all(|seg| seg.args.is_empty()));
+                    if final_seg.args.is_empty() {
+                        None
+                    } else {
+                        Some(Box::new(final_seg.args.into_json(renderer)))
+                    }
+                } else {
+                    None // no generics on any segments because there are no segments
+                }
+            },
         }
     }
 }
