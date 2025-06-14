@@ -20,7 +20,13 @@ macro_rules! minimal_quote_tt {
     (>) => { Punct::new('>', Spacing::Alone) };
     (&) => { Punct::new('&', Spacing::Alone) };
     (=) => { Punct::new('=', Spacing::Alone) };
+    (#) => { Punct::new('#', Spacing::Alone) };
+    (|) => { Punct::new('|', Spacing::Alone) };
+    (:) => { Punct::new(':', Spacing::Alone) };
+    (*) => { Punct::new('*', Spacing::Alone) };
+    (_) => { Ident::new("_", Span::def_site()) };
     ($i:ident) => { Ident::new(stringify!($i), Span::def_site()) };
+    ($lit:literal) => { stringify!($lit).parse::<Literal>().unwrap() };
 }
 
 macro_rules! minimal_quote_ts {
@@ -30,6 +36,39 @@ macro_rules! minimal_quote_ts {
             let mut c = (
                 TokenTree::from(Punct::new(':', Spacing::Joint)),
                 TokenTree::from(Punct::new(':', Spacing::Alone))
+            );
+            c.0.set_span(Span::def_site());
+            c.1.set_span(Span::def_site());
+            [c.0, c.1].into_iter().collect::<TokenStream>()
+        }
+    };
+    (=>) => {
+        {
+            let mut c = (
+                TokenTree::from(Punct::new('=', Spacing::Joint)),
+                TokenTree::from(Punct::new('>', Spacing::Alone))
+            );
+            c.0.set_span(Span::def_site());
+            c.1.set_span(Span::def_site());
+            [c.0, c.1].into_iter().collect::<TokenStream>()
+        }
+    };
+    (+=) => {
+        {
+            let mut c = (
+                TokenTree::from(Punct::new('+', Spacing::Joint)),
+                TokenTree::from(Punct::new('=', Spacing::Alone))
+            );
+            c.0.set_span(Span::def_site());
+            c.1.set_span(Span::def_site());
+            [c.0, c.1].into_iter().collect::<TokenStream>()
+        }
+    };
+    (!=) => {
+        {
+            let mut c = (
+                TokenTree::from(Punct::new('!', Spacing::Joint)),
+                TokenTree::from(Punct::new('=', Spacing::Alone))
             );
             c.0.set_span(Span::def_site());
             c.1.set_span(Span::def_site());
@@ -71,10 +110,92 @@ pub fn quote(stream: TokenStream) -> TokenStream {
     let mut after_dollar = false;
 
     let mut tokens = crate::TokenStream::new();
-    for tree in stream {
+    let mut iter = stream.into_iter().peekable();
+    while let Some(tree) = iter.next() {
         if after_dollar {
             after_dollar = false;
             match tree {
+                TokenTree::Group(inner) => {
+                    let content = inner.stream();
+
+                    let sep_opt: Option<Punct> = match (iter.next(), iter.peek()) {
+                        (Some(TokenTree::Punct(sep)), Some(TokenTree::Punct(star)))
+                            if sep.spacing() == Spacing::Joint && star.as_char() == '*' =>
+                        {
+                            iter.next();
+                            Some(sep)
+                        }
+                        (Some(TokenTree::Punct(sep)), _) if sep.as_char() == '*' => None,
+                        _ => panic!("`$(...)` must be followed by `*` in `quote!`"),
+                    };
+
+                    let meta_vars = collect_meta_vars(content.clone());
+
+                    let mut content_tokens = TokenStream::new();
+                    minimal_quote!(
+                        use crate::ext::*;
+                    )
+                    .to_tokens(&mut content_tokens);
+                    if sep_opt.is_some() {
+                        minimal_quote!(
+                            let mut _i = 0usize;
+                        )
+                        .to_tokens(&mut content_tokens);
+                    }
+                    minimal_quote!(
+                        let has_iter = crate::ThereIsNoIteratorInRepetition;
+                    )
+                    .to_tokens(&mut content_tokens);
+                    for meta_var in &meta_vars {
+                        minimal_quote!(
+                            #[allow(unused_mut)]
+                            let (mut (@ meta_var), i) = (@ meta_var).quote_into_iter();
+                            let has_iter = has_iter | i;
+                        )
+                        .to_tokens(&mut content_tokens);
+                    }
+                    minimal_quote!(
+                        let _: crate::HasIterator = has_iter;
+                    )
+                    .to_tokens(&mut content_tokens);
+
+                    let while_ident = TokenTree::Ident(Ident::new("while", Span::call_site()));
+                    let true_literal = TokenTree::Ident(Ident::new("true", Span::call_site()));
+
+                    let mut inner_tokens = TokenStream::new();
+                    for meta_var in &meta_vars {
+                        minimal_quote!(
+                            let (@ meta_var) = match (@ meta_var).next() {
+                                Some(_x) => crate::RepInterp(_x),
+                                None => break,
+                            };
+                        )
+                        .to_tokens(&mut inner_tokens);
+                    }
+                    if let Some(sep) = sep_opt {
+                        minimal_quote!(
+                            if _i > 0 {
+                                (@ minimal_quote!(crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new(
+                                    (@ TokenTree::from(Literal::character(sep.as_char()))),
+                                    (@ minimal_quote!(crate::Spacing::Alone)),
+                                )), &mut ts);))
+                            }
+                            _i += 1;
+                        )
+                        .to_tokens(&mut inner_tokens);
+                    };
+                    minimal_quote!(
+                        (@ quote(content.clone())).to_tokens(&mut ts);
+                    )
+                    .to_tokens(&mut inner_tokens);
+                    let while_block = TokenTree::Group(Group::new(Delimiter::Brace, inner_tokens));
+
+                    content_tokens.extend(vec![while_ident, true_literal, while_block]);
+                    let block = TokenTree::Group(Group::new(Delimiter::Brace, content_tokens));
+                    minimal_quote!((@ block)).to_tokens(&mut tokens);
+
+                    continue;
+                }
                 TokenTree::Ident(_) => {
                     minimal_quote!(crate::ToTokens::to_tokens(&(@ tree), &mut ts);)
                         .to_tokens(&mut tokens);
@@ -153,6 +274,30 @@ pub fn quote(stream: TokenStream) -> TokenStream {
             ts
         }
     }
+}
+
+fn collect_meta_vars(stream: TokenStream) -> Vec<Ident> {
+    fn helper(stream: TokenStream, out: &mut Vec<Ident>) {
+        let mut iter = stream.into_iter().peekable();
+        while let Some(tree) = iter.next() {
+            match &tree {
+                TokenTree::Punct(tt) if tt.as_char() == '$' => {
+                    if let Some(TokenTree::Ident(id)) = iter.peek() {
+                        out.push(id.clone());
+                        iter.next();
+                    }
+                }
+                TokenTree::Group(tt) => {
+                    helper(tt.stream(), out);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    let mut vars = Vec::new();
+    helper(stream, &mut vars);
+    vars
 }
 
 /// Quote a `Span` into a `TokenStream`.

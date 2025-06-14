@@ -4,6 +4,7 @@
 extern crate proc_macro;
 
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 use std::ffi::{CStr, CString};
 
 use proc_macro::*;
@@ -12,6 +13,8 @@ use proc_macro::*;
 pub fn run_tests(_: TokenStream) -> TokenStream {
     test_quote_impl();
     test_substitution();
+    test_iter();
+    test_array();
     test_advanced();
     test_integer();
     test_floating();
@@ -24,6 +27,13 @@ pub fn run_tests(_: TokenStream) -> TokenStream {
     test_ident();
     test_underscore();
     test_duplicate();
+    test_fancy_repetition();
+    test_nested_fancy_repetition();
+    test_duplicate_name_repetition();
+    test_duplicate_name_repetition_no_copy();
+    test_btreeset_repetition();
+    test_variable_name_conflict();
+    test_nonrep_in_repetition();
     test_empty_quote();
     test_box_str();
     test_cow();
@@ -34,6 +44,7 @@ pub fn run_tests(_: TokenStream) -> TokenStream {
     test_inner_block_comment();
     test_outer_attr();
     test_inner_attr();
+    test_star_after_repetition();
     test_quote_raw_id();
 
     TokenStream::new()
@@ -49,20 +60,9 @@ pub fn run_tests(_: TokenStream) -> TokenStream {
 //   - fn test_type_inference_for_span
 //   - wrong-type-span.rs
 // - format_ident:
+//   - fn test_closure
 //   - fn test_format_ident
 //   - fn test_format_ident_strip_raw
-// - repetition:
-//   - fn test_iter
-//   - fn test_array
-//   - fn test_fancy_repetition
-//   - fn test_nested_fancy_repetition
-//   - fn test_duplicate_name_repetition
-//   - fn test_duplicate_name_repetition_no_copy
-//   - fn test_btreeset_repetition
-//   - fn test_variable_name_conflict
-//   - fn test_nonrep_in_repetition
-//   - fn test_closure
-//   - fn test_star_after_repetition
 
 struct X;
 
@@ -97,6 +97,39 @@ fn test_substitution() {
     let expected = "X <X > (X) [X] { X }";
 
     assert_eq!(expected, tokens.to_string());
+}
+
+fn test_iter() {
+    let primes = &[X, X, X, X];
+
+    assert_eq!("X X X X", quote!($($primes)*).to_string());
+
+    assert_eq!("X, X, X, X,", quote!($($primes,)*).to_string());
+
+    assert_eq!("X, X, X, X", quote!($($primes),*).to_string());
+}
+
+fn test_array() {
+    let array: [u8; 40] = [0; 40];
+    let _ = quote!($($array $array)*);
+
+    let ref_array: &[u8; 40] = &[0; 40];
+    let _ = quote!($($ref_array $ref_array)*);
+
+    let ref_slice: &[u8] = &[0; 40];
+    let _ = quote!($($ref_slice $ref_slice)*);
+
+    let array: [X; 2] = [X, X]; // !Copy
+    let _ = quote!($($array $array)*);
+
+    let ref_array: &[X; 2] = &[X, X];
+    let _ = quote!($($ref_array $ref_array)*);
+
+    let ref_slice: &[X] = &[X, X];
+    let _ = quote!($($ref_slice $ref_slice)*);
+
+    let array_of_array: [[u8; 2]; 2] = [[0; 2]; 2];
+    let _ = quote!($($($array_of_array)*)*);
 }
 
 fn test_advanced() {
@@ -279,6 +312,88 @@ fn test_duplicate() {
     assert_eq!(expected, tokens.to_string());
 }
 
+fn test_fancy_repetition() {
+    let foo = vec!["a", "b"];
+    let bar = vec![true, false];
+
+    let tokens = quote! {
+        $($foo: $bar),*
+    };
+
+    let expected = r#""a" : true, "b" : false"#;
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_nested_fancy_repetition() {
+    let nested = vec![vec!['a', 'b', 'c'], vec!['x', 'y', 'z']];
+
+    let tokens = quote! {
+        $(
+            $($nested)*
+        ),*
+    };
+
+    let expected = "'a' 'b' 'c', 'x' 'y' 'z'";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_duplicate_name_repetition() {
+    let foo = &["a", "b"];
+
+    let tokens = quote! {
+        $($foo: $foo),*
+        $($foo: $foo),*
+    };
+
+    let expected = r#""a" : "a", "b" : "b" "a" : "a", "b" : "b""#;
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_duplicate_name_repetition_no_copy() {
+    let foo = vec!["a".to_owned(), "b".to_owned()];
+
+    let tokens = quote! {
+        $($foo: $foo),*
+    };
+
+    let expected = r#""a" : "a", "b" : "b""#;
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_btreeset_repetition() {
+    let mut set = BTreeSet::new();
+    set.insert("a".to_owned());
+    set.insert("b".to_owned());
+
+    let tokens = quote! {
+        $($set: $set),*
+    };
+
+    let expected = r#""a" : "a", "b" : "b""#;
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_variable_name_conflict() {
+    // The implementation of `#(...),*` uses the variable `_i` but it should be
+    // fine, if a little confusing when debugging.
+    let _i = vec!['a', 'b'];
+    let tokens = quote! { $($_i),* };
+    let expected = "'a', 'b'";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_nonrep_in_repetition() {
+    let rep = vec!["a", "b"];
+    let nonrep = "c";
+
+    let tokens = quote! {
+        $($rep $rep : $nonrep $nonrep),*
+    };
+
+    let expected = r#""a" "a" : "c" "c", "b" "b" : "c" "c""#;
+    assert_eq!(expected, tokens.to_string());
+}
+
 fn test_empty_quote() {
     let tokens = quote!();
     assert_eq!("", tokens.to_string());
@@ -352,6 +467,19 @@ fn test_inner_attr() {
         #![no_std]
     };
     let expected = "#! [no_std]";
+    assert_eq!(expected, tokens.to_string());
+}
+
+// https://github.com/dtolnay/quote/issues/130
+fn test_star_after_repetition() {
+    let c = vec!['0', '1'];
+    let tokens = quote! {
+        $(
+            f($c);
+        )*
+        *out = None;
+    };
+    let expected = "f('0'); f('1'); * out = None;";
     assert_eq!(expected, tokens.to_string());
 }
 
