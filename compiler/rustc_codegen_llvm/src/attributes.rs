@@ -270,12 +270,19 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     Some(llvm::CreateAttrStringValue(cx.llcx, "probe-stack", attr_value))
 }
 
-fn stackprotector_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
+fn stackprotector_attr<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> Option<&'ll Attribute> {
     let sspattr = match cx.sess().stack_protector() {
         StackProtector::None => return None,
         StackProtector::All => AttributeKind::StackProtectReq,
         StackProtector::Strong => AttributeKind::StackProtectStrong,
         StackProtector::Basic => AttributeKind::StackProtect,
+        StackProtector::Rusty => {
+            if cx.tcx.stack_protector.borrow().contains(&def_id) {
+                AttributeKind::StackProtectReq
+            } else {
+                return None;
+            }
+        }
     };
 
     Some(sspattr.create_attr(cx.llcx))
@@ -400,7 +407,9 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     to_add.extend(instrument_function_attr(cx));
     to_add.extend(nojumptables_attr(cx));
     to_add.extend(probestack_attr(cx));
-    to_add.extend(stackprotector_attr(cx));
+
+    // stack protector
+    to_add.extend(stackprotector_attr(cx, instance.def_id()));
 
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_BUILTINS) {
         to_add.push(llvm::CreateAttrString(cx.llcx, "no-builtins"));

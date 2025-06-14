@@ -40,6 +40,7 @@ mod pass_manager;
 use std::sync::LazyLock;
 
 use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
+use rustc_target::spec::StackProtector;
 
 mod check_pointers;
 mod cost_checker;
@@ -192,6 +193,7 @@ declare_passes! {
     mod single_use_consts : SingleUseConsts;
     mod sroa : ScalarReplacementOfAggregates;
     mod strip_debuginfo : StripDebugInfo;
+    mod stack_protector: StackProtectorFinder;
     mod unreachable_enum_branching : UnreachableEnumBranching;
     mod unreachable_prop : UnreachablePropagation;
     mod validate : Validator;
@@ -449,6 +451,17 @@ fn mir_promoted(
     lint_tail_expr_drop_order::run_lint(tcx, def, &body);
 
     let promoted = promote_pass.promoted_fragments.into_inner();
+
+    if tcx.sess.stack_protector() == StackProtector::Rusty {
+        pm::run_passes(
+            tcx,
+            &mut body,
+            &[&stack_protector::StackProtectorFinder],
+            None,
+            pm::Optimizations::Allowed,
+        )
+    }
+
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 

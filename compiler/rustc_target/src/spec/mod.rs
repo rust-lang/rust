@@ -1613,6 +1613,12 @@ pub enum StackProtector {
     /// the address of a local variable.
     Strong,
 
+    /// Stack protection for Rust code, the following are function check rules
+    /// that require stack protection in Rust:
+    /// - calls to stack memory allocation
+    /// - obtaining reference/pointer of local variables
+    Rusty,
+
     /// Generate stack canaries in all functions.
     All,
 }
@@ -1623,6 +1629,7 @@ impl StackProtector {
             StackProtector::None => "none",
             StackProtector::Basic => "basic",
             StackProtector::Strong => "strong",
+            StackProtector::Rusty => "rusty",
             StackProtector::All => "all",
         }
     }
@@ -1636,6 +1643,7 @@ impl FromStr for StackProtector {
             "none" => StackProtector::None,
             "basic" => StackProtector::Basic,
             "strong" => StackProtector::Strong,
+            "rusty" => StackProtector::Rusty,
             "all" => StackProtector::All,
             _ => return Err(()),
         })
