@@ -719,7 +719,7 @@ impl<T, const N: usize> Cell<[T; N]> {
 #[rustc_diagnostic_item = "RefCell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefCell<T: ?Sized> {
-    borrow: Cell<BorrowFlag>,
+    borrow: Cell<BorrowCounter>,
     // Stores the location of the earliest currently active borrow.
     // This gets updated whenever we go from having zero borrows
     // to having a single borrow. When a borrow occurs, this gets included
@@ -800,22 +800,22 @@ fn panic_already_mutably_borrowed(err: BorrowError) -> ! {
 //
 // `Ref` and `RefMut` are both two words in size, and so there will likely never
 // be enough `Ref`s or `RefMut`s in existence to overflow half of the `usize`
-// range. Thus, a `BorrowFlag` will probably never overflow or underflow.
+// range. Thus, a `BorrowCounter` will probably never overflow or underflow.
 // However, this is not a guarantee, as a pathological program could repeatedly
 // create and then mem::forget `Ref`s or `RefMut`s. Thus, all code must
 // explicitly check for overflow and underflow in order to avoid unsafety, or at
 // least behave correctly in the event that overflow or underflow happens (e.g.,
 // see BorrowRef::new).
-type BorrowFlag = isize;
-const UNUSED: BorrowFlag = 0;
+type BorrowCounter = isize;
+const UNUSED: BorrowCounter = 0;
 
 #[inline(always)]
-fn is_writing(x: BorrowFlag) -> bool {
+fn is_writing(x: BorrowCounter) -> bool {
     x < UNUSED
 }
 
 #[inline(always)]
-fn is_reading(x: BorrowFlag) -> bool {
+fn is_reading(x: BorrowCounter) -> bool {
     x > UNUSED
 }
 
@@ -1395,12 +1395,12 @@ impl<T> From<T> for RefCell<T> {
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<RefCell<U>> for RefCell<T> {}
 
 struct BorrowRef<'b> {
-    borrow: &'b Cell<BorrowFlag>,
+    borrow: &'b Cell<BorrowCounter>,
 }
 
 impl<'b> BorrowRef<'b> {
     #[inline]
-    fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRef<'b>> {
+    fn new(borrow: &'b Cell<BorrowCounter>) -> Option<BorrowRef<'b>> {
         let b = borrow.get().wrapping_add(1);
         if !is_reading(b) {
             // Incrementing borrow can result in a non-reading value (<= 0) in these cases:
@@ -1441,7 +1441,7 @@ impl Clone for BorrowRef<'_> {
         debug_assert!(is_reading(borrow));
         // Prevent the borrow counter from overflowing into
         // a writing borrow.
-        assert!(borrow != BorrowFlag::MAX);
+        assert!(borrow != BorrowCounter::MAX);
         self.borrow.set(borrow + 1);
         BorrowRef { borrow: self.borrow }
     }
@@ -1789,7 +1789,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
 }
 
 struct BorrowRefMut<'b> {
-    borrow: &'b Cell<BorrowFlag>,
+    borrow: &'b Cell<BorrowCounter>,
 }
 
 impl Drop for BorrowRefMut<'_> {
@@ -1803,7 +1803,7 @@ impl Drop for BorrowRefMut<'_> {
 
 impl<'b> BorrowRefMut<'b> {
     #[inline]
-    fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRefMut<'b>> {
+    fn new(borrow: &'b Cell<BorrowCounter>) -> Option<BorrowRefMut<'b>> {
         // NOTE: Unlike BorrowRefMut::clone, new is called to create the initial
         // mutable reference, and so there must currently be no existing
         // references. Thus, while clone increments the mutable refcount, here
@@ -1827,7 +1827,7 @@ impl<'b> BorrowRefMut<'b> {
         let borrow = self.borrow.get();
         debug_assert!(is_writing(borrow));
         // Prevent the borrow counter from underflowing.
-        assert!(borrow != BorrowFlag::MIN);
+        assert!(borrow != BorrowCounter::MIN);
         self.borrow.set(borrow - 1);
         BorrowRefMut { borrow: self.borrow }
     }
