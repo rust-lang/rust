@@ -143,10 +143,12 @@ macro_rules! assert_biteq {
         let bits = $crate::support::Int::leading_zeros(l.to_bits() - l.to_bits());
         assert!(
             $crate::support::Float::biteq(l, r),
-            "{}\nl: {l:?} ({lb:#0width$x})\nr: {r:?} ({rb:#0width$x})",
+            "{}\nl: {l:?} ({lb:#0width$x} {lh})\nr: {r:?} ({rb:#0width$x} {rh})",
             format_args!($($tt)*),
             lb = l.to_bits(),
+            lh = $crate::support::Hexf(l),
             rb = r.to_bits(),
+            rh = $crate::support::Hexf(r),
             width = ((bits / 4) + 2) as usize,
 
         );

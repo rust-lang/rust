@@ -1,4 +1,5 @@
 #![feature(decl_macro)] // so we can use pub(super)
+#![feature(macro_metavar_expr_concat)]
 #![cfg(all(target_arch = "aarch64", target_os = "linux", not(feature = "no-asm")))]
 
 /// Translate a byte size to a Rust type.
@@ -87,7 +88,7 @@ test_op!(add, |left, right| left.wrapping_add(right));
 test_op!(clr, |left, right| left & !right);
 test_op!(xor, std::ops::BitXor::bitxor);
 test_op!(or, std::ops::BitOr::bitor);
-
+use compiler_builtins::{foreach_bytes, foreach_ordering};
 compiler_builtins::foreach_cas!(cas::test);
 compiler_builtins::foreach_cas16!(test_cas16);
 compiler_builtins::foreach_swp!(swap::test);

@@ -17,7 +17,7 @@ rustc_apfloat = "0.2.2"
 iai-callgrind = { version = "0.14.1", optional = true }
 
 [dependencies.compiler_builtins]
-path = "../compiler-builtins"
+path = "../builtins-shim"
 default-features = false
 features = ["unstable-public-internals"]
 

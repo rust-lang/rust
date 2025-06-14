@@ -1,8 +1,12 @@
-# NOTE: Must be kept in sync with `../builtins-shim/Cargo.toml`.
+# NOTE: Must be kept in sync with `../compiler-builtins/Cargo.toml`.
 #
-# This manifest is actually used in-tree by rust-lang/rust,
-# `../builtins-shim/Cargo.toml` is used by out-of-tree testing. See the other
-# manifest for further details.
+# The manifest at `../compiler-builtins` is what actually gets used in the
+# rust-lang/rust tree; however, we can't build it out of tree because it
+# depends on `core` by path, and even optional Cargo dependencies need to be
+# available at build time. So, we work around this by having this "shim"
+# manifest that is identical except for the `core` dependency and forwards
+# to the same sources, which acts as the `compiler-builtins` Cargo entrypoint
+# for out of tree testing
 
 [package]
 name = "compiler_builtins"
@@ -15,13 +19,13 @@ edition = "2024"
 publish = false
 links = "compiler-rt"
 
+build = "../compiler-builtins/build.rs"
+
 [lib]
+path = "../compiler-builtins/src/lib.rs"
 bench = false
 doctest = false
 test = false
-
-[dependencies]
-core = { path = "../../core", optional = true }
 
 [build-dependencies]
 cc = { optional = true, version = "1.2" }
@@ -52,7 +56,7 @@ mem = []
 mangled-names = []
 
 # Only used in the compiler's build system
-rustc-dep-of-std = ["compiler-builtins", "dep:core"]
+rustc-dep-of-std = ["compiler-builtins"]
 
 # This makes certain traits and function specializations public that
 # are not normally public but are required by the `builtins-test`
