@@ -70,8 +70,7 @@
           StorageDead(_7);
           StorageDead(_6);
           StorageLive(_10);
--         StorageLive(_11);
-+         nop;
+          StorageLive(_11);
           StorageLive(_12);
           _12 = copy _1;
           StorageLive(_13);
@@ -92,8 +91,7 @@
       }
   
       bb6: {
--         StorageDead(_11);
-+         nop;
+          StorageDead(_11);
           StorageDead(_10);
           StorageLive(_15);
           StorageLive(_16);
