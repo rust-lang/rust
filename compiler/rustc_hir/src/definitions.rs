@@ -10,8 +10,8 @@ use std::hash::Hash;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
-use rustc_index::IndexVec;
-use rustc_macros::{Decodable, Encodable};
+use rustc_index::{IndexVec, static_assert_size};
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::{Symbol, kw, sym};
 use tracing::{debug, instrument};
 
@@ -67,7 +67,8 @@ impl DefPathTable {
             // being used.
             //
             // See the documentation for DefPathHash for more information.
-            panic!(
+            assert_eq!(
+                def_path1, def_path2,
                 "found DefPathHash collision between {def_path1:#?} and {def_path2:#?}. \
                     Compilation cannot continue."
             );
@@ -113,6 +114,13 @@ impl DisambiguatorState {
         let mut this = Self::new();
         this.next.insert((def_id, data), index);
         this
+    }
+
+    pub fn next(&mut self, parent: LocalDefId, data: DefPathData) -> u32 {
+        let next_disamb = self.next.entry((parent, data)).or_insert(0);
+        let disambiguator = *next_disamb;
+        *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
+        disambiguator
     }
 }
 
@@ -207,7 +215,7 @@ impl fmt::Display for DisambiguatedDefPathData {
     }
 }
 
-#[derive(Clone, Debug, Encodable, Decodable)]
+#[derive(Clone, Debug, Encodable, Decodable, PartialEq)]
 pub struct DefPath {
     /// The path leading from the crate root to the item.
     pub data: Vec<DisambiguatedDefPathData>,
@@ -274,7 +282,7 @@ impl DefPath {
 }
 
 /// New variants should only be added in synchronization with `enum DefKind`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
@@ -319,6 +327,8 @@ pub enum DefPathData {
     /// Additional static data referred to by a static.
     NestedStatic,
 }
+
+static_assert_size!(DefPathData, 8);
 
 impl Definitions {
     pub fn def_path_table(&self) -> &DefPathTable {
@@ -381,25 +391,18 @@ impl Definitions {
         &mut self,
         parent: LocalDefId,
         data: DefPathData,
-        disambiguator: &mut DisambiguatorState,
-    ) -> LocalDefId {
+        disambiguator: u32,
+    ) -> (LocalDefId, DefPathHash) {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
         debug!(
-            "create_def(parent={}, data={data:?})",
+            "create_def(parent={}, data={data:?}, disambiguator: {disambiguator})",
             self.def_path(parent).to_string_no_crate_verbose(),
         );
 
         // The root node must be created in `new()`.
         assert!(data != DefPathData::CrateRoot);
 
-        // Find the next free disambiguator for this key.
-        let disambiguator = {
-            let next_disamb = disambiguator.next.entry((parent, data)).or_insert(0);
-            let disambiguator = *next_disamb;
-            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
-            disambiguator
-        };
         let key = DefKey {
             parent: Some(parent.local_def_index),
             disambiguated_data: DisambiguatedDefPathData { data, disambiguator },
@@ -411,7 +414,7 @@ impl Definitions {
         debug!("create_def: after disambiguation, key = {:?}", key);
 
         // Create the definition.
-        LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) }
+        (LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) }, def_path_hash)
     }
 
     #[inline(always)]
