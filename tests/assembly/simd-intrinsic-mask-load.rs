@@ -9,7 +9,7 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
-#![feature(no_core, lang_items, repr_simd, intrinsics)]
+#![feature(no_core, lang_items, repr_simd)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
@@ -33,9 +33,6 @@ pub struct f64x4([f64; 4]);
 
 #[repr(simd)]
 pub struct m64x4([i64; 4]);
-
-#[rustc_intrinsic]
-unsafe fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
 
 // CHECK-LABEL: load_i8x16
 #[no_mangle]
