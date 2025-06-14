@@ -1,6 +1,7 @@
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]
 
+use std::cell::Cell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::thread;
 
@@ -1030,16 +1031,14 @@ fn extract_if_drop_panic_leak() {
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn extract_if_pred_panic_leak() {
-    static mut DROPS: i32 = 0;
+    thread_local! {static DROPS: Cell<i32> = Cell::new(0);}
 
     #[derive(Debug)]
     struct D(u32);
 
     impl Drop for D {
         fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
+            DROPS.with(|drops| drops.update(|v| v + 1));
         }
     }
 
@@ -1058,7 +1057,7 @@ fn extract_if_pred_panic_leak() {
     }))
     .ok();
 
-    assert_eq!(unsafe { DROPS }, 2); // 0 and 1
+    DROPS.with(|drops| assert_eq!(drops.get(), 2)); // 0 and 1
     assert_eq!(q.len(), 6);
 }
 
