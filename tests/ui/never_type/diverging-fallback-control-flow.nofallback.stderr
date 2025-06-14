@@ -39,3 +39,45 @@ LL |     let x: ();
 
 warning: 2 warnings emitted
 
+Future incompatibility report: Future breakage diagnostic:
+warning: this function depends on never type fallback being `()`
+  --> $DIR/diverging-fallback-control-flow.rs:30:1
+   |
+LL | fn assignment() {
+   | ^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `!: UnitDefault` will fail
+  --> $DIR/diverging-fallback-control-flow.rs:36:13
+   |
+LL |         x = UnitDefault::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     let x: ();
+   |          ++++
+
+Future breakage diagnostic:
+warning: this function depends on never type fallback being `()`
+  --> $DIR/diverging-fallback-control-flow.rs:42:1
+   |
+LL | fn assignment_rev() {
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `!: UnitDefault` will fail
+  --> $DIR/diverging-fallback-control-flow.rs:50:13
+   |
+LL |         x = UnitDefault::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     let x: ();
+   |          ++++
+
