@@ -292,6 +292,7 @@ auto:
   - name: i686-gnu-nopt-1
     env:
       IMAGE: i686-gnu-nopt
+      NO_LLVM_ASSERTIONS: 1
       DOCKER_SCRIPT: /scripts/stage_2_test_set1.sh
     <<: *job-linux-4c
 
@@ -299,6 +300,7 @@ auto:
   - name: i686-gnu-nopt-2
     env:
       IMAGE: i686-gnu-nopt
+      NO_LLVM_ASSERTIONS: 1
       DOCKER_SCRIPT: >-
         python3 ../x.py test --stage 1 --config /config/nopt-std-config.toml library/std &&
         /scripts/stage_2_test_set2.sh
@@ -412,6 +414,8 @@ auto:
     <<: *job-linux-4c
 
   - name: x86_64-gnu-nopt
+    env:
+      NO_LLVM_ASSERTIONS: 1
     <<: *job-linux-4c
 
   - name: x86_64-gnu-tools
