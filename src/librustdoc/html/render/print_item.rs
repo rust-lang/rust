@@ -194,7 +194,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         let src_href =
             if cx.info.include_sources && !item.is_primitive() { cx.src_href(item) } else { None };
 
-        let path_components = if item.is_primitive() || item.is_keyword() || item.is_attribute() {
+        let path_components = if item.is_fake_item() {
             vec![]
         } else {
             let cur = &cx.current;

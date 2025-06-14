@@ -608,6 +608,17 @@ impl Item {
     pub(crate) fn is_attribute(&self) -> bool {
         self.type_() == ItemType::Attribute
     }
+    /// Returns `true` if the item kind is one of the following:
+    ///
+    /// * `ItemType::Primitive`
+    /// * `ItemType::Keyword`
+    /// * `ItemType::Attribute`
+    ///
+    /// They are considered fake because they only exist thanks to their
+    /// `#[doc(primitive|keyword|attribute)]` attribute.
+    pub(crate) fn is_fake_item(&self) -> bool {
+        matches!(self.type_(), ItemType::Primitive | ItemType::Keyword | ItemType::Attribute)
+    }
     pub(crate) fn is_stripped(&self) -> bool {
         match self.kind {
             StrippedItem(..) => true,

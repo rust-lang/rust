@@ -99,6 +99,21 @@ impl IntoDiagArg for ProcMacroKind {
     }
 }
 
+#[derive(Clone, Copy)]
+enum DocFakeItemKind {
+    Attribute,
+    Keyword,
+}
+
+impl DocFakeItemKind {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Attribute => "attribute",
+            Self::Keyword => "keyword",
+        }
+    }
+}
+
 struct CheckAttrVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
@@ -855,7 +870,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         &self,
         meta: &MetaItemInner,
         hir_id: HirId,
-        is_keyword: bool,
+        attr_kind: DocFakeItemKind,
     ) {
         fn is_doc_keyword(s: Symbol) -> bool {
             // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
@@ -868,13 +883,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains_key(&s)
         }
 
-        fn get_attr_name(is_keyword: bool) -> &'static str {
-            if is_keyword { "keyword" } else { "attribute" }
-        }
-
         let value = match meta.value_str() {
             Some(value) if value != sym::empty => value,
-            _ => return self.doc_attr_str_error(meta, get_attr_name(is_keyword)),
+            _ => return self.doc_attr_str_error(meta, attr_kind.name()),
         };
 
         let item_kind = match self.tcx.hir_node(hir_id) {
@@ -886,7 +897,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 if !module.item_ids.is_empty() {
                     self.dcx().emit_err(errors::DocKeywordAttributeEmptyMod {
                         span: meta.span(),
-                        attr_name: get_attr_name(is_keyword),
+                        attr_name: attr_kind.name(),
                     });
                     return;
                 }
@@ -894,23 +905,28 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             _ => {
                 self.dcx().emit_err(errors::DocKeywordAttributeNotMod {
                     span: meta.span(),
-                    attr_name: get_attr_name(is_keyword),
+                    attr_name: attr_kind.name(),
                 });
                 return;
             }
         }
-        if is_keyword {
-            if !is_doc_keyword(value) {
-                self.dcx().emit_err(errors::DocKeywordNotKeyword {
-                    span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                    keyword: value,
-                });
+        match attr_kind {
+            DocFakeItemKind::Keyword => {
+                if !is_doc_keyword(value) {
+                    self.dcx().emit_err(errors::DocKeywordNotKeyword {
+                        span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                        keyword: value,
+                    });
+                }
             }
-        } else if !is_builtin_attr(value) {
-            self.dcx().emit_err(errors::DocAttributeNotAttribute {
-                span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                attribute: value,
-            });
+            DocFakeItemKind::Attribute => {
+                if !is_builtin_attr(value) {
+                    self.dcx().emit_err(errors::DocAttributeNotAttribute {
+                        span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                        attribute: value,
+                    });
+                }
+            }
         }
     }
 
@@ -1170,13 +1186,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
                         Some(sym::keyword) => {
                             if self.check_attr_not_crate_level(meta, hir_id, "keyword") {
-                                self.check_doc_keyword_and_attribute(meta, hir_id, true);
+                                self.check_doc_keyword_and_attribute(
+                                    meta,
+                                    hir_id,
+                                    DocFakeItemKind::Keyword,
+                                );
                             }
                         }
 
                         Some(sym::attribute) => {
                             if self.check_attr_not_crate_level(meta, hir_id, "attribute") {
-                                self.check_doc_keyword_and_attribute(meta, hir_id, false);
+                                self.check_doc_keyword_and_attribute(
+                                    meta,
+                                    hir_id,
+                                    DocFakeItemKind::Attribute,
+                                );
                             }
                         }
 
