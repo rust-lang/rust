@@ -2285,12 +2285,23 @@ pub struct Expr<'hir> {
 }
 
 impl Expr<'_> {
-    pub fn precedence(&self) -> ExprPrecedence {
+    pub fn precedence(
+        &self,
+        for_each_attr: &dyn Fn(HirId, &mut dyn FnMut(&Attribute)),
+    ) -> ExprPrecedence {
+        let prefix_attrs_precedence = || -> ExprPrecedence {
+            let mut has_outer_attr = false;
+            for_each_attr(self.hir_id, &mut |attr: &Attribute| {
+                has_outer_attr |= matches!(attr.style(), AttrStyle::Outer)
+            });
+            if has_outer_attr { ExprPrecedence::Prefix } else { ExprPrecedence::Unambiguous }
+        };
+
         match &self.kind {
             ExprKind::Closure(closure) => {
                 match closure.fn_decl.output {
                     FnRetTy::DefaultReturn(_) => ExprPrecedence::Jump,
-                    FnRetTy::Return(_) => ExprPrecedence::Unambiguous,
+                    FnRetTy::Return(_) => prefix_attrs_precedence(),
                 }
             }
 
@@ -2315,7 +2326,7 @@ impl Expr<'_> {
             | ExprKind::Let(..)
             | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
-            // Never need parens
+            // Need parens if and only if there are prefix attributes.
             ExprKind::Array(_)
             | ExprKind::Block(..)
             | ExprKind::Call(..)
@@ -2337,9 +2348,9 @@ impl Expr<'_> {
             | ExprKind::Type(..)
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Use(..)
-            | ExprKind::Err(_) => ExprPrecedence::Unambiguous,
+            | ExprKind::Err(_) => prefix_attrs_precedence(),
 
-            ExprKind::DropTemps(expr, ..) => expr.precedence(),
+            ExprKind::DropTemps(expr, ..) => expr.precedence(for_each_attr),
         }
     }
 
