@@ -1,24 +1,23 @@
-// Make sure that users can construct structs through associated types
-// in both expressions and patterns
+// Check that fully qualified syntax can be used in struct expressions in patterns.
+// In other words, check that structs can constructed and destructed via an associated type.
+//
+//@ run-pass
 
-#![feature(more_qualified_paths)]
-
-//@ check-pass
 fn main() {
-    let <Foo as A>::Assoc { br } = <Foo as A>::Assoc { br: 2 };
-    assert!(br == 2);
+    let <Type as Trait>::Assoc { field } = <Type as Trait>::Assoc { field: 2 };
+    assert_eq!(field, 2);
 }
 
-struct StructStruct {
-    br: i8,
+struct Struct {
+    field: i8,
 }
 
-struct Foo;
+struct Type;
 
-trait A {
+trait Trait {
     type Assoc;
 }
 
-impl A for Foo {
-    type Assoc = StructStruct;
+impl Trait for Type {
+    type Assoc = Struct;
 }
