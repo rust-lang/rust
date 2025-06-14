@@ -12,8 +12,8 @@ trait ImportantTrait2 {}
 #[diagnostic::on_unimplemented(message = "Test {1:}")]
 //~^WARN positional format arguments are not allowed here
 //~|WARN positional format arguments are not allowed here
-//~|WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
-//~|WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
+//~|WARN invalid format specifier [malformed_diagnostic_format_literals]
+//~|WARN invalid format specifier [malformed_diagnostic_format_literals]
 trait ImportantTrait3 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:123}")]
@@ -22,13 +22,13 @@ trait ImportantTrait3 {}
 trait ImportantTrait4 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-//~^WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
-//~|WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
+//~^WARN invalid format specifier [malformed_diagnostic_format_literals]
+//~|WARN invalid format specifier [malformed_diagnostic_format_literals]
 trait ImportantTrait5 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:}")]
-//~^WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
-//~|WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
+//~^WARN invalid format specifier [malformed_diagnostic_format_literals]
+//~|WARN invalid format specifier [malformed_diagnostic_format_literals]
 trait ImportantTrait6 {}
 
 
