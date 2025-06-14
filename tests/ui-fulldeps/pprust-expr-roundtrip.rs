@@ -187,9 +187,9 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
 struct RemoveParens;
 
 impl MutVisitor for RemoveParens {
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         match e.kind.clone() {
-            ExprKind::Paren(inner) => *e = inner,
+            ExprKind::Paren(inner) => *e = *inner,
             _ => {}
         };
         mut_visit::walk_expr(self, e);
@@ -200,11 +200,11 @@ impl MutVisitor for RemoveParens {
 struct AddParens;
 
 impl MutVisitor for AddParens {
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         mut_visit::walk_expr(self, e);
         let expr = std::mem::replace(e, Expr::dummy());
 
-        e.kind = ExprKind::Paren(expr);
+        e.kind = ExprKind::Paren(P(expr));
     }
 }
 
