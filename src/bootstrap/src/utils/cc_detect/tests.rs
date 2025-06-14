@@ -77,11 +77,11 @@ fn test_new_cc_build() {
 
 #[test]
 fn test_default_compiler_wasi() {
-    let build = Build::new(Config { ..Config::parse(Flags::parse(&["build".to_owned()])) });
+    let mut build = Build::new(Config { ..Config::parse(Flags::parse(&["build".to_owned()])) });
     let target = TargetSelection::from_user("wasm32-wasi");
     let wasi_sdk = PathBuf::from("/wasi-sdk");
-    // SAFETY: bootstrap tests run on a single thread
-    unsafe { env::set_var("WASI_SDK_PATH", &wasi_sdk) };
+    build.wasi_sdk_path = Some(wasi_sdk.clone());
+
     let mut cfg = cc::Build::new();
     if let Some(result) = default_compiler(&mut cfg, Language::C, target.clone(), &build) {
         let expected = {
@@ -93,10 +93,6 @@ fn test_default_compiler_wasi() {
         panic!(
             "default_compiler should return a compiler path for wasi target when WASI_SDK_PATH is set"
         );
-    }
-    // SAFETY: bootstrap tests run on a single thread
-    unsafe {
-        env::remove_var("WASI_SDK_PATH");
     }
 }
 
@@ -119,18 +115,14 @@ fn test_find_target_with_config() {
     target_config.ar = Some(PathBuf::from("dummy-ar"));
     target_config.ranlib = Some(PathBuf::from("dummy-ranlib"));
     build.config.target_config.insert(target.clone(), target_config);
-    find_target(&build, target.clone());
-    let binding = build.cc.borrow();
-    let cc_tool = binding.get(&target).unwrap();
+    fill_target_compiler(&mut build, target.clone());
+    let cc_tool = build.cc.get(&target).unwrap();
     assert_eq!(cc_tool.path(), &PathBuf::from("dummy-cc"));
-    let binding = build.cxx.borrow();
-    let cxx_tool = binding.get(&target).unwrap();
+    let cxx_tool = build.cxx.get(&target).unwrap();
     assert_eq!(cxx_tool.path(), &PathBuf::from("dummy-cxx"));
-    let binding = build.ar.borrow();
-    let ar = binding.get(&target).unwrap();
+    let ar = build.ar.get(&target).unwrap();
     assert_eq!(ar, &PathBuf::from("dummy-ar"));
-    let binding = build.ranlib.borrow();
-    let ranlib = binding.get(&target).unwrap();
+    let ranlib = build.ranlib.get(&target).unwrap();
     assert_eq!(ranlib, &PathBuf::from("dummy-ranlib"));
 }
 
@@ -139,12 +131,12 @@ fn test_find_target_without_config() {
     let mut build = Build::new(Config { ..Config::parse(Flags::parse(&["build".to_owned()])) });
     let target = TargetSelection::from_user("x86_64-unknown-linux-gnu");
     build.config.target_config.clear();
-    find_target(&build, target.clone());
-    assert!(build.cc.borrow().contains_key(&target));
+    fill_target_compiler(&mut build, target.clone());
+    assert!(build.cc.contains_key(&target));
     if !target.triple.contains("vxworks") {
-        assert!(build.cxx.borrow().contains_key(&target));
+        assert!(build.cxx.contains_key(&target));
     }
-    assert!(build.ar.borrow().contains_key(&target));
+    assert!(build.ar.contains_key(&target));
 }
 
 #[test]
@@ -154,8 +146,8 @@ fn test_find() {
     let target2 = TargetSelection::from_user("x86_64-unknown-openbsd");
     build.targets.push(target1.clone());
     build.hosts.push(target2.clone());
-    find(&build);
+    fill_compilers(&mut build);
     for t in build.hosts.iter().chain(build.targets.iter()).chain(iter::once(&build.host_target)) {
-        assert!(build.cc.borrow().contains_key(t), "CC not set for target {}", t.triple);
+        assert!(build.cc.contains_key(t), "CC not set for target {}", t.triple);
     }
 }
