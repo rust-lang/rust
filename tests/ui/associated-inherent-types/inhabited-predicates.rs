@@ -1,8 +1,10 @@
-//@ known-bug: rust-lang/rust#125879
+//@ check-pass
+
 #![feature(inherent_associated_types)]
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 
 pub type PubAlias0 = PubTy::PrivAssocTy;
+//~^ WARN: associated type `PubTy::PrivAssocTy` is more private than the item `PubAlias0`
 
 pub struct PubTy;
 impl PubTy {
@@ -10,6 +12,7 @@ impl PubTy {
 }
 
 pub struct S(pub PubAlias0);
+//~^ WARN: associated type `PubTy::PrivAssocTy` is more private than the item `S::0`
 
 pub unsafe fn foo(a: S) -> S {
     a

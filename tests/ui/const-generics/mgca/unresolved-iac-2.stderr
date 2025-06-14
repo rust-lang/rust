@@ -1,0 +1,15 @@
+error[E0220]: associated constant `X` not found for `Foo<'_>` in the current scope
+  --> $DIR/unresolved-iac-2.rs:10:25
+   |
+LL | struct Foo<'a> {
+   | -------------- associated constant `X` not found for this struct
+...
+LL |     fn foo(_: [u8; Foo::X]) {}
+   |                         ^ associated item not found in `Foo<'_>`
+   |
+   = note: the associated constant was found for
+           
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0220`.

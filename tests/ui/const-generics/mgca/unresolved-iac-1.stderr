@@ -1,0 +1,16 @@
+error[E0220]: associated constant `b` not found for `Box<{type error}, {type error}>` in the current scope
+  --> $DIR/unresolved-iac-1.rs:5:24
+   |
+LL |   struct A(Box<[u8; Box::b]>);
+   |                          ^ associated item not found in `Box<{type error}, {type error}>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+   = note: associated constant `b` not found for this struct
+   |
+   = note: the associated constant was found for
+           
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0220`.
