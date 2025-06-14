@@ -1116,8 +1116,8 @@ impl String {
     ///
     /// # Panics
     ///
-    /// Panics if the starting point or end point do not lie on a [`char`]
-    /// boundary, or if they're out of bounds.
+    /// Panics if the range has `start_bound > end_bound`, or, a range bound is
+    /// bounded and does not lie on a [`char`] boundary.
     ///
     /// # Examples
     ///
@@ -1920,8 +1920,8 @@ impl String {
     ///
     /// # Panics
     ///
-    /// Panics if the starting point or end point do not lie on a [`char`]
-    /// boundary, or if they're out of bounds.
+    /// Panics if the range has `start_bound > end_bound`, or, a range bound is
+    /// bounded and does not lie on a [`char`] boundary.
     ///
     /// # Leaking
     ///
@@ -2030,8 +2030,8 @@ impl String {
     ///
     /// # Panics
     ///
-    /// Panics if the starting point or end point do not lie on a [`char`]
-    /// boundary, or if they're out of bounds.
+    /// Panics if the range has `start_bound > end_bound`, or, a range bound is
+    /// bounded and does not lie on a [`char`] boundary.
     ///
     /// # Examples
     ///
