@@ -20,19 +20,24 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 /// as a discriminant -- `Option<NonNull<T>>` has the same size as `*mut T`.
 /// However the pointer may still dangle if it isn't dereferenced.
 ///
-/// Unlike `*mut T`, `NonNull<T>` was chosen to be covariant over `T`. This makes it
-/// possible to use `NonNull<T>` when building covariant types, but introduces the
-/// risk of unsoundness if used in a type that shouldn't actually be covariant.
-/// (The opposite choice was made for `*mut T` even though technically the unsoundness
-/// could only be caused by calling unsafe functions.)
+/// Unlike `*mut T`, `NonNull<T>` is covariant over `T`. This is usually the correct
+/// choice for most data structures and safe abstractions, such as `Box`, `Rc`, `Arc`, `Vec`,
+/// and `LinkedList`.
 ///
-/// Covariance is correct for most safe abstractions, such as `Box`, `Rc`, `Arc`, `Vec`,
-/// and `LinkedList`. This is the case because they provide a public API that follows the
-/// normal shared XOR mutable rules of Rust.
+/// In rare cases, if your type exposes a way to mutate the value of `T` through a `NonNull<T>`,
+/// and you need to prevent unsoundness from variance (for example, if `T` could be a reference
+/// with a shorter lifetime), you should add a field to make your type invariant, such as
+/// `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
 ///
-/// If your type cannot safely be covariant, you must ensure it contains some
-/// additional field to provide invariance. Often this field will be a [`PhantomData`]
-/// type like `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
+/// Example of a type that must be invariant:
+/// ```rust
+/// use std::cell::Cell;
+/// use std::marker::PhantomData;
+/// struct Invariant<T> {
+///     ptr: std::ptr::NonNull<T>,
+///     _invariant: PhantomData<Cell<T>>,
+/// }
+/// ```
 ///
 /// Notice that `NonNull<T>` has a `From` instance for `&T`. However, this does
 /// not change the fact that mutating through a (pointer derived from a) shared
