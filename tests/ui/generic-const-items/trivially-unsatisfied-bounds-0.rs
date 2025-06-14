@@ -1,11 +1,11 @@
-#![feature(generic_const_items, trivial_bounds)]
-#![allow(incomplete_features)]
+#![feature(generic_const_items)]
+#![expect(incomplete_features)]
 
 // Ensure that we check if trivial bounds on const items hold or not.
 
-const UNUSABLE: () = () //~ ERROR entering unreachable code
+const UNUSABLE: () = ()
 where
-    String: Copy;
+    for<'_delay> String: Copy;
 
 fn main() {
     let _ = UNUSABLE; //~ ERROR the trait bound `String: Copy` is not satisfied

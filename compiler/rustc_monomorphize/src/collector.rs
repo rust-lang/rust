@@ -1484,6 +1484,12 @@ impl<'v> RootCollector<'_, 'v> {
                 // But even just declaring them must collect the items they refer to
                 // unless their generics require monomorphization.
                 if !self.tcx.generics_of(id.owner_id).own_requires_monomorphization()
+                    && let predicates = self.tcx.predicates_of(id.owner_id)
+                    && (predicates.predicates.is_empty()
+                        || !rustc_trait_selection::traits::impossible_predicates(
+                            self.tcx,
+                            predicates.instantiate_identity(self.tcx).predicates,
+                        ))
                     && let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id())
                 {
                     collect_const_value(self.tcx, val, self.output);
