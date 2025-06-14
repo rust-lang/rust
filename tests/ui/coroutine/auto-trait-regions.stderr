@@ -1,36 +1,34 @@
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/auto-trait-regions.rs:45:24
+error[E0626]: borrow may still be in use when coroutine yields
+  --> $DIR/auto-trait-regions.rs:45:19
    |
+LL |     let gen = #[coroutine] move || {
+   |                            ------- within this coroutine
 LL |         let a = A(&mut true, &mut true, No);
-   |                        ^^^^                - temporary value is freed at the end of this statement
-   |                        |
-   |                        creates a temporary value which is freed while still in use
+   |                   ^^^^^^^^^
 ...
-LL |         assert_foo(a);
-   |                    - borrow later used here
+LL |         yield;
+   |         ----- possible yield occurs here
    |
-help: consider using a `let` binding to create a longer lived value
+help: add `static` to mark this coroutine as unmovable
    |
-LL ~         let mut binding = true;
-LL ~         let a = A(&mut binding, &mut true, No);
-   |
+LL |     let gen = #[coroutine] static move || {
+   |                            ++++++
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/auto-trait-regions.rs:45:35
+error[E0626]: borrow may still be in use when coroutine yields
+  --> $DIR/auto-trait-regions.rs:45:30
    |
+LL |     let gen = #[coroutine] move || {
+   |                            ------- within this coroutine
 LL |         let a = A(&mut true, &mut true, No);
-   |                                   ^^^^     - temporary value is freed at the end of this statement
-   |                                   |
-   |                                   creates a temporary value which is freed while still in use
+   |                              ^^^^^^^^^
 ...
-LL |         assert_foo(a);
-   |                    - borrow later used here
+LL |         yield;
+   |         ----- possible yield occurs here
    |
-help: consider using a `let` binding to create a longer lived value
+help: add `static` to mark this coroutine as unmovable
    |
-LL ~         let mut binding = true;
-LL ~         let a = A(&mut true, &mut binding, No);
-   |
+LL |     let gen = #[coroutine] static move || {
+   |                            ++++++
 
 error: implementation of `Foo` is not general enough
   --> $DIR/auto-trait-regions.rs:31:5
@@ -52,4 +50,4 @@ LL |     assert_foo(gen);
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0716`.
+For more information about this error, try `rustc --explain E0626`.

@@ -373,8 +373,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     fn unsized_feature_enabled(&self) -> bool {
-        let features = self.tcx().features();
-        features.unsized_locals() || features.unsized_fn_params()
+        self.tcx().features().unsized_fn_params()
     }
 
     /// Equate the inferred type and the annotated type for user type annotations
@@ -957,7 +956,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
 
-        // When `unsized_fn_params` or `unsized_locals` is enabled, only function calls
+        // When `unsized_fn_params` is enabled, only function calls
         // and nullary ops are checked in `check_call_dest`.
         if !self.unsized_feature_enabled() {
             match self.body.local_kind(local) {
@@ -1941,7 +1940,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
 
-                // When `unsized_fn_params` and `unsized_locals` are both not enabled,
+                // When `unsized_fn_params` is not enabled,
                 // this check is done at `check_local`.
                 if self.unsized_feature_enabled() {
                     let span = term.source_info.span;

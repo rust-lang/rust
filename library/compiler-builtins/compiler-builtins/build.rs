@@ -1,9 +1,6 @@
 mod configure;
 
-use std::collections::BTreeMap;
 use std::env;
-use std::path::PathBuf;
-use std::sync::atomic::Ordering;
 
 use configure::{Target, configure_aliases, configure_f16_f128};
 
@@ -86,10 +83,6 @@ fn main() {
     {
         println!("cargo:rustc-cfg=kernel_user_helpers")
     }
-
-    if llvm_target[0].starts_with("aarch64") {
-        generate_aarch64_outlined_atomics();
-    }
 }
 
 /// Run configuration for `libm` since it is included directly.
@@ -130,61 +123,6 @@ fn configure_libm(target: &Target) {
 
     // Activate libm's unstable features to make full use of Nightly.
     println!("cargo:rustc-cfg=feature=\"unstable-intrinsics\"");
-}
-
-fn aarch64_symbol(ordering: Ordering) -> &'static str {
-    match ordering {
-        Ordering::Relaxed => "relax",
-        Ordering::Acquire => "acq",
-        Ordering::Release => "rel",
-        Ordering::AcqRel => "acq_rel",
-        _ => panic!("unknown symbol for {ordering:?}"),
-    }
-}
-
-/// The `concat_idents` macro is extremely annoying and doesn't allow us to define new items.
-/// Define them from the build script instead.
-/// Note that the majority of the code is still defined in `aarch64.rs` through inline macros.
-fn generate_aarch64_outlined_atomics() {
-    use std::fmt::Write;
-    // #[macro_export] so that we can use this in tests
-    let gen_macro =
-        |name| format!("#[macro_export] macro_rules! foreach_{name} {{ ($macro:path) => {{\n");
-
-    // Generate different macros for add/clr/eor/set so that we can test them separately.
-    let sym_names = ["cas", "ldadd", "ldclr", "ldeor", "ldset", "swp"];
-    let mut macros = BTreeMap::new();
-    for sym in sym_names {
-        macros.insert(sym, gen_macro(sym));
-    }
-
-    // Only CAS supports 16 bytes, and it has a different implementation that uses a different macro.
-    let mut cas16 = gen_macro("cas16");
-
-    for ordering in [
-        Ordering::Relaxed,
-        Ordering::Acquire,
-        Ordering::Release,
-        Ordering::AcqRel,
-    ] {
-        let sym_ordering = aarch64_symbol(ordering);
-        for size in [1, 2, 4, 8] {
-            for (sym, macro_) in &mut macros {
-                let name = format!("__aarch64_{sym}{size}_{sym_ordering}");
-                writeln!(macro_, "$macro!( {ordering:?}, {size}, {name} );").unwrap();
-            }
-        }
-        let name = format!("__aarch64_cas16_{sym_ordering}");
-        writeln!(cas16, "$macro!( {ordering:?}, {name} );").unwrap();
-    }
-
-    let mut buf = String::new();
-    for macro_def in macros.values().chain(std::iter::once(&cas16)) {
-        buf += macro_def;
-        buf += "}; }\n";
-    }
-    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
-    std::fs::write(out_dir.join("outlined_atomics.rs"), buf).unwrap();
 }
 
 /// Emit directives for features we expect to support that aren't in `Cargo.toml`.

@@ -2,6 +2,8 @@ use core::f64;
 use core::f64::consts;
 use core::num::FpCategory as Fp;
 
+use super::{assert_approx_eq, assert_biteq};
+
 /// Smallest number
 const TINY_BITS: u64 = 0x1;
 
@@ -26,18 +28,6 @@ const NAN_MASK2: u64 = 0x0005_5555_5555_5555;
 #[test]
 fn test_num_f64() {
     super::test_num(10f64, 2f64);
-}
-
-#[test]
-fn test_min_nan() {
-    assert_biteq!(f64::NAN.min(2.0), 2.0);
-    assert_biteq!(2.0f64.min(f64::NAN), 2.0);
-}
-
-#[test]
-fn test_max_nan() {
-    assert_biteq!(f64::NAN.max(2.0), 2.0);
-    assert_biteq!(2.0f64.max(f64::NAN), 2.0);
 }
 
 #[test]
@@ -188,92 +178,6 @@ fn test_classify() {
     assert_eq!(neg_zero.classify(), Fp::Zero);
     assert_eq!(1e-307f64.classify(), Fp::Normal);
     assert_eq!(1e-308f64.classify(), Fp::Subnormal);
-}
-
-#[test]
-fn test_floor() {
-    assert_biteq!(f64::math::floor(1.0f64), 1.0f64);
-    assert_biteq!(f64::math::floor(1.3f64), 1.0f64);
-    assert_biteq!(f64::math::floor(1.5f64), 1.0f64);
-    assert_biteq!(f64::math::floor(1.7f64), 1.0f64);
-    assert_biteq!(f64::math::floor(0.0f64), 0.0f64);
-    assert_biteq!(f64::math::floor(-0.0f64), -0.0f64);
-    assert_biteq!(f64::math::floor(-1.0f64), -1.0f64);
-    assert_biteq!(f64::math::floor(-1.3f64), -2.0f64);
-    assert_biteq!(f64::math::floor(-1.5f64), -2.0f64);
-    assert_biteq!(f64::math::floor(-1.7f64), -2.0f64);
-}
-
-#[test]
-fn test_ceil() {
-    assert_biteq!(f64::math::ceil(1.0f64), 1.0f64);
-    assert_biteq!(f64::math::ceil(1.3f64), 2.0f64);
-    assert_biteq!(f64::math::ceil(1.5f64), 2.0f64);
-    assert_biteq!(f64::math::ceil(1.7f64), 2.0f64);
-    assert_biteq!(f64::math::ceil(0.0f64), 0.0f64);
-    assert_biteq!(f64::math::ceil(-0.0f64), -0.0f64);
-    assert_biteq!(f64::math::ceil(-1.0f64), -1.0f64);
-    assert_biteq!(f64::math::ceil(-1.3f64), -1.0f64);
-    assert_biteq!(f64::math::ceil(-1.5f64), -1.0f64);
-    assert_biteq!(f64::math::ceil(-1.7f64), -1.0f64);
-}
-
-#[test]
-fn test_round() {
-    assert_biteq!(f64::math::round(2.5f64), 3.0f64);
-    assert_biteq!(f64::math::round(1.0f64), 1.0f64);
-    assert_biteq!(f64::math::round(1.3f64), 1.0f64);
-    assert_biteq!(f64::math::round(1.5f64), 2.0f64);
-    assert_biteq!(f64::math::round(1.7f64), 2.0f64);
-    assert_biteq!(f64::math::round(0.0f64), 0.0f64);
-    assert_biteq!(f64::math::round(-0.0f64), -0.0f64);
-    assert_biteq!(f64::math::round(-1.0f64), -1.0f64);
-    assert_biteq!(f64::math::round(-1.3f64), -1.0f64);
-    assert_biteq!(f64::math::round(-1.5f64), -2.0f64);
-    assert_biteq!(f64::math::round(-1.7f64), -2.0f64);
-}
-
-#[test]
-fn test_round_ties_even() {
-    assert_biteq!(f64::math::round_ties_even(2.5f64), 2.0f64);
-    assert_biteq!(f64::math::round_ties_even(1.0f64), 1.0f64);
-    assert_biteq!(f64::math::round_ties_even(1.3f64), 1.0f64);
-    assert_biteq!(f64::math::round_ties_even(1.5f64), 2.0f64);
-    assert_biteq!(f64::math::round_ties_even(1.7f64), 2.0f64);
-    assert_biteq!(f64::math::round_ties_even(0.0f64), 0.0f64);
-    assert_biteq!(f64::math::round_ties_even(-0.0f64), -0.0f64);
-    assert_biteq!(f64::math::round_ties_even(-1.0f64), -1.0f64);
-    assert_biteq!(f64::math::round_ties_even(-1.3f64), -1.0f64);
-    assert_biteq!(f64::math::round_ties_even(-1.5f64), -2.0f64);
-    assert_biteq!(f64::math::round_ties_even(-1.7f64), -2.0f64);
-}
-
-#[test]
-fn test_trunc() {
-    assert_biteq!(f64::math::trunc(1.0f64), 1.0f64);
-    assert_biteq!(f64::math::trunc(1.3f64), 1.0f64);
-    assert_biteq!(f64::math::trunc(1.5f64), 1.0f64);
-    assert_biteq!(f64::math::trunc(1.7f64), 1.0f64);
-    assert_biteq!(f64::math::trunc(0.0f64), 0.0f64);
-    assert_biteq!(f64::math::trunc(-0.0f64), -0.0f64);
-    assert_biteq!(f64::math::trunc(-1.0f64), -1.0f64);
-    assert_biteq!(f64::math::trunc(-1.3f64), -1.0f64);
-    assert_biteq!(f64::math::trunc(-1.5f64), -1.0f64);
-    assert_biteq!(f64::math::trunc(-1.7f64), -1.0f64);
-}
-
-#[test]
-fn test_fract() {
-    assert_biteq!(f64::math::fract(1.0f64), 0.0f64);
-    assert_biteq!(f64::math::fract(1.3f64), 0.30000000000000004f64);
-    assert_biteq!(f64::math::fract(1.5f64), 0.5f64);
-    assert_biteq!(f64::math::fract(1.7f64), 0.7f64);
-    assert_biteq!(f64::math::fract(0.0f64), 0.0f64);
-    assert_biteq!(f64::math::fract(-0.0f64), 0.0f64);
-    assert_biteq!(f64::math::fract(-1.0f64), 0.0f64);
-    assert_biteq!(f64::math::fract(-1.3f64), -0.30000000000000004f64);
-    assert_biteq!(f64::math::fract(-1.5f64), -0.5f64);
-    assert_biteq!(f64::math::fract(-1.7f64), -0.69999999999999996f64);
 }
 
 #[test]
