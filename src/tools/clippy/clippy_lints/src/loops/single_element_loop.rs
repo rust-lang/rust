@@ -84,7 +84,7 @@ pub(super) fn check<'tcx>(
         if !prefix.is_empty()
             && (
                 // Precedence of internal expression is less than or equal to precedence of `&expr`.
-                arg_expression.precedence() <= ExprPrecedence::Prefix || is_range_literal(arg_expression)
+                cx.precedence(arg_expression) <= ExprPrecedence::Prefix || is_range_literal(arg_expression)
             )
         {
             arg_snip = format!("({arg_snip})").into();

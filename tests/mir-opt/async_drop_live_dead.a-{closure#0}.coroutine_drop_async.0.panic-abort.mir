@@ -1,0 +1,100 @@
+// MIR for `a::{closure#0}` 0 coroutine_drop_async
+
+fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>) -> Poll<()> {
+    debug _task_context => _19;
+    debug x => ((*(_1.0: &mut {async fn body of a<T>()})).0: T);
+    let mut _0: std::task::Poll<()>;
+    let _3: T;
+    let mut _4: impl std::future::Future<Output = ()>;
+    let mut _5: &mut T;
+    let mut _6: std::pin::Pin<&mut T>;
+    let mut _7: &mut T;
+    let mut _8: *mut T;
+    let mut _9: ();
+    let mut _10: std::task::Poll<()>;
+    let mut _11: &mut std::task::Context<'_>;
+    let mut _12: &mut impl std::future::Future<Output = ()>;
+    let mut _13: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
+    let mut _14: isize;
+    let mut _15: &mut std::task::Context<'_>;
+    let mut _16: &mut impl std::future::Future<Output = ()>;
+    let mut _17: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
+    let mut _18: isize;
+    let mut _19: &mut std::task::Context<'_>;
+    let mut _20: u32;
+    scope 1 {
+        debug x => (((*(_1.0: &mut {async fn body of a<T>()})) as variant#4).0: T);
+    }
+
+    bb0: {
+        _20 = discriminant((*(_1.0: &mut {async fn body of a<T>()})));
+        switchInt(move _20) -> [0: bb9, 3: bb12, 4: bb13, otherwise: bb14];
+    }
+
+    bb1: {
+        nop;
+        nop;
+        goto -> bb2;
+    }
+
+    bb2: {
+        _0 = Poll::<()>::Ready(const ());
+        return;
+    }
+
+    bb3: {
+        _0 = Poll::<()>::Pending;
+        discriminant((*(_1.0: &mut {async fn body of a<T>()}))) = 4;
+        return;
+    }
+
+    bb4: {
+        StorageLive(_17);
+        _16 = &mut (((*(_1.0: &mut {async fn body of a<T>()})) as variant#4).1: impl std::future::Future<Output = ()>);
+        _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _16) -> [return: bb7, unwind unreachable];
+    }
+
+    bb5: {
+        unreachable;
+    }
+
+    bb6: {
+        StorageDead(_17);
+        _18 = discriminant(_10);
+        switchInt(move _18) -> [0: bb1, 1: bb3, otherwise: bb5];
+    }
+
+    bb7: {
+        _10 = <impl Future<Output = ()> as Future>::poll(move _17, move _15) -> [return: bb6, unwind unreachable];
+    }
+
+    bb8: {
+        _0 = Poll::<()>::Ready(const ());
+        return;
+    }
+
+    bb9: {
+        goto -> bb11;
+    }
+
+    bb10: {
+        goto -> bb8;
+    }
+
+    bb11: {
+        drop(((*(_1.0: &mut {async fn body of a<T>()})).0: T)) -> [return: bb10, unwind unreachable];
+    }
+
+    bb12: {
+        goto -> bb4;
+    }
+
+    bb13: {
+        goto -> bb4;
+    }
+
+    bb14: {
+        _0 = Poll::<()>::Ready(const ());
+        return;
+    }
+}

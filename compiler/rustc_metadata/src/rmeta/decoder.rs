@@ -1,7 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
 use std::iter::TrustedLen;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use std::{io, iter, mem};
 
@@ -1610,10 +1610,14 @@ impl<'a> CrateMetadataRef<'a> {
     /// Proc macro crates don't currently export spans, so this function does not have
     /// to work for them.
     fn imported_source_file(self, source_file_index: u32, sess: &Session) -> ImportedSourceFile {
-        fn filter<'a>(sess: &Session, path: Option<&'a Path>) -> Option<&'a Path> {
+        fn filter<'a>(
+            sess: &Session,
+            real_source_base_dir: &Option<PathBuf>,
+            path: Option<&'a Path>,
+        ) -> Option<&'a Path> {
             path.filter(|_| {
                 // Only spend time on further checks if we have what to translate *to*.
-                sess.opts.real_rust_source_base_dir.is_some()
+                real_source_base_dir.is_some()
                 // Some tests need the translation to be always skipped.
                 && sess.opts.unstable_opts.translate_remapped_path_to_local_path
             })
@@ -1625,57 +1629,92 @@ impl<'a> CrateMetadataRef<'a> {
             })
         }
 
-        let try_to_translate_virtual_to_real = |name: &mut rustc_span::FileName| {
-            // Translate the virtual `/rustc/$hash` prefix back to a real directory
-            // that should hold actual sources, where possible.
-            //
-            // NOTE: if you update this, you might need to also update bootstrap's code for generating
-            // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
-            let virtual_rust_source_base_dir = [
-                filter(sess, option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(Path::new)),
-                filter(sess, sess.opts.unstable_opts.simulate_remapped_rust_src_base.as_deref()),
-            ];
+        let try_to_translate_virtual_to_real =
+            |virtual_source_base_dir: Option<&str>,
+             real_source_base_dir: &Option<PathBuf>,
+             name: &mut rustc_span::FileName| {
+                let virtual_source_base_dir = [
+                    filter(sess, real_source_base_dir, virtual_source_base_dir.map(Path::new)),
+                    filter(
+                        sess,
+                        real_source_base_dir,
+                        sess.opts.unstable_opts.simulate_remapped_rust_src_base.as_deref(),
+                    ),
+                ];
 
-            debug!(
-                "try_to_translate_virtual_to_real(name={:?}): \
-                 virtual_rust_source_base_dir={:?}, real_rust_source_base_dir={:?}",
-                name, virtual_rust_source_base_dir, sess.opts.real_rust_source_base_dir,
-            );
+                debug!(
+                    "try_to_translate_virtual_to_real(name={:?}): \
+                     virtual_source_base_dir={:?}, real_source_base_dir={:?}",
+                    name, virtual_source_base_dir, real_source_base_dir,
+                );
 
-            for virtual_dir in virtual_rust_source_base_dir.iter().flatten() {
-                if let Some(real_dir) = &sess.opts.real_rust_source_base_dir
-                    && let rustc_span::FileName::Real(old_name) = name
-                    && let rustc_span::RealFileName::Remapped { local_path: _, virtual_name } =
-                        old_name
-                    && let Ok(rest) = virtual_name.strip_prefix(virtual_dir)
-                {
-                    let new_path = real_dir.join(rest);
+                for virtual_dir in virtual_source_base_dir.iter().flatten() {
+                    if let Some(real_dir) = &real_source_base_dir
+                        && let rustc_span::FileName::Real(old_name) = name
+                        && let rustc_span::RealFileName::Remapped { local_path: _, virtual_name } =
+                            old_name
+                        && let Ok(rest) = virtual_name.strip_prefix(virtual_dir)
+                    {
+                        let new_path = real_dir.join(rest);
 
-                    debug!(
-                        "try_to_translate_virtual_to_real: `{}` -> `{}`",
-                        virtual_name.display(),
-                        new_path.display(),
-                    );
+                        debug!(
+                            "try_to_translate_virtual_to_real: `{}` -> `{}`",
+                            virtual_name.display(),
+                            new_path.display(),
+                        );
 
-                    // Check if the translated real path is affected by any user-requested
-                    // remaps via --remap-path-prefix. Apply them if so.
-                    // Note that this is a special case for imported rust-src paths specified by
-                    // https://rust-lang.github.io/rfcs/3127-trim-paths.html#handling-sysroot-paths.
-                    // Other imported paths are not currently remapped (see #66251).
-                    let (user_remapped, applied) =
-                        sess.source_map().path_mapping().map_prefix(&new_path);
-                    let new_name = if applied {
-                        rustc_span::RealFileName::Remapped {
-                            local_path: Some(new_path.clone()),
-                            virtual_name: user_remapped.to_path_buf(),
-                        }
-                    } else {
-                        rustc_span::RealFileName::LocalPath(new_path)
-                    };
-                    *old_name = new_name;
+                        // Check if the translated real path is affected by any user-requested
+                        // remaps via --remap-path-prefix. Apply them if so.
+                        // Note that this is a special case for imported rust-src paths specified by
+                        // https://rust-lang.github.io/rfcs/3127-trim-paths.html#handling-sysroot-paths.
+                        // Other imported paths are not currently remapped (see #66251).
+                        let (user_remapped, applied) =
+                            sess.source_map().path_mapping().map_prefix(&new_path);
+                        let new_name = if applied {
+                            rustc_span::RealFileName::Remapped {
+                                local_path: Some(new_path.clone()),
+                                virtual_name: user_remapped.to_path_buf(),
+                            }
+                        } else {
+                            rustc_span::RealFileName::LocalPath(new_path)
+                        };
+                        *old_name = new_name;
+                    }
                 }
-            }
-        };
+            };
+
+        let try_to_translate_real_to_virtual =
+            |virtual_source_base_dir: Option<&str>,
+             real_source_base_dir: &Option<PathBuf>,
+             subdir: &str,
+             name: &mut rustc_span::FileName| {
+                if let Some(virtual_dir) = &sess.opts.unstable_opts.simulate_remapped_rust_src_base
+                    && let Some(real_dir) = real_source_base_dir
+                    && let rustc_span::FileName::Real(old_name) = name
+                {
+                    let relative_path = match old_name {
+                        rustc_span::RealFileName::LocalPath(local) => {
+                            local.strip_prefix(real_dir).ok()
+                        }
+                        rustc_span::RealFileName::Remapped { virtual_name, .. } => {
+                            virtual_source_base_dir
+                                .and_then(|virtual_dir| virtual_name.strip_prefix(virtual_dir).ok())
+                        }
+                    };
+                    debug!(
+                        ?relative_path,
+                        ?virtual_dir,
+                        ?subdir,
+                        "simulate_remapped_rust_src_base"
+                    );
+                    if let Some(rest) = relative_path.and_then(|p| p.strip_prefix(subdir).ok()) {
+                        *old_name = rustc_span::RealFileName::Remapped {
+                            local_path: None,
+                            virtual_name: virtual_dir.join(subdir).join(rest),
+                        };
+                    }
+                }
+            };
 
         let mut import_info = self.cdata.source_map_import_info.lock();
         for _ in import_info.len()..=(source_file_index as usize) {
@@ -1713,36 +1752,45 @@ impl<'a> CrateMetadataRef<'a> {
                 // This is useful for testing so that tests about the effects of
                 // `try_to_translate_virtual_to_real` don't have to worry about how the
                 // compiler is bootstrapped.
-                if let Some(virtual_dir) = &sess.opts.unstable_opts.simulate_remapped_rust_src_base
-                    && let Some(real_dir) = &sess.opts.real_rust_source_base_dir
-                    && let rustc_span::FileName::Real(ref mut old_name) = name
-                {
-                    let relative_path = match old_name {
-                        rustc_span::RealFileName::LocalPath(local) => {
-                            local.strip_prefix(real_dir).ok()
-                        }
-                        rustc_span::RealFileName::Remapped { virtual_name, .. } => {
-                            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR")
-                                .and_then(|virtual_dir| virtual_name.strip_prefix(virtual_dir).ok())
-                        }
-                    };
-                    debug!(?relative_path, ?virtual_dir, "simulate_remapped_rust_src_base");
-                    for subdir in ["library", "compiler"] {
-                        if let Some(rest) = relative_path.and_then(|p| p.strip_prefix(subdir).ok())
-                        {
-                            *old_name = rustc_span::RealFileName::Remapped {
-                                local_path: None, // FIXME: maybe we should preserve this?
-                                virtual_name: virtual_dir.join(subdir).join(rest),
-                            };
-                            break;
-                        }
-                    }
-                }
+                try_to_translate_real_to_virtual(
+                    option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"),
+                    &sess.opts.real_rust_source_base_dir,
+                    "library",
+                    &mut name,
+                );
+
+                // If this file is under $sysroot/lib/rustlib/rustc-src/
+                // and the user wish to simulate remapping with -Z simulate-remapped-rust-src-base,
+                // then we change `name` to a similar state as if the rust was bootstrapped
+                // with `remap-debuginfo = true`.
+                try_to_translate_real_to_virtual(
+                    option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
+                    &sess.opts.real_rustc_dev_source_base_dir,
+                    "compiler",
+                    &mut name,
+                );
 
                 // If this file's path has been remapped to `/rustc/$hash`,
-                // we might be able to reverse that (also see comments above,
-                // on `try_to_translate_virtual_to_real`).
-                try_to_translate_virtual_to_real(&mut name);
+                // we might be able to reverse that.
+                //
+                // NOTE: if you update this, you might need to also update bootstrap's code for generating
+                // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
+                try_to_translate_virtual_to_real(
+                    option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"),
+                    &sess.opts.real_rust_source_base_dir,
+                    &mut name,
+                );
+
+                // If this file's path has been remapped to `/rustc-dev/$hash`,
+                // we might be able to reverse that.
+                //
+                // NOTE: if you update this, you might need to also update bootstrap's code for generating
+                // the `rustc-dev` component in `Src::run` in `src/bootstrap/dist.rs`.
+                try_to_translate_virtual_to_real(
+                    option_env!("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR"),
+                    &sess.opts.real_rustc_dev_source_base_dir,
+                    &mut name,
+                );
 
                 let local_version = sess.source_map().new_imported_source_file(
                     name,

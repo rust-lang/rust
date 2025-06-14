@@ -132,6 +132,7 @@ fn build_poll_switch<'tcx>(
     body: &mut Body<'tcx>,
     poll_enum: Ty<'tcx>,
     poll_unit_place: &Place<'tcx>,
+    fut_pin_place: &Place<'tcx>,
     ready_block: BasicBlock,
     yield_block: BasicBlock,
 ) -> BasicBlock {
@@ -162,9 +163,11 @@ fn build_poll_switch<'tcx>(
             Rvalue::Discriminant(*poll_unit_place),
         ))),
     };
+    let storage_dead =
+        Statement { source_info, kind: StatementKind::StorageDead(fut_pin_place.local) };
     let unreachable_block = insert_term_block(body, TerminatorKind::Unreachable);
     body.basic_blocks_mut().push(BasicBlockData {
-        statements: [discr_assign].to_vec(),
+        statements: [storage_dead, discr_assign].to_vec(),
         terminator: Some(Terminator {
             source_info,
             kind: TerminatorKind::SwitchInt {
@@ -332,10 +335,17 @@ pub(super) fn expand_async_drops<'tcx>(
             kind: StatementKind::Assign(Box::new((context_ref_place, arg))),
         });
         let yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
-        let switch_block =
-            build_poll_switch(tcx, body, poll_enum, &poll_unit_place, target, yield_block);
         let (pin_bb, fut_pin_place) =
             build_pin_fut(tcx, body, fut_place.clone(), UnwindAction::Continue);
+        let switch_block = build_poll_switch(
+            tcx,
+            body,
+            poll_enum,
+            &poll_unit_place,
+            &fut_pin_place,
+            target,
+            yield_block,
+        );
         let call_bb = build_poll_call(
             tcx,
             body,
@@ -357,16 +367,17 @@ pub(super) fn expand_async_drops<'tcx>(
                 body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)),
             );
             let drop_yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
+            let (pin_bb2, fut_pin_place2) =
+                build_pin_fut(tcx, body, fut_place, UnwindAction::Continue);
             let drop_switch_block = build_poll_switch(
                 tcx,
                 body,
                 poll_enum,
                 &poll_unit_place,
+                &fut_pin_place2,
                 drop.unwrap(),
                 drop_yield_block,
             );
-            let (pin_bb2, fut_pin_place2) =
-                build_pin_fut(tcx, body, fut_place, UnwindAction::Continue);
             let drop_call_bb = build_poll_call(
                 tcx,
                 body,

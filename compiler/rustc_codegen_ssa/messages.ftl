@@ -198,8 +198,6 @@ codegen_ssa_linking_failed = linking with `{$linker_path}` failed: {$exit_status
 codegen_ssa_malformed_cgu_name =
     found malformed codegen unit name `{$user_path}`. codegen units names must always start with the name of the crate (`{$crate_name}` in this case).
 
-codegen_ssa_metadata_object_file_write = error writing metadata object file: {$error}
-
 codegen_ssa_missing_cpp_build_tool_component = or a necessary component may be missing from the "C++ build tools" workload
 
 codegen_ssa_missing_features = add the missing features in a `target_feature` attribute
