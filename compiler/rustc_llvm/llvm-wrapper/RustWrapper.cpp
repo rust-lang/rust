@@ -906,6 +906,15 @@ extern "C" void LLVMRustAddModuleFlagString(
       MDString::get(unwrap(M)->getContext(), StringRef(Value, ValueLen)));
 }
 
+extern "C" void LLVMRustAddLinkerOptions(LLVMModuleRef M, const char *Value,
+                                         size_t ValueLen) {
+
+  auto *Opts = unwrap(M)->getOrInsertNamedMetadata("llvm.linker.options");
+  Opts->addOperand(MDNode::get(
+      unwrap(M)->getContext(),
+      {MDString::get(unwrap(M)->getContext(), StringRef(Value, ValueLen))}));
+}
+
 extern "C" LLVMValueRef LLVMRustGetLastInstruction(LLVMBasicBlockRef BB) {
   auto Point = unwrap(BB)->rbegin();
   if (Point != unwrap(BB)->rend())

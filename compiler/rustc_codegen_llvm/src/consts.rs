@@ -549,8 +549,8 @@ impl<'ll> CodegenCx<'ll, '_> {
 
     /// Add a global value to a list to be stored in the `llvm.compiler.used` variable,
     /// an array of ptr.
-    pub(crate) fn add_compiler_used_global(&mut self, global: &'ll Value) {
-        self.compiler_used_statics.push(global);
+    pub(crate) fn add_compiler_used_global(&self, global: &'ll Value) {
+        self.compiler_used_statics.borrow_mut().push(global);
     }
 }
 

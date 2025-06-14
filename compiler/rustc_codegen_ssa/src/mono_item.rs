@@ -40,6 +40,9 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
             MonoItem::GlobalAsm(item_id) => {
                 base::codegen_global_asm(cx, item_id);
             }
+            MonoItem::WeakAlias(_def_id, _target) => {
+                todo!()
+            }
             MonoItem::Fn(instance) => {
                 if cx
                     .tcx()
@@ -83,6 +86,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                     cx.predefine_fn(instance, linkage, visibility, symbol_name);
                 };
             }
+            MonoItem::WeakAlias(..) => {}
             MonoItem::GlobalAsm(..) => {}
         }
 
@@ -95,6 +99,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 format!("Fn({:?}, {})", instance.def, instance.args.as_ptr().addr())
             }
             MonoItem::Static(id) => format!("Static({id:?})"),
+            MonoItem::WeakAlias(def_id, target) => format!("WeakAlias({def_id:?}, {target:?})"),
             MonoItem::GlobalAsm(id) => format!("GlobalAsm({id:?})"),
         }
     }

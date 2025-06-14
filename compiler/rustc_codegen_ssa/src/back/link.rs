@@ -1973,9 +1973,10 @@ fn add_linked_symbol_object(
     cmd: &mut dyn Linker,
     sess: &Session,
     tmpdir: &Path,
-    symbols: &[(String, SymbolExportKind)],
+    linked_symbols: &[(String, SymbolExportKind)],
+    exported_symbols: &[(String, SymbolExportKind)],
 ) {
-    if symbols.is_empty() {
+    if linked_symbols.is_empty() {
         return;
     }
 
@@ -2012,7 +2013,7 @@ fn add_linked_symbol_object(
         None
     };
 
-    for (sym, kind) in symbols.iter() {
+    for (sym, kind) in linked_symbols.iter() {
         let symbol = file.add_symbol(object::write::Symbol {
             name: sym.clone().into(),
             value: 0,
@@ -2068,6 +2069,23 @@ fn add_linked_symbol_object(
             apple::add_data_and_relocation(&mut file, section, symbol, &sess.target, *kind)
                 .expect("failed adding relocation");
         }
+    }
+
+    if sess.target.is_like_msvc {
+        let drectve = exported_symbols
+            .into_iter()
+            .map(|(sym, kind)| {
+                if *kind == SymbolExportKind::Text {
+                    format!(" /EXPORT:\"{sym}\"")
+                } else {
+                    format!(" /EXPORT:\"{sym}\",DATA")
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        let section = file.add_section(vec![], b".drectve".to_vec(), object::SectionKind::Linker);
+        file.append_section_data(section, drectve.as_bytes(), 1);
     }
 
     let path = tmpdir.join("symbols.o");
@@ -2236,6 +2254,7 @@ fn linker_with_args(
         sess,
         tmpdir,
         &codegen_results.crate_info.linked_symbols[&crate_type],
+        &codegen_results.crate_info.exported_symbols[&crate_type],
     );
 
     // Sanitizer libraries.

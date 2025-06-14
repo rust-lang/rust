@@ -2083,6 +2083,8 @@ unsafe extern "C" {
         ValueLen: size_t,
     );
 
+    pub(crate) fn LLVMRustAddLinkerOptions(M: &Module, Value: *const c_char, ValueLen: size_t);
+
     pub(crate) fn LLVMRustDIBuilderCreateCompileUnit<'a>(
         Builder: &DIBuilder<'a>,
         Lang: c_uint,
@@ -2662,4 +2664,12 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustSetNoSanitizeAddress(Global: &Value);
     pub(crate) fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
+
+    pub(crate) fn LLVMAddAlias2<'ll>(
+        M: &'ll Module,
+        ValueTy: &Type,
+        AddressSpace: c_uint,
+        Aliasee: &Value,
+        Name: *const c_char,
+    ) -> &'ll Value;
 }

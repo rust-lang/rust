@@ -753,7 +753,7 @@ pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(
 /// Add it to the symbols list for all kernel functions, so that it is exported in the linked
 /// object.
 pub(crate) fn extend_exported_symbols<'tcx>(
-    symbols: &mut Vec<String>,
+    symbols: &mut Vec<(String, SymbolExportKind)>,
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
     instantiating_crate: CrateNum,
@@ -767,7 +767,7 @@ pub(crate) fn extend_exported_symbols<'tcx>(
     let undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
 
     // Add the symbol for the kernel descriptor (with .kd suffix)
-    symbols.push(format!("{undecorated}.kd"));
+    symbols.push((format!("{undecorated}.kd"), SymbolExportKind::Data));
 }
 
 fn maybe_emutls_symbol_name<'tcx>(

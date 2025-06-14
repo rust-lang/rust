@@ -76,4 +76,6 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.functions.borrow_mut().insert(symbol_name.to_string(), decl);
         self.function_instances.borrow_mut().insert(instance, decl);
     }
+
+    fn weak_alias(&self, _aliasee: Self::Function, _aliasee_name: &str, _name: &str) {}
 }

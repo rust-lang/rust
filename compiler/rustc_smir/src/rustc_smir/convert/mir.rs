@@ -808,6 +808,7 @@ impl<'tcx> Stable<'tcx> for MonoItem<'tcx> {
         match self {
             MonoItem::Fn(instance) => StableMonoItem::Fn(instance.stable(tables)),
             MonoItem::Static(def_id) => StableMonoItem::Static(tables.static_def(*def_id)),
+            MonoItem::WeakAlias(_, _) => todo!(),
             MonoItem::GlobalAsm(item_id) => StableMonoItem::GlobalAsm(opaque(item_id)),
         }
     }

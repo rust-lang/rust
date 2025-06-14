@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::string::FromUtf8Error;
 
 use libc::c_uint;
-use rustc_abi::{Align, Size, WrappingRange};
+use rustc_abi::{AddressSpace, Align, Size, WrappingRange};
 use rustc_llvm::RustString;
 
 pub(crate) use self::CallConv::*;
@@ -327,6 +327,17 @@ pub(crate) fn get_value_name(value: &Value) -> &[u8] {
     }
 }
 
+/// Safe wrapper for `LLVMAddAlias2`
+pub(crate) fn add_alias<'ll>(
+    module: &'ll Module,
+    ty: &Type,
+    address_space: AddressSpace,
+    aliasee: &Value,
+    name: &CStr,
+) -> &'ll Value {
+    unsafe { LLVMAddAlias2(module, ty, address_space.0, aliasee, name.as_ptr()) }
+}
+
 /// Safe wrapper for `LLVMSetValueName2` from a byte slice
 pub(crate) fn set_value_name(value: &Value, name: &[u8]) {
     unsafe {
@@ -427,6 +438,13 @@ pub(crate) fn add_module_flag_str(
             value.as_c_char_ptr(),
             value.len(),
         );
+    }
+}
+
+#[allow(dead_code)]
+pub(crate) fn add_module_linker_option(module: &Module, value: &str) {
+    unsafe {
+        LLVMRustAddLinkerOptions(module, value.as_c_char_ptr(), value.len());
     }
 }
 

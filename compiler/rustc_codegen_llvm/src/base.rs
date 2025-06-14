@@ -118,8 +118,11 @@ pub(crate) fn compile_codegen_unit(
             if !cx.used_statics.is_empty() {
                 cx.create_used_variable_impl(c"llvm.used", &cx.used_statics);
             }
-            if !cx.compiler_used_statics.is_empty() {
-                cx.create_used_variable_impl(c"llvm.compiler.used", &cx.compiler_used_statics);
+            if !cx.compiler_used_statics.borrow().is_empty() {
+                cx.create_used_variable_impl(
+                    c"llvm.compiler.used",
+                    &*cx.compiler_used_statics.borrow(),
+                );
             }
 
             // Run replace-all-uses-with for statics that need it. This must
