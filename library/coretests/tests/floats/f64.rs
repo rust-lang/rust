@@ -422,7 +422,7 @@ fn test_powi() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;
     let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_biteq!(1.0f64.powi(1), 1.0);
+    assert_approx_eq!(1.0f64.powi(1), 1.0);
     assert_approx_eq!((-3.1f64).powi(2), 9.61);
     assert_approx_eq!(5.9f64.powi(-2), 0.028727);
     assert_biteq!(8.3f64.powi(0), 1.0);

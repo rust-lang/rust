@@ -8,8 +8,8 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_span::{Span, Symbol, sym};
 
 use super::util::parse_version;
-use super::{AcceptMapping, AttributeParser, SingleAttributeParser};
-use crate::context::{AcceptContext, FinalizeContext};
+use super::{AcceptMapping, AttributeOrder, AttributeParser, OnDuplicate, SingleAttributeParser};
+use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::{ArgParser, MetaItemParser};
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
 
@@ -31,7 +31,7 @@ pub(crate) struct StabilityParser {
 
 impl StabilityParser {
     /// Checks, and emits an error when a stability (or unstability) was already set, which would be a duplicate.
-    fn check_duplicate(&self, cx: &AcceptContext<'_>) -> bool {
+    fn check_duplicate<S: Stage>(&self, cx: &AcceptContext<'_, '_, S>) -> bool {
         if let Some((_, _)) = self.stability {
             cx.emit_err(session_diagnostics::MultipleStabilityLevels { span: cx.attr_span });
             true
@@ -41,8 +41,8 @@ impl StabilityParser {
     }
 }
 
-impl AttributeParser for StabilityParser {
-    const ATTRIBUTES: AcceptMapping<Self> = &[
+impl<S: Stage> AttributeParser<S> for StabilityParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[
         (&[sym::stable], |this, cx, args| {
             reject_outside_std!(cx);
             if !this.check_duplicate(cx)
@@ -65,7 +65,7 @@ impl AttributeParser for StabilityParser {
         }),
     ];
 
-    fn finalize(mut self, cx: &FinalizeContext<'_>) -> Option<AttributeKind> {
+    fn finalize(mut self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if let Some(atum) = self.allowed_through_unstable_modules {
             if let Some((
                 Stability {
@@ -95,8 +95,8 @@ pub(crate) struct BodyStabilityParser {
     stability: Option<(DefaultBodyStability, Span)>,
 }
 
-impl AttributeParser for BodyStabilityParser {
-    const ATTRIBUTES: AcceptMapping<Self> =
+impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> =
         &[(&[sym::rustc_default_body_unstable], |this, cx, args| {
             reject_outside_std!(cx);
             if this.stability.is_some() {
@@ -107,7 +107,7 @@ impl AttributeParser for BodyStabilityParser {
             }
         })];
 
-    fn finalize(self, _cx: &FinalizeContext<'_>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (stability, span) = self.stability?;
 
         Some(AttributeKind::BodyStability { stability, span })
@@ -116,13 +116,12 @@ impl AttributeParser for BodyStabilityParser {
 
 pub(crate) struct ConstStabilityIndirectParser;
 // FIXME(jdonszelmann): single word attribute group when we have these
-impl SingleAttributeParser for ConstStabilityIndirectParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_const_stable_indirect];
+impl<S: Stage> SingleAttributeParser<S> for ConstStabilityIndirectParser {
+    const PATH: &[Symbol] = &[sym::rustc_const_stable_indirect];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
 
-    // ignore
-    fn on_duplicate(_cx: &AcceptContext<'_>, _first_span: Span) {}
-
-    fn convert(_cx: &AcceptContext<'_>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(_cx: &mut AcceptContext<'_, '_, S>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
         Some(AttributeKind::ConstStabilityIndirect)
     }
 }
@@ -135,7 +134,7 @@ pub(crate) struct ConstStabilityParser {
 
 impl ConstStabilityParser {
     /// Checks, and emits an error when a stability (or unstability) was already set, which would be a duplicate.
-    fn check_duplicate(&self, cx: &AcceptContext<'_>) -> bool {
+    fn check_duplicate<S: Stage>(&self, cx: &AcceptContext<'_, '_, S>) -> bool {
         if let Some((_, _)) = self.stability {
             cx.emit_err(session_diagnostics::MultipleStabilityLevels { span: cx.attr_span });
             true
@@ -145,8 +144,8 @@ impl ConstStabilityParser {
     }
 }
 
-impl AttributeParser for ConstStabilityParser {
-    const ATTRIBUTES: AcceptMapping<Self> = &[
+impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[
         (&[sym::rustc_const_stable], |this, cx, args| {
             reject_outside_std!(cx);
 
@@ -176,7 +175,7 @@ impl AttributeParser for ConstStabilityParser {
         }),
     ];
 
-    fn finalize(mut self, cx: &FinalizeContext<'_>) -> Option<AttributeKind> {
+    fn finalize(mut self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.promotable {
             if let Some((ref mut stab, _)) = self.stability {
                 stab.promotable = true;
@@ -196,15 +195,15 @@ impl AttributeParser for ConstStabilityParser {
 ///
 /// Emits an error when either the option was already Some, or the arguments weren't of form
 /// `name = value`
-fn insert_value_into_option_or_error(
-    cx: &AcceptContext<'_>,
+fn insert_value_into_option_or_error<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
     param: &MetaItemParser<'_>,
     item: &mut Option<Symbol>,
 ) -> Option<()> {
     if item.is_some() {
         cx.emit_err(session_diagnostics::MultipleItem {
             span: param.span(),
-            item: param.path_without_args().to_string(),
+            item: param.path().to_string(),
         });
         None
     } else if let Some(v) = param.args().name_value()
@@ -223,8 +222,8 @@ fn insert_value_into_option_or_error(
 
 /// Read the content of a `stable`/`rustc_const_stable` attribute, and return the feature name and
 /// its stability information.
-pub(crate) fn parse_stability(
-    cx: &AcceptContext<'_>,
+pub(crate) fn parse_stability<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
     args: &ArgParser<'_>,
 ) -> Option<(Symbol, StabilityLevel)> {
     let mut feature = None;
@@ -242,13 +241,13 @@ pub(crate) fn parse_stability(
             return None;
         };
 
-        match param.path_without_args().word_sym() {
+        match param.path().word_sym() {
             Some(sym::feature) => insert_value_into_option_or_error(cx, &param, &mut feature)?,
             Some(sym::since) => insert_value_into_option_or_error(cx, &param, &mut since)?,
             _ => {
                 cx.emit_err(session_diagnostics::UnknownMetaItem {
                     span: param_span,
-                    item: param.path_without_args().to_string(),
+                    item: param.path().to_string(),
                     expected: &["feature", "since"],
                 });
                 return None;
@@ -289,8 +288,8 @@ pub(crate) fn parse_stability(
 
 // Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
 /// attribute, and return the feature name and its stability information.
-pub(crate) fn parse_unstability(
-    cx: &AcceptContext<'_>,
+pub(crate) fn parse_unstability<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
     args: &ArgParser<'_>,
 ) -> Option<(Symbol, StabilityLevel)> {
     let mut feature = None;
@@ -299,6 +298,7 @@ pub(crate) fn parse_unstability(
     let mut issue_num = None;
     let mut is_soft = false;
     let mut implied_by = None;
+    let mut old_name = None;
     for param in args.list()?.mixed() {
         let Some(param) = param.meta_item() else {
             cx.emit_err(session_diagnostics::UnsupportedLiteral {
@@ -310,7 +310,7 @@ pub(crate) fn parse_unstability(
             return None;
         };
 
-        match param.path_without_args().word_sym() {
+        match param.path().word_sym() {
             Some(sym::feature) => insert_value_into_option_or_error(cx, &param, &mut feature)?,
             Some(sym::reason) => insert_value_into_option_or_error(cx, &param, &mut reason)?,
             Some(sym::issue) => {
@@ -346,11 +346,12 @@ pub(crate) fn parse_unstability(
             Some(sym::implied_by) => {
                 insert_value_into_option_or_error(cx, &param, &mut implied_by)?
             }
+            Some(sym::old_name) => insert_value_into_option_or_error(cx, &param, &mut old_name)?,
             _ => {
                 cx.emit_err(session_diagnostics::UnknownMetaItem {
                     span: param.span(),
-                    item: param.path_without_args().to_string(),
-                    expected: &["feature", "reason", "issue", "soft", "implied_by"],
+                    item: param.path().to_string(),
+                    expected: &["feature", "reason", "issue", "soft", "implied_by", "old_name"],
                 });
                 return None;
             }
@@ -375,6 +376,7 @@ pub(crate) fn parse_unstability(
                 issue: issue_num,
                 is_soft,
                 implied_by,
+                old_name,
             };
             Some((feature, level))
         }

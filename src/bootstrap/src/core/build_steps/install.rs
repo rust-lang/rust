@@ -73,7 +73,7 @@ fn install_sh(
     let prefix = default_path(&builder.config.prefix, "/usr/local");
     let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "/etc"));
     let destdir_env = env::var_os("DESTDIR").map(PathBuf::from);
-    let is_cygwin = builder.config.build.is_cygwin();
+    let is_cygwin = builder.config.host_target.is_cygwin();
 
     // Sanity checks on the write access of user.
     //
@@ -187,7 +187,7 @@ macro_rules! install {
 
             fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
-                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
                     target: run.target,
                 });
             }
@@ -246,7 +246,7 @@ install!((self, builder, _config),
             );
         }
     };
-    LlvmTools, alias = "llvm-tools", _config.llvm_tools_enabled && _config.llvm_enabled(_config.build), only_hosts: true, {
+    LlvmTools, alias = "llvm-tools", _config.llvm_tools_enabled && _config.llvm_enabled(_config.host_target), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::LlvmTools { target: self.target }) {
             install_sh(builder, "llvm-tools", self.compiler.stage, Some(self.target), &tarball);
         } else {

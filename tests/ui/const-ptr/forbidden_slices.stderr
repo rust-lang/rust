@@ -103,13 +103,13 @@ error[E0080]: evaluation panicked: assertion failed: 0 < pointee_size && pointee
   --> $DIR/forbidden_slices.rs:50:33
    |
 LL | pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `R1` failed here
 
 error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 8 bytes, but got ALLOC10 which is only 4 bytes from the end of the allocation
   --> $DIR/forbidden_slices.rs:54:25
    |
 LL |     from_ptr_range(ptr..ptr.add(2)) // errors inside libcore
-   |                         ^^^^^^^^^^ evaluation of static initializer failed here
+   |                         ^^^^^^^^^^ evaluation of `R2` failed here
 
 error[E0080]: constructing invalid value at .<deref>[0]: encountered uninitialized memory, but expected an integer
   --> $DIR/forbidden_slices.rs:57:1
@@ -161,19 +161,19 @@ error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer 
   --> $DIR/forbidden_slices.rs:79:25
    |
 LL |     from_ptr_range(ptr..ptr.add(1))
-   |                         ^^^^^^^^^^ evaluation of static initializer failed here
+   |                         ^^^^^^^^^^ evaluation of `R8` failed here
 
 error[E0080]: `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
   --> $DIR/forbidden_slices.rs:85:34
    |
 LL | pub static R9: &[u32] = unsafe { from_ptr_range(&D0..(&D0 as *const u32).add(1)) };
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `R9` failed here
 
 error[E0080]: `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
   --> $DIR/forbidden_slices.rs:87:35
    |
 LL | pub static R10: &[u32] = unsafe { from_ptr_range(&D0..&D0) };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `R10` failed here
 
 error: aborting due to 18 previous errors
 

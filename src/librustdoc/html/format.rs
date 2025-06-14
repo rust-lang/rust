@@ -1019,18 +1019,33 @@ fn fmt_type(
             f.write_str("impl ")?;
             print_generic_bounds(bounds, cx).fmt(f)
         }
-        &clean::QPath(box clean::QPathData {
-            ref assoc,
-            ref self_type,
-            ref trait_,
-            should_show_cast,
-        }) => {
+        clean::QPath(qpath) => qpath.print(cx).fmt(f),
+    }
+}
+
+impl clean::Type {
+    pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
+        fmt::from_fn(move |f| fmt_type(self, f, false, cx))
+    }
+}
+
+impl clean::Path {
+    pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
+        fmt::from_fn(move |f| resolved_path(f, self.def_id(), self, false, false, cx))
+    }
+}
+
+impl clean::QPathData {
+    fn print(&self, cx: &Context<'_>) -> impl Display {
+        let Self { ref assoc, ref self_type, should_fully_qualify, ref trait_ } = *self;
+
+        fmt::from_fn(move |f| {
             // FIXME(inherent_associated_types): Once we support non-ADT self-types (#106719),
             // we need to surround them with angle brackets in some cases (e.g. `<dyn …>::P`).
 
             if f.alternate() {
                 if let Some(trait_) = trait_
-                    && should_show_cast
+                    && should_fully_qualify
                 {
                     write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
                 } else {
@@ -1038,7 +1053,7 @@ fn fmt_type(
                 }
             } else {
                 if let Some(trait_) = trait_
-                    && should_show_cast
+                    && should_fully_qualify
                 {
                     write!(f, "&lt;{} as {}&gt;::", self_type.print(cx), trait_.print(cx))?
                 } else {
@@ -1090,19 +1105,7 @@ fn fmt_type(
             }?;
 
             assoc.args.print(cx).fmt(f)
-        }
-    }
-}
-
-impl clean::Type {
-    pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
-        fmt::from_fn(move |f| fmt_type(self, f, false, cx))
-    }
-}
-
-impl clean::Path {
-    pub(crate) fn print(&self, cx: &Context<'_>) -> impl Display {
-        fmt::from_fn(move |f| resolved_path(f, self.def_id(), self, false, false, cx))
+        })
     }
 }
 

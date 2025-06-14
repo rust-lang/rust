@@ -56,6 +56,9 @@ incremental compilation. The various suites are defined in
 
 The following test suites are available, with links for more information:
 
+[`tests`]: https://github.com/rust-lang/rust/blob/master/tests
+[`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs
+
 ### Compiler-specific test suites
 
 | Test suite                                | Purpose                                                                                                             |
@@ -71,6 +74,7 @@ The following test suites are available, with links for more information:
 | [`mir-opt`](#mir-opt-tests)               | Check MIR generation and optimizations                                                                              |
 | [`coverage`](#coverage-tests)             | Check coverage instrumentation                                                                                      |
 | [`coverage-run-rustdoc`](#coverage-tests) | `coverage` tests that also run instrumented doctests                                                                |
+| [`crashes`](#crashes-tests)               | Check that the compiler ICEs/panics/crashes on certain inputs to catch accidental fixes                             |
 
 ### General purpose test suite
 
@@ -78,19 +82,23 @@ The following test suites are available, with links for more information:
 
 ### Rustdoc test suites
 
-See [Rustdoc tests](../rustdoc.md#tests) for more details.
+| Test suite                           | Purpose                                                                  |
+|--------------------------------------|--------------------------------------------------------------------------|
+| [`rustdoc`][rustdoc-html-tests]      | Check HTML output of `rustdoc`                                           |
+| [`rustdoc-gui`][rustdoc-gui-tests]   | Check `rustdoc`'s GUI using a web browser                                |
+| [`rustdoc-js`][rustdoc-js-tests]     | Check `rustdoc`'s search engine and index                                |
+| [`rustdoc-js-std`][rustdoc-js-tests] | Check `rustdoc`'s search engine and index on the std library docs        |
+| [`rustdoc-json`][rustdoc-json-tests] | Check JSON output of `rustdoc`                                           |
+| `rustdoc-ui`                         | Check terminal output of `rustdoc` ([see also](ui.md))                   |
 
-| Test suite       | Purpose                                                                  |
-|------------------|--------------------------------------------------------------------------|
-| `rustdoc`        | Check `rustdoc` generated files contain the expected documentation       |
-| `rustdoc-gui`    | Check `rustdoc`'s GUI using a web browser                                |
-| `rustdoc-js`     | Check `rustdoc` search is working as expected                            |
-| `rustdoc-js-std` | Check rustdoc search is working as expected specifically on the std docs |
-| `rustdoc-json`   | Check JSON output of `rustdoc`                                           |
-| `rustdoc-ui`     | Check terminal output of `rustdoc`                                       |
+Some rustdoc-specific tests can also be found in `ui/rustdoc/`.
+These check rustdoc-related or -specific lints that (also) run as part of `rustc`, not (only) `rustdoc`.
+Run-make tests pertaining to rustdoc are typically named `run-make/rustdoc-*/`.
 
-[`tests`]: https://github.com/rust-lang/rust/blob/master/tests
-[`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs
+[rustdoc-html-tests]: ../rustdoc-internals/rustdoc-test-suite.md
+[rustdoc-gui-tests]: ../rustdoc-internals/rustdoc-gui-test-suite.md
+[rustdoc-js-tests]: ../rustdoc-internals/search.md#testing-the-search-engine
+[rustdoc-json-tests]: ../rustdoc-internals/rustdoc-json-test-suite.md
 
 ### Pretty-printer tests
 
@@ -107,7 +115,7 @@ default behavior without any commands is to:
 2. Run `rustc -Zunpretty=normal` on the output of the previous step.
 3. The output of the previous two steps should be the same.
 4. Run `rustc -Zno-codegen` on the output to make sure that it can type check
-   (this is similar to running `cargo check`).
+   (similar to `cargo check`).
 
 If any of the commands above fail, then the test fails.
 
@@ -438,7 +446,9 @@ To work around this when working on a particular test, temporarily create a
 with these contents:
 
 <div class="warning">
+
 Be careful not to add this `Cargo.toml` or its `Cargo.lock` to your actual PR!
+
 </div>
 
 ```toml

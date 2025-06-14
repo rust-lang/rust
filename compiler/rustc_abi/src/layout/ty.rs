@@ -5,7 +5,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable_Generic;
 
 use crate::{
-    AbiAndPrefAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
+    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
     PointeeInfo, Primitive, Scalar, Size, TargetDataLayout, Variants,
 };
 
@@ -37,6 +37,13 @@ rustc_index::newtype_index! {
     #[encodable]
     #[orderable]
     pub struct FieldIdx {}
+}
+
+impl FieldIdx {
+    /// The second field, at index 1.
+    ///
+    /// For use alongside [`FieldIdx::ZERO`], particularly with scalar pairs.
+    pub const ONE: FieldIdx = FieldIdx::from_u32(1);
 }
 
 rustc_index::newtype_index! {
@@ -93,7 +100,7 @@ impl<'a> Layout<'a> {
         self.0.0.largest_niche
     }
 
-    pub fn align(self) -> AbiAndPrefAlign {
+    pub fn align(self) -> AbiAlign {
         self.0.0.align
     }
 
@@ -274,7 +281,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
     /// Finds the one field that is not a 1-ZST.
     /// Returns `None` if there are multiple non-1-ZST fields or only 1-ZST-fields.
-    pub fn non_1zst_field<C>(&self, cx: &C) -> Option<(usize, Self)>
+    pub fn non_1zst_field<C>(&self, cx: &C) -> Option<(FieldIdx, Self)>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
@@ -288,7 +295,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 // More than one non-1-ZST field.
                 return None;
             }
-            found = Some((field_idx, field));
+            found = Some((FieldIdx::from_usize(field_idx), field));
         }
         found
     }

@@ -62,7 +62,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn fn_arg_field(
         &self,
         arg: &FnArg<'tcx, M::Provenance>,
-        field: usize,
+        field: FieldIdx,
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
         interp_ok(match arg {
             FnArg::Copy(op) => FnArg::Copy(self.project_field(op, field)?),
@@ -600,10 +600,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         Cow::from(
                             args.iter()
                                 .map(|a| interp_ok(a.clone()))
-                                .chain(
-                                    (0..untuple_arg.layout().fields.count())
-                                        .map(|i| self.fn_arg_field(untuple_arg, i)),
-                                )
+                                .chain((0..untuple_arg.layout().fields.count()).map(|i| {
+                                    self.fn_arg_field(untuple_arg, FieldIdx::from_usize(i))
+                                }))
                                 .collect::<InterpResult<'_, Vec<_>>>()?,
                         )
                     } else {

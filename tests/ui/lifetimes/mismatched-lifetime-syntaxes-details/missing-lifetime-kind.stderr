@@ -1,0 +1,60 @@
+error: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/missing-lifetime-kind.rs:3:22
+   |
+LL | fn ampersand<'a>(x: &'a u8) -> &u8 {
+   |                      ^^        --- the lifetime gets resolved as `'a`
+   |                      |
+   |                      this lifetime flows to the output
+   |
+note: the lint level is defined here
+  --> $DIR/missing-lifetime-kind.rs:1:9
+   |
+LL | #![deny(mismatched_lifetime_syntaxes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: one option is to consistently use `'a`
+   |
+LL | fn ampersand<'a>(x: &'a u8) -> &'a u8 {
+   |                                 ++
+
+error: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/missing-lifetime-kind.rs:10:21
+   |
+LL | fn brackets<'a>(x: &'a u8) -> Brackets {
+   |                     ^^        -------- the lifetime gets resolved as `'a`
+   |                     |
+   |                     this lifetime flows to the output
+   |
+help: one option is to consistently use `'a`
+   |
+LL | fn brackets<'a>(x: &'a u8) -> Brackets<'a> {
+   |                                       ++++
+
+error: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/missing-lifetime-kind.rs:17:18
+   |
+LL | fn comma<'a>(x: &'a u8) -> Comma<u8> {
+   |                  ^^        --------- the lifetime gets resolved as `'a`
+   |                  |
+   |                  this lifetime flows to the output
+   |
+help: one option is to consistently use `'a`
+   |
+LL | fn comma<'a>(x: &'a u8) -> Comma<'a, u8> {
+   |                                  +++
+
+error: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/missing-lifetime-kind.rs:22:23
+   |
+LL | fn underscore<'a>(x: &'a u8) -> &'_ u8 {
+   |                       ^^         -- the lifetime gets resolved as `'a`
+   |                       |
+   |                       this lifetime flows to the output
+   |
+help: one option is to consistently use `'a`
+   |
+LL - fn underscore<'a>(x: &'a u8) -> &'_ u8 {
+LL + fn underscore<'a>(x: &'a u8) -> &'a u8 {
+   |
+
+error: aborting due to 4 previous errors
+

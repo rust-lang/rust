@@ -1086,7 +1086,7 @@ impl<'a> Parser<'a> {
         if matches!(pat.kind, PatKind::Ident(BindingMode(ByRef::Yes(_), Mutability::Mut), ..)) {
             self.psess.gated_spans.gate(sym::mut_ref, pat.span);
         }
-        Ok(pat.into_inner().kind)
+        Ok(pat.kind)
     }
 
     /// Turn all by-value immutable bindings in a pattern into mutable bindings.

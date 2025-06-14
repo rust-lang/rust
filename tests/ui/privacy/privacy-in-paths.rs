@@ -2,7 +2,7 @@ mod foo {
     pub use self::bar::S;
     mod bar {
         pub struct S;
-        pub use baz;
+        pub use crate::baz;
     }
 
     trait T {
@@ -21,9 +21,9 @@ pub mod baz {
     fn f() {}
 
     fn g() {
-        ::foo::bar::baz::f(); //~ERROR module `bar` is private
-        ::foo::bar::S::f(); //~ERROR module `bar` is private
-        <() as ::foo::T>::Assoc::f(); //~ERROR trait `T` is private
+        crate::foo::bar::baz::f(); //~ERROR module `bar` is private
+        crate::foo::bar::S::f(); //~ERROR module `bar` is private
+        <() as crate::foo::T>::Assoc::f(); //~ERROR trait `T` is private
     }
 }
 

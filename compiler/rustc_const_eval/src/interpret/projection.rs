@@ -10,7 +10,7 @@
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use rustc_abi::{self as abi, Size, VariantIdx};
+use rustc_abi::{self as abi, FieldIdx, Size, VariantIdx};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::{bug, mir, span_bug, ty};
@@ -144,22 +144,22 @@ where
     /// always possible without allocating, so it can take `&self`. Also return the field's layout.
     /// This supports both struct and array fields, but not slices!
     ///
-    /// This also works for arrays, but then the `usize` index type is restricting.
-    /// For indexing into arrays, use `mplace_index`.
+    /// This also works for arrays, but then the `FieldIdx` index type is restricting.
+    /// For indexing into arrays, use [`Self::project_index`].
     pub fn project_field<P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &P,
-        field: usize,
+        field: FieldIdx,
     ) -> InterpResult<'tcx, P> {
         // Slices nominally have length 0, so they will panic somewhere in `fields.offset`.
         debug_assert!(
             !matches!(base.layout().ty.kind(), ty::Slice(..)),
             "`field` projection called on a slice -- call `index` projection instead"
         );
-        let offset = base.layout().fields.offset(field);
+        let offset = base.layout().fields.offset(field.as_usize());
         // Computing the layout does normalization, so we get a normalized type out of this
         // even if the field type is non-normalized (possible e.g. via associated types).
-        let field_layout = base.layout().field(self, field);
+        let field_layout = base.layout().field(self, field.as_usize());
 
         // Offset may need adjustment for unsized fields.
         let (meta, offset) = if field_layout.is_unsized() {
@@ -244,7 +244,7 @@ where
             }
             _ => span_bug!(
                 self.cur_span(),
-                "`mplace_index` called on non-array type {:?}",
+                "`project_index` called on non-array type {:?}",
                 base.layout().ty
             ),
         };
@@ -260,7 +260,7 @@ where
     ) -> InterpResult<'tcx, (P, u64)> {
         assert!(base.layout().ty.ty_adt_def().unwrap().repr().simd());
         // SIMD types must be newtypes around arrays, so all we have to do is project to their only field.
-        let array = self.project_field(base, 0)?;
+        let array = self.project_field(base, FieldIdx::ZERO)?;
         let len = array.len(self)?;
         interp_ok((array, len))
     }
@@ -384,7 +384,7 @@ where
             UnwrapUnsafeBinder(target) => base.transmute(self.layout_of(target)?, self)?,
             // We don't want anything happening here, this is here as a dummy.
             Subtype(_) => base.transmute(base.layout(), self)?,
-            Field(field, _) => self.project_field(base, field.index())?,
+            Field(field, _) => self.project_field(base, field)?,
             Downcast(_, variant) => self.project_downcast(base, variant)?,
             Deref => self.deref_pointer(&base.to_op(self)?)?.into(),
             Index(local) => {

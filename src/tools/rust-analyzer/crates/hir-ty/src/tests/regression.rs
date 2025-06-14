@@ -2301,3 +2301,51 @@ trait Foo {
         "#]],
     );
 }
+
+#[test]
+fn no_panic_on_recursive_const() {
+    check_infer(
+        r#"
+struct Foo<const N: usize> {}
+impl<const N: Foo<N>> Foo<N> {
+    fn foo(self) {}
+}
+
+fn test() {
+    let _ = N;
+}
+"#,
+        expect![[r#"
+            72..76 'self': Foo<N>
+            78..80 '{}': ()
+            94..112 '{     ...= N; }': ()
+            104..105 '_': {unknown}
+            108..109 'N': {unknown}
+        "#]],
+    );
+
+    check_infer(
+        r#"
+struct Foo<const N: usize>;
+const N: Foo<N> = Foo;
+
+impl<const N: usize> Foo<N> {
+    fn foo(self) -> usize {
+        N
+    }
+}
+
+fn test() {
+    let _ = N;
+}
+"#,
+        expect![[r#"
+            93..97 'self': Foo<N>
+            108..125 '{     ...     }': usize
+            118..119 'N': usize
+            139..157 '{     ...= N; }': ()
+            149..150 '_': Foo<_>
+            153..154 'N': Foo<_>
+        "#]],
+    );
+}

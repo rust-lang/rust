@@ -760,8 +760,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     self.param_env,
                     ty::TraitRef::new(
                         self.tcx,
-                        self.tcx
-                            .require_lang_item(hir::LangItem::PointerLike, Some(self.cause.span)),
+                        self.tcx.require_lang_item(hir::LangItem::PointerLike, self.cause.span),
                         [a],
                     ),
                 ),
@@ -1969,7 +1968,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 fcx.param_env,
                 ty::TraitRef::new(
                     fcx.tcx,
-                    fcx.tcx.require_lang_item(hir::LangItem::Sized, None),
+                    fcx.tcx.require_lang_item(hir::LangItem::Sized, DUMMY_SP),
                     [sig.output()],
                 ),
             ))

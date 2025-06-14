@@ -7,7 +7,7 @@ enum roption<'a> {
     a, b(&'a usize)
 }
 
-fn mk(cond: bool, ptr: &usize) -> roption {
+fn mk(cond: bool, ptr: &usize) -> roption<'_> {
     if cond {roption::a} else {roption::b(ptr)}
 }
 

@@ -348,7 +348,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
 
             e_flags
         }
-        Architecture::LoongArch64 => {
+        Architecture::LoongArch32 | Architecture::LoongArch64 => {
             // Source: https://github.com/loongson/la-abi-specs/blob/release/laelf.adoc#e_flags-identifies-abi-type-and-version
             let mut e_flags: u32 = elf::EF_LARCH_OBJABI_V1;
 

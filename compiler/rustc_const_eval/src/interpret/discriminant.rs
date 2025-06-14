@@ -1,6 +1,6 @@
 //! Functions for reading and writing discriminants of multi-variant layouts (enums and coroutines).
 
-use rustc_abi::{self as abi, TagEncoding, VariantIdx, Variants};
+use rustc_abi::{self as abi, FieldIdx, TagEncoding, VariantIdx, Variants};
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::{self, CoroutineArgsExt, ScalarInt, Ty};
 use rustc_middle::{mir, span_bug};
@@ -231,7 +231,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         layout: TyAndLayout<'tcx>,
         variant_index: VariantIdx,
-    ) -> InterpResult<'tcx, Option<(ScalarInt, usize)>> {
+    ) -> InterpResult<'tcx, Option<(ScalarInt, FieldIdx)>> {
         // Layout computation excludes uninhabited variants from consideration.
         // Therefore, there's no way to represent those variants in the given layout.
         // Essentially, uninhabited variants do not have a tag that corresponds to their

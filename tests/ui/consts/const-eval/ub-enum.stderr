@@ -13,7 +13,7 @@ error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-enum.rs:32:1
    |
 LL | const BAD_ENUM_PTR: Enum = unsafe { mem::transmute(&1) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_ENUM_PTR` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -22,7 +22,7 @@ error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-enum.rs:35:1
    |
 LL | const BAD_ENUM_WRAPPED: Wrap<Enum> = unsafe { mem::transmute(&1) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_ENUM_WRAPPED` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -42,7 +42,7 @@ error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-enum.rs:49:1
    |
 LL | const BAD_ENUM2_PTR: Enum2 = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_ENUM2_PTR` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -51,7 +51,7 @@ error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-enum.rs:52:1
    |
 LL | const BAD_ENUM2_WRAPPED: Wrap<Enum2> = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_ENUM2_WRAPPED` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -60,13 +60,13 @@ error[E0080]: using uninitialized data, but this operation requires initialized 
   --> $DIR/ub-enum.rs:61:41
    |
 LL | const BAD_ENUM2_UNDEF: Enum2 = unsafe { MaybeUninit { uninit: () }.init };
-   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_ENUM2_UNDEF` failed here
 
 error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-enum.rs:65:1
    |
 LL | const BAD_ENUM2_OPTION_PTR: Option<Enum2> = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_ENUM2_OPTION_PTR` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -108,19 +108,19 @@ error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabi
   --> $DIR/ub-enum.rs:97:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA1: Result<(i32, Never), (i32, !)> = unsafe { mem::transmute(0u64) };
-   |                                                                             ^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                                                             ^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_UNINHABITED_WITH_DATA1` failed here
 
 error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
   --> $DIR/ub-enum.rs:99:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem::transmute(0u64) };
-   |                                                                             ^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                                                             ^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_UNINHABITED_WITH_DATA2` failed here
 
 error[E0080]: read discriminant of an uninhabited enum variant
   --> $DIR/ub-enum.rs:105:9
    |
 LL |         std::mem::discriminant(&*(&() as *const () as *const Never));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TEST_ICE_89765` failed inside this call
    |
 note: inside `discriminant::<Never>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL

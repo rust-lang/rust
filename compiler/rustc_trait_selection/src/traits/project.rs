@@ -1117,7 +1117,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                                 selcx.tcx(),
                                                 selcx.tcx().require_lang_item(
                                                     LangItem::Sized,
-                                                    Some(obligation.cause.span),
+                                                    obligation.cause.span,
                                                 ),
                                                 [self_ty],
                                             ),
@@ -1317,7 +1317,7 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
 
     let tcx = selcx.tcx();
 
-    let coroutine_def_id = tcx.require_lang_item(LangItem::Coroutine, None);
+    let coroutine_def_id = tcx.require_lang_item(LangItem::Coroutine, obligation.cause.span);
 
     let (trait_ref, yield_ty, return_ty) = super::util::coroutine_trait_ref_and_outputs(
         tcx,
@@ -1375,7 +1375,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
     debug!(?obligation, ?coroutine_sig, ?obligations, "confirm_future_candidate");
 
     let tcx = selcx.tcx();
-    let fut_def_id = tcx.require_lang_item(LangItem::Future, None);
+    let fut_def_id = tcx.require_lang_item(LangItem::Future, obligation.cause.span);
 
     let (trait_ref, return_ty) = super::util::future_trait_ref_and_outputs(
         tcx,
@@ -1421,7 +1421,7 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
     debug!(?obligation, ?gen_sig, ?obligations, "confirm_iterator_candidate");
 
     let tcx = selcx.tcx();
-    let iter_def_id = tcx.require_lang_item(LangItem::Iterator, None);
+    let iter_def_id = tcx.require_lang_item(LangItem::Iterator, obligation.cause.span);
 
     let (trait_ref, yield_ty) = super::util::iterator_trait_ref_and_outputs(
         tcx,
@@ -1467,7 +1467,7 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
     debug!(?obligation, ?gen_sig, ?obligations, "confirm_async_iterator_candidate");
 
     let tcx = selcx.tcx();
-    let iter_def_id = tcx.require_lang_item(LangItem::AsyncIterator, None);
+    let iter_def_id = tcx.require_lang_item(LangItem::AsyncIterator, obligation.cause.span);
 
     let (trait_ref, yield_ty) = super::util::async_iterator_trait_ref_and_outputs(
         tcx,
@@ -1511,12 +1511,13 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
     let trait_def_id = tcx.trait_of_item(item_def_id).unwrap();
     let args = tcx.mk_args(&[self_ty.into()]);
     let (term, obligations) = if tcx.is_lang_item(trait_def_id, LangItem::DiscriminantKind) {
-        let discriminant_def_id = tcx.require_lang_item(LangItem::Discriminant, None);
+        let discriminant_def_id =
+            tcx.require_lang_item(LangItem::Discriminant, obligation.cause.span);
         assert_eq!(discriminant_def_id, item_def_id);
 
         (self_ty.discriminant_ty(tcx).into(), PredicateObligations::new())
     } else if tcx.is_lang_item(trait_def_id, LangItem::PointeeTrait) {
-        let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
+        let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, obligation.cause.span);
         assert_eq!(metadata_def_id, item_def_id);
 
         let mut obligations = PredicateObligations::new();
@@ -1538,7 +1539,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
                 // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
                 let sized_predicate = ty::TraitRef::new(
                     tcx,
-                    tcx.require_lang_item(LangItem::Sized, Some(obligation.cause.span)),
+                    tcx.require_lang_item(LangItem::Sized, obligation.cause.span),
                     [self_ty],
                 );
                 obligations.push(obligation.with(tcx, sized_predicate));
@@ -1620,7 +1621,7 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                     )
                 } else {
                     let upvars_projection_def_id =
-                        tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
+                        tcx.require_lang_item(LangItem::AsyncFnKindUpvars, obligation.cause.span);
                     let tupled_upvars_ty = Ty::new_projection(
                         tcx,
                         upvars_projection_def_id,
@@ -1681,8 +1682,9 @@ fn confirm_callable_candidate<'cx, 'tcx>(
 
     debug!(?obligation, ?fn_sig, "confirm_callable_candidate");
 
-    let fn_once_def_id = tcx.require_lang_item(LangItem::FnOnce, None);
-    let fn_once_output_def_id = tcx.require_lang_item(LangItem::FnOnceOutput, None);
+    let fn_once_def_id = tcx.require_lang_item(LangItem::FnOnce, obligation.cause.span);
+    let fn_once_output_def_id =
+        tcx.require_lang_item(LangItem::FnOnceOutput, obligation.cause.span);
 
     let predicate = super::util::closure_trait_ref_and_return_type(
         tcx,
@@ -1740,8 +1742,8 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                             args.coroutine_captures_by_ref_ty(),
                         )
                     } else {
-                        let upvars_projection_def_id =
-                            tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
+                        let upvars_projection_def_id = tcx
+                            .require_lang_item(LangItem::AsyncFnKindUpvars, obligation.cause.span);
                         // When we don't know the closure kind (and therefore also the closure's upvars,
                         // which are computed at the same time), we must delay the computation of the
                         // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait
@@ -1798,7 +1800,8 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             let term = match item_name {
                 sym::CallOnceFuture | sym::CallRefFuture => sig.output(),
                 sym::Output => {
-                    let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
+                    let future_output_def_id =
+                        tcx.require_lang_item(LangItem::FutureOutput, obligation.cause.span);
                     Ty::new_projection(tcx, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),
@@ -1831,7 +1834,8 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             let term = match item_name {
                 sym::CallOnceFuture | sym::CallRefFuture => sig.output(),
                 sym::Output => {
-                    let future_output_def_id = tcx.require_lang_item(LangItem::FutureOutput, None);
+                    let future_output_def_id =
+                        tcx.require_lang_item(LangItem::FutureOutput, obligation.cause.span);
                     Ty::new_projection(tcx, future_output_def_id, [sig.output()])
                 }
                 name => bug!("no such associated type: {name}"),

@@ -263,7 +263,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 // something that already has `Fn`-like bounds (or is a closure), so we can't
                 // restrict anyways.
             } else {
-                let copy_did = self.infcx.tcx.require_lang_item(LangItem::Copy, Some(span));
+                let copy_did = self.infcx.tcx.require_lang_item(LangItem::Copy, span);
                 self.suggest_adding_bounds(&mut err, ty, copy_did, span);
             }
 
@@ -1915,7 +1915,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let local_ty = self.body.local_decls[place.local].ty;
         let typeck_results = tcx.typeck(self.mir_def_id());
-        let clone = tcx.require_lang_item(LangItem::Clone, Some(body.span));
+        let clone = tcx.require_lang_item(LangItem::Clone, body.span);
         for expr in expr_finder.clones {
             if let hir::ExprKind::MethodCall(_, rcvr, _, span) = expr.kind
                 && let Some(rcvr_ty) = typeck_results.node_type_opt(rcvr.hir_id)
@@ -3229,8 +3229,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
+
+                            let mutability = if matches!(borrow.kind(), BorrowKind::Mut { .. }) {
+                                "mut "
+                            } else {
+                                ""
+                            };
+
                             if !is_format_arguments_item {
-                                let addition = format!("let binding = {};\n{}", s, " ".repeat(p));
+                                let addition = format!(
+                                    "let {}binding = {};\n{}",
+                                    mutability,
+                                    s,
+                                    " ".repeat(p)
+                                );
                                 err.multipart_suggestion_verbose(
                                     msg,
                                     vec![
@@ -3314,7 +3326,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     "function parameter".to_string(),
                     "function parameter borrowed here".to_string(),
                 ),
-                LocalKind::Temp if self.body.local_decls[local].is_user_variable() => {
+                LocalKind::Temp
+                    if self.body.local_decls[local].is_user_variable()
+                        && !self.body.local_decls[local]
+                            .source_info
+                            .span
+                            .in_external_macro(self.infcx.tcx.sess.source_map()) =>
+                {
                     ("local binding".to_string(), "local binding introduced here".to_string())
                 }
                 LocalKind::ReturnPointer | LocalKind::Temp => {

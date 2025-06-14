@@ -10,6 +10,7 @@ use rustc_infer::traits::{
 use rustc_macros::extension;
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
+use thin_vec::thin_vec;
 
 use crate::solve::inspect::{self, ProofTreeInferCtxtExt};
 
@@ -146,18 +147,21 @@ fn to_selection<'tcx>(
         return None;
     }
 
-    let (nested, impl_args) = cand.instantiate_nested_goals_and_opt_impl_args(span);
-    let nested = nested
-        .into_iter()
-        .map(|nested| {
-            Obligation::new(
-                nested.infcx().tcx,
-                ObligationCause::dummy_with_span(span),
-                nested.goal().param_env,
-                nested.goal().predicate,
-            )
-        })
-        .collect();
+    let nested = match cand.result().expect("expected positive result") {
+        Certainty::Yes => thin_vec![],
+        Certainty::Maybe(_) => cand
+            .instantiate_nested_goals(span)
+            .into_iter()
+            .map(|nested| {
+                Obligation::new(
+                    nested.infcx().tcx,
+                    ObligationCause::dummy_with_span(span),
+                    nested.goal().param_env,
+                    nested.goal().predicate,
+                )
+            })
+            .collect(),
+    };
 
     Some(match cand.kind() {
         ProbeKind::TraitCandidate { source, result: _ } => match source {
@@ -166,7 +170,7 @@ fn to_selection<'tcx>(
                 // For impl candidates, we do the rematch manually to compute the args.
                 ImplSource::UserDefined(ImplSourceUserDefinedData {
                     impl_def_id,
-                    args: impl_args.expect("expected recorded impl args for impl candidate"),
+                    args: cand.instantiate_impl_args(span),
                     nested,
                 })
             }

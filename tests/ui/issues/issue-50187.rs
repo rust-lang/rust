@@ -13,20 +13,20 @@ mod macro_ns {
 }
 
 mod merge2 {
-    pub use type_ns::A;
-    pub use value_ns::A;
+    pub use crate::type_ns::A;
+    pub use crate::value_ns::A;
 }
 mod merge3 {
-    pub use type_ns::A;
-    pub use value_ns::A;
-    pub use macro_ns::A;
+    pub use crate::type_ns::A;
+    pub use crate::value_ns::A;
+    pub use crate::macro_ns::A;
 }
 
 mod use2 {
-    pub use merge2::A;
+    pub use crate::merge2::A;
 }
 mod use3 {
-    pub use merge3::A;
+    pub use crate::merge3::A;
 }
 
 fn main() {

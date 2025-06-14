@@ -1,0 +1,32 @@
+warning[E0365]: extern crate `core` is private and cannot be re-exported
+  --> $DIR/ice-free.rs:5:9
+   |
+LL | pub use core as reexported_core;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #127909 <https://github.com/rust-lang/rust/issues/127909>
+   = note: requested on the command line with `--force-warn pub-use-of-private-extern-crate`
+help: consider making the `extern crate` item publicly accessible
+   |
+LL | pub extern crate core;
+   | +++
+
+warning: 1 warning emitted
+
+For more information about this error, try `rustc --explain E0365`.
+Future incompatibility report: Future breakage diagnostic:
+warning[E0365]: extern crate `core` is private and cannot be re-exported
+  --> $DIR/ice-free.rs:5:9
+   |
+LL | pub use core as reexported_core;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #127909 <https://github.com/rust-lang/rust/issues/127909>
+   = note: requested on the command line with `--force-warn pub-use-of-private-extern-crate`
+help: consider making the `extern crate` item publicly accessible
+   |
+LL | pub extern crate core;
+   | +++
+

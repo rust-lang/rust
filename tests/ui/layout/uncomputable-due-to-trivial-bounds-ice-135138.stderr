@@ -2,7 +2,7 @@ error[E0080]: the type `Option<str>` has an unknown layout
   --> $DIR/uncomputable-due-to-trivial-bounds-ice-135138.rs:7:16
    |
 LL |     [(); { let _a: Option<str> = None; 0 }];
-   |                ^^ evaluation of constant value failed here
+   |                ^^ evaluation of `return_str::{constant#0}` failed here
 
 error: aborting due to 1 previous error
 

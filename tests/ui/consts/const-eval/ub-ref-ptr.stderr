@@ -46,7 +46,7 @@ error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-ref-ptr.rs:33:1
    |
 LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `REF_AS_USIZE` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -55,7 +55,7 @@ error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-ref-ptr.rs:36:39
    |
 LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `REF_AS_USIZE_SLICE` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -70,7 +70,7 @@ error[E0080]: unable to turn pointer into integer
   --> $DIR/ub-ref-ptr.rs:39:86
    |
 LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
-   |                                                                                      ^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                                                                      ^^^^^^^^^^^^^^^^^^^^ evaluation of `REF_AS_USIZE_BOX_SLICE` failed here
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
@@ -107,7 +107,7 @@ error[E0080]: using uninitialized data, but this operation requires initialized 
   --> $DIR/ub-ref-ptr.rs:48:41
    |
 LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
-   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNINIT_PTR` failed here
 
 error[E0080]: constructing invalid value: encountered null pointer, but expected a function pointer
   --> $DIR/ub-ref-ptr.rs:51:1
@@ -124,7 +124,7 @@ error[E0080]: using uninitialized data, but this operation requires initialized 
   --> $DIR/ub-ref-ptr.rs:53:38
    |
 LL | const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNINIT_FN_PTR` failed here
 
 error[E0080]: constructing invalid value: encountered 0xd[noalloc], but expected a function pointer
   --> $DIR/ub-ref-ptr.rs:55:1
@@ -152,7 +152,7 @@ error[E0080]: accessing memory based on pointer with alignment 1, but alignment 
   --> $DIR/ub-ref-ptr.rs:64:5
    |
 LL |     ptr.read();
-   |     ^^^^^^^^^^ evaluation of constant value failed here
+   |     ^^^^^^^^^^ evaluation of `UNALIGNED_READ` failed here
 
 error: aborting due to 15 previous errors
 

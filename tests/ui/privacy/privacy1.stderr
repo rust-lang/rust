@@ -48,26 +48,12 @@ LL |         mod i {
    |         ^^^^^
 
 error[E0603]: module `baz` is private
-  --> $DIR/privacy1.rs:104:16
+  --> $DIR/privacy1.rs:104:21
    |
-LL |         ::bar::baz::A::foo();
-   |                ^^^  - struct `A` is not publicly re-exported
-   |                |
-   |                private module
-   |
-note: the module `baz` is defined here
-  --> $DIR/privacy1.rs:50:5
-   |
-LL |     mod baz {
-   |     ^^^^^^^
-
-error[E0603]: module `baz` is private
-  --> $DIR/privacy1.rs:105:16
-   |
-LL |         ::bar::baz::A::bar();
-   |                ^^^  - struct `A` is not publicly re-exported
-   |                |
-   |                private module
+LL |         crate::bar::baz::A::foo();
+   |                     ^^^  - struct `A` is not publicly re-exported
+   |                     |
+   |                     private module
    |
 note: the module `baz` is defined here
   --> $DIR/privacy1.rs:50:5
@@ -76,12 +62,12 @@ LL |     mod baz {
    |     ^^^^^^^
 
 error[E0603]: module `baz` is private
-  --> $DIR/privacy1.rs:107:16
+  --> $DIR/privacy1.rs:105:21
    |
-LL |         ::bar::baz::A.foo2();
-   |                ^^^  - unit struct `A` is not publicly re-exported
-   |                |
-   |                private module
+LL |         crate::bar::baz::A::bar();
+   |                     ^^^  - struct `A` is not publicly re-exported
+   |                     |
+   |                     private module
    |
 note: the module `baz` is defined here
   --> $DIR/privacy1.rs:50:5
@@ -90,12 +76,26 @@ LL |     mod baz {
    |     ^^^^^^^
 
 error[E0603]: module `baz` is private
-  --> $DIR/privacy1.rs:108:16
+  --> $DIR/privacy1.rs:107:21
    |
-LL |         ::bar::baz::A.bar2();
-   |                ^^^  - unit struct `A` is not publicly re-exported
-   |                |
-   |                private module
+LL |         crate::bar::baz::A.foo2();
+   |                     ^^^  - unit struct `A` is not publicly re-exported
+   |                     |
+   |                     private module
+   |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:50:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
+
+error[E0603]: module `baz` is private
+  --> $DIR/privacy1.rs:108:21
+   |
+LL |         crate::bar::baz::A.bar2();
+   |                     ^^^  - unit struct `A` is not publicly re-exported
+   |                     |
+   |                     private module
    |
 note: the module `baz` is defined here
   --> $DIR/privacy1.rs:50:5
@@ -104,12 +104,12 @@ LL |     mod baz {
    |     ^^^^^^^
 
 error[E0603]: trait `B` is private
-  --> $DIR/privacy1.rs:112:16
+  --> $DIR/privacy1.rs:112:21
    |
-LL |         ::bar::B::foo();
-   |                ^  --- associated function `foo` is not publicly re-exported
-   |                |
-   |                private trait
+LL |         crate::bar::B::foo();
+   |                     ^  --- associated function `foo` is not publicly re-exported
+   |                     |
+   |                     private trait
    |
 note: the trait `B` is defined here
   --> $DIR/privacy1.rs:40:5
@@ -118,10 +118,10 @@ LL |     trait B {
    |     ^^^^^^^
 
 error[E0603]: function `epriv` is private
-  --> $DIR/privacy1.rs:118:20
+  --> $DIR/privacy1.rs:118:25
    |
-LL |             ::bar::epriv();
-   |                    ^^^^^ private function
+LL |             crate::bar::epriv();
+   |                         ^^^^^ private function
    |
 note: the function `epriv` is defined here
   --> $DIR/privacy1.rs:65:9
@@ -130,10 +130,10 @@ LL |         fn epriv();
    |         ^^^^^^^^^^^
 
 error[E0603]: module `baz` is private
-  --> $DIR/privacy1.rs:127:16
+  --> $DIR/privacy1.rs:127:21
    |
-LL |         ::bar::baz::foo();
-   |                ^^^ private module
+LL |         crate::bar::baz::foo();
+   |                     ^^^ private module
    |
 note: the module `baz` is defined here
   --> $DIR/privacy1.rs:50:5
@@ -142,15 +142,15 @@ LL |     mod baz {
    |     ^^^^^^^
 help: consider importing this function through its public re-export instead
    |
-LL -         ::bar::baz::foo();
+LL -         crate::bar::baz::foo();
 LL +         bar::foo();
    |
 
 error[E0603]: module `baz` is private
-  --> $DIR/privacy1.rs:128:16
+  --> $DIR/privacy1.rs:128:21
    |
-LL |         ::bar::baz::bar();
-   |                ^^^ private module
+LL |         crate::bar::baz::bar();
+   |                     ^^^ private module
    |
 note: the module `baz` is defined here
   --> $DIR/privacy1.rs:50:5
@@ -159,15 +159,15 @@ LL |     mod baz {
    |     ^^^^^^^
 help: consider importing this function through its public re-export instead
    |
-LL -         ::bar::baz::bar();
+LL -         crate::bar::baz::bar();
 LL +         bar::bar();
    |
 
 error[E0603]: trait `B` is private
-  --> $DIR/privacy1.rs:157:17
+  --> $DIR/privacy1.rs:157:22
    |
-LL |     impl ::bar::B for f32 { fn foo() -> f32 { 1.0 } }
-   |                 ^ private trait
+LL |     impl crate::bar::B for f32 { fn foo() -> f32 { 1.0 } }
+   |                      ^ private trait
    |
 note: the trait `B` is defined here
   --> $DIR/privacy1.rs:40:5
@@ -194,31 +194,31 @@ LL |     bar::A::bar();
    |             ^^^ private associated function
 
 error[E0624]: associated function `bar` is private
-  --> $DIR/privacy1.rs:102:19
+  --> $DIR/privacy1.rs:102:24
    |
 LL |         fn bar() {}
    |         -------- private associated function defined here
 ...
-LL |         ::bar::A::bar();
-   |                   ^^^ private associated function
+LL |         crate::bar::A::bar();
+   |                        ^^^ private associated function
 
 error[E0624]: associated function `bar` is private
-  --> $DIR/privacy1.rs:105:24
+  --> $DIR/privacy1.rs:105:29
    |
 LL |             fn bar() {}
    |             -------- private associated function defined here
 ...
-LL |         ::bar::baz::A::bar();
-   |                        ^^^ private associated function
+LL |         crate::bar::baz::A::bar();
+   |                             ^^^ private associated function
 
 error[E0624]: method `bar2` is private
-  --> $DIR/privacy1.rs:108:23
+  --> $DIR/privacy1.rs:108:28
    |
 LL |             fn bar2(&self) {}
    |             -------------- private method defined here
 ...
-LL |         ::bar::baz::A.bar2();
-   |                       ^^^^ private method
+LL |         crate::bar::baz::A.bar2();
+   |                            ^^^^ private method
 
 error: aborting due to 18 previous errors
 

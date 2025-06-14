@@ -9,5 +9,5 @@ mod foo {
 }
 
 fn main() {
-    <i32 as ::foo::Bar>::baz(); //~ERROR trait `Bar` is private
+    <i32 as crate::foo::Bar>::baz(); //~ERROR trait `Bar` is private
 }

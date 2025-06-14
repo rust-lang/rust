@@ -161,6 +161,8 @@ pub enum RunType {
     TryJob { job_patterns: Option<Vec<String>> },
     /// Merge attempt workflow
     AutoJob,
+    /// Fake job only used for sharing Github Actions cache.
+    MasterJob,
 }
 
 /// Maximum number of custom try jobs that can be requested in a single
@@ -210,6 +212,7 @@ fn calculate_jobs(
             (jobs, "try", &db.envs.try_env)
         }
         RunType::AutoJob => (db.auto_jobs.clone(), "auto", &db.envs.auto_env),
+        RunType::MasterJob => return Ok(vec![]),
     };
     let jobs = substitute_github_vars(jobs.clone())
         .context("Failed to substitute GitHub context variables in jobs")?;
@@ -262,7 +265,7 @@ pub fn calculate_job_matrix(
     eprintln!("Run type: {run_type:?}");
 
     let jobs = calculate_jobs(&run_type, &db, channel)?;
-    if jobs.is_empty() {
+    if jobs.is_empty() && !matches!(run_type, RunType::MasterJob) {
         return Err(anyhow::anyhow!("Computed job list is empty"));
     }
 
@@ -270,6 +273,7 @@ pub fn calculate_job_matrix(
         RunType::PullRequest => "pr",
         RunType::TryJob { .. } => "try",
         RunType::AutoJob => "auto",
+        RunType::MasterJob => "master",
     };
 
     eprintln!("Output");

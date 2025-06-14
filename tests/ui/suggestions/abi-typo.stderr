@@ -1,14 +1,14 @@
-error[E0703]: invalid ABI: found `cdedl`
+error[E0703]: invalid ABI: found `systen`
   --> $DIR/abi-typo.rs:2:8
    |
-LL | extern "cdedl" fn cdedl() {}
-   |        ^^^^^^^ invalid ABI
+LL | extern "systen" fn systen() {}
+   |        ^^^^^^^^ invalid ABI
    |
    = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
-help: there's a similarly named valid ABI `cdecl`
+help: there's a similarly named valid ABI `system`
    |
-LL - extern "cdedl" fn cdedl() {}
-LL + extern "cdecl" fn cdedl() {}
+LL - extern "systen" fn systen() {}
+LL + extern "system" fn systen() {}
    |
 
 error: aborting due to 1 previous error

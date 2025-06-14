@@ -11,9 +11,13 @@ error[E0605]: non-primitive cast: `Foo<'a>` as `T`
   --> $DIR/issue-16048.rs:24:16
    |
 LL |         return *self as T;
-   |                ^^^^^^^^^^ help: consider using the `From` trait instead: `T::from(*self)`
+   |                ^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
    |
-   = note: an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+help: consider using the `From` trait instead
+   |
+LL -         return *self as T;
+LL +         return T::from(*self);
+   |
 
 error: aborting due to 2 previous errors
 

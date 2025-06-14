@@ -8,6 +8,7 @@ development because it takes a really long time. For local development, see the
 subsection after on how to run a subset of tests.
 
 <div class="warning">
+
 Running plain `./x test` will build the stage 1 compiler and then run the whole
 test suite. This not only include `tests/`, but also `library/`, `compiler/`,
 `src/tools/` package tests and more.
@@ -16,6 +17,7 @@ You usually only want to run a subset of the test suites (or even a smaller set
 of tests than that) which you expect will exercise your changes. PR CI exercises
 a subset of test collections, and merge queue CI will exercise all of the test
 collection.
+
 </div>
 
 ```text
@@ -116,8 +118,10 @@ By listing which test suites you want to run,
 you avoid having to run tests for components you did not change at all.
 
 <div class="warning">
+
 Note that bors only runs the tests with the full stage 2 build; therefore, while
 the tests **usually** work fine with stage 1, there are some limitations.
+
 </div>
 
 ### Run all tests using a stage 2 compiler

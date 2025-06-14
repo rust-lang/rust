@@ -11,7 +11,7 @@ impl Iterator for Foo {
     type Item = Box<dyn Trait>;
     fn next(&mut self) -> Option<Box<dyn Trait>> {
         extern crate issue_41053;
-        impl ::Trait for issue_41053::Test {
+        impl crate::Trait for issue_41053::Test {
             fn foo(&self) {}
         }
         Some(Box::new(issue_41053::Test))

@@ -10,6 +10,10 @@ runners:
     free_disk: true
     <<: *base-job
 
+  - &job-linux-4c-largedisk
+    os: ubuntu-24.04-4core-16gb
+    <<: *base-job
+
   - &job-linux-8c
     os: ubuntu-24.04-8core-32gb
     <<: *base-job
@@ -105,6 +109,15 @@ envs:
   pr:
     PR_CI_JOB: 1
 
+jobs:
+  dist-x86_64-linux: &job-dist-x86_64-linux
+    name: dist-x86_64-linux
+    env:
+      CODEGEN_BACKENDS: llvm,cranelift
+      DOCKER_SCRIPT: dist.sh
+    <<: *job-linux-36c-codebuild
+
+
 # Jobs that run on each push to a pull request (PR)
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
@@ -115,6 +128,11 @@ pr:
     <<: *job-linux-4c
   - name: mingw-check-tidy
     continue_on_error: true
+    free_disk: false
+    env:
+      # This submodule is expensive to checkout, and it should not be needed for
+      # tidy. This speeds up the PR CI job by ~1 minute.
+      SKIP_SUBMODULES: src/gcc
     <<: *job-linux-4c
   - name: x86_64-gnu-llvm-19
     env:
@@ -138,10 +156,7 @@ pr:
 # These jobs automatically inherit envs.try, to avoid repeating
 # it in each job definition.
 try:
-  - name: dist-x86_64-linux
-    env:
-      CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-36c-codebuild
+  - <<: *job-dist-x86_64-linux
 
 # Main CI jobs that have to be green to merge a commit into master
 # These jobs automatically inherit envs.auto, to avoid repeating
@@ -234,16 +249,14 @@ auto:
   - name: dist-x86_64-illumos
     <<: *job-linux-4c
 
-  - name: dist-x86_64-linux
-    env:
-      CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-36c-codebuild
+  - <<: *job-dist-x86_64-linux
 
   - name: dist-x86_64-linux-alt
     env:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-16c
+      DOCKER_SCRIPT: dist-alt.sh
+    <<: *job-linux-4c-largedisk
 
   - name: dist-x86_64-musl
     env:
@@ -295,6 +308,10 @@ auto:
     <<: *job-linux-4c
 
   - name: mingw-check-2
+    <<: *job-linux-4c
+
+  - name: mingw-check-tidy
+    free_disk: false
     <<: *job-linux-4c
 
   - name: test-various

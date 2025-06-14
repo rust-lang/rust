@@ -438,8 +438,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         dest.clone()
                     };
                     for (field_index, op) in fields.into_iter().enumerate() {
-                        let field_dest =
-                            self.ecx.project_field(&variant_dest, field_index).discard_err()?;
+                        let field_dest = self
+                            .ecx
+                            .project_field(&variant_dest, FieldIdx::from_usize(field_index))
+                            .discard_err()?;
                         self.ecx.copy_op(op, &field_dest).discard_err()?;
                     }
                     self.ecx
@@ -1583,7 +1585,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // We needed to check the variant to avoid trying to read the tag
             // field from an enum where no fields have variants, since that tag
             // field isn't in the `Aggregate` from which we're getting values.
-            Some((FieldIdx::from_usize(field_idx), field_layout.ty))
+            Some((field_idx, field_layout.ty))
         } else if let ty::Adt(adt, args) = ty.kind()
             && adt.is_struct()
             && adt.repr().transparent()

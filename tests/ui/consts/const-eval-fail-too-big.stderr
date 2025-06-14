@@ -2,7 +2,7 @@ error[E0080]: values of the type `[u8; usize::MAX]` are too big for the target a
   --> $DIR/const-eval-fail-too-big.rs:4:28
    |
 LL |                    let x = [0u8; !0usize];
-   |                            ^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                            ^^^^^^^^^^^^^^ evaluation of `B::{constant#0}` failed here
 
 error: aborting due to 1 previous error
 

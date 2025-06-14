@@ -5,7 +5,7 @@ use std::any::Any;
 
 struct Foo<'a>(&'a str);
 
-fn good(s: &String) -> Foo { Foo(s) }
+fn good(s: &String) -> Foo<'_> { Foo(s) }
 
 fn bad1(s: String) -> Option<&'static str> {
     let a: Box<dyn Any> = Box::new(good as fn(&String) -> Foo);

@@ -136,7 +136,6 @@ impl<'ast, 'ecx, 'tcx, T: EarlyLintPass> ast_visit::Visitor<'ast>
         // the AST struct that they wrap (e.g. an item)
         self.with_lint_attrs(s.id, s.attrs(), |cx| {
             lint_callback!(cx, check_stmt, s);
-            cx.check_id(s.id);
         });
         // The visitor for the AST struct wrapped
         // by the statement (e.g. `Item`) will call
@@ -147,7 +146,6 @@ impl<'ast, 'ecx, 'tcx, T: EarlyLintPass> ast_visit::Visitor<'ast>
 
     fn visit_fn(&mut self, fk: ast_visit::FnKind<'ast>, span: Span, id: ast::NodeId) {
         lint_callback!(self, check_fn, fk, span, id);
-        self.check_id(id);
         ast_visit::walk_fn(self, fk);
     }
 

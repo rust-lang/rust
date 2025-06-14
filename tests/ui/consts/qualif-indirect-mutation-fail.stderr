@@ -11,7 +11,7 @@ error[E0080]: calling non-const function `<Vec<u8> as Drop>::drop`
   --> $DIR/qualif-indirect-mutation-fail.rs:18:1
    |
 LL | };
-   | ^ evaluation of constant value failed here
+   | ^ evaluation of `A1` failed inside this call
    |
 note: inside `drop_in_place::<Option<String>> - shim(Some(Option<String>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -32,7 +32,7 @@ error[E0080]: calling non-const function `<Vec<u8> as Drop>::drop`
   --> $DIR/qualif-indirect-mutation-fail.rs:29:1
    |
 LL | };
-   | ^ evaluation of constant value failed here
+   | ^ evaluation of `A2` failed inside this call
    |
 note: inside `drop_in_place::<Option<String>> - shim(Some(Option<String>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL

@@ -17,21 +17,6 @@ pub(crate) struct UnknownCTargetFeature<'a> {
     pub rust_feature: PossibleFeature<'a>,
 }
 
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_unstable_ctarget_feature)]
-#[note]
-pub(crate) struct UnstableCTargetFeature<'a> {
-    pub feature: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_forbidden_ctarget_feature)]
-pub(crate) struct ForbiddenCTargetFeature<'a> {
-    pub feature: &'a str,
-    pub enabled: &'a str,
-    pub reason: &'a str,
-}
-
 #[derive(Subdiagnostic)]
 pub(crate) enum PossibleFeature<'a> {
     #[help(codegen_gcc_possible_feature)]
@@ -45,12 +30,6 @@ pub(crate) enum PossibleFeature<'a> {
 pub(crate) struct UnwindingInlineAsm {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_invalid_minimum_alignment)]
-pub(crate) struct InvalidMinimumAlignment {
-    pub err: String,
 }
 
 #[derive(Diagnostic)]

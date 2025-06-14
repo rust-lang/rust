@@ -135,6 +135,7 @@ pub(crate) fn json_in_items(
                         "JSON syntax is not valid as a Rust item",
                         FileRange { file_id: vfs_file_id, range },
                     )
+                    .stable()
                     .with_fixes(Some(vec![{
                         let mut scb = SourceChangeBuilder::new(vfs_file_id);
                         let scope = scb.make_import_scope_mut(import_scope);

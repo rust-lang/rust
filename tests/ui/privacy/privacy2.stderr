@@ -13,8 +13,8 @@ LL |     use bar::glob::foo;
 note: the function import `foo` is defined here...
   --> $DIR/privacy2.rs:13:13
    |
-LL |         use foo;
-   |             ^^^
+LL |         use crate::foo;
+   |             ^^^^^^^^^^
 note: ...and refers to the function `foo` which is defined here
   --> $DIR/privacy2.rs:17:1
    |

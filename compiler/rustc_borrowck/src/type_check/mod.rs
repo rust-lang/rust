@@ -688,7 +688,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 if !self.unsized_feature_enabled() {
                     let trait_ref = ty::TraitRef::new(
                         tcx,
-                        tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
+                        tcx.require_lang_item(LangItem::Sized, self.last_span),
                         [place_ty],
                     );
                     self.prove_trait_ref(
@@ -1010,7 +1010,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             let ty = place.ty(self.body, tcx).ty;
                             let trait_ref = ty::TraitRef::new(
                                 tcx,
-                                tcx.require_lang_item(LangItem::Copy, Some(span)),
+                                tcx.require_lang_item(LangItem::Copy, span),
                                 [ty],
                             );
 
@@ -1025,11 +1025,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
 
             &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
-                let trait_ref = ty::TraitRef::new(
-                    tcx,
-                    tcx.require_lang_item(LangItem::Sized, Some(span)),
-                    [ty],
-                );
+                let trait_ref =
+                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, span), [ty]);
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1041,11 +1038,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             &Rvalue::NullaryOp(NullOp::UbChecks, _) => {}
 
             Rvalue::ShallowInitBox(_operand, ty) => {
-                let trait_ref = ty::TraitRef::new(
-                    tcx,
-                    tcx.require_lang_item(LangItem::Sized, Some(span)),
-                    [*ty],
-                );
+                let trait_ref =
+                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, span), [*ty]);
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1222,7 +1216,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let &ty = ty;
                         let trait_ref = ty::TraitRef::new(
                             tcx,
-                            tcx.require_lang_item(LangItem::CoerceUnsized, Some(span)),
+                            tcx.require_lang_item(LangItem::CoerceUnsized, span),
                             [op.ty(self.body, tcx), ty],
                         );
 
@@ -1811,7 +1805,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
             let trait_ref = ty::TraitRef::new(
                 tcx,
-                tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
+                tcx.require_lang_item(LangItem::Copy, self.last_span),
                 [place_ty.ty],
             );
 

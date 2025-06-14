@@ -1,4 +1,22 @@
 error[E0571]: `break` with value from a `while` loop
+  --> $DIR/issue-114529-illegal-break-with-value.rs:22:9
+   |
+LL |       while true {
+   |       ---------- you can't `break` with a value in a `while` loop
+LL | /         break (|| {
+LL | |             let local = 9;
+LL | |         });
+   | |__________^ can only break with a value inside `loop` or breakable block
+   |
+help: use `break` on its own without a value inside this `while` loop
+   |
+LL -         break (|| {
+LL -             let local = 9;
+LL -         });
+LL +         break;
+   |
+
+error[E0571]: `break` with value from a `while` loop
   --> $DIR/issue-114529-illegal-break-with-value.rs:9:13
    |
 LL |         while true {
@@ -24,24 +42,6 @@ help: use `break` on its own without a value inside this `while` loop
    |
 LL -             break v;
 LL +             break;
-   |
-
-error[E0571]: `break` with value from a `while` loop
-  --> $DIR/issue-114529-illegal-break-with-value.rs:22:9
-   |
-LL |       while true {
-   |       ---------- you can't `break` with a value in a `while` loop
-LL | /         break (|| {
-LL | |             let local = 9;
-LL | |         });
-   | |__________^ can only break with a value inside `loop` or breakable block
-   |
-help: use `break` on its own without a value inside this `while` loop
-   |
-LL -         break (|| {
-LL -             let local = 9;
-LL -         });
-LL +         break;
    |
 
 error: aborting due to 3 previous errors

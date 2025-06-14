@@ -12,6 +12,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug, ty};
+use rustc_span::DUMMY_SP;
 use tracing::trace;
 
 use super::{
@@ -307,7 +308,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn from_ordering(c: std::cmp::Ordering, tcx: TyCtxt<'tcx>) -> Self {
         // Can use any typing env, since `Ordering` is always monomorphic.
-        let ty = tcx.ty_ordering_enum(None);
+        let ty = tcx.ty_ordering_enum(DUMMY_SP);
         let layout =
             tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)).unwrap();
         Self::from_scalar(Scalar::Int(c.into()), layout)

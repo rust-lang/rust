@@ -16,8 +16,7 @@ fn has_structural_eq_impl<'tcx>(tcx: TyCtxt<'tcx>, adt_ty: Ty<'tcx>) -> bool {
 
     let ocx = ObligationCtxt::new(infcx);
     // require `#[derive(PartialEq)]`
-    let structural_peq_def_id =
-        infcx.tcx.require_lang_item(LangItem::StructuralPeq, Some(cause.span));
+    let structural_peq_def_id = infcx.tcx.require_lang_item(LangItem::StructuralPeq, cause.span);
     ocx.register_bound(cause.clone(), ty::ParamEnv::empty(), adt_ty, structural_peq_def_id);
 
     // We deliberately skip *reporting* fulfillment errors (via

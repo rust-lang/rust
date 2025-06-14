@@ -233,7 +233,7 @@ unsafe fn test_vaddvq_f32() {
 
 #[cfg(target_arch = "aarch64")]
 unsafe fn test_vrndnq_f32() {
-    // AArch64 llvm intrinsic: llvm.aarch64.neon.frintn.v4f32
+    // llvm intrinsic: llvm.roundeven.v4f32
     let a = f32x4::from([0.1, -1.9, 4.5, 5.5]);
     let e = f32x4::from([0., -2., 4., 6.]);
     let r: f32x4 = transmute(vrndnq_f32(transmute(a)));

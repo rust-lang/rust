@@ -192,7 +192,7 @@ to save information after compiling a crate to be reused when recompiling the
 crate, improving re-compile times. This takes a path to a directory where
 incremental files will be stored.
 
-Using incremental compilation inhibits certain optimizations (for example by increasing the amount of codegen units) and is therefore not recommend for release builds.
+Using incremental compilation inhibits certain optimizations (for example by increasing the amount of codegen units) and is therefore not recommended for release builds.
 
 ## inline-threshold
 

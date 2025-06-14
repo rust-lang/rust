@@ -1,0 +1,43 @@
+error: Undefined Behavior: attempting a write access using <TAG> at ALLOC[OFFSET], but that tag does not exist in the borrow stack for this location
+  --> tests/fail/async-shared-mutable.rs:LL:CC
+   |
+LL |             *x = 1;
+   |             ^^^^^^
+   |             |
+   |             attempting a write access using <TAG> at ALLOC[OFFSET], but that tag does not exist in the borrow stack for this location
+   |             this error occurs as part of an access at ALLOC[OFFSET]
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a Unique retag at offsets [OFFSET]
+  --> tests/fail/async-shared-mutable.rs:LL:CC
+   |
+LL | /         core::future::poll_fn(move |_| {
+LL | |             *x = 1;
+LL | |             Poll::<()>::Pending
+LL | |         })
+LL | |         .await
+   | |______________^
+help: <TAG> was later invalidated at offsets [OFFSET] by a SharedReadOnly retag
+  --> tests/fail/async-shared-mutable.rs:LL:CC
+   |
+LL |     let _: Pin<&_> = f.as_ref(); // Or: `f.as_mut().into_ref()`.
+   |                      ^^^^^^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside closure at tests/fail/async-shared-mutable.rs:LL:CC
+   = note: inside `<std::future::PollFn<{closure@tests/fail/async-shared-mutable.rs:LL:CC}> as std::future::Future>::poll` at RUSTLIB/core/src/future/poll_fn.rs:LL:CC
+note: inside closure
+  --> tests/fail/async-shared-mutable.rs:LL:CC
+   |
+LL |         .await
+   |          ^^^^^
+note: inside `main`
+  --> tests/fail/async-shared-mutable.rs:LL:CC
+   |
+LL |     assert_eq!(f.as_mut().poll(&mut cx), Poll::Pending);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

@@ -380,7 +380,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             rustc_hir::LangItem::PanicBoundsCheck,
                             &[index, len, location],
                             *unwind,
-                            Some(source_info.span),
+                            source_info.span,
                         );
                     }
                     AssertKind::MisalignedPointerDereference { ref required, ref found } => {
@@ -393,7 +393,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             rustc_hir::LangItem::PanicMisalignedPointerDereference,
                             &[required, found, location],
                             *unwind,
-                            Some(source_info.span),
+                            source_info.span,
                         );
                     }
                     AssertKind::NullPointerDereference => {
@@ -404,7 +404,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             rustc_hir::LangItem::PanicNullPointerDereference,
                             &[location],
                             *unwind,
-                            Some(source_info.span),
+                            source_info.span,
                         )
                     }
                     _ => {
@@ -415,7 +415,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             msg.panic_function(),
                             &[location],
                             *unwind,
-                            Some(source_info.span),
+                            source_info.span,
                         );
                     }
                 }
@@ -531,7 +531,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 );
             }
             TerminatorKind::UnwindTerminate(reason) => {
-                codegen_unwind_terminate(fx, Some(source_info.span), *reason);
+                codegen_unwind_terminate(fx, source_info.span, *reason);
             }
             TerminatorKind::UnwindResume => {
                 // FIXME implement unwinding
@@ -1074,7 +1074,7 @@ pub(crate) fn codegen_operand<'tcx>(
 pub(crate) fn codegen_panic_nounwind<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     msg_str: &str,
-    span: Option<Span>,
+    span: Span,
 ) {
     let msg_ptr = fx.anonymous_str(msg_str);
     let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
@@ -1091,7 +1091,7 @@ pub(crate) fn codegen_panic_nounwind<'tcx>(
 
 pub(crate) fn codegen_unwind_terminate<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    span: Option<Span>,
+    span: Span,
     reason: UnwindTerminateReason,
 ) {
     codegen_panic_inner(fx, reason.lang_item(), &[], UnwindAction::Unreachable, span);
@@ -1102,7 +1102,7 @@ fn codegen_panic_inner<'tcx>(
     lang_item: rustc_hir::LangItem,
     args: &[Value],
     _unwind: UnwindAction,
-    span: Option<Span>,
+    span: Span,
 ) {
     fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
 

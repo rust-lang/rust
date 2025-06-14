@@ -5,7 +5,7 @@
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
-use rustc_abi::{FIRST_VARIANT, FieldIdx};
+use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
@@ -44,9 +44,9 @@ use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotEnableDefaultFieldValues, BaseExpressionDoubleDotRemove,
     CantDereference, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
-    HelpUseLatestEdition, NoFieldOnType, NoFieldOnVariant, ReturnLikeStatementKind,
-    ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
-    YieldExprOutsideOfCoroutine,
+    HelpUseLatestEdition, NakedAsmOutsideNakedFn, NoFieldOnType, NoFieldOnVariant,
+    ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
+    TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
 use crate::{
     BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, GatherLocalsVisitor, Needs,
@@ -524,7 +524,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::InlineAsm(asm) => {
                 // We defer some asm checks as we may not have resolved the input and output types yet (they may still be infer vars).
                 self.deferred_asm_checks.borrow_mut().push((asm, expr.hir_id));
-                self.check_expr_asm(asm)
+                self.check_expr_asm(asm, expr.span)
             }
             ExprKind::OffsetOf(container, fields) => {
                 self.check_expr_offset_of(container, fields, expr)
@@ -1407,7 +1407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let lhs_deref_ty_is_sized = self
                     .infcx
                     .type_implements_trait(
-                        self.tcx.require_lang_item(LangItem::Sized, None),
+                        self.tcx.require_lang_item(LangItem::Sized, span),
                         [lhs_deref_ty],
                         self.param_env,
                     )
@@ -1626,6 +1626,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     TupleArgumentsFlag::DontTupleArguments,
                     Some(method.def_id),
                 );
+
+                // Functions of type `extern "custom" fn(/* ... */)` cannot be called using
+                // `ExprKind::MethodCall`. These functions have a calling convention that is
+                // unknown to rust, hence it cannot generate code for the call. The only way
+                // to execute such a function is via inline assembly.
+                if let ExternAbi::Custom = method.sig.abi {
+                    self.tcx.dcx().emit_err(crate::errors::AbiCustomCall { span: expr.span });
+                }
 
                 method.sig.output()
             }
@@ -3761,7 +3769,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>) -> Ty<'tcx> {
+    fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>, span: Span) -> Ty<'tcx> {
+        if let rustc_ast::AsmMacro::NakedAsm = asm.asm_macro {
+            if !self.tcx.has_attr(self.body_id, sym::naked) {
+                self.tcx.dcx().emit_err(NakedAsmOutsideNakedFn { span });
+            }
+        }
+
         let mut diverge = asm.asm_macro.diverges(asm.options);
 
         for (op, _op_sp) in asm.operands {

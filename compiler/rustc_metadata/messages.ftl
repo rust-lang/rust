@@ -272,6 +272,9 @@ metadata_raw_dylib_no_nul =
 metadata_raw_dylib_only_windows =
     link kind `raw-dylib` is only supported on Windows targets
 
+metadata_raw_dylib_unsupported_abi =
+    ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
+
 metadata_renaming_no_link =
     renaming of the library `{$lib_name}` was specified, however this crate contains no `#[link(...)]` attributes referencing this library
 
@@ -318,12 +321,6 @@ metadata_unknown_link_modifier =
     unknown linking modifier `{$modifier}`, expected one of: bundle, verbatim, whole-archive, as-needed
 
 metadata_unknown_target_modifier_unsafe_allowed = unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`
-
-metadata_unsupported_abi =
-    ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
-
-metadata_unsupported_abi_i686 =
-    ABI not supported by `#[link(kind = "raw-dylib")]` on i686
 
 metadata_wasm_c_abi =
     older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; please update to `wasm-bindgen` v0.2.88

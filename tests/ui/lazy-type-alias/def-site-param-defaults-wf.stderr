@@ -2,7 +2,7 @@ error[E0080]: attempt to compute `0_usize - 1_usize`, which would overflow
   --> $DIR/def-site-param-defaults-wf.rs:5:45
    |
 LL | type Alias<T = Vec<str>, const N: usize = { 0 - 1 }> = T;
-   |                                             ^^^^^ evaluation of constant value failed here
+   |                                             ^^^^^ evaluation of `Alias::{constant#0}` failed here
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/def-site-param-defaults-wf.rs:5:16

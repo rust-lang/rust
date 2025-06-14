@@ -2,8 +2,9 @@ use std::ffi::{OsStr, OsString};
 use std::io::ErrorKind;
 use std::{env, mem};
 
-use rustc_abi::Size;
+use rustc_abi::{FieldIdx, Size};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_index::IndexVec;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 
@@ -118,7 +119,7 @@ fn alloc_env_var<'tcx>(
 /// Allocates an `environ` block with the given list of pointers.
 fn alloc_environ_block<'tcx>(
     ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>,
-    mut vars: Vec<Pointer>,
+    mut vars: IndexVec<FieldIdx, Pointer>,
 ) -> InterpResult<'tcx, Pointer> {
     // Add trailing null.
     vars.push(Pointer::null());
@@ -129,7 +130,7 @@ fn alloc_environ_block<'tcx>(
         u64::try_from(vars.len()).unwrap(),
     ))?;
     let vars_place = ecx.allocate(vars_layout, MiriMemoryKind::Runtime.into())?;
-    for (idx, var) in vars.into_iter().enumerate() {
+    for (idx, var) in vars.into_iter_enumerated() {
         let place = ecx.project_field(&vars_place, idx)?;
         ecx.write_pointer(var, &place)?;
     }

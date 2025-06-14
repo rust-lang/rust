@@ -29,7 +29,7 @@ fn custom_coerce_unsize_info<'tcx>(
 ) -> Result<CustomCoerceUnsized, ErrorGuaranteed> {
     let trait_ref = ty::TraitRef::new(
         tcx.tcx,
-        tcx.require_lang_item(LangItem::CoerceUnsized, Some(tcx.span)),
+        tcx.require_lang_item(LangItem::CoerceUnsized, tcx.span),
         [source_ty, target_ty],
     );
 

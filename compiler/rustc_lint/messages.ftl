@@ -72,9 +72,6 @@ lint_builtin_const_no_mangle = const items should never be `#[no_mangle]`
 lint_builtin_decl_unsafe_fn = declaration of an `unsafe` function
 lint_builtin_decl_unsafe_method = declaration of an `unsafe` method
 
-lint_builtin_deprecated_attr_link = use of deprecated attribute `{$name}`: {$reason}. See {$link}
-    .msg_suggestion = {$msg}
-    .default_suggestion = remove this attribute
 lint_builtin_deref_nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
 
@@ -252,11 +249,6 @@ lint_duplicate_macro_attribute =
     duplicated attribute
 
 lint_duplicate_matcher_binding = duplicate matcher binding
-
-lint_elided_named_lifetime = elided lifetime has a name
-    .label_elided = this elided lifetime gets resolved as `{$name}`
-    .label_named = lifetime `{$name}` declared here
-    .suggestion = consider specifying it explicitly
 
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
@@ -516,7 +508,27 @@ lint_metavariable_still_repeating = variable `{$name}` is still repeating at thi
 
 lint_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
 
-lint_missing_fragment_specifier = missing fragment specifier
+lint_mismatched_lifetime_syntaxes =
+    lifetime flowing from input to output with different syntax can be confusing
+    .label_mismatched_lifetime_syntaxes_inputs =
+        {$n_inputs ->
+            [one] this lifetime flows
+            *[other] these lifetimes flow
+        } to the output
+    .label_mismatched_lifetime_syntaxes_outputs =
+        the {$n_outputs ->
+            [one] lifetime gets
+            *[other] lifetimes get
+        } resolved as `{$lifetime_name}`
+
+lint_mismatched_lifetime_syntaxes_suggestion_explicit =
+    one option is to consistently use `{$lifetime_name}`
+
+lint_mismatched_lifetime_syntaxes_suggestion_implicit =
+    one option is to consistently remove the lifetime
+
+lint_mismatched_lifetime_syntaxes_suggestion_mixed =
+    one option is to remove the lifetime for references and use the anonymous lifetime for paths
 
 lint_missing_unsafe_on_extern = extern blocks should be unsafe
     .suggestion = needs `unsafe` before the extern keyword

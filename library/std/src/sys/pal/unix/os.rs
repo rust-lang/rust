@@ -282,7 +282,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         return getcwd().map(|cwd| cwd.join(path))?.canonicalize();
     }
     // Search PATH to infer current_exe.
-    if let Some(p) = getenv(OsStr::from_bytes("PATH".as_bytes())) {
+    if let Some(p) = env::var_os(OsStr::from_bytes("PATH".as_bytes())) {
         for search_path in split_paths(&p) {
             let pb = search_path.join(&path);
             if pb.is_file()

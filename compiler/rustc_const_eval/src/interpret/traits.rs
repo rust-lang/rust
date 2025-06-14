@@ -1,4 +1,4 @@
-use rustc_abi::{Align, Size};
+use rustc_abi::{Align, FieldIdx, Size};
 use rustc_middle::mir::interpret::{InterpResult, Pointer};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, ExistentialPredicateStableCmpExt, Ty, TyCtxt, VtblEntry};
@@ -137,8 +137,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             matches!(val.layout().ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
             "`unpack_dyn_star` only makes sense on `dyn*` types"
         );
-        let data = self.project_field(val, 0)?;
-        let vtable = self.project_field(val, 1)?;
+        let data = self.project_field(val, FieldIdx::ZERO)?;
+        let vtable = self.project_field(val, FieldIdx::ONE)?;
         let vtable = self.read_pointer(&vtable.to_op(self)?)?;
         let ty = self.get_ptr_vtable_ty(vtable, Some(expected_trait))?;
         // `data` is already the right thing but has the wrong type. So we transmute it.

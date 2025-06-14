@@ -18,7 +18,7 @@ cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core", public = true }
-compiler_builtins = { version = "=0.1.160" }
+compiler_builtins = { path = "../compiler-builtins/compiler-builtins" }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.15", default-features = false, features = [
     'rustc-dep-of-std',
@@ -32,7 +32,7 @@ rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))'.dependencies]
 miniz_oxide = { version = "0.8.0", optional = true, default-features = false }
-addr2line = { version = "0.24.0", optional = true, default-features = false }
+addr2line = { version = "0.25.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
 libc = { version = "0.2.172", default-features = false, features = [
@@ -40,7 +40,7 @@ libc = { version = "0.2.172", default-features = false, features = [
 ], public = true }
 
 [target.'cfg(all(not(target_os = "aix"), not(all(windows, target_env = "msvc", not(target_vendor = "uwp")))))'.dependencies]
-object = { version = "0.36.0", default-features = false, optional = true, features = [
+object = { version = "0.37.1", default-features = false, optional = true, features = [
     'read_core',
     'elf',
     'macho',
@@ -50,7 +50,7 @@ object = { version = "0.36.0", default-features = false, optional = true, featur
 ] }
 
 [target.'cfg(target_os = "aix")'.dependencies]
-object = { version = "0.36.0", default-features = false, optional = true, features = [
+object = { version = "0.37.1", default-features = false, optional = true, features = [
     'read_core',
     'xcoff',
     'unaligned',
@@ -157,6 +157,8 @@ test = true
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = [
+    # #[cfg(bootstrap)] loongarch32
+    'cfg(target_arch, values("loongarch32"))',
     # std use #[path] imports to portable-simd `std_float` crate
     # and to the `backtrace` crate which messes-up with Cargo list
     # of declared features, we therefor expect any feature cfg

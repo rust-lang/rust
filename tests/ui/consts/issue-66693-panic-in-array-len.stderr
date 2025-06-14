@@ -8,7 +8,7 @@ error[E0080]: evaluation panicked: explicit panic
   --> $DIR/issue-66693-panic-in-array-len.rs:10:21
    |
 LL |     let _ = [false; panic!()];
-   |                     ^^^^^^^^ evaluation of constant value failed here
+   |                     ^^^^^^^^ evaluation of `main::{constant#1}` failed here
 
 error: aborting due to 2 previous errors
 

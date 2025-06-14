@@ -47,13 +47,13 @@ error[E0080]: constructing invalid value: encountered a value of uninhabited typ
   --> $DIR/uninhabited-static.rs:12:31
    |
 LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `VOID2` failed here
 
 error[E0080]: constructing invalid value: encountered a value of uninhabited type `Void`
   --> $DIR/uninhabited-static.rs:15:32
    |
 LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NEVER2` failed here
 
 error: aborting due to 6 previous errors
 

@@ -128,8 +128,8 @@ impl OverloadedDeref {
     /// for this overloaded deref's mutability.
     pub fn method_call<'tcx>(&self, tcx: TyCtxt<'tcx>) -> DefId {
         let trait_def_id = match self.mutbl {
-            hir::Mutability::Not => tcx.require_lang_item(LangItem::Deref, None),
-            hir::Mutability::Mut => tcx.require_lang_item(LangItem::DerefMut, None),
+            hir::Mutability::Not => tcx.require_lang_item(LangItem::Deref, self.span),
+            hir::Mutability::Mut => tcx.require_lang_item(LangItem::DerefMut, self.span),
         };
         tcx.associated_items(trait_def_id)
             .in_definition_order()

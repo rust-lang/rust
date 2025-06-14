@@ -40,7 +40,6 @@ declare_lint_pass! {
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
-        ELIDED_NAMED_LIFETIMES,
         EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
         EXPORTED_PRIVATE_DEPENDENCIES,
         FFI_UNWIND_CALLS,
@@ -66,7 +65,6 @@ declare_lint_pass! {
         MACRO_USE_EXTERN_CRATE,
         META_VARIABLE_MISUSE,
         MISSING_ABI,
-        MISSING_FRAGMENT_SPECIFIER,
         MISSING_UNSAFE_ON_EXTERN,
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
@@ -1419,51 +1417,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `missing_fragment_specifier` lint is issued when an unused pattern in a
-    /// `macro_rules!` macro definition has a meta-variable (e.g. `$e`) that is not
-    /// followed by a fragment specifier (e.g. `:expr`).
-    ///
-    /// This warning can always be fixed by removing the unused pattern in the
-    /// `macro_rules!` macro definition.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail,edition2021
-    /// macro_rules! foo {
-    ///    () => {};
-    ///    ($name) => { };
-    /// }
-    ///
-    /// fn main() {
-    ///    foo!();
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// To fix this, remove the unused pattern from the `macro_rules!` macro definition:
-    ///
-    /// ```rust
-    /// macro_rules! foo {
-    ///     () => {};
-    /// }
-    /// fn main() {
-    ///     foo!();
-    /// }
-    /// ```
-    pub MISSING_FRAGMENT_SPECIFIER,
-    Deny,
-    "detects missing fragment specifiers in unused `macro_rules!` patterns",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseError,
-        reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
-        report_in_deps: true,
-    };
-}
-
-declare_lint! {
     /// The `late_bound_lifetime_arguments` lint detects generic lifetime
     /// arguments in path segments with late bound lifetime parameters.
     ///
@@ -1830,38 +1783,6 @@ declare_lint! {
     pub ELIDED_LIFETIMES_IN_PATHS,
     Allow,
     "hidden lifetime parameters in types are deprecated"
-}
-
-declare_lint! {
-    /// The `elided_named_lifetimes` lint detects when an elided
-    /// lifetime ends up being a named lifetime, such as `'static`
-    /// or some lifetime parameter `'a`.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(elided_named_lifetimes)]
-    /// struct Foo;
-    /// impl Foo {
-    ///     pub fn get_mut(&'static self, x: &mut u8) -> &mut u8 {
-    ///         unsafe { &mut *(x as *mut _) }
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Lifetime elision is quite useful, because it frees you from having
-    /// to give each lifetime its own name, but sometimes it can produce
-    /// somewhat surprising resolutions. In safe code, it is mostly okay,
-    /// because the borrow checker prevents any unsoundness, so the worst
-    /// case scenario is you get a confusing error message in some other place.
-    /// But with `unsafe` code, such unexpected resolutions may lead to unsound code.
-    pub ELIDED_NAMED_LIFETIMES,
-    Warn,
-    "detects when an elided lifetime gets resolved to be `'static` or some named parameter"
 }
 
 declare_lint! {
@@ -3652,6 +3573,54 @@ declare_lint! {
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/reserving-syntax.html>",
     };
     crate_level_only
+}
+
+declare_lint! {
+    /// The `unsupported_calling_conventions` lint is output whenever there is a use of the
+    /// `stdcall`, `fastcall`, and `cdecl` calling conventions (or their unwind
+    /// variants) on targets that cannot meaningfully be supported for the requested target.
+    ///
+    /// For example `stdcall` does not make much sense for a x86_64 or, more apparently, powerpc
+    /// code, because this calling convention was never specified for those targets.
+    ///
+    /// Historically MSVC toolchains have fallen back to the regular C calling convention for
+    /// targets other than x86, but Rust doesn't really see a similar need to introduce a similar
+    /// hack across many more targets.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs specific targets)
+    /// extern "stdcall" fn stdcall() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: use of calling convention not supported on this target
+    ///   --> $DIR/unsupported.rs:39:1
+    ///    |
+    /// LL | extern "stdcall" fn stdcall() {}
+    ///    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///    |
+    ///    = note: `#[warn(unsupported_calling_conventions)]` on by default
+    ///    = warning: this was previously accepted by the compiler but is being phased out;
+    ///               it will become a hard error in a future release!
+    ///    = note: for more information, see issue ...
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// On most of the targets the behaviour of `stdcall` and similar calling conventions is not
+    /// defined at all, but was previously accepted due to a bug in the implementation of the
+    /// compiler.
+    pub UNSUPPORTED_CALLING_CONVENTIONS,
+    Warn,
+    "use of unsupported calling convention",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseError,
+        report_in_deps: false,
+        reference: "issue #137018 <https://github.com/rust-lang/rust/issues/137018>",
+    };
 }
 
 declare_lint! {

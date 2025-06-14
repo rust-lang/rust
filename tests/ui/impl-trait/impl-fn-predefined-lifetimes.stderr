@@ -1,20 +1,11 @@
-warning: elided lifetime has a name
-  --> $DIR/impl-fn-predefined-lifetimes.rs:4:48
-   |
-LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
-   |      -- lifetime `'a` declared here            ^^ this elided lifetime gets resolved as `'a`
-   |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
-
 error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/impl-fn-predefined-lifetimes.rs:6:9
+  --> $DIR/impl-fn-predefined-lifetimes.rs:5:9
    |
 LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
    |                                                -- this generic parameter must be used with a generic lifetime parameter
-LL |
 LL |     |x| x
    |         ^
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0792`.

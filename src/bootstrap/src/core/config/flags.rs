@@ -12,7 +12,8 @@ use tracing::instrument;
 use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
-use crate::core::config::{Config, TargetSelectionList, target_selection_list};
+use crate::core::config::Config;
+use crate::core::config::target_selection::{TargetSelectionList, target_selection_list};
 use crate::{Build, DocTests};
 
 #[derive(Copy, Clone, Default, Debug, ValueEnum)]
@@ -58,7 +59,7 @@ pub struct Flags {
     pub build_dir: Option<PathBuf>,
 
     #[arg(global = true, long, value_hint = clap::ValueHint::Other, value_name = "BUILD")]
-    /// build target of the stage0 compiler
+    /// host target of the stage0 compiler
     pub build: Option<String>,
 
     #[arg(global = true, long, value_hint = clap::ValueHint::Other, value_name = "HOST", value_parser = target_selection_list)]
@@ -182,6 +183,11 @@ pub struct Flags {
     /// Make bootstrap to behave as it's running on the CI environment or not.
     #[arg(global = true, long, value_name = "bool")]
     pub ci: Option<bool>,
+    /// Skip checking the standard library if `rust.download-rustc` isn't available.
+    /// This is mostly for RA as building the stage1 compiler to check the library tree
+    /// on each code change might be too much for some computers.
+    #[arg(global = true, long)]
+    pub skip_std_check_if_no_download_rustc: bool,
 }
 
 impl Flags {
@@ -203,7 +209,8 @@ impl Flags {
             HelpVerboseOnly::try_parse_from(normalize_args(args))
         {
             println!("NOTE: updating submodules before printing available paths");
-            let config = Config::parse(Self::parse(&[String::from("build")]));
+            let flags = Self::parse(&[String::from("build")]);
+            let config = Config::parse(flags);
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);
             if let Some(s) = paths {

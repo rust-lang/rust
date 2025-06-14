@@ -2,25 +2,25 @@ error[E0080]: evaluation panicked: cheese
   --> $DIR/const_panic.rs:6:15
    |
 LL | const Z: () = std::panic!("cheese");
-   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation of `Z` failed here
 
 error[E0080]: evaluation panicked: explicit panic
   --> $DIR/const_panic.rs:9:16
    |
 LL | const Z2: () = std::panic!();
-   |                ^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                ^^^^^^^^^^^^^ evaluation of `Z2` failed here
 
 error[E0080]: evaluation panicked: internal error: entered unreachable code
   --> $DIR/const_panic.rs:12:15
    |
 LL | const Y: () = std::unreachable!();
-   |               ^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |               ^^^^^^^^^^^^^^^^^^^ evaluation of `Y` failed here
 
 error[E0080]: evaluation panicked: not implemented
   --> $DIR/const_panic.rs:15:15
    |
 LL | const X: () = std::unimplemented!();
-   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation of `X` failed here
    |
    = note: this error originates in the macro `std::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -28,37 +28,37 @@ error[E0080]: evaluation panicked: hello
   --> $DIR/const_panic.rs:18:15
    |
 LL | const W: () = std::panic!(MSG);
-   |               ^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |               ^^^^^^^^^^^^^^^^ evaluation of `W` failed here
 
 error[E0080]: evaluation panicked: hello
   --> $DIR/const_panic.rs:21:16
    |
 LL | const W2: () = std::panic!("{}", MSG);
-   |                ^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `W2` failed here
 
 error[E0080]: evaluation panicked: cheese
   --> $DIR/const_panic.rs:24:20
    |
 LL | const Z_CORE: () = core::panic!("cheese");
-   |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `Z_CORE` failed here
 
 error[E0080]: evaluation panicked: explicit panic
   --> $DIR/const_panic.rs:27:21
    |
 LL | const Z2_CORE: () = core::panic!();
-   |                     ^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                     ^^^^^^^^^^^^^^ evaluation of `Z2_CORE` failed here
 
 error[E0080]: evaluation panicked: internal error: entered unreachable code
   --> $DIR/const_panic.rs:30:20
    |
 LL | const Y_CORE: () = core::unreachable!();
-   |                    ^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                    ^^^^^^^^^^^^^^^^^^^^ evaluation of `Y_CORE` failed here
 
 error[E0080]: evaluation panicked: not implemented
   --> $DIR/const_panic.rs:33:20
    |
 LL | const X_CORE: () = core::unimplemented!();
-   |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `X_CORE` failed here
    |
    = note: this error originates in the macro `core::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -66,13 +66,13 @@ error[E0080]: evaluation panicked: hello
   --> $DIR/const_panic.rs:36:20
    |
 LL | const W_CORE: () = core::panic!(MSG);
-   |                    ^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                    ^^^^^^^^^^^^^^^^^ evaluation of `W_CORE` failed here
 
 error[E0080]: evaluation panicked: hello
   --> $DIR/const_panic.rs:39:21
    |
 LL | const W2_CORE: () = core::panic!("{}", MSG);
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `W2_CORE` failed here
 
 error: aborting due to 12 previous errors
 

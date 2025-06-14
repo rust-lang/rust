@@ -5,7 +5,7 @@ const fn bool_cast(ptr: *const bool) { unsafe {
 
 const _: () = {
     let v = 3_u8;
-    bool_cast(&v as *const u8 as *const bool); //~ NOTE: evaluation of constant value failed
+    bool_cast(&v as *const u8 as *const bool); //~ NOTE: failed inside this call
     //~^ ERROR interpreting an invalid 8-bit value as a bool
 };
 

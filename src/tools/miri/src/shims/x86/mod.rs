@@ -1,4 +1,4 @@
-use rustc_abi::{CanonAbi, Size};
+use rustc_abi::{CanonAbi, FieldIdx, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::Single;
 use rustc_middle::ty::Ty;
@@ -54,8 +54,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 let (sum, cb_out) = carrying_add(this, cb_in, a, b, op)?;
-                this.write_scalar(cb_out, &this.project_field(dest, 0)?)?;
-                this.write_immediate(*sum, &this.project_field(dest, 1)?)?;
+                this.write_scalar(cb_out, &this.project_field(dest, FieldIdx::ZERO)?)?;
+                this.write_immediate(*sum, &this.project_field(dest, FieldIdx::ONE)?)?;
             }
 
             // Used to implement the `_addcarryx_u{32, 64}` functions. They are semantically identical with the `_addcarry_u{32, 64}` functions,

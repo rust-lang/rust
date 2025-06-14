@@ -25,19 +25,6 @@ LL |     type BadTraitRef = dyn Fn(Ty<'_>) -> &str;
    = note: lifetimes appearing in an associated or opaque type are not considered constrained
    = note: consider introducing a named lifetime parameter
 
-error: item does not constrain `lifetime_params::Ty::{opaque#0}`
-  --> $DIR/constrain_inputs.rs:8:8
-   |
-LL |     fn execute(ty: Ty<'_>) -> &str { todo!() }
-   |        ^^^^^^^
-   |
-   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
-note: this opaque type is supposed to be constrained
-  --> $DIR/constrain_inputs.rs:4:19
-   |
-LL |     type Ty<'a> = impl Sized;
-   |                   ^^^^^^^^^^
-
 error[E0581]: return type references an anonymous lifetime, which is not constrained by the fn input types
   --> $DIR/constrain_inputs.rs:23:31
    |
@@ -46,19 +33,6 @@ LL |     fn execute(ty: Ty<'_>) -> &str { ty() }
    |
    = note: lifetimes appearing in an associated or opaque type are not considered constrained
    = note: consider introducing a named lifetime parameter
-
-error: item does not constrain `lifetime_params_2::Ty::{opaque#0}`
-  --> $DIR/constrain_inputs.rs:23:8
-   |
-LL |     fn execute(ty: Ty<'_>) -> &str { ty() }
-   |        ^^^^^^^
-   |
-   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
-note: this opaque type is supposed to be constrained
-  --> $DIR/constrain_inputs.rs:19:19
-   |
-LL |     type Ty<'a> = impl FnOnce() -> &'a str;
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0581]: return type references an anonymous lifetime, which is not constrained by the fn input types
   --> $DIR/constrain_inputs.rs:34:37
@@ -77,6 +51,32 @@ LL |     type BadTraitRef = dyn Fn(Ty<&str>) -> &str;
    |
    = note: lifetimes appearing in an associated or opaque type are not considered constrained
    = note: consider introducing a named lifetime parameter
+
+error: item does not constrain `lifetime_params::Ty::{opaque#0}`
+  --> $DIR/constrain_inputs.rs:8:8
+   |
+LL |     fn execute(ty: Ty<'_>) -> &str { todo!() }
+   |        ^^^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/constrain_inputs.rs:4:19
+   |
+LL |     type Ty<'a> = impl Sized;
+   |                   ^^^^^^^^^^
+
+error: item does not constrain `lifetime_params_2::Ty::{opaque#0}`
+  --> $DIR/constrain_inputs.rs:23:8
+   |
+LL |     fn execute(ty: Ty<'_>) -> &str { ty() }
+   |        ^^^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/constrain_inputs.rs:19:19
+   |
+LL |     type Ty<'a> = impl FnOnce() -> &'a str;
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors
 

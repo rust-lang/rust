@@ -110,7 +110,7 @@ mod temp_stable_hash_impls {
 
 pub(crate) fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &Bx,
-    span: Option<Span>,
+    span: Span,
     li: LangItem,
 ) -> (Bx::FnAbiOfResult, Bx::Value, Instance<'tcx>) {
     let tcx = bx.tcx();

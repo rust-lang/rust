@@ -33,39 +33,29 @@ note: `PartialEq` can't be used with `~const` because it isn't annotated with `#
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:17:11
-   |
-LL | ) -> impl ~const PartialEq + ~const Destruct {
-   |           ^^^^^^ can't be applied to `PartialEq`
-   |
-note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:17:11
-   |
-LL | ) -> impl ~const PartialEq + ~const Destruct {
-   |           ^^^^^^ can't be applied to `PartialEq`
-   |
-note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:17:11
-   |
-LL | ) -> impl ~const PartialEq + ~const Destruct {
-   |           ^^^^^^ can't be applied to `PartialEq`
-   |
-note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-impl-trait.rs:16:13
    |
 LL |     x: impl ~const PartialEq + ~const Destruct,
    |             ^^^^^^ can't be applied to `PartialEq`
+   |
+note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:17:11
+   |
+LL | ) -> impl ~const PartialEq + ~const Destruct {
+   |           ^^^^^^ can't be applied to `PartialEq`
+   |
+note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:17:11
+   |
+LL | ) -> impl ~const PartialEq + ~const Destruct {
+   |           ^^^^^^ can't be applied to `PartialEq`
    |
 note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
@@ -88,6 +78,16 @@ LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
    |
 note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:17:11
+   |
+LL | ) -> impl ~const PartialEq + ~const Destruct {
+   |           ^^^^^^ can't be applied to `PartialEq`
+   |
+note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-impl-trait.rs:27:22

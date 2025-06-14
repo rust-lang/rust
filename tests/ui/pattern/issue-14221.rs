@@ -8,7 +8,7 @@ pub enum E {
 }
 
 pub mod b {
-    pub fn key(e: ::E) -> &'static str {
+    pub fn key(e: crate::E) -> &'static str {
         match e {
             A => "A",
 //~^ ERROR pattern binding `A` is named the same as one of the variants of the type `E`

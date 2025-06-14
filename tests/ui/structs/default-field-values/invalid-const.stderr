@@ -2,7 +2,7 @@ error[E0080]: evaluation panicked: asdf
   --> $DIR/invalid-const.rs:5:19
    |
 LL |     pub bax: u8 = panic!("asdf"),
-   |                   ^^^^^^^^^^^^^^ evaluation of constant value failed here
+   |                   ^^^^^^^^^^^^^^ evaluation of `Bat::bax::{constant#0}` failed here
 
 error[E0080]: attempt to compute `130_u8 + 130_u8`, which would overflow
   --> $DIR/invalid-const.rs:11:19

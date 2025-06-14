@@ -30,6 +30,7 @@
 #![feature(duration_constructors)]
 #![feature(duration_constructors_lite)]
 #![feature(error_generic_member_access)]
+#![feature(exact_div)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(extern_types)]
@@ -93,6 +94,7 @@
 #![feature(try_blocks)]
 #![feature(try_find)]
 #![feature(try_trait_v2)]
+#![feature(uint_bit_width)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end

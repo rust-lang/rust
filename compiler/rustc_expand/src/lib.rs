@@ -6,7 +6,6 @@
 #![feature(associated_type_defaults)]
 #![feature(if_let_guard)]
 #![feature(macro_metavar_expr)]
-#![feature(map_try_insert)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(rustdoc_internals)]
@@ -21,6 +20,7 @@ mod errors;
 mod mbe;
 mod placeholders;
 mod proc_macro_server;
+mod stats;
 
 pub use mbe::macro_rules::compile_declarative_macro;
 pub mod base;

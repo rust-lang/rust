@@ -142,13 +142,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         Ty::new_adt(
                             tcx,
-                            tcx.adt_def(
-                                tcx.require_lang_item(hir::LangItem::Poll, Some(expr_span)),
-                            ),
+                            tcx.adt_def(tcx.require_lang_item(hir::LangItem::Poll, expr_span)),
                             tcx.mk_args(&[Ty::new_adt(
                                 tcx,
                                 tcx.adt_def(
-                                    tcx.require_lang_item(hir::LangItem::Option, Some(expr_span)),
+                                    tcx.require_lang_item(hir::LangItem::Option, expr_span),
                                 ),
                                 tcx.mk_args(&[yield_ty.into()]),
                             )

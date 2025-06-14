@@ -46,7 +46,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 "| {r:rw$?} | {ui:4?} | {v}",
                 r = region,
                 rw = REGION_WIDTH,
-                ui = self.region_universe(region),
+                ui = self.max_nameable_universe(self.constraint_sccs.scc(region)),
                 v = self.region_value_str(region),
             )?;
         }

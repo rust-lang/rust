@@ -14,13 +14,13 @@ error[E0080]: evaluation panicked: explicit panic
   --> $DIR/issue-66693.rs:16:15
    |
 LL | const _: () = panic!();
-   |               ^^^^^^^^ evaluation of constant value failed here
+   |               ^^^^^^^^ evaluation of `_` failed here
 
 error[E0080]: evaluation panicked: panic in static
   --> $DIR/issue-66693.rs:18:19
    |
 LL | static _BAR: () = panic!("panic in static");
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of static initializer failed here
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_BAR` failed here
 
 error: argument to `panic!()` in a const context must have type `&str`
   --> $DIR/issue-66693.rs:11:5

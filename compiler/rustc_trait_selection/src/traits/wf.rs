@@ -541,7 +541,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             let cause = self.cause(cause);
             let trait_ref = ty::TraitRef::new(
                 self.tcx(),
-                self.tcx().require_lang_item(LangItem::Sized, Some(cause.span)),
+                self.tcx().require_lang_item(LangItem::Sized, cause.span),
                 [subty],
             );
             self.out.push(traits::Obligation::with_depth(
@@ -895,7 +895,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                                 self.tcx(),
                                 self.tcx().require_lang_item(
                                     LangItem::BikeshedGuaranteedNoDrop,
-                                    Some(self.span),
+                                    self.span,
                                 ),
                                 [ty],
                             )

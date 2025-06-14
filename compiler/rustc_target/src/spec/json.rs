@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{Align, AlignFromBytesError, ExternAbi};
 use serde_json::Value;
 
 use super::{Target, TargetKind, TargetOptions, TargetWarnings};
@@ -57,6 +57,14 @@ impl Target {
             base.metadata.std = metadata.remove("std").and_then(|host| host.as_bool());
         }
 
+        let alignment_error = |field_name: &str, error: AlignFromBytesError| -> String {
+            let msg = match error {
+                AlignFromBytesError::NotPowerOfTwo(_) => "not a power of 2 number of bytes",
+                AlignFromBytesError::TooLarge(_) => "too large",
+            };
+            format!("`{}` bits is not a valid value for {field_name}: {msg}", error.align() * 8)
+        };
+
         let mut incorrect_type = vec![];
 
         macro_rules! key {
@@ -70,6 +78,12 @@ impl Target {
                 let name = $json_name;
                 if let Some(s) = obj.remove(name).and_then(|s| s.as_str().map(str::to_string).map(Cow::from)) {
                     base.$key_name = s;
+                }
+            } );
+            ($key_name:ident = $json_name:expr, u64 as $int_ty:ty) => ( {
+                let name = $json_name;
+                if let Some(s) = obj.remove(name).and_then(|b| b.as_u64()) {
+                    base.$key_name = s as $int_ty;
                 }
             } );
             ($key_name:ident, bool) => ( {
@@ -109,6 +123,15 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.remove(&name).and_then(|b| Some(b.as_str()?.to_string())) {
                     base.$key_name = Some(s.into());
+                }
+            } );
+            ($key_name:ident, Option<Align>) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(b) = obj.remove(&name).and_then(|b| b.as_u64()) {
+                    match Align::from_bits(b) {
+                        Ok(align) => base.$key_name = Some(align),
+                        Err(e) => return Err(alignment_error(&name, e)),
+                    }
                 }
             } );
             ($key_name:ident, BinaryFormat) => ( {
@@ -537,7 +560,7 @@ impl Target {
             }
         }
 
-        key!(c_int_width = "target-c-int-width");
+        key!(c_int_width = "target-c-int-width", u64 as u16);
         key!(c_enum_min_bits, Option<u64>); // if None, matches c_int_width
         key!(os);
         key!(env);
@@ -617,7 +640,7 @@ impl Target {
         key!(crt_static_default, bool);
         key!(crt_static_respected, bool);
         key!(stack_probes, StackProbeType)?;
-        key!(min_global_align, Option<u64>);
+        key!(min_global_align, Option<Align>);
         key!(default_codegen_units, Option<u64>);
         key!(default_codegen_backend, Option<StaticCow<str>>);
         key!(trap_unreachable, bool);

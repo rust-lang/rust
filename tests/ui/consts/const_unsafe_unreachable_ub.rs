@@ -8,7 +8,7 @@ const unsafe fn foo(x: bool) -> bool {
 }
 
 const BAR: bool = unsafe { foo(false) };
-//~^ NOTE evaluation of constant value failed
+//~^ NOTE failed inside this call
 //~| ERROR entering unreachable code
 
 fn main() {

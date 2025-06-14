@@ -1,4 +1,5 @@
 //@ run-pass
+//@ edition: 2015
 #![allow(deprecated)] // for deprecated `try!()` macro
 use std::num::{ParseFloatError, ParseIntError};
 

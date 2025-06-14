@@ -1,3 +1,4 @@
+//@ edition: 2015
 //@ run-rustfix
 #![deny(unused_qualifications)]
 #![deny(unused_imports)]

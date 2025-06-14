@@ -99,7 +99,7 @@ impl Qualif for HasMutInterior {
         // requires borrowck, which in turn will invoke mir_const_qualifs again, causing a cycle error.
         // Instead we invoke an obligation context manually, and provide the opaque type inference settings
         // that allow the trait solver to just error out instead of cycling.
-        let freeze_def_id = cx.tcx.require_lang_item(LangItem::Freeze, Some(cx.body.span));
+        let freeze_def_id = cx.tcx.require_lang_item(LangItem::Freeze, cx.body.span);
         // FIXME(#132279): Once we've got a typing mode which reveals opaque types using the HIR
         // typeck results without causing query cycles, we should use this here instead of defining
         // opaque types.
@@ -180,7 +180,7 @@ impl Qualif for NeedsNonConstDrop {
         // that the components of this type are also `~const Destruct`. This
         // amounts to verifying that there are no values in this ADT that may have
         // a non-const drop.
-        let destruct_def_id = cx.tcx.require_lang_item(LangItem::Destruct, Some(cx.body.span));
+        let destruct_def_id = cx.tcx.require_lang_item(LangItem::Destruct, cx.body.span);
         let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env);
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(Obligation::new(

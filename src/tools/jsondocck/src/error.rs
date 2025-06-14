@@ -1,7 +1,7 @@
-use crate::Command;
+use crate::Directive;
 
 #[derive(Debug)]
 pub struct CkError {
     pub message: String,
-    pub command: Command,
+    pub directive: Directive,
 }

@@ -149,14 +149,6 @@ LL -     fn g(mut x: impl Foo<()>) -> Option<&()> { x.next() }
 LL +     fn g(mut x: impl Foo<()>) -> Option<()> { x.next() }
    |
 
-warning: elided lifetime has a name
-  --> $DIR/impl-trait-missing-lifetime-gated.rs:75:57
-   |
-LL | fn resolved_anonymous<'a, T: 'a>(f: impl Fn(&'a str) -> &T) {
-   |                       -- lifetime `'a` declared here    ^ this elided lifetime gets resolved as `'a`
-   |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
-
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:6:35
    |
@@ -289,7 +281,7 @@ help: consider introducing a named lifetime parameter
 LL |     fn g<'a>(mut x: impl Foo<'a, ()>) -> Option<&()> { x.next() }
    |         ++++                 +++
 
-error: aborting due to 17 previous errors; 1 warning emitted
+error: aborting due to 17 previous errors
 
 Some errors have detailed explanations: E0106, E0658.
 For more information about an error, try `rustc --explain E0106`.

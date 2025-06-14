@@ -29,6 +29,7 @@ impl AbiMapping {
         }
     }
 
+    #[track_caller]
     pub fn unwrap(self) -> CanonAbi {
         self.into_option().unwrap()
     }
@@ -69,6 +70,8 @@ impl AbiMap {
 
             (ExternAbi::RustCold, _) if self.os == OsKind::Windows => CanonAbi::Rust,
             (ExternAbi::RustCold, _) => CanonAbi::RustCold,
+
+            (ExternAbi::Custom, _) => CanonAbi::Custom,
 
             (ExternAbi::System { .. }, Arch::X86) if os == OsKind::Windows && !has_c_varargs => {
                 CanonAbi::X86(X86Call::Stdcall)
@@ -114,9 +117,6 @@ impl AbiMap {
 
             (ExternAbi::Vectorcall { .. }, Arch::X86 | Arch::X86_64) => {
                 CanonAbi::X86(X86Call::Vectorcall)
-            }
-            (ExternAbi::Vectorcall { .. }, _) if os == OsKind::Windows => {
-                return AbiMapping::Deprecated(CanonAbi::C);
             }
             (ExternAbi::Vectorcall { .. }, _) => return AbiMapping::Invalid,
 

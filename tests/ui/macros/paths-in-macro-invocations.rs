@@ -11,26 +11,26 @@ mod foo { pub use two_macros::macro_one as bar; }
 
 trait T {
     foo::bar!();
-    ::foo::bar!();
+    crate::foo::bar!();
 }
 
 struct S {
     x: foo::bar!(i32),
-    y: ::foo::bar!(i32),
+    y: crate::foo::bar!(i32),
 }
 
 impl S {
     foo::bar!();
-    ::foo::bar!();
+    crate::foo::bar!();
 }
 
 fn main() {
     foo::bar!();
-    ::foo::bar!();
+    crate::foo::bar!();
 
     let _ = foo::bar!(0);
-    let _ = ::foo::bar!(0);
+    let _ = crate::foo::bar!(0);
 
     let foo::bar!(_) = 0;
-    let ::foo::bar!(_) = 0;
+    let crate::foo::bar!(_) = 0;
 }

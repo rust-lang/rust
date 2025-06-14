@@ -8,13 +8,11 @@
 #![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(box_patterns)]
 #![feature(map_try_insert)]
 #![feature(rustdoc_internals)]
-#![feature(try_blocks)]
 // tidy-alphabetical-end
 
-use rustc_middle::query::Providers;
+use rustc_middle::util::Providers;
 
 pub mod abi_test;
 mod check_attr;
@@ -31,8 +29,6 @@ mod lang_items;
 pub mod layout_test;
 mod lib_features;
 mod liveness;
-pub mod loops;
-mod naked_functions;
 mod reachable;
 pub mod stability;
 mod upvars;
@@ -48,8 +44,6 @@ pub fn provide(providers: &mut Providers) {
     entry::provide(providers);
     lang_items::provide(providers);
     lib_features::provide(providers);
-    loops::provide(providers);
-    naked_functions::provide(providers);
     liveness::provide(providers);
     reachable::provide(providers);
     stability::provide(providers);

@@ -17,7 +17,7 @@ _x.py() {
     _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -51,6 +51,7 @@ _x.py() {
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '::paths -- paths for the subcommand:_files' \
@@ -68,7 +69,7 @@ _x.py() {
 _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -102,6 +103,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -111,7 +113,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -146,6 +148,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -159,7 +162,7 @@ _arguments "${_arguments_options[@]}" : \
 '*-F+[clippy lints to forbid]:LINT:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -196,6 +199,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -205,7 +209,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -239,6 +243,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -248,7 +253,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -284,6 +289,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -293,7 +299,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -329,6 +335,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -344,7 +351,7 @@ _arguments "${_arguments_options[@]}" : \
 '--run=[whether to execute run-* tests]:auto | always | never:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -386,6 +393,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -396,7 +404,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--test-args=[extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)]:ARGS:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -433,6 +441,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -443,7 +452,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--test-args=[]:TEST_ARGS:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -477,6 +486,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -487,7 +497,7 @@ _arguments "${_arguments_options[@]}" : \
 '--stage=[Clean a specific stage without touching other artifacts. By default, every stage is cleaned if this option is not used]:N:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -521,6 +531,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -530,7 +541,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -564,6 +575,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -573,7 +585,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -607,6 +619,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -617,7 +630,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--args=[arguments for the tool]:ARGS:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -651,6 +664,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -660,7 +674,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -694,6 +708,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '::profile -- Either the profile for `bootstrap.toml` or another setup action. May be omitted to set up interactively:_files' \
@@ -704,7 +719,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -739,6 +754,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -749,7 +765,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--sync=[Additional \`Cargo.toml\` to sync and vendor]:SYNC:_files' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -784,6 +800,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -793,7 +810,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -827,6 +844,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '::paths -- paths for the subcommand:_files' \
@@ -849,7 +867,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc Opt Clippy)' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--skip=[build paths to skip]:PATH:_files' \
@@ -882,6 +900,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -895,7 +914,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc Opt Clippy)' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--skip=[build paths to skip]:PATH:_files' \
@@ -928,6 +947,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -941,7 +961,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc Opt Clippy)' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--skip=[build paths to skip]:PATH:_files' \
@@ -974,6 +994,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -987,7 +1008,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--profiles=[Select the profiles that should be benchmarked]:PROFILES:(Check Debug Doc Opt Clippy)' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--skip=[build paths to skip]:PATH:_files' \
@@ -1020,6 +1041,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 ':benchmark-id -- Identifier to associate benchmark results with:_default' \
@@ -1030,7 +1052,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
-'--build=[build target of the stage0 compiler]:BUILD:' \
+'--build=[host target of the stage0 compiler]:BUILD:' \
 '--host=[host targets to build]:HOST:' \
 '--target=[target targets to build]:TARGET:' \
 '*--exclude=[build paths to exclude]:PATH:_files' \
@@ -1064,6 +1086,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
 '--skip-stage0-validation[Skip stage0 compiler validation]' \
+'--skip-std-check-if-no-download-rustc[Skip checking the standard library if \`rust.download-rustc\` isn'\''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 ':base -- The name of the base artifact to be compared:_default' \

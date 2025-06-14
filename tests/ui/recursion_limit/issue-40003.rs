@@ -17,7 +17,7 @@ use future::{Future, IntoFuture};
 mod future {
     use std::result;
 
-    use {stream, Stream};
+    use crate::{stream, Stream};
 
     pub trait Future {
         type Item;
@@ -100,7 +100,7 @@ mod future {
 }
 
 mod stream {
-    use IntoFuture;
+    use crate::IntoFuture;
 
     pub trait Stream {
         type Item;

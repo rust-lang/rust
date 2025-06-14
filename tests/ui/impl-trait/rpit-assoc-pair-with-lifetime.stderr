@@ -1,10 +1,14 @@
-warning: elided lifetime has a name
-  --> $DIR/rpit-assoc-pair-with-lifetime.rs:3:82
+warning: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/rpit-assoc-pair-with-lifetime.rs:3:31
    |
 LL | pub fn iter<'a>(v: Vec<(u32, &'a u32)>) -> impl DoubleEndedIterator<Item = (u32, &u32)> {
-   |             -- lifetime `'a` declared here                                       ^ this elided lifetime gets resolved as `'a`
+   |                               ^^ this lifetime flows to the output               ---- the lifetime gets resolved as `'a`
    |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
+   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: one option is to consistently use `'a`
+   |
+LL | pub fn iter<'a>(v: Vec<(u32, &'a u32)>) -> impl DoubleEndedIterator<Item = (u32, &'a u32)> {
+   |                                                                                   ++
 
 warning: 1 warning emitted
 

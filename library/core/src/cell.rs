@@ -1914,6 +1914,8 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// [`.get()`]: `UnsafeCell::get`
 /// [concurrent memory model]: ../sync/atomic/index.html#memory-model-for-atomic-accesses
 ///
+/// # Aliasing rules
+///
 /// The precise Rust aliasing rules are somewhat in flux, but the main points are not contentious:
 ///
 /// - If you create a safe reference with lifetime `'a` (either a `&T` or `&mut T` reference), then
@@ -2167,10 +2169,9 @@ impl<T: ?Sized> UnsafeCell<T> {
 
     /// Gets a mutable pointer to the wrapped value.
     ///
-    /// This can be cast to a pointer of any kind.
-    /// Ensure that the access is unique (no active references, mutable or not)
-    /// when casting to `&mut T`, and ensure that there are no mutations
-    /// or mutable aliases going on when casting to `&T`
+    /// This can be cast to a pointer of any kind. When creating references, you must uphold the
+    /// aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for more discussion and
+    /// caveats.
     ///
     /// # Examples
     ///
@@ -2219,10 +2220,9 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// The difference from [`get`] is that this function accepts a raw pointer,
     /// which is useful to avoid the creation of temporary references.
     ///
-    /// The result can be cast to a pointer of any kind.
-    /// Ensure that the access is unique (no active references, mutable or not)
-    /// when casting to `&mut T`, and ensure that there are no mutations
-    /// or mutable aliases going on when casting to `&T`.
+    /// This can be cast to a pointer of any kind. When creating references, you must uphold the
+    /// aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for more discussion and
+    /// caveats.
     ///
     /// [`get`]: UnsafeCell::get()
     ///

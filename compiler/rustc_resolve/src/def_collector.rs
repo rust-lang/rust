@@ -128,7 +128,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 // FIXME(jdonszelmann) make one of these in the resolver?
                 // FIXME(jdonszelmann) don't care about tools here maybe? Just parse what we can.
                 // Does that prevents errors from happening? maybe
-                let parser = AttributeParser::new(
+                let mut parser = AttributeParser::new_early(
                     &self.resolver.tcx.sess,
                     self.resolver.tcx.features(),
                     Vec::new(),
@@ -136,8 +136,14 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 let attrs = parser.parse_attribute_list(
                     &i.attrs,
                     i.span,
+                    i.id,
                     OmitDoc::Skip,
                     std::convert::identity,
+                    |_l| {
+                        // FIXME(jdonszelmann): emit lints here properly
+                        // NOTE that before new attribute parsing, they didn't happen either
+                        // but it would be nice if we could change that.
+                    },
                 );
 
                 let macro_data =
@@ -147,7 +153,10 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 DefKind::Macro(macro_kind)
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
-            ItemKind::Use(..) => return visit::walk_item(self, i),
+            ItemKind::Use(use_tree) => {
+                self.create_def(i.id, None, DefKind::Use, use_tree.span);
+                return visit::walk_item(self, i);
+            }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
                 return self.visit_macro_invoc(i.id);
             }
@@ -232,9 +241,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
-    fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
+    fn visit_nested_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId) {
         self.create_def(id, None, DefKind::Use, use_tree.span);
-        visit::walk_use_tree(self, use_tree, id);
+        visit::walk_use_tree(self, use_tree);
     }
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {

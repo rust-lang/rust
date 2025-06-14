@@ -52,7 +52,7 @@ impl [u8] {
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporaries.
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_unstable(feature = "const_eq_ignore_ascii_case", issue = "131719")]
+    #[rustc_const_stable(feature = "const_eq_ignore_ascii_case", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
@@ -128,7 +128,6 @@ impl [u8] {
     /// # Examples
     ///
     /// ```
-    ///
     /// let s = b"0\t\r\n'\"\\\x9d";
     /// let escaped = s.escape_ascii().to_string();
     /// assert_eq!(escaped, "0\\t\\r\\n\\'\\\"\\\\\\x9d");

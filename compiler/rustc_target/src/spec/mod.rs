@@ -62,7 +62,7 @@ mod abi_map;
 mod base;
 mod json;
 
-pub use abi_map::AbiMap;
+pub use abi_map::{AbiMap, AbiMapping};
 pub use base::apple;
 pub use base::avr::ef_avr_arch;
 
@@ -1697,6 +1697,12 @@ impl ToJson for BinaryFormat {
     }
 }
 
+impl ToJson for Align {
+    fn to_json(&self) -> Json {
+        self.bits().to_json()
+    }
+}
+
 macro_rules! supported_targets {
     ( $(($tuple:literal, $module:ident),)+ ) => {
         mod targets {
@@ -1981,6 +1987,8 @@ supported_targets! {
 
     ("sparc-unknown-none-elf", sparc_unknown_none_elf),
 
+    ("loongarch32-unknown-none", loongarch32_unknown_none),
+    ("loongarch32-unknown-none-softfloat", loongarch32_unknown_none_softfloat),
     ("loongarch64-unknown-none", loongarch64_unknown_none),
     ("loongarch64-unknown-none-softfloat", loongarch64_unknown_none_softfloat),
 
@@ -2205,18 +2213,10 @@ impl Target {
             });
         }
 
-        dl.c_enum_min_size = self
-            .c_enum_min_bits
-            .map_or_else(
-                || {
-                    self.c_int_width
-                        .parse()
-                        .map_err(|_| String::from("failed to parse c_int_width"))
-                },
-                Ok,
-            )
-            .and_then(|i| Integer::from_size(Size::from_bits(i)))
-            .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?;
+        dl.c_enum_min_size = Integer::from_size(Size::from_bits(
+            self.c_enum_min_bits.unwrap_or(self.c_int_width as _),
+        ))
+        .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?;
 
         Ok(dl)
     }
@@ -2278,7 +2278,7 @@ pub struct TargetOptions {
     /// Used as the `target_endian` `cfg` variable. Defaults to little endian.
     pub endian: Endian,
     /// Width of c_int type. Defaults to "32".
-    pub c_int_width: StaticCow<str>,
+    pub c_int_width: u16,
     /// OS name to use for conditional compilation (`target_os`). Defaults to "none".
     /// "none" implies a bare metal target without `std` library.
     /// A couple of targets having `std` also use "unknown" as an `os` value,
@@ -2513,7 +2513,7 @@ pub struct TargetOptions {
     pub stack_probes: StackProbeType,
 
     /// The minimum alignment for global symbols.
-    pub min_global_align: Option<u64>,
+    pub min_global_align: Option<Align>,
 
     /// Default number of codegen units to use in debug mode
     pub default_codegen_units: Option<u64>,
@@ -2775,7 +2775,7 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             endian: Endian::Little,
-            c_int_width: "32".into(),
+            c_int_width: 32,
             os: "none".into(),
             env: "".into(),
             abi: "".into(),
@@ -3502,6 +3502,7 @@ impl Target {
             "msp430" => (Architecture::Msp430, None),
             "hexagon" => (Architecture::Hexagon, None),
             "bpf" => (Architecture::Bpf, None),
+            "loongarch32" => (Architecture::LoongArch32, None),
             "loongarch64" => (Architecture::LoongArch64, None),
             "csky" => (Architecture::Csky, None),
             "arm64ec" => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),

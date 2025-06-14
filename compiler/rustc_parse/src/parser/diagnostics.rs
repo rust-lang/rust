@@ -2273,9 +2273,9 @@ impl<'a> Parser<'a> {
                     ),
                     // Also catches `fn foo(&a)`.
                     PatKind::Ref(ref inner_pat, mutab)
-                        if matches!(inner_pat.clone().into_inner().kind, PatKind::Ident(..)) =>
+                        if matches!(inner_pat.clone().kind, PatKind::Ident(..)) =>
                     {
-                        match inner_pat.clone().into_inner().kind {
+                        match inner_pat.clone().kind {
                             PatKind::Ident(_, ident, _) => {
                                 let mutab = mutab.prefix_str();
                                 (

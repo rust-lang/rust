@@ -1,5 +1,5 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/bare-trait-objects-path.rs:14:5
+  --> $DIR/bare-trait-objects-path.rs:15:5
    |
 LL |     Dyn::func();
    |     ^^^
@@ -13,7 +13,7 @@ LL |     <dyn Dyn>::func();
    |     ++++    +
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/bare-trait-objects-path.rs:17:5
+  --> $DIR/bare-trait-objects-path.rs:18:5
    |
 LL |     ::Dyn::func();
    |     ^^^^^
@@ -26,7 +26,7 @@ LL |     <dyn (::Dyn)>::func();
    |     ++++++     ++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/bare-trait-objects-path.rs:20:5
+  --> $DIR/bare-trait-objects-path.rs:21:5
    |
 LL |     Dyn::CONST;
    |     ^^^
@@ -39,7 +39,7 @@ LL |     <dyn Dyn>::CONST;
    |     ++++    +
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/bare-trait-objects-path.rs:23:12
+  --> $DIR/bare-trait-objects-path.rs:24:12
    |
 LL |     let _: Dyn::Ty;
    |            ^^^
@@ -52,7 +52,7 @@ LL |     let _: <dyn Dyn>::Ty;
    |            ++++    +
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bare-trait-objects-path.rs:23:12
+  --> $DIR/bare-trait-objects-path.rs:24:12
    |
 LL |     let _: Dyn::Ty;
    |            ^^^^^^^

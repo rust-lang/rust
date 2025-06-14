@@ -7,7 +7,7 @@ mod bar {
 
 pub use baz::*;
 mod baz {
-    pub use main as f;
+    pub use crate::main as f;
 }
 
 pub fn main() {}

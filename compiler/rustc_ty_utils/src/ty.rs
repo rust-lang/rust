@@ -104,7 +104,7 @@ fn adt_sized_constraint<'tcx>(
 
     // perf hack: if there is a `constraint_ty: Sized` bound, then we know
     // that the type is sized and do not need to check it on the impl.
-    let sized_trait_def_id = tcx.require_lang_item(LangItem::Sized, None);
+    let sized_trait_def_id = tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
     let predicates = tcx.predicates_of(def.did()).predicates;
     if predicates.iter().any(|(p, _)| {
         p.as_trait_clause().is_some_and(|trait_pred| {
@@ -255,10 +255,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 }
 
-fn param_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
-    // This is a bit ugly but the easiest way to avoid code duplication.
-    let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
-    typing_env.with_post_analysis_normalized(tcx).param_env
+fn typing_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TypingEnv<'_> {
+    ty::TypingEnv::non_body_analysis(tcx, def_id).with_post_analysis_normalized(tcx)
 }
 
 /// Check if a function is async.
@@ -319,7 +317,7 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
 
     let infcx = tcx.infer_ctxt().ignoring_regions().build(ty::TypingMode::non_body_analysis());
 
-    let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
+    let ocx = traits::ObligationCtxt::new(&infcx);
     let cause = traits::ObligationCause::dummy();
     let param_env = tcx.param_env(impl_def_id);
 
@@ -374,7 +372,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         asyncness,
         adt_sized_constraint,
         param_env,
-        param_env_normalized_for_post_analysis,
+        typing_env_normalized_for_post_analysis,
         defaultness,
         unsizing_params_for_adt,
         impl_self_is_guaranteed_unsized,

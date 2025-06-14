@@ -116,7 +116,7 @@ impl Step for Miri {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.build;
+        let host = builder.build.host_target;
         let target = self.target;
 
         // `x run` uses stage 0 by default but miri does not work well with stage 0.
@@ -448,7 +448,7 @@ impl Step for Rustfmt {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.build;
+        let host = builder.build.host_target;
 
         // `x run` uses stage 0 by default but rustfmt does not work well with stage 0.
         // Change the stage to 1 if it's not set explicitly.

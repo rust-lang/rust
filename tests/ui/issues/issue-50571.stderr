@@ -1,5 +1,5 @@
 error[E0642]: patterns aren't allowed in methods without bodies
-  --> $DIR/issue-50571.rs:5:12
+  --> $DIR/issue-50571.rs:6:12
    |
 LL |     fn foo([a, b]: [i32; 2]) {}
    |            ^^^^^^

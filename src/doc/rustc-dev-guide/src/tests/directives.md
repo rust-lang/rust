@@ -202,6 +202,7 @@ settings:
   `//@ needs-crate-type: cdylib, proc-macro` will cause the test to be ignored
   on `wasm32-unknown-unknown` target because the target does not support the
   `proc-macro` crate type.
+- `needs-target-std` — ignores if target platform does not have std support.
 
 The following directives will check LLVM support:
 
@@ -248,24 +249,37 @@ ignoring debuggers.
 | `no-prefer-dynamic` | Don't use `-C prefer-dynamic`, don't build as a dylib via a `--crate-type=dylib` preset flag | `ui`, `crashes`           | N/A                                                                                        |
 
 <div class="warning">
+
 Tests (outside of `run-make`) that want to use incremental tests not in the
 incremental test-suite must not pass `-C incremental` via `compile-flags`, and
 must instead use the `//@ incremental` directive.
 
 Consider writing the test as a proper incremental test instead.
+
 </div>
 
 ### Rustdoc
 
 | Directive   | Explanation                                                  | Supported test suites                    | Possible values           |
 |-------------|--------------------------------------------------------------|------------------------------------------|---------------------------|
-| `doc-flags` | Flags passed to `rustdoc` when building the test or aux file | `rustdoc`, `rustdoc-js`, `rustdoc-json` | Any valid `rustdoc` flags |
+| `doc-flags` | Flags passed to `rustdoc` when building the test or aux file | `rustdoc`, `rustdoc-js`, `rustdoc-json`  | Any valid `rustdoc` flags |
 
 <!--
 **FIXME(rustdoc)**: what does `check-test-line-numbers-match` do?
 Asked in
 <https://rust-lang.zulipchat.com/#narrow/stream/266220-t-rustdoc/topic/What.20is.20the.20.60check-test-line-numbers-match.60.20directive.3F>.
 -->
+
+#### Test-suite-specific directives
+
+The test suites [`rustdoc`][rustdoc-html-tests], [`rustdoc-js`/`rustdoc-js-std`][rustdoc-js-tests]
+and [`rustdoc-json`][rustdoc-json-tests] each feature an additional set of directives whose basic
+syntax resembles the one of compiletest directives but which are ultimately read and checked by
+separate tools. For more information, please read their respective chapters as linked above.
+
+[rustdoc-html-tests]: ../rustdoc-internals/rustdoc-test-suite.md
+[rustdoc-js-tests]: ../rustdoc-internals/search.html#testing-the-search-engine
+[rustdoc-json-tests]: ../rustdoc-internals/rustdoc-json-test-suite.md
 
 ### Pretty printing
 

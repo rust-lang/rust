@@ -68,7 +68,7 @@ impl<'a> Cursor<'a> {
 
     /// Peeks the third symbol from the input stream without consuming it.
     pub fn third(&self) -> char {
-        // `.next()` optimizes better than `.nth(1)`
+        // `.next()` optimizes better than `.nth(2)`
         let mut iter = self.chars.clone();
         iter.next();
         iter.next();

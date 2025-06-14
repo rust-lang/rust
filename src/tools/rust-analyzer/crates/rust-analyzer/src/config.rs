@@ -1192,7 +1192,7 @@ impl ConfigChange {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LinkedProject {
     ProjectManifest(ProjectManifest),
-    InlineJsonProject(ProjectJson),
+    InlineProjectJson(ProjectJson),
 }
 
 impl From<ProjectManifest> for LinkedProject {
@@ -1203,7 +1203,7 @@ impl From<ProjectManifest> for LinkedProject {
 
 impl From<ProjectJson> for LinkedProject {
     fn from(v: ProjectJson) -> Self {
-        LinkedProject::InlineJsonProject(v)
+        LinkedProject::InlineProjectJson(v)
     }
 }
 
@@ -1597,6 +1597,16 @@ impl Config {
             term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
         }
     }
+
+    pub fn diagnostic_fixes(&self, source_root: Option<SourceRootId>) -> DiagnosticsConfig {
+        // We always want to show quickfixes for diagnostics, even when diagnostics/experimental diagnostics are disabled.
+        DiagnosticsConfig {
+            enabled: true,
+            disable_experimental: false,
+            ..self.diagnostics(source_root)
+        }
+    }
+
     pub fn expand_proc_attr_macros(&self) -> bool {
         self.procMacro_enable().to_owned() && self.procMacro_attributes_enable().to_owned()
     }

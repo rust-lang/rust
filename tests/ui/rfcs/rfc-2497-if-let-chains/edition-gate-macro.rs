@@ -33,7 +33,7 @@ impl DropOrderCollector {
         println!("{n}");
         self.0.borrow_mut().push(n)
     }
-    fn some_loud(&self, n: u32) -> Option<LoudDrop> {
+    fn some_loud(&self, n: u32) -> Option<LoudDrop<'_>> {
         Some(LoudDrop(self, n))
     }
 

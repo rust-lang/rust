@@ -38,7 +38,7 @@ impl<'tcx> InferCtxt<'tcx> {
             return self.tcx.type_is_copy_modulo_regions(self.typing_env(param_env), ty);
         }
 
-        let copy_def_id = self.tcx.require_lang_item(LangItem::Copy, None);
+        let copy_def_id = self.tcx.require_lang_item(LangItem::Copy, DUMMY_SP);
 
         // This can get called from typeck (by euv), and `moves_by_default`
         // rightly refuses to work with inference variables, but
@@ -49,7 +49,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     fn type_is_clone_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
-        let clone_def_id = self.tcx.require_lang_item(LangItem::Clone, None);
+        let clone_def_id = self.tcx.require_lang_item(LangItem::Clone, DUMMY_SP);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, clone_def_id)
     }
 
@@ -59,12 +59,12 @@ impl<'tcx> InferCtxt<'tcx> {
         ty: Ty<'tcx>,
     ) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
-        let use_cloned_def_id = self.tcx.require_lang_item(LangItem::UseCloned, None);
+        let use_cloned_def_id = self.tcx.require_lang_item(LangItem::UseCloned, DUMMY_SP);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, use_cloned_def_id)
     }
 
     fn type_is_sized_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-        let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
+        let lang_item = self.tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, lang_item)
     }
 

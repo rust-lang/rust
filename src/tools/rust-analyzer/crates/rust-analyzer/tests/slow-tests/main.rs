@@ -975,10 +975,6 @@ version = \"0.0.0\"
 }
 
 fn out_dirs_check_impl(root_contains_symlink: bool) {
-    if skip_slow_tests() {
-        return;
-    }
-
     let mut server = Project::with_fixture(
         r###"
 //- /Cargo.toml
@@ -1130,12 +1126,18 @@ fn main() {
 
 #[test]
 fn out_dirs_check() {
+    if skip_slow_tests() {
+        return;
+    }
     out_dirs_check_impl(false);
 }
 
 #[test]
 #[cfg(not(windows))] // windows requires elevated permissions to create symlinks
 fn root_contains_symlink_out_dirs_check() {
+    if skip_slow_tests() {
+        return;
+    }
     out_dirs_check_impl(true);
 }
 

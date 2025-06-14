@@ -64,7 +64,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
     let needs_async_drop = drop_ty.needs_async_drop(tcx, typing_env);
     let needs_sync_drop = !needs_async_drop && drop_ty.needs_drop(tcx, typing_env);
 
-    let resume_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
+    let resume_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
     let resume_ty = Ty::new_adt(tcx, resume_adt, ty::List::empty());
 
     let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
@@ -220,7 +220,7 @@ fn build_adrop_for_coroutine_shim<'tcx>(
     body.source.instance = instance;
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
     body.var_debug_info.clear();
-    let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, Some(span)));
+    let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, span));
     let args = tcx.mk_args(&[proxy_ref.into()]);
     let pin_proxy_ref = Ty::new_adt(tcx, pin_adt_ref, args);
 
@@ -308,10 +308,10 @@ fn build_adrop_for_adrop_shim<'tcx>(
     let cor_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, impl_ty);
 
     // ret_ty = `Poll<()>`
-    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, None));
+    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, span));
     let ret_ty = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
     // env_ty = `Pin<&mut proxy_ty>`
-    let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, None));
+    let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, span));
     let env_ty = Ty::new_adt(tcx, pin_adt_ref, tcx.mk_args(&[proxy_ref.into()]));
     // sig = `fn (Pin<&mut proxy_ty>, &mut Context) -> Poll<()>`
     let sig = tcx.mk_fn_sig(
@@ -376,7 +376,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
     let cor_pin_ty = Ty::new_adt(tcx, pin_adt_ref, tcx.mk_args(&[cor_ref.into()]));
     let cor_pin_place = Place::from(locals.push(LocalDecl::new(cor_pin_ty, span)));
 
-    let pin_fn = tcx.require_lang_item(LangItem::PinNewUnchecked, Some(span));
+    let pin_fn = tcx.require_lang_item(LangItem::PinNewUnchecked, span);
     // call Pin<FutTy>::new_unchecked(&mut impl_cor)
     blocks.push(BasicBlockData {
         statements,
@@ -396,7 +396,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
     });
     // When dropping async drop coroutine, we continue its execution:
     // we call impl::poll (impl_layout, ctx)
-    let poll_fn = tcx.require_lang_item(LangItem::FuturePoll, None);
+    let poll_fn = tcx.require_lang_item(LangItem::FuturePoll, span);
     let resume_ctx = Place::from(Local::new(2));
     blocks.push(BasicBlockData {
         statements: vec![],

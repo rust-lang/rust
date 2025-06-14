@@ -2,7 +2,7 @@ error[E0080]: invalid align passed to `const_allocate`: 3 is not a power of 2
   --> $DIR/alloc_intrinsic_errors.rs:7:18
    |
 LL | const FOO: i32 = foo();
-   |                  ^^^^^ evaluation of constant value failed here
+   |                  ^^^^^ evaluation of `FOO` failed inside this call
    |
 note: inside `foo`
   --> $DIR/alloc_intrinsic_errors.rs:10:17

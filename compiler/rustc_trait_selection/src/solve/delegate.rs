@@ -64,6 +64,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         span: Span,
     ) -> Option<Certainty> {
         if let Some(trait_pred) = goal.predicate.as_trait_clause() {
+            if self.shallow_resolve(trait_pred.self_ty().skip_binder()).is_ty_var()
+                // We don't do this fast path when opaques are defined since we may
+                // eventually use opaques to incompletely guide inference via ty var
+                // self types.
+                // FIXME: Properly consider opaques here.
+                && self.inner.borrow_mut().opaque_types().is_empty()
+            {
+                return Some(Certainty::AMBIGUOUS);
+            }
+
             if trait_pred.polarity() == ty::PredicatePolarity::Positive {
                 match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                     Some(LangItem::Sized)
@@ -114,6 +124,17 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 );
 
                 Some(Certainty::Yes)
+            }
+            ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, .. })
+            | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
+                if self.shallow_resolve(a).is_ty_var() && self.shallow_resolve(b).is_ty_var() {
+                    // FIXME: We also need to register a subtype relation between these vars
+                    // when those are added, and if they aren't in the same sub root then
+                    // we should mark this goal as `has_changed`.
+                    Some(Certainty::AMBIGUOUS)
+                } else {
+                    None
+                }
             }
             _ => None,
         }

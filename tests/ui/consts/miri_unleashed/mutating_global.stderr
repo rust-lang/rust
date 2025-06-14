@@ -2,7 +2,7 @@ error[E0080]: modifying a static's initial value from another static's initializ
   --> $DIR/mutating_global.rs:9:9
    |
 LL |         GLOBAL = 99
-   |         ^^^^^^^^^^^ evaluation of static initializer failed here
+   |         ^^^^^^^^^^^ evaluation of `MUTATING_GLOBAL` failed here
 
 error: aborting due to 1 previous error
 

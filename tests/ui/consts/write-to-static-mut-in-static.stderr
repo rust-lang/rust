@@ -2,13 +2,13 @@ error[E0080]: modifying a static's initial value from another static's initializ
   --> $DIR/write-to-static-mut-in-static.rs:2:33
    |
 LL | pub static mut B: () = unsafe { A = 1; };
-   |                                 ^^^^^ evaluation of static initializer failed here
+   |                                 ^^^^^ evaluation of `B` failed here
 
 error[E0080]: encountered static that tried to initialize itself with itself
   --> $DIR/write-to-static-mut-in-static.rs:7:21
    |
 LL | pub static D: u32 = D;
-   |                     ^ evaluation of static initializer failed here
+   |                     ^ evaluation of `D` failed here
 
 error: aborting due to 2 previous errors
 

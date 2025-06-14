@@ -13,7 +13,7 @@ use tracing::debug;
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
-use crate::type_check::MirTypeckRegionConstraints;
+use crate::handle_placeholders::LoweredConstraints;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
 
@@ -43,7 +43,7 @@ pub(crate) fn emit_facts<'tcx>(
     borrow_set: &BorrowSet<'tcx>,
     move_data: &MoveData<'tcx>,
     universal_region_relations: &UniversalRegionRelations<'tcx>,
-    constraints: &MirTypeckRegionConstraints<'tcx>,
+    constraints: &LoweredConstraints<'tcx>,
 ) {
     let Some(facts) = facts else {
         // We don't do anything if there are no facts to fill.
@@ -203,7 +203,7 @@ pub(crate) fn emit_drop_facts<'tcx>(
 fn emit_outlives_facts<'tcx>(
     facts: &mut PoloniusFacts,
     location_table: &PoloniusLocationTable,
-    constraints: &MirTypeckRegionConstraints<'tcx>,
+    constraints: &LoweredConstraints<'tcx>,
 ) {
     facts.subset_base.extend(constraints.outlives_constraints.outlives().iter().flat_map(
         |constraint: &OutlivesConstraint<'_>| {

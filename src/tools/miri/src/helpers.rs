@@ -326,7 +326,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<P>> {
         let this = self.eval_context_ref();
         let adt = base.layout().ty.ty_adt_def().unwrap();
-        for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
+        for (idx, field) in adt.non_enum_variant().fields.iter_enumerated() {
             if field.name.as_str() == name {
                 return interp_ok(Some(this.project_field(base, idx)?));
             }
@@ -376,6 +376,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         for (idx, &val) in values.iter().enumerate() {
+            let idx = FieldIdx::from_usize(idx);
             let field = this.project_field(dest, idx)?;
             this.write_int(val, &field)?;
         }
@@ -763,10 +764,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// `EINVAL` in this case.
     fn read_timespec(&mut self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
-        let seconds_place = this.project_field(tp, 0)?;
+        let seconds_place = this.project_field(tp, FieldIdx::ZERO)?;
         let seconds_scalar = this.read_scalar(&seconds_place)?;
         let seconds = seconds_scalar.to_target_isize(this)?;
-        let nanoseconds_place = this.project_field(tp, 1)?;
+        let nanoseconds_place = this.project_field(tp, FieldIdx::ONE)?;
         let nanoseconds_scalar = this.read_scalar(&nanoseconds_place)?;
         let nanoseconds = nanoseconds_scalar.to_target_isize(this)?;
 

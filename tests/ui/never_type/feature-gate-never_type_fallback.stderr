@@ -2,10 +2,8 @@ error[E0277]: the trait bound `(): T` is not satisfied
   --> $DIR/feature-gate-never_type_fallback.rs:10:9
    |
 LL |     foo(panic!())
-   |     --- ^^^^^^^^
-   |     |   |
-   |     |   the trait `T` is not implemented for `()`
-   |     |   this tail expression is of type `()`
+   |     --- ^^^^^^^^ the trait `T` is not implemented for `()`
+   |     |
    |     required by a bound introduced by this call
    |
 help: this trait has no implementations, consider adding one

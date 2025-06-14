@@ -2,7 +2,7 @@ error[E0080]: evaluation panicked:
   --> $DIR/const_panic-normalize-tabs-115498.rs:3:17
    |
 LL | struct Bug([u8; panic!{"\t"}]);
-   |                 ^^^^^^^^^^^^ evaluation of constant value failed here
+   |                 ^^^^^^^^^^^^ evaluation of `Bug::0::{constant#0}` failed here
 
 error: aborting due to 1 previous error
 

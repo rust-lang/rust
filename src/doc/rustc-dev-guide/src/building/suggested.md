@@ -59,6 +59,14 @@ always overrides the inner ones.
 
 ## Configuring `rust-analyzer` for `rustc`
 
+### Checking the "library" tree
+
+Checking the "library" tree requires a stage1 compiler, which can be a heavy process on some computers.
+For this reason, bootstrap has a flag called `--skip-std-check-if-no-download-rustc` that skips checking the
+"library" tree if `rust.download-rustc` isn't available. If you want to avoid putting a heavy load on your computer
+with `rust-analyzer`, you can add the `--skip-std-check-if-no-download-rustc` flag to your `./x check` command in
+the `rust-analyzer` configuration.
+
 ### Project-local rust-analyzer setup
 
 `rust-analyzer` can help you check and format your code whenever you save a

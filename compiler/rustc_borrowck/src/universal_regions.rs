@@ -544,10 +544,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         // (as it's created inside the body itself, not passed in from outside).
         if let DefiningTy::FnDef(def_id, _) = defining_ty {
             if self.infcx.tcx.fn_sig(def_id).skip_binder().c_variadic() {
-                let va_list_did = self.infcx.tcx.require_lang_item(
-                    LangItem::VaList,
-                    Some(self.infcx.tcx.def_span(self.mir_def)),
-                );
+                let va_list_did = self
+                    .infcx
+                    .tcx
+                    .require_lang_item(LangItem::VaList, self.infcx.tcx.def_span(self.mir_def));
 
                 let reg_vid = self
                     .infcx

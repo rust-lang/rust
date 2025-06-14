@@ -75,24 +75,21 @@ fn slot_index_exhaustive() {
     for idx in 0..=u32::MAX {
         buckets[SlotIndex::from_index(idx).bucket_idx] += 1;
     }
-    let mut prev = None::<SlotIndex>;
-    for idx in 0..=u32::MAX {
+    let slot_idx = SlotIndex::from_index(0);
+    assert_eq!(slot_idx.index_in_bucket, 0);
+    assert_eq!(slot_idx.bucket_idx, 0);
+    let mut prev = slot_idx;
+    for idx in 1..=u32::MAX {
         let slot_idx = SlotIndex::from_index(idx);
-        if let Some(p) = prev {
-            if p.bucket_idx == slot_idx.bucket_idx {
-                assert_eq!(p.index_in_bucket + 1, slot_idx.index_in_bucket);
-            } else {
-                assert_eq!(slot_idx.index_in_bucket, 0);
-            }
+        if prev.bucket_idx == slot_idx.bucket_idx {
+            assert_eq!(prev.index_in_bucket + 1, slot_idx.index_in_bucket);
         } else {
-            assert_eq!(idx, 0);
             assert_eq!(slot_idx.index_in_bucket, 0);
-            assert_eq!(slot_idx.bucket_idx, 0);
         }
 
         assert_eq!(buckets[slot_idx.bucket_idx], slot_idx.entries as u32);
         assert_eq!(ENTRIES_BY_BUCKET[slot_idx.bucket_idx], slot_idx.entries, "{}", idx);
 
-        prev = Some(slot_idx);
+        prev = slot_idx;
     }
 }

@@ -3,7 +3,7 @@ mod foo {
 }
 
 mod bar {
-    use foo::Bx;
+    use crate::foo::Bx;
 
     fn foo() {
         Bx(());

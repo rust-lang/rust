@@ -12,9 +12,9 @@ trait Ref {
 mod m {
     struct Priv;
 
-    impl ::Arr0 for [Priv; 0] { fn arr0_secret(&self) {} }
-    impl ::TyParam for Option<Priv> { fn ty_param_secret(&self) {} }
-    impl<'a> ::Ref for &'a Priv { fn ref_secret(self) {} }
+    impl crate::Arr0 for [Priv; 0] { fn arr0_secret(&self) {} }
+    impl crate::TyParam for Option<Priv> { fn ty_param_secret(&self) {} }
+    impl<'a> crate::Ref for &'a Priv { fn ref_secret(self) {} }
 }
 
 fn anyref<'a, T>() -> &'a T { panic!() }

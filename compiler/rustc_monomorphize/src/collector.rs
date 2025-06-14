@@ -781,7 +781,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
 
         let tcx = self.tcx;
         let push_mono_lang_item = |this: &mut Self, lang_item: LangItem| {
-            let instance = Instance::mono(tcx, tcx.require_lang_item(lang_item, Some(source)));
+            let instance = Instance::mono(tcx, tcx.require_lang_item(lang_item, source));
             if tcx.should_codegen_locally(instance) {
                 this.used_items.push(create_fn_mono_item(tcx, instance, source));
             }
@@ -921,7 +921,7 @@ fn visit_instance_use<'tcx>(
             // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
             // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
             // codegen a call to that function without generating code for the function itself.
-            let def_id = tcx.require_lang_item(LangItem::PanicNounwind, None);
+            let def_id = tcx.require_lang_item(LangItem::PanicNounwind, source);
             let panic_instance = Instance::mono(tcx, def_id);
             if tcx.should_codegen_locally(panic_instance) {
                 output.push(create_fn_mono_item(tcx, panic_instance, source));

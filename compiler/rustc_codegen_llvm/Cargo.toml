@@ -15,7 +15,7 @@ gimli = "0.31"
 itertools = "0.12"
 libc = "0.2"
 measureme = "12.0.1"
-object = { version = "0.36.3", default-features = false, features = ["std", "read"] }
+object = { version = "0.37.0", default-features = false, features = ["std", "read"] }
 rustc-demangle = "0.1.21"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }

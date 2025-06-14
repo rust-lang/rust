@@ -11,9 +11,11 @@
 
 #![macro_export]
 //~^ ERROR: `macro_export` attribute cannot be used at crate level
-#![rustc_main] //~ ERROR: the `#[rustc_main]` attribute is used internally to specify
+#![rustc_main]
 //~^ ERROR: `rustc_main` attribute cannot be used at crate level
-//~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+//~| ERROR: use of an internal attribute [E0658]
+//~| NOTE: the `#[rustc_main]` attribute is an internal implementation detail that will never be stable
+//~| NOTE: the `#[rustc_main]` attribute is used internally to specify test entry point function
 #![repr()]
 //~^ ERROR: `repr` attribute cannot be used at crate level
 #![path = "3800"]

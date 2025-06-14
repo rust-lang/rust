@@ -28,11 +28,11 @@ error: unused import: `bar`
 LL | use test2::{foo, bar};
    |                  ^^^
 
-error: unused import: `foo::Square`
+error: unused import: `crate::foo::Square`
   --> $DIR/lint-unused-imports.rs:52:13
    |
-LL |         use foo::Square;
-   |             ^^^^^^^^^^^
+LL |         use crate::foo::Square;
+   |             ^^^^^^^^^^^^^^^^^^
 
 error: unused import: `self::g`
   --> $DIR/lint-unused-imports.rs:68:9
@@ -40,11 +40,11 @@ error: unused import: `self::g`
 LL |     use self::g;
    |         ^^^^^^^
 
-error: unused import: `test2::foo`
+error: unused import: `crate::test2::foo`
   --> $DIR/lint-unused-imports.rs:77:9
    |
-LL |     use test2::foo;
-   |         ^^^^^^^^^^
+LL |     use crate::test2::foo;
+   |         ^^^^^^^^^^^^^^^^^
 
 error: unused import: `test::B2`
   --> $DIR/lint-unused-imports.rs:20:5

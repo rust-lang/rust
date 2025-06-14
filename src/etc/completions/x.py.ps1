@@ -23,7 +23,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -57,6 +57,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('build', 'build', [CompletionResultType]::ParameterValue, 'Compile either the compiler or libraries')
@@ -81,7 +82,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py;build' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -115,6 +116,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -122,7 +124,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py;check' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -157,6 +159,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -168,7 +171,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('-F', '-F ', [CompletionResultType]::ParameterName, 'clippy lints to forbid')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -205,6 +208,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -212,7 +216,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py;fix' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -246,6 +250,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -253,7 +258,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py;fmt' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -289,6 +294,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -296,7 +302,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py;doc' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -332,6 +338,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -345,7 +352,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--run', '--run', [CompletionResultType]::ParameterName, 'whether to execute run-* tests')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -387,6 +394,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -395,7 +403,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--test-args', '--test-args', [CompletionResultType]::ParameterName, 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -432,6 +440,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -440,7 +449,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--test-args', '--test-args', [CompletionResultType]::ParameterName, 'test-args')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -474,6 +483,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -482,7 +492,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--stage', '--stage', [CompletionResultType]::ParameterName, 'Clean a specific stage without touching other artifacts. By default, every stage is cleaned if this option is not used')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -516,6 +526,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -523,7 +534,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py;dist' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -557,6 +568,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -564,7 +576,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py;install' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -598,6 +610,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -606,7 +619,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--args', '--args', [CompletionResultType]::ParameterName, 'arguments for the tool')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -640,6 +653,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -647,7 +661,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py;setup' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -681,6 +695,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -688,7 +703,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py;suggest' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -723,6 +738,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -731,7 +747,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--sync', '--sync', [CompletionResultType]::ParameterName, 'Additional `Cargo.toml` to sync and vendor')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -766,6 +782,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -773,7 +790,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py;perf' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -807,6 +824,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('eprintln', 'eprintln', [CompletionResultType]::ParameterValue, 'Run `profile_local eprintln`. This executes the compiler on the given benchmarks and stores its stderr output')
@@ -823,7 +841,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--skip', '--skip', [CompletionResultType]::ParameterName, 'build paths to skip')
@@ -856,6 +874,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -867,7 +886,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--skip', '--skip', [CompletionResultType]::ParameterName, 'build paths to skip')
@@ -900,6 +919,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -911,7 +931,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--skip', '--skip', [CompletionResultType]::ParameterName, 'build paths to skip')
@@ -944,6 +964,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -955,7 +976,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--profiles', '--profiles', [CompletionResultType]::ParameterName, 'Select the profiles that should be benchmarked')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--skip', '--skip', [CompletionResultType]::ParameterName, 'build paths to skip')
@@ -988,6 +1009,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break
@@ -995,7 +1017,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         'x.py;perf;compare' {
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
-            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')
+            [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')
             [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'host targets to build')
             [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'target targets to build')
             [CompletionResult]::new('--exclude', '--exclude', [CompletionResultType]::ParameterName, 'build paths to exclude')
@@ -1029,6 +1051,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--llvm-profile-generate', '--llvm-profile-generate', [CompletionResultType]::ParameterName, 'generate PGO profile with llvm built for rustc')
             [CompletionResult]::new('--enable-bolt-settings', '--enable-bolt-settings', [CompletionResultType]::ParameterName, 'Enable BOLT link flags')
             [CompletionResult]::new('--skip-stage0-validation', '--skip-stage0-validation', [CompletionResultType]::ParameterName, 'Skip stage0 compiler validation')
+            [CompletionResult]::new('--skip-std-check-if-no-download-rustc', '--skip-std-check-if-no-download-rustc', [CompletionResultType]::ParameterName, 'Skip checking the standard library if `rust.download-rustc` isn''t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers')
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             break

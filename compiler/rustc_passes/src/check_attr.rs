@@ -132,7 +132,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         target,
                         attrs,
                     ),
-                _ => {
+                Attribute::Parsed(AttributeKind::AllowConstFnUnstable { .. }) => {
+                    self.check_rustc_allow_const_fn_unstable(hir_id, attr, span, target)
+                }
+                Attribute::Parsed(AttributeKind::Deprecation { .. }) => {
+                    self.check_deprecated(hir_id, attr, span, target)
+                }
+                Attribute::Parsed(AttributeKind::DocComment { .. }) => { /* `#[doc]` is actually a lot more than just doc comments, so is checked below*/
+                }
+                Attribute::Parsed(AttributeKind::Repr(_)) => { /* handled below this loop and elsewhere */
+                }
+                Attribute::Parsed(
+                    AttributeKind::BodyStability { .. }
+                    | AttributeKind::ConstStabilityIndirect
+                    | AttributeKind::MacroTransparency(_),
+                ) => { /* do nothing  */ }
+                Attribute::Unparsed(_) => {
                     match attr.path().as_slice() {
                         [sym::diagnostic, sym::do_not_recommend, ..] => {
                             self.check_do_not_recommend(attr.span(), hir_id, target, attr, item)
@@ -169,9 +184,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_rustc_layout_scalar_valid_range(attr, span, target)
                         }
                         [sym::debugger_visualizer, ..] => self.check_debugger_visualizer(attr, target),
-                        [sym::rustc_allow_const_fn_unstable, ..] => {
-                            self.check_rustc_allow_const_fn_unstable(hir_id, attr, span, target)
-                        }
                         [sym::rustc_std_internal_symbol, ..] => {
                             self.check_rustc_std_internal_symbol(attr, span, target)
                         }
@@ -229,7 +241,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::link_name, ..] => self.check_link_name(hir_id, attr, span, target),
                         [sym::link_section, ..] => self.check_link_section(hir_id, attr, span, target),
                         [sym::no_mangle, ..] => self.check_no_mangle(hir_id, attr, span, target),
-                        [sym::deprecated, ..] => self.check_deprecated(hir_id, attr, span, target),
                         [sym::macro_use, ..] | [sym::macro_escape, ..] => {
                             self.check_macro_use(hir_id, attr, target)
                         }
@@ -283,7 +294,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::pointee // FIXME(derive_coerce_pointee)
                             | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
                             | sym::used // handled elsewhere to restrict to static items
-                            | sym::repr // handled elsewhere to restrict to type decls items
                             | sym::instruction_set // broken on stable!!!
                             | sym::windows_subsystem // broken on stable!!!
                             | sym::patchable_function_entry // FIXME(patchable_function_entry)
@@ -1266,13 +1276,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         true
     }
 
-    /// Checks that `doc(test(...))` attribute contains only valid attributes. Returns `true` if
-    /// valid.
-    fn check_test_attr(&self, meta: &MetaItemInner, hir_id: HirId) {
+    /// Checks that `doc(test(...))` attribute contains only valid attributes and are at the right place.
+    fn check_test_attr(&self, attr: &Attribute, meta: &MetaItemInner, hir_id: HirId) {
         if let Some(metas) = meta.meta_item_list() {
             for i_meta in metas {
                 match (i_meta.name(), i_meta.meta_item()) {
-                    (Some(sym::attr | sym::no_crate_inject), _) => {}
+                    (Some(sym::attr), _) => {
+                        // Allowed everywhere like `#[doc]`
+                    }
+                    (Some(sym::no_crate_inject), _) => {
+                        self.check_attr_crate_level(attr, meta, hir_id);
+                    }
                     (_, Some(m)) => {
                         self.tcx.emit_node_span_lint(
                             INVALID_DOC_ATTRIBUTES,
@@ -1359,9 +1373,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
 
                         Some(sym::test) => {
-                            if self.check_attr_crate_level(attr, meta, hir_id) {
-                                self.check_test_attr(meta, hir_id);
-                            }
+                            self.check_test_attr(attr, meta, hir_id);
                         }
 
                         Some(

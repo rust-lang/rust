@@ -50,7 +50,7 @@ where P: Pixel + 'static,
         loop { }
     }
 
-    pub fn pixels_mut(&mut self) -> PixelsMut<P> {
+    pub fn pixels_mut(&mut self) -> PixelsMut<'_, P> {
         loop { }
     }
 }

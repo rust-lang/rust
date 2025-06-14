@@ -250,7 +250,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             Variants::Single { index } => assert_eq!(index, variant_index),
 
             Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } => {
-                let ptr = self.project_field(bx, tag_field);
+                let ptr = self.project_field(bx, tag_field.as_usize());
                 let to =
                     self.layout.ty.discriminant_for_variant(bx.tcx(), variant_index).unwrap().val;
                 bx.store_to_place(
@@ -265,7 +265,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 ..
             } => {
                 if variant_index != untagged_variant {
-                    let niche = self.project_field(bx, tag_field);
+                    let niche = self.project_field(bx, tag_field.as_usize());
                     let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                     let BackendRepr::Scalar(scalar) = niche.layout.backend_repr else {
                         bug!("expected a scalar placeref for the niche");

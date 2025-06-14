@@ -15,6 +15,10 @@ pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
     val: F,
     err_scale: i32,
 ) -> F {
+    if !ecx.machine.float_nondet {
+        return val;
+    }
+
     let rng = ecx.machine.rng.get_mut();
     // Generate a random integer in the range [0, 2^PREC).
     // (When read as binary, the position of the first `1` determines the exponent,
@@ -150,6 +154,20 @@ pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFl
         }
     }
 }
+
+/// Extend functionality of rustc_apfloat softfloats
+pub trait IeeeExt: rustc_apfloat::Float {
+    #[inline]
+    fn one() -> Self {
+        Self::from_u128(1).value
+    }
+
+    #[inline]
+    fn clamp(self, min: Self, max: Self) -> Self {
+        self.maximum(min).minimum(max)
+    }
+}
+impl<S: rustc_apfloat::ieee::Semantics> IeeeExt for IeeeFloat<S> {}
 
 #[cfg(test)]
 mod tests {

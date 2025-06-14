@@ -265,13 +265,13 @@ Another problem was that it was not possible to normalize `ParamEnv`s correctly 
 
 Given a type such as `for<'a> fn(<?x as Trait<'a>::Assoc>)`, it is not possible to correctly handle this with the old solver's approach to normalization.
 
-If we were to normalize it to `for<'a> fn(?y)` and register a goal to normalize `for<'a> <?x as Trait<'a>>::Assoc -> ?y`, this would result in errors in cases where `<?x as Trait<'a>>::Assoc` normalized to `&'a u32`. The inference variable `?y` would be in a lower [universe][universes] than the placeholders made when instantiating the `for<'a>` binder.
+If we were to normalize it to `for<'a> fn(?y)` and register a goal to normalize `for<'a> <?x as Trait<'a>>::Assoc -> ?y`, this would result in errors in cases where `<?x as Trait<'a>>::Assoc` normalized to `&'a u32`. The inference variable `?y` would be in a lower [universe] than the placeholders made when instantiating the `for<'a>` binder.
 
 Leaving the alias unnormalized would also be wrong as the old solver expects all aliases to be rigid. This was a soundness bug before the new solver was stabilized in coherence: [relating projection substs is unsound during coherence](https://github.com/rust-lang/rust/issues/102048).
 
 Ultimately this means that it is not always possible to ensure all aliases inside of a value are rigid.
 
-[universes]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html#what-is-a-universe
+[universe]: borrow_check/region_inference/placeholders_and_universes.md#what-is-a-universe
 [deeply_normalize]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/normalize/trait.NormalizeExt.html#tymethod.deeply_normalize
 
 ## Handling uses of diverging aliases

@@ -2,10 +2,14 @@ error[E0605]: non-primitive cast: `NonNullary` as `isize`
   --> $DIR/tag-variant-cast-non-nullary.rs:19:15
    |
 LL |     let val = v as isize;
-   |               ^^^^^^^^^^ help: consider using the `From` trait instead: `isize::from(v)`
+   |               ^^^^^^^^^^ an `as` expression can be used to convert enum types to numeric types only if the enum type is unit-only or field-less
    |
-   = note: an `as` expression can be used to convert enum types to numeric types only if the enum type is unit-only or field-less
    = note: see https://doc.rust-lang.org/reference/items/enumerations.html#casting for more information
+help: consider using the `From` trait instead
+   |
+LL -     let val = v as isize;
+LL +     let val = isize::from(v);
+   |
 
 error: aborting due to 1 previous error
 

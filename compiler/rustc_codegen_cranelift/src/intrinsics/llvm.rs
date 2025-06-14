@@ -62,6 +62,14 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
             });
         }
 
+        _ if intrinsic.starts_with("llvm.roundeven.v") => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            simd_for_each_lane(fx, v, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
+                fx.bcx.ins().nearest(lane)
+            });
+        }
+
         _ => {
             fx.tcx
                 .dcx()
@@ -71,7 +79,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
                  See https://github.com/rust-lang/rustc_codegen_cranelift/issues/171\n\
                  Please open an issue at https://github.com/rust-lang/rustc_codegen_cranelift/issues"
             );
-            crate::base::codegen_panic_nounwind(fx, &msg, None);
+            crate::base::codegen_panic_nounwind(fx, &msg, span);
             return;
         }
     }

@@ -1,10 +1,17 @@
-warning: elided lifetime has a name
-  --> $DIR/issue-71348.rs:18:68
+warning: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/issue-71348.rs:18:40
    |
 LL |     fn ask<'a, const N: &'static str>(&'a self) -> &'a <Self as Get<N>>::Target
-   |            -- lifetime `'a` declared here                          ^ this elided lifetime gets resolved as `'a`
+   |                                        ^^           -- ------------------------ the lifetimes get resolved as `'a`
+   |                                        |            |
+   |                                        |            the lifetimes get resolved as `'a`
+   |                                        this lifetime flows to the output
    |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
+   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: one option is to consistently use `'a`
+   |
+LL |     fn ask<'a, const N: &'static str>(&'a self) -> &'a <Self as Get<'a, N>>::Target
+   |                                                                     +++
 
 warning: 1 warning emitted
 

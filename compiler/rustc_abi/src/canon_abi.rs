@@ -28,6 +28,9 @@ pub enum CanonAbi {
     Rust,
     RustCold,
 
+    /// An ABI that rustc does not know how to call or define.
+    Custom,
+
     /// ABIs relevant to 32-bit Arm targets
     Arm(ArmCall),
     /// ABI relevant to GPUs: the entry point for a GPU kernel
@@ -50,21 +53,14 @@ pub enum CanonAbi {
 
 impl fmt::Display for CanonAbi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.to_erased_extern_abi().as_str().fmt(f)
-    }
-}
-
-impl CanonAbi {
-    /// convert to the ExternAbi that *shares a string* with this CanonAbi
-    ///
-    /// A target-insensitive mapping of CanonAbi to ExternAbi, convenient for "forwarding" impls.
-    /// Importantly, the set of CanonAbi values is a logical *subset* of ExternAbi values,
-    /// so this is injective: if you take an ExternAbi to a CanonAbi and back, you have lost data.
-    const fn to_erased_extern_abi(self) -> ExternAbi {
-        match self {
+        // convert to the ExternAbi that *shares a string* with this CanonAbi.
+        // FIXME: ideally we'd avoid printing `CanonAbi`, and preserve `ExternAbi` everywhere
+        // that we need to generate error messages.
+        let erased_abi = match self {
             CanonAbi::C => ExternAbi::C { unwind: false },
             CanonAbi::Rust => ExternAbi::Rust,
             CanonAbi::RustCold => ExternAbi::RustCold,
+            CanonAbi::Custom => ExternAbi::Custom,
             CanonAbi::Arm(arm_call) => match arm_call {
                 ArmCall::Aapcs => ExternAbi::Aapcs { unwind: false },
                 ArmCall::CCmseNonSecureCall => ExternAbi::CCmseNonSecureCall,
@@ -87,7 +83,8 @@ impl CanonAbi {
                 X86Call::Vectorcall => ExternAbi::Vectorcall { unwind: false },
                 X86Call::Win64 => ExternAbi::Win64 { unwind: false },
             },
-        }
+        };
+        erased_abi.as_str().fmt(f)
     }
 }
 

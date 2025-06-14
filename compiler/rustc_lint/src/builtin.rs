@@ -22,7 +22,7 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_errors::{Applicability, LintDiagnostic};
-use rustc_feature::{AttributeGate, BuiltinAttribute, GateIssue, Stability, deprecated_attributes};
+use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
@@ -39,7 +39,7 @@ pub use rustc_session::lint::builtin::*;
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
-use rustc_span::{BytePos, Ident, InnerSpan, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, InnerSpan, Span, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
@@ -48,8 +48,7 @@ use rustc_trait_selection::traits::{self};
 
 use crate::errors::BuiltinEllipsisInclusiveRangePatterns;
 use crate::lints::{
-    BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
-    BuiltinDeprecatedAttrLinkSuggestion, BuiltinDerefNullptr, BuiltinDoubleNegations,
+    BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
     BuiltinDoubleNegationsAddParens, BuiltinEllipsisInclusiveRangePatternsLint,
     BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote,
     BuiltinIncompleteFeatures, BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures,
@@ -635,7 +634,8 @@ fn type_implements_negative_copy_modulo_regions<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
 ) -> bool {
     let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-    let trait_ref = ty::TraitRef::new(tcx, tcx.require_lang_item(hir::LangItem::Copy, None), [ty]);
+    let trait_ref =
+        ty::TraitRef::new(tcx, tcx.require_lang_item(hir::LangItem::Copy, DUMMY_SP), [ty]);
     let pred = ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Negative };
     let obligation = traits::Obligation {
         cause: traits::ObligationCause::dummy(),
@@ -793,53 +793,6 @@ impl EarlyLintPass for AnonymousParameters {
                         BuiltinAnonymousParams { suggestion: (arg.pat.span, appl), ty_snip },
                     );
                 }
-            }
-        }
-    }
-}
-
-/// Check for use of attributes which have been deprecated.
-#[derive(Clone)]
-pub struct DeprecatedAttr {
-    // This is not free to compute, so we want to keep it around, rather than
-    // compute it for every attribute.
-    depr_attrs: Vec<&'static BuiltinAttribute>,
-}
-
-impl_lint_pass!(DeprecatedAttr => []);
-
-impl Default for DeprecatedAttr {
-    fn default() -> Self {
-        DeprecatedAttr { depr_attrs: deprecated_attributes() }
-    }
-}
-
-impl EarlyLintPass for DeprecatedAttr {
-    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
-        for BuiltinAttribute { name, gate, .. } in &self.depr_attrs {
-            if attr.ident().map(|ident| ident.name) == Some(*name) {
-                if let &AttributeGate::Gated(
-                    Stability::Deprecated(link, suggestion),
-                    name,
-                    reason,
-                    _,
-                ) = gate
-                {
-                    let suggestion = match suggestion {
-                        Some(msg) => {
-                            BuiltinDeprecatedAttrLinkSuggestion::Msg { suggestion: attr.span, msg }
-                        }
-                        None => {
-                            BuiltinDeprecatedAttrLinkSuggestion::Default { suggestion: attr.span }
-                        }
-                    };
-                    cx.emit_span_lint(
-                        DEPRECATED,
-                        attr.span,
-                        BuiltinDeprecatedAttrLink { name, reason, link, suggestion },
-                    );
-                }
-                return;
             }
         }
     }

@@ -2,7 +2,7 @@ error[E0080]: evaluation panicked: explicit panic
   --> $DIR/issue-88434-minimal-example.rs:5:22
    |
 LL | const _CONST: &() = &f(&|_| {});
-   |                      ^^^^^^^^^^ evaluation of constant value failed here
+   |                      ^^^^^^^^^^ evaluation of `_CONST` failed inside this call
    |
 note: inside `f::<{closure@$DIR/issue-88434-minimal-example.rs:5:25: 5:28}>`
   --> $DIR/issue-88434-minimal-example.rs:12:5

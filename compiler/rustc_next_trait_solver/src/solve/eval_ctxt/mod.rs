@@ -544,8 +544,19 @@ where
                 // to recompute this goal.
                 HasChanged::Yes => None,
                 HasChanged::No => {
-                    // Remove the unconstrained RHS arg, which is expected to have changed.
                     let mut stalled_vars = orig_values;
+
+                    // Remove the canonicalized universal vars, since we only care about stalled existentials.
+                    stalled_vars.retain(|arg| match arg.kind() {
+                        ty::GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Infer(_)),
+                        ty::GenericArgKind::Const(ct) => {
+                            matches!(ct.kind(), ty::ConstKind::Infer(_))
+                        }
+                        // Lifetimes can never stall goals.
+                        ty::GenericArgKind::Lifetime(_) => false,
+                    });
+
+                    // Remove the unconstrained RHS arg, which is expected to have changed.
                     if let Some(normalizes_to) = goal.predicate.as_normalizes_to() {
                         let normalizes_to = normalizes_to.skip_binder();
                         let rhs_arg: I::GenericArg = normalizes_to.term.into();

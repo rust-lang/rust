@@ -1,16 +1,29 @@
-warning: elided lifetime has a name
-  --> $DIR/ignore-non-reference-lifetimes.rs:6:41
+warning: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/ignore-non-reference-lifetimes.rs:6:30
    |
 LL |     fn a<'a>(self: Self, a: &'a str) -> &str {
-   |          -- lifetime `'a` declared here ^ this elided lifetime gets resolved as `'a`
+   |                              ^^         ---- the lifetime gets resolved as `'a`
+   |                              |
+   |                              this lifetime flows to the output
    |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
+   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: one option is to consistently use `'a`
+   |
+LL |     fn a<'a>(self: Self, a: &'a str) -> &'a str {
+   |                                          ++
 
-warning: elided lifetime has a name
-  --> $DIR/ignore-non-reference-lifetimes.rs:10:44
+warning: lifetime flowing from input to output with different syntax can be confusing
+  --> $DIR/ignore-non-reference-lifetimes.rs:10:33
    |
 LL |     fn b<'a>(self: Foo<'b>, a: &'a str) -> &str {
-   |          -- lifetime `'a` declared here    ^ this elided lifetime gets resolved as `'a`
+   |                                 ^^         ---- the lifetime gets resolved as `'a`
+   |                                 |
+   |                                 this lifetime flows to the output
+   |
+help: one option is to consistently use `'a`
+   |
+LL |     fn b<'a>(self: Foo<'b>, a: &'a str) -> &'a str {
+   |                                             ++
 
 warning: 2 warnings emitted
 

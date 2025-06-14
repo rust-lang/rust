@@ -917,6 +917,19 @@ pub trait Read {
     /// # }
     /// ```
     ///
+    /// # Usage Notes
+    ///
+    /// `read_to_end` attempts to read a source until EOF, but many sources are continuous streams
+    /// that do not send EOF. In these cases, `read_to_end` will block indefinitely. Standard input
+    /// is one such stream which may be finite if piped, but is typically continuous. For example,
+    /// `cat file | my-rust-program` will correctly terminate with an `EOF` upon closure of cat.
+    /// Reading user input or running programs that remain open indefinitely will never terminate
+    /// the stream with `EOF` (e.g. `yes | my-rust-program`).
+    ///
+    /// Using `.lines()` with a [`BufReader`] or using [`read`] can provide a better solution
+    ///
+    ///[`read`]: Read::read
+    ///
     /// [`Vec::try_reserve`]: crate::vec::Vec::try_reserve
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
@@ -959,6 +972,19 @@ pub trait Read {
     ///
     /// (See also the [`std::fs::read_to_string`] convenience function for
     /// reading from a file.)
+    ///
+    /// # Usage Notes
+    ///
+    /// `read_to_string` attempts to read a source until EOF, but many sources are continuous streams
+    /// that do not send EOF. In these cases, `read_to_string` will block indefinitely. Standard input
+    /// is one such stream which may be finite if piped, but is typically continuous. For example,
+    /// `cat file | my-rust-program` will correctly terminate with an `EOF` upon closure of cat.
+    /// Reading user input or running programs that remain open indefinitely will never terminate
+    /// the stream with `EOF` (e.g. `yes | my-rust-program`).
+    ///
+    /// Using `.lines()` with a [`BufReader`] or using [`read`] can provide a better solution
+    ///
+    ///[`read`]: Read::read
     ///
     /// [`std::fs::read_to_string`]: crate::fs::read_to_string
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1262,6 +1288,20 @@ pub trait Read {
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Usage Notes
+///
+/// `read_to_string` attempts to read a source until EOF, but many sources are continuous streams
+/// that do not send EOF. In these cases, `read_to_string` will block indefinitely. Standard input
+/// is one such stream which may be finite if piped, but is typically continuous. For example,
+/// `cat file | my-rust-program` will correctly terminate with an `EOF` upon closure of cat.
+/// Reading user input or running programs that remain open indefinitely will never terminate
+/// the stream with `EOF` (e.g. `yes | my-rust-program`).
+///
+/// Using `.lines()` with a [`BufReader`] or using [`read`] can provide a better solution
+///
+///[`read`]: Read::read
+///
 #[stable(feature = "io_read_to_string", since = "1.65.0")]
 pub fn read_to_string<R: Read>(mut reader: R) -> Result<String> {
     let mut buf = String::new();
@@ -2028,7 +2068,7 @@ pub trait Seek {
 
     /// Returns the length of this stream (in bytes).
     ///
-    /// This method is implemented using up to three seek operations. If this
+    /// The default implementation uses up to three seek operations. If this
     /// method returns successfully, the seek position is unchanged (i.e. the
     /// position before calling this method is the same as afterwards).
     /// However, if this method returns an error, the seek position is
@@ -2062,16 +2102,7 @@ pub trait Seek {
     /// ```
     #[unstable(feature = "seek_stream_len", issue = "59359")]
     fn stream_len(&mut self) -> Result<u64> {
-        let old_pos = self.stream_position()?;
-        let len = self.seek(SeekFrom::End(0))?;
-
-        // Avoid seeking a third time when we were already at the end of the
-        // stream. The branch is usually way cheaper than a seek operation.
-        if old_pos != len {
-            self.seek(SeekFrom::Start(old_pos))?;
-        }
-
-        Ok(len)
+        stream_len_default(self)
     }
 
     /// Returns the current seek position from the start of the stream.
@@ -2130,6 +2161,19 @@ pub trait Seek {
         self.seek(SeekFrom::Current(offset))?;
         Ok(())
     }
+}
+
+pub(crate) fn stream_len_default<T: Seek + ?Sized>(self_: &mut T) -> Result<u64> {
+    let old_pos = self_.stream_position()?;
+    let len = self_.seek(SeekFrom::End(0))?;
+
+    // Avoid seeking a third time when we were already at the end of the
+    // stream. The branch is usually way cheaper than a seek operation.
+    if old_pos != len {
+        self_.seek(SeekFrom::Start(old_pos))?;
+    }
+
+    Ok(len)
 }
 
 /// Enumeration of possible methods to seek within an I/O object.

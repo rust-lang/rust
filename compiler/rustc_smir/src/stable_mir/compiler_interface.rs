@@ -6,7 +6,7 @@
 use std::cell::Cell;
 
 use rustc_smir::context::SmirCtxt;
-use stable_mir::abi::{FnAbi, Layout, LayoutShape};
+use stable_mir::abi::{FnAbi, Layout, LayoutShape, ReprOptions};
 use stable_mir::crate_def::Attribute;
 use stable_mir::mir::alloc::{AllocId, GlobalAlloc};
 use stable_mir::mir::mono::{Instance, InstanceDef, StaticDef};
@@ -198,6 +198,11 @@ impl<'tcx> SmirInterface<'tcx> {
     /// Returns whether this definition is a C string.
     pub(crate) fn adt_is_cstr(&self, def: AdtDef) -> bool {
         self.cx.adt_is_cstr(def)
+    }
+
+    /// Returns the representation options for this ADT
+    pub(crate) fn adt_repr(&self, def: AdtDef) -> ReprOptions {
+        self.cx.adt_repr(def)
     }
 
     /// Retrieve the function signature for the given generic arguments.

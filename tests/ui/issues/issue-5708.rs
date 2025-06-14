@@ -25,7 +25,7 @@ struct Outer<'a> {
 }
 
 impl<'a> Outer<'a> {
-    fn new(inner: &dyn Inner) -> Outer {
+    fn new(inner: &dyn Inner) -> Outer<'_> {
         Outer {
             inner: inner
         }

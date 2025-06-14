@@ -35,13 +35,16 @@ impl ExtractedDocTests {
     ) {
         let edition = scraped_test.edition(options);
 
-        let ScrapedDocTest { filename, line, langstr, text, name, .. } = scraped_test;
+        let ScrapedDocTest { filename, line, langstr, text, name, global_crate_attrs, .. } =
+            scraped_test;
 
         let doctest = BuildDocTestBuilder::new(&text)
             .crate_name(&opts.crate_name)
+            .global_crate_attrs(global_crate_attrs)
             .edition(edition)
             .lang_str(&langstr)
             .build(None);
+
         let (full_test_code, size) = doctest.generate_unique_doctest(
             &text,
             langstr.test_harness,

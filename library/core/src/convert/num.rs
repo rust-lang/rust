@@ -175,7 +175,6 @@ impl_from!(u8 => f16, #[stable(feature = "lossless_float_conv", since = "1.6.0")
 impl_from!(u8 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u8 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u8 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-impl_from!(u16 => f16, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u16 => f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);

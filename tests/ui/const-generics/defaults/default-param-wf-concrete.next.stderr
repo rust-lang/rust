@@ -2,7 +2,7 @@ error[E0080]: attempt to compute `u8::MAX + 1_u8`, which would overflow
   --> $DIR/default-param-wf-concrete.rs:4:28
    |
 LL | struct Foo<const N: u8 = { 255 + 1 }>;
-   |                            ^^^^^^^ evaluation of constant value failed here
+   |                            ^^^^^^^ evaluation of `Foo::{constant#0}` failed here
 
 error: aborting due to 1 previous error
 

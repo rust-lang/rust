@@ -955,7 +955,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 return false;
             };
 
-            let clone_trait = self.tcx.require_lang_item(LangItem::Clone, None);
+            let clone_trait = self.tcx.require_lang_item(LangItem::Clone, obligation.cause.span);
             let has_clone = |ty| {
                 self.type_implements_trait(clone_trait, [ty], obligation.param_env)
                     .must_apply_modulo_regions()
@@ -1411,7 +1411,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        err.span_suggestion(
+        err.span_suggestion_verbose(
             obligation.cause.span.shrink_to_lo(),
             format!(
                 "consider borrowing the value, since `&{self_ty}` can be coerced into `{target_ty}`"
@@ -1574,7 +1574,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .span_extend_while_whitespace(expr_span)
                     .shrink_to_hi()
                     .to(await_expr.span.shrink_to_hi());
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     removal_span,
                     "remove the `.await`",
                     "",
@@ -2126,7 +2126,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ));
 
                 if !assoc_item.is_impl_trait_in_trait() {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         span,
                         "use the fully qualified path to an implementation",
                         format!(
@@ -2924,12 +2924,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 let sm = tcx.sess.source_map();
                 if matches!(is_constable, IsConstable::Fn | IsConstable::Ctor)
-                    && let Ok(snip) = sm.span_to_snippet(elt_span)
+                    && let Ok(_) = sm.span_to_snippet(elt_span)
                 {
-                    err.span_suggestion(
-                        elt_span,
+                    err.multipart_suggestion(
                         "create an inline `const` block",
-                        format!("const {{ {snip} }}"),
+                        vec![
+                            (elt_span.shrink_to_lo(), "const { ".to_string()),
+                            (elt_span.shrink_to_hi(), " }".to_string()),
+                        ],
                         Applicability::MachineApplicable,
                     );
                 } else {
@@ -3127,13 +3129,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
                 err.help("change the field's type to have a statically known size");
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     span.shrink_to_lo(),
                     "borrowed types always have a statically known size",
                     "&",
                     Applicability::MachineApplicable,
                 );
-                err.multipart_suggestion(
+                err.multipart_suggestion_verbose(
                     "the `Box` type always has a statically known size and allocates its contents \
                      in the heap",
                     vec![
@@ -3625,7 +3627,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         span: Span,
     ) {
-        let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
+        let future_trait = self.tcx.require_lang_item(LangItem::Future, span);
 
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
         let impls_future = self.type_implements_trait(
@@ -3841,7 +3843,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .expr_ty_adjusted_opt(inner_expr)
                     .unwrap_or(Ty::new_misc_error(tcx));
                 let span = inner_expr.span;
-                if Some(span) != err.span.primary_span() {
+                if Some(span) != err.span.primary_span()
+                    && !span.in_external_macro(tcx.sess.source_map())
+                {
                     err.span_label(
                         span,
                         if ty.references_error() {
@@ -4139,7 +4143,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let pred = ty::Binder::dummy(ty::TraitPredicate {
                             trait_ref: ty::TraitRef::new(
                                 tcx,
-                                tcx.require_lang_item(LangItem::Clone, Some(span)),
+                                tcx.require_lang_item(LangItem::Clone, span),
                                 [*ty],
                             ),
                             polarity: ty::PredicatePolarity::Positive,

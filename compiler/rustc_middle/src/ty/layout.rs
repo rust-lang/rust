@@ -934,7 +934,7 @@ where
                             .unwrap(),
                     ),
                     Variants::Multiple { tag, tag_field, .. } => {
-                        if i == tag_field {
+                        if FieldIdx::from_usize(i) == tag_field {
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
                         TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
@@ -1060,8 +1060,10 @@ where
                         tag_field,
                         variants,
                         ..
-                    } if variants.len() == 2 && this.fields.offset(*tag_field) == offset => {
-                        let tagged_variant = if untagged_variant.as_u32() == 0 {
+                    } if variants.len() == 2
+                        && this.fields.offset(tag_field.as_usize()) == offset =>
+                    {
+                        let tagged_variant = if *untagged_variant == VariantIdx::ZERO {
                             VariantIdx::from_u32(1)
                         } else {
                             VariantIdx::from_u32(0)
@@ -1264,6 +1266,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | RiscvInterruptS
         | CCmseNonSecureCall
         | CCmseNonSecureEntry
+        | Custom
         | Unadjusted => false,
         Rust | RustCall | RustCold => tcx.sess.panic_strategy() == PanicStrategy::Unwind,
     }

@@ -1,0 +1,16 @@
+error: hand-coded well-known IP address
+  --> tests/ui/localhost.txt:1:1
+   |
+LL | std::net::Ipv4Addr::new(127, 0, 0, 1)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::ip-constant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ip_constant)]`
+help: use
+   |
+LL - std::net::Ipv4Addr::new(127, 0, 0, 1)
+LL + std::net::Ipv4Addr::LOCALHOST
+   |
+
+error: aborting due to 1 previous error
+

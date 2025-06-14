@@ -13,9 +13,8 @@ LL | struct Bar;
    |
 help: create an inline `const` block
    |
-LL -     let _: [Option<Bar>; 2] = [no_copy(); 2];
-LL +     let _: [Option<Bar>; 2] = [const { no_copy() }; 2];
-   |
+LL |     let _: [Option<Bar>; 2] = [const { no_copy() }; 2];
+   |                                +++++++           +
 
 error: aborting due to 1 previous error
 

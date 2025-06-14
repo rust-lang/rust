@@ -23,7 +23,6 @@
 #![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(core_io_borrowed_buf)]
-#![feature(hash_set_entry)]
 #![feature(if_let_guard)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]

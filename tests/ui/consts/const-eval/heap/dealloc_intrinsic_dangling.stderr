@@ -13,7 +13,7 @@ error[E0080]: memory access failed: ALLOC1 has been freed, so this pointer is da
   --> $DIR/dealloc_intrinsic_dangling.rs:22:5
    |
 LL |     *reference
-   |     ^^^^^^^^^^ evaluation of constant value failed here
+   |     ^^^^^^^^^^ evaluation of `_Y` failed here
 
 error: aborting due to 2 previous errors
 

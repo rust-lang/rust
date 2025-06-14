@@ -1,17 +1,17 @@
 use rustc_attr_data_structures::{AttributeKind, DeprecatedSince, Deprecation};
 use rustc_span::{Span, Symbol, sym};
 
-use super::SingleAttributeParser;
 use super::util::parse_version;
-use crate::context::AcceptContext;
+use super::{AttributeOrder, OnDuplicate, SingleAttributeParser};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
 use crate::session_diagnostics::UnsupportedLiteralReason;
 
 pub(crate) struct DeprecationParser;
 
-fn get(
-    cx: &AcceptContext<'_>,
+fn get<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
     name: Symbol,
     param_span: Span,
     arg: &ArgParser<'_>,
@@ -41,19 +41,12 @@ fn get(
     }
 }
 
-impl SingleAttributeParser for DeprecationParser {
-    const PATH: &'static [Symbol] = &[sym::deprecated];
+impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
+    const PATH: &[Symbol] = &[sym::deprecated];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
-    fn on_duplicate(cx: &AcceptContext<'_>, first_span: Span) {
-        // FIXME(jdonszelmann): merge with errors from check_attrs.rs
-        cx.emit_err(session_diagnostics::UnusedMultiple {
-            this: cx.attr_span,
-            other: first_span,
-            name: sym::deprecated,
-        });
-    }
-
-    fn convert(cx: &AcceptContext<'_>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let features = cx.features();
 
         let mut since = None;
@@ -79,7 +72,7 @@ impl SingleAttributeParser for DeprecationParser {
                     return None;
                 };
 
-                let ident_name = param.path_without_args().word_sym();
+                let ident_name = param.path().word_sym();
 
                 match ident_name {
                     Some(name @ sym::since) => {
@@ -102,7 +95,7 @@ impl SingleAttributeParser for DeprecationParser {
                     _ => {
                         cx.emit_err(session_diagnostics::UnknownMetaItem {
                             span: param_span,
-                            item: param.path_without_args().to_string(),
+                            item: param.path().to_string(),
                             expected: if features.deprecated_suggestion() {
                                 &["since", "note", "suggestion"]
                             } else {

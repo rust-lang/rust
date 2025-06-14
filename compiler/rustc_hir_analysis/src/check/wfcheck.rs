@@ -7,7 +7,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AmbigArg, ItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
@@ -40,7 +40,6 @@ use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::autoderef::Autoderef;
-use crate::collect::CollectItemTypesVisitor;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
 use crate::errors::InvalidReceiverTyHint;
 use crate::{errors, fluent_generated as fluent};
@@ -195,7 +194,9 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
         hir::Node::TraitItem(item) => check_trait_item(tcx, item),
         hir::Node::ImplItem(item) => check_impl_item(tcx, item),
         hir::Node::ForeignItem(item) => check_foreign_item(tcx, item),
-        hir::Node::OpaqueTy(_) => Ok(crate::check::check::check_item_type(tcx, def_id)),
+        hir::Node::ConstBlock(_) | hir::Node::Expr(_) | hir::Node::OpaqueTy(_) => {
+            Ok(crate::check::check::check_item_type(tcx, def_id))
+        }
         _ => unreachable!("{node:?}"),
     };
 
@@ -229,7 +230,8 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id)
     );
-    CollectItemTypesVisitor { tcx }.visit_item(item);
+    crate::collect::lower_item(tcx, item.item_id());
+    crate::collect::reject_placeholder_type_signatures_in_item(tcx, item);
 
     let res = match item.kind {
         // Right now we check that every default trait implementation
@@ -350,8 +352,6 @@ fn check_foreign_item<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let def_id = item.owner_id.def_id;
 
-    CollectItemTypesVisitor { tcx }.visit_foreign_item(item);
-
     debug!(
         ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id)
@@ -374,7 +374,7 @@ fn check_trait_item<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let def_id = trait_item.owner_id.def_id;
 
-    CollectItemTypesVisitor { tcx }.visit_trait_item(trait_item);
+    crate::collect::lower_trait_item(tcx, trait_item.trait_item_id());
 
     let (method_sig, span) = match trait_item.kind {
         hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
@@ -939,7 +939,7 @@ fn check_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_item: &'tcx hir::ImplItem<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    CollectItemTypesVisitor { tcx }.visit_impl_item(impl_item);
+    crate::collect::lower_impl_item(tcx, impl_item.impl_item_id());
 
     let (method_sig, span) = match impl_item.kind {
         hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),
@@ -969,7 +969,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                         ),
                         wfcx.param_env,
                         ty,
-                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, Some(hir_ty.span)),
+                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, hir_ty.span),
                     );
                     Ok(())
                 })
@@ -983,7 +983,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                         ),
                         wfcx.param_env,
                         ty,
-                        tcx.require_lang_item(LangItem::ConstParamTy, Some(hir_ty.span)),
+                        tcx.require_lang_item(LangItem::ConstParamTy, hir_ty.span),
                     );
                     Ok(())
                 })
@@ -1232,7 +1232,7 @@ fn check_type_defn<'tcx>(
                     ),
                     wfcx.param_env,
                     ty,
-                    tcx.require_lang_item(LangItem::Sized, Some(hir_ty.span)),
+                    tcx.require_lang_item(LangItem::Sized, hir_ty.span),
                 );
             }
 
@@ -1356,7 +1356,7 @@ fn check_static_item(
                 ),
                 wfcx.param_env,
                 item_ty,
-                tcx.require_lang_item(LangItem::Sized, Some(ty_span)),
+                tcx.require_lang_item(LangItem::Sized, ty_span),
             );
         }
 
@@ -1375,7 +1375,7 @@ fn check_static_item(
                 ),
                 wfcx.param_env,
                 item_ty,
-                tcx.require_lang_item(LangItem::Sync, Some(ty_span)),
+                tcx.require_lang_item(LangItem::Sync, ty_span),
             );
         }
         Ok(())
@@ -1401,7 +1401,7 @@ fn check_const_item(
             ),
             wfcx.param_env,
             ty,
-            tcx.require_lang_item(LangItem::Sized, None),
+            tcx.require_lang_item(LangItem::Sized, ty_span),
         );
 
         check_where_clauses(wfcx, item_span, def_id);
@@ -1725,13 +1725,13 @@ fn check_fn_or_method<'tcx>(
                 ObligationCause::new(span, wfcx.body_def_id, ObligationCauseCode::RustCall),
                 wfcx.param_env,
                 *ty,
-                tcx.require_lang_item(hir::LangItem::Tuple, Some(span)),
+                tcx.require_lang_item(hir::LangItem::Tuple, span),
             );
             wfcx.register_bound(
                 ObligationCause::new(span, wfcx.body_def_id, ObligationCauseCode::RustCall),
                 wfcx.param_env,
                 *ty,
-                tcx.require_lang_item(hir::LangItem::Sized, Some(span)),
+                tcx.require_lang_item(hir::LangItem::Sized, span),
             );
         } else {
             tcx.dcx().span_err(
@@ -1776,7 +1776,7 @@ fn check_sized_if_body<'tcx>(
             ObligationCause::new(span, def_id, code),
             wfcx.param_env,
             ty,
-            tcx.require_lang_item(LangItem::Sized, Some(span)),
+            tcx.require_lang_item(LangItem::Sized, span),
         );
     }
 }
@@ -2013,7 +2013,7 @@ fn receiver_is_valid<'tcx>(
         // deref chain implement `LegacyReceiver`.
         if arbitrary_self_types_enabled.is_none() {
             let legacy_receiver_trait_def_id =
-                tcx.require_lang_item(LangItem::LegacyReceiver, Some(span));
+                tcx.require_lang_item(LangItem::LegacyReceiver, span);
             if !legacy_receiver_is_implemented(
                 wfcx,
                 legacy_receiver_trait_def_id,
@@ -2402,8 +2402,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     }
 }
 
-fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), ErrorGuaranteed> {
-    let items = tcx.hir_module_items(module);
+fn check_type_wf(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
+    let items = tcx.hir_crate_items(());
     let res = items
         .par_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id))
         .and(items.par_impl_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
@@ -2411,10 +2411,10 @@ fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), Error
         .and(
             items.par_foreign_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)),
         )
+        .and(items.par_nested_bodies(|item| tcx.ensure_ok().check_well_formed(item)))
         .and(items.par_opaques(|item| tcx.ensure_ok().check_well_formed(item)));
-    if module == LocalModDefId::CRATE_DEF_ID {
-        super::entry::check_for_entry_fn(tcx);
-    }
+    super::entry::check_for_entry_fn(tcx);
+
     res
 }
 
@@ -2552,5 +2552,5 @@ struct RedundantLifetimeArgsLint<'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_type_wf, check_well_formed, ..*providers };
+    *providers = Providers { check_type_wf, check_well_formed, ..*providers };
 }

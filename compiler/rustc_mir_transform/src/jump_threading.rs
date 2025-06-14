@@ -388,7 +388,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             lhs,
             constant,
             &mut |elem, op| match elem {
-                TrackElem::Field(idx) => self.ecx.project_field(op, idx.as_usize()).discard_err(),
+                TrackElem::Field(idx) => self.ecx.project_field(op, idx).discard_err(),
                 TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).discard_err(),
                 TrackElem::Discriminant => {
                     let variant = self.ecx.read_discriminant(op).discard_err()?;

@@ -21,7 +21,7 @@ use std::path::PathBuf;
 
 #[cfg(feature = "rustc-hash")]
 use rustc_hash::FxHashMap as HashMap;
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 
 pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 

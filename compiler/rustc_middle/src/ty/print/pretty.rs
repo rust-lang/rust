@@ -1886,7 +1886,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     ) -> Result<(), PrintError> {
         define_scoped_cx!(self);
 
-        if self.should_print_verbose() {
+        if with_reduced_queries() || self.should_print_verbose() {
             p!(write("ValTree({:?}: ", cv.valtree), print(cv.ty), ")");
             return Ok(());
         }

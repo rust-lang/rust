@@ -960,5 +960,7 @@ pub fn eq_attr_args(l: &AttrArgs, r: &AttrArgs) -> bool {
 }
 
 pub fn eq_delim_args(l: &DelimArgs, r: &DelimArgs) -> bool {
-    l.delim == r.delim && l.tokens.eq_unspanned(&r.tokens)
+    l.delim == r.delim
+        && l.tokens.len() == r.tokens.len()
+        && l.tokens.iter().zip(r.tokens.iter()).all(|(a, b)| a.eq_unspanned(b))
 }

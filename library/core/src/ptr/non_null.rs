@@ -89,7 +89,8 @@ impl<T: Sized> NonNull<T> {
     /// For more details, see the equivalent method on a raw pointer, [`ptr::without_provenance_mut`].
     ///
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
-    #[unstable(feature = "nonnull_provenance", issue = "135243")]
+    #[stable(feature = "nonnull_provenance", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "nonnull_provenance", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn without_provenance(addr: NonZero<usize>) -> Self {
@@ -132,7 +133,7 @@ impl<T: Sized> NonNull<T> {
     /// For more details, see the equivalent method on a raw pointer, [`ptr::with_exposed_provenance_mut`].
     ///
     /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
-    #[unstable(feature = "nonnull_provenance", issue = "135243")]
+    #[stable(feature = "nonnull_provenance", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn with_exposed_provenance(addr: NonZero<usize>) -> Self {
         // SAFETY: we know `addr` is non-zero.
@@ -329,7 +330,7 @@ impl<T: ?Sized> NonNull<T> {
     /// For more details, see the equivalent method on a raw pointer, [`pointer::expose_provenance`].
     ///
     /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
-    #[unstable(feature = "nonnull_provenance", issue = "135243")]
+    #[stable(feature = "nonnull_provenance", since = "CURRENT_RUSTC_VERSION")]
     pub fn expose_provenance(self) -> NonZero<usize> {
         // SAFETY: The pointer is guaranteed by the type to be non-null,
         // meaning that the address will be non-zero.

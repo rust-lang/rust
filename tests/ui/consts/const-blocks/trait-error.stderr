@@ -2,10 +2,7 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/trait-error.rs:5:6
    |
 LL |     [Foo(String::new()); 4];
-   |      ^^^^^^^^^^^^^^^^^^
-   |      |
-   |      the trait `Copy` is not implemented for `String`
-   |      help: create an inline `const` block: `const { Foo(String::new()) }`
+   |      ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
    |
 note: required for `Foo<String>` to implement `Copy`
   --> $DIR/trait-error.rs:1:10
@@ -13,6 +10,10 @@ note: required for `Foo<String>` to implement `Copy`
 LL | #[derive(Copy, Clone)]
    |          ^^^^ unsatisfied trait bound introduced in this `derive` macro
    = note: the `Copy` trait is required because this value will be copied for each element of the array
+help: create an inline `const` block
+   |
+LL |     [const { Foo(String::new()) }; 4];
+   |      +++++++                    +
 
 error: aborting due to 1 previous error
 

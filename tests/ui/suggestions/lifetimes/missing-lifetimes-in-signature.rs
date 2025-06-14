@@ -100,7 +100,6 @@ where
 
 // This also works. The `'_` isn't necessary but it's where we arrive to following the suggestions:
 fn ok2<'a, G: 'a, T>(g: G, dest: &'a mut T) -> impl FnOnce() + '_ + 'a
-//~^ WARNING elided lifetime has a name
 where
     G: Get<T>,
 {

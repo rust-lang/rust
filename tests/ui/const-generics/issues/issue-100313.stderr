@@ -2,7 +2,7 @@ error[E0080]: writing to ALLOC0 which is read-only
   --> $DIR/issue-100313.rs:18:5
    |
 LL |     x.set_false();
-   |     ^^^^^^^^^^^^^ evaluation of constant value failed here
+   |     ^^^^^^^^^^^^^ evaluation of `_` failed inside this call
    |
 note: inside `T::<&true>::set_false`
   --> $DIR/issue-100313.rs:11:13

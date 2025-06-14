@@ -2,9 +2,12 @@ error[E0620]: cast to unsized type: `&[usize; 2]` as `[usize]`
   --> $DIR/E0620.rs:2:16
    |
 LL |     let _foo = &[1_usize, 2] as [usize];
-   |                ^^^^^^^^^^^^^^^^^-------
-   |                                 |
-   |                                 help: try casting to a reference instead: `&[usize]`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider casting to a reference instead
+   |
+LL |     let _foo = &[1_usize, 2] as &[usize];
+   |                                 +
 
 error: aborting due to 1 previous error
 

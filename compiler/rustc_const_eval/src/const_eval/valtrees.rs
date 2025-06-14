@@ -1,4 +1,4 @@
-use rustc_abi::{BackendRepr, VariantIdx};
+use rustc_abi::{BackendRepr, FieldIdx, VariantIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ReportedErrorInfo};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
@@ -40,7 +40,7 @@ fn branches<'tcx>(
     }
 
     for i in 0..field_count {
-        let field = ecx.project_field(&place, i).unwrap();
+        let field = ecx.project_field(&place, FieldIdx::from_usize(i)).unwrap();
         let valtree = const_to_valtree_inner(ecx, &field, num_nodes)?;
         branches.push(valtree);
     }
@@ -437,7 +437,7 @@ fn valtree_into_mplace<'tcx>(
                     ty::Str | ty::Slice(_) | ty::Array(..) => {
                         ecx.project_index(place, i as u64).unwrap()
                     }
-                    _ => ecx.project_field(&place_adjusted, i).unwrap(),
+                    _ => ecx.project_field(&place_adjusted, FieldIdx::from_usize(i)).unwrap(),
                 };
 
                 debug!(?place_inner);

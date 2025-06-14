@@ -53,7 +53,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         assert!(entry.is_some());
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         let OpaqueTypeStorage { opaque_types, duplicate_entries } = self;
         opaque_types.is_empty() && duplicate_entries.is_empty()
     }

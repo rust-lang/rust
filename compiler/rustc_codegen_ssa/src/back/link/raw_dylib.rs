@@ -287,6 +287,7 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
         (Architecture::X86_64, None) => elf::EM_X86_64,
         (Architecture::X86_64_X32, None) => elf::EM_X86_64,
         (Architecture::Hexagon, None) => elf::EM_HEXAGON,
+        (Architecture::LoongArch32, None) => elf::EM_LOONGARCH,
         (Architecture::LoongArch64, None) => elf::EM_LOONGARCH,
         (Architecture::M68k, None) => elf::EM_68K,
         (Architecture::Mips, None) => elf::EM_MIPS,

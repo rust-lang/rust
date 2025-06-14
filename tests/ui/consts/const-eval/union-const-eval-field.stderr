@@ -2,7 +2,7 @@ error[E0080]: using uninitialized data, but this operation requires initialized 
   --> $DIR/union-const-eval-field.rs:28:37
    |
 LL |     const FIELD3: Field3 = unsafe { UNION.field3 };
-   |                                     ^^^^^^^^^^^^ evaluation of constant value failed here
+   |                                     ^^^^^^^^^^^^ evaluation of `read_field3::FIELD3` failed here
 
 note: erroneous constant encountered
   --> $DIR/union-const-eval-field.rs:30:5

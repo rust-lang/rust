@@ -850,7 +850,7 @@ fn asm_clif_type<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> Option<ty
         // Adapted from https://github.com/rust-lang/rust/blob/f3c66088610c1b80110297c2d9a8b5f9265b013f/compiler/rustc_hir_analysis/src/check/intrinsicck.rs#L136-L151
         ty::Adt(adt, args) if fx.tcx.is_lang_item(adt.did(), LangItem::MaybeUninit) => {
             let fields = &adt.non_enum_variant().fields;
-            let ty = fields[FieldIdx::from_u32(1)].ty(fx.tcx, args);
+            let ty = fields[FieldIdx::ONE].ty(fx.tcx, args);
             let ty::Adt(ty, args) = ty.kind() else {
                 unreachable!("expected first field of `MaybeUninit` to be an ADT")
             };

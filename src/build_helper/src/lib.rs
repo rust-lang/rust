@@ -6,6 +6,7 @@ pub mod fs;
 pub mod git;
 pub mod metrics;
 pub mod stage0_parser;
+pub mod targets;
 pub mod util;
 
 /// The default set of crates for opt-dist to collect LLVM profiles.

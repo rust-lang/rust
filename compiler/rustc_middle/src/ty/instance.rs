@@ -786,7 +786,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
-        let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
+        let def_id = tcx.require_lang_item(LangItem::DropInPlace, DUMMY_SP);
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(
             tcx,
@@ -798,7 +798,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     pub fn resolve_async_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
-        let def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, None);
+        let def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, DUMMY_SP);
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(
             tcx,
@@ -824,7 +824,7 @@ impl<'tcx> Instance<'tcx> {
         closure_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Instance<'tcx> {
-        let fn_once = tcx.require_lang_item(LangItem::FnOnce, None);
+        let fn_once = tcx.require_lang_item(LangItem::FnOnce, DUMMY_SP);
         let call_once = tcx
             .associated_items(fn_once)
             .in_definition_order()

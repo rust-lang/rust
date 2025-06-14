@@ -31,7 +31,7 @@ macro_rules! local { () => {
 
     mod qself {
         #[derive(Double)]
-        struct QSelf(<::Foo as $crate::Trait>::Assoc);
+        struct QSelf(<crate::Foo as $crate::Trait>::Assoc);
     }
 
     mod qself_recurse {
@@ -43,7 +43,7 @@ macro_rules! local { () => {
         #[derive(Double)]
         #[repr(u32)]
         enum QSelfInConst {
-            Variant = <::Foo as $crate::Trait>::CONST,
+            Variant = <crate::Foo as $crate::Trait>::CONST,
         }
     }
 } }

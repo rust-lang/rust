@@ -2,7 +2,7 @@ error[E0080]: evaluation panicked: explicit panic
   --> $DIR/issue-76191.rs:8:37
    |
 LL | const RANGE2: RangeInclusive<i32> = panic!();
-   |                                     ^^^^^^^^ evaluation of constant value failed here
+   |                                     ^^^^^^^^ evaluation of `RANGE2` failed here
 
 error[E0308]: mismatched types
   --> $DIR/issue-76191.rs:14:9

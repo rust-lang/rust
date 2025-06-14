@@ -593,7 +593,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                                         matches!(
                                             arg,
                                             hir::GenericArg::Lifetime(lifetime)
-                                                if lifetime.is_syntactically_hidden()
+                                                if lifetime.is_implicit()
                                         )
                                     }) {
                                         self.suggestions.push((
@@ -759,7 +759,8 @@ pub enum ExplicitLifetimeRequired<'a> {
         #[suggestion(
             trait_selection_explicit_lifetime_required_sugg_with_ident,
             code = "{new_ty}",
-            applicability = "unspecified"
+            applicability = "unspecified",
+            style = "verbose"
         )]
         new_ty_span: Span,
         #[skip_arg]
@@ -774,7 +775,8 @@ pub enum ExplicitLifetimeRequired<'a> {
         #[suggestion(
             trait_selection_explicit_lifetime_required_sugg_with_param_type,
             code = "{new_ty}",
-            applicability = "unspecified"
+            applicability = "unspecified",
+            style = "verbose"
         )]
         new_ty_span: Span,
         #[skip_arg]
@@ -1462,7 +1464,8 @@ pub enum SuggestAccessingField<'a> {
     #[suggestion(
         trait_selection_suggest_accessing_field,
         code = "{snippet}.{name}",
-        applicability = "maybe-incorrect"
+        applicability = "maybe-incorrect",
+        style = "verbose"
     )]
     Safe {
         #[primary_span]
@@ -1474,7 +1477,8 @@ pub enum SuggestAccessingField<'a> {
     #[suggestion(
         trait_selection_suggest_accessing_field,
         code = "unsafe {{ {snippet}.{name} }}",
-        applicability = "maybe-incorrect"
+        applicability = "maybe-incorrect",
+        style = "verbose"
     )]
     Unsafe {
         #[primary_span]

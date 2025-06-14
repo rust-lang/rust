@@ -1,15 +1,13 @@
 //@ run-pass
 #![allow(dead_code)]
-#![allow(non_camel_case_types)]
 
-
-trait hax {
-    fn dummy(&self) { }
+trait Hax {
+    fn dummy(&self) {}
 }
-impl<A> hax for A { }
+impl<A> Hax for A {}
 
-fn perform_hax<T: 'static>(x: Box<T>) -> Box<dyn hax+'static> {
-    Box::new(x) as Box<dyn hax+'static>
+fn perform_hax<T: 'static>(x: Box<T>) -> Box<dyn Hax + 'static> {
+    Box::new(x) as Box<dyn Hax + 'static>
 }
 
 fn deadcode() {

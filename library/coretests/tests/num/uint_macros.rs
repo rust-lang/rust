@@ -72,6 +72,14 @@ macro_rules! uint_module {
                 assert_eq_const_safe!(u32: X.trailing_ones(), 0);
             }
 
+            fn test_bit_width() {
+                assert_eq_const_safe!(u32: A.bit_width(), 6);
+                assert_eq_const_safe!(u32: B.bit_width(), 6);
+                assert_eq_const_safe!(u32: C.bit_width(), 7);
+                assert_eq_const_safe!(u32: _0.bit_width(), 0);
+                assert_eq_const_safe!(u32: _1.bit_width(), $T::BITS);
+            }
+
             fn test_rotate() {
                 assert_eq_const_safe!($T: A.rotate_left(6).rotate_right(2).rotate_right(4), A);
                 assert_eq_const_safe!($T: B.rotate_left(3).rotate_left(2).rotate_right(5), B);
@@ -514,6 +522,29 @@ macro_rules! uint_module {
                 assert_eq_const_safe!($T: <$T>::unbounded_shr(17, SHIFT_AMOUNT_OVERFLOW), 0);
                 assert_eq_const_safe!($T: <$T>::unbounded_shr(17, SHIFT_AMOUNT_OVERFLOW2), 0);
                 assert_eq_const_safe!($T: <$T>::unbounded_shr(17, SHIFT_AMOUNT_OVERFLOW3), 0);
+            }
+        }
+
+        const EXACT_DIV_SUCCESS_DIVIDEND1: $T = 42;
+        const EXACT_DIV_SUCCESS_DIVISOR1: $T = 6;
+        const EXACT_DIV_SUCCESS_QUOTIENT1: $T = 7;
+        const EXACT_DIV_SUCCESS_DIVIDEND2: $T = 18;
+        const EXACT_DIV_SUCCESS_DIVISOR2: $T = 3;
+        const EXACT_DIV_SUCCESS_QUOTIENT2: $T = 6;
+
+        test_runtime_and_compiletime! {
+            fn test_exact_div() {
+                // 42 / 6
+                assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(EXACT_DIV_SUCCESS_DIVIDEND1, EXACT_DIV_SUCCESS_DIVISOR1), Some(EXACT_DIV_SUCCESS_QUOTIENT1));
+                assert_eq_const_safe!($T: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND1, EXACT_DIV_SUCCESS_DIVISOR1), EXACT_DIV_SUCCESS_QUOTIENT1);
+
+                // 18 / 3
+                assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(EXACT_DIV_SUCCESS_DIVIDEND2, EXACT_DIV_SUCCESS_DIVISOR2), Some(EXACT_DIV_SUCCESS_QUOTIENT2));
+                assert_eq_const_safe!($T: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND2, EXACT_DIV_SUCCESS_DIVISOR2), EXACT_DIV_SUCCESS_QUOTIENT2);
+
+                // failures
+                assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(1, 2), None);
+                assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(0, 0), None);
             }
         }
     };

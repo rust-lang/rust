@@ -718,6 +718,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
                     issue: NonZero::new(27812),
                     is_soft: false,
                     implied_by: None,
+                    old_name: None,
                 },
                 feature: sym::rustc_private,
             };
@@ -1161,8 +1162,8 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         defined_features: &LibFeatures,
         all_implications: &UnordMap<Symbol, Symbol>,
     ) {
-        for (feature, since) in defined_features.to_sorted_vec() {
-            if let FeatureStability::AcceptedSince(since) = since
+        for (feature, stability) in defined_features.to_sorted_vec() {
+            if let FeatureStability::AcceptedSince(since) = stability
                 && let Some(span) = remaining_lib_features.get(&feature)
             {
                 // Warn if the user has enabled an already-stable lib feature.
@@ -1180,6 +1181,12 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             // feature defined in the local crate because `remaining_implications` is only the
             // implications from this crate.
             remaining_implications.remove(&feature);
+
+            if let FeatureStability::Unstable { old_name: Some(alias) } = stability {
+                if let Some(span) = remaining_lib_features.swap_remove(&alias) {
+                    tcx.dcx().emit_err(errors::RenamedFeature { span, feature, alias });
+                }
+            }
 
             if remaining_lib_features.is_empty() && remaining_implications.is_empty() {
                 break;
