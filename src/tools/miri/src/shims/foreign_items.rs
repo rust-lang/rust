@@ -611,6 +611,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_pointer(new_ptr, dest)
                 });
             }
+            name if name == this.mangle_internal_symbol("__rust_no_alloc_shim_is_unstable_v2") => {
+                // This is a no-op shim that only exists to prevent making the allocator shims instantly stable.
+                let [] = this.check_shim(abi, CanonAbi::Rust, link_name, args)?;
+            }
 
             // C memory handling functions
             "memcmp" => {
