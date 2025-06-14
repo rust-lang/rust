@@ -1550,14 +1550,13 @@ fn needs_codegen_config(run: &RunConfig<'_>) -> bool {
     needs_codegen_cfg
 }
 
-pub(crate) const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
-
 fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
     let path = path.path.to_str().unwrap();
 
     let is_explicitly_called = |p| -> bool { run.builder.paths.contains(p) };
     let should_enforce = run.builder.kind == Kind::Dist || run.builder.kind == Kind::Install;
 
+    const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
     if path.contains(CODEGEN_BACKEND_PREFIX) {
         let mut needs_codegen_backend_config = true;
         for backend in run.builder.config.codegen_backends(run.target) {
