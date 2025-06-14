@@ -182,11 +182,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
         unsafe { ptr::read(self.ptr().add(off)) }
     }
 
-    /// Writes an element into the buffer, moving it.
+    /// Writes an element into the buffer, moving it and returning a pointer to it.
     #[inline]
-    unsafe fn buffer_write(&mut self, off: usize, value: T) {
+    unsafe fn buffer_write(&mut self, off: usize, value: T) -> *mut T {
         unsafe {
-            ptr::write(self.ptr().add(off), value);
+            let ptr = self.ptr().add(off);
+            ptr::write(ptr, value);
+            ptr
         }
     }
 
@@ -1920,8 +1922,64 @@ impl<T, A: Allocator> VecDeque<T, A> {
             self.grow();
         }
 
-        unsafe { self.buffer_write(self.to_physical_idx(self.len), value) }
+        unsafe { self.buffer_write(self.to_physical_idx(self.len), value) };
         self.len += 1;
+    }
+
+    /// Prepends an element to the deque, returning a reference to it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(push_mut)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut d = VecDeque::from([1, 2, 3]);
+    /// let x = d.push_front_mut(1);
+    /// *x -= 1;
+    /// assert_eq!(d.front(), Some(&0));
+    /// ```
+    #[unstable(feature = "push_mut", issue = "135974")]
+    #[track_caller]
+    #[must_use = "if you don't need a reference to the value, use VecDeque::push_front instead"]
+    pub fn push_front_mut(&mut self, value: T) -> &mut T {
+        if self.is_full() {
+            self.grow();
+        }
+
+        self.head = self.wrap_sub(self.head, 1);
+        self.len += 1;
+
+        unsafe {
+            let ptr = self.buffer_write(self.head, value);
+            &mut *ptr
+        }
+    }
+
+    /// Appends an element to the back of the deque, returning a reference to it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(push_mut)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut d = VecDeque::from([1, 2, 3]);
+    /// let x = d.push_back_mut(3);
+    /// *x += 1;
+    /// assert_eq!(d.back(), Some(&4));
+    /// ```
+    #[unstable(feature = "push_mut", issue = "135974")]
+    #[track_caller]
+    #[must_use = "if you don't need a reference to the value, use VecDeque::push_back instead"]
+    pub fn push_back_mut(&mut self, value: T) -> &mut T {
+        if self.is_full() {
+            self.grow();
+        }
+
+        let back_ptr = unsafe { self.buffer_write(self.to_physical_idx(self.len), value) };
+        self.len += 1;
+        unsafe { &mut *back_ptr }
     }
 
     #[inline]
@@ -2052,6 +2110,64 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 self.wrap_copy(old_head, self.head, index);
                 self.buffer_write(self.to_physical_idx(index), value);
                 self.len += 1;
+            }
+        }
+    }
+
+    /// Inserts an element at `index` within the deque, shifting all elements
+    /// with indices greater than or equal to `index` towards the back,
+    /// and returning a reference to it.
+    ///
+    /// Element at index 0 is the front of the queue.
+    ///
+    /// Returns [`None`] if `index` is strictly greater than deque's length.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(push_mut)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut vec_deque = VecDeque::from([1, 2, 3]);
+    ///
+    /// let x = vec_deque.insert_mut(1, 5).unwrap();
+    /// *x += 7;
+    /// assert_eq!(vec_deque, &[1, 12, 2, 3]);
+    ///
+    /// let y = vec_deque.insert_mut(7, 5);
+    /// assert!(y.is_none());
+    /// ```
+    #[unstable(feature = "push_mut", issue = "135974")]
+    #[track_caller]
+    #[must_use = "if you don't need a reference to the value or type-safe bound checking, use VecDeque::insert instead"]
+    pub fn insert_mut(&mut self, index: usize, value: T) -> Option<&mut T> {
+        if index > self.len() {
+            return None;
+        }
+        if self.is_full() {
+            self.grow();
+        }
+
+        let k = self.len - index;
+        if k < index {
+            // `index + 1` can't overflow, because if index was usize::MAX, then either the
+            // assert would've failed, or the deque would've tried to grow past usize::MAX
+            // and panicked.
+            unsafe {
+                // see `remove()` for explanation why this wrap_copy() call is safe.
+                self.wrap_copy(self.to_physical_idx(index), self.to_physical_idx(index + 1), k);
+                let ptr = self.buffer_write(self.to_physical_idx(index), value);
+                self.len += 1;
+                Some(&mut *ptr)
+            }
+        } else {
+            let old_head = self.head;
+            self.head = self.wrap_sub(self.head, 1);
+            unsafe {
+                self.wrap_copy(old_head, self.head, index);
+                let ptr = self.buffer_write(self.to_physical_idx(index), value);
+                self.len += 1;
+                Some(&mut *ptr)
             }
         }
     }
