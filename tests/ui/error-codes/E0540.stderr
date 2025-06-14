@@ -1,0 +1,19 @@
+error[E0805]: malformed `inline` attribute input
+  --> $DIR/E0540.rs:1:1
+   |
+LL | #[inline()]
+   | ^^^^^^^^--^
+   |         |
+   |         expected a single argument here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[inline(always|never)]
+   |          ++++++++++++
+LL - #[inline()]
+LL + #[inline]
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0805`.
