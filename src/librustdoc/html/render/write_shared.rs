@@ -477,11 +477,7 @@ impl SourcesPart {
         // This needs to be `var`, not `const`.
         // This variable needs declared in the current global scope so that if
         // src-script.js loads first, it can pick it up.
-        SortedTemplate::from_before_after(
-            r"var srcIndex = new Map(JSON.parse('[",
-            r"]'));
-createSrcSidebar();",
-        )
+        SortedTemplate::from_before_after(r"createSrcSidebar('[", r"]');")
     }
 
     fn get(cx: &Context<'_>, crate_name: &OrderedJson) -> Result<PartsAndLocations<Self>, Error> {
