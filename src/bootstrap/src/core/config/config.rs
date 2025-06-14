@@ -1373,12 +1373,13 @@ impl Config {
         }
 
         println!("Updating submodule {relative_path}");
-        self.check_run(
-            helpers::git(Some(&self.src))
-                .run_always()
-                .args(["submodule", "-q", "sync"])
-                .arg(relative_path),
-        );
+
+        helpers::git(Some(&self.src))
+            .allow_failure()
+            .run_always()
+            .args(["submodule", "-q", "sync"])
+            .arg(relative_path)
+            .run(self);
 
         // Try passing `--progress` to start, then run git again without if that fails.
         let update = |progress: bool| {
@@ -1407,26 +1408,23 @@ impl Config {
             git.arg(relative_path);
             git
         };
-        if !self.check_run(&mut update(true)) {
-            self.check_run(&mut update(false));
+        if !update(true).allow_failure().run(self) {
+            update(false).allow_failure().run(self);
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
-        let has_local_modifications = !self.check_run(submodule_git().allow_failure().args([
-            "diff-index",
-            "--quiet",
-            "HEAD",
-        ]));
+        let has_local_modifications =
+            !submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]).run(self);
         if has_local_modifications {
-            self.check_run(submodule_git().args(["stash", "push"]));
+            submodule_git().allow_failure().args(["stash", "push"]).run(self);
         }
 
-        self.check_run(submodule_git().args(["reset", "-q", "--hard"]));
-        self.check_run(submodule_git().args(["clean", "-qdfx"]));
+        submodule_git().allow_failure().args(["reset", "-q", "--hard"]).run(self);
+        submodule_git().allow_failure().args(["clean", "-qdfx"]).run(self);
 
         if has_local_modifications {
-            self.check_run(submodule_git().args(["stash", "pop"]));
+            submodule_git().allow_failure().args(["stash", "pop"]).run(self);
         }
     }
 
