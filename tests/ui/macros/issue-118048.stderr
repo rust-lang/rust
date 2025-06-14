@@ -6,15 +6,6 @@ LL | foo!(_);
    |      |
    |      not allowed in type signatures
    |      not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL ~         fn foo<T>(_: $ty, _: $ty) {}
-LL |     }
-LL | }
-LL |
-LL ~ foo!(T);
-   |
 
 error: aborting due to 1 previous error
 
