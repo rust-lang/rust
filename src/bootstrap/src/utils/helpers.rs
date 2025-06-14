@@ -300,25 +300,6 @@ pub fn make(host: &str) -> PathBuf {
     }
 }
 
-#[track_caller]
-pub fn output(cmd: &mut Command) -> String {
-    #[cfg(feature = "tracing")]
-    let _run_span = crate::trace_cmd!(cmd);
-
-    let output = match cmd.stderr(Stdio::inherit()).output() {
-        Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),
-    };
-    if !output.status.success() {
-        panic!(
-            "command did not execute successfully: {:?}\n\
-             expected success, got: {}",
-            cmd, output.status
-        );
-    }
-    String::from_utf8(output.stdout).unwrap()
-}
-
 /// Spawn a process and return a closure that will wait for the process
 /// to finish and then return its output. This allows the spawned process
 /// to do work without immediately blocking bootstrap.
