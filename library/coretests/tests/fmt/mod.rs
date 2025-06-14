@@ -3,6 +3,21 @@ mod float;
 mod num;
 
 #[test]
+fn test_lifetime() {
+    // Trigger all different forms of expansion,
+    // and check that each of them can be stored as a variable.
+    let a = format_args!("hello");
+    let a = format_args!("hello {a}");
+    let a = format_args!("hello {a:1}");
+    let a = format_args!("hello {a} {a:?}");
+    assert_eq!(a.to_string(), "hello hello hello hello hello hello hello");
+
+    // Without arguments, it should also work in consts.
+    const A: std::fmt::Arguments<'static> = format_args!("hello");
+    assert_eq!(A.to_string(), "hello");
+}
+
+#[test]
 fn test_format_flags() {
     // No residual flags left by pointer formatting
     let p = "".as_ptr();
