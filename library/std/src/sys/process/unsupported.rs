@@ -21,6 +21,7 @@ pub struct Command {
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
+    force_parent_path: bool,
 }
 
 // passed back to std::process with the pipes connected to the child, if any
@@ -52,6 +53,7 @@ impl Command {
             stdin: None,
             stdout: None,
             stderr: None,
+            force_parent_path: false,
         }
     }
 
@@ -77,6 +79,10 @@ impl Command {
 
     pub fn stderr(&mut self, stderr: Stdio) {
         self.stderr = Some(stderr);
+    }
+
+    pub fn resolve_in_parent_path(&mut self, use_parent: bool) {
+        self.force_parent_path = use_parent;
     }
 
     pub fn get_program(&self) -> &OsStr {
