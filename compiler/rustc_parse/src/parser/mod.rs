@@ -918,15 +918,27 @@ impl<'a> Parser<'a> {
                                 Ok(t) => {
                                     // Parsed successfully, therefore most probably the code only
                                     // misses a separator.
-                                    expect_err
-                                        .with_span_suggestion_short(
+
+                                    // This is to avoid adding suggestions twice for doc comments in item list.
+                                    let contains_missing_comma_suggestion =
+                                        expect_err.suggestions.clone().unwrap_tag().iter().any(
+                                            |s| {
+                                                if let Some(msg) = s.msg.as_str() {
+                                                    msg.contains("missing `,`")
+                                                } else {
+                                                    false
+                                                }
+                                            },
+                                        );
+                                    if !contains_missing_comma_suggestion {
+                                        expect_err.span_suggestion_short(
                                             sp,
                                             format!("missing `{token_str}`"),
                                             token_str,
                                             Applicability::MaybeIncorrect,
-                                        )
-                                        .emit();
-
+                                        );
+                                    }
+                                    expect_err.emit();
                                     v.push(t);
                                     continue;
                                 }

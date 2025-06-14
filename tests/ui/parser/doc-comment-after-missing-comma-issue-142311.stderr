@@ -1,0 +1,49 @@
+error[E0585]: found a documentation comment that doesn't document anything
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:10:5
+   |
+LL |     Bar
+   |        - expected one of `(`, `,`, `=`, `{`, or `}`
+LL |     /// Like where people drink
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     this doc comment doesn't document anything
+   |     unexpected token
+   |
+help: missing `,` before the doc comment
+   |
+LL |     Bar, 
+   |        +
+
+error[E0585]: found a documentation comment that doesn't document anything
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:12:8
+   |
+LL |     Baa///xxxxxx
+   |        ^^^^^^^^^
+   |        |
+   |        this doc comment doesn't document anything
+   |        expected one of `(`, `,`, `=`, `{`, or `}`
+   |
+help: missing `,` before the doc comment
+   |
+LL |     Baa, ///xxxxxx
+   |        +
+
+error[E0585]: found a documentation comment that doesn't document anything
+  --> $DIR/doc-comment-after-missing-comma-issue-142311.rs:14:8
+   |
+LL |     Baz///xxxxxx
+   |        ^^^^^^^^^
+   |        |
+   |        this doc comment doesn't document anything
+   |        expected one of `(`, `,`, `=`, `{`, or `}`
+   |
+   = help: doc comments must come before what they document, if a comment was intended use `//`
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
+help: missing `,` before the doc comment
+   |
+LL |     Baz, ///xxxxxx
+   |        +
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0585`.

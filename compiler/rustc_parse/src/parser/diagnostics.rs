@@ -686,23 +686,49 @@ impl<'a> Parser<'a> {
         }
 
         if let token::DocComment(kind, style, _) = self.token.kind {
-            // We have something like `expr //!val` where the user likely meant `expr // !val`
-            let pos = self.token.span.lo() + BytePos(2);
-            let span = self.token.span.with_lo(pos).with_hi(pos);
-            err.span_suggestion_verbose(
-                span,
-                format!(
-                    "add a space before {} to write a regular comment",
-                    match (kind, style) {
-                        (token::CommentKind::Line, ast::AttrStyle::Inner) => "`!`",
-                        (token::CommentKind::Block, ast::AttrStyle::Inner) => "`!`",
-                        (token::CommentKind::Line, ast::AttrStyle::Outer) => "the last `/`",
-                        (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
-                    },
-                ),
-                " ".to_string(),
-                Applicability::MachineApplicable,
-            );
+            // This is used to avoid adding suggestions for doc comments in item list.
+            // For example,
+            // `enum Foo {
+            //     Bar ///baz
+            //     Baz }`
+            // should suggest to add a comma before `///baz`.
+            let is_expect_item_list_comma =
+                edible.len() == 1 && edible.iter().any(|e| e.token_type == TokenType::Comma);
+            if !is_expect_item_list_comma {
+                // We have something like `expr //!val` where the user likely meant `expr // !val`
+                let pos = self.token.span.lo() + BytePos(2);
+                let span = self.token.span.with_lo(pos).with_hi(pos);
+                err.span_suggestion_verbose(
+                    span,
+                    format!(
+                        "add a space before {} to write a regular comment",
+                        match (kind, style) {
+                            (token::CommentKind::Line, ast::AttrStyle::Inner) => "`!`",
+                            (token::CommentKind::Block, ast::AttrStyle::Inner) => "`!`",
+                            (token::CommentKind::Line, ast::AttrStyle::Outer) => "the last `/`",
+                            (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
+                        },
+                    ),
+                    " ".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            } else {
+                // For fine-grained suggestions, we should suggest to add a comma before the doc comment
+                // like `expr, //!val`
+                err.cancel();
+                err = self.dcx().struct_span_err(
+                    self.token.span,
+                    "found a documentation comment that doesn't document anything",
+                );
+                err.code(rustc_errors::E0585);
+                err.span_label(self.token.span, "this doc comment doesn't document anything");
+                err.span_suggestion_verbose(
+                    self.prev_token.span.shrink_to_hi(),
+                    "missing `,` before the doc comment",
+                    ", ".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
         }
 
         let sp = if self.token == token::Eof {
