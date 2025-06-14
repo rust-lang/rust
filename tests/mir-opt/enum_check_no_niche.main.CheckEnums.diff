@@ -1,0 +1,39 @@
+- // MIR for `main` before CheckEnums
++ // MIR for `main` after CheckEnums
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: Foo;
++     let mut _2: u8;
++     let mut _3: u8;
++     let mut _4: u128;
++     let mut _5: bool;
++     let mut _6: bool;
++     let mut _7: bool;
++     let mut _8: usize;
+      scope 1 {
+          debug _val => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
++         _2 = const 0_u8 as u8 (Transmute);
++         _3 = copy _2 as u8 (IntToInt);
++         _4 = copy _3 as u128 (IntToInt);
++         _5 = const false;
++         _6 = Eq(copy _4, const 0_u128);
++         _5 = BitOr(copy _6, copy _5);
++         _7 = Eq(copy _4, const 1_u128);
++         _5 = BitOr(copy _7, copy _5);
++         _8 = copy _4 as usize (IntToInt);
++         assert(copy _5, "trying to construct an enum from an invalid value {}", copy _8) -> [success: bb1, unwind unreachable];
++     }
++ 
++     bb1: {
+          _1 = const 0_u8 as Foo (Transmute);
+          _0 = const ();
+          StorageDead(_1);
+          return;
+      }
+  }
+  
