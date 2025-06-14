@@ -128,7 +128,7 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Binder<I, T> {
     }
 }
 
-impl<I: Interner, T: TypeFoldable<I>> TypeVisitable<I> for Binder<I, T> {
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Binder<I, T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_binder(self)
     }
@@ -147,7 +147,7 @@ impl<I: Interner, T: TypeFoldable<I>> TypeSuperFoldable<I> for Binder<I, T> {
     }
 }
 
-impl<I: Interner, T: TypeFoldable<I>> TypeSuperVisitable<I> for Binder<I, T> {
+impl<I: Interner, T: TypeVisitable<I>> TypeSuperVisitable<I> for Binder<I, T> {
     fn super_visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         self.as_ref().skip_binder().visit_with(visitor)
     }
@@ -292,7 +292,7 @@ impl<I: Interner> ValidateBoundVars<I> {
 impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     type Result = ControlFlow<()>;
 
-    fn visit_binder<T: TypeFoldable<I>>(&mut self, t: &Binder<I, T>) -> Self::Result {
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &Binder<I, T>) -> Self::Result {
         self.binder_index.shift_in(1);
         let result = t.super_visit_with(self);
         self.binder_index.shift_out(1);

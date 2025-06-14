@@ -9,8 +9,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self as ty, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, Upcast,
+    self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::traits;
@@ -927,7 +927,7 @@ struct GenericParamAndBoundVarCollector<'a, 'tcx> {
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 'tcx> {
     type Result = ControlFlow<ErrorGuaranteed>;
 
-    fn visit_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
         &mut self,
         binder: &ty::Binder<'tcx, T>,
     ) -> Self::Result {
