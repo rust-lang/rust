@@ -948,10 +948,14 @@ fn visit_instance_use<'tcx>(
             bug!("{:?} being reified", instance);
         }
         ty::InstanceKind::DropGlue(_, None) => {
-            // Don't need to emit noop drop glue if we are calling directly.
-            if !is_direct_call {
-                output.push(create_fn_mono_item(tcx, instance, source));
-            }
+            // No-op drop glue never needs to be emitted.
+            // In direct calls, we skip it in codegen. In indirect calls (vtables) we place a null
+            // pointer rather than codegen'ing a pointer to the empty drop.
+            //
+            // Note that if user code casts drop_in_place to a fn(...) that's not a DropGlue, so
+            // it won't hit this branch.
+            //
+            // If we get this wrong we'll see linker errors.
         }
         ty::InstanceKind::DropGlue(_, Some(_))
         | ty::InstanceKind::FutureDropPollShim(..)
