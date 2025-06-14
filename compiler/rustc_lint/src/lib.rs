@@ -174,7 +174,6 @@ early_lint_methods!(
             AnonymousParameters: AnonymousParameters,
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
             NonCamelCaseTypes: NonCamelCaseTypes,
-            DeprecatedAttr: DeprecatedAttr::default(),
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
             IncompleteInternalFeatures: IncompleteInternalFeatures,
@@ -618,6 +617,11 @@ fn register_builtins(store: &mut LintStore) {
         "abi_unsupported_vector_types",
         "converted into hard error, \
          see <https://github.com/rust-lang/rust/issues/116558> for more information",
+    );
+    store.register_removed(
+        "missing_fragment_specifier",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/40107> for more information",
     );
 }
 

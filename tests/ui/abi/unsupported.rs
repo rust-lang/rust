@@ -110,8 +110,10 @@ extern "stdcall" fn stdcall() {}
 //[x64_win]~^^ WARN unsupported_calling_conventions
 //[x64_win]~^^^ WARN this was previously accepted
 fn stdcall_ptr(f: extern "stdcall" fn()) {
-    //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ WARN unsupported_fn_ptr_calling_conventions
-    //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^^ WARN this was previously accepted
+    //[x64_win]~^ WARN unsupported_calling_conventions
+    //[x64_win]~| WARN this was previously accepted
+    //[x64,arm,aarch64,riscv32,riscv64]~^^^ WARN unsupported_fn_ptr_calling_conventions
+    //[x64,arm,aarch64,riscv32,riscv64]~| WARN this was previously accepted
     f()
 }
 extern "stdcall" {}
@@ -127,7 +129,7 @@ extern "cdecl" fn cdecl() {}
 //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ WARN unsupported_calling_conventions
 //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^^ WARN this was previously accepted
 fn cdecl_ptr(f: extern "cdecl" fn()) {
-    //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ WARN unsupported_fn_ptr_calling_conventions
+    //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ WARN unsupported_calling_conventions
     //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^^ WARN this was previously accepted
     f()
 }

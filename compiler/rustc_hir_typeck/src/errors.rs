@@ -2,11 +2,14 @@
 
 use std::borrow::Cow;
 
+use rustc_ast::Label;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic,
 };
+use rustc_hir as hir;
+use rustc_hir::ExprKind;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
@@ -721,6 +724,131 @@ pub(crate) struct TrivialCast<'tcx> {
     pub cast_ty: Ty<'tcx>,
 }
 
+pub(crate) struct BreakNonLoop<'a> {
+    pub span: Span,
+    pub head: Option<Span>,
+    pub kind: &'a str,
+    pub suggestion: String,
+    pub loop_label: Option<Label>,
+    pub break_label: Option<Label>,
+    pub break_expr_kind: &'a ExprKind<'a>,
+    pub break_expr_span: Span,
+}
+
+impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
+    #[track_caller]
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::hir_typeck_break_non_loop);
+        diag.span(self.span);
+        diag.code(E0571);
+        diag.arg("kind", self.kind);
+        diag.span_label(self.span, fluent::hir_typeck_label);
+        if let Some(head) = self.head {
+            diag.span_label(head, fluent::hir_typeck_label2);
+        }
+        diag.span_suggestion(
+            self.span,
+            fluent::hir_typeck_suggestion,
+            self.suggestion,
+            Applicability::MaybeIncorrect,
+        );
+        if let (Some(label), None) = (self.loop_label, self.break_label) {
+            match self.break_expr_kind {
+                ExprKind::Path(hir::QPath::Resolved(
+                    None,
+                    hir::Path { segments: [segment], res: hir::def::Res::Err, .. },
+                )) if label.ident.to_string() == format!("'{}", segment.ident) => {
+                    // This error is redundant, we will have already emitted a
+                    // suggestion to use the label when `segment` wasn't found
+                    // (hence the `Res::Err` check).
+                    diag.downgrade_to_delayed_bug();
+                }
+                _ => {
+                    diag.span_suggestion(
+                        self.break_expr_span,
+                        fluent::hir_typeck_break_expr_suggestion,
+                        label.ident,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+        }
+        diag
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_continue_labeled_block, code = E0696)]
+pub(crate) struct ContinueLabeledBlock {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(hir_typeck_block_label)]
+    pub block_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_break_inside_closure, code = E0267)]
+pub(crate) struct BreakInsideClosure<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(hir_typeck_closure_label)]
+    pub closure_span: Span,
+    pub name: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_break_inside_coroutine, code = E0267)]
+pub(crate) struct BreakInsideCoroutine<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(hir_typeck_coroutine_label)]
+    pub coroutine_span: Span,
+    pub name: &'a str,
+    pub kind: &'a str,
+    pub source: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_outside_loop, code = E0268)]
+pub(crate) struct OutsideLoop<'a> {
+    #[primary_span]
+    #[label]
+    pub spans: Vec<Span>,
+    pub name: &'a str,
+    pub is_break: bool,
+    #[subdiagnostic]
+    pub suggestion: Option<OutsideLoopSuggestion>,
+}
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(hir_typeck_outside_loop_suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct OutsideLoopSuggestion {
+    #[suggestion_part(code = "'block: ")]
+    pub block_span: Span,
+    #[suggestion_part(code = " 'block")]
+    pub break_spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_unlabeled_in_labeled_block, code = E0695)]
+pub(crate) struct UnlabeledInLabeledBlock<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub cf_type: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_unlabeled_cf_in_while_condition, code = E0590)]
+pub(crate) struct UnlabeledCfInWhileCondition<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub cf_type: &'a str,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_typeck_no_associated_item, code = E0599)]
 pub(crate) struct NoAssociatedItem {
@@ -1033,5 +1161,12 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
 pub(crate) struct NakedFunctionsMustNakedAsm {
     #[primary_span]
     #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_abi_custom_call)]
+pub(crate) struct AbiCustomCall {
+    #[primary_span]
     pub span: Span,
 }

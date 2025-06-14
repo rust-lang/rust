@@ -3,9 +3,8 @@
 //! fn g() {
 //! } /* fn g */
 //! ```
-use hir::{DisplayTarget, HirDisplay, Semantics};
+use hir::{DisplayTarget, HirDisplay, InRealFile, Semantics};
 use ide_db::{FileRange, RootDatabase};
-use span::EditionedFileId;
 use syntax::{
     SyntaxKind, SyntaxNode, T,
     ast::{self, AstNode, HasLoopBody, HasName},
@@ -21,15 +20,14 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
     display_target: DisplayTarget,
-    original_node: SyntaxNode,
+    InRealFile { file_id, value: node }: InRealFile<SyntaxNode>,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
 
     let name = |it: ast::Name| it.syntax().text_range();
 
-    let mut node = original_node.clone();
+    let mut node = node.clone();
     let mut closing_token;
     let (label, name_range) = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
         closing_token = item_list.r_curly_token()?;
@@ -44,7 +42,7 @@ pub(super) fn hints(
                     let hint_text = match trait_ {
                         Some(tr) => format!(
                             "impl {} for {}",
-                            tr.name(sema.db).display(sema.db, file_id.edition()),
+                            tr.name(sema.db).display(sema.db, display_target.edition),
                             ty.display_truncated(sema.db, config.max_length, display_target,
                         )),
                         None => format!("impl {}", ty.display_truncated(sema.db, config.max_length, display_target)),
@@ -142,7 +140,8 @@ pub(super) fn hints(
         return None;
     }
 
-    let linked_location = name_range.map(|range| FileRange { file_id: file_id.into(), range });
+    let linked_location =
+        name_range.map(|range| FileRange { file_id: file_id.file_id(sema.db), range });
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBrace,
@@ -151,7 +150,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: true,
         pad_right: false,
-        resolve_parent: Some(original_node.text_range()),
+        resolve_parent: Some(node.text_range()),
     });
 
     None

@@ -155,7 +155,7 @@ fn test_find() {
     build.targets.push(target1.clone());
     build.hosts.push(target2.clone());
     find(&build);
-    for t in build.hosts.iter().chain(build.targets.iter()).chain(iter::once(&build.build)) {
+    for t in build.hosts.iter().chain(build.targets.iter()).chain(iter::once(&build.host_target)) {
         assert!(build.cc.borrow().contains_key(t), "CC not set for target {}", t.triple);
     }
 }

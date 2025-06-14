@@ -59,7 +59,7 @@ LL |         extern crate crate_a1 as a;
 note: function defined here
   --> $DIR/auxiliary/crate_a1.rs:11:8
    |
-LL | pub fn try_bar(x: Box<Bar>){}
+LL | pub fn try_bar(x: Box<dyn Bar>){}
    |        ^^^^^^^
 
 error: aborting due to 2 previous errors

@@ -43,8 +43,7 @@ pub(crate) fn try_run_tests(
         if builder.fail_fast {
             crate::exit!(1);
         } else {
-            let mut failures = builder.delayed_failures.borrow_mut();
-            failures.push(format!("{cmd:?}"));
+            builder.config.exec_ctx().add_to_delay_failure(format!("{cmd:?}"));
             false
         }
     } else {

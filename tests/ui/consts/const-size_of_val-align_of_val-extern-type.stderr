@@ -7,8 +7,8 @@ LL | const _SIZE: usize = unsafe { size_of_val(&4 as *const i32 as *const Opaque
 error[E0080]: `extern type` does not have known layout
   --> $DIR/const-size_of_val-align_of_val-extern-type.rs:11:32
    |
-LL | const _ALIGN: usize = unsafe { min_align_of_val(&4 as *const i32 as *const Opaque) };
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_ALIGN` failed here
+LL | const _ALIGN: usize = unsafe { align_of_val(&4 as *const i32 as *const Opaque) };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_ALIGN` failed here
 
 error: aborting due to 2 previous errors
 

@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::sym;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability::MachineApplicable;
 use rustc_hir::{Expr, ExprKind, PathSegment, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -89,9 +90,10 @@ fn warn_then_suggest(cx: &LateContext<'_>, span: Span) {
 
 /// Tries to parse an expression as a method call, emitting the warning if necessary.
 fn parse_method_call(cx: &LateContext<'_>, span: Span, path_segment: &PathSegment<'_>, receiver: &Expr<'_>) {
-    let ident = path_segment.ident.as_str();
     let method_arg_kind = &receiver.kind;
-    if ["to_string", "to_owned", "into"].contains(&ident) && is_expr_kind_empty_str(method_arg_kind) {
+    if matches!(path_segment.ident.name, sym::to_string | sym::to_owned | sym::into)
+        && is_expr_kind_empty_str(method_arg_kind)
+    {
         warn_then_suggest(cx, span);
     } else if let ExprKind::Call(func, [arg]) = method_arg_kind {
         // If our first argument is a function call itself, it could be an `unwrap`-like function.

@@ -1,5 +1,5 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-116434-2015.rs:3:17
+  --> $DIR/issue-116434-2015.rs:5:17
    |
 LL |     fn foo() -> Clone;
    |                 ^^^^^
@@ -13,7 +13,7 @@ LL |     fn foo() -> dyn Clone;
    |                 +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-116434-2015.rs:3:17
+  --> $DIR/issue-116434-2015.rs:5:17
    |
 LL |     fn foo() -> Clone;
    |                 ^^^^^
@@ -27,7 +27,7 @@ LL |     fn foo() -> dyn Clone;
    |                 +++
 
 error[E0038]: the trait `Clone` is not dyn compatible
-  --> $DIR/issue-116434-2015.rs:3:17
+  --> $DIR/issue-116434-2015.rs:5:17
    |
 LL |     fn foo() -> Clone;
    |                 ^^^^^ `Clone` is not dyn compatible
@@ -41,7 +41,7 @@ LL |     fn foo() -> Self::Clone;
    |                 ++++++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-116434-2015.rs:18:20
+  --> $DIR/issue-116434-2015.rs:20:20
    |
 LL |     fn handle() -> DbHandle;
    |                    ^^^^^^^^
@@ -54,7 +54,7 @@ LL |     fn handle() -> dyn DbHandle;
    |                    +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-116434-2015.rs:18:20
+  --> $DIR/issue-116434-2015.rs:20:20
    |
 LL |     fn handle() -> DbHandle;
    |                    ^^^^^^^^
@@ -68,14 +68,14 @@ LL |     fn handle() -> dyn DbHandle;
    |                    +++
 
 error[E0038]: the trait `DbHandle` is not dyn compatible
-  --> $DIR/issue-116434-2015.rs:18:20
+  --> $DIR/issue-116434-2015.rs:20:20
    |
 LL |     fn handle() -> DbHandle;
    |                    ^^^^^^^^ `DbHandle` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/issue-116434-2015.rs:14:17
+  --> $DIR/issue-116434-2015.rs:16:17
    |
 LL | trait DbHandle: Sized {}
    |       --------  ^^^^^ ...because it requires `Self: Sized`

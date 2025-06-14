@@ -8,9 +8,9 @@ use std::{env, fs, iter};
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::jobserver::Proxy;
-use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
+use rustc_data_structures::{parallel, thousands};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -35,7 +35,8 @@ use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::{
-    DUMMY_SP, ErrorGuaranteed, FileName, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
+    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, SourceFileHash, SourceFileHashAlgorithm, Span,
+    Symbol, sym,
 };
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
@@ -205,7 +206,7 @@ fn configure_and_expand(
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
 
-        // The rest is error reporting
+        // The rest is error reporting and stats
 
         sess.psess.buffered_lints.with_lock(|buffered_lints: &mut Vec<BufferedEarlyLint>| {
             buffered_lints.append(&mut ecx.buffered_early_lint);
@@ -226,6 +227,10 @@ fn configure_and_expand(
             unsafe {
                 env::set_var("PATH", &old_path);
             }
+        }
+
+        if ecx.sess.opts.unstable_opts.macro_stats {
+            print_macro_stats(&ecx);
         }
 
         krate
@@ -286,6 +291,76 @@ fn configure_and_expand(
     CStore::from_tcx(tcx).report_incompatible_target_modifiers(tcx, &krate);
     CStore::from_tcx(tcx).report_incompatible_async_drop_feature(tcx, &krate);
     krate
+}
+
+fn print_macro_stats(ecx: &ExtCtxt<'_>) {
+    use std::fmt::Write;
+
+    // No instability because we immediately sort the produced vector.
+    #[allow(rustc::potential_query_instability)]
+    let mut macro_stats: Vec<_> = ecx
+        .macro_stats
+        .iter()
+        .map(|((name, kind), stat)| {
+            // This gives the desired sort order: sort by bytes, then lines, etc.
+            (stat.bytes, stat.lines, stat.uses, name, *kind)
+        })
+        .collect();
+    macro_stats.sort_unstable();
+    macro_stats.reverse(); // bigger items first
+
+    let prefix = "macro-stats";
+    let name_w = 32;
+    let uses_w = 7;
+    let lines_w = 11;
+    let avg_lines_w = 11;
+    let bytes_w = 11;
+    let avg_bytes_w = 11;
+    let banner_w = name_w + uses_w + lines_w + avg_lines_w + bytes_w + avg_bytes_w;
+
+    // We write all the text into a string and print it with a single
+    // `eprint!`. This is an attempt to minimize interleaved text if multiple
+    // rustc processes are printing macro-stats at the same time (e.g. with
+    // `RUSTFLAGS='-Zmacro-stats' cargo build`). It still doesn't guarantee
+    // non-interleaving, though.
+    let mut s = String::new();
+    _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
+    _ = writeln!(s, "{prefix} MACRO EXPANSION STATS: {}", ecx.ecfg.crate_name);
+    _ = writeln!(
+        s,
+        "{prefix} {:<name_w$}{:>uses_w$}{:>lines_w$}{:>avg_lines_w$}{:>bytes_w$}{:>avg_bytes_w$}",
+        "Macro Name", "Uses", "Lines", "Avg Lines", "Bytes", "Avg Bytes",
+    );
+    _ = writeln!(s, "{prefix} {}", "-".repeat(banner_w));
+    // It's helpful to print something when there are no entries, otherwise it
+    // might look like something went wrong.
+    if macro_stats.is_empty() {
+        _ = writeln!(s, "{prefix} (none)");
+    }
+    for (bytes, lines, uses, name, kind) in macro_stats {
+        let mut name = ExpnKind::Macro(kind, *name).descr();
+        let avg_lines = lines as f64 / uses as f64;
+        let avg_bytes = bytes as f64 / uses as f64;
+        if name.len() >= name_w {
+            // If the name is long, print it on a line by itself, then
+            // set the name to empty and print things normally, to show the
+            // stats on the next line.
+            _ = writeln!(s, "{prefix} {:<name_w$}", name);
+            name = String::new();
+        }
+        _ = writeln!(
+            s,
+            "{prefix} {:<name_w$}{:>uses_w$}{:>lines_w$}{:>avg_lines_w$}{:>bytes_w$}{:>avg_bytes_w$}",
+            name,
+            thousands::usize_with_underscores(uses),
+            thousands::isize_with_underscores(lines),
+            thousands::f64p1_with_underscores(avg_lines),
+            thousands::isize_with_underscores(bytes),
+            thousands::f64p1_with_underscores(avg_bytes),
+        );
+    }
+    _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
+    eprint!("{s}");
 }
 
 fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
@@ -954,7 +1029,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 tcx.ensure_ok().exportable_items(LOCAL_CRATE);
                 tcx.ensure_ok().stable_order_of_exportable_impls(LOCAL_CRATE);
                 tcx.par_hir_for_each_module(|module| {
-                    tcx.ensure_ok().check_mod_loops(module);
                     tcx.ensure_ok().check_mod_attrs(module);
                     tcx.ensure_ok().check_mod_unstable_api_usage(module);
                 });

@@ -1,8 +1,8 @@
-error[E0432]: unresolved import `ImportError`
+error[E0432]: unresolved import `crate::ImportError`
   --> $DIR/issue-5035.rs:7:5
    |
-LL | use ImportError;
-   |     ^^^^^^^^^^^ no `ImportError` in the root
+LL | use crate::ImportError;
+   |     ^^^^^^^^^^^^^^^^^^ no `ImportError` in the root
 
 error[E0404]: expected trait, found type alias `K`
   --> $DIR/issue-5035.rs:5:6

@@ -562,8 +562,12 @@ fn closure_expr(p: &mut Parser<'_>) -> CompletedMarker {
 
     let m = p.start();
 
+    // test closure_binder
+    // fn main() { for<'a> || (); }
     if p.at(T![for]) {
+        let b = p.start();
         types::for_binder(p);
+        b.complete(p, CLOSURE_BINDER);
     }
     // test const_closure
     // fn main() { let cl = const || _ = 0; }

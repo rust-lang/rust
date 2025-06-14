@@ -1,10 +1,10 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::eq_expr_value;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::{eq_expr_value, sym};
 use rustc_ast::ast::LitKind;
 use rustc_attr_data_structures::RustcVersion;
 use rustc_errors::Applicability;
@@ -13,7 +13,7 @@ use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, SyntaxContext, sym};
+use rustc_span::{Span, Symbol, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -73,10 +73,10 @@ declare_clippy_lint! {
 }
 
 // For each pairs, both orders are considered.
-const METHODS_WITH_NEGATION: [(Option<RustcVersion>, &str, &str); 3] = [
-    (None, "is_some", "is_none"),
-    (None, "is_err", "is_ok"),
-    (Some(msrvs::IS_NONE_OR), "is_some_and", "is_none_or"),
+const METHODS_WITH_NEGATION: [(Option<RustcVersion>, Symbol, Symbol); 3] = [
+    (None, sym::is_some, sym::is_none),
+    (None, sym::is_err, sym::is_ok),
+    (Some(msrvs::IS_NONE_OR), sym::is_some_and, sym::is_none_or),
 ];
 
 pub struct NonminimalBool {
@@ -440,9 +440,7 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
                 .iter()
                 .copied()
                 .flat_map(|(msrv, a, b)| vec![(msrv, a, b), (msrv, b, a)])
-                .find(|&(msrv, a, _)| {
-                    a == path.ident.name.as_str() && msrv.is_none_or(|msrv| curr_msrv.meets(cx, msrv))
-                })
+                .find(|&(msrv, a, _)| a == path.ident.name && msrv.is_none_or(|msrv| curr_msrv.meets(cx, msrv)))
                 .and_then(|(_, _, neg_method)| {
                     let negated_args = args
                         .iter()

@@ -1793,10 +1793,9 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
 
 /// Checks if the given `DefId` matches the `libc` item.
 pub fn match_libc_symbol(cx: &LateContext<'_>, did: DefId, name: Symbol) -> bool {
-    let path = cx.get_def_path(did);
     // libc is meant to be used as a flat list of names, but they're all actually defined in different
     // modules based on the target platform. Ignore everything but crate name and the item name.
-    path.first().is_some_and(|s| *s == sym::libc) && path.last().copied() == Some(name)
+    cx.tcx.crate_name(did.krate) == sym::libc && cx.tcx.def_path_str(did).ends_with(name.as_str())
 }
 
 /// Returns the list of condition expressions and the list of blocks in a
@@ -3471,5 +3470,17 @@ pub fn desugar_await<'tcx>(expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
         Some(into_future_arg)
     } else {
         None
+    }
+}
+
+/// Checks if the given expression is a call to `Default::default()`.
+pub fn is_expr_default<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    if let ExprKind::Call(fn_expr, []) = &expr.kind
+        && let ExprKind::Path(qpath) = &fn_expr.kind
+        && let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id)
+    {
+        cx.tcx.is_diagnostic_item(sym::default_fn, def_id)
+    } else {
+        false
     }
 }

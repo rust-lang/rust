@@ -1065,11 +1065,11 @@ fn link_natively(
         match strip {
             Strip::Debuginfo => {
                 // FIXME: AIX's strip utility only offers option to strip line number information.
-                strip_with_external_utility(sess, stripcmd, out_filename, &["-X32_64", "-l"])
+                strip_with_external_utility(sess, stripcmd, temp_filename, &["-X32_64", "-l"])
             }
             Strip::Symbols => {
                 // Must be noted this option might remove symbol __aix_rust_metadata and thus removes .info section which contains metadata.
-                strip_with_external_utility(sess, stripcmd, out_filename, &["-X32_64", "-r"])
+                strip_with_external_utility(sess, stripcmd, temp_filename, &["-X32_64", "-r"])
             }
             Strip::None => {}
         }

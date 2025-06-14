@@ -12,6 +12,6 @@ fn main() {
     let _ = Some::<FnPtr>(func) == Some(func as unsafe extern "C" fn());
     //~^ WARN function pointer comparisons
 
-    // Undecided as of https://github.com/rust-lang/rust/pull/134536
     assert_eq!(Some::<FnPtr>(func), Some(func as unsafe extern "C" fn()));
+    //~^ WARN function pointer comparisons
 }

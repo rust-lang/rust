@@ -30,7 +30,7 @@ use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, LintEmitter, MultiSpan,
 };
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -86,6 +86,10 @@ use crate::ty::{
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
+    fn next_trait_solver_globally(self) -> bool {
+        self.next_trait_solver_globally()
+    }
+
     type DefId = DefId;
     type LocalDefId = LocalDefId;
     type Span = Span;
@@ -177,6 +181,17 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
         f(&mut *self.new_solver_evaluation_cache.lock())
+    }
+
+    fn canonical_param_env_cache_get_or_insert<R>(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        f: impl FnOnce() -> ty::CanonicalParamEnvCacheEntry<Self>,
+        from_entry: impl FnOnce(&ty::CanonicalParamEnvCacheEntry<Self>) -> R,
+    ) -> R {
+        let mut cache = self.new_solver_canonical_param_env_cache.lock();
+        let entry = cache.entry(param_env).or_insert_with(f);
+        from_entry(entry)
     }
 
     fn evaluation_is_concurrent(&self) -> bool {
@@ -1335,8 +1350,8 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
         let bodies = Default::default();
         let attrs = hir::AttributeMap::EMPTY;
 
-        let (opt_hash_including_bodies, _) =
-            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, attrs.define_opaque);
+        let (opt_hash_including_bodies, _, _) =
+            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, &[], attrs.define_opaque);
         let node = node.into();
         self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes {
             opt_hash_including_bodies,
@@ -1372,6 +1387,18 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 #[rustc_pass_by_value]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
+}
+
+impl<'tcx> LintEmitter for TyCtxt<'tcx> {
+    fn emit_node_span_lint(
+        self,
+        lint: &'static Lint,
+        hir_id: HirId,
+        span: impl Into<MultiSpan>,
+        decorator: impl for<'a> LintDiagnostic<'a, ()>,
+    ) {
+        self.emit_node_span_lint(lint, hir_id, span, decorator);
+    }
 }
 
 // Explicitly implement `DynSync` and `DynSend` for `TyCtxt` to short circuit trait resolution. Its
@@ -1444,6 +1471,8 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Caches the results of goal evaluation in the new solver.
     pub new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
+    pub new_solver_canonical_param_env_cache:
+        Lock<FxHashMap<ty::ParamEnv<'tcx>, ty::CanonicalParamEnvCacheEntry<TyCtxt<'tcx>>>>,
 
     pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
 
@@ -1692,6 +1721,7 @@ impl<'tcx> TyCtxt<'tcx> {
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
             new_solver_evaluation_cache: Default::default(),
+            new_solver_canonical_param_env_cache: Default::default(),
             canonical_param_env_cache: Default::default(),
             data_layout,
             alloc_map: interpret::AllocMap::new(),

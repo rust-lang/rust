@@ -538,6 +538,21 @@ pub fn disallow_cfg(_attr: TokenStream, input: TokenStream) -> TokenStream {
                 disabled: false,
             },
         ),
+        (
+            r#"
+#[proc_macro_attribute]
+pub fn generate_suffixed_type(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    input
+}
+"#
+            .into(),
+            ProcMacro {
+                name: Symbol::intern("generate_suffixed_type"),
+                kind: ProcMacroKind::Attr,
+                expander: sync::Arc::new(GenerateSuffixedTypeProcMacroExpander),
+                disabled: false,
+            },
+        ),
     ])
 }
 
@@ -917,5 +932,59 @@ impl ProcMacroExpander for DisallowCfgProcMacroExpander {
             }
         }
         Ok(subtree.clone())
+    }
+}
+
+// Generates a new type by adding a suffix to the original name
+#[derive(Debug)]
+struct GenerateSuffixedTypeProcMacroExpander;
+impl ProcMacroExpander for GenerateSuffixedTypeProcMacroExpander {
+    fn expand(
+        &self,
+        subtree: &TopSubtree,
+        _attrs: Option<&TopSubtree>,
+        _env: &Env,
+        _def_site: Span,
+        call_site: Span,
+        _mixed_site: Span,
+        _current_dir: String,
+    ) -> Result<TopSubtree, ProcMacroExpansionError> {
+        let TokenTree::Leaf(Leaf::Ident(ident)) = &subtree.0[1] else {
+            return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
+        };
+
+        let ident = match ident.sym.as_str() {
+            "struct" => {
+                let TokenTree::Leaf(Leaf::Ident(ident)) = &subtree.0[2] else {
+                    return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
+                };
+                ident
+            }
+
+            "enum" => {
+                let TokenTree::Leaf(Leaf::Ident(ident)) = &subtree.0[4] else {
+                    return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
+                };
+                ident
+            }
+
+            _ => {
+                return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
+            }
+        };
+
+        let generated_ident = tt::Ident {
+            sym: Symbol::intern(&format!("{}Suffix", ident.sym)),
+            span: ident.span,
+            is_raw: tt::IdentIsRaw::No,
+        };
+
+        let ret = quote! { call_site =>
+            #subtree
+
+            struct #generated_ident;
+        };
+
+        Ok(ret)
     }
 }

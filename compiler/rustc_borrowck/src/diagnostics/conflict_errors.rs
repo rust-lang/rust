@@ -3229,8 +3229,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
+
+                            let mutability = if matches!(borrow.kind(), BorrowKind::Mut { .. }) {
+                                "mut "
+                            } else {
+                                ""
+                            };
+
                             if !is_format_arguments_item {
-                                let addition = format!("let binding = {};\n{}", s, " ".repeat(p));
+                                let addition = format!(
+                                    "let {}binding = {};\n{}",
+                                    mutability,
+                                    s,
+                                    " ".repeat(p)
+                                );
                                 err.multipart_suggestion_verbose(
                                     msg,
                                     vec![

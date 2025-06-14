@@ -407,6 +407,7 @@ symbols! {
         abi_amdgpu_kernel,
         abi_avr_interrupt,
         abi_c_cmse_nonsecure_call,
+        abi_custom,
         abi_efiapi,
         abi_gpu_kernel,
         abi_msp430_interrupt,
@@ -429,6 +430,8 @@ symbols! {
         aggregate_raw_ptr,
         alias,
         align,
+        align_of,
+        align_of_val,
         alignment,
         all,
         alloc,
@@ -1353,8 +1356,6 @@ symbols! {
         message,
         meta,
         metadata_type,
-        min_align_of,
-        min_align_of_val,
         min_const_fn,
         min_const_generics,
         min_const_unsafe_fn,
@@ -1512,6 +1513,7 @@ symbols! {
         offset_of_nested,
         offset_of_slice,
         ok_or_else,
+        old_name,
         omit_gdb_pretty_printer_section,
         on,
         on_unimplemented,
@@ -2288,6 +2290,7 @@ symbols! {
         usize_legacy_fn_max_value,
         usize_legacy_fn_min_value,
         usize_legacy_mod,
+        v1,
         v8plus,
         va_arg,
         va_copy,
@@ -2675,7 +2678,7 @@ impl Interner {
         assert_eq!(
             strings.len(),
             init.len() + extra.len(),
-            "`init` or `extra` contain duplicate symbols",
+            "there are duplicate symbols in the rustc symbol list and the extra symbols added by the driver",
         );
         Interner(Lock::new(InternerInner { arena: Default::default(), strings }))
     }

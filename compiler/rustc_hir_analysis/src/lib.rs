@@ -92,8 +92,9 @@ mod variance;
 
 pub use errors::NoVariantNamed;
 use rustc_abi::ExternAbi;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
+use rustc_hir::lints::DelayedLint;
+use rustc_hir::{self as hir};
 use rustc_middle::middle;
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
@@ -174,6 +175,14 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
+fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
+    match lint {
+        DelayedLint::AttributeParsing(attribute_lint) => {
+            rustc_attr_parsing::emit_attribute_lint(attribute_lint, tcx)
+        }
+    }
+}
+
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
@@ -191,6 +200,14 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         let _: R = tcx.ensure_ok().crate_inherent_impls_validity_check(());
         let _: R = tcx.ensure_ok().crate_inherent_impls_overlap_check(());
     });
+
+    for owner_id in tcx.hir_crate_items(()).owners() {
+        if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
+            for lint in &delayed_lints.lints {
+                emit_delayed_lint(lint, tcx);
+            }
+        }
+    }
 
     tcx.par_hir_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);

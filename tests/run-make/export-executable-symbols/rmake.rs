@@ -10,8 +10,7 @@
 // (See #85673)
 //@ ignore-wasm32
 //@ ignore-wasm64
-//@ ignore-none
-// Reason: no-std is not supported
+//@ needs-target-std
 
 use run_make_support::{bin_name, llvm_readobj, rustc};
 

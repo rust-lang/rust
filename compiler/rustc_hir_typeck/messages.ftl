@@ -1,3 +1,7 @@
+hir_typeck_abi_custom_call =
+    functions with the `"custom"` ABI cannot be called
+    .note = an `extern "custom"` function can only be called from within inline assembly
+
 hir_typeck_add_missing_parentheses_in_range = you must surround the range in parentheses to call its `{$func_name}` function
 
 hir_typeck_add_return_type_add = try adding a return type
@@ -16,6 +20,24 @@ hir_typeck_base_expression_double_dot_add_expr = add a base expression here
 hir_typeck_base_expression_double_dot_enable_default_field_values =
     add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
 hir_typeck_base_expression_double_dot_remove = remove the `..` as all the fields are already present
+
+hir_typeck_break_inside_closure =
+    `{$name}` inside of a closure
+    .label = cannot `{$name}` inside of a closure
+    .closure_label = enclosing closure
+
+hir_typeck_break_inside_coroutine =
+    `{$name}` inside `{$kind}` {$source}
+    .label = cannot `{$name}` inside `{$kind}` {$source}
+    .coroutine_label = enclosing `{$kind}` {$source}
+
+hir_typeck_break_non_loop =
+    `break` with value from a `{$kind}` loop
+    .label = can only break with a value inside `loop` or breakable block
+    .label2 = you can't `break` with a value in a `{$kind}` loop
+    .suggestion = use `break` on its own without a value inside this `{$kind}` loop
+    .break_expr_suggestion = alternatively, you might have meant to use the available loop label
+
 
 hir_typeck_candidate_trait_note = `{$trait_name}` defines an item `{$item_name}`{$action_or_ty ->
     [NONE] {""}
@@ -63,6 +85,12 @@ hir_typeck_const_select_must_be_const = this argument must be a `const fn`
 hir_typeck_const_select_must_be_fn = this argument must be a function item
     .note = expected a function item, found {$ty}
     .help = consult the documentation on `const_eval_select` for more information
+
+hir_typeck_continue_labeled_block =
+    `continue` pointing to a labeled block
+    .label = labeled blocks cannot be `continue`'d
+    .block_label = labeled block the `continue` points to
+
 
 hir_typeck_convert_to_str = try converting the passed type into a `&str`
 
@@ -182,6 +210,19 @@ hir_typeck_option_result_asref = use `{$def_path}::as_ref` to convert `{$expecte
 hir_typeck_option_result_cloned = use `{$def_path}::cloned` to clone the value inside the `{$def_path}`
 hir_typeck_option_result_copied = use `{$def_path}::copied` to copy the value inside the `{$def_path}`
 
+hir_typeck_outside_loop =
+    `{$name}` outside of a loop{$is_break ->
+        [true] {" or labeled block"}
+        *[false] {""}
+    }
+    .label = cannot `{$name}` outside of a loop{$is_break ->
+        [true] {" or labeled block"}
+        *[false] {""}
+    }
+
+hir_typeck_outside_loop_suggestion = consider labeling this block to be able to break within it
+
+
 hir_typeck_params_not_allowed =
     referencing function parameters is not allowed in naked functions
     .help = follow the calling convention in asm block to use parameters
@@ -254,6 +295,13 @@ hir_typeck_union_pat_dotdot = `..` cannot be used in union patterns
 
 hir_typeck_union_pat_multiple_fields = union patterns should have exactly one field
 
+hir_typeck_unlabeled_cf_in_while_condition =
+    `break` or `continue` with no label in the condition of a `while` loop
+    .label = unlabeled `{$cf_type}` in the condition of a `while` loop
+
+hir_typeck_unlabeled_in_labeled_block =
+    unlabeled `{$cf_type}` inside of a labeled block
+    .label = `{$cf_type}` statements that would diverge to or through a labeled block need to bear a label
 hir_typeck_use_is_empty =
     consider using the `is_empty` method on `{$expr_ty}` to determine if it contains anything
 

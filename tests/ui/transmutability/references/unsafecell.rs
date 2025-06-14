@@ -38,10 +38,10 @@ fn mut_to_mut() {
 }
 
 fn mut_to_ref() {
-    // We don't care about `UnsafeCell` for transmutations in the form `&mut T
-    // -> &U`, because downgrading a `&mut T` to a `&U` deactivates `&mut T` for
-    // the lifetime of `&U`.
-    assert::is_maybe_transmutable::<&'static mut u8, &'static UnsafeCell<u8>>();
-    assert::is_maybe_transmutable::<&'static mut UnsafeCell<u8>, &'static u8>();
-    assert::is_maybe_transmutable::<&'static mut UnsafeCell<u8>, &'static UnsafeCell<u8>>();
+    // `&mut UnsafeCell` is irrelevant in the source.
+    assert::is_maybe_transmutable::<&'static mut UnsafeCell<bool>, &'static u8>();
+    // `&UnsafeCell` in forbidden in the destination, since the destination can be used to
+    // invalidate a shadowed source reference.
+    assert::is_maybe_transmutable::<&'static mut bool, &'static UnsafeCell<u8>>(); //~ ERROR: cannot be safely transmuted
+    assert::is_maybe_transmutable::<&'static mut UnsafeCell<bool>, &'static UnsafeCell<u8>>(); //~ ERROR: cannot be safely transmuted
 }

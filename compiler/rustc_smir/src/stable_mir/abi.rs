@@ -430,6 +430,8 @@ pub enum CallConvention {
     PreserveMost,
     PreserveAll,
 
+    Custom,
+
     // Target-specific calling conventions.
     ArmAapcs,
     CCmseNonSecureCall,
@@ -454,4 +456,39 @@ pub enum CallConvention {
     AvrNonBlockingInterrupt,
 
     RiscvInterrupt,
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize)]
+pub struct ReprFlags {
+    pub is_simd: bool,
+    pub is_c: bool,
+    pub is_transparent: bool,
+    pub is_linear: bool,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize)]
+pub enum IntegerType {
+    /// Pointer-sized integer type, i.e. `isize` and `usize`.
+    Pointer {
+        /// Signedness. e.g. `true` for `isize`
+        is_signed: bool,
+    },
+    /// Fixed-sized integer type, e.g. `i8`, `u32`, `i128`.
+    Fixed {
+        /// Length of this integer type. e.g. `IntegerLength::I8` for `u8`.
+        length: IntegerLength,
+        /// Signedness. e.g. `false` for `u8`
+        is_signed: bool,
+    },
+}
+
+/// Representation options provided by the user
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize)]
+pub struct ReprOptions {
+    pub int: Option<IntegerType>,
+    pub align: Option<Align>,
+    pub pack: Option<Align>,
+    pub flags: ReprFlags,
 }

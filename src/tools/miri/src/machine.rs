@@ -618,6 +618,9 @@ pub struct MiriMachine<'tcx> {
 
     /// Always prefer the intrinsic fallback body over the native Miri implementation.
     pub force_intrinsic_fallback: bool,
+
+    /// Whether floating-point operations can behave non-deterministically.
+    pub float_nondet: bool,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -778,6 +781,7 @@ impl<'tcx> MiriMachine<'tcx> {
             int2ptr_warned: Default::default(),
             mangle_internal_symbol_cache: Default::default(),
             force_intrinsic_fallback: config.force_intrinsic_fallback,
+            float_nondet: config.float_nondet,
         }
     }
 
@@ -956,6 +960,7 @@ impl VisitProvenance for MiriMachine<'_> {
             int2ptr_warned: _,
             mangle_internal_symbol_cache: _,
             force_intrinsic_fallback: _,
+            float_nondet: _,
         } = self;
 
         threads.visit_provenance(visit);

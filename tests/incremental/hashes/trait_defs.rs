@@ -440,7 +440,7 @@ trait TraitAddExternModifier {
 
 // Change extern "C" to extern "stdcall"
 #[cfg(any(cfail1,cfail4))]
-trait TraitChangeExternCToRustIntrinsic {
+trait TraitChangeExternCToExternSystem {
     // --------------------------------------------------------------
     // -------------------------
     // --------------------------------------------------------------
@@ -458,7 +458,7 @@ trait TraitChangeExternCToRustIntrinsic {
     #[rustc_clean(cfg="cfail3")]
     #[rustc_clean(except="opt_hir_owner_nodes,fn_sig", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
-    extern "stdcall" fn method();
+    extern "system" fn method();
 }
 
 

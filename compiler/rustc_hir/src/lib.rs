@@ -27,6 +27,7 @@ mod hir;
 pub mod hir_id;
 pub mod intravisit;
 pub mod lang_items;
+pub mod lints;
 pub mod pat_util;
 mod stable_hash_impls;
 mod target;

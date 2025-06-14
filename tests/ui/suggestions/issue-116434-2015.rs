@@ -1,3 +1,5 @@
+//@ edition: 2015
+
 trait Foo {
     type Clone;
     fn foo() -> Clone;
