@@ -30,6 +30,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb2: {
         StorageLive(_5);
+        StorageLive(_4);
         _4 = &mut _3;
         _5 = <std::vec::IntoIter<impl Sized> as Iterator>::next(move _4) -> [return: bb3, unwind: bb9];
     }
@@ -40,6 +41,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     }
 
     bb4: {
+        StorageDead(_4);
         StorageDead(_5);
         drop(_3) -> [return: bb5, unwind continue];
     }
@@ -51,11 +53,14 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     }
 
     bb6: {
+        StorageLive(_7);
         _7 = move ((_5 as Some).0: impl Sized);
         _8 = opaque::<impl Sized>(move _7) -> [return: bb7, unwind: bb9];
     }
 
     bb7: {
+        StorageDead(_7);
+        StorageDead(_4);
         StorageDead(_5);
         goto -> bb2;
     }

@@ -49,8 +49,7 @@
       }
   
       bb0: {
--         StorageLive(_5);
-+         nop;
+          StorageLive(_5);
           StorageLive(_6);
           _6 = copy _1;
 -         _5 = move _6 as *const u32 (PtrToPtr);
@@ -78,10 +77,9 @@
           StorageDead(_12);
 -         _10 = move _11 as *const u32 (PtrToPtr);
 -         StorageDead(_11);
--         StorageLive(_13);
 +         _10 = copy _11;
 +         nop;
-+         nop;
+          StorageLive(_13);
           StorageLive(_14);
           _14 = copy _4;
 -         _13 = move _14 as *const u32 (PtrToPtr);
@@ -122,12 +120,10 @@
           StorageDead(_21);
           StorageDead(_18);
           StorageDead(_15);
--         StorageDead(_13);
-+         nop;
+          StorageDead(_13);
           StorageDead(_10);
           StorageDead(_7);
--         StorageDead(_5);
-+         nop;
+          StorageDead(_5);
           return;
       }
   }

@@ -29,6 +29,8 @@ fn slice_ptr_get_unchecked_range(_1: *const [u32], _2: std::ops::Range<usize>) -
     }
 
     bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
         _3 = move (_2.0: usize);
         _4 = move (_2.1: usize);
         StorageLive(_7);
@@ -41,13 +43,15 @@ fn slice_ptr_get_unchecked_range(_1: *const [u32], _2: std::ops::Range<usize>) -
         StorageDead(_5);
         _7 = SubUnchecked(copy _4, copy _3);
         StorageLive(_8);
-        StorageLive(_9);
         _8 = copy _1 as *const u32 (PtrToPtr);
+        StorageLive(_9);
         _9 = Offset(copy _8, copy _3);
         _0 = *const [u32] from (copy _9, copy _7);
         StorageDead(_9);
         StorageDead(_8);
         StorageDead(_7);
+        StorageDead(_3);
+        StorageDead(_4);
         return;
     }
 }

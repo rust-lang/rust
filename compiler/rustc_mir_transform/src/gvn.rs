@@ -104,6 +104,8 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_mir_dataflow::impls::{MaybeStorageDead, always_storage_live_locals};
+use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
 use smallvec::SmallVec;
@@ -140,10 +142,33 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
             state.visit_basic_block_data(bb, data);
         }
 
-        // For each local that is reused (`y` above), we remove its storage statements do avoid any
-        // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
-        // statements.
-        StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
+        // If we emit storage annotations, use `MaybeStorageDead` to check which reused locals
+        // require storage removal (making them alive for the duration of the function).
+        let storage_to_remove = if tcx.sess.emit_lifetime_markers() {
+            let always_live_locals = always_storage_live_locals(body);
+
+            let maybe_storage_dead = MaybeStorageDead::new(Cow::Owned(always_live_locals))
+                .iterate_to_fixpoint(tcx, body, None)
+                .into_results_cursor(body);
+
+            let mut storage_checker = StorageChecker {
+                storage_to_check: state.reused_locals.clone(),
+                storage_to_remove: DenseBitSet::new_empty(body.local_decls.len()),
+                maybe_storage_dead,
+            };
+
+            storage_checker.visit_body(body);
+
+            storage_checker.storage_to_remove
+        } else {
+            // Conservatively remove all storage statements for reused locals.
+            state.reused_locals.clone()
+        };
+        
+        debug!(?storage_to_remove);
+
+        StorageRemover { tcx, reused_locals: state.reused_locals, storage_to_remove }
+            .visit_body_preserves_cfg(body);
     }
 
     fn is_required(&self) -> bool {
@@ -1824,6 +1849,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
 struct StorageRemover<'tcx> {
     tcx: TyCtxt<'tcx>,
     reused_locals: DenseBitSet<Local>,
+    storage_to_remove: DenseBitSet<Local>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
@@ -1844,11 +1870,35 @@ impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
         match stmt.kind {
             // When removing storage statements, we need to remove both (#107511).
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
-                if self.reused_locals.contains(l) =>
+                if self.storage_to_remove.contains(l) =>
             {
                 stmt.make_nop()
             }
             _ => self.super_statement(stmt, loc),
+        }
+    }
+}
+
+struct StorageChecker<'a, 'tcx> {
+    storage_to_check: DenseBitSet<Local>,
+    storage_to_remove: DenseBitSet<Local>,
+    maybe_storage_dead: ResultsCursor<'a, 'tcx, MaybeStorageDead<'a>>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
+        if !context.is_use() {
+            return;
+        }
+
+        if self.storage_to_check.contains(local) {
+            self.maybe_storage_dead.seek_after_primary_effect(location);
+
+            if self.maybe_storage_dead.get().contains(local) {
+                debug!(?location, ?local, "local is maybe dead in this location, removing storage");
+                self.storage_to_remove.insert(local);
+                self.storage_to_check.remove(local);
+            }
         }
     }
 }

@@ -31,6 +31,8 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
     }
 
     bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
         _3 = move (_2.0: usize);
         _4 = move (_2.1: usize);
         StorageLive(_11);
@@ -46,8 +48,8 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         StorageDead(_6);
         _8 = SubUnchecked(copy _4, copy _3);
         StorageLive(_9);
-        StorageLive(_10);
         _9 = copy _5 as *mut u32 (PtrToPtr);
+        StorageLive(_10);
         _10 = Offset(copy _9, copy _3);
         _11 = *mut [u32] from (copy _10, copy _8);
         StorageDead(_10);
@@ -56,6 +58,8 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         StorageDead(_5);
         _0 = &mut (*_11);
         StorageDead(_11);
+        StorageDead(_3);
+        StorageDead(_4);
         return;
     }
 }

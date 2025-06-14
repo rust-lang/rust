@@ -17,8 +17,7 @@
       }
   
       bb0: {
--         StorageLive(_2);
-+         nop;
+          StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
           _4 = &mut _1;
@@ -38,8 +37,7 @@
       bb1: {
           StorageDead(_6);
           StorageDead(_5);
--         StorageDead(_2);
-+         nop;
+          StorageDead(_2);
           return;
       }
   }

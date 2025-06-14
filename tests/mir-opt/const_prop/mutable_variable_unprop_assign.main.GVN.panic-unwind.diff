@@ -22,8 +22,7 @@
       }
   
       bb0: {
--         StorageLive(_1);
-+         nop;
+          StorageLive(_1);
           _1 = foo() -> [return: bb1, unwind continue];
       }
   
@@ -44,8 +43,7 @@
           StorageDead(_5);
           StorageDead(_4);
           StorageDead(_2);
--         StorageDead(_1);
-+         nop;
+          StorageDead(_1);
           return;
       }
   }

@@ -25,11 +25,13 @@ fn ezmap(_1: Option<i32>) -> Option<i32> {
     }
 
     bb2: {
+        StorageLive(_3);
         _3 = copy ((_1 as Some).0: i32);
         StorageLive(_4);
         _4 = Add(copy _3, const 1_i32);
         _0 = Option::<i32>::Some(move _4);
         StorageDead(_4);
+        StorageDead(_3);
         goto -> bb3;
     }
 

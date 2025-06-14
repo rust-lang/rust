@@ -17,8 +17,7 @@
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
--         StorageLive(_4);
-+         nop;
+          StorageLive(_4);
           _4 = &((*_1).0: i32);
           _3 = copy _4;
 -         _2 = copy (*_3);
@@ -30,8 +29,7 @@
           StorageDead(_3);
           StorageLive(_5);
           StorageLive(_6);
--         StorageLive(_7);
-+         nop;
+          StorageLive(_7);
           _7 = &((*_1).1: u64);
           _6 = copy _7;
 -         _5 = copy (*_6);
@@ -43,8 +41,7 @@
           StorageDead(_6);
           StorageLive(_8);
           StorageLive(_9);
--         StorageLive(_10);
-+         nop;
+          StorageLive(_10);
           _10 = &((*_1).2: [i8; 3]);
           _9 = copy _10;
 -         _8 = copy (*_9);
@@ -55,15 +52,12 @@
       bb3: {
           StorageDead(_9);
 -         _0 = AllCopy { a: move _2, b: move _5, c: move _8 };
--         StorageDead(_10);
 +         _0 = copy (*_1);
-+         nop;
+          StorageDead(_10);
           StorageDead(_8);
--         StorageDead(_7);
-+         nop;
+          StorageDead(_7);
           StorageDead(_5);
--         StorageDead(_4);
-+         nop;
+          StorageDead(_4);
           StorageDead(_2);
           return;
       }

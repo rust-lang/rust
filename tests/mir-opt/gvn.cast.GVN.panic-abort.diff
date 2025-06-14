@@ -104,14 +104,11 @@
       }
   
       bb0: {
--         StorageLive(_1);
-+         nop;
+          StorageLive(_1);
           _1 = const 1_i64;
--         StorageLive(_2);
-+         nop;
+          StorageLive(_2);
           _2 = const 1_u64;
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           _3 = const 1f64;
           StorageLive(_4);
           StorageLive(_5);
@@ -552,12 +549,9 @@
           StorageDead(_90);
           StorageDead(_89);
           _0 = const ();
--         StorageDead(_3);
--         StorageDead(_2);
--         StorageDead(_1);
-+         nop;
-+         nop;
-+         nop;
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
           return;
       }
   }

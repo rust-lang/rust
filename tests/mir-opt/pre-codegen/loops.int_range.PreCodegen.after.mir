@@ -96,11 +96,13 @@ fn int_range(_1: usize, _2: usize) -> () {
         StorageDead(_12);
         _13 = Option::<usize>::Some(copy _11);
         StorageDead(_10);
+        StorageLive(_14);
         _14 = copy ((_13 as Some).0: usize);
         _15 = opaque::<usize>(move _14) -> [return: bb4, unwind continue];
     }
 
     bb4: {
+        StorageDead(_14);
         StorageDead(_13);
         goto -> bb1;
     }
