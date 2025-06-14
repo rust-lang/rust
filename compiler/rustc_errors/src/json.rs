@@ -13,6 +13,7 @@ use std::error::Report;
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
 use std::vec;
 
 use derive_setters::Setters;
@@ -28,9 +29,10 @@ use termcolor::{ColorSpec, WriteColor};
 use crate::diagnostic::IsLint;
 use crate::emitter::{
     ColorConfig, Destination, Emitter, HumanEmitter, HumanReadableErrorType, OutputTheme,
-    should_show_source_code,
+    TimingSectionKind, should_show_source_code,
 };
 use crate::registry::Registry;
+use crate::timings::TimingSection;
 use crate::translation::{Translate, to_fluent_args};
 use crate::{
     CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, Subdiag, Suggestions,
@@ -104,6 +106,7 @@ impl JsonEmitter {
 enum EmitTyped<'a> {
     Diagnostic(Diagnostic),
     Artifact(ArtifactNotification<'a>),
+    SectionTiming(SectionTimestamp<'a>),
     FutureIncompat(FutureIncompatReport<'a>),
     UnusedExtern(UnusedExterns<'a>),
 }
@@ -132,6 +135,25 @@ impl Emitter for JsonEmitter {
         let result = self.emit(EmitTyped::Artifact(data));
         if let Err(e) = result {
             panic!("failed to print notification: {e:?}");
+        }
+    }
+
+    fn emit_timing_section(&mut self, section: TimingSection, kind: TimingSectionKind) {
+        let kind = match kind {
+            TimingSectionKind::Start => "start",
+            TimingSectionKind::End => "end",
+        };
+        let name = match section {
+            TimingSection::Linking => "link",
+        };
+        let timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("system time should always be greater than the unix epoch")
+            .as_micros();
+        let data = SectionTimestamp { name, kind, timestamp };
+        let result = self.emit(EmitTyped::SectionTiming(data));
+        if let Err(e) = result {
+            panic!("failed to print timing section: {e:?}");
         }
     }
 
@@ -261,6 +283,16 @@ struct ArtifactNotification<'a> {
     artifact: &'a Path,
     /// What kind of artifact we're emitting.
     emit: &'a str,
+}
+
+#[derive(Serialize)]
+struct SectionTimestamp<'a> {
+    /// Name of the section
+    name: &'a str,
+    /// Start/end of the section
+    kind: &'a str,
+    /// Microseconds elapsed since some predetermined point in time (~start of the rustc process).
+    timestamp: u128,
 }
 
 #[derive(Serialize)]
