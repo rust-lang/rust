@@ -29,11 +29,13 @@
       }
   
       bb3: {
+          StorageLive(_3);
           _3 = copy _2[3 of 4];
           StorageLive(_4);
           _4 = copy _3 as [u8; 4] (Transmute);
           _0 = Option::<[u8; 4]>::Some(move _4);
           StorageDead(_4);
+          StorageDead(_3);
           goto -> bb5;
       }
   

@@ -57,9 +57,13 @@
       }
   
       bb3: {
+          StorageLive(_4);
           _4 = copy ((_2 as Break).0: std::result::Result<std::convert::Infallible, i32>);
+          StorageLive(_10);
           _10 = copy ((_4 as Err).0: i32);
           _0 = Result::<i32, i32>::Err(copy _10);
+          StorageDead(_10);
+          StorageDead(_4);
           StorageDead(_2);
           return;
       }
