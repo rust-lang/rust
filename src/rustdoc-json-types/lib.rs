@@ -30,7 +30,7 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 46;
+pub const FORMAT_VERSION: u32 = 47;
 
 /// The root of the emitted JSON blob.
 ///
@@ -269,8 +269,8 @@ pub struct PolyTrait {
 /// A set of generic arguments provided to a path segment, e.g.
 ///
 /// ```text
-/// std::option::Option::<u32>::None
-///                      ^^^^^
+/// std::option::Option<u32>
+///                    ^^^^^
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -323,7 +323,7 @@ pub enum GenericArg {
     Const(Constant),
     /// A generic argument that's explicitly set to be inferred.
     /// ```text
-    /// std::vec::Vec::<_>::new()
+    /// std::vec::Vec::<_>
     ///                 ^
     /// ```
     Infer,
@@ -354,7 +354,7 @@ pub struct AssocItemConstraint {
     /// The name of the associated type/constant.
     pub name: String,
     /// Arguments provided to the associated type/constant.
-    pub args: GenericArgs,
+    pub args: Option<Box<GenericArgs>>,
     /// The kind of bound applied to the associated type/constant.
     pub binding: AssocItemConstraintKind,
 }
@@ -1110,7 +1110,7 @@ pub enum Type {
         /// <core::slice::IterMut<'static, u32> as BetterIterator>::Item<'static>
         /// //                                                          ^^^^^^^^^
         /// ```
-        args: Box<GenericArgs>,
+        args: Option<Box<GenericArgs>>,
         /// The type with which this type is associated.
         ///
         /// ```ignore (incomplete expression)
