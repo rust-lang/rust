@@ -1,0 +1,40 @@
+error: cannot find attribute `a` in this scope
+  --> $DIR/struct-field-ident-issue-140333.rs:4:15
+   |
+LL |             #[a]
+   |               ^
+   |
+   = note: `a` is in scope, but it is a function, not an attribute
+
+error[E0405]: cannot find trait `b` in this scope
+  --> $DIR/struct-field-ident-issue-140333.rs:1:16
+   |
+LL | fn a() -> impl b<
+   |                ^ not found in this scope
+
+error[E0412]: cannot find type `c` in this scope
+  --> $DIR/struct-field-ident-issue-140333.rs:2:6
+   |
+LL |     [c; {
+   |      ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | fn a<c>() -> impl b<
+   |     +++
+
+error[E0412]: cannot find type `e` in this scope
+  --> $DIR/struct-field-ident-issue-140333.rs:5:18
+   |
+LL |             bar: e,
+   |                  ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL |     struct D<e> {
+   |             +++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0405, E0412.
+For more information about an error, try `rustc --explain E0405`.
