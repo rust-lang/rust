@@ -262,12 +262,18 @@ fn is_expr_used_with_type_annotation<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx E
 /// Check if the expression is an associated function without a type instance.
 /// Example:
 /// ```
-/// Default::default()
-/// // Or
 /// trait Def {
-///    fn def() -> Self;
+///     fn def() -> Self;
 /// }
-/// Def::def()
+/// impl Def for usize {
+///     fn def() -> Self {
+///         0
+///     }
+/// }
+/// fn test() {
+///     let _ = 0usize + &Default::default();
+///     let _ = 0usize + &Def::def();
+/// }
 /// ```
 fn is_assoc_fn_without_type_instance<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
     if let ExprKind::Call(func, _) = peel_hir_expr_refs(expr).0.kind

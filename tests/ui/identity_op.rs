@@ -318,6 +318,9 @@ fn issue_14932() {
 
     0usize + &Default::default(); // no error
 
+    0usize + &<usize as Default>::default();
+    //~^ identity_op
+
     let _ = 0usize + &usize::default();
     //~^ identity_op
 
@@ -345,6 +348,9 @@ fn issue_14932_3() {
     let _ = 0usize + &Def::def(); // no error
 
     0usize + &Def::def(); // no error
+
+    0usize + &<usize as Def>::def();
+    //~^ identity_op
 
     let _ = 0usize + &usize::def();
     //~^ identity_op
