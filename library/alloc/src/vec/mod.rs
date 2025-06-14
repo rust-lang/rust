@@ -1974,8 +1974,6 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
-   
-
     /// Inserts an element at position `index` within the vector, shifting all
     /// elements after it to the right.
     ///
