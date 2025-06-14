@@ -1,23 +1,23 @@
 error[E0033]: type `&dyn T` cannot be dereferenced
-  --> $DIR/destructure-trait-ref.rs:28:9
+  --> $DIR/trait-object-destructure.rs:21:9
    |
 LL |     let &x = &1isize as &dyn T;
    |         ^^ type `&dyn T` cannot be dereferenced
 
 error[E0033]: type `&dyn T` cannot be dereferenced
-  --> $DIR/destructure-trait-ref.rs:29:10
+  --> $DIR/trait-object-destructure.rs:22:10
    |
 LL |     let &&x = &(&1isize as &dyn T);
    |          ^^ type `&dyn T` cannot be dereferenced
 
 error[E0033]: type `Box<dyn T>` cannot be dereferenced
-  --> $DIR/destructure-trait-ref.rs:30:9
+  --> $DIR/trait-object-destructure.rs:23:9
    |
 LL |     let box x = Box::new(1isize) as Box<dyn T>;
    |         ^^^^^ type `Box<dyn T>` cannot be dereferenced
 
 error[E0308]: mismatched types
-  --> $DIR/destructure-trait-ref.rs:34:10
+  --> $DIR/trait-object-destructure.rs:26:10
    |
 LL |     let &&x = &1isize as &dyn T;
    |          ^^   ----------------- this expression has type `&dyn T`
@@ -33,7 +33,7 @@ LL +     let &x = &1isize as &dyn T;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/destructure-trait-ref.rs:38:11
+  --> $DIR/trait-object-destructure.rs:27:11
    |
 LL |     let &&&x = &(&1isize as &dyn T);
    |           ^^   -------------------- this expression has type `&&dyn T`
@@ -49,7 +49,7 @@ LL +     let &&x = &(&1isize as &dyn T);
    |
 
 error[E0308]: mismatched types
-  --> $DIR/destructure-trait-ref.rs:42:13
+  --> $DIR/trait-object-destructure.rs:28:13
    |
 LL |     let box box x = Box::new(1isize) as Box<dyn T>;
    |             ^^^^^   ------------------------------ this expression has type `Box<dyn T>`
