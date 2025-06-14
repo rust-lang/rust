@@ -14,7 +14,7 @@ use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, Backward, ResultsCursor};
 use rustc_session::lint;
 use rustc_span::Span;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{Symbol, kw, sym};
 
 use crate::errors;
 
@@ -161,7 +161,7 @@ fn is_capture(place: PlaceRef<'_>) -> bool {
 /// interpolate our dead local.
 fn maybe_suggest_literal_matching_name(
     body: &Body<'_>,
-    name: &str,
+    name: Symbol,
 ) -> Vec<errors::UnusedVariableStringInterp> {
     struct LiteralFinder<'body, 'tcx> {
         body: &'body Body<'tcx>,
@@ -425,7 +425,7 @@ fn find_self_assignments<'tcx>(
 #[derive(Default, Debug)]
 struct PlaceSet<'tcx> {
     places: IndexVec<PlaceIndex, PlaceRef<'tcx>>,
-    names: IndexVec<PlaceIndex, Option<(String, Span)>>,
+    names: IndexVec<PlaceIndex, Option<(Symbol, Span)>>,
 
     /// Places corresponding to locals, common case.
     locals: IndexVec<Local, Option<PlaceIndex>>,
@@ -487,7 +487,10 @@ impl<'tcx> PlaceSet<'tcx> {
 
             // Record a variable name from the capture, because it is much friendlier than the
             // debuginfo name.
-            self.names.insert(index, (capture.to_string(tcx), capture.get_path_span(tcx)));
+            self.names.insert(
+                index,
+                (Symbol::intern(&capture.to_string(tcx)), capture.get_path_span(tcx)),
+            );
         }
     }
 
@@ -497,7 +500,7 @@ impl<'tcx> PlaceSet<'tcx> {
                 && let Some(index) = self.locals[place.local]
             {
                 self.names.get_or_insert_with(index, || {
-                    (var_debug_info.name.to_string(), var_debug_info.source_info.span)
+                    (var_debug_info.name, var_debug_info.source_info.span)
                 });
             }
         }
@@ -789,8 +792,8 @@ impl AssignmentResult {
                 continue;
             }
 
-            let Some((ref name, def_span)) = checked_places.names[index] else { continue };
-            if name.is_empty() || name.starts_with('_') || name == "self" {
+            let Some((name, def_span)) = checked_places.names[index] else { continue };
+            if name.is_empty() || name.as_str().starts_with('_') || name == kw::SelfLower {
                 continue;
             }
 
@@ -817,19 +820,16 @@ impl AssignmentResult {
             let statements = &mut self.assignments[index];
             if statements.is_empty() {
                 let sugg = if from_macro {
-                    errors::UnusedVariableSugg::NoSugg { span: def_span, name: name.clone() }
+                    errors::UnusedVariableSugg::NoSugg { span: def_span, name }
                 } else {
-                    errors::UnusedVariableSugg::TryPrefix {
-                        spans: vec![def_span],
-                        name: name.clone(),
-                    }
+                    errors::UnusedVariableSugg::TryPrefix { spans: vec![def_span], name }
                 };
                 tcx.emit_node_span_lint(
                     lint::builtin::UNUSED_VARIABLES,
                     hir_id,
                     def_span,
                     errors::UnusedVariable {
-                        name: name.clone(),
+                        name,
                         string_interp: maybe_suggest_literal_matching_name(body, name),
                         sugg,
                     },
@@ -867,7 +867,7 @@ impl AssignmentResult {
                     lint::builtin::UNUSED_VARIABLES,
                     hir_id,
                     def_span,
-                    errors::UnusedVarAssignedOnly { name: name.clone() },
+                    errors::UnusedVarAssignedOnly { name },
                 );
                 continue;
             }
@@ -879,7 +879,7 @@ impl AssignmentResult {
 
             let sugg = if any_shorthand {
                 errors::UnusedVariableSugg::TryIgnore {
-                    name: name.clone(),
+                    name,
                     shorthands: introductions
                         .iter()
                         .filter_map(
@@ -896,11 +896,11 @@ impl AssignmentResult {
                         .collect(),
                 }
             } else if from_macro {
-                errors::UnusedVariableSugg::NoSugg { span: def_span, name: name.clone() }
+                errors::UnusedVariableSugg::NoSugg { span: def_span, name }
             } else if !introductions.is_empty() {
-                errors::UnusedVariableSugg::TryPrefix { name: name.clone(), spans: spans.clone() }
+                errors::UnusedVariableSugg::TryPrefix { name, spans: spans.clone() }
             } else {
-                errors::UnusedVariableSugg::TryPrefix { name: name.clone(), spans: vec![def_span] }
+                errors::UnusedVariableSugg::TryPrefix { name, spans: vec![def_span] }
             };
 
             tcx.emit_node_span_lint(
@@ -908,7 +908,7 @@ impl AssignmentResult {
                 hir_id,
                 spans,
                 errors::UnusedVariable {
-                    name: name.clone(),
+                    name,
                     string_interp: maybe_suggest_literal_matching_name(body, name),
                     sugg,
                 },
@@ -930,8 +930,8 @@ impl AssignmentResult {
                 continue;
             }
 
-            let Some((ref name, decl_span)) = checked_places.names[index] else { continue };
-            if name.is_empty() || name.starts_with('_') || name == "self" {
+            let Some((name, decl_span)) = checked_places.names[index] else { continue };
+            if name.is_empty() || name.as_str().starts_with('_') || name == kw::SelfLower {
                 continue;
             }
 
@@ -966,24 +966,20 @@ impl AssignmentResult {
                             lint::builtin::UNUSED_ASSIGNMENTS,
                             hir_id,
                             source_info.span,
-                            errors::UnusedAssign {
-                                name: name.clone(),
-                                help: suggestion.is_none(),
-                                suggestion,
-                            },
+                            errors::UnusedAssign { name, help: suggestion.is_none(), suggestion },
                         )
                     }
                     AccessKind::Param => tcx.emit_node_span_lint(
                         lint::builtin::UNUSED_ASSIGNMENTS,
                         hir_id,
                         source_info.span,
-                        errors::UnusedAssignPassed { name: name.clone() },
+                        errors::UnusedAssignPassed { name },
                     ),
                     AccessKind::Capture => tcx.emit_node_span_lint(
                         lint::builtin::UNUSED_ASSIGNMENTS,
                         hir_id,
                         decl_span,
-                        errors::UnusedCaptureMaybeCaptureRef { name: name.clone() },
+                        errors::UnusedCaptureMaybeCaptureRef { name },
                     ),
                 }
             }
