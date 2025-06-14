@@ -1403,6 +1403,80 @@ impl PathBuf {
         }
     }
 
+    /// Sets whether the path has a trailing [separator](MAIN_SEPARATOR).
+    ///
+    /// The value returned by [`has_trailing_sep`](Self::has_trailing_sep) will be equivalent to
+    /// the provided value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut p = PathBuf::from("dir");
+    ///
+    /// assert!(!p.has_trailing_sep());
+    /// p.set_trailing_sep(false);
+    /// assert!(!p.has_trailing_sep());
+    /// p.set_trailing_sep(true);
+    /// assert!(p.has_trailing_sep());
+    /// assert_eq!(p.file_name(), None);
+    /// p.set_trailing_sep(false);
+    /// assert!(!p.has_trailing_sep());
+    /// assert_eq!(p.file_name(), Some("dir"));
+    /// assert_eq!(p, Path::new("dir"));
+    /// ```
+    #[unstable(feature = "path_trailing_sep", issue = "142503")]
+    pub fn set_trailing_sep(&mut self, trailing_sep: bool) {
+        if trailing_sep { self.push_trailing_sep() } else { self.pop_trailing_sep() }
+    }
+
+    /// Adds a trailing [separator](MAIN_SEPARATOR) to the path.
+    ///
+    /// This acts similarly to [`Path::with_trailing_sep`], but mutates the underlying `PathBuf`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let mut p = PathBuf::from("dir");
+    ///
+    /// assert_eq!(p.file_name(), Some(Path::new("dir")));
+    /// p.push_trailing_sep();
+    /// assert_eq!(p.file_name(), None);
+    /// p.push_trailing_sep();
+    /// assert_eq!(p.file_name(), None);
+    /// assert_eq!(p, Path::new("dir/"));
+    /// ```
+    #[unstable(feature = "path_trailing_sep", issue = "142503")]
+    pub fn push_trailing_sep(&mut self) {
+        if !self.has_trailing_sep() {
+            self.push("");
+        }
+    }
+
+    /// Removes a trailing [separator](MAIN_SEPARATOR) from the path, if possible.
+    ///
+    /// This acts similarly to [`Path::trim_trailing_sep`], but mutates the underlying `PathBuf`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let mut p = PathBuf::from("dir/");
+    ///
+    /// assert_eq!(p.file_name(), None);
+    /// p.pop_trailing_sep();
+    /// assert_eq!(p.file_name(), Some("dir"));
+    /// p.pop_trailing_sep();
+    /// assert_eq!(p.file_name(), Some("dir"));
+    /// assert_eq!(p, Path::new("/dir"));
+    /// ```
+    #[unstable(feature = "path_trailing_sep", issue = "142503")]
+    pub fn pop_trailing_sep(&mut self) {
+        self.inner.truncate(self.trim_trailing_sep().as_os_str().len());
+    }
+
     /// Updates [`self.file_name`] to `file_name`.
     ///
     /// If [`self.file_name`] was [`None`], this is equivalent to pushing
@@ -2684,6 +2758,85 @@ impl Path {
     #[must_use]
     pub fn extension(&self) -> Option<&OsStr> {
         self.file_name().map(rsplit_file_at_dot).and_then(|(before, after)| before.and(after))
+    }
+
+    /// Checks whether the path ends in a trailing [separator](MAIN_SEPARATOR).
+    ///
+    /// This is generally done to ensure that a path is treated as a directory, not a file,
+    /// although it does not actually guarantee that such a path is a directory on the underlying
+    /// file system.
+    ///
+    /// Despite this behavior, two paths are still considered the same in Rust whether they have a
+    /// trailing separator or not.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// assert!(Path::new("dir/").has_trailing_sep());
+    /// assert!(!Path::new("file.rs").has_trailing_sep());
+    /// ```
+    #[unstable(feature = "path_trailing_sep", issue = "142503")]
+    #[must_use]
+    #[inline]
+    pub fn has_trailing_sep(&self) -> bool {
+        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(is_sep_byte)
+    }
+
+    /// Ensures that a path has a trailing [separator](MAIN_SEPARATOR),
+    /// allocating a [`PathBuf`] if necessary.
+    ///
+    /// The resulting path will return true for [`has_trailing_sep`](Self::has_trailing_sep) and
+    /// `None` for [`file_name`](Self::file_name).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// assert_eq!(Path::new("dir//").with_trailing_sep().file_name(), None);
+    /// assert_eq!(Path::new("dir/").with_trailing_sep().file_name(), None);
+    /// assert_eq!(Path::new("dir").with_trailing_sep().file_name(), None);
+    /// assert_eq!(Path::new("dir").file_name(), Some("dir"));
+    /// ```
+    #[unstable(feature = "path_trailing_sep", issue = "142503")]
+    #[must_use]
+    #[inline]
+    pub fn with_trailing_sep(&self) -> Cow<'_, Path> {
+        if self.has_trailing_sep() { Cow::Borrowed(self) } else { Cow::Owned(self.join("")) }
+    }
+
+    /// Trims a trailing [separator](MAIN_SEPARATOR) from a path, if possible.
+    ///
+    /// The resulting path will return false for [`has_trailing_sep`](Self::has_trailing_sep).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// assert_eq!(Path::new("dir//").trim_trailing_sep().file_name(), Some("dir"));
+    /// assert_eq!(Path::new("dir/").trim_trailing_sep().file_name(), Some("dir"));
+    /// assert_eq!(Path::new("dir").trim_trailing_sep().file_name(), Some("dir"));
+    /// ```
+    #[unstable(feature = "path_trailing_sep", issue = "142503")]
+    #[must_use]
+    #[inline]
+    pub fn trim_trailing_sep(&self) -> &Path {
+        if self.has_trailing_sep() && (!self.has_root() || self.parent().is_some()) {
+            let mut bytes = self.inner.as_encoded_bytes();
+            while let Some((last, init)) = bytes.split_last()
+                && is_sep_byte(*last)
+            {
+                bytes = init;
+            }
+
+            // SAFETY: Trimming trailing ASCII bytes will retain the validity of the string.
+            Path::new(unsafe { OsStr::from_encoded_bytes_unchecked(bytes) })
+        } else {
+            self
+        }
     }
 
     /// Creates an owned [`PathBuf`] with `path` adjoined to `self`.
