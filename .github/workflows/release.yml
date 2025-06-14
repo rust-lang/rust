@@ -39,7 +39,7 @@ jobs:
 
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for run-make tests.
-      run: sudo apt-get install ninja-build ripgrep llvm-14-tools llvm libstdc++6
+      run: sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
 
     - name: Download artifact
       run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-15.deb
@@ -48,6 +48,12 @@ jobs:
       run: |
           sudo dpkg --force-overwrite -i gcc-15.deb
           echo 'gcc-path = "/usr/lib/"' > config.toml
+
+    # Some run-make tests fail if we use our forked GCC because it doesn't
+    # bundle libstdc++, so we switch to gcc-14 to have a GCC that has
+    # libstdc++.
+    - name: Set default GCC to gcc-14
+      run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 30
 
     - name: Set env
       run: |
