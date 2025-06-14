@@ -1401,7 +1401,7 @@ impl Options {
         match self.unstable_opts.share_generics {
             Some(setting) => setting,
             None => match self.optimize {
-                OptLevel::No | OptLevel::Less | OptLevel::Size | OptLevel::SizeMin => true,
+                OptLevel::No | OptLevel::Less | OptLevel::Size | OptLevel::SizeMin => false,
                 OptLevel::More | OptLevel::Aggressive => false,
             },
         }
