@@ -537,7 +537,7 @@ pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) -> 
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::Result {
-    let Item { owner_id: _, kind, span: _, vis_span: _ } = item;
+    let Item { owner_id: _, kind, span: _, vis_span: _, has_delayed_lints: _ } = item;
     try_visit!(visitor.visit_id(item.hir_id()));
     match *kind {
         ItemKind::ExternCrate(orig_name, ident) => {
@@ -656,7 +656,8 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(
     visitor: &mut V,
     foreign_item: &'v ForeignItem<'v>,
 ) -> V::Result {
-    let ForeignItem { ident, kind, owner_id: _, span: _, vis_span: _ } = foreign_item;
+    let ForeignItem { ident, kind, owner_id: _, span: _, vis_span: _, has_delayed_lints: _ } =
+        foreign_item;
     try_visit!(visitor.visit_id(foreign_item.hir_id()));
     try_visit!(visitor.visit_ident(*ident));
 
@@ -1205,7 +1206,15 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
     visitor: &mut V,
     trait_item: &'v TraitItem<'v>,
 ) -> V::Result {
-    let TraitItem { ident, generics, ref defaultness, ref kind, span, owner_id: _ } = *trait_item;
+    let TraitItem {
+        ident,
+        generics,
+        ref defaultness,
+        ref kind,
+        span,
+        owner_id: _,
+        has_delayed_lints: _,
+    } = *trait_item;
     let hir_id = trait_item.hir_id();
     try_visit!(visitor.visit_ident(ident));
     try_visit!(visitor.visit_generics(&generics));
@@ -1261,6 +1270,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
         ref defaultness,
         span: _,
         vis_span: _,
+        has_delayed_lints: _,
     } = *impl_item;
 
     try_visit!(visitor.visit_ident(ident));

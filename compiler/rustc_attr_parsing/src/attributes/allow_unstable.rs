@@ -1,6 +1,7 @@
 use std::iter;
 
 use rustc_attr_data_structures::AttributeKind;
+use rustc_feature::{AttributeTemplate, template};
 use rustc_span::{Span, Symbol, sym};
 
 use super::{CombineAttributeParser, ConvertFn};
@@ -13,6 +14,7 @@ impl<S: Stage> CombineAttributeParser<S> for AllowInternalUnstableParser {
     const PATH: &[Symbol] = &[sym::allow_internal_unstable];
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::AllowInternalUnstable;
+    const TEMPLATE: AttributeTemplate = template!(Word, List: "feat1, feat2, ...");
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
@@ -29,6 +31,7 @@ impl<S: Stage> CombineAttributeParser<S> for AllowConstFnUnstableParser {
     const PATH: &[Symbol] = &[sym::rustc_allow_const_fn_unstable];
     type Item = Symbol;
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::AllowConstFnUnstable;
+    const TEMPLATE: AttributeTemplate = template!(Word, List: "feat1, feat2, ...");
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
