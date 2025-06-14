@@ -3,7 +3,6 @@ use std::fmt;
 use std::hash::Hash;
 
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
-use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
@@ -209,20 +208,6 @@ impl<'tcx> MonoItem<'tcx> {
         // builds, we always select LocalCopy.
         if codegen_fn_attrs.inline.always() {
             return InstantiationMode::LocalCopy;
-        }
-
-        // #[inline(never)] functions in general are poor candidates for inlining and thus since
-        // LocalCopy generally increases code size for the benefit of optimizations from inlining,
-        // we want to give them GloballyShared codegen.
-        // The slight problem is that generic functions need to always support cross-crate
-        // compilation, so all previous stages of the compiler are obligated to treat generic
-        // functions the same as those that unconditionally get LocalCopy codegen. It's only when
-        // we get here that we can at least not codegen a #[inline(never)] generic function in all
-        // of our CGUs.
-        if let InlineAttr::Never = tcx.codegen_fn_attrs(instance.def_id()).inline
-            && self.is_generic_fn()
-        {
-            return InstantiationMode::GloballyShared { may_conflict: true };
         }
 
         // The fallthrough case is to generate LocalCopy for all optimized builds, and
