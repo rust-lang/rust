@@ -16,6 +16,6 @@
 #![no_core]
 extern crate minicore;
 
-//[by_feature1]~? WARN target feature `retpoline-external-thunk` cannot be enabled with `-Ctarget-feature`: use `retpoline-external-thunk` target modifier flag instead
-//[by_feature2]~? WARN target feature `retpoline-indirect-branches` cannot be enabled with `-Ctarget-feature`: use `retpoline` target modifier flag instead
-//[by_feature3]~? WARN target feature `retpoline-indirect-calls` cannot be enabled with `-Ctarget-feature`: use `retpoline` target modifier flag instead
+//[by_feature1]~? WARN target feature `retpoline-external-thunk` cannot be enabled with `-Ctarget-feature`
+//[by_feature2]~? WARN target feature `retpoline-indirect-branches` cannot be enabled with `-Ctarget-feature`
+//[by_feature3]~? WARN target feature `retpoline-indirect-calls` cannot be enabled with `-Ctarget-feature`

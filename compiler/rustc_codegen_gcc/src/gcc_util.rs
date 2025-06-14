@@ -1,20 +1,12 @@
 #[cfg(feature = "master")]
 use gccjit::Context;
-use rustc_codegen_ssa::codegen_attrs::check_tied_features;
-use rustc_codegen_ssa::errors::TargetFeatureDisableOrEnable;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::unord::UnordSet;
+use rustc_codegen_ssa::target_features;
 use rustc_session::Session;
-use rustc_session::features::{StabilityExt, retpoline_features_by_flags};
-use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
 use smallvec::{SmallVec, smallvec};
 
-use crate::errors::{PossibleFeature, UnknownCTargetFeature, UnknownCTargetFeaturePrefix};
-
-fn gcc_features_by_flags(sess: &Session) -> Vec<&str> {
-    let mut features: Vec<&str> = Vec::new();
-    retpoline_features_by_flags(sess, &mut features);
-    features
+fn gcc_features_by_flags(sess: &Session, features: &mut Vec<String>) {
+    target_features::retpoline_features_by_flags(sess, features);
+    // FIXME: LLVM also sets +reserve-x18 here under some conditions.
 }
 
 /// The list of GCC features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
@@ -44,98 +36,29 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     features.extend(sess.target.features.split(',').filter(|v| !v.is_empty()).map(String::from));
 
     // -Ctarget-features
-    let known_features = sess.target.rust_target_features();
-    let mut featsmap = FxHashMap::default();
-
-    // Compute implied features
-    let mut all_rust_features = vec![];
-    for feature in sess.opts.cg.target_feature.split(',').chain(gcc_features_by_flags(sess)) {
-        if let Some(feature) = feature.strip_prefix('+') {
-            all_rust_features.extend(
-                UnordSet::from(sess.target.implied_target_features(feature))
-                    .to_sorted_stable_ord()
-                    .iter()
-                    .map(|&&s| (true, s)),
-            )
-        } else if let Some(feature) = feature.strip_prefix('-') {
-            // FIXME: Why do we not remove implied features on "-" here?
-            // We do the equivalent above in `target_config`.
-            // See <https://github.com/rust-lang/rust/issues/134792>.
-            all_rust_features.push((false, feature));
-        } else if !feature.is_empty() && diagnostics {
-            sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature });
-        }
-    }
-    // Remove features that are meant for rustc, not codegen.
-    all_rust_features.retain(|&(_, feature)| {
-        // Retain if it is not a rustc feature
-        !RUSTC_SPECIFIC_FEATURES.contains(&feature)
-    });
-
-    // Check feature validity.
-    if diagnostics {
-        for &(enable, feature) in &all_rust_features {
-            let feature_state = known_features.iter().find(|&&(v, _, _)| v == feature);
-            match feature_state {
-                None => {
-                    let rust_feature = known_features.iter().find_map(|&(rust_feature, _, _)| {
-                        let gcc_features = to_gcc_features(sess, rust_feature);
-                        if gcc_features.contains(&feature) && !gcc_features.contains(&rust_feature)
-                        {
-                            Some(rust_feature)
-                        } else {
-                            None
-                        }
-                    });
-                    let unknown_feature = if let Some(rust_feature) = rust_feature {
-                        UnknownCTargetFeature {
-                            feature,
-                            rust_feature: PossibleFeature::Some { rust_feature },
-                        }
-                    } else {
-                        UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
-                    };
-                    sess.dcx().emit_warn(unknown_feature);
-                }
-                Some(&(_, stability, _)) => {
-                    stability.verify_feature_enabled_by_flag(sess, enable, feature);
-                }
-            }
-
-            // FIXME(nagisa): figure out how to not allocate a full hashset here.
-            featsmap.insert(feature, enable);
-        }
-    }
-
-    // Translate this into GCC features.
-    let feats =
-        all_rust_features.iter().flat_map(|&(enable, feature)| {
-            let enable_disable = if enable { '+' } else { '-' };
+    target_features::flag_to_backend_features(
+        sess,
+        diagnostics,
+        |feature| to_gcc_features(sess, feature),
+        |feature, enable| {
             // We run through `to_gcc_features` when
             // passing requests down to GCC. This means that all in-language
             // features also work on the command line instead of having two
             // different names when the GCC name and the Rust name differ.
-            to_gcc_features(sess, feature)
-                .iter()
-                .flat_map(|feat| to_gcc_features(sess, feat).into_iter())
-                .map(|feature| {
-                    if enable_disable == '-' {
-                        format!("-{}", feature)
-                    } else {
-                        feature.to_string()
-                    }
-                })
-                .collect::<Vec<_>>()
-        });
-    features.extend(feats);
+            features.extend(
+                to_gcc_features(sess, feature)
+                    .iter()
+                    .flat_map(|feat| to_gcc_features(sess, feat).into_iter())
+                    .map(
+                        |feature| {
+                            if !enable { format!("-{}", feature) } else { feature.to_string() }
+                        },
+                    ),
+            );
+        },
+    );
 
-    if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
-        sess.dcx().emit_err(TargetFeatureDisableOrEnable {
-            features: f,
-            span: None,
-            missing_features: None,
-        });
-    }
+    gcc_features_by_flags(sess, &mut features);
 
     features
 }
