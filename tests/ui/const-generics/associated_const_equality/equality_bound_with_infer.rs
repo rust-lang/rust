@@ -1,4 +1,4 @@
-#![feature(generic_arg_infer, associated_const_equality, generic_const_items)]
+#![feature(associated_const_equality, generic_const_items)]
 #![expect(incomplete_features)]
 
 // Regression test for #133066 where we would try to evaluate `<() as Foo>::ASSOC<_>` even

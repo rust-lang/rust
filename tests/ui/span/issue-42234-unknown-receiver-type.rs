@@ -1,6 +1,3 @@
-//@ revisions: full generic_arg
-#![cfg_attr(generic_arg, feature(generic_arg_infer))]
-
 // When the type of a method call's receiver is unknown, the span should point
 // to the receiver (and not the entire call, as was previously the case before
 // the fix of which this tests).

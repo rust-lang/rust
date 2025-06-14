@@ -8,7 +8,7 @@ use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
-use rustc_span::{kw, sym};
+use rustc_span::kw;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -258,19 +258,6 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                             GenericParamDefKind::Const { .. },
                             _,
                         ) => {
-                            if let GenericParamDefKind::Const { .. } = param.kind
-                                && let GenericArg::Infer(inf) = arg
-                                && !tcx.features().generic_arg_infer()
-                            {
-                                rustc_session::parse::feature_err(
-                                    tcx.sess,
-                                    sym::generic_arg_infer,
-                                    inf.span,
-                                    "const arguments cannot yet be inferred with `_`",
-                                )
-                                .emit();
-                            }
-
                             // We lower to an infer even when the feature gate is not enabled
                             // as it is useful for diagnostics to be able to see a `ConstKind::Infer`
                             args.push(ctx.provided_kind(&args, param, arg));

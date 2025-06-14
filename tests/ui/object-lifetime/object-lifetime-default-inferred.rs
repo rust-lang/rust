@@ -4,7 +4,6 @@
 
 
 #![allow(dead_code)]
-#![feature(generic_arg_infer)]
 
 trait Test {
     fn foo(&self) { }
