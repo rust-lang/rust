@@ -12,6 +12,8 @@ permissions:
 env:
   # Enable backtraces for easier debugging
   RUST_BACKTRACE: 1
+  # For the run-make tests.
+  LLVM_BIN_DIR: /usr/bin
 
 jobs:
   build:
@@ -48,7 +50,7 @@ jobs:
 
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
-      run: sudo apt-get install ninja-build ripgrep llvm-14-tools
+      run: sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
 
     - name: Install rustfmt & clippy
       run: rustup component add rustfmt clippy
@@ -60,6 +62,12 @@ jobs:
       run: |
           sudo dpkg --force-overwrite -i ${{ matrix.libgccjit_version.gcc }}
           echo 'gcc-path = "/usr/lib/"' > config.toml
+
+    # Some run-make tests fail if we use our forked GCC because it doesn't
+    # bundle libstdc++, so we switch to gcc-14 to have a GCC that has
+    # libstdc++.
+    - name: Set default GCC to gcc-14
+      run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 30
 
     - name: Set env
       run: |

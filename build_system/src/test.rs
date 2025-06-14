@@ -9,8 +9,8 @@ use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
     create_dir, get_sysroot_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file,
-    run_command, run_command_with_env, run_command_with_output_and_env, rustc_version_info,
-    split_args, walk_dir,
+    run_command, run_command_with_env, run_command_with_output, run_command_with_output_and_env,
+    rustc_version_info, split_args, walk_dir,
 };
 
 type Env = HashMap<String, String>;
@@ -484,6 +484,31 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     } else {
         run_command_with_output_and_env(&[&"git", &"checkout"], rust_dir, Some(env))?;
     }
+
+    let mut patches = Vec::new();
+    walk_dir(
+        "patches/tests",
+        &mut |_| Ok(()),
+        &mut |file_path: &Path| {
+            patches.push(file_path.to_path_buf());
+            Ok(())
+        },
+        false,
+    )?;
+    patches.sort();
+    // TODO: remove duplication with prepare.rs by creating a apply_patch function in the utils
+    // module.
+    for file_path in patches {
+        println!("[GIT] apply `{}`", file_path.display());
+        let path = Path::new("../..").join(file_path);
+        run_command_with_output(&[&"git", &"apply", &path], rust_dir)?;
+        run_command_with_output(&[&"git", &"add", &"-A"], rust_dir)?;
+        run_command_with_output(
+            &[&"git", &"commit", &"--no-gpg-sign", &"-m", &format!("Patch {}", path.display())],
+            rust_dir,
+        )?;
+    }
+
     let cargo = String::from_utf8(
         run_command_with_env(&[&"rustup", &"which", &"cargo"], rust_dir, Some(env))?.stdout,
     )
@@ -509,7 +534,8 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
           which FileCheck-11 || \
           which FileCheck-12 || \
           which FileCheck-13 || \
-          which FileCheck-14",
+          which FileCheck-14 || \
+          which FileCheck",
         ],
         rust_dir,
         Some(env),
@@ -517,6 +543,8 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
         Ok(cmd) => String::from_utf8_lossy(&cmd.stdout).to_string(),
         Err(_) => {
             eprintln!("Failed to retrieve LLVM FileCheck, ignoring...");
+            // FIXME: the test tests/run-make/no-builtins-attribute will fail if we cannot find
+            // FileCheck.
             String::new()
         }
     };
@@ -1089,19 +1117,18 @@ where
 }
 
 fn test_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    //test_rustc_inner(env, args, |_| Ok(false), false, "run-make")?;
+    test_rustc_inner(env, args, |_| Ok(false), false, "run-make")?;
     test_rustc_inner(env, args, |_| Ok(false), false, "ui")
 }
 
 fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    let result1 = Ok(());
-    /*test_rustc_inner(
+    let result1 = test_rustc_inner(
         env,
         args,
         retain_files_callback("tests/failing-run-make-tests.txt", "run-make"),
         false,
         "run-make",
-    )*/
+    );
 
     let result2 = test_rustc_inner(
         env,
@@ -1122,14 +1149,13 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         false,
         "ui",
     )?;
-    Ok(())
-    /*test_rustc_inner(
+    test_rustc_inner(
         env,
         args,
         remove_files_callback("tests/failing-run-make-tests.txt", "run-make"),
         false,
         "run-make",
-    )*/
+    )
 }
 
 fn test_failing_ui_pattern_tests(env: &Env, args: &TestArg) -> Result<(), String> {
