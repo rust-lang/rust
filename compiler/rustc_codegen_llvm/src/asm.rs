@@ -1021,6 +1021,15 @@ fn llvm_fixup_input<'ll, 'tcx>(
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_i16(), count))
         }
+        (LoongArch(LoongArchInlineAsmRegClass::freg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F16) =>
+        {
+            // Smaller floats are always "NaN-boxed" inside larger floats on LoongArch.
+            let value = bx.bitcast(value, bx.type_i16());
+            let value = bx.zext(value, bx.type_i32());
+            let value = bx.or(value, bx.const_u32(0xFFFF_0000));
+            bx.bitcast(value, bx.type_f32())
+        }
         (Mips(MipsInlineAsmRegClass::reg), BackendRepr::Scalar(s)) => {
             match s.primitive() {
                 // MIPS only supports register-length arithmetics.
@@ -1178,6 +1187,13 @@ fn llvm_fixup_output<'ll, 'tcx>(
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_f16(), count))
         }
+        (LoongArch(LoongArchInlineAsmRegClass::freg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F16) =>
+        {
+            let value = bx.bitcast(value, bx.type_i32());
+            let value = bx.trunc(value, bx.type_i16());
+            bx.bitcast(value, bx.type_f16())
+        }
         (Mips(MipsInlineAsmRegClass::reg), BackendRepr::Scalar(s)) => {
             match s.primitive() {
                 // MIPS only supports register-length arithmetics.
@@ -1317,6 +1333,11 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
             BackendRepr::SimdVector { element, count: count @ (4 | 8) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             cx.type_vector(cx.type_i16(), count)
+        }
+        (LoongArch(LoongArchInlineAsmRegClass::freg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F16) =>
+        {
+            cx.type_f32()
         }
         (Mips(MipsInlineAsmRegClass::reg), BackendRepr::Scalar(s)) => {
             match s.primitive() {
