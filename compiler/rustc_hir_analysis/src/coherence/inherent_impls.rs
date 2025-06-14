@@ -64,6 +64,7 @@ impl<'tcx> InherentCollect<'tcx> {
     fn check_def_id(
         &mut self,
         impl_def_id: LocalDefId,
+        hir_item_id: hir::ItemId,
         self_ty: Ty<'tcx>,
         ty_def_id: DefId,
     ) -> Result<(), ErrorGuaranteed> {
@@ -103,7 +104,25 @@ impl<'tcx> InherentCollect<'tcx> {
             Ok(())
         } else {
             let impl_span = self.tcx.def_span(impl_def_id);
-            Err(self.tcx.dcx().emit_err(errors::InherentTyOutsideNew { span: impl_span }))
+            let mut err = errors::InherentTyOutsideNew { span: impl_span, note: None };
+
+            if let hir::ItemKind::Impl(impl_item) = self.tcx.hir_item(hir_item_id).kind {
+                if let hir::TyKind::Path(rustc_hir::QPath::Resolved(_, path)) =
+                    impl_item.self_ty.kind
+                {
+                    if let rustc_hir::def::Res::Def(DefKind::TyAlias, def_id) = path.res {
+                        let ty_name = self.tcx.def_path_str(def_id);
+                        let alias_ty_name = self.tcx.type_of(def_id).skip_binder().to_string();
+                        err.note = Some(errors::InherentTyOutsideNewAliasNote {
+                            span: self.tcx.def_span(def_id),
+                            ty_name,
+                            alias_ty_name,
+                        });
+                    }
+                }
+            }
+
+            Err(self.tcx.dcx().emit_err(err))
         }
     }
 
@@ -142,12 +161,12 @@ impl<'tcx> InherentCollect<'tcx> {
         Ok(())
     }
 
-    fn check_item(&mut self, id: hir::ItemId) -> Result<(), ErrorGuaranteed> {
-        if !matches!(self.tcx.def_kind(id.owner_id), DefKind::Impl { of_trait: false }) {
+    fn check_item(&mut self, hir_item_id: hir::ItemId) -> Result<(), ErrorGuaranteed> {
+        if !matches!(self.tcx.def_kind(hir_item_id.owner_id), DefKind::Impl { of_trait: false }) {
             return Ok(());
         }
 
-        let id = id.owner_id.def_id;
+        let id = hir_item_id.owner_id.def_id;
         let item_span = self.tcx.def_span(id);
         let self_ty = self.tcx.type_of(id).instantiate_identity();
         let mut self_ty = self.tcx.peel_off_free_alias_tys(self_ty);
@@ -157,10 +176,10 @@ impl<'tcx> InherentCollect<'tcx> {
             self_ty = base;
         }
         match *self_ty.kind() {
-            ty::Adt(def, _) => self.check_def_id(id, self_ty, def.did()),
-            ty::Foreign(did) => self.check_def_id(id, self_ty, did),
+            ty::Adt(def, _) => self.check_def_id(id, hir_item_id, self_ty, def.did()),
+            ty::Foreign(did) => self.check_def_id(id, hir_item_id, self_ty, did),
             ty::Dynamic(data, ..) if data.principal_def_id().is_some() => {
-                self.check_def_id(id, self_ty, data.principal_def_id().unwrap())
+                self.check_def_id(id, hir_item_id, self_ty, data.principal_def_id().unwrap())
             }
             ty::Dynamic(..) => {
                 Err(self.tcx.dcx().emit_err(errors::InherentDyn { span: item_span }))
