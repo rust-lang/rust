@@ -529,8 +529,8 @@ fn random_nan<S: Semantics>(rng: &mut StdRng) -> IeeeFloat<S> {
 ///
 /// For `powf*` operations of the form:
 ///
-/// - `x^(±0)` where `x` is a SNaN
-/// - `1^y` where `y` is SNaN
+/// - `(SNaN)^(±0)`
+/// - `1^(SNaN)`
 ///
 /// The result is implementation-defined:
 /// - musl returns for both `1.0`
@@ -565,13 +565,9 @@ fn fixed_float_value<S: Semantics>(
 
         // x^(±0) = 1 for any x, even a NaN, *but* not a SNaN
         ("powf32" | "powf64", [base, exp]) if exp.is_zero() => {
+            let rng = ecx.machine.rng.get_mut();
             // Handle both the musl and glibc cases non-deterministically.
-            if base.is_signaling() {
-                let rng = ecx.machine.rng.get_mut();
-                if rng.random() { one } else { random_nan(rng) }
-            } else {
-                one
-            }
+            if !base.is_signaling() || rng.random() { one } else { random_nan(rng) }
         }
 
         // There are a lot of cases for fixed outputs according to the C Standard, but these are mainly INF or zero
@@ -582,7 +578,7 @@ fn fixed_float_value<S: Semantics>(
 
 /// Returns `Some(output)` if `powi` (called `pown` in C) results in a fixed value specified in the C standard
 /// (specifically, C23 annex F.10.4.6) when doing `base^exp`. Otherwise, returns `None`.
-// REVIEW: I'm not sure what I should document here about pown(1, SNaN) since musl and glibc do the same and the C standard is explicit here.
+// TODO: I'm not sure what I should document here about pown(1, SNaN) since musl and glibc do the same and the C standard is explicit here.
 fn fixed_powi_float_value<S: Semantics>(
     ecx: &mut MiriInterpCx<'_>,
     base: IeeeFloat<S>,

@@ -1072,18 +1072,18 @@ pub fn libm() {
         ($pow_op:expr) => {{
             let mut nan_seen = false;
             let mut one_seen = false;
-        
+
             for _ in 0..64 {
                 let res = $pow_op;
                 nan_seen |= res.is_nan();
                 one_seen |= res == 1.0;
 
-                // speedup test
+                // little speedup
                 if nan_seen && one_seen { break; };
             }
 
             let op_as_str = stringify!($pow_op);
-        
+
             assert!(nan_seen && one_seen, "{} should return both `NaN` or `1.0` randomly", op_as_str);
         }};
     }
