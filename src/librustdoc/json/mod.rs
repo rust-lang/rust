@@ -37,19 +37,18 @@ use crate::formats::cache::Cache;
 use crate::json::conversions::IntoJson;
 use crate::{clean, try_err};
 
-#[derive(Clone)]
 pub(crate) struct JsonRenderer<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
-    index: Rc<RefCell<FxHashMap<types::Id, types::Item>>>,
+    index: FxHashMap<types::Id, types::Item>,
     /// The directory where the JSON blob should be written to.
     ///
     /// If this is `None`, the blob will be printed to `stdout` instead.
     out_dir: Option<PathBuf>,
     cache: Rc<Cache>,
     imported_items: DefIdSet,
-    id_interner: Rc<RefCell<ids::IdInterner>>,
+    id_interner: RefCell<ids::IdInterner>,
 }
 
 impl<'tcx> JsonRenderer<'tcx> {
@@ -66,7 +65,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                     .iter()
                     .map(|i| {
                         let item = &i.impl_item;
-                        self.item(item.clone()).unwrap();
+                        self.item(item).unwrap();
                         self.id_from_item(item)
                     })
                     .collect()
@@ -97,7 +96,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                         }
 
                         if item.item_id.is_local() || is_primitive_impl {
-                            self.item(item.clone()).unwrap();
+                            self.item(item).unwrap();
                             Some(self.id_from_item(item))
                         } else {
                             None
@@ -198,7 +197,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         Ok((
             JsonRenderer {
                 tcx,
-                index: Rc::new(RefCell::new(FxHashMap::default())),
+                index: FxHashMap::default(),
                 out_dir: if options.output_to_stdout { None } else { Some(options.output) },
                 cache: Rc::new(cache),
                 imported_items,
@@ -218,7 +217,9 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     /// Inserts an item into the index. This should be used rather than directly calling insert on
     /// the hashmap because certain items (traits and types) need to have their mappings for trait
     /// implementations filled out before they're inserted.
-    fn item(&mut self, item: clean::Item) -> Result<(), Error> {
+    fn item(&mut self, item: &clean::Item) -> Result<(), Error> {
+        use std::collections::hash_map::Entry;
+
         let item_type = item.type_();
         let item_name = item.name;
         trace!("rendering {item_type} {item_name:?}");
@@ -226,11 +227,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         // Flatten items that recursively store other items. We include orphaned items from
         // stripped modules and etc that are otherwise reachable.
         if let ItemKind::StrippedItem(inner) = &item.kind {
-            inner.inner_items().for_each(|i| self.item(i.clone()).unwrap());
+            inner.inner_items().for_each(|i| self.item(i).unwrap());
         }
 
         // Flatten items that recursively store other items
-        item.kind.inner_items().for_each(|i| self.item(i.clone()).unwrap());
+        item.kind.inner_items().for_each(|i| self.item(i).unwrap());
 
         let item_id = item.item_id;
         if let Some(mut new_item) = self.convert_item(item) {
@@ -273,18 +274,25 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::Macro(_)
                 | types::ItemEnum::ProcMacro(_) => false,
             };
-            let removed = self.index.borrow_mut().insert(new_item.id, new_item.clone());
 
             // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
             // to make sure the items are unique. The main place this happens is when an item, is
             // reexported in more than one place. See `rustdoc-json/reexport/in_root_and_mod`
-            if let Some(old_item) = removed {
-                // In case of generic implementations (like `impl<T> Trait for T {}`), all the
-                // inner items will be duplicated so we can ignore if they are slightly different.
-                if !can_be_ignored {
-                    assert_eq!(old_item, new_item);
+            match self.index.entry(new_item.id) {
+                Entry::Vacant(entry) => {
+                    entry.insert(new_item);
                 }
-                trace!("replaced {old_item:?}\nwith {new_item:?}");
+                Entry::Occupied(mut entry) => {
+                    // In case of generic implementations (like `impl<T> Trait for T {}`), all the
+                    // inner items will be duplicated so we can ignore if they are slightly
+                    // different.
+                    let old_item = entry.get_mut();
+                    if !can_be_ignored {
+                        assert_eq!(*old_item, new_item);
+                    }
+                    trace!("replaced {old_item:?}\nwith {new_item:?}");
+                    *old_item = new_item;
+                }
             }
         }
 
@@ -296,11 +304,13 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         unreachable!("RUN_ON_MODULE = false, should never call mod_item_in")
     }
 
-    fn after_krate(&mut self) -> Result<(), Error> {
+    fn after_krate(mut self) -> Result<(), Error> {
         debug!("Done with crate");
 
         let e = ExternalCrate { crate_num: LOCAL_CRATE };
-        let index = (*self.index).clone().into_inner();
+
+        // We've finished using the index, and don't want to clone it, because it is big.
+        let index = std::mem::take(&mut self.index);
 
         // Note that tcx.rust_target_features is inappropriate here because rustdoc tries to run for
         // multiple targets: https://github.com/rust-lang/rust/pull/137632
@@ -325,7 +335,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
                             path: path.iter().map(|s| s.to_string()).collect(),
-                            kind: kind.into_json(self),
+                            kind: kind.into_json(&self),
                         },
                     )
                 })
