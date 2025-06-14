@@ -1379,7 +1379,7 @@ impl Config {
             .run_always()
             .args(["submodule", "-q", "sync"])
             .arg(relative_path)
-            .run(&self);
+            .run(self);
 
         // Try passing `--progress` to start, then run git again without if that fails.
         let update = |progress: bool| {
@@ -1408,23 +1408,23 @@ impl Config {
             git.arg(relative_path);
             git
         };
-        if !update(true).allow_failure().run(&self) {
-            update(false).allow_failure().run(&self);
+        if !update(true).allow_failure().run(self) {
+            update(false).allow_failure().run(self);
         }
 
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
         let has_local_modifications =
-            !submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]).run(&self);
+            !submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]).run(self);
         if has_local_modifications {
-            submodule_git().allow_failure().args(["stash", "push"]).run(&self);
+            submodule_git().allow_failure().args(["stash", "push"]).run(self);
         }
 
-        submodule_git().allow_failure().args(["reset", "-q", "--hard"]).run(&self);
-        submodule_git().allow_failure().args(["clean", "-qdfx"]).run(&self);
+        submodule_git().allow_failure().args(["reset", "-q", "--hard"]).run(self);
+        submodule_git().allow_failure().args(["clean", "-qdfx"]).run(self);
 
         if has_local_modifications {
-            submodule_git().allow_failure().args(["stash", "pop"]).run(&self);
+            submodule_git().allow_failure().args(["stash", "pop"]).run(self);
         }
     }
 

@@ -244,7 +244,7 @@ impl Config {
             curl.arg("--retry-all-errors");
         }
         curl.arg(url);
-        if !curl.run(&self) {
+        if !curl.run(self) {
             if self.host_target.contains("windows-msvc") {
                 eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {
