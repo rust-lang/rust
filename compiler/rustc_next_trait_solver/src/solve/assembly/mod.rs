@@ -1014,7 +1014,11 @@ where
             return Ok(CandidateSource::ParamEnv(ParamEnvSource::NonGlobal));
         }
 
-        match assumption.visit_with(&mut FindParamInClause { ecx: self, param_env }) {
+        match assumption.visit_with(&mut FindParamInClause {
+            ecx: self,
+            param_env,
+            universes: vec![],
+        }) {
             ControlFlow::Break(Err(NoSolution)) => Err(NoSolution),
             ControlFlow::Break(Ok(())) => Ok(CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)),
             ControlFlow::Continue(()) => Ok(CandidateSource::ParamEnv(ParamEnvSource::Global)),
@@ -1025,6 +1029,7 @@ where
 struct FindParamInClause<'a, 'b, D: SolverDelegate<Interner = I>, I: Interner> {
     ecx: &'a mut EvalCtxt<'b, D>,
     param_env: I::ParamEnv,
+    universes: Vec<Option<ty::UniverseIndex>>,
 }
 
 impl<D, I> TypeVisitor<I> for FindParamInClause<'_, '_, D, I>
@@ -1034,31 +1039,42 @@ where
 {
     type Result = ControlFlow<Result<(), NoSolution>>;
 
-    fn visit_binder<T: TypeFoldable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
-        self.ecx.enter_forall(t.clone(), |ecx, v| {
-            v.visit_with(&mut FindParamInClause { ecx, param_env: self.param_env })
-        })
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
+        self.universes.push(None);
+        t.super_visit_with(self)?;
+        self.universes.pop();
+        ControlFlow::Continue(())
     }
 
     fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
+        let ty = self.ecx.replace_bound_vars(ty, &mut self.universes);
         let Ok(ty) = self.ecx.structurally_normalize_ty(self.param_env, ty) else {
             return ControlFlow::Break(Err(NoSolution));
         };
 
-        if let ty::Placeholder(_) = ty.kind() {
-            ControlFlow::Break(Ok(()))
+        if let ty::Placeholder(p) = ty.kind() {
+            if p.universe() == ty::UniverseIndex::ROOT {
+                ControlFlow::Break(Ok(()))
+            } else {
+                ControlFlow::Continue(())
+            }
         } else {
             ty.super_visit_with(self)
         }
     }
 
     fn visit_const(&mut self, ct: I::Const) -> Self::Result {
+        let ct = self.ecx.replace_bound_vars(ct, &mut self.universes);
         let Ok(ct) = self.ecx.structurally_normalize_const(self.param_env, ct) else {
             return ControlFlow::Break(Err(NoSolution));
         };
 
-        if let ty::ConstKind::Placeholder(_) = ct.kind() {
-            ControlFlow::Break(Ok(()))
+        if let ty::ConstKind::Placeholder(p) = ct.kind() {
+            if p.universe() == ty::UniverseIndex::ROOT {
+                ControlFlow::Break(Ok(()))
+            } else {
+                ControlFlow::Continue(())
+            }
         } else {
             ct.super_visit_with(self)
         }
@@ -1066,10 +1082,17 @@ where
 
     fn visit_region(&mut self, r: I::Region) -> Self::Result {
         match self.ecx.eager_resolve_region(r).kind() {
-            ty::ReStatic | ty::ReError(_) => ControlFlow::Continue(()),
-            ty::ReVar(_) | ty::RePlaceholder(_) => ControlFlow::Break(Ok(())),
-            ty::ReErased | ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReBound(..) => {
-                unreachable!()
+            ty::ReStatic | ty::ReError(_) | ty::ReBound(..) => ControlFlow::Continue(()),
+            ty::RePlaceholder(p) => {
+                if p.universe() == ty::UniverseIndex::ROOT {
+                    ControlFlow::Break(Ok(()))
+                } else {
+                    ControlFlow::Continue(())
+                }
+            }
+            ty::ReVar(_) => ControlFlow::Break(Ok(())),
+            ty::ReErased | ty::ReEarlyParam(_) | ty::ReLateParam(_) => {
+                unreachable!("unexpected region in param-env clause")
             }
         }
     }

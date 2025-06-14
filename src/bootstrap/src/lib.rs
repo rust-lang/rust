@@ -21,7 +21,6 @@ use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::OnceLock;
 use std::time::SystemTime;
 use std::{env, fs, io, str};
@@ -39,7 +38,7 @@ use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, TargetSelection, flags};
 use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
 use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, output, set_file_times, split_debuginfo, symlink_dir,
+    self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir,
 };
 
 mod core;
@@ -376,10 +375,13 @@ impl Build {
         let in_tree_llvm_info = config.in_tree_llvm_info.clone();
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
-        let initial_target_libdir =
-            output(Command::new(&config.initial_rustc).args(["--print", "target-libdir"]))
-                .trim()
-                .to_owned();
+        let initial_target_libdir = command(&config.initial_rustc)
+            .run_always()
+            .args(["--print", "target-libdir"])
+            .run_capture_stdout(&config)
+            .stdout()
+            .trim()
+            .to_owned();
 
         let initial_target_dir = Path::new(&initial_target_libdir)
             .parent()
@@ -479,8 +481,11 @@ impl Build {
 
         // If local-rust is the same major.minor as the current version, then force a
         // local-rebuild
-        let local_version_verbose =
-            output(Command::new(&build.initial_rustc).arg("--version").arg("--verbose"));
+        let local_version_verbose = command(&build.initial_rustc)
+            .run_always()
+            .args(["--version", "--verbose"])
+            .run_capture_stdout(&build)
+            .stdout();
         let local_release = local_version_verbose
             .lines()
             .filter_map(|x| x.strip_prefix("release:"))
@@ -941,9 +946,14 @@ impl Build {
     fn rustc_snapshot_sysroot(&self) -> &Path {
         static SYSROOT_CACHE: OnceLock<PathBuf> = OnceLock::new();
         SYSROOT_CACHE.get_or_init(|| {
-            let mut rustc = Command::new(&self.initial_rustc);
-            rustc.args(["--print", "sysroot"]);
-            output(&mut rustc).trim().into()
+            command(&self.initial_rustc)
+                .run_always()
+                .args(["--print", "sysroot"])
+                .run_capture_stdout(self)
+                .stdout()
+                .trim()
+                .to_owned()
+                .into()
         })
     }
 
