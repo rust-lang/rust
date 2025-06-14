@@ -256,6 +256,36 @@ impl Cfg {
     fn omit_preposition(&self) -> bool {
         matches!(self, Cfg::True | Cfg::False)
     }
+
+    pub(crate) fn strip_hidden(&self, hidden: &FxHashSet<Cfg>) -> Option<Self> {
+        match self {
+            Self::True | Self::False => Some(self.clone()),
+            Self::Cfg(..) => {
+                if !hidden.contains(self) {
+                    Some(self.clone())
+                } else {
+                    None
+                }
+            }
+            Self::Not(cfg) => {
+                if let Some(cfg) = cfg.strip_hidden(hidden) {
+                    Some(Self::Not(Box::new(cfg)))
+                } else {
+                    None
+                }
+            }
+            Self::Any(cfgs) => {
+                let cfgs =
+                    cfgs.iter().filter_map(|cfg| cfg.strip_hidden(hidden)).collect::<Vec<_>>();
+                if cfgs.is_empty() { None } else { Some(Self::Any(cfgs)) }
+            }
+            Self::All(cfgs) => {
+                let cfgs =
+                    cfgs.iter().filter_map(|cfg| cfg.strip_hidden(hidden)).collect::<Vec<_>>();
+                if cfgs.is_empty() { None } else { Some(Self::All(cfgs)) }
+            }
+        }
+    }
 }
 
 impl ops::Not for Cfg {
