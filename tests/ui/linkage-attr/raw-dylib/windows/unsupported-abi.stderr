@@ -1,4 +1,4 @@
-warning: use of calling convention not supported on this target
+warning: "stdcall" is not a supported ABI for the current target
   --> $DIR/unsupported-abi.rs:13:1
    |
 LL | / extern "stdcall" {
