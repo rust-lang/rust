@@ -1112,6 +1112,473 @@ pub fn test_decompositions_windows() {
     );
 }
 
+// Unix paths are tested in `test_decompositions_unix` above.
+#[test]
+#[cfg(target_os = "cygwin")]
+pub fn test_decompositions_cygwin() {
+    t!("\\",
+    iter: ["/"],
+    has_root: true,
+    is_absolute: false,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("c:",
+    iter: ["c:"],
+    has_root: false,
+    is_absolute: false,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("c:\\",
+    iter: ["c:", "/"],
+    has_root: true,
+    is_absolute: true,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("c:/",
+    iter: ["c:", "/"],
+    has_root: true,
+    is_absolute: true,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("a\\b\\c",
+    iter: ["a", "b", "c"],
+    has_root: false,
+    is_absolute: false,
+    parent: Some("a\\b"),
+    file_name: Some("c"),
+    file_stem: Some("c"),
+    extension: None,
+    file_prefix: Some("c")
+    );
+
+    t!("\\a",
+    iter: ["/", "a"],
+    has_root: true,
+    is_absolute: false,
+    parent: Some("\\"),
+    file_name: Some("a"),
+    file_stem: Some("a"),
+    extension: None,
+    file_prefix: Some("a")
+    );
+
+    t!("c:\\foo.txt",
+    iter: ["c:", "/", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("c:\\"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("\\\\server\\share\\foo.txt",
+    iter: ["\\\\server\\share", "/", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\server\\share\\"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("//server/share\\foo.txt",
+    iter: ["//server/share", "/", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("//server/share\\"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("//server/share/foo.txt",
+    iter: ["/", "server", "share", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("//server/share"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("\\\\server\\share",
+    iter: ["\\\\server\\share", "/"],
+    has_root: true,
+    is_absolute: true,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("\\\\server",
+    iter: ["/", "server"],
+    has_root: true,
+    is_absolute: false,
+    parent: Some("\\"),
+    file_name: Some("server"),
+    file_stem: Some("server"),
+    extension: None,
+    file_prefix: Some("server")
+    );
+
+    t!("\\\\?\\bar\\foo.txt",
+    iter: ["\\\\?\\bar", "/", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\?\\bar\\"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("\\\\?\\bar",
+    iter: ["\\\\?\\bar"],
+    has_root: true,
+    is_absolute: true,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("\\\\?\\",
+    iter: ["\\\\?\\"],
+    has_root: true,
+    is_absolute: true,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("\\\\?\\UNC\\server\\share\\foo.txt",
+    iter: ["\\\\?\\UNC\\server\\share", "/", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\?\\UNC\\server\\share\\"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("\\\\?\\UNC\\server/share\\foo.txt",
+    iter: ["\\\\?\\UNC\\server/share", "/", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\?\\UNC\\server/share\\"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("//?/UNC/server\\share/foo.txt",
+    iter: ["//?/UNC/server\\share", "/", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("//?/UNC/server\\share/"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("//?/UNC/server/share/foo.txt",
+    iter: ["/", "?", "UNC", "server", "share", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("//?/UNC/server/share"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("\\\\?\\UNC\\server",
+    iter: ["\\\\?\\UNC\\server"],
+    has_root: true,
+    is_absolute: true,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("\\\\?\\UNC\\",
+    iter: ["\\\\?\\UNC\\"],
+    has_root: true,
+    is_absolute: true,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("\\\\?\\C:\\foo.txt",
+    iter: ["\\\\?\\C:", "/", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\?\\C:\\"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("//?/C:\\foo.txt",
+    iter: ["//?/C:", "/", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("//?/C:\\"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("//?/C:/foo.txt",
+    iter: ["/", "?", "C:", "foo.txt"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("//?/C:"),
+    file_name: Some("foo.txt"),
+    file_stem: Some("foo"),
+    extension: Some("txt"),
+    file_prefix: Some("foo")
+    );
+
+    t!("\\\\?\\C:\\",
+    iter: ["\\\\?\\C:", "/"],
+    has_root: true,
+    is_absolute: true,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("\\\\?\\C:",
+    iter: ["\\\\?\\C:"],
+    has_root: true,
+    is_absolute: true,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("\\\\?\\foo/bar",
+    iter: ["\\\\?\\foo", "/", "bar"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\?\\foo/"),
+    file_name: Some("bar"),
+    file_stem: Some("bar"),
+    extension: None,
+    file_prefix: Some("bar")
+    );
+
+    t!("\\\\?\\C:/foo/bar",
+    iter: ["\\\\?\\C:", "/", "foo", "bar"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\?\\C:/foo"),
+    file_name: Some("bar"),
+    file_stem: Some("bar"),
+    extension: None,
+    file_prefix: Some("bar")
+    );
+
+    t!("\\\\.\\foo\\bar",
+    iter: ["\\\\.\\foo", "/", "bar"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\.\\foo\\"),
+    file_name: Some("bar"),
+    file_stem: Some("bar"),
+    extension: None,
+    file_prefix: Some("bar")
+    );
+
+    t!("\\\\.\\foo",
+    iter: ["\\\\.\\foo", "/"],
+    has_root: true,
+    is_absolute: true,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("\\\\.\\foo/bar",
+    iter: ["\\\\.\\foo", "/", "bar"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\.\\foo/"),
+    file_name: Some("bar"),
+    file_stem: Some("bar"),
+    extension: None,
+    file_prefix: Some("bar")
+    );
+
+    t!("\\\\.\\foo\\bar/baz",
+    iter: ["\\\\.\\foo", "/", "bar", "baz"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\.\\foo\\bar"),
+    file_name: Some("baz"),
+    file_stem: Some("baz"),
+    extension: None,
+    file_prefix: Some("baz")
+    );
+
+    t!("\\\\.\\",
+    iter: ["\\\\.\\", "/"],
+    has_root: true,
+    is_absolute: true,
+    parent: None,
+    file_name: None,
+    file_stem: None,
+    extension: None,
+    file_prefix: None
+    );
+
+    t!("//.\\foo/bar",
+    iter: ["//.\\foo", "/", "bar"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("//.\\foo/"),
+    file_name: Some("bar"),
+    file_stem: Some("bar"),
+    extension: None,
+    file_prefix: Some("bar")
+    );
+
+    t!("\\\\./foo/bar",
+    iter: ["\\\\./foo", "/", "bar"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\./foo/"),
+    file_name: Some("bar"),
+    file_stem: Some("bar"),
+    extension: None,
+    file_prefix: Some("bar")
+    );
+
+    t!("//./foo\\bar",
+    iter: ["//./foo", "/", "bar"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("//./foo\\"),
+    file_name: Some("bar"),
+    file_stem: Some("bar"),
+    extension: None,
+    file_prefix: Some("bar")
+    );
+
+    t!("//./?/C:/foo/bar",
+    iter: ["/", "?", "C:", "foo", "bar"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("//./?/C:/foo"),
+    file_name: Some("bar"),
+    file_stem: Some("bar"),
+    extension: None,
+    file_prefix: Some("bar")
+    );
+
+    t!("//././../././../?/C:/foo/bar",
+    iter: ["/", "..", "..", "?", "C:", "foo", "bar"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("//././../././../?/C:/foo"),
+    file_name: Some("bar"),
+    file_stem: Some("bar"),
+    extension: None,
+    file_prefix: Some("bar")
+    );
+
+    t!("\\\\?\\a\\b\\",
+    iter: ["\\\\?\\a", "/", "b"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\?\\a\\"),
+    file_name: Some("b"),
+    file_stem: Some("b"),
+    extension: None,
+    file_prefix: Some("b")
+    );
+
+    t!("\\\\?\\C:\\foo.txt.zip",
+    iter: ["\\\\?\\C:", "/", "foo.txt.zip"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\?\\C:\\"),
+    file_name: Some("foo.txt.zip"),
+    file_stem: Some("foo.txt"),
+    extension: Some("zip"),
+    file_prefix: Some("foo")
+    );
+
+    t!("\\\\?\\C:\\.foo.txt.zip",
+    iter: ["\\\\?\\C:", "/", ".foo.txt.zip"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\?\\C:\\"),
+    file_name: Some(".foo.txt.zip"),
+    file_stem: Some(".foo.txt"),
+    extension: Some("zip"),
+    file_prefix: Some(".foo")
+    );
+
+    t!("\\\\?\\C:\\.foo",
+    iter: ["\\\\?\\C:", "/", ".foo"],
+    has_root: true,
+    is_absolute: true,
+    parent: Some("\\\\?\\C:\\"),
+    file_name: Some(".foo"),
+    file_stem: Some(".foo"),
+    extension: None,
+    file_prefix: Some(".foo")
+    );
+}
+
 #[test]
 pub fn test_stem_ext() {
     t!("foo",
@@ -1227,6 +1694,11 @@ pub fn test_push() {
         tp!("/foo/bar", "/", "/");
         tp!("/foo/bar", "/baz", "/baz");
         tp!("/foo/bar", "./baz", "/foo/bar/./baz");
+
+        if cfg!(target_os = "cygwin") {
+            tp!("c:\\", "windows", "c:\\windows");
+            tp!("c:", "windows", "c:windows");
+        }
     } else {
         tp!("", "foo", "foo");
         tp!("foo", "bar", r"foo\bar");
