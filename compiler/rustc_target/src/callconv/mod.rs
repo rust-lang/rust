@@ -7,7 +7,7 @@ use rustc_abi::{
 use rustc_macros::HashStable_Generic;
 
 pub use crate::spec::AbiMap;
-use crate::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
+use crate::spec::{HasTargetSpec, HasX86AbiOpt};
 
 mod aarch64;
 mod amdgpu;
@@ -593,7 +593,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
     pub fn adjust_for_foreign_abi<C>(&mut self, cx: &C, abi: ExternAbi)
     where
         Ty: TyAbiInterface<'a, C> + Copy,
-        C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt + HasX86AbiOpt,
+        C: HasDataLayout + HasTargetSpec + HasX86AbiOpt,
     {
         if abi == ExternAbi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {
@@ -669,14 +669,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "hexagon" => hexagon::compute_abi_info(self),
             "xtensa" => xtensa::compute_abi_info(cx, self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
-            "wasm32" => {
-                if spec.os == "unknown" && matches!(cx.wasm_c_abi_opt(), WasmCAbi::Legacy { .. }) {
-                    wasm::compute_wasm_abi_info(self)
-                } else {
-                    wasm::compute_c_abi_info(cx, self)
-                }
-            }
-            "wasm64" => wasm::compute_c_abi_info(cx, self),
+            "wasm32" | "wasm64" => wasm::compute_abi_info(cx, self),
             "bpf" => bpf::compute_abi_info(self),
             arch => panic!("no lowering implemented for {arch}"),
         }
