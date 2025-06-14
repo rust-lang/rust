@@ -1129,6 +1129,7 @@ macro_rules! tool_extended {
             tool_name: $tool_name:expr,
             stable: $stable:expr
             $( , add_bins_to_sysroot: $add_bins_to_sysroot:expr )?
+            $( , add_features: $add_features:expr )?
             $( , )?
         }
     ) => {
@@ -1168,6 +1169,7 @@ macro_rules! tool_extended {
                     $tool_name,
                     $path,
                     None $( .or(Some(&$add_bins_to_sysroot)) )?,
+                    None $( .or(Some($add_features)) )?,
                 )
             }
         }
@@ -1205,7 +1207,13 @@ fn run_tool_build_step(
     tool_name: &'static str,
     path: &'static str,
     add_bins_to_sysroot: Option<&[&str]>,
+    add_features: Option<fn(&Builder<'_>, TargetSelection, &mut Vec<String>)>,
 ) -> ToolBuildResult {
+    let mut extra_features = Vec::new();
+    if let Some(func) = add_features {
+        func(builder, target, &mut extra_features);
+    }
+
     let ToolBuildResult { tool_path, build_compiler, target_compiler } =
         builder.ensure(ToolBuild {
             compiler,
@@ -1213,7 +1221,7 @@ fn run_tool_build_step(
             tool: tool_name,
             mode: Mode::ToolRustc,
             path,
-            extra_features: vec![],
+            extra_features,
             source_type: SourceType::InTree,
             allow_features: "",
             cargo_args: vec![],
@@ -1256,7 +1264,12 @@ tool_extended!(Clippy {
     path: "src/tools/clippy",
     tool_name: "clippy-driver",
     stable: true,
-    add_bins_to_sysroot: ["clippy-driver"]
+    add_bins_to_sysroot: ["clippy-driver"],
+    add_features: |builder, target, features| {
+        if builder.config.jemalloc(target) {
+            features.push("jemalloc".to_string());
+        }
+    }
 });
 tool_extended!(Miri {
     path: "src/tools/miri",
