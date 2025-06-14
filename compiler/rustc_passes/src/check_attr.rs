@@ -142,6 +142,27 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 Attribute::Parsed(AttributeKind::Repr(_)) => { /* handled below this loop and elsewhere */
                 }
+                Attribute::Parsed(AttributeKind::Align { align, span: repr_span }) => {
+                    match target {
+                        Target::Fn | Target::Method(_) => {}
+                        Target::Struct | Target::Union | Target::Enum => {
+                            self.dcx().emit_err(errors::AlignShouldBeReprAlign {
+                                span: *repr_span,
+                                item: target.name(),
+                                align_bytes: align.bytes(),
+                            });
+                        }
+                        _ => {
+                            self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
+                                hint_span: *repr_span,
+                                span,
+                            });
+                        }
+                    }
+
+                    self.check_align_value(*align, *repr_span);
+                }
+
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
@@ -636,6 +657,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::naked,
             sym::instruction_set,
             sym::repr,
+            sym::align,
             sym::rustc_std_internal_symbol,
             // code generation
             sym::cold,
@@ -672,7 +694,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     // this check can be part of the parser and be removed here
                     match other_attr {
                         Attribute::Parsed(
-                            AttributeKind::Deprecation { .. } | AttributeKind::Repr { .. },
+                            AttributeKind::Deprecation { .. }
+                            | AttributeKind::Repr { .. }
+                            | AttributeKind::Align { .. },
                         ) => {
                             continue;
                         }
@@ -1999,23 +2023,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     match target {
                         Target::Struct | Target::Union | Target::Enum => {}
                         Target::Fn | Target::Method(_) => {
-                            if !self.tcx.features().fn_align() {
-                                feature_err(
-                                    &self.tcx.sess,
-                                    sym::fn_align,
-                                    *repr_span,
-                                    fluent::passes_repr_align_function,
-                                )
-                                .emit();
-                            }
+                            self.dcx().emit_err(errors::ReprAlignShouldBeAlign {
+                                span: *repr_span,
+                                item: target.name(),
+                            });
                         }
                         _ => {
-                            self.dcx().emit_err(
-                                errors::AttrApplication::StructEnumFunctionMethodUnion {
-                                    hint_span: *repr_span,
-                                    span,
-                                },
-                            );
+                            self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
+                                hint_span: *repr_span,
+                                span,
+                            });
                         }
                     }
 
@@ -2073,21 +2090,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         match target {
                             Target::Struct | Target::Union | Target::Enum => continue,
                             Target::Fn | Target::Method(_) => {
-                                feature_err(
-                                    &self.tcx.sess,
-                                    sym::fn_align,
-                                    *repr_span,
-                                    fluent::passes_repr_align_function,
-                                )
-                                .emit();
+                                self.dcx().emit_err(errors::ReprAlignShouldBeAlign {
+                                    span: *repr_span,
+                                    item: target.name(),
+                                });
                             }
                             _ => {
-                                self.dcx().emit_err(
-                                    errors::AttrApplication::StructEnumFunctionMethodUnion {
-                                        hint_span: *repr_span,
-                                        span,
-                                    },
-                                );
+                                self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
+                                    hint_span: *repr_span,
+                                    span,
+                                });
                             }
                         }
                     }

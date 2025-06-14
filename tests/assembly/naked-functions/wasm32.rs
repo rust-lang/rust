@@ -37,7 +37,7 @@ extern "C" fn nop() {
 #[unsafe(naked)]
 #[linkage = "weak"]
 // wasm functions cannot be aligned, so this has no effect
-#[repr(align(32))]
+#[align(32)]
 extern "C" fn weak_aligned_nop() {
     naked_asm!("nop")
 }

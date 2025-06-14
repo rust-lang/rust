@@ -8,7 +8,7 @@ use std::arch::naked_asm;
 
 // CHECK: .balign 16
 // CHECK-LABEL: naked_empty:
-#[repr(align(16))]
+#[align(16)]
 #[no_mangle]
 #[unsafe(naked)]
 pub extern "C" fn naked_empty() {
