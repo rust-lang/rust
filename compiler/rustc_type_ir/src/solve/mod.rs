@@ -236,6 +236,14 @@ pub struct ExternalConstraintsData<I: Interner> {
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 
+impl<I: Interner> ExternalConstraintsData<I> {
+    pub fn is_empty(&self) -> bool {
+        self.region_constraints.is_empty()
+            && self.opaque_types.is_empty()
+            && self.normalization_nested_goals.is_empty()
+    }
+}
+
 #[derive_where(Clone, Hash, PartialEq, Eq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
