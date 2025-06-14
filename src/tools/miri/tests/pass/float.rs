@@ -1067,25 +1067,34 @@ pub fn libm() {
     assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1.0);
     assert_eq!((-1f64).powf(f64::NEG_INFINITY), 1.0);
 
-    macro_rules! test_snan_pow {
-        ($snan:expr, $pow_op:path) => {{
+    // Makes sure an operations returns both `1` and a `NaN` randomly.
+    macro_rules! test_snan_nondet {
+        ($pow_op:expr) => {{
             let mut nan_seen = false;
             let mut one_seen = false;
         
             for _ in 0..64 {
-                let res = $pow_op($snan, 0 as _);
+                let res = $pow_op;
                 nan_seen |= res.is_nan();
                 one_seen |= res == 1.0;
+
+                // speedup test
+                if nan_seen && one_seen { break; };
             }
 
             let op_as_str = stringify!($pow_op);
         
-            assert!(nan_seen && one_seen, "{}(SNaN, 0) should return both `NaN` or `1.0` randomly", op_as_str);
+            assert!(nan_seen && one_seen, "{} should return both `NaN` or `1.0` randomly", op_as_str);
         }};
     }
 
-    test_snan_pow!(SNAN_F32, f32::powf);
-    test_snan_pow!(SNAN_F64, f64::powf);
+    // x^(SNaN) = (1 | NaN)
+    test_snan_nondet!(f32::powf(SNAN_F32, 0.0));
+    test_snan_nondet!(f64::powf(SNAN_F64, 0.0));
+
+    // 1^(SNaN) = (1 | NaN)
+    test_snan_nondet!(f32::powf(1.0, SNAN_F32));
+    test_snan_nondet!(f64::powf(1.0, SNAN_F64));
 
 
     // For pown (powi in rust) the C standard says:

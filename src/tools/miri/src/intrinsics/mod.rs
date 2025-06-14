@@ -518,6 +518,13 @@ fn random_nan<S: Semantics>(rng: &mut StdRng) -> IeeeFloat<S> {
 /// - logf32, logf64, log2f32, log2f64, log10f32, log10f64
 /// - powf32, powf64
 ///
+/// # Return
+///
+/// Returns `Some(output)` if the `intrinsic` results in a defined fixed `output` specified in the C standard
+/// (specifically, C23 annex F.10)  when given `args` as arguments. Outputs that are unaffected by a relative error
+/// (such as INF and zero) are not handled here, they are assumed to be handled by the underlying
+/// implementation. Returns `None` if no specific value is guaranteed.
+///
 /// # Note
 ///
 /// For `powf*` operations of the form:
@@ -532,12 +539,7 @@ fn random_nan<S: Semantics>(rng: &mut StdRng) -> IeeeFloat<S> {
 /// This discrepancy exists because SNaN handling is not consistently defined across platforms,
 /// and the C standard leaves behavior for SNaNs unspecified.
 ///
-/// # Return
-///
-/// Returns `Some(output)` if the `intrinsic` results in a defined fixed `output` specified in the C standard
-/// (specifically, C23 annex F.10)  when given `args` as arguments. Outputs that are unaffected by a relative error
-/// (such as INF and zero) are not handled here, they are assumed to be handled by the underlying
-/// implementation. Returns `None` if no specific value is guaranteed.
+/// Miri chooses to adhere to both implementations and returns either one of them non-deterministically.
 fn fixed_float_value<'tcx, S: Semantics>(
     ecx: &mut MiriInterpCx<'tcx>,
     intrinsic_name: &str,
@@ -551,12 +553,15 @@ fn fixed_float_value<'tcx, S: Semantics>(
         // e^0 = 1
         ("expf32" | "expf64" | "exp2f32" | "exp2f64", [input]) if input.is_zero() => one,
 
-        // 1^y = 1 for any y, even a NaN
-        ("powf32" | "powf64", [base, _]) if *base == one => one,
-
         // (-1)^(±INF) = 1
         ("powf32" | "powf64", [base, exp]) if *base == -one && exp.is_infinite() => one,
 
+        // 1^y = 1 for any y, even a NaN, *but* not a SNaN
+        ("powf32" | "powf64", [base, exp]) if *base == one => {
+            let rng = ecx.machine.rng.get_mut();
+            // Handle both the musl and glibc cases non-deterministically.
+            if !exp.is_signaling() || rng.random() { one } else { random_nan(rng) }
+        }
         // x^(±0) = 1 for any x, even a NaN, *but* not a SNaN
         ("powf32" | "powf64", [base, exp]) if exp.is_zero() => {
             // Handle both the musl and glibc cases non-deterministically.
