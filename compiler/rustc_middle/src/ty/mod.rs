@@ -1601,6 +1601,12 @@ impl<'tcx> TyCtxt<'tcx> {
             flags.insert(ReprFlags::IS_LINEAR);
         }
 
+        if self.is_lang_item(did.to_def_id(), LangItem::VaList)
+            && !flags.contains(ReprFlags::IS_TRANSPARENT)
+        {
+            flags.insert(ReprFlags::PASS_INDIRECTLY);
+        }
+
         ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
     }
 
