@@ -1,5 +1,6 @@
 #![cfg_attr(feature = "compiler-builtins", compiler_builtins)]
 #![cfg_attr(all(target_family = "wasm"), feature(wasm_numeric_instr))]
+#![feature(abi_custom)]
 #![feature(abi_unadjusted)]
 #![feature(asm_experimental_arch)]
 #![feature(cfg_target_has_atomic)]
