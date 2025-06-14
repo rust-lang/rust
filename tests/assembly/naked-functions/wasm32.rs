@@ -9,7 +9,7 @@
 //@ [wasm32-wasip1] needs-llvm-components: webassembly
 
 #![crate_type = "lib"]
-#![feature(no_core, asm_experimental_arch, f128, linkage, fn_align)]
+#![feature(no_core, asm_experimental_arch, f128, linkage)]
 #![no_core]
 
 extern crate minicore;

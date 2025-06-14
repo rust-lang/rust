@@ -1998,17 +1998,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ReprAttr::ReprAlign(align) => {
                     match target {
                         Target::Struct | Target::Union | Target::Enum => {}
-                        Target::Fn | Target::Method(_) => {
-                            if !self.tcx.features().fn_align() {
-                                feature_err(
-                                    &self.tcx.sess,
-                                    sym::fn_align,
-                                    *repr_span,
-                                    fluent::passes_repr_align_function,
-                                )
-                                .emit();
-                            }
-                        }
+                        Target::Fn | Target::Method(_) => {}
                         _ => {
                             self.dcx().emit_err(
                                 errors::AttrApplication::StructEnumFunctionMethodUnion {
@@ -2072,15 +2062,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     if item.is_some() {
                         match target {
                             Target::Struct | Target::Union | Target::Enum => continue,
-                            Target::Fn | Target::Method(_) => {
-                                feature_err(
-                                    &self.tcx.sess,
-                                    sym::fn_align,
-                                    *repr_span,
-                                    fluent::passes_repr_align_function,
-                                )
-                                .emit();
-                            }
+                            Target::Fn | Target::Method(_) => continue,
                             _ => {
                                 self.dcx().emit_err(
                                     errors::AttrApplication::StructEnumFunctionMethodUnion {
