@@ -626,7 +626,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 bx.lifetime_start(llscratch, scratch_size);
 
                 // ... where we first store the value...
-                bx.store(val, llscratch, scratch_align);
+                rustc_codegen_ssa::mir::store_cast(bx, cast, val, llscratch, scratch_align);
 
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
