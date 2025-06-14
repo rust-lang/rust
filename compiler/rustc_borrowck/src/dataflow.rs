@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph;
-use rustc_index::bit_set::DenseBitSet;
+use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_middle::mir::{
     self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
 };
@@ -548,7 +548,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 }
 
-type BorrowsDomain = DenseBitSet<BorrowIndex>;
+type BorrowsDomain = MixedBitSet<BorrowIndex>;
 
 /// Forward dataflow computation of the set of borrows that are in scope at a particular location.
 /// - we gen the introduced loans
@@ -564,7 +564,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = nothing is reserved or activated yet;
-        DenseBitSet::new_empty(self.borrow_set.len())
+        MixedBitSet::new_empty(self.borrow_set.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
