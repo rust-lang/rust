@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet;
+use clippy_utils::sugg::{self, Sugg};
 use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -74,18 +74,22 @@ impl<'tcx> LateLintPass<'tcx> for CoerceContainerToAny {
         }
 
         // ... that's probably not intended.
-        let (span, deref_count) = match e.kind {
+        let (target_expr, deref_count) = match e.kind {
             // If `e` was already an `&` expression, skip `*&` in the suggestion
-            ExprKind::AddrOf(_, _, referent) => (referent.span, depth),
-            _ => (e.span, depth + 1),
+            ExprKind::AddrOf(_, _, referent) => (referent, depth),
+            _ => (e, depth + 1),
         };
+        let sugg = sugg::make_unop(
+            &format!("&{}", str::repeat("*", deref_count)),
+            Sugg::hir(cx, target_expr, ".."),
+        );
         span_lint_and_sugg(
             cx,
             COERCE_CONTAINER_TO_ANY,
             e.span,
             format!("coercing `{expr_ty}` to `&dyn Any`"),
             "consider dereferencing",
-            format!("&{}{}", str::repeat("*", deref_count), snippet(cx, span, "..")),
+            sugg.to_string(),
             Applicability::MaybeIncorrect,
         );
     }
