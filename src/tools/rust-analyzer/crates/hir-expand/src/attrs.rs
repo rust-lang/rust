@@ -433,7 +433,7 @@ fn unescape(s: &str) -> Option<Cow<'_, str>> {
     let mut buf = String::new();
     let mut prev_end = 0;
     let mut has_error = false;
-    unescape::unescape_unicode(s, unescape::Mode::Str, &mut |char_range, unescaped_char| match (
+    unescape::unescape_str(s, |char_range, unescaped_char| match (
         unescaped_char,
         buf.capacity() == 0,
     ) {
