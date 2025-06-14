@@ -19,13 +19,14 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 
 use derive_where::derive_where;
-use rustc_index::{Idx, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use tracing::debug;
 
 use crate::data_structures::HashMap;
 
+mod stack;
+use stack::{Stack, StackDepth, StackEntry};
 mod global_cache;
 use global_cache::CacheData;
 pub use global_cache::GlobalCache;
@@ -225,9 +226,9 @@ impl AvailableDepth {
     /// in case there is exponential blowup.
     fn allowed_depth_for_nested<D: Delegate>(
         root_depth: AvailableDepth,
-        stack: &IndexVec<StackDepth, StackEntry<D::Cx>>,
+        stack: &Stack<D::Cx>,
     ) -> Option<AvailableDepth> {
-        if let Some(last) = stack.raw.last() {
+        if let Some(last) = stack.last() {
             if last.available_depth.0 == 0 {
                 return None;
             }
@@ -433,50 +434,6 @@ impl<X: Cx> NestedGoals<X> {
     }
 }
 
-rustc_index::newtype_index! {
-    #[orderable]
-    #[gate_rustc_only]
-    pub struct StackDepth {}
-}
-
-/// Stack entries of the evaluation stack. Its fields tend to be lazily
-/// when popping a child goal or completely immutable.
-#[derive_where(Debug; X: Cx)]
-struct StackEntry<X: Cx> {
-    input: X::Input,
-
-    /// Whether proving this goal is a coinductive step.
-    ///
-    /// This is used when encountering a trait solver cycle to
-    /// decide whether the initial provisional result of the cycle.
-    step_kind_from_parent: PathKind,
-
-    /// The available depth of a given goal, immutable.
-    available_depth: AvailableDepth,
-
-    /// The maximum depth reached by this stack entry, only up-to date
-    /// for the top of the stack and lazily updated for the rest.
-    reached_depth: StackDepth,
-
-    /// All cycle heads this goal depends on. Lazily updated and only
-    /// up-to date for the top of the stack.
-    heads: CycleHeads,
-
-    /// Whether evaluating this goal encountered overflow. Lazily updated.
-    encountered_overflow: bool,
-
-    /// Whether this goal has been used as the root of a cycle. This gets
-    /// eagerly updated when encountering a cycle.
-    has_been_used: Option<UsageKind>,
-
-    /// The nested goals of this goal, see the doc comment of the type.
-    nested_goals: NestedGoals<X>,
-
-    /// Starts out as `None` and gets set when rerunning this
-    /// goal in case we encounter a cycle.
-    provisional_result: Option<X::Result>,
-}
-
 /// A provisional result of an already computed goals which depends on other
 /// goals still on the stack.
 #[derive_where(Debug; X: Cx)]
@@ -498,7 +455,7 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
     /// The stack of goals currently being computed.
     ///
     /// An element is *deeper* in the stack if its index is *lower*.
-    stack: IndexVec<StackDepth, StackEntry<X>>,
+    stack: Stack<X>,
     /// The provisional cache contains entries for already computed goals which
     /// still depend on goals higher-up in the stack. We don't move them to the
     /// global cache and track them locally instead. A provisional cache entry
@@ -537,16 +494,16 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// and using existing global cache entries to make sure they
     /// have the same impact on the remaining evaluation.
     fn update_parent_goal(
-        stack: &mut IndexVec<StackDepth, StackEntry<X>>,
+        stack: &mut Stack<X>,
         step_kind_from_parent: PathKind,
-        reached_depth: StackDepth,
+        required_depth_for_nested: usize,
         heads: &CycleHeads,
         encountered_overflow: bool,
         context: UpdateParentGoalCtxt<'_, X>,
     ) {
         if let Some(parent_index) = stack.last_index() {
             let parent = &mut stack[parent_index];
-            parent.reached_depth = parent.reached_depth.max(reached_depth);
+            parent.required_depth = parent.required_depth.max(required_depth_for_nested + 1);
             parent.encountered_overflow |= encountered_overflow;
 
             parent.heads.extend_from_child(parent_index, step_kind_from_parent, heads);
@@ -588,13 +545,11 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// the stack which completes the cycle. This given an inductive step AB which then cycles
     /// coinductively with A, we need to treat this cycle as coinductive.
     fn cycle_path_kind(
-        stack: &IndexVec<StackDepth, StackEntry<X>>,
+        stack: &Stack<X>,
         step_kind_to_head: PathKind,
         head: StackDepth,
     ) -> PathKind {
-        stack.raw[head.index() + 1..]
-            .iter()
-            .fold(step_kind_to_head, |curr, entry| curr.extend(entry.step_kind_from_parent))
+        stack.cycle_step_kinds(head).fold(step_kind_to_head, |curr, step| curr.extend(step))
     }
 
     /// Probably the most involved method of the whole solver.
@@ -656,20 +611,18 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             return result;
         }
 
-        // Unfortunate, it looks like we actually have to compute this goalrar.
-        let depth = self.stack.next_index();
-        let entry = StackEntry {
+        // Unfortunate, it looks like we actually have to compute this goal.
+        self.stack.push(StackEntry {
             input,
             step_kind_from_parent,
             available_depth,
-            reached_depth: depth,
+            required_depth: 0,
             heads: Default::default(),
             encountered_overflow: false,
             has_been_used: None,
             nested_goals: Default::default(),
             provisional_result: None,
-        };
-        assert_eq!(self.stack.push(entry), depth);
+        });
 
         // This is for global caching, so we properly track query dependencies.
         // Everything that affects the `result` should be performed within this
@@ -686,7 +639,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         Self::update_parent_goal(
             &mut self.stack,
             final_entry.step_kind_from_parent,
-            final_entry.reached_depth,
+            final_entry.required_depth,
             &final_entry.heads,
             final_entry.encountered_overflow,
             UpdateParentGoalCtxt::Ordinary(&final_entry.nested_goals),
@@ -700,7 +653,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 // the global cache.
                 assert_eq!(result, expected, "input={input:?}");
             } else if D::inspect_is_noop(inspect) {
-                self.insert_global_cache(cx, input, final_entry, result, dep_node)
+                self.insert_global_cache(cx, final_entry, result, dep_node)
             }
         } else if D::ENABLE_PROVISIONAL_CACHE {
             debug_assert!(validate_cache.is_none(), "unexpected non-root: {input:?}");
@@ -728,7 +681,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         input: X::Input,
         inspect: &mut D::ProofTreeBuilder,
     ) -> X::Result {
-        if let Some(last) = self.stack.raw.last_mut() {
+        if let Some(last) = self.stack.last_mut() {
             last.encountered_overflow = true;
             // If computing a goal `B` depends on another goal `A` and
             // `A` has a nested goal which overflows, then computing `B`
@@ -859,7 +812,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 // apply provisional cache entries which encountered overflow once the
                 // current goal is already part of the same cycle. This check could be
                 // improved but seems to be good enough for now.
-                let last = self.stack.raw.last().unwrap();
+                let last = self.stack.last().unwrap();
                 if last.heads.opt_lowest_cycle_head().is_none_or(|lowest| lowest > head) {
                     continue;
                 }
@@ -868,14 +821,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             // A provisional cache entry is only valid if the current path from its
             // highest cycle head to the goal is the same.
             if path_from_head == Self::cycle_path_kind(&self.stack, step_kind_from_parent, head) {
-                // While we don't have to track the full depth of the provisional cache entry,
-                // we do have to increment the required depth by one as we'd have already failed
-                // with overflow otherwise
-                let next_index = self.stack.next_index();
                 Self::update_parent_goal(
                     &mut self.stack,
                     step_kind_from_parent,
-                    next_index,
+                    0,
                     heads,
                     encountered_overflow,
                     UpdateParentGoalCtxt::ProvisionalCacheHit,
@@ -893,7 +842,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// evaluating this entry would not have ended up depending on either a goal
     /// already on the stack or a provisional cache entry.
     fn candidate_is_applicable(
-        stack: &IndexVec<StackDepth, StackEntry<X>>,
+        stack: &Stack<X>,
         step_kind_from_parent: PathKind,
         provisional_cache: &HashMap<X::Input, Vec<ProvisionalCacheEntry<X>>>,
         nested_goals: &NestedGoals<X>,
@@ -991,7 +940,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         available_depth: AvailableDepth,
     ) -> Option<X::Result> {
         cx.with_global_cache(|cache| {
-            let CacheData { result, additional_depth, encountered_overflow, nested_goals } = cache
+            let CacheData { result, required_depth, encountered_overflow, nested_goals } = cache
                 .get(cx, input, available_depth, |nested_goals| {
                     Self::candidate_is_applicable(
                         &self.stack,
@@ -1001,23 +950,19 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     )
                 })?;
 
-            // Update the reached depth of the current goal to make sure
-            // its state is the same regardless of whether we've used the
-            // global cache or not.
-            let reached_depth = self.stack.next_index().plus(additional_depth);
             // We don't move cycle participants to the global cache, so the
             // cycle heads are always empty.
             let heads = Default::default();
             Self::update_parent_goal(
                 &mut self.stack,
                 step_kind_from_parent,
-                reached_depth,
+                required_depth,
                 &heads,
                 encountered_overflow,
                 UpdateParentGoalCtxt::Ordinary(nested_goals),
             );
 
-            debug!(?additional_depth, "global cache hit");
+            debug!(?required_depth, "global cache hit");
             Some(result)
         })
     }
@@ -1028,7 +973,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         input: X::Input,
         step_kind_from_parent: PathKind,
     ) -> Option<X::Result> {
-        let (head, _stack_entry) = self.stack.iter_enumerated().find(|(_, e)| e.input == input)?;
+        let head = self.stack.find(input)?;
         // We have a nested goal which directly relies on a goal deeper in the stack.
         //
         // We start by tagging all cycle participants, as that's necessary for caching.
@@ -1043,10 +988,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
         // Subtle: when encountering a cyclic goal, we still first checked for overflow,
         // so we have to update the reached depth.
-        let next_index = self.stack.next_index();
         let last_index = self.stack.last_index().unwrap();
         let last = &mut self.stack[last_index];
-        last.reached_depth = last.reached_depth.max(next_index);
+        last.required_depth = last.required_depth.max(1);
 
         last.nested_goals.insert(input, step_kind_from_parent.into());
         last.nested_goals.insert(last.input, PathsToNested::EMPTY);
@@ -1095,7 +1039,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         let mut i = 0;
         loop {
             let result = evaluate_goal(self, inspect);
-            let stack_entry = self.stack.pop().unwrap();
+            let stack_entry = self.stack.pop();
             debug_assert_eq!(stack_entry.input, input);
 
             // If the current goal is not the root of a cycle, we are done.
@@ -1176,20 +1120,18 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     fn insert_global_cache(
         &mut self,
         cx: X,
-        input: X::Input,
         final_entry: StackEntry<X>,
         result: X::Result,
         dep_node: X::DepNodeIndex,
     ) {
-        let additional_depth = final_entry.reached_depth.as_usize() - self.stack.len();
         debug!(?final_entry, ?result, "insert global cache");
         cx.with_global_cache(|cache| {
             cache.insert(
                 cx,
-                input,
+                final_entry.input,
                 result,
                 dep_node,
-                additional_depth,
+                final_entry.required_depth,
                 final_entry.encountered_overflow,
                 final_entry.nested_goals,
             )
