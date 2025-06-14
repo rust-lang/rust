@@ -207,10 +207,10 @@ pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id
         | TyKind::Uint(_)
         | TyKind::Float(_) => def_map.is_rustc_coherence_is_core(),
 
-        TyKind::Adt(adt_def, _) => adt_def.def_id().0.module(db).krate() == def_map.krate(),
+        TyKind::Adt(adt_def, _) => adt_def.def_id().0.module(db).krate(db) == def_map.krate(),
         TyKind::Dynamic(it, _) => it
             .principal_def_id()
-            .is_some_and(|trait_id| trait_id.0.module(db).krate() == def_map.krate()),
+            .is_some_and(|trait_id| trait_id.0.module(db).krate(db) == def_map.krate()),
 
         _ => true,
     };
@@ -283,12 +283,12 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
         return true;
     };
 
-    let local_crate = impl_.lookup(db).container.krate();
+    let local_crate = impl_.lookup(db).container.krate(db);
     let is_local = |tgt_crate| tgt_crate == local_crate;
 
     let trait_ref = impl_trait.instantiate_identity();
     let trait_id = trait_ref.def_id.0;
-    if is_local(trait_id.module(db).krate()) {
+    if is_local(trait_id.module(db).krate(db)) {
         // trait to be implemented is local
         return true;
     }
@@ -322,10 +322,10 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
     // FIXME: param coverage
     //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
     let is_not_orphan = trait_ref.args.types().any(|ty| match unwrap_fundamental(ty).kind() {
-        TyKind::Adt(adt_def, _) => is_local(adt_def.def_id().0.module(db).krate()),
+        TyKind::Adt(adt_def, _) => is_local(adt_def.def_id().0.module(db).krate(db)),
         TyKind::Error(_) => true,
         TyKind::Dynamic(it, _) => {
-            it.principal_def_id().is_some_and(|trait_id| is_local(trait_id.0.module(db).krate()))
+            it.principal_def_id().is_some_and(|trait_id| is_local(trait_id.0.module(db).krate(db)))
         }
         _ => false,
     });

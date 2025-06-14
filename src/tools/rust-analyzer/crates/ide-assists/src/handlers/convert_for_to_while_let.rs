@@ -150,7 +150,7 @@ fn impls_core_iter(sema: &hir::Semantics<'_, ide_db::RootDatabase>, iterable: &a
 
         let module = sema.scope(iterable.syntax())?.module();
 
-        let krate = module.krate();
+        let krate = module.krate(sema.db);
         let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
         cov_mark::hit!(test_already_impls_iterator);
         Some(it_typ.impls_trait(sema.db, iter_trait, &[]))

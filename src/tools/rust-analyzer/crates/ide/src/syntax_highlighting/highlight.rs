@@ -501,7 +501,7 @@ pub(super) fn highlight_def(
         ),
         Definition::Module(module) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
-            if module.is_crate_root() {
+            if module.is_crate_root(db) {
                 h |= HlMod::CrateRoot;
             }
 
@@ -747,7 +747,7 @@ fn highlight_method_call(
         h |= HlMod::Trait;
     }
 
-    let def_crate = func.module(sema.db).krate();
+    let def_crate = func.module(sema.db).krate(sema.db);
     let is_from_other_crate = krate.as_ref().map_or(false, |krate| def_crate != *krate);
     let is_from_builtin_crate = def_crate.is_builtin(sema.db);
     let is_public = func.visibility(sema.db) == hir::Visibility::Public;

@@ -442,13 +442,13 @@ impl<'db> SemanticsImpl<'db> {
     /// If not crate is found for the file, try to return the last crate in topological order.
     pub fn first_crate(&self, file: FileId) -> Option<Crate> {
         match self.file_to_module_defs(file).next() {
-            Some(module) => Some(module.krate()),
+            Some(module) => Some(module.krate(self.db)),
             None => self.db.all_crates().last().copied().map(Into::into),
         }
     }
 
     pub fn attach_first_edition_opt(&self, file: FileId) -> Option<EditionedFileId> {
-        let krate = self.file_to_module_defs(file).next()?.krate();
+        let krate = self.file_to_module_defs(file).next()?.krate(self.db);
         Some(EditionedFileId::new(self.db, file, krate.edition(self.db), krate.id))
     }
 
@@ -478,8 +478,8 @@ impl<'db> SemanticsImpl<'db> {
         match file_id {
             HirFileId::FileId(file_id) => {
                 let module = self.file_to_module_defs(file_id.file_id(self.db)).next()?;
-                let def_map = crate_def_map(self.db, module.krate().id);
-                match def_map[module.id.local_id].origin {
+                let def_map = crate_def_map(self.db, module.krate(self.db).id);
+                match def_map[module.id].origin {
                     ModuleOrigin::CrateRoot { .. } => None,
                     ModuleOrigin::File { declaration, declaration_tree_id, .. } => {
                         let file_id = declaration_tree_id.file_id();
@@ -505,7 +505,7 @@ impl<'db> SemanticsImpl<'db> {
     /// the `SyntaxNode` of the *definition* file, not of the *declaration*.
     pub fn module_definition_node(&self, module: Module) -> InFile<SyntaxNode> {
         let def_map = module.id.def_map(self.db);
-        let definition = def_map[module.id.local_id].origin.definition_source(self.db);
+        let definition = def_map[module.id].origin.definition_source(self.db);
         let definition = definition.map(|it| it.node());
         let root_node = find_root(&definition.value);
         self.cache(root_node, definition.file_id);
@@ -534,7 +534,7 @@ impl<'db> SemanticsImpl<'db> {
         let file_id = self.find_file(attr.syntax()).file_id;
         let krate = match file_id {
             HirFileId::FileId(file_id) => {
-                self.file_to_module_defs(file_id.file_id(self.db)).next()?.krate().id
+                self.file_to_module_defs(file_id.file_id(self.db)).next()?.krate(self.db).id
             }
             HirFileId::MacroFile(macro_file) => self.db.lookup_intern_macro_call(macro_file).krate,
         };

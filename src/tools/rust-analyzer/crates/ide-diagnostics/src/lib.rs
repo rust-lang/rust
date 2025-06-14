@@ -342,12 +342,12 @@ pub fn semantic_diagnostics(
     let module = sema.file_to_module_def(file_id);
 
     let is_nightly = matches!(
-        module.and_then(|m| db.toolchain_channel(m.krate().into())),
+        module.and_then(|m| db.toolchain_channel(m.krate(db).into())),
         Some(ReleaseChannel::Nightly) | None
     );
 
     let krate = match module {
-        Some(module) => module.krate(),
+        Some(module) => module.krate(db),
         None => {
             match db.all_crates().last() {
                 Some(last) => (*last).into(),

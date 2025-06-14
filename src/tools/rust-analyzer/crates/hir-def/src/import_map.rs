@@ -13,11 +13,11 @@ use stdx::format_to;
 use triomphe::Arc;
 
 use crate::{
-    AssocItemId, AttrDefId, Complete, FxIndexMap, InternedModuleId, ModuleDefId, ModuleId, TraitId,
+    AssocItemId, AttrDefId, Complete, FxIndexMap, ModuleDefId, ModuleId, TraitId,
     attrs::AttrFlags,
     db::DefDatabase,
     item_scope::{ImportOrExternCrate, ItemInNs},
-    nameres::{DefMap, assoc::TraitItems, crate_def_map},
+    nameres::{assoc::TraitItems, crate_def_map},
     visibility::Visibility,
 };
 
@@ -134,7 +134,7 @@ impl ImportMap {
         let mut map = FxIndexMap::default();
 
         // We look only into modules that are public(ly reexported), starting with the crate root.
-        let root = def_map.module_id(DefMap::ROOT);
+        let root = def_map.root_module_id();
         let mut worklist = vec![root];
         let mut visited = FxHashSet::default();
 
@@ -142,13 +142,11 @@ impl ImportMap {
             if !visited.insert(module) {
                 continue;
             }
-            let ext_def_map;
-            let mod_data = if module.krate == krate {
-                &def_map[module.local_id]
+            let mod_data = if module.krate(db) == krate {
+                &def_map[module]
             } else {
                 // The crate might reexport a module defined in another crate.
-                ext_def_map = module.def_map(db);
-                &ext_def_map[module.local_id]
+                &module.def_map(db)[module]
             };
 
             let visible_items = mod_data.scope.entries().filter_map(|(name, per_ns)| {
@@ -167,9 +165,7 @@ impl ImportMap {
                     } else {
                         match item {
                             ItemInNs::Types(id) | ItemInNs::Values(id) => match id {
-                                ModuleDefId::ModuleId(it) => {
-                                    Some(AttrDefId::ModuleId(InternedModuleId::new(db, it)))
-                                }
+                                ModuleDefId::ModuleId(it) => Some(AttrDefId::ModuleId(it)),
                                 ModuleDefId::FunctionId(it) => Some(it.into()),
                                 ModuleDefId::AdtId(it) => Some(it.into()),
                                 ModuleDefId::EnumVariantId(it) => Some(it.into()),
@@ -640,9 +636,8 @@ mod tests {
         assert!(def_map.block_id().is_none(), "block local items should not be in `ImportMap`");
 
         while let Some(parent) = module.containing_module(db) {
-            let parent_data = &def_map[parent.local_id];
-            let (name, _) =
-                parent_data.children.iter().find(|(_, id)| **id == module.local_id).unwrap();
+            let parent_data = &def_map[parent];
+            let (name, _) = parent_data.children.iter().find(|(_, id)| **id == module).unwrap();
             segments.push(name);
             module = parent;
         }

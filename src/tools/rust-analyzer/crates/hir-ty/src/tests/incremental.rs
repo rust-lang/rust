@@ -22,7 +22,7 @@ fn foo() -> i32 {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let crate_def_map = module.def_map(&db);
-            visit_module(&db, crate_def_map, module.local_id, &mut |def| {
+            visit_module(&db, crate_def_map, module, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
                     InferenceResult::for_body(&db, it.into());
                 }
@@ -66,7 +66,7 @@ fn foo() -> i32 {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let crate_def_map = module.def_map(&db);
-            visit_module(&db, crate_def_map, module.local_id, &mut |def| {
+            visit_module(&db, crate_def_map, module, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
                     InferenceResult::for_body(&db, it.into());
                 }
@@ -109,7 +109,7 @@ fn baz() -> i32 {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let crate_def_map = module.def_map(&db);
-            visit_module(&db, crate_def_map, module.local_id, &mut |def| {
+            visit_module(&db, crate_def_map, module, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
                     InferenceResult::for_body(&db, it.into());
                 }
@@ -178,7 +178,7 @@ fn baz() -> i32 {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let crate_def_map = module.def_map(&db);
-            visit_module(&db, crate_def_map, module.local_id, &mut |def| {
+            visit_module(&db, crate_def_map, module, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
                     InferenceResult::for_body(&db, it.into());
                 }
@@ -232,7 +232,7 @@ $0",
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            TraitImpls::for_crate(&db, module.krate());
+            TraitImpls::for_crate(&db, module.krate(&db));
         },
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
@@ -268,7 +268,7 @@ pub struct NewStruct {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            TraitImpls::for_crate(&db, module.krate());
+            TraitImpls::for_crate(&db, module.krate(&db));
         },
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
@@ -303,7 +303,7 @@ $0",
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            TraitImpls::for_crate(&db, module.krate());
+            TraitImpls::for_crate(&db, module.krate(&db));
         },
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
@@ -340,7 +340,7 @@ pub enum SomeEnum {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            TraitImpls::for_crate(&db, module.krate());
+            TraitImpls::for_crate(&db, module.krate(&db));
         },
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
@@ -375,7 +375,7 @@ $0",
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            TraitImpls::for_crate(&db, module.krate());
+            TraitImpls::for_crate(&db, module.krate(&db));
         },
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
@@ -409,7 +409,7 @@ fn bar() -> f32 {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            TraitImpls::for_crate(&db, module.krate());
+            TraitImpls::for_crate(&db, module.krate(&db));
         },
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
@@ -448,7 +448,7 @@ $0",
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            TraitImpls::for_crate(&db, module.krate());
+            TraitImpls::for_crate(&db, module.krate(&db));
         },
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
@@ -490,7 +490,7 @@ impl SomeStruct {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            TraitImpls::for_crate(&db, module.krate());
+            TraitImpls::for_crate(&db, module.krate(&db));
         },
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
@@ -546,7 +546,7 @@ fn main() {
             let module = db.module_for_file(file_id.file_id(&db));
             let crate_def_map = module.def_map(&db);
             let mut defs: Vec<DefWithBodyId> = vec![];
-            visit_module(&db, crate_def_map, module.local_id, &mut |it| {
+            visit_module(&db, crate_def_map, module, &mut |it| {
                 let def = match it {
                     ModuleDefId::FunctionId(it) => it.into(),
                     ModuleDefId::EnumVariantId(it) => it.into(),
@@ -643,7 +643,7 @@ fn main() {
             let crate_def_map = module.def_map(&db);
             let mut defs: Vec<DefWithBodyId> = vec![];
 
-            visit_module(&db, crate_def_map, module.local_id, &mut |it| {
+            visit_module(&db, crate_def_map, module, &mut |it| {
                 let def = match it {
                     ModuleDefId::FunctionId(it) => it.into(),
                     ModuleDefId::EnumVariantId(it) => it.into(),

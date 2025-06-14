@@ -165,7 +165,7 @@ impl<'db> UnsafeVisitor<'db> {
             DefWithBodyId::FunctionId(func) => TargetFeatures::from_fn(db, func),
             _ => TargetFeatures::default(),
         };
-        let krate = resolver.module().krate();
+        let krate = resolver.krate();
         let edition = krate.data(db).edition;
         let target_feature_is_safe = match &krate.workspace_data(db).target {
             Ok(target) => target_feature_is_safe_in_target(target),

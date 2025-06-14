@@ -1755,13 +1755,12 @@ pub(crate) fn trait_environment_query<'db>(
     def: GenericDefId,
 ) -> ParamEnv<'db> {
     let module = def.module(db);
-    let interner = DbInterner::new_with(db, module.krate());
+    let interner = DbInterner::new_with(db, module.krate(db));
     let predicates = GenericPredicates::query_all(db, def);
     let clauses = rustc_type_ir::elaborate::elaborate(interner, predicates.iter_identity_copied());
     let clauses = Clauses::new_from_iter(interner, clauses);
 
     // FIXME: We should normalize projections here, like rustc does.
-
     ParamEnv { clauses }
 }
 
@@ -2280,7 +2279,7 @@ pub(crate) fn associated_type_by_name_including_super_traits<'db>(
     name: &Name,
 ) -> Option<(TraitRef<'db>, TypeAliasId)> {
     let module = trait_ref.def_id.0.module(db);
-    let interner = DbInterner::new_with(db, module.krate());
+    let interner = DbInterner::new_with(db, module.krate(db));
     rustc_type_ir::elaborate::supertraits(interner, Binder::dummy(trait_ref)).find_map(|t| {
         let trait_id = t.as_ref().skip_binder().def_id.0;
         let assoc_type = trait_id.trait_items(db).associated_type_by_name(name)?;

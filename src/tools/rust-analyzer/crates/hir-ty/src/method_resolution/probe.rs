@@ -980,8 +980,8 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         };
         InherentImpls::for_each_crate_and_block(
             self.db(),
-            module.krate(),
-            module.containing_block(),
+            module.krate(self.db()),
+            module.block(self.db()),
             &mut |impls| {
                 for &impl_def_id in impls.for_self_ty(self_ty) {
                     self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);

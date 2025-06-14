@@ -633,7 +633,7 @@ impl InherentImpls {
         block: Option<BlockId>,
         for_each: &mut dyn FnMut(&InherentImpls),
     ) {
-        let blocks = std::iter::successors(block, |block| block.loc(db).module.containing_block());
+        let blocks = std::iter::successors(block, |block| block.loc(db).module.block(db));
         blocks.filter_map(|block| Self::for_block(db, block).as_deref()).for_each(&mut *for_each);
         for_each(Self::for_crate(db, krate));
     }
@@ -798,7 +798,7 @@ impl TraitImpls {
         block: Option<BlockId>,
         for_each: &mut dyn FnMut(&TraitImpls),
     ) {
-        let blocks = std::iter::successors(block, |block| block.loc(db).module.containing_block());
+        let blocks = std::iter::successors(block, |block| block.loc(db).module.block(db));
         blocks.filter_map(|block| Self::for_block(db, block).as_deref()).for_each(&mut *for_each);
         Self::for_crate_and_deps(db, krate).iter().map(|it| &**it).for_each(for_each);
     }
@@ -820,7 +820,7 @@ impl TraitImpls {
         // This breaks when they are equal (both will stop immediately), therefore we handle this case
         // specifically.
         let blocks_iter = |block: Option<BlockId>| {
-            std::iter::successors(block, |block| block.loc(db).module.containing_block())
+            std::iter::successors(block, |block| block.loc(db).module.block(db))
         };
         let for_each_block = |current_block: Option<BlockId>, other_block: Option<BlockId>| {
             blocks_iter(current_block)
