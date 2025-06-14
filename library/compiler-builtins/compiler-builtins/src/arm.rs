@@ -135,8 +135,8 @@ intrinsics! {
     /// eight bytes.
     #[cfg(not(target_vendor = "apple"))]
     pub unsafe extern "aapcs" fn __aeabi_memcpy8(dst: *mut u8, src: *const u8, n: usize) {
-        debug_assert!(dst.addr() & 7 == 0);
-        debug_assert!(src.addr() & 7 == 0);
+        debug_assert!(dst.addr().is_multiple_of(8));
+        debug_assert!(src.addr().is_multiple_of(8));
 
         // SAFETY: memcpy preconditions apply, less strict alignment.
         unsafe { __aeabi_memcpy4(dst, src, n) };
@@ -161,8 +161,8 @@ intrinsics! {
     /// four bytes.
     #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
     pub unsafe extern "aapcs" fn __aeabi_memmove4(dst: *mut u8, src: *const u8, n: usize) {
-        debug_assert!(dst.addr() & 3 == 0);
-        debug_assert!(src.addr() & 3 == 0);
+        debug_assert!(dst.addr().is_multiple_of(4));
+        debug_assert!(src.addr().is_multiple_of(4));
 
         // SAFETY: same preconditions, less strict aligment.
         unsafe { __aeabi_memmove(dst, src, n) };
@@ -176,8 +176,8 @@ intrinsics! {
     /// eight bytes.
     #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
     pub unsafe extern "aapcs" fn __aeabi_memmove8(dst: *mut u8, src: *const u8, n: usize) {
-        debug_assert!(dst.addr() & 7 == 0);
-        debug_assert!(src.addr() & 7 == 0);
+        debug_assert!(dst.addr().is_multiple_of(8));
+        debug_assert!(src.addr().is_multiple_of(8));
 
         // SAFETY: memmove preconditions apply, less strict alignment.
         unsafe { __aeabi_memmove(dst, src, n) };
@@ -236,7 +236,7 @@ intrinsics! {
     /// eight bytes.
     #[cfg(not(target_vendor = "apple"))]
     pub unsafe extern "aapcs" fn __aeabi_memset8(dst: *mut u8, n: usize, c: i32) {
-        debug_assert!(dst.addr() & 7 == 0);
+        debug_assert!(dst.addr().is_multiple_of(8));
 
         // SAFETY: memset preconditions apply, less strict alignment.
         unsafe { __aeabi_memset4(dst, n, c) };
@@ -261,7 +261,7 @@ intrinsics! {
     /// four bytes.
     #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
     pub unsafe extern "aapcs" fn __aeabi_memclr4(dst: *mut u8, n: usize) {
-        debug_assert!(dst.addr() & 3 == 0);
+        debug_assert!(dst.addr().is_multiple_of(4));
 
         // SAFETY: memclr preconditions apply, less strict alignment.
         unsafe { __aeabi_memset4(dst, n, 0) };
@@ -275,7 +275,7 @@ intrinsics! {
     /// eight bytes.
     #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
     pub unsafe extern "aapcs" fn __aeabi_memclr8(dst: *mut u8, n: usize) {
-        debug_assert!(dst.addr() & 7 == 0);
+        debug_assert!(dst.addr().is_multiple_of(8));
 
         // SAFETY: memclr preconditions apply, less strict alignment.
         unsafe { __aeabi_memset4(dst, n, 0) };
