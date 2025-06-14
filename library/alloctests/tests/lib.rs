@@ -40,6 +40,7 @@
 #![feature(vec_deque_truncate_front)]
 #![feature(unique_rc_arc)]
 #![feature(macro_metavar_expr_concat)]
+#![feature(vec_peek_mut)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]

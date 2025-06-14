@@ -933,7 +933,9 @@ impl Placeholder<BoundVar> {
 
 pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
-impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderRegion {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderRegion {
+    type Bound = BoundRegion;
+
     fn universe(self) -> UniverseIndex {
         self.universe
     }
@@ -946,14 +948,20 @@ impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderRegion {
         Placeholder { universe: ui, ..self }
     }
 
-    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+    fn new(ui: UniverseIndex, bound: BoundRegion) -> Self {
+        Placeholder { universe: ui, bound }
+    }
+
+    fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
         Placeholder { universe: ui, bound: BoundRegion { var, kind: BoundRegionKind::Anon } }
     }
 }
 
 pub type PlaceholderType = Placeholder<BoundTy>;
 
-impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderType {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderType {
+    type Bound = BoundTy;
+
     fn universe(self) -> UniverseIndex {
         self.universe
     }
@@ -966,7 +974,11 @@ impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderType {
         Placeholder { universe: ui, ..self }
     }
 
-    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+    fn new(ui: UniverseIndex, bound: BoundTy) -> Self {
+        Placeholder { universe: ui, bound }
+    }
+
+    fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
         Placeholder { universe: ui, bound: BoundTy { var, kind: BoundTyKind::Anon } }
     }
 }
@@ -980,7 +992,9 @@ pub struct BoundConst<'tcx> {
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
 
-impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderConst {
+impl<'tcx> rustc_type_ir::inherent::PlaceholderLike<TyCtxt<'tcx>> for PlaceholderConst {
+    type Bound = BoundVar;
+
     fn universe(self) -> UniverseIndex {
         self.universe
     }
@@ -993,7 +1007,11 @@ impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderConst {
         Placeholder { universe: ui, ..self }
     }
 
-    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+    fn new(ui: UniverseIndex, bound: BoundVar) -> Self {
+        Placeholder { universe: ui, bound }
+    }
+
+    fn new_anon(ui: UniverseIndex, var: BoundVar) -> Self {
         Placeholder { universe: ui, bound: var }
     }
 }

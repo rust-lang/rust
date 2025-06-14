@@ -228,6 +228,8 @@ pub trait Region<I: Interner<Region = Self>>:
 
     fn new_static(interner: I) -> Self;
 
+    fn new_placeholder(interner: I, var: I::PlaceholderRegion) -> Self;
+
     fn is_bound(self) -> bool {
         matches!(self.kind(), ty::ReBound(..))
     }
@@ -253,6 +255,8 @@ pub trait Const<I: Interner<Const = Self>>:
     fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundConst) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
+
+    fn new_placeholder(interner: I, param: I::PlaceholderConst) -> Self;
 
     fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
 
@@ -524,13 +528,14 @@ pub trait Clauses<I: Interner<Clauses = Self>>:
 }
 
 /// Common capabilities of placeholder kinds
-pub trait PlaceholderLike: Copy + Debug + Hash + Eq {
+pub trait PlaceholderLike<I: Interner>: Copy + Debug + Hash + Eq {
     fn universe(self) -> ty::UniverseIndex;
     fn var(self) -> ty::BoundVar;
 
+    type Bound: BoundVarLike<I>;
+    fn new(ui: ty::UniverseIndex, bound: Self::Bound) -> Self;
+    fn new_anon(ui: ty::UniverseIndex, var: ty::BoundVar) -> Self;
     fn with_updated_universe(self, ui: ty::UniverseIndex) -> Self;
-
-    fn new(ui: ty::UniverseIndex, var: ty::BoundVar) -> Self;
 }
 
 pub trait IntoKind {
@@ -539,13 +544,13 @@ pub trait IntoKind {
     fn kind(self) -> Self::Kind;
 }
 
-pub trait BoundVarLike<I: Interner> {
+pub trait BoundVarLike<I: Interner>: Copy + Debug + Hash + Eq {
     fn var(self) -> ty::BoundVar;
 
     fn assert_eq(self, var: I::BoundVarKind);
 }
 
-pub trait ParamLike {
+pub trait ParamLike: Copy + Debug + Hash + Eq {
     fn index(self) -> u32;
 }
 

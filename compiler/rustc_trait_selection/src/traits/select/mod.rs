@@ -1919,12 +1919,23 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // impl `impl<T: ?Sized> Any for T { .. }`. This really shouldn't exist but is
         // necessary due to #57893. We again arbitrarily prefer the applicable candidate
         // with the lowest index.
+        //
+        // We do not want to use these impls to guide inference in case a user-written impl
+        // may also apply.
         let object_bound = candidates
             .iter()
             .filter_map(|c| if let ObjectCandidate(i) = c.candidate { Some(i) } else { None })
             .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
         match object_bound {
-            Some(Some(index)) => return Some(ObjectCandidate(index)),
+            Some(Some(index)) => {
+                return if has_non_region_infer
+                    && candidates.iter().any(|c| matches!(c.candidate, ImplCandidate(_)))
+                {
+                    None
+                } else {
+                    Some(ObjectCandidate(index))
+                };
+            }
             Some(None) => {}
             None => return None,
         }

@@ -435,13 +435,13 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             },
             ty::Placeholder(placeholder) => match self.canonicalize_mode {
                 CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderTy(
-                    PlaceholderLike::new(placeholder.universe(), self.variables.len().into()),
+                    PlaceholderLike::new_anon(placeholder.universe(), self.variables.len().into()),
                 ),
                 CanonicalizeMode::Response { .. } => CanonicalVarKind::PlaceholderTy(placeholder),
             },
             ty::Param(_) => match self.canonicalize_mode {
                 CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderTy(
-                    PlaceholderLike::new(ty::UniverseIndex::ROOT, self.variables.len().into()),
+                    PlaceholderLike::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
                 ),
                 CanonicalizeMode::Response { .. } => panic!("param ty in response: {t:?}"),
             },
@@ -594,7 +594,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             },
             ty::ConstKind::Placeholder(placeholder) => match self.canonicalize_mode {
                 CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderConst(
-                    PlaceholderLike::new(placeholder.universe(), self.variables.len().into()),
+                    PlaceholderLike::new_anon(placeholder.universe(), self.variables.len().into()),
                 ),
                 CanonicalizeMode::Response { .. } => {
                     CanonicalVarKind::PlaceholderConst(placeholder)
@@ -602,7 +602,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             },
             ty::ConstKind::Param(_) => match self.canonicalize_mode {
                 CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderConst(
-                    PlaceholderLike::new(ty::UniverseIndex::ROOT, self.variables.len().into()),
+                    PlaceholderLike::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
                 ),
                 CanonicalizeMode::Response { .. } => panic!("param ty in response: {c:?}"),
             },
