@@ -363,6 +363,10 @@ pub mod task;
 #[allow(missing_docs)]
 pub mod alloc;
 
+/* In-place initialization */
+#[unstable(feature = "in_place_initialization", issue = "999999")]
+pub mod init;
+
 // note: does not need to be public
 mod bool;
 mod escape;

@@ -350,6 +350,11 @@ language_item_table! {
 
     MaybeUninit,             sym::maybe_uninit,        maybe_uninit,               Target::Union,          GenericRequirement::None;
 
+    Init,                    sym::init_trait,          init_trait,                 Target::Trait,          GenericRequirement::Exact(1);
+    InitError,               sym::init_error,          init_error,                 Target::AssocTy,        GenericRequirement::Exact(1);
+    InitLayout,              sym::init_layout,         init_layout,                Target::Method(MethodKind::Trait { body: false }), GenericRequirement::Exact(1);
+    InitInit,                sym::init_init,           init_init,                  Target::Method(MethodKind::Trait { body: false }), GenericRequirement::Exact(1);
+
     Termination,             sym::termination,         termination,                Target::Trait,          GenericRequirement::None;
 
     Try,                     sym::Try,                 try_trait,                  Target::Trait,          GenericRequirement::None;
