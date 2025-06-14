@@ -269,8 +269,8 @@ pub struct PolyTrait {
 /// A set of generic arguments provided to a path segment, e.g.
 ///
 /// ```text
-/// std::option::Option::<u32>::None
-///                      ^^^^^
+/// std::option::Option<u32>
+///                    ^^^^^
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -323,7 +323,7 @@ pub enum GenericArg {
     Const(Constant),
     /// A generic argument that's explicitly set to be inferred.
     /// ```text
-    /// std::vec::Vec::<_>::new()
+    /// std::vec::Vec::<_>
     ///                 ^
     /// ```
     Infer,
