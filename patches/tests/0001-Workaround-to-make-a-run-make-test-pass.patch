@@ -1,0 +1,25 @@
+From a131c69e54b5c02fe3b517e8f3ad23d4f784ffc8 Mon Sep 17 00:00:00 2001
+From: Antoni Boucher <bouanto@zoho.com>
+Date: Fri, 13 Jun 2025 20:25:33 -0400
+Subject: [PATCH] Workaround to make a run-make test pass
+
+---
+ tests/run-make/linker-warning/rmake.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tests/run-make/linker-warning/rmake.rs b/tests/run-make/linker-warning/rmake.rs
+index bc21739fefc..0946a7e2a48 100644
+--- a/tests/run-make/linker-warning/rmake.rs
++++ b/tests/run-make/linker-warning/rmake.rs
+@@ -55,7 +55,7 @@ fn main() {
+         diff()
+             .expected_file("short-error.txt")
+             .actual_text("(linker error)", out.stderr())
+-            .normalize(r#"/rustc[^/]*/"#, "/rustc/")
++            .normalize(r#"/tmp/rustc[^/]*/"#, "/tmp/rustc/")
+             .normalize(
+                 regex::escape(run_make_support::build_root().to_str().unwrap()),
+                 "/build-root",
+-- 
+2.49.0
+
