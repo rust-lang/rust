@@ -38,7 +38,8 @@ jobs:
       uses: Swatinem/rust-cache@v2
 
     - name: Install packages
-      run: sudo apt-get install ninja-build ripgrep llvm libstdc++6
+      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for run-make tests.
+      run: sudo apt-get install ninja-build ripgrep llvm-14-tools llvm libstdc++6
 
     - name: Download artifact
       run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-15.deb

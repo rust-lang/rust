@@ -534,7 +534,8 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
           which FileCheck-11 || \
           which FileCheck-12 || \
           which FileCheck-13 || \
-          which FileCheck-14",
+          which FileCheck-14 || \
+          which FileCheck",
         ],
         rust_dir,
         Some(env),
@@ -542,6 +543,8 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
         Ok(cmd) => String::from_utf8_lossy(&cmd.stdout).to_string(),
         Err(_) => {
             eprintln!("Failed to retrieve LLVM FileCheck, ignoring...");
+            // FIXME: the test tests/run-make/no-builtins-attribute will fail if we cannot find
+            // FileCheck.
             String::new()
         }
     };
