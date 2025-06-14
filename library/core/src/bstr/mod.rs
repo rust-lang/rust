@@ -200,7 +200,13 @@ impl AsRef<ByteStr> for ByteStr {
     }
 }
 
-// `impl AsRef<ByteStr> for [u8]` omitted to avoid widespread inference failures
+#[unstable(feature = "bstr", issue = "134915")]
+impl AsRef<ByteStr> for [u8] {
+    #[inline]
+    fn as_ref(&self) -> &ByteStr {
+        ByteStr::new(self)
+    }
+}
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl AsRef<ByteStr> for str {
