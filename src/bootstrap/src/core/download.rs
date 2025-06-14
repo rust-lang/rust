@@ -214,7 +214,7 @@ impl Config {
         // options should be kept in sync with
         // src/bootstrap/src/core/download.rs
         // for consistency
-        let mut curl = command("curl");
+        let mut curl = command("curl").allow_failure();
         curl.args([
             // follow redirect
             "--location",
@@ -255,7 +255,7 @@ impl Config {
             curl.arg("--retry-all-errors");
         }
         curl.arg(url);
-        if !self.check_run(&mut curl) {
+        if !curl.run(&self) {
             if self.host_target.contains("windows-msvc") {
                 eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {
