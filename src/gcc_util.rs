@@ -6,6 +6,7 @@ use smallvec::{SmallVec, smallvec};
 
 fn gcc_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     target_features::retpoline_features_by_flags(sess, features);
+    // FIXME: LLVM also sets +reserve-x18 here under some conditions.
 }
 
 /// The list of GCC features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
@@ -58,8 +59,6 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     );
 
     gcc_features_by_flags(sess, &mut features);
-
-    // FIXME: LLVM also sets +reserve-x18 here under some conditions.
 
     features
 }
