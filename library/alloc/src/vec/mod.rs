@@ -2580,7 +2580,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// *last = 4;
     /// assert_eq!(vec, [1, 2, 4]);
     /// ```
-    /// ```
     ///
     /// # Time complexity
     ///
