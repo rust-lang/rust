@@ -185,7 +185,7 @@ pub(super) fn check<'tcx>(
             Node::Expr(parent) if is_borrow_expr(cx, parent) && !is_in_allowed_macro(cx, parent) => {
                 MaybeParenOrBlock::Block
             },
-            Node::Expr(parent) if cast_expr.precedence() < parent.precedence() => MaybeParenOrBlock::Paren,
+            Node::Expr(parent) if cx.precedence(cast_expr) < cx.precedence(parent) => MaybeParenOrBlock::Paren,
             _ => MaybeParenOrBlock::Nothing,
         };
 

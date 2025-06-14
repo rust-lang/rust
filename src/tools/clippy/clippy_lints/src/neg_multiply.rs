@@ -64,7 +64,7 @@ fn check_mul(cx: &LateContext<'_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
     {
         let mut applicability = Applicability::MachineApplicable;
         let (snip, from_macro) = snippet_with_context(cx, exp.span, span.ctxt(), "..", &mut applicability);
-        let suggestion = if !from_macro && exp.precedence() < ExprPrecedence::Prefix && !has_enclosing_paren(&snip) {
+        let suggestion = if !from_macro && cx.precedence(exp) < ExprPrecedence::Prefix && !has_enclosing_paren(&snip) {
             format!("-({snip})")
         } else {
             format!("-{snip}")
