@@ -1,7 +1,9 @@
 // Ensure if let guards can be used in constant expressions.
-//@ build-pass
 
-#![feature(if_let_guard)]
+//@ build-pass
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
 const fn match_if_let(x: Option<i32>, y: Option<i32>) -> i32 {
     match x {
