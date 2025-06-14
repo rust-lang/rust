@@ -129,7 +129,7 @@ declare namespace rustdoc {
 
     /**
      * A single parsed "atom" in a search query. For example,
-     * 
+     *
      *     std::fmt::Formatter, Write -> Result<()>
      *     ┏━━━━━━━━━━━━━━━━━━  ┌────    ┏━━━━━┅┅┅┅┄┄┄┄┄┄┄┄┄┄┄┄┄┄┐
      *     ┃                    │        ┗ QueryElement {        ┊
@@ -442,6 +442,8 @@ declare namespace rustdoc {
      * of `p`) but is used for modules items like free functions.
      *
      * `c` is an array of item indices that are deprecated.
+     *
+     * `u` is an array of item indices that are unstable.
      */
     type RawSearchIndexCrate = {
     doc: string,
@@ -456,6 +458,7 @@ declare namespace rustdoc {
     p: Array<[number, string] | [number, string, number] | [number, string, number, number] | [number, string, number, number, string]>,
     b: Array<[number, String]>,
     c: string,
+    u: string,
     r: Array<[number, number]>,
     P: Array<[number, string]>,
     };
