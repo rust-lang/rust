@@ -2180,6 +2180,7 @@ symbols! {
         type_changing_struct_update,
         type_const,
         type_id,
+        type_ir,
         type_ir_infer_ctxt_like,
         type_ir_inherent,
         type_ir_interner,
