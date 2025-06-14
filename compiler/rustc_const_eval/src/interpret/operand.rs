@@ -878,9 +878,9 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(Immediate, 48);
     static_assert_size!(ImmTy<'_>, 64);
-    static_assert_size!(Operand, 56);
+    static_assert_size!(Immediate, 48);
     static_assert_size!(OpTy<'_>, 72);
+    static_assert_size!(Operand, 56);
     // tidy-alphabetical-end
 }
