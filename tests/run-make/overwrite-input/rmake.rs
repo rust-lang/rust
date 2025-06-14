@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // An attempt to set the output `-o` into a directory or a file we cannot write into should indeed
 // be an error; but not an ICE (Internal Compiler Error). This test attempts both and checks
 // that the standard error matches what is expected.

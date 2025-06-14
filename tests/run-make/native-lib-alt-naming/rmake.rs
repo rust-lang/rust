@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // On MSVC the alternative naming format for static libraries (`libfoo.a`) is accepted in addition
 // to the default format (`foo.lib`).
 

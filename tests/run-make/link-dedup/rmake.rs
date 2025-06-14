@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // When native libraries are passed to the linker, there used to be an annoyance
 // where multiple instances of the same library in a row would cause duplication in
 // outputs. This has been fixed, and this test checks that it stays fixed.

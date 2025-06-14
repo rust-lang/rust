@@ -6,6 +6,7 @@
 // this diagnostics information should be located.
 // See https://github.com/rust-lang/rust/pull/51946
 
+//@ needs-target-std
 //@ ignore-windows
 //@ ignore-apple
 // Reason: this feature only works when the output object format is ELF.

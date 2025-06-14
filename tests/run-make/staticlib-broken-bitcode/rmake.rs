@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Regression test for https://github.com/rust-lang/rust/issues/128955#issuecomment-2657811196
 // which checks that rustc can read an archive containing LLVM bitcode with a
 // newer version from the one rustc links against.

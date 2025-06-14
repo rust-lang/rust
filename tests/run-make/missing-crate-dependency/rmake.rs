@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // A simple smoke test to check that rustc fails compilation
 // and outputs a helpful message when a dependency is missing
 // in a dependency chain.
