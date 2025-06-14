@@ -10,6 +10,7 @@ use std::mem;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Block, Expr, LetStmt, Pat, PatKind, Stmt};
@@ -752,13 +753,19 @@ fn resolve_local<'tcx>(
                     record_rvalue_scope_if_borrow_expr(visitor, arm.body, blk_id);
                 }
             }
-            hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) => {
-                // FIXME(@dingxiangfei2009): choose call arguments here
-                // for candidacy for extended parameter rule application
-            }
-            hir::ExprKind::Index(..) => {
-                // FIXME(@dingxiangfei2009): select the indices
-                // as candidate for rvalue scope rules
+            hir::ExprKind::Call(func, args) => {
+                // Recurse into tuple constructors, such as `Some(&temp())`.
+                //
+                // That way, there is no difference between `Some(..)` and `Some { 0: .. }`,
+                // even though the former is syntactically a function call.
+                if let hir::ExprKind::Path(path) = &func.kind
+                    && let hir::QPath::Resolved(None, path) = path
+                    && let Res::SelfCtor(_) | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) = path.res
+                {
+                    for arg in args {
+                        record_rvalue_scope_if_borrow_expr(visitor, arg, blk_id);
+                    }
+                }
             }
             _ => {}
         }

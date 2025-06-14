@@ -754,7 +754,6 @@ ui/consts/issue-46553.rs
 ui/consts/issue-47789.rs
 ui/consts/issue-50439.rs
 ui/consts/issue-52023-array-size-pointer-cast.rs
-ui/consts/issue-54224.rs
 ui/consts/issue-54348.rs
 ui/consts/issue-54387.rs
 ui/consts/issue-54582.rs
