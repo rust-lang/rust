@@ -1067,11 +1067,26 @@ pub fn libm() {
     assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1.0);
     assert_eq!((-1f64).powf(f64::NEG_INFINITY), 1.0);
 
-    // For pow (powf in rust) the C standard says:
-    // x^0 = 1 for all x even a sNaN
-    // FIXME(#4286): this does not match the behavior of all implementations.
-    assert_eq!(SNAN_F32.powf(0.0), 1.0);
-    assert_eq!(SNAN_F64.powf(0.0), 1.0);
+    macro_rules! test_snan_pow {
+        ($snan:expr, $pow_op:path) => {{
+            let mut nan_seen = false;
+            let mut one_seen = false;
+        
+            for _ in 0..64 {
+                let res = $pow_op($snan, 0 as _);
+                nan_seen |= res.is_nan();
+                one_seen |= res == 1.0;
+            }
+
+            let op_as_str = stringify!($pow_op);
+        
+            assert!(nan_seen && one_seen, "{}(SNaN, 0) should return both `NaN` or `1.0` randomly", op_as_str);
+        }};
+    }
+
+    test_snan_pow!(SNAN_F32, f32::powf);
+    test_snan_pow!(SNAN_F64, f64::powf);
+
 
     // For pown (powi in rust) the C standard says:
     // x^0 = 1 for all x even a sNaN
