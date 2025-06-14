@@ -393,7 +393,7 @@ mod size_asserts {
 
     use super::types::*;
     // tidy-alphabetical-start
-    static_assert_size!(AssocItemConstraint, 208);
+    static_assert_size!(AssocItemConstraint, 112);
     static_assert_size!(Crate, 184);
     static_assert_size!(ExternalCrate, 48);
     static_assert_size!(FunctionPointer, 168);
