@@ -45,7 +45,7 @@ fn test_union_info_roundtrip() {
 #[cfg(target_pointer_width = "64")]
 fn test_type_sizes() {
     // tidy-alphabetical-start
-    assert_eq!(size_of::<AssocItemConstraint>(), 208);
+    assert_eq!(size_of::<AssocItemConstraint>(), 112);
     assert_eq!(size_of::<Crate>(), 184);
     assert_eq!(size_of::<ExternalCrate>(), 48);
     assert_eq!(size_of::<FunctionPointer>(), 168);
