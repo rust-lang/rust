@@ -47,8 +47,6 @@ LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}
    |               |                                      binding initialized here in some conditions
    |               binding initialized here in some conditions
    |               binding declared here but left uninitialized
-   |
-   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

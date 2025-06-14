@@ -1,0 +1,28 @@
+error[E0369]: cannot add `{integer}` to `&str`
+  --> $DIR/backtrace-into-internal.rs:20:20
+   |
+LL | / macro_rules! macro_one {
+LL | |     ($($arg:tt)*) => {
+LL | |         std::convert::identity(macro_two!($($arg)*))
+   | |                                -------------------- in this macro invocation (#2)
+LL | |     }
+LL | | }
+   | |_- in this expansion of `macro_one!` (#1)
+...
+LL | / macro_rules! macro_two {
+LL | |     ($($arg:tt)*) => {
+LL | |         { $($arg)* + 1 }
+   | |                    ^ - {integer}
+...  |
+LL | | }
+   | |_- in this expansion of `macro_two!` (#2)
+...
+LL |       let _ = macro_one!("boo");
+   |               -----------------
+   |               |          |
+   |               |          &str
+   |               in this macro invocation (#1)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

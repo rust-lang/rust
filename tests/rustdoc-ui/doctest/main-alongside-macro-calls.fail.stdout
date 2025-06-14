@@ -13,8 +13,6 @@ error: macros that expand to items must be delimited with braces or followed by 
    |
 LL | println!();
    | ^^^^^^^^^^
-   |
-   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: macro expansion ignores `{` and any tokens following
   --> $SRC_DIR/std/src/macros.rs:LL:COL
@@ -35,8 +33,6 @@ error: macros that expand to items must be delimited with braces or followed by 
    |
 LL | println!();
    | ^^^^^^^^^^
-   |
-   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: macro expansion ignores `{` and any tokens following
   --> $SRC_DIR/std/src/macros.rs:LL:COL

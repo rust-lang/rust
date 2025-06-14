@@ -8,7 +8,6 @@ LL |     let x = defer(&vec!["Goodbye", "world!"]);
 LL |     x.x[0];
    |     ------ borrow later used here
    |
-   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a `let` binding to create a longer lived value
    |
 LL ~     let binding = vec!["Goodbye", "world!"];
