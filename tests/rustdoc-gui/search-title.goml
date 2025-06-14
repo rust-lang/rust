@@ -5,6 +5,8 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 store-value: (title, "test_docs - Rust")
 assert-document-property: {"title": |title|}
 
+click: "#search-button"
+wait-for: ".search-input"
 write-into: (".search-input", "test")
 // To be SURE that the search will be run.
 press-key: 'Enter'

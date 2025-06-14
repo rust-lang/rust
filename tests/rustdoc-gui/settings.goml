@@ -5,7 +5,7 @@ show-text: true // needed when we check for colors below.
 // First, we check that the settings page doesn't exist.
 assert-false: "#settings"
 // We now click on the settings button.
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#settings"
 assert-css: ("#settings", {"display": "block"})
 
@@ -13,11 +13,11 @@ assert-css: ("#settings", {"display": "block"})
 store-css: (".setting-line", {"margin": setting_line_margin})
 
 // Let's close it by clicking on the same button.
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for-css: ("#settings", {"display": "none"})
 
 // Let's check that pressing "ESCAPE" is closing it.
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for-css: ("#settings", {"display": "block"})
 press-key: "Escape"
 wait-for-css: ("#settings", {"display": "none"})
@@ -28,7 +28,7 @@ write: "test"
 // To be SURE that the search will be run.
 press-key: 'Enter'
 wait-for: "#alternative-display #search"
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for-css: ("#settings", {"display": "block"})
 // Ensure that the search is still displayed.
 wait-for: "#alternative-display #search"
@@ -41,7 +41,7 @@ set-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"
 // We reload the page so the local storage settings are being used.
 reload:
 
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#settings"
 
 // We check that the "Use system theme" is disabled.
@@ -55,7 +55,7 @@ assert: "#preferred-light-theme.setting-line.hidden"
 assert-property: ("#theme .setting-radio-choices #theme-dark", {"checked": "true"})
 
 // Some style checks...
-move-cursor-to: "#settings-menu > a"
+move-cursor-to: "rustdoc-toolbar .settings-menu > a"
 // First we check the "default" display for radio buttons.
 assert-css: (
     "#theme-dark",
@@ -194,7 +194,7 @@ assert-css: (
         "border-width": "2px",
     },
 )
-move-cursor-to: "#settings-menu > a"
+move-cursor-to: "rustdoc-toolbar .settings-menu > a"
 // Let's now check with the focus for toggles.
 focus: "#auto-hide-large-items"
 assert-css: (
@@ -273,43 +273,43 @@ assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
 press-key: "Escape"
 press-key: "?"
 assert-false: "#help-button .popover"
-wait-for-css: ("#settings-menu .popover", {"display": "block"})
+wait-for-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "block"})
 
 // Now turn keyboard shortcuts back on, and see if they work.
 click: "#disable-shortcuts"
 assert-local-storage: {"rustdoc-disable-shortcuts": "false"}
 press-key: "Escape"
 press-key: "?"
-wait-for-css: ("#help-button .popover", {"display": "block"})
-assert-css: ("#settings-menu .popover", {"display": "none"})
+wait-for-css: ("rustdoc-toolbar .help-menu .popover", {"display": "block"})
+assert-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "none"})
 
 // Now switch back to the settings popover, and make sure the keyboard
 // shortcut works when a check box is selected.
-click: "#settings-menu > a"
-wait-for-css: ("#settings-menu .popover", {"display": "block"})
+click: "rustdoc-toolbar .settings-menu > a"
+wait-for-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "block"})
 focus: "#auto-hide-large-items"
 press-key: "?"
-wait-for-css: ("#settings-menu .popover", {"display": "none"})
-wait-for-css: ("#help-button .popover", {"display": "block"})
+wait-for-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "none"})
+wait-for-css: ("rustdoc-toolbar .help-menu .popover", {"display": "block"})
 
 // Now switch back to the settings popover, and make sure the keyboard
 // shortcut works when a check box is selected.
-click: "#settings-menu > a"
-wait-for-css: ("#settings-menu .popover", {"display": "block"})
-wait-for-css: ("#help-button .popover", {"display": "none"})
+click: "rustdoc-toolbar .settings-menu > a"
+wait-for-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "block"})
+assert-false: "rustdoc-toolbar .help-menu .popover"
 focus: "#theme-system-preference"
 press-key: "?"
-wait-for-css: ("#settings-menu .popover", {"display": "none"})
-wait-for-css: ("#help-button .popover", {"display": "block"})
+wait-for-css: ("rustdoc-toolbar .settings-menu .popover", {"display": "none"})
+wait-for-css: ("rustdoc-toolbar .help-menu .popover", {"display": "block"})
 
 // Now we go to the settings page to check that the CSS is loaded as expected.
 go-to: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
-assert-false: "#settings-menu"
+assert-false: "rustdoc-toolbar .settings-menu"
 assert-css: (".setting-radio", {"cursor": "pointer"})
 
 assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
-compare-elements-position: (".sub form", "#settings", ["x"])
+compare-elements-position: (".main-heading", "#settings", ["x"])
 
 // Check that setting-line has the same margin in this mode as in the popover.
 assert-css: (".setting-line", {"margin": |setting_line_margin|})

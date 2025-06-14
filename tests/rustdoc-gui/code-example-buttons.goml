@@ -5,25 +5,25 @@ include: "utils.goml"
 // First we check we "hover".
 move-cursor-to: ".example-wrap"
 assert-css: (".example-wrap .copy-button", { "visibility": "visible" })
-move-cursor-to: ".search-input"
+move-cursor-to: "#search-button"
 assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
 
 // Now we check the click.
 assert-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 0)
 click: ".example-wrap"
-move-cursor-to: ".search-input"
+move-cursor-to: "#search-button"
 // It should have a new class and be visible.
 wait-for-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 1)
 wait-for-css: (".example-wrap:not(:hover) .button-holder.keep-visible", { "visibility": "visible" })
 // Clicking again will remove the class.
 click: ".example-wrap"
-move-cursor-to: ".search-input"
+move-cursor-to: "rustdoc-toolbar #search-button"
 assert-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 0)
 assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
 
 // Clicking on the "copy code" button shouldn't make the buttons stick.
 click: ".example-wrap .copy-button"
-move-cursor-to: ".search-input"
+move-cursor-to: "#search-button"
 assert-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 0)
 assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
 // Since we clicked on the copy button, the clipboard content should have been updated.
