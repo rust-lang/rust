@@ -2574,28 +2574,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     /// #![feature(push_mut)]
     ///
-    /// # #[allow(unused)]
-    /// #[derive(PartialEq, Eq, Debug)]
-    /// struct Item { identifier: &'static str, count: usize }
-    ///
-    /// impl Default for Item {
-    ///     fn default() -> Self {
-    ///         return Self { identifier: "stone", count: 64 }
-    ///     }
-    /// }
-    ///
-    /// let mut items = vec![];
-    ///
-    /// // We can mutate the just-pushed value without having to fetch it again
-    /// for count in [15, 35, 61] {
-    ///     let item = items.push_mut(Item::default());
-    ///     item.count = count;
-    /// }
-    ///
-    /// assert_eq!(
-    ///     items,
-    ///     [Item { identifier: "stone", count: 15 }, Item { identifier: "stone", count: 35 }, Item { identifier: "stone", count: 61 }]
-    /// );
+    /// let mut vec = vec![1, 2];
+    /// let last = vec.push(3);
+    /// assert_eq!(vec, [1, 2, 3]);
+    /// *last = 4;
+    /// assert_eq!(vec, [1, 2, 4]);
+    /// ```
     /// ```
     ///
     /// # Time complexity
