@@ -134,8 +134,7 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
             .iterate_to_fixpoint(tcx, body, None)
             .into_results_cursor(body);
 
-    let mut assignments =
-        AssignmentResult::find_dead_assignments(tcx, &checked_places, &mut live, body);
+    let mut assignments = AssignmentResult::find_dead_assignments(&checked_places, &mut live, body);
 
     assignments.merge_guards(&checked_places, body);
 
@@ -195,6 +194,33 @@ fn maybe_suggest_literal_matching_name(
     };
     finder.visit_body(body);
     finder.found
+}
+
+/// Return whether we should consider the current place as a drop guard and skip reporting.
+fn maybe_drop_guard<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    index: PlaceIndex,
+    ever_dropped: &DenseBitSet<PlaceIndex>,
+    checked_places: &PlaceSet<'tcx>,
+    body: &Body<'tcx>,
+) -> bool {
+    if ever_dropped.contains(index) {
+        let ty = checked_places.places[index].ty(&body.local_decls, tcx).ty;
+        matches!(
+            ty.kind(),
+            ty::Closure(..)
+                | ty::Coroutine(..)
+                | ty::Tuple(..)
+                | ty::Adt(..)
+                | ty::Dynamic(..)
+                | ty::Array(..)
+                | ty::Slice(..)
+                | ty::Alias(ty::Opaque, ..)
+        ) && ty.needs_drop(tcx, typing_env)
+    } else {
+        false
+    }
 }
 
 /// Detect the following case
@@ -578,7 +604,6 @@ impl AssignmentResult {
     /// Assignments are collected, even if they are live. Dead assignments are reported, and live
     /// assignments are used to make diagnostics correct for match guards.
     fn find_dead_assignments<'tcx>(
-        tcx: TyCtxt<'tcx>,
         checked_places: &PlaceSet<'tcx>,
         cursor: &mut ResultsCursor<'_, 'tcx, MaybeLivePlaces<'_, 'tcx>>,
         body: &Body<'tcx>,
@@ -609,24 +634,9 @@ impl AssignmentResult {
                 }
             };
 
-        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
         let mut record_drop = |place: Place<'tcx>| {
             if let Some((index, &[])) = checked_places.get(place.as_ref()) {
-                let ty = place.ty(&body.local_decls, tcx).ty;
-                let needs_drop = matches!(
-                    ty.kind(),
-                    ty::Closure(..)
-                        | ty::Coroutine(..)
-                        | ty::Tuple(..)
-                        | ty::Adt(..)
-                        | ty::Dynamic(..)
-                        | ty::Array(..)
-                        | ty::Slice(..)
-                        | ty::Alias(ty::Opaque, ..)
-                ) && ty.needs_drop(tcx, typing_env);
-                if needs_drop {
-                    ever_dropped.insert(index);
-                }
+                ever_dropped.insert(index);
             }
         };
 
@@ -799,6 +809,8 @@ impl AssignmentResult {
         checked_places: &PlaceSet<'tcx>,
         body: &Body<'tcx>,
     ) {
+        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+
         // First, report fully unused locals.
         for (index, place) in checked_places.iter() {
             if self.ever_live.contains(index) {
@@ -874,7 +886,15 @@ impl AssignmentResult {
             if !statements.is_empty() {
                 // We have a dead local with outstanding assignments and with non-trivial drop.
                 // This is probably a drop-guard, so we do not issue a warning there.
-                if self.ever_dropped.contains(index) {
+                if maybe_drop_guard(
+                    tcx,
+                    typing_env,
+                    index,
+                    &self.ever_dropped,
+                    checked_places,
+                    body,
+                ) {
+                    statements.clear();
                     continue;
                 }
 
@@ -940,6 +960,8 @@ impl AssignmentResult {
         checked_places: &PlaceSet<'tcx>,
         body: &Body<'tcx>,
     ) {
+        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+
         for (index, statements) in self.assignments.into_iter_enumerated() {
             if statements.is_empty() {
                 continue;
@@ -949,7 +971,7 @@ impl AssignmentResult {
 
             // We have outstanding assignments and with non-trivial drop.
             // This is probably a drop-guard, so we do not issue a warning there.
-            if self.ever_dropped.contains(index) {
+            if maybe_drop_guard(tcx, typing_env, index, &self.ever_dropped, checked_places, body) {
                 continue;
             }
 
