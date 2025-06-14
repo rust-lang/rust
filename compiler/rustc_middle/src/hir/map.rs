@@ -1233,6 +1233,7 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
         body_owners: body_owners.into_boxed_slice(),
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
+        delayed_lint_items: Box::new([]),
     }
 }
 
@@ -1254,6 +1255,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         body_owners,
         opaques,
         nested_bodies,
+        delayed_lint_items,
         ..
     } = collector;
 
@@ -1266,6 +1268,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         body_owners: body_owners.into_boxed_slice(),
         opaques: opaques.into_boxed_slice(),
         nested_bodies: nested_bodies.into_boxed_slice(),
+        delayed_lint_items: delayed_lint_items.into_boxed_slice(),
     }
 }
 
@@ -1282,6 +1285,7 @@ struct ItemCollector<'tcx> {
     body_owners: Vec<LocalDefId>,
     opaques: Vec<LocalDefId>,
     nested_bodies: Vec<LocalDefId>,
+    delayed_lint_items: Vec<OwnerId>,
 }
 
 impl<'tcx> ItemCollector<'tcx> {
@@ -1297,6 +1301,7 @@ impl<'tcx> ItemCollector<'tcx> {
             body_owners: Vec::default(),
             opaques: Vec::default(),
             nested_bodies: Vec::default(),
+            delayed_lint_items: Vec::default(),
         }
     }
 }
@@ -1314,6 +1319,9 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         }
 
         self.items.push(item.item_id());
+        if self.crate_collector && item.has_delayed_lints {
+            self.delayed_lint_items.push(item.item_id().owner_id);
+        }
 
         // Items that are modules are handled here instead of in visit_mod.
         if let ItemKind::Mod(_, module) = &item.kind {
@@ -1329,6 +1337,9 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
     fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
         self.foreign_items.push(item.foreign_item_id());
+        if self.crate_collector && item.has_delayed_lints {
+            self.delayed_lint_items.push(item.foreign_item_id().owner_id);
+        }
         intravisit::walk_foreign_item(self, item)
     }
 
@@ -1362,6 +1373,10 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         }
 
         self.trait_items.push(item.trait_item_id());
+        if self.crate_collector && item.has_delayed_lints {
+            self.delayed_lint_items.push(item.trait_item_id().owner_id);
+        }
+
         intravisit::walk_trait_item(self, item)
     }
 
@@ -1371,6 +1386,10 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         }
 
         self.impl_items.push(item.impl_item_id());
+        if self.crate_collector && item.has_delayed_lints {
+            self.delayed_lint_items.push(item.impl_item_id().owner_id);
+        }
+
         intravisit::walk_impl_item(self, item)
     }
 }
