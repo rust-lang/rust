@@ -37,11 +37,14 @@ will in turn demand information about that crate, starting from the
   actual parsing.
 
 Although this vision is not fully realized, large sections of the
-compiler (for example, generating [MIR](./mir/index.md)) currently work exactly like this.
+compiler (for example, generating [MIR]) currently work exactly like this.
 
-[^incr-comp-detail]: The ["Incremental compilation in detail](queries/incremental-compilation-in-detail.md) chapter gives a more
+[^incr-comp-detail]: The [Incremental compilation in detail] chapter gives a more
 in-depth description of what queries are and how they work.
 If you intend to write a query of your own, this is a good read.
+
+[Incremental compilation in detail]: queries/incremental-compilation-in-detail.md
+[MIR]: mir/index.md
 
 ## Invoking queries
 
