@@ -1220,11 +1220,11 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(high.into_iter().collect::<Vec<_>>(), [4, 5, 6, 7]);
     /// ```
     #[unstable(feature = "btree_extract_if", issue = "70530")]
-    pub fn extract_if<'a, F, R>(&'a mut self, range: R, pred: F) -> ExtractIf<'a, T, R, F, A>
+    pub fn extract_if<F, R>(&mut self, range: R, pred: F) -> ExtractIf<'_, T, R, F, A>
     where
         T: Ord,
         R: RangeBounds<T>,
-        F: 'a + FnMut(&T) -> bool,
+        F: FnMut(&T) -> bool,
     {
         let (inner, alloc) = self.map.extract_if_inner(range);
         ExtractIf { pred, inner, alloc }
@@ -1585,11 +1585,11 @@ where
 }
 
 #[unstable(feature = "btree_extract_if", issue = "70530")]
-impl<'a, T, R, F, A: Allocator + Clone> Iterator for ExtractIf<'_, T, R, F, A>
+impl<T, R, F, A: Allocator + Clone> Iterator for ExtractIf<'_, T, R, F, A>
 where
     T: PartialOrd,
     R: RangeBounds<T>,
-    F: 'a + FnMut(&T) -> bool,
+    F: FnMut(&T) -> bool,
 {
     type Item = T;
 
