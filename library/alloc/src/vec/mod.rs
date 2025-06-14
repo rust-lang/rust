@@ -2040,7 +2040,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Inserts an element at position `index` within the vector, shifting all
     /// elements after it to the right.
-    /// 
+    ///
     /// Returns [`None`] if the specified index is out of bounds.
     ///
     /// # Examples
@@ -2051,7 +2051,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let x = vec.insert_mut(3, 6).unwrap();
     /// *x += 1;
     /// assert_eq!(vec, [1, 3, 5, 7, 9]);
-    /// 
+    ///
     /// let y = vec.insert_mut(7, 6);
     /// assert!(y.is_none());
     /// ```
