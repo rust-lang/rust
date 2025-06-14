@@ -100,11 +100,13 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
         StorageDead(_9);
         StorageDead(_7);
         StorageDead(_8);
+        StorageLive(_14);
         _14 = move ((_13 as Some).0: U);
         _15 = opaque::<U>(move _14) -> [return: bb8, unwind: bb10];
     }
 
     bb8: {
+        StorageDead(_14);
         StorageDead(_13);
         goto -> bb2;
     }

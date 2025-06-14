@@ -64,11 +64,13 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
     }
 
     bb6: {
+        StorageLive(_10);
         _10 = move ((_8 as Some).0: U);
         _11 = opaque::<U>(move _10) -> [return: bb7, unwind: bb9];
     }
 
     bb7: {
+        StorageDead(_10);
         StorageDead(_8);
         goto -> bb2;
     }
