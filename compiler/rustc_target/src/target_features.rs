@@ -11,11 +11,6 @@ use crate::spec::{FloatAbi, RustcAbi, Target};
 /// These exist globally and are not in the target-specific lists below.
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
-/// Features that require special handling when passing to LLVM:
-/// these are target-specific (i.e., must also be listed in the target-specific list below)
-/// but do not correspond to an LLVM target feature.
-pub const RUSTC_SPECIAL_FEATURES: &[&str] = &["backchain"];
-
 /// Stability information for target features.
 #[derive(Debug, Copy, Clone)]
 pub enum Stability {
@@ -275,12 +270,7 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rcpc3", Unstable(sym::aarch64_unstable_target_feature), &["rcpc2"]),
     // FEAT_RDM
     ("rdm", Stable, &["neon"]),
-    // This is needed for inline assembly, but shouldn't be stabilized as-is
-    // since it should be enabled globally using -Zfixed-x18, not
-    // #[target_feature].
-    // Note that cfg(target_feature = "reserve-x18") is currently not set for
-    // targets that reserve x18 by default.
-    ("reserve-x18", Unstable(sym::aarch64_unstable_target_feature), &[]),
+    ("reserve-x18", Forbidden { reason: "use `-Zfixed-x18` compiler flag instead" }, &[]),
     // FEAT_SB
     ("sb", Stable, &[]),
     // FEAT_SHA1 & FEAT_SHA256
@@ -455,19 +445,17 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rdseed", Stable, &[]),
     (
         "retpoline-external-thunk",
-        Stability::Forbidden {
-            reason: "use `retpoline-external-thunk` target modifier flag instead",
-        },
+        Stability::Forbidden { reason: "use `-Zretpoline-external-thunk` compiler flag instead" },
         &[],
     ),
     (
         "retpoline-indirect-branches",
-        Stability::Forbidden { reason: "use `retpoline` target modifier flag instead" },
+        Stability::Forbidden { reason: "use `-Zretpoline` compiler flag instead" },
         &[],
     ),
     (
         "retpoline-indirect-calls",
-        Stability::Forbidden { reason: "use `retpoline` target modifier flag instead" },
+        Stability::Forbidden { reason: "use `-Zretpoline` compiler flag instead" },
         &[],
     ),
     ("rtm", Unstable(sym::rtm_target_feature), &[]),

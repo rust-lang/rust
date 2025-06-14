@@ -12,9 +12,7 @@ use rustc_session::Session;
 use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::target_features::{
-    self, RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES, Stability,
-};
+use rustc_target::target_features::{self, RUSTC_SPECIFIC_FEATURES, Stability};
 use smallvec::SmallVec;
 
 use crate::errors;
@@ -176,8 +174,18 @@ fn parse_rust_feature_flag<'a>(
 
     for feature in sess.opts.cg.target_feature.split(',') {
         if let Some(base_feature) = feature.strip_prefix('+') {
+            // Skip features that are not target features, but rustc features.
+            if RUSTC_SPECIFIC_FEATURES.contains(&base_feature) {
+                return;
+            }
+
             callback(base_feature, sess.target.implied_target_features(base_feature), true)
         } else if let Some(base_feature) = feature.strip_prefix('-') {
+            // Skip features that are not target features, but rustc features.
+            if RUSTC_SPECIFIC_FEATURES.contains(&base_feature) {
+                return;
+            }
+
             // If `f1` implies `f2`, then `!f2` implies `!f1` -- this is standard logical
             // contraposition. So we have to find all the reverse implications of `base_feature` and
             // disable them, too.
@@ -229,15 +237,7 @@ pub fn cfg_target_feature(
         .target
         .rust_target_features()
         .iter()
-        .filter(|(feature, _, _)| {
-            // Skip checking special features, those are not known to the backend.
-            if RUSTC_SPECIAL_FEATURES.contains(feature) {
-                // FIXME: `true` here means we'll always think the feature is enabled.
-                // Does that really make sense?
-                return true;
-            }
-            target_base_has_feature(feature)
-        })
+        .filter(|(feature, _, _)| target_base_has_feature(feature))
         .map(|(feature, _, _)| Symbol::intern(feature))
         .collect();
 
@@ -332,11 +332,6 @@ pub fn flag_to_backend_features<'a, const N: usize>(
             }
         },
         |base_feature, new_features, enable| {
-            // Skip features that are meant for rustc, not the backend.
-            if RUSTC_SPECIFIC_FEATURES.contains(&base_feature) {
-                return;
-            }
-
             rust_features.extend(
                 UnordSet::from(new_features).to_sorted_stable_ord().iter().map(|&&s| (enable, s)),
             );

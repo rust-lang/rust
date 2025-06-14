@@ -211,7 +211,6 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `reference-types`
 `relax`
 `relaxed-simd`
-`reserve-x18`
 `rtm`
 `sb`
 `scq`
