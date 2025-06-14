@@ -135,6 +135,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "bless",
             "overwrite stderr/stdout files instead of complaining about a mismatch",
         )
+        .optflag("", "try-annotate", "attempt to fix up error annotations in ui tests")
         .optflag("", "fail-fast", "stop as soon as possible after any test fails")
         .optflag("", "quiet", "print one character per test instead of one line")
         .optopt("", "color", "coloring: auto, always, never", "WHEN")
@@ -330,6 +331,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     Config {
         bless: matches.opt_present("bless"),
+        try_annotate: matches.opt_present("try-annotate"),
         fail_fast: matches.opt_present("fail-fast")
             || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
 
