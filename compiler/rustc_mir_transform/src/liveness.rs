@@ -495,13 +495,30 @@ impl<'tcx> PlaceSet<'tcx> {
     }
 
     fn record_debuginfo(&mut self, var_debug_info: &Vec<VarDebugInfo<'tcx>>) {
+        let ignore_name = |name: Symbol| {
+            name == sym::empty || name == kw::SelfLower || name.as_str().starts_with('_')
+        };
         for var_debug_info in var_debug_info {
             if let VarDebugInfoContents::Place(place) = var_debug_info.value
                 && let Some(index) = self.locals[place.local]
+                && !ignore_name(var_debug_info.name)
             {
                 self.names.get_or_insert_with(index, || {
                     (var_debug_info.name, var_debug_info.source_info.span)
                 });
+            }
+        }
+
+        // Discard places that will not result in a diagnostic.
+        for index_opt in self.locals.iter_mut() {
+            if let Some(index) = *index_opt {
+                let remove = match self.names[index] {
+                    None => true,
+                    Some((name, _)) => ignore_name(name),
+                };
+                if remove {
+                    *index_opt = None;
+                }
             }
         }
     }
@@ -792,11 +809,6 @@ impl AssignmentResult {
                 continue;
             }
 
-            let Some((name, def_span)) = checked_places.names[index] else { continue };
-            if name.is_empty() || name.as_str().starts_with('_') || name == kw::SelfLower {
-                continue;
-            }
-
             let local = place.local;
             let decl = &body.local_decls[local];
 
@@ -811,6 +823,8 @@ impl AssignmentResult {
             };
 
             let introductions = &binding.introductions;
+
+            let Some((name, def_span)) = checked_places.names[index] else { continue };
 
             // #117284, when `ident_span` and `def_span` have different contexts
             // we can't provide a good suggestion, instead we pointed out the spans from macro
@@ -931,9 +945,6 @@ impl AssignmentResult {
             }
 
             let Some((name, decl_span)) = checked_places.names[index] else { continue };
-            if name.is_empty() || name.as_str().starts_with('_') || name == kw::SelfLower {
-                continue;
-            }
 
             // We have outstanding assignments and with non-trivial drop.
             // This is probably a drop-guard, so we do not issue a warning there.
