@@ -625,6 +625,15 @@ pub(crate) fn target_cpu(sess: &Session) -> &str {
 /// The target features for compiler flags other than `-Ctarget-features`.
 fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     target_features::retpoline_features_by_flags(sess, features);
+
+    // -Zfixed-x18
+    if sess.opts.unstable_opts.fixed_x18 {
+        if sess.target.arch != "aarch64" {
+            sess.dcx().emit_fatal(errors::FixedX18InvalidArch { arch: &sess.target.arch });
+        } else {
+            features.push("+reserve-x18".into());
+        }
+    }
 }
 
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
@@ -736,19 +745,10 @@ pub(crate) fn global_llvm_features(
                 )
             },
         );
-
-        llvm_features_by_flags(sess, &mut features);
     }
 
-    // -Zfixed-x18
-    // FIXME: merge with `llvm_features_by_flags`.
-    if sess.opts.unstable_opts.fixed_x18 {
-        if sess.target.arch != "aarch64" {
-            sess.dcx().emit_fatal(errors::FixedX18InvalidArch { arch: &sess.target.arch });
-        } else {
-            features.push("+reserve-x18".into());
-        }
-    }
+    // We add this in the "base target" so that these show up in `sess.unstable_target_features`.
+    llvm_features_by_flags(sess, &mut features);
 
     features
 }
