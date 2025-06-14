@@ -1,4 +1,4 @@
-error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+error[E0658]: C-variadic functions with the "system" calling convention are unstable
   --> $DIR/feature-gate-extern_system_varargs.rs:1:14
    |
 LL | fn system(f: extern "system" fn(usize, ...)) {
