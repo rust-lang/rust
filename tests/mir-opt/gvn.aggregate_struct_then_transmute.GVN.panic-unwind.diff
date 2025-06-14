@@ -91,8 +91,7 @@
       }
   
       bb0: {
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           StorageLive(_4);
           _4 = copy _1;
 -         _3 = MyId(move _4);
@@ -113,8 +112,7 @@
       bb1: {
           StorageDead(_6);
           StorageDead(_5);
--         StorageLive(_8);
-+         nop;
+          StorageLive(_8);
           StorageLive(_9);
           _9 = copy _1;
           StorageLive(_10);
@@ -139,8 +137,7 @@
       bb2: {
           StorageDead(_12);
           StorageDead(_11);
--         StorageLive(_14);
-+         nop;
+          StorageLive(_14);
           StorageLive(_15);
           _15 = copy _1;
 -         _14 = Result::<Never, u16>::Err(move _15);
@@ -161,8 +158,7 @@
       bb3: {
           StorageDead(_17);
           StorageDead(_16);
--         StorageLive(_19);
-+         nop;
+          StorageLive(_19);
           StorageLive(_20);
           _20 = copy _1;
 -         _19 = Option::<u16>::Some(move _20);
@@ -201,8 +197,7 @@
       bb5: {
           StorageDead(_27);
           StorageDead(_26);
--         StorageLive(_29);
-+         nop;
+          StorageLive(_29);
           StorageLive(_30);
           _30 = copy _1;
           StorageLive(_31);
@@ -248,8 +243,7 @@
       bb7: {
           StorageDead(_39);
           StorageDead(_38);
--         StorageLive(_41);
-+         nop;
+          StorageLive(_41);
           StorageLive(_42);
           _42 = copy _1;
 -         _41 = (move _42,);
@@ -269,8 +263,7 @@
       bb8: {
           StorageDead(_44);
           StorageDead(_43);
--         StorageLive(_46);
-+         nop;
+          StorageLive(_46);
           StorageLive(_47);
           _47 = copy _1;
 -         _46 = [move _47];
@@ -290,8 +283,7 @@
       bb9: {
           StorageDead(_49);
           StorageDead(_48);
--         StorageLive(_51);
-+         nop;
+          StorageLive(_51);
           StorageLive(_52);
           _52 = copy _2;
           StorageLive(_53);
@@ -316,24 +308,16 @@
           StorageDead(_55);
           StorageDead(_54);
           _0 = const ();
--         StorageDead(_51);
--         StorageDead(_46);
--         StorageDead(_41);
-+         nop;
-+         nop;
-+         nop;
+          StorageDead(_51);
+          StorageDead(_46);
+          StorageDead(_41);
           StorageDead(_35);
--         StorageDead(_29);
-+         nop;
+          StorageDead(_29);
           StorageDead(_24);
--         StorageDead(_19);
--         StorageDead(_14);
--         StorageDead(_8);
--         StorageDead(_3);
-+         nop;
-+         nop;
-+         nop;
-+         nop;
+          StorageDead(_19);
+          StorageDead(_14);
+          StorageDead(_8);
+          StorageDead(_3);
           return;
       }
   }

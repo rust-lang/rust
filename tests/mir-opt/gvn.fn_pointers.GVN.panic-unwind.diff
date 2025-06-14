@@ -35,8 +35,7 @@
       }
   
       bb0: {
--         StorageLive(_1);
-+         nop;
+          StorageLive(_1);
           _1 = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer, AsCast));
           StorageLive(_2);
           StorageLive(_3);
@@ -48,8 +47,7 @@
       bb1: {
           StorageDead(_3);
           StorageDead(_2);
--         StorageLive(_4);
-+         nop;
+          StorageLive(_4);
           _4 = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer, AsCast));
           StorageLive(_5);
           StorageLive(_6);
@@ -61,12 +59,10 @@
       bb2: {
           StorageDead(_6);
           StorageDead(_5);
--         StorageLive(_7);
+          StorageLive(_7);
 -         _7 = {closure@$DIR/gvn.rs:620:19: 620:21};
--         StorageLive(_8);
-+         nop;
 +         _7 = const ZeroSized: {closure@$DIR/gvn.rs:620:19: 620:21};
-+         nop;
+          StorageLive(_8);
           StorageLive(_9);
 -         _9 = copy _7;
 -         _8 = move _9 as fn() (PointerCoercion(ClosureFnPointer(Safe), AsCast));
@@ -83,8 +79,7 @@
       bb3: {
           StorageDead(_11);
           StorageDead(_10);
--         StorageLive(_12);
-+         nop;
+          StorageLive(_12);
           StorageLive(_13);
 -         _13 = copy _7;
 -         _12 = move _13 as fn() (PointerCoercion(ClosureFnPointer(Safe), AsCast));
@@ -102,16 +97,11 @@
           StorageDead(_15);
           StorageDead(_14);
           _0 = const ();
--         StorageDead(_12);
--         StorageDead(_8);
--         StorageDead(_7);
--         StorageDead(_4);
--         StorageDead(_1);
-+         nop;
-+         nop;
-+         nop;
-+         nop;
-+         nop;
+          StorageDead(_12);
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageDead(_4);
+          StorageDead(_1);
           return;
       }
   }

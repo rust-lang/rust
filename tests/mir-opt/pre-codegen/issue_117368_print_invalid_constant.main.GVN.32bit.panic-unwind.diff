@@ -30,8 +30,7 @@
       }
   
       bb0: {
--         StorageLive(_1);
-+         nop;
+          StorageLive(_1);
           StorageLive(_2);
 -         _2 = Option::<Layout>::None;
 +         _2 = const Option::<Layout>::None;
@@ -49,8 +48,7 @@
           _3 = move _4 as *mut u8 (PtrToPtr);
           StorageDead(_4);
           StorageDead(_3);
--         StorageDead(_1);
-+         nop;
+          StorageDead(_1);
           return;
       }
   
