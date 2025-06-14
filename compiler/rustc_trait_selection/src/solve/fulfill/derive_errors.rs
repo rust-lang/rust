@@ -17,7 +17,7 @@ use rustc_next_trait_solver::solve::{
 use tracing::{instrument, trace};
 
 use crate::solve::delegate::SolverDelegate;
-use crate::solve::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
+use crate::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
 use crate::solve::{Certainty, deeply_normalize_for_diagnostics};
 use crate::traits::{FulfillmentError, FulfillmentErrorCode, wf};
 
