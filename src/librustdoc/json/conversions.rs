@@ -170,10 +170,13 @@ pub(crate) fn from_deprecation(deprecation: attrs::Deprecation) -> Deprecation {
     Deprecation { since, note: note.map(|s| s.to_string()) }
 }
 
-impl FromClean<clean::GenericArgs> for GenericArgs {
+impl FromClean<clean::GenericArgs> for Option<Box<GenericArgs>> {
     fn from_clean(args: &clean::GenericArgs, renderer: &JsonRenderer<'_>) -> Self {
         use clean::GenericArgs::*;
-        match args {
+        if args.is_empty() {
+            return None;
+        }
+        Some(Box::new(match args {
             AngleBracketed { args, constraints } => GenericArgs::AngleBracketed {
                 args: args.into_json(renderer),
                 constraints: constraints.into_json(renderer),
@@ -183,7 +186,7 @@ impl FromClean<clean::GenericArgs> for GenericArgs {
                 output: output.as_ref().map(|a| a.as_ref().into_json(renderer)),
             },
             ReturnTypeNotation => GenericArgs::ReturnTypeNotation,
-        }
+        }))
     }
 }
 
@@ -589,11 +592,7 @@ impl FromClean<clean::Path> for Path {
                     // used in the final segment, e.g. `std::vec::Vec<u32>`. So
                     // check that the non-final segments have no generic args.
                     assert!(rest_segs.iter().all(|seg| seg.args.is_empty()));
-                    if final_seg.args.is_empty() {
-                        None
-                    } else {
-                        Some(Box::new(final_seg.args.into_json(renderer)))
-                    }
+                    final_seg.args.into_json(renderer)
                 } else {
                     None // no generics on any segments because there are no segments
                 }
@@ -608,7 +607,7 @@ impl FromClean<clean::QPathData> for Type {
 
         Self::QualifiedPath {
             name: assoc.name.to_string(),
-            args: Box::new(assoc.args.into_json(renderer)),
+            args: assoc.args.into_json(renderer),
             self_type: Box::new(self_type.into_json(renderer)),
             trait_: trait_.as_ref().map(|trait_| trait_.into_json(renderer)),
         }
