@@ -46,7 +46,6 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenResults, TargetConfig};
-use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
@@ -238,12 +237,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         println!("Cranelift version: {}", cranelift_codegen::VERSION);
     }
 
-    fn codegen_crate(
-        &self,
-        tcx: TyCtxt<'_>,
-        metadata: EncodedMetadata,
-        need_metadata_module: bool,
-    ) -> Box<dyn Any> {
+    fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
         let config = self.config.clone().unwrap_or_else(|| {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
@@ -256,7 +250,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             #[cfg(not(feature = "jit"))]
             tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
         } else {
-            driver::aot::run_aot(tcx, metadata, need_metadata_module)
+            driver::aot::run_aot(tcx)
         }
     }
 
