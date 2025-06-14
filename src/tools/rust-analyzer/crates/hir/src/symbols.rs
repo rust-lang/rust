@@ -164,6 +164,7 @@ impl<'a> SymbolCollector<'a> {
 
         let is_explicit_import = |vis| match vis {
             Visibility::Public => true,
+            Visibility::PubCrate(_) => true,
             Visibility::Module(_, VisibilityExplicitness::Explicit) => true,
             Visibility::Module(_, VisibilityExplicitness::Implicit) => false,
         };

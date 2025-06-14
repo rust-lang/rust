@@ -111,6 +111,7 @@ impl Printer<'_> {
                 w!(self, "pub({}) ", path.display(self.db, self.edition))
             }
             RawVisibility::Public => w!(self, "pub "),
+            RawVisibility::PubCrate => w!(self, "pub(crate) "),
         };
     }
 

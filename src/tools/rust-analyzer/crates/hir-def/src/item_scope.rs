@@ -20,7 +20,7 @@ use crate::{
     LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
     db::DefDatabase,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
-    visibility::{Visibility, VisibilityExplicitness},
+    visibility::Visibility,
 };
 
 #[derive(Debug, Default)]
@@ -720,33 +720,19 @@ impl ItemScope {
     }
 
     /// Marks everything that is not a procedural macro as private to `this_module`.
-    pub(crate) fn censor_non_proc_macros(&mut self, this_module: ModuleId) {
+    pub(crate) fn censor_non_proc_macros(&mut self, krate: Crate) {
         self.types
             .values_mut()
             .map(|def| &mut def.vis)
             .chain(self.values.values_mut().map(|def| &mut def.vis))
             .chain(self.unnamed_trait_imports.iter_mut().map(|(_, def)| &mut def.vis))
-            .for_each(|vis| match vis {
-                &mut Visibility::Module(_, visibility_explicitness) => {
-                    *vis = Visibility::Module(this_module, visibility_explicitness)
-                }
-                Visibility::Public => {
-                    *vis = Visibility::Module(this_module, VisibilityExplicitness::Implicit)
-                }
-            });
+            .for_each(|vis| *vis = Visibility::PubCrate(krate));
 
         for mac in self.macros.values_mut() {
             if matches!(mac.def, MacroId::ProcMacroId(_) if mac.import.is_none()) {
                 continue;
             }
-            match mac.vis {
-                Visibility::Module(_, visibility_explicitness) => {
-                    mac.vis = Visibility::Module(this_module, visibility_explicitness)
-                }
-                Visibility::Public => {
-                    mac.vis = Visibility::Module(this_module, VisibilityExplicitness::Implicit)
-                }
-            }
+            mac.vis = Visibility::PubCrate(krate)
         }
     }
 

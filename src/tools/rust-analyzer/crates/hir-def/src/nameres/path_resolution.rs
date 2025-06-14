@@ -129,6 +129,7 @@ impl DefMap {
                 }
             }
             RawVisibility::Public => Visibility::Public,
+            RawVisibility::PubCrate => Visibility::PubCrate(self.krate),
         };
 
         // In block expressions, `self` normally refers to the containing non-block module, and

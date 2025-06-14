@@ -305,6 +305,7 @@ impl<'db> Resolver<'db> {
                     }),
                 )
             }
+            RawVisibility::PubCrate => Some(Visibility::PubCrate(self.krate())),
             RawVisibility::Public => Some(Visibility::Public),
         }
     }

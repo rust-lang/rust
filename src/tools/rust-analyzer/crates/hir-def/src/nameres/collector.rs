@@ -437,9 +437,8 @@ impl<'db> DefCollector<'db> {
             // Additionally, while the proc macro entry points must be `pub`, they are not publicly
             // exported in type/value namespace. This function reduces the visibility of all items
             // in the crate root that aren't proc macros.
-            let module_id = self.def_map.module_id(DefMap::ROOT);
             let root = &mut self.def_map.modules[DefMap::ROOT];
-            root.scope.censor_non_proc_macros(module_id);
+            root.scope.censor_non_proc_macros(self.def_map.krate);
         }
     }
 

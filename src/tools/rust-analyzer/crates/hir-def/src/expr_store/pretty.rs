@@ -144,6 +144,7 @@ pub fn print_variant_body_hir(db: &dyn DefDatabase, owner: VariantId, edition: E
                 w!(p, "{}", interned.display(db, p.edition))
             }
             crate::item_tree::RawVisibility::Public => w!(p, "pub "),
+            crate::item_tree::RawVisibility::PubCrate => w!(p, "pub(crate) "),
         }
         if *is_unsafe {
             w!(p, "unsafe ");
