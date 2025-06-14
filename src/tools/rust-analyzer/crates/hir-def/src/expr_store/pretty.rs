@@ -141,10 +141,11 @@ pub fn print_variant_body_hir(db: &dyn DefDatabase, owner: VariantId, edition: E
         let FieldData { name, type_ref, visibility, is_unsafe } = data;
         match visibility {
             crate::item_tree::RawVisibility::Module(interned, _visibility_explicitness) => {
-                w!(p, "{}", interned.display(db, p.edition))
+                w!(p, "pub(in {})", interned.display(db, p.edition))
             }
             crate::item_tree::RawVisibility::Public => w!(p, "pub "),
             crate::item_tree::RawVisibility::PubCrate => w!(p, "pub(crate) "),
+            crate::item_tree::RawVisibility::PubSelf(_) => w!(p, "pub(self) "),
         }
         if *is_unsafe {
             w!(p, "unsafe ");

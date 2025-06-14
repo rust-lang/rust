@@ -149,6 +149,7 @@ impl<N: AstIdNode> HasModule for ItemLoc<N> {
 
 #[derive(Debug)]
 pub struct AssocItemLoc<N: AstIdNode> {
+    // FIXME: Store this as an erased `salsa::Id` to save space
     pub container: ItemContainerId,
     pub id: AstId<N>,
 }
@@ -577,6 +578,7 @@ pub type LocalModuleId = Idx<nameres::ModuleData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FieldId {
+    // FIXME: Store this as an erased `salsa::Id` to save space
     pub parent: VariantId,
     pub local_id: LocalFieldId,
 }
@@ -592,6 +594,7 @@ pub struct TupleFieldId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TypeOrConstParamId {
+    // FIXME: Store this as an erased `salsa::Id` to save space
     pub parent: GenericDefId,
     pub local_id: LocalTypeOrConstParamId,
 }
@@ -650,6 +653,7 @@ impl From<ConstParamId> for TypeOrConstParamId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LifetimeParamId {
+    // FIXME: Store this as an erased `salsa::Id` to save space
     pub parent: GenericDefId,
     pub local_id: LocalLifetimeParamId,
 }

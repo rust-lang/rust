@@ -305,6 +305,9 @@ impl<'db> Resolver<'db> {
                     }),
                 )
             }
+            RawVisibility::PubSelf(explicitness) => {
+                Some(Visibility::Module(self.module(), *explicitness))
+            }
             RawVisibility::PubCrate => Some(Visibility::PubCrate(self.krate())),
             RawVisibility::Public => Some(Visibility::Public),
         }

@@ -414,23 +414,15 @@ impl Index<RawVisibilityId> for ItemTree {
     type Output = RawVisibility;
     fn index(&self, index: RawVisibilityId) -> &Self::Output {
         static VIS_PUB: RawVisibility = RawVisibility::Public;
-        static VIS_PRIV_IMPLICIT: OnceLock<RawVisibility> = OnceLock::new();
-        static VIS_PRIV_EXPLICIT: OnceLock<RawVisibility> = OnceLock::new();
+        static VIS_PRIV_IMPLICIT: RawVisibility =
+            RawVisibility::PubSelf(VisibilityExplicitness::Implicit);
+        static VIS_PRIV_EXPLICIT: RawVisibility =
+            RawVisibility::PubSelf(VisibilityExplicitness::Explicit);
         static VIS_PUB_CRATE: RawVisibility = RawVisibility::PubCrate;
 
         match index {
-            RawVisibilityId::PRIV_IMPLICIT => VIS_PRIV_IMPLICIT.get_or_init(|| {
-                RawVisibility::Module(
-                    Interned::new(ModPath::from_kind(PathKind::SELF)),
-                    VisibilityExplicitness::Implicit,
-                )
-            }),
-            RawVisibilityId::PRIV_EXPLICIT => VIS_PRIV_EXPLICIT.get_or_init(|| {
-                RawVisibility::Module(
-                    Interned::new(ModPath::from_kind(PathKind::SELF)),
-                    VisibilityExplicitness::Explicit,
-                )
-            }),
+            RawVisibilityId::PRIV_IMPLICIT => &VIS_PRIV_IMPLICIT,
+            RawVisibilityId::PRIV_EXPLICIT => &VIS_PRIV_EXPLICIT,
             RawVisibilityId::PUB => &VIS_PUB,
             RawVisibilityId::PUB_CRATE => &VIS_PUB_CRATE,
             _ => &self.vis.arena[index.0 as usize],
@@ -550,6 +542,8 @@ pub enum RawVisibility {
     /// `pub(in module)`, `pub(crate)` or `pub(super)`. Also private, which is
     /// equivalent to `pub(self)`.
     Module(Interned<ModPath>, VisibilityExplicitness),
+    /// `pub(self)`.
+    PubSelf(VisibilityExplicitness),
     /// `pub(crate)`.
     PubCrate,
     /// `pub`.
