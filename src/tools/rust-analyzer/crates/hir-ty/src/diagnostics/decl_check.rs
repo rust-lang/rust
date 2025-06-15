@@ -395,7 +395,7 @@ impl<'a> DeclValidator<'a> {
 
     /// Check incorrect names for enum variants.
     fn validate_enum_variants(&mut self, enum_id: EnumId) {
-        let data = self.db.enum_variants(enum_id);
+        let data = enum_id.enum_variants(self.db);
 
         for (variant_id, _, _) in data.variants.iter() {
             self.validate_enum_variant_fields(*variant_id);

@@ -68,7 +68,8 @@ impl MirBody {
                     this,
                     "enum {}::{} = ",
                     db.enum_signature(loc.parent).name.display(db, edition),
-                    db.enum_variants(loc.parent)
+                    loc.parent
+                        .enum_variants(db)
                         .variant_name_by_id(id)
                         .unwrap()
                         .display(db, edition),
@@ -335,7 +336,7 @@ impl<'a> MirPrettyCtx<'a> {
                             w!(
                                 this,
                                 " as {}).{}",
-                                this.db.enum_variants(loc.parent).variants[loc.index as usize]
+                                loc.parent.enum_variants(this.db).variants[loc.index as usize]
                                     .1
                                     .display(this.db, this.display_target.edition),
                                 name.display(this.db, this.display_target.edition)

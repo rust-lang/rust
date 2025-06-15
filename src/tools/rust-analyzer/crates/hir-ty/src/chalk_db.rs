@@ -823,8 +823,8 @@ pub(crate) fn adt_datum_query(
             (rust_ir::AdtKind::Struct, vec![variant_id_to_fields(id.into())])
         }
         hir_def::AdtId::EnumId(id) => {
-            let variants = db
-                .enum_variants(id)
+            let variants = id
+                .enum_variants(db)
                 .variants
                 .iter()
                 .map(|&(variant_id, _, _)| variant_id_to_fields(variant_id.into()))

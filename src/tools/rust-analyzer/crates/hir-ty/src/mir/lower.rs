@@ -1925,8 +1925,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 let name = format!(
                     "{}::{}",
                     self.db.enum_signature(loc.parent).name.display(db, edition),
-                    self.db
-                        .enum_variants(loc.parent)
+                    loc.parent
+                        .enum_variants(self.db)
                         .variant_name_by_id(variant)
                         .unwrap()
                         .display(db, edition),
@@ -2155,7 +2155,7 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
             .to_string(),
         DefWithBodyId::VariantId(it) => {
             let loc = it.lookup(db);
-            db.enum_variants(loc.parent).variants[loc.index as usize]
+            loc.parent.enum_variants(db).variants[loc.index as usize]
                 .1
                 .display(db, edition)
                 .to_string()

@@ -1631,7 +1631,7 @@ impl Evaluator<'_> {
             Variants::Empty => unreachable!(),
             Variants::Single { index } => {
                 let r =
-                    self.const_eval_discriminant(self.db.enum_variants(e).variants[index.0].0)?;
+                    self.const_eval_discriminant(e.enum_variants(self.db).variants[index.0].0)?;
                 Ok(r)
             }
             Variants::Multiple { tag, tag_encoding, variants, .. } => {
@@ -1656,7 +1656,7 @@ impl Evaluator<'_> {
                             .unwrap_or(*untagged_variant)
                             .0;
                         let result =
-                            self.const_eval_discriminant(self.db.enum_variants(e).variants[idx].0)?;
+                            self.const_eval_discriminant(e.enum_variants(self.db).variants[idx].0)?;
                         Ok(result)
                     }
                 }
@@ -2775,8 +2775,8 @@ impl Evaluator<'_> {
                 let name = format!(
                     "{}::{}",
                     self.db.enum_signature(loc.parent).name.display(db, edition),
-                    self.db
-                        .enum_variants(loc.parent)
+                    loc.parent
+                        .enum_variants(self.db)
                         .variant_name_by_id(variant)
                         .unwrap()
                         .display(db, edition),

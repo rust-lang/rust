@@ -172,8 +172,7 @@ fn no() {}
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
-                "enum_variants_shim",
-                "enum_variants_with_diagnostics_shim",
+                "of_",
             ]
         "#]],
         expect![[r#"
@@ -182,7 +181,7 @@ fn no() {}
                 "ast_id_map_shim",
                 "file_item_tree_query",
                 "real_span_map_shim",
-                "enum_variants_with_diagnostics_shim",
+                "of_",
             ]
         "#]],
     );
