@@ -1078,8 +1078,6 @@ unsafe extern "C" {
 
     // Operations on other types
     pub(crate) fn LLVMVoidTypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMTokenTypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
     pub(crate) fn LLVMTypeOf(Val: &Value) -> &Type;
@@ -1198,14 +1196,12 @@ unsafe extern "C" {
 
     // Operations about llvm intrinsics
     pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
-    pub(crate) fn LLVMIntrinsicIsOverloaded(ID: NonZero<c_uint>) -> Bool;
-    pub(crate) fn LLVMIntrinsicCopyOverloadedName2<'a>(
+    pub(crate) fn LLVMGetIntrinsicDeclaration<'a>(
         Mod: &'a Module,
         ID: NonZero<c_uint>,
         ParamTypes: *const &'a Type,
         ParamCount: size_t,
-        NameLength: *mut size_t,
-    ) -> *mut c_char;
+    ) -> &'a Value;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
