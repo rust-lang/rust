@@ -177,6 +177,8 @@ pub struct GccCodegenBackend {
     lto_supported: Arc<AtomicBool>,
 }
 
+static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
+
 impl CodegenBackend for GccCodegenBackend {
     fn locale_resource(&self) -> &'static str {
         crate::DEFAULT_LOCALE_RESOURCE
@@ -200,7 +202,7 @@ impl CodegenBackend for GccCodegenBackend {
             **self.target_info.info.lock().expect("lock") = context.get_target_info();
         }
 
-        // TODO: try the LTO frontend and check if it errors out. If so, do not embed the bitcode.
+        // NOTE: try the LTO frontend and check if it errors out. If so, do not embed the bitcode.
         {
             let temp_dir = TempDir::new().expect("cannot create temporary directory");
             let temp_file = temp_dir.into_path().join("result.asm");
@@ -220,6 +222,7 @@ impl CodegenBackend for GccCodegenBackend {
             check_context.compile();
             let error = check_context.get_last_error();
             let lto_supported = error == Ok(None);
+            LTO_SUPPORTED.store(lto_supported, Ordering::SeqCst);
             self.lto_supported.store(lto_supported, Ordering::SeqCst);
         }
 
@@ -308,11 +311,12 @@ impl ExtraBackendMethods for GccCodegenBackend {
         kind: AllocatorKind,
         alloc_error_handler_kind: AllocatorKind,
     ) -> Self::Module {
+        let lto_supported = self.lto_supported.load(Ordering::SeqCst);
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
             relocation_model: tcx.sess.relocation_model(),
             lto_mode: LtoMode::None,
-            lto_supported: false,
+            lto_supported,
             temp_dir: None,
         };
 

@@ -21,6 +21,7 @@ use std::ffi::{CStr, CString};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use gccjit::{Context, OutputKind};
 use object::read::archive::ArchiveFile;
@@ -38,7 +39,7 @@ use tempfile::{TempDir, tempdir};
 
 use crate::back::write::save_temp_bitcode;
 use crate::errors::LtoBitcodeFromRlib;
-use crate::{GccCodegenBackend, GccContext, LtoMode, SyncContext, to_gcc_opt_level};
+use crate::{GccCodegenBackend, GccContext, LTO_SUPPORTED, LtoMode, SyncContext, to_gcc_opt_level};
 
 struct LtoData {
     // TODO(antoyo): use symbols_below_threshold.
@@ -559,12 +560,13 @@ pub fn optimize_thin_module(
             Arc::new(SyncContext::new(context))
         }
     };
+    let lto_supported = LTO_SUPPORTED.load(Ordering::SeqCst);
     let module = ModuleCodegen::new_regular(
         thin_module.name().to_string(),
         GccContext {
             context,
             lto_mode,
-            lto_supported: false, // TODO(antoyo): check if this is correct to use this value.
+            lto_supported,
             // TODO(antoyo): use the correct relocation model here.
             relocation_model: RelocModel::Pic,
             temp_dir: None,
