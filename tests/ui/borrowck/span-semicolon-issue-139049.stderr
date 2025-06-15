@@ -1,14 +1,14 @@
 error[E0597]: `mutex` does not live long enough
-  --> $DIR/format-args-temporaries-in-write.rs:41:27
+  --> $DIR/span-semicolon-issue-139049.rs:39:27
    |
 LL |         let mutex = Mutex;
    |             ----- binding `mutex` declared here
-LL |         write!(Out, "{}", mutex.lock()) /* no semicolon */
+LL |         write!(Out, "{}", mutex.lock())
    |                           ^^^^^-------
    |                           |
    |                           borrowed value does not live long enough
    |                           a temporary with access to the borrow is created here ...
-LL |
+...
 LL |     };
    |     -- ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `MutexGuard`
    |     |
@@ -16,29 +16,31 @@ LL |     };
    |
 help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
    |
-LL |         write!(Out, "{}", mutex.lock()); /* no semicolon */
+LL |         write!(Out, "{}", mutex.lock());
    |                                        +
 
 error[E0597]: `mutex` does not live long enough
-  --> $DIR/format-args-temporaries-in-write.rs:47:29
+  --> $DIR/span-semicolon-issue-139049.rs:48:41
    |
 LL |         let mutex = Mutex;
    |             ----- binding `mutex` declared here
-LL |         writeln!(Out, "{}", mutex.lock()) /* no semicolon */
-   |                             ^^^^^-------
-   |                             |
-   |                             borrowed value does not live long enough
-   |                             a temporary with access to the borrow is created here ...
-LL |
+LL |         write!(std::io::stdout(), "{}", mutex.lock())
+   |                                         ^^^^^-------
+   |                                         |
+   |                                         borrowed value does not live long enough
+   |                                         a temporary with access to the borrow is created here ...
+...
 LL |     };
    |     -- ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `MutexGuard`
    |     |
    |     `mutex` dropped here while still borrowed
    |
-help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
+   = note: the temporary is part of an expression at the end of a block;
+           consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
+help: for example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block
    |
-LL |         writeln!(Out, "{}", mutex.lock()); /* no semicolon */
-   |                                          +
+LL |         let x = write!(std::io::stdout(), "{}", mutex.lock()); x
+   |         +++++++                                              +++
 
 error: aborting due to 2 previous errors
 
