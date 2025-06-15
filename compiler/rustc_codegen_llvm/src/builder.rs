@@ -1394,7 +1394,7 @@ impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {
         let global = self.cx().get_static(def_id);
         if self.cx().tcx.is_thread_local_static(def_id) {
             let pointer =
-                self.call_intrinsic("llvm.threadlocal.address", &[self.type_ptr()], &[global]);
+                self.call_intrinsic("llvm.threadlocal.address", &[self.val_ty(global)], &[global]);
             // Cast to default address space if globals are in a different addrspace
             self.pointercast(pointer, self.type_ptr())
         } else {
@@ -1609,7 +1609,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        self.call_intrinsic(intrinsic, &[self.type_ptr()], &[self.cx.const_u64(size), ptr]);
+        self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[self.cx.const_u64(size), ptr]);
     }
 }
 impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
