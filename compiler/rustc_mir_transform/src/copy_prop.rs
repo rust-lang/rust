@@ -212,10 +212,14 @@ struct StorageChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
     fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
-        let head = self.copy_classes[local];
+        if !context.is_use() {
+            return;
+        }
 
-        if context.is_use() && self.head_storage_to_check.contains(head) {
+        let head = self.copy_classes[local];
+        if self.head_storage_to_check.contains(head) {
             self.maybe_storage_dead.seek_after_primary_effect(location);
+
             if self.maybe_storage_dead.get().contains(head) {
                 debug!(
                     ?location,
@@ -224,6 +228,9 @@ impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
                     "found use of local with head at a location in which head is maybe dead, marking head for storage removal"
                 );
                 self.storage_to_remove.insert(head);
+
+                // Once we found a use of the head that is maybe dead, we do not need to check it again.
+                self.head_storage_to_check.remove(head);
             }
         }
     }
