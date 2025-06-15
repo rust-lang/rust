@@ -267,3 +267,64 @@ mod issue14991 {
         }],
     }
 }
+
+mod issue15018 {
+    fn used_later(a: i32, b: i32, c: i32) {
+        let x = 1;
+        match (a, b, c) {
+            //~^ match_single_binding
+            (x, y, z) => println!("{} {} {}", x, y, z),
+        }
+        println!("x = {x}");
+    }
+
+    fn not_used_later(a: i32, b: i32, c: i32) {
+        match (a, b, c) {
+            //~^ match_single_binding
+            (x, y, z) => println!("{} {} {}", x, y, z),
+        }
+    }
+
+    #[allow(irrefutable_let_patterns)]
+    fn not_used_later_but_shadowed(a: i32, b: i32, c: i32) {
+        match (a, b, c) {
+            //~^ match_single_binding
+            (x, y, z) => println!("{} {} {}", x, y, z),
+        }
+        let x = 1;
+        println!("x = {x}");
+    }
+
+    #[allow(irrefutable_let_patterns)]
+    fn not_used_later_but_shadowed_nested(a: i32, b: i32, c: i32) {
+        match (a, b, c) {
+            //~^ match_single_binding
+            (x, y, z) => println!("{} {} {}", x, y, z),
+        }
+        if let (x, y, z) = (a, b, c) {
+            println!("{} {} {}", x, y, z)
+        }
+
+        {
+            let x: i32 = 1;
+            match (a, b, c) {
+                //~^ match_single_binding
+                (x, y, z) => println!("{} {} {}", x, y, z),
+            }
+            if let (x, y, z) = (a, x, c) {
+                println!("{} {} {}", x, y, z)
+            }
+        }
+
+        {
+            match (a, b, c) {
+                //~^ match_single_binding
+                (x, y, z) => println!("{} {} {}", x, y, z),
+            }
+            let fn_ = |y| {
+                println!("{} {} {}", a, b, y);
+            };
+            fn_(c);
+        }
+    }
+}

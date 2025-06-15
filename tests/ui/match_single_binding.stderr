@@ -411,5 +411,99 @@ LL ~             let _n = 1;
 LL +             42
    |
 
-error: aborting due to 29 previous errors
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding.rs:274:9
+   |
+LL | /         match (a, b, c) {
+LL | |
+LL | |             (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |         }
+   | |_________^
+   |
+help: consider using a `let` statement
+   |
+LL ~         {
+LL +             let (x, y, z) = (a, b, c);
+LL +             println!("{} {} {}", x, y, z);
+LL +         }
+   |
+
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding.rs:282:9
+   |
+LL | /         match (a, b, c) {
+LL | |
+LL | |             (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |         }
+   | |_________^
+   |
+help: consider using a `let` statement
+   |
+LL ~         let (x, y, z) = (a, b, c);
+LL +         println!("{} {} {}", x, y, z)
+   |
+
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding.rs:290:9
+   |
+LL | /         match (a, b, c) {
+LL | |
+LL | |             (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |         }
+   | |_________^
+   |
+help: consider using a `let` statement
+   |
+LL ~         let (x, y, z) = (a, b, c);
+LL +         println!("{} {} {}", x, y, z);
+   |
+
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding.rs:300:9
+   |
+LL | /         match (a, b, c) {
+LL | |
+LL | |             (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |         }
+   | |_________^
+   |
+help: consider using a `let` statement
+   |
+LL ~         let (x, y, z) = (a, b, c);
+LL +         println!("{} {} {}", x, y, z);
+   |
+
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding.rs:310:13
+   |
+LL | /             match (a, b, c) {
+LL | |
+LL | |                 (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |             }
+   | |_____________^
+   |
+help: consider using a `let` statement
+   |
+LL ~             {
+LL +                 let (x, y, z) = (a, b, c);
+LL +                 println!("{} {} {}", x, y, z);
+LL +             }
+   |
+
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding.rs:320:13
+   |
+LL | /             match (a, b, c) {
+LL | |
+LL | |                 (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |             }
+   | |_____________^
+   |
+help: consider using a `let` statement
+   |
+LL ~             let (x, y, z) = (a, b, c);
+LL +             println!("{} {} {}", x, y, z);
+   |
+
+error: aborting due to 35 previous errors
 

@@ -1,11 +1,18 @@
+use std::ops::ControlFlow;
+
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::HirNode;
-use clippy_utils::source::{indent_of, snippet, snippet_block_with_context, snippet_with_context};
+use clippy_utils::source::{
+    RelativeIndent, indent_of, reindent_multiline_relative, snippet, snippet_block_with_context, snippet_with_context,
+};
 use clippy_utils::{is_refutable, peel_blocks};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, Expr, ExprKind, Node, PatKind, StmtKind};
+use rustc_hir::def::Res;
+use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_path, walk_stmt};
+use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, Node, PatKind, Path, Stmt, StmtKind};
 use rustc_lint::LateContext;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use super::MATCH_SINGLE_BINDING;
 
@@ -50,10 +57,11 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         cx,
                         (ex, expr),
                         (bind_names, matched_vars),
-                        &snippet_body,
+                        snippet_body,
                         &mut app,
                         Some(span),
                         true,
+                        is_var_binding_used_later(cx, expr, &arms[0]),
                     );
 
                     span_lint_and_sugg(
@@ -83,10 +91,11 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         cx,
                         (ex, expr),
                         (bind_names, matched_vars),
-                        &snippet_body,
+                        snippet_body,
                         &mut app,
                         None,
                         true,
+                        is_var_binding_used_later(cx, expr, &arms[0]),
                     );
                     (expr.span, sugg)
                 },
@@ -108,10 +117,11 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                     cx,
                     (ex, expr),
                     (bind_names, matched_vars),
-                    &snippet_body,
+                    snippet_body,
                     &mut app,
                     None,
                     false,
+                    true,
                 );
 
                 span_lint_and_sugg(
@@ -139,6 +149,125 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
     }
 }
 
+struct VarBindingVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    identifiers: FxHashSet<Symbol>,
+}
+
+impl<'tcx> Visitor<'tcx> for VarBindingVisitor<'_, 'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn visit_path(&mut self, path: &Path<'tcx>, _: HirId) -> Self::Result {
+        if let Res::Local(_) = path.res
+            && let [segment] = path.segments
+            && self.identifiers.contains(&segment.ident.name)
+        {
+            return ControlFlow::Break(());
+        }
+
+        walk_path(self, path)
+    }
+
+    fn visit_block(&mut self, block: &'tcx Block<'tcx>) -> Self::Result {
+        let before = self.identifiers.clone();
+        walk_block(self, block)?;
+        self.identifiers = before;
+        ControlFlow::Continue(())
+    }
+
+    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'tcx>) -> Self::Result {
+        if let StmtKind::Let(let_stmt) = stmt.kind {
+            if let Some(init) = let_stmt.init {
+                self.visit_expr(init)?;
+            }
+
+            let_stmt.pat.each_binding(|_, _, _, ident| {
+                self.identifiers.remove(&ident.name);
+            });
+        }
+        walk_stmt(self, stmt)
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> Self::Result {
+        match expr.kind {
+            ExprKind::If(
+                Expr {
+                    kind: ExprKind::Let(let_expr),
+                    ..
+                },
+                then,
+                else_,
+            ) => {
+                self.visit_expr(let_expr.init)?;
+                let before = self.identifiers.clone();
+                let_expr.pat.each_binding(|_, _, _, ident| {
+                    self.identifiers.remove(&ident.name);
+                });
+
+                self.visit_expr(then)?;
+                self.identifiers = before;
+                if let Some(else_) = else_ {
+                    self.visit_expr(else_)?;
+                }
+                ControlFlow::Continue(())
+            },
+            ExprKind::Closure(closure) => {
+                let body = self.cx.tcx.hir_body(closure.body);
+                let before = self.identifiers.clone();
+                for param in body.params {
+                    param.pat.each_binding(|_, _, _, ident| {
+                        self.identifiers.remove(&ident.name);
+                    });
+                }
+                self.visit_expr(body.value)?;
+                self.identifiers = before;
+                ControlFlow::Continue(())
+            },
+            ExprKind::Match(expr, arms, _) => {
+                self.visit_expr(expr)?;
+                for arm in arms {
+                    let before = self.identifiers.clone();
+                    arm.pat.each_binding(|_, _, _, ident| {
+                        self.identifiers.remove(&ident.name);
+                    });
+                    if let Some(guard) = arm.guard {
+                        self.visit_expr(guard)?;
+                    }
+                    self.visit_expr(arm.body)?;
+                    self.identifiers = before;
+                }
+                ControlFlow::Continue(())
+            },
+            _ => walk_expr(self, expr),
+        }
+    }
+}
+
+fn is_var_binding_used_later(cx: &LateContext<'_>, expr: &Expr<'_>, arm: &Arm<'_>) -> bool {
+    let Node::Stmt(stmt) = cx.tcx.parent_hir_node(expr.hir_id) else {
+        return false;
+    };
+    let Node::Block(block) = cx.tcx.parent_hir_node(stmt.hir_id) else {
+        return false;
+    };
+
+    let mut identifiers = FxHashSet::default();
+    arm.pat.each_binding(|_, _, _, ident| {
+        identifiers.insert(ident.name);
+    });
+
+    let mut visitor = VarBindingVisitor { cx, identifiers };
+    block
+        .stmts
+        .iter()
+        .skip_while(|s| s.hir_id != stmt.hir_id)
+        .skip(1)
+        .any(|stmt| matches!(visitor.visit_stmt(stmt), ControlFlow::Break(())))
+        || block
+            .expr
+            .is_some_and(|expr| matches!(visitor.visit_expr(expr), ControlFlow::Break(())))
+}
+
 /// Returns true if the `ex` match expression is in a local (`let`) or assign expression
 fn opt_parent_assign_span<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<AssignmentExpr> {
     if let Node::Expr(parent_arm_expr) = cx.tcx.parent_hir_node(ex.hir_id) {
@@ -161,47 +290,58 @@ fn opt_parent_assign_span<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<Ass
     None
 }
 
-fn expr_parent_requires_curlies<'a>(cx: &LateContext<'a>, match_expr: &Expr<'a>) -> bool {
+fn expr_in_nested_block(cx: &LateContext<'_>, match_expr: &Expr<'_>) -> bool {
+    if let Node::Block(block) = cx.tcx.parent_hir_node(match_expr.hir_id) {
+        return block
+            .expr
+            .map_or_else(|| matches!(block.stmts, [_]), |_| block.stmts.is_empty());
+    }
+    false
+}
+
+fn expr_must_have_curlies(cx: &LateContext<'_>, match_expr: &Expr<'_>) -> bool {
     let parent = cx.tcx.parent_hir_node(match_expr.hir_id);
-    matches!(
-        parent,
-        Node::Expr(Expr {
-            kind: ExprKind::Closure { .. },
-            ..
-        }) | Node::AnonConst(..)
+    if let Node::Expr(Expr {
+        kind: ExprKind::Closure { .. },
+        ..
+    })
+    | Node::AnonConst(..) = parent
+    {
+        return true;
+    }
+
+    if let Node::Arm(arm) = &cx.tcx.parent_hir_node(match_expr.hir_id)
+        && let ExprKind::Match(..) = arm.body.kind
+    {
+        return true;
+    }
+
+    false
+}
+
+fn reindent_snippet_if_in_block(snippet_body: &str, has_assignment: bool) -> String {
+    if has_assignment || !snippet_body.starts_with('{') {
+        return reindent_multiline_relative(snippet_body, true, RelativeIndent::Add(0));
+    }
+
+    reindent_multiline_relative(
+        snippet_body.trim_start_matches('{').trim_end_matches('}').trim(),
+        false,
+        RelativeIndent::Sub(4),
     )
 }
 
+#[expect(clippy::too_many_arguments)]
 fn sugg_with_curlies<'a>(
     cx: &LateContext<'a>,
     (ex, match_expr): (&Expr<'a>, &Expr<'a>),
     (bind_names, matched_vars): (Span, Span),
-    snippet_body: &str,
+    mut snippet_body: String,
     applicability: &mut Applicability,
     assignment: Option<Span>,
     needs_var_binding: bool,
+    is_var_binding_used_later: bool,
 ) -> String {
-    let mut indent = " ".repeat(indent_of(cx, ex.span).unwrap_or(0));
-
-    let (mut cbrace_start, mut cbrace_end) = (String::new(), String::new());
-    if expr_parent_requires_curlies(cx, match_expr) {
-        cbrace_end = format!("\n{indent}}}");
-        // Fix body indent due to the closure
-        indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
-        cbrace_start = format!("{{\n{indent}");
-    }
-
-    // If the parent is already an arm, and the body is another match statement,
-    // we need curly braces around suggestion
-    if let Node::Arm(arm) = &cx.tcx.parent_hir_node(match_expr.hir_id)
-        && let ExprKind::Match(..) = arm.body.kind
-    {
-        cbrace_end = format!("\n{indent}}}");
-        // Fix body indent due to the match
-        indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
-        cbrace_start = format!("{{\n{indent}");
-    }
-
     let assignment_str = assignment.map_or_else(String::new, |span| {
         let mut s = snippet(cx, span, "..").to_string();
         s.push_str(" = ");
@@ -220,6 +360,18 @@ fn sugg_with_curlies<'a>(
             .0
             .to_string()
     };
+
+    let mut indent = " ".repeat(indent_of(cx, ex.span).unwrap_or(0));
+    let (mut cbrace_start, mut cbrace_end) = (String::new(), String::new());
+    if !expr_in_nested_block(cx, match_expr)
+        && ((needs_var_binding && is_var_binding_used_later) || expr_must_have_curlies(cx, match_expr))
+    {
+        cbrace_end = format!("\n{indent}}}");
+        // Fix body indent due to the closure
+        indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
+        cbrace_start = format!("{{\n{indent}");
+        snippet_body = reindent_snippet_if_in_block(&snippet_body, !assignment_str.is_empty());
+    }
 
     format!("{cbrace_start}{scrutinee};\n{indent}{assignment_str}{snippet_body}{cbrace_end}")
 }

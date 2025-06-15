@@ -18,7 +18,7 @@ use rustc_span::{
 };
 use std::borrow::Cow;
 use std::fmt;
-use std::ops::{Deref, Index, Range};
+use std::ops::{Add, Deref, Index, Range};
 
 pub trait HasSession {
     fn sess(&self) -> &Session;
@@ -474,6 +474,38 @@ pub fn position_before_rarrow(s: &str) -> Option<usize> {
         }
         rpos
     })
+}
+
+pub enum RelativeIndent {
+    Add(usize),
+    Sub(usize),
+}
+
+impl Add<RelativeIndent> for usize {
+    type Output = usize;
+
+    fn add(self, rhs: RelativeIndent) -> Self::Output {
+        match rhs {
+            RelativeIndent::Add(n) => self + n,
+            RelativeIndent::Sub(n) => self.saturating_sub(n),
+        }
+    }
+}
+
+/// Reindents a multiline string with possibility of ignoring the first line and relative
+/// indentation.
+pub fn reindent_multiline_relative(s: &str, ignore_first: bool, relative_indent: RelativeIndent) -> String {
+    fn indent_of_string(s: &str) -> usize {
+        s.find(|c: char| !c.is_whitespace()).unwrap_or(0)
+    }
+
+    let mut indent = 0;
+    if let Some(line) = s.lines().nth(usize::from(ignore_first)) {
+        let line_indent = indent_of_string(line);
+        indent = line_indent + relative_indent;
+    }
+
+    reindent_multiline(s, ignore_first, Some(indent))
 }
 
 /// Reindent a multiline string with possibility of ignoring the first line.
