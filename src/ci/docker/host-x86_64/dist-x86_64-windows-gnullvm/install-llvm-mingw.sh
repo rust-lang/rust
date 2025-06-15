@@ -2,7 +2,7 @@
 
 set -ex
 
-release_date=20250528
+release_date=20250613
 archive=llvm-mingw-${release_date}-ucrt-ubuntu-22.04-x86_64.tar.xz
 curl -L https://github.com/mstorsjo/llvm-mingw/releases/download/${release_date}/${archive} | \
 tar --extract --xz --strip 1 --directory /usr/local
