@@ -6,8 +6,8 @@ use crate::{CodegenBackend, SysrootKind, build_sysroot};
 static ABI_CAFE_REPO: GitRepo = GitRepo::github(
     "Gankra",
     "abi-cafe",
-    "f1220cfd13b57f5c0082c26529163865ee25e115",
-    "fe93a9acd461425d",
+    "49efdca14e9d48c34e50552d1f620615a87637bb",
+    "21fed1b4ca4cd439",
     "abi-cafe",
 );
 
