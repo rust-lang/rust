@@ -3,6 +3,7 @@
 use std::ffi::OsStr;
 
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId, ModDefId};
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
@@ -258,6 +259,14 @@ impl Key for (LocalDefId, DefId) {
 }
 
 impl Key for (LocalDefId, LocalDefId) {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
+    }
+}
+
+impl Key for (LocalDefId, DefPathData, u32) {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
