@@ -1,0 +1,24 @@
+From 236df390f3bc4ed69c26f4d51d584bea246da886 Mon Sep 17 00:00:00 2001
+From: bjorn3 <17426603+bjorn3@users.noreply.github.com>
+Date: Tue, 9 Jul 2024 11:25:14 +0000
+Subject: [PATCH] Enable debuginfo
+
+---
+ src/toolchains/rust.rs | 1 +
+ 1 file changed, 1 insertions(+)
+
+diff --git a/src/toolchains/rust.rs b/src/toolchains/rust.rs
+index 0c50f7a..bfde2b1 100644
+--- a/src/toolchains/rust.rs
++++ b/src/toolchains/rust.rs
+@@ -83,6 +83,7 @@ impl Toolchain for RustcToolchain {
+             .arg(out_dir)
+             .arg("--target")
+             .arg(&self.platform_info.target)
++            .arg("-g")
+             .arg(format!("-Cmetadata={lib_name}"))
+             .arg(src_path);
+         if let Some(codegen_backend) = &self.codegen_backend {
+-- 
+2.34.1
+

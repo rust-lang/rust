@@ -46,6 +46,8 @@ pub(crate) fn run(
     let mut cmd = ABI_CAFE.run(bootstrap_host_compiler, dirs);
     cmd.arg("--");
 
+    cmd.arg("--rules").arg(dirs.source_dir.join("scripts/abi-cafe-rules.toml"));
+
     // stdcall, vectorcall and such don't work yet
     cmd.arg("--conventions").arg("c").arg("--conventions").arg("rust");
 
