@@ -57,7 +57,7 @@ function run_icount_benchmarks() {
         # Disregard regressions after merge
         echo "Benchmarks completed with regressions; ignoring (not in a PR)"
     else
-        ./ci/ci-util.py handle-banch-regressions "$PR_NUMBER"
+        ./ci/ci-util.py handle-bench-regressions "$PR_NUMBER"
     fi
 }
 

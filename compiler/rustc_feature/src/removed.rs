@@ -263,6 +263,8 @@ declare_features! (
     /// Allows unnamed fields of struct and union type
     (removed, unnamed_fields, "1.83.0", Some(49804), Some("feature needs redesign"), 131045),
     (removed, unsafe_no_drop_flag, "1.0.0", None, None),
+    /// Allows unsized rvalues at arguments and parameters.
+    (removed, unsized_locals, "CURRENT_RUSTC_VERSION", Some(48055), Some("removed due to implementation concerns; see https://github.com/rust-lang/rust/issues/111942")),
     (removed, unsized_tuple_coercion, "1.87.0", Some(42877),
      Some("The feature restricts possible layouts for tuples, and this restriction is not worth it."), 137728),
     /// Allows `union` fields that don't implement `Copy` as long as they don't have any drop glue.

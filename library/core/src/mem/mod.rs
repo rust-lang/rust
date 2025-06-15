@@ -149,8 +149,32 @@ pub const fn forget<T>(t: T) {
 
 /// Like [`forget`], but also accepts unsized values.
 ///
-/// This function is just a shim intended to be removed when the `unsized_locals` feature gets
-/// stabilized.
+/// While Rust does not permit unsized locals since its removal in [#111942] it is
+/// still possible to call functions with unsized values from a function argument
+/// or in-place construction.
+///
+/// ```rust
+/// #![feature(unsized_fn_params, forget_unsized)]
+/// #![allow(internal_features)]
+///
+/// use std::mem::forget_unsized;
+///
+/// pub fn in_place() {
+///     forget_unsized(*Box::<str>::from("str"));
+/// }
+///
+/// pub fn param(x: str) {
+///     forget_unsized(x);
+/// }
+/// ```
+///
+/// This works because the compiler will alter these functions to pass the parameter
+/// by reference instead. This trick is necessary to support `Box<dyn FnOnce()>: FnOnce()`.
+/// See [#68304] and [#71170] for more information.
+///
+/// [#111942]: https://github.com/rust-lang/rust/issues/111942
+/// [#68304]: https://github.com/rust-lang/rust/issues/68304
+/// [#71170]: https://github.com/rust-lang/rust/pull/71170
 #[inline]
 #[unstable(feature = "forget_unsized", issue = "none")]
 pub fn forget_unsized<T: ?Sized>(t: T) {
