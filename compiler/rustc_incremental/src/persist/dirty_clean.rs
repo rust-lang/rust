@@ -19,12 +19,14 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::{self as ast, MetaItemInner};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
-    Attribute, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind, intravisit,
+    AttrItem, Attribute, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind,
+    intravisit,
 };
 use rustc_middle::dep_graph::{DepNode, DepNodeExt, label_strs};
 use rustc_middle::hir::nested_filter;
@@ -182,7 +184,7 @@ struct DirtyCleanVisitor<'tcx> {
 
 impl<'tcx> DirtyCleanVisitor<'tcx> {
     /// Possibly "deserialize" the attribute into a clean/dirty assertion
-    fn assertion_maybe(&mut self, item_id: LocalDefId, attr: &Attribute) -> Option<Assertion> {
+    fn assertion_maybe(&mut self, item_id: LocalDefId, attr: &AttrItem) -> Option<Assertion> {
         assert!(attr.has_name(sym::rustc_clean));
         if !check_config(self.tcx, attr) {
             // skip: not the correct `cfg=`
@@ -193,7 +195,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
     }
 
     /// Gets the "auto" assertion on pre-validated attr, along with the `except` labels.
-    fn assertion_auto(&mut self, item_id: LocalDefId, attr: &Attribute) -> Assertion {
+    fn assertion_auto(&mut self, item_id: LocalDefId, attr: &AttrItem) -> Assertion {
         let (name, mut auto) = self.auto_labels(item_id, attr);
         let except = self.except(attr);
         let loaded_from_disk = self.loaded_from_disk(attr);
@@ -206,7 +208,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
     }
 
     /// `loaded_from_disk=` attribute value
-    fn loaded_from_disk(&self, attr: &Attribute) -> Labels {
+    fn loaded_from_disk(&self, attr: &AttrItem) -> Labels {
         for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
             if item.has_name(LOADED_FROM_DISK) {
                 let value = expect_associated_value(self.tcx, &item);
@@ -218,7 +220,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
     }
 
     /// `except=` attribute value
-    fn except(&self, attr: &Attribute) -> Labels {
+    fn except(&self, attr: &AttrItem) -> Labels {
         for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
             if item.has_name(EXCEPT) {
                 let value = expect_associated_value(self.tcx, &item);
@@ -231,7 +233,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
 
     /// Return all DepNode labels that should be asserted for this item.
     /// index=0 is the "name" used for error messages
-    fn auto_labels(&mut self, item_id: LocalDefId, attr: &Attribute) -> (&'static str, Labels) {
+    fn auto_labels(&mut self, item_id: LocalDefId, attr: &AttrItem) -> (&'static str, Labels) {
         let node = self.tcx.hir_node_by_def_id(item_id);
         let (name, labels) = match node {
             HirNode::Item(item) => {
@@ -394,7 +396,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
 
 /// Given a `#[rustc_clean]` attribute, scan for a `cfg="foo"` attribute and check whether we have
 /// a cfg flag called `foo`.
-fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
+fn check_config(tcx: TyCtxt<'_>, attr: &AttrItem) -> bool {
     debug!("check_config(attr={:?})", attr);
     let config = &tcx.sess.psess.config;
     debug!("check_config: config={:?}", config);
@@ -430,11 +432,11 @@ fn expect_associated_value(tcx: TyCtxt<'_>, item: &MetaItemInner) -> Symbol {
 /// nodes.
 struct FindAllAttrs<'tcx> {
     tcx: TyCtxt<'tcx>,
-    found_attrs: Vec<&'tcx Attribute>,
+    found_attrs: Vec<&'tcx AttrItem>,
 }
 
 impl<'tcx> FindAllAttrs<'tcx> {
-    fn is_active_attr(&mut self, attr: &Attribute) -> bool {
+    fn is_active_attr(&mut self, attr: &AttrItem) -> bool {
         if attr.has_name(sym::rustc_clean) && check_config(self.tcx, attr) {
             return true;
         }
@@ -460,8 +462,9 @@ impl<'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {
-        if self.is_active_attr(attr) {
-            self.found_attrs.push(attr);
+        match attr {
+            Attribute::Unparsed(attr) if self.is_active_attr(attr) => self.found_attrs.push(attr),
+            _ => {}
         }
     }
 }

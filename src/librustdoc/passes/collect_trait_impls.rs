@@ -66,9 +66,11 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
             let mut parent = Some(tcx.parent(impl_def_id));
             while let Some(did) = parent {
                 attr_buf.extend(
-                    tcx.get_attrs(did, sym::doc)
+                    tcx.get_all_attrs(did)
                         .filter(|attr| {
-                            if let Some([attr]) = attr.meta_item_list().as_deref() {
+                            if !attr.has_name(sym::doc) {
+                                false
+                            } else if let Some([attr]) = attr.meta_item_list().as_deref() {
                                 attr.has_name(sym::cfg)
                             } else {
                                 false

@@ -1,4 +1,4 @@
-use rustc_hir::Attribute;
+use rustc_hir::AttrItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
@@ -49,7 +49,7 @@ fn unwrap_fn_abi<'tcx>(
     }
 }
 
-fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
+fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &AttrItem) {
     let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
     let args = GenericArgs::identity_for_item(tcx, item_def_id);
     let instance = match Instance::try_resolve(tcx, typing_env, item_def_id.into(), args) {
@@ -109,7 +109,7 @@ fn test_abi_eq<'tcx>(abi1: &'tcx FnAbi<'tcx, Ty<'tcx>>, abi2: &'tcx FnAbi<'tcx, 
         && abi1.args.iter().zip(abi2.args.iter()).all(|(arg1, arg2)| arg1.eq_abi(arg2))
 }
 
-fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
+fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &AttrItem) {
     let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
     let span = tcx.def_span(item_def_id);

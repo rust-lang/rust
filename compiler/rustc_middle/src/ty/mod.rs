@@ -1795,9 +1795,14 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn get_attrs(
         self,
         did: impl Into<DefId>,
-        attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        self.get_all_attrs(did).filter(move |a: &&hir::Attribute| a.has_name(attr))
+        name: Symbol,
+    ) -> impl Iterator<Item = &'tcx hir::AttrItem> {
+        self.get_all_attrs(did).filter_map(move |a| match a {
+            hir::Attribute::Unparsed(attr_item) if attr_item.path.has_name(name) => {
+                Some(&**attr_item)
+            }
+            _ => None,
+        })
     }
 
     /// Gets all attributes.
@@ -1827,7 +1832,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: impl Into<DefId>,
         attr: Symbol,
-    ) -> Option<&'tcx hir::Attribute> {
+    ) -> Option<&'tcx hir::AttrItem> {
         let did: DefId = did.into();
         if did.as_local().is_some() {
             // it's a crate local item, we need to check feature flags
@@ -1840,9 +1845,12 @@ impl<'tcx> TyCtxt<'tcx> {
             // we filter out unstable diagnostic attributes before
             // encoding attributes
             debug_assert!(rustc_feature::encode_cross_crate(attr));
-            self.attrs_for_def(did)
-                .iter()
-                .find(|a| matches!(a.path().as_ref(), [sym::diagnostic, a] if *a == attr))
+            self.attrs_for_def(did).iter().find_map(|a| match a {
+                hir::Attribute::Unparsed(ai) if  matches!(ai.path().as_ref(), [sym::diagnostic, a] if *a == attr) => {
+                    Some(&**ai)
+                }
+                _ => None
+            })
         }
     }
 
@@ -1850,16 +1858,23 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: DefId,
         attr: &[Symbol],
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        let filter_fn = move |a: &&hir::Attribute| a.path_matches(attr);
+    ) -> impl Iterator<Item = &'tcx hir::AttrItem> {
+        let filter_fn = move |a: &'tcx hir::Attribute| -> Option<&'tcx hir::AttrItem> {
+            match a {
+                hir::Attribute::Unparsed(attr_item) if attr_item.path_matches(attr) => {
+                    Some(&**attr_item)
+                }
+                _ => None,
+            }
+        };
         if let Some(did) = did.as_local() {
-            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter().filter_map(filter_fn)
         } else {
-            self.attrs_for_def(did).iter().filter(filter_fn)
+            self.attrs_for_def(did).iter().filter_map(filter_fn)
         }
     }
 
-    pub fn get_attr(self, did: impl Into<DefId>, attr: Symbol) -> Option<&'tcx hir::Attribute> {
+    pub fn get_attr(self, did: impl Into<DefId>, attr: Symbol) -> Option<&'tcx hir::AttrItem> {
         if cfg!(debug_assertions) && !rustc_feature::is_valid_for_get_attr(attr) {
             let did: DefId = did.into();
             bug!("get_attr: unexpected called with DefId `{:?}`, attr `{:?}`", did, attr);

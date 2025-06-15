@@ -579,7 +579,7 @@ pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
 }
 
 pub(crate) fn attrs_have_doc_flag<'a>(
-    mut attrs: impl Iterator<Item = &'a hir::Attribute>,
+    mut attrs: impl Iterator<Item = &'a hir::AttrItem>,
     flag: Symbol,
 ) -> bool {
     attrs.any(|attr| attr.meta_item_list().is_some_and(|l| ast::attr::list_contains_name(&l, flag)))

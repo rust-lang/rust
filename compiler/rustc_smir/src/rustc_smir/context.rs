@@ -275,15 +275,11 @@ impl<'tcx> SmirCtxt<'tcx> {
         let attr_name: Vec<_> = attr.iter().map(|seg| rustc_span::Symbol::intern(&seg)).collect();
         tcx.get_attrs_by_path(did, &attr_name)
             .filter_map(|attribute| {
-                if let Attribute::Unparsed(u) = attribute {
-                    let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
-                    Some(stable_mir::crate_def::Attribute::new(
-                        attr_str,
-                        u.span.stable(&mut *tables),
-                    ))
-                } else {
-                    None
-                }
+                let attr_str = rustc_hir_pretty::attr_item_to_string(&tcx, attribute);
+                Some(stable_mir::crate_def::Attribute::new(
+                    attr_str,
+                    attribute.span.stable(&mut *tables),
+                ))
             })
             .collect()
     }

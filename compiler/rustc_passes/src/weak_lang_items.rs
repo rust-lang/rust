@@ -45,7 +45,7 @@ struct WeakLangItemVisitor<'a, 'tcx> {
 
 impl<'ast> visit::Visitor<'ast> for WeakLangItemVisitor<'_, '_> {
     fn visit_foreign_item(&mut self, i: &'ast ast::ForeignItem) {
-        if let Some((lang_item, _)) = lang_items::extract(&i.attrs) {
+        if let Some((lang_item, _)) = lang_items::extract(i.attrs.as_slice()) {
             if let Some(item) = LangItem::from_name(lang_item)
                 && item.is_weak()
             {

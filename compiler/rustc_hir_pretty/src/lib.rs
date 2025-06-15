@@ -101,32 +101,36 @@ impl<'a> State<'a> {
         }
 
         for attr in attrs {
-            self.print_attribute_inline(attr, style);
+            match &attr {
+                hir::Attribute::Unparsed(attr) => self.print_attr_item_inline(&**attr, style),
+                hir::Attribute::Parsed(attr) => self.print_parsed_attribute_inline(attr, style),
+            }
         }
         self.hardbreak_if_not_bol();
     }
 
-    fn print_attribute_inline(&mut self, attr: &hir::Attribute, style: AttrStyle) {
-        match &attr {
-            hir::Attribute::Unparsed(unparsed) => {
-                self.maybe_print_comment(unparsed.span.lo());
-                match style {
-                    ast::AttrStyle::Inner => self.word("#!["),
-                    ast::AttrStyle::Outer => self.word("#["),
-                }
-                self.print_attr_item(&unparsed, unparsed.span);
-                self.word("]");
-                self.hardbreak()
-            }
-            hir::Attribute::Parsed(AttributeKind::DocComment { style, kind, comment, .. }) => {
+    fn print_attr_item_inline(&mut self, unparsed: &hir::AttrItem, style: AttrStyle) {
+        self.maybe_print_comment(unparsed.span.lo());
+        match style {
+            ast::AttrStyle::Inner => self.word("#!["),
+            ast::AttrStyle::Outer => self.word("#["),
+        }
+        self.print_attr_item(&unparsed, unparsed.span);
+        self.word("]");
+        self.hardbreak()
+    }
+
+    fn print_parsed_attribute_inline(&mut self, attr: &AttributeKind, _style: AttrStyle) {
+        match attr {
+            AttributeKind::DocComment { style, kind, comment, .. } => {
                 self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
                     *kind, *style, *comment,
                 ));
                 self.hardbreak()
             }
-            hir::Attribute::Parsed(pa) => {
+            _ => {
                 self.word("#[attr = ");
-                pa.print_attribute(self);
+                attr.print_attribute(self);
                 self.word("]");
                 self.hardbreak()
             }
@@ -298,8 +302,18 @@ where
     printer.s.eof()
 }
 
+pub fn parsed_attribute_to_string(ann: &dyn PpAnn, attr: &AttributeKind) -> String {
+    to_string(ann, |s| s.print_parsed_attribute_inline(attr, AttrStyle::Outer))
+}
+pub fn attr_item_to_string(ann: &dyn PpAnn, attr: &hir::AttrItem) -> String {
+    to_string(ann, |s| s.print_attr_item_inline(attr, AttrStyle::Outer))
+}
+
 pub fn attribute_to_string(ann: &dyn PpAnn, attr: &hir::Attribute) -> String {
-    to_string(ann, |s| s.print_attribute_inline(attr, AttrStyle::Outer))
+    match attr {
+        hir::Attribute::Parsed(attr) => parsed_attribute_to_string(ann, attr),
+        hir::Attribute::Unparsed(attr) => attr_item_to_string(ann, attr),
+    }
 }
 
 pub fn ty_to_string(ann: &dyn PpAnn, ty: &hir::Ty<'_>) -> String {

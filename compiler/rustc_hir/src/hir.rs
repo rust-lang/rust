@@ -1164,6 +1164,22 @@ impl AttrPath {
             span: path.span,
         }
     }
+
+    /// For a single-segment attribute (i.e., `#[attr]` and not `#[path::atrr]`),
+    /// return the name of the attribute; otherwise, returns `None`.
+    pub fn name(&self) -> Option<Symbol> {
+        self.ident().map(|ident| ident.name)
+    }
+
+    /// For a single-segment attribute, returns its ident; otherwise, returns `None`.
+    pub fn ident(&self) -> Option<Ident> {
+        if let [ident] = self.segments.as_ref() { Some(*ident) } else { None }
+    }
+
+    #[inline]
+    pub fn has_name(&self, name: Symbol) -> bool {
+        self.name() == Some(name)
+    }
 }
 
 impl fmt::Display for AttrPath {
@@ -1206,27 +1222,48 @@ pub enum Attribute {
     Unparsed(Box<AttrItem>),
 }
 
+pub fn find_attr_items_by_name(
+    attrs: &[Attribute],
+    name: Symbol,
+) -> impl Iterator<Item = &AttrItem> {
+    attrs.iter().filter_map(move |attr| match attr {
+        Attribute::Unparsed(attr_item) if attr_item.has_name(name) => Some(&**attr_item),
+        _ => None,
+    })
+}
+
 impl Attribute {
-    pub fn get_normal_item(&self) -> &AttrItem {
+    pub fn attr_item(self) -> Option<AttrItem> {
+        match self {
+            Attribute::Parsed(_) => None,
+            Attribute::Unparsed(attr_item) => Some(*attr_item),
+        }
+    }
+    pub fn attr_item_ref(&self) -> Option<&AttrItem> {
+        match self {
+            Attribute::Parsed(_) => None,
+            Attribute::Unparsed(attr_item) => Some(attr_item),
+        }
+    }
+
+    pub fn unwrap_attr_item_ref(&self) -> &AttrItem {
         match &self {
             Attribute::Unparsed(normal) => &normal,
             _ => panic!("unexpected parsed attribute"),
         }
     }
 
-    pub fn unwrap_normal_item(self) -> AttrItem {
+    pub fn unwrap_attr_item(self) -> AttrItem {
         match self {
             Attribute::Unparsed(normal) => *normal,
             _ => panic!("unexpected parsed attribute"),
         }
     }
-
+}
+impl AttrItem {
     pub fn value_lit(&self) -> Option<&MetaItemLit> {
         match &self {
-            Attribute::Unparsed(n) => match n.as_ref() {
-                AttrItem { args: AttrArgs::Eq { eq_span: _, expr }, .. } => Some(expr),
-                _ => None,
-            },
+            AttrItem { args: AttrArgs::Eq { eq_span: _, expr }, .. } => Some(expr),
             _ => None,
         }
     }
@@ -1256,12 +1293,18 @@ impl AttributeExt for Attribute {
 
     #[inline]
     fn value_str(&self) -> Option<Symbol> {
-        self.value_lit().and_then(|x| x.value_str())
+        match self {
+            Attribute::Parsed(_) => None,
+            Attribute::Unparsed(attr_item) => attr_item.value_lit().and_then(|x| x.value_str()),
+        }
     }
 
     #[inline]
     fn value_span(&self) -> Option<Span> {
-        self.value_lit().map(|i| i.span)
+        match self {
+            Attribute::Parsed(_) => None,
+            Attribute::Unparsed(attr_item) => attr_item.value_lit().map(|i| i.span),
+        }
     }
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
@@ -1352,6 +1395,239 @@ impl AttributeExt for Attribute {
             Attribute::Parsed(AttributeKind::DocComment { style, .. }) => *style,
             _ => panic!(),
         }
+    }
+}
+
+impl AttributeExt for AttrItem {
+    #[inline]
+    fn id(&self) -> AttrId {
+        self.id.attr_id
+    }
+
+    #[inline]
+    fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
+        match &self {
+            AttrItem { args: AttrArgs::Delimited(d), .. } => {
+                ast::MetaItemKind::list_from_tokens(d.tokens.clone())
+            }
+            _ => None,
+        }
+    }
+
+    #[inline]
+    fn value_str(&self) -> Option<Symbol> {
+        self.value_lit().and_then(|x| x.value_str())
+    }
+
+    #[inline]
+    fn value_span(&self) -> Option<Span> {
+        self.value_lit().map(|i| i.span)
+    }
+
+    /// For a single-segment attribute, returns its name; otherwise, returns `None`.
+    #[inline]
+    fn ident(&self) -> Option<Ident> {
+        self.path.ident()
+    }
+
+    #[inline]
+    fn path_matches(&self, name: &[Symbol]) -> bool {
+        self.path.segments.len() == name.len()
+            && self.path.segments.iter().zip(name).all(|(s, n)| s.name == *n)
+    }
+
+    #[inline]
+    fn is_doc_comment(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    #[inline]
+    fn is_word(&self) -> bool {
+        matches!(self.args, AttrArgs::Empty)
+    }
+
+    #[inline]
+    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+        Some(self.path.segments.iter().copied().collect())
+    }
+
+    #[inline]
+    fn doc_str(&self) -> Option<Symbol> {
+        if self.has_name(sym::doc) { self.value_str() } else { None }
+    }
+    #[inline]
+    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+        if self.has_name(sym::doc) {
+            self.value_str().map(|s| (s, CommentKind::Line))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn style(&self) -> AttrStyle {
+        self.style
+    }
+}
+
+// FIXME(fn_delegation): use function delegation instead of manually forwarding
+impl AttributeExt for &'_ AttrItem {
+    #[inline]
+    fn id(&self) -> AttrId {
+        <AttrItem as AttributeExt>::id(self)
+    }
+
+    #[inline]
+    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
+        <AttrItem as AttributeExt>::meta_item_list(self)
+    }
+
+    #[inline]
+    fn value_str(&self) -> Option<Symbol> {
+        <AttrItem as AttributeExt>::value_str(self)
+    }
+
+    #[inline]
+    fn value_span(&self) -> Option<Span> {
+        <AttrItem as AttributeExt>::value_span(self)
+    }
+
+    #[inline]
+    fn ident(&self) -> Option<Ident> {
+        <AttrItem as AttributeExt>::ident(self)
+    }
+
+    #[inline]
+    fn path_matches(&self, name: &[Symbol]) -> bool {
+        <AttrItem as AttributeExt>::path_matches(self, name)
+    }
+
+    #[inline]
+    fn is_doc_comment(&self) -> bool {
+        <AttrItem as AttributeExt>::is_doc_comment(self)
+    }
+
+    #[inline]
+    fn span(&self) -> Span {
+        <AttrItem as AttributeExt>::span(self)
+    }
+
+    #[inline]
+    fn is_word(&self) -> bool {
+        <AttrItem as AttributeExt>::is_word(self)
+    }
+
+    #[inline]
+    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+        <AttrItem as AttributeExt>::ident_path(self)
+    }
+
+    #[inline]
+    fn doc_str(&self) -> Option<Symbol> {
+        <AttrItem as AttributeExt>::doc_str(self)
+    }
+
+    #[inline]
+    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+        <AttrItem as AttributeExt>::doc_str_and_comment_kind(self)
+    }
+
+    #[inline]
+    fn style(&self) -> AttrStyle {
+        <AttrItem as AttributeExt>::style(self)
+    }
+}
+
+// FIXME(fn_delegation): use function delegation instead of manually forwarding
+impl AttrItem {
+    #[inline]
+    pub fn id(&self) -> AttrId {
+        <AttrItem as AttributeExt>::id(self)
+    }
+
+    #[inline]
+    pub fn path(&self) -> SmallVec<[Symbol; 1]> {
+        <AttrItem as AttributeExt>::path(self)
+    }
+
+    #[inline]
+    pub fn name(&self) -> Option<Symbol> {
+        <AttrItem as AttributeExt>::name(self)
+    }
+
+    #[inline]
+    pub fn has_name(&self, name: Symbol) -> bool {
+        <AttrItem as AttributeExt>::has_name(self, name)
+    }
+
+    #[inline]
+    pub fn has_any_name(&self, names: &[Symbol]) -> bool {
+        <AttrItem as AttributeExt>::has_any_name(self, names)
+    }
+
+    #[inline]
+    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
+        <AttrItem as AttributeExt>::meta_item_list(self)
+    }
+
+    #[inline]
+    pub fn value_str(&self) -> Option<Symbol> {
+        <AttrItem as AttributeExt>::value_str(self)
+    }
+
+    #[inline]
+    pub fn value_span(&self) -> Option<Span> {
+        <AttrItem as AttributeExt>::value_span(self)
+    }
+
+    #[inline]
+    pub fn ident(&self) -> Option<Ident> {
+        <AttrItem as AttributeExt>::ident(self)
+    }
+
+    #[inline]
+    pub fn path_matches(&self, name: &[Symbol]) -> bool {
+        <AttrItem as AttributeExt>::path_matches(self, name)
+    }
+
+    #[inline]
+    pub fn is_doc_comment(&self) -> bool {
+        <AttrItem as AttributeExt>::is_doc_comment(self)
+    }
+
+    #[inline]
+    pub fn span(&self) -> Span {
+        <AttrItem as AttributeExt>::span(self)
+    }
+
+    #[inline]
+    pub fn is_word(&self) -> bool {
+        <AttrItem as AttributeExt>::is_word(self)
+    }
+
+    #[inline]
+    pub fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+        <AttrItem as AttributeExt>::ident_path(self)
+    }
+
+    #[inline]
+    pub fn doc_str(&self) -> Option<Symbol> {
+        <AttrItem as AttributeExt>::doc_str(self)
+    }
+
+    #[inline]
+    pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+        <AttrItem as AttributeExt>::doc_str_and_comment_kind(self)
+    }
+
+    #[inline]
+    pub fn style(&self) -> AttrStyle {
+        <AttrItem as AttributeExt>::style(self)
     }
 }
 
