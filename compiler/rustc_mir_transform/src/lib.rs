@@ -446,10 +446,6 @@ fn mir_promoted(
         pm::Optimizations::Allowed,
     );
 
-    // The returned MIR will be used for analyses. Make sure that the traversals are computed
-    // early, so we don't have to re-run them.
-    body.basic_blocks.cache_traversals();
-
     lint_tail_expr_drop_order::run_lint(tcx, def, &body);
 
     let promoted = promote_pass.promoted_fragments.into_inner();
