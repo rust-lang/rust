@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
@@ -15,7 +15,8 @@ use crate::mir::{BasicBlock, BasicBlockData, START_BLOCK, Terminator, Terminator
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BasicBlocks<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-    cache: Cache,
+    /// Use an `Arc` so we can share the cache when we clone the MIR body, as borrowck does.
+    cache: Arc<Cache>,
 }
 
 // Typically 95%+ of basic blocks have 4 or fewer predecessors.
@@ -49,15 +50,7 @@ struct Cache {
 impl<'tcx> BasicBlocks<'tcx> {
     #[inline]
     pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
-        BasicBlocks { basic_blocks, cache: Cache::default() }
-    }
-
-    /// Force caching of traversals.
-    pub fn cache_traversals(&self) {
-        let _ = self.predecessors();
-        let _ = self.switch_sources();
-        let _ = self.reverse_postorder();
-        let _ = self.dominators();
+        BasicBlocks { basic_blocks, cache: Arc::new(Cache::default()) }
     }
 
     #[inline]
@@ -151,7 +144,14 @@ impl<'tcx> BasicBlocks<'tcx> {
     /// All other methods that allow you to mutate the basic blocks also call this method
     /// themselves, thereby avoiding any risk of accidentally cache invalidation.
     pub fn invalidate_cfg_cache(&mut self) {
-        self.cache = Cache::default();
+        if let Some(cache) = Arc::get_mut(&mut self.cache) {
+            // If we only have a single reference to this cache, clear it.
+            *cache = Cache::default();
+        } else {
+            // If we have several references to this cache, overwrite the pointer itself so other
+            // users can continue to use their (valid) cache.
+            self.cache = Arc::new(Cache::default());
+        }
     }
 }
 
