@@ -1,6 +1,6 @@
 //! Argument passing
 
-use cranelift_codegen::ir::{ArgumentExtension, ArgumentPurpose};
+use cranelift_codegen::ir::ArgumentPurpose;
 use rustc_abi::{Reg, RegKind};
 use rustc_target::callconv::{
     ArgAbi, ArgAttributes, ArgExtension as RustcArgExtension, CastTarget, PassMode,
@@ -32,13 +32,12 @@ fn reg_to_abi_param(reg: Reg) -> AbiParam {
     AbiParam::new(clif_ty)
 }
 
-fn apply_arg_attrs_to_abi_param(mut param: AbiParam, arg_attrs: ArgAttributes) -> AbiParam {
+fn apply_attrs_to_abi_param(param: AbiParam, arg_attrs: ArgAttributes) -> AbiParam {
     match arg_attrs.arg_ext {
-        RustcArgExtension::None => {}
-        RustcArgExtension::Zext => param.extension = ArgumentExtension::Uext,
-        RustcArgExtension::Sext => param.extension = ArgumentExtension::Sext,
+        RustcArgExtension::None => param,
+        RustcArgExtension::Zext => param.uext(),
+        RustcArgExtension::Sext => param.sext(),
     }
-    param
 }
 
 fn cast_target_to_abi_params(cast: &CastTarget) -> SmallVec<[AbiParam; 2]> {
@@ -82,7 +81,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         match self.mode {
             PassMode::Ignore => smallvec![],
             PassMode::Direct(attrs) => match self.layout.backend_repr {
-                BackendRepr::Scalar(scalar) => smallvec![apply_arg_attrs_to_abi_param(
+                BackendRepr::Scalar(scalar) => smallvec![apply_attrs_to_abi_param(
                     AbiParam::new(scalar_to_clif_type(tcx, scalar)),
                     attrs
                 )],
@@ -97,8 +96,8 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                     let a = scalar_to_clif_type(tcx, a);
                     let b = scalar_to_clif_type(tcx, b);
                     smallvec![
-                        apply_arg_attrs_to_abi_param(AbiParam::new(a), attrs_a),
-                        apply_arg_attrs_to_abi_param(AbiParam::new(b), attrs_b),
+                        apply_attrs_to_abi_param(AbiParam::new(a), attrs_a),
+                        apply_attrs_to_abi_param(AbiParam::new(b), attrs_b),
                     ]
                 }
                 _ => unreachable!("{:?}", self.layout.backend_repr),
@@ -112,19 +111,19 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                     // Abi requires aligning struct size to pointer size
                     let size = self.layout.size.align_to(tcx.data_layout.pointer_align.abi);
                     let size = u32::try_from(size.bytes()).unwrap();
-                    smallvec![apply_arg_attrs_to_abi_param(
+                    smallvec![apply_attrs_to_abi_param(
                         AbiParam::special(pointer_ty(tcx), ArgumentPurpose::StructArgument(size),),
                         attrs
                     )]
                 } else {
-                    smallvec![apply_arg_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), attrs)]
+                    smallvec![apply_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), attrs)]
                 }
             }
             PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
                 assert!(!on_stack);
                 smallvec![
-                    apply_arg_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), attrs),
-                    apply_arg_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), meta_attrs),
+                    apply_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), attrs),
+                    apply_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), meta_attrs),
                 ]
             }
         }
@@ -133,30 +132,46 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     fn get_abi_return(&self, tcx: TyCtxt<'tcx>) -> (Option<AbiParam>, Vec<AbiParam>) {
         match self.mode {
             PassMode::Ignore => (None, vec![]),
-            PassMode::Direct(_) => match self.layout.backend_repr {
-                BackendRepr::Scalar(scalar) => {
-                    (None, vec![AbiParam::new(scalar_to_clif_type(tcx, scalar))])
-                }
+            PassMode::Direct(attrs) => match self.layout.backend_repr {
+                BackendRepr::Scalar(scalar) => (
+                    None,
+                    vec![apply_attrs_to_abi_param(
+                        AbiParam::new(scalar_to_clif_type(tcx, scalar)),
+                        attrs,
+                    )],
+                ),
                 BackendRepr::SimdVector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout);
-                    (None, vec![AbiParam::new(vector_ty)])
+                    (None, vec![apply_attrs_to_abi_param(AbiParam::new(vector_ty), attrs)])
                 }
                 _ => unreachable!("{:?}", self.layout.backend_repr),
             },
-            PassMode::Pair(_, _) => match self.layout.backend_repr {
+            PassMode::Pair(attrs_a, attrs_b) => match self.layout.backend_repr {
                 BackendRepr::ScalarPair(a, b) => {
                     let a = scalar_to_clif_type(tcx, a);
                     let b = scalar_to_clif_type(tcx, b);
-                    (None, vec![AbiParam::new(a), AbiParam::new(b)])
+                    (
+                        None,
+                        vec![
+                            apply_attrs_to_abi_param(AbiParam::new(a), attrs_a),
+                            apply_attrs_to_abi_param(AbiParam::new(b), attrs_b),
+                        ],
+                    )
                 }
                 _ => unreachable!("{:?}", self.layout.backend_repr),
             },
             PassMode::Cast { ref cast, .. } => {
                 (None, cast_target_to_abi_params(cast).into_iter().collect())
             }
-            PassMode::Indirect { attrs: _, meta_attrs: None, on_stack } => {
+            PassMode::Indirect { attrs, meta_attrs: None, on_stack } => {
                 assert!(!on_stack);
-                (Some(AbiParam::special(pointer_ty(tcx), ArgumentPurpose::StructReturn)), vec![])
+                (
+                    Some(apply_attrs_to_abi_param(
+                        AbiParam::special(pointer_ty(tcx), ArgumentPurpose::StructReturn),
+                        attrs,
+                    )),
+                    vec![],
+                )
             }
             PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
                 unreachable!("unsized return value")
