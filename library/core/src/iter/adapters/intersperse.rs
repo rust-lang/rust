@@ -226,11 +226,13 @@ where
     let first = if started { next_item.take() } else { iter.next() };
     if let Some(x) = first {
         accum = f(accum, x);
-    }
 
-    iter.fold(accum, |mut accum, x| {
-        accum = f(accum, separator());
-        accum = f(accum, x);
+        iter.fold(accum, |mut accum, x| {
+            accum = f(accum, separator());
+            accum = f(accum, x);
+            accum
+        })
+    } else {
         accum
-    })
+    }
 }
