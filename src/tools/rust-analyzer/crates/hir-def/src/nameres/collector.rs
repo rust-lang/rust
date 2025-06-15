@@ -609,7 +609,7 @@ impl<'db> DefCollector<'db> {
         self.define_proc_macro(def.name.clone(), proc_macro_id);
         let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
         if let ProcMacroKind::Derive { helpers } = def.kind {
-            crate_data.exported_derives.insert(self.db.macro_def(proc_macro_id.into()), helpers);
+            crate_data.exported_derives.insert(proc_macro_id.into(), helpers);
         }
         crate_data.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
     }
@@ -1345,7 +1345,7 @@ impl<'db> DefCollector<'db> {
                         // Record its helper attributes.
                         if def_id.krate != self.def_map.krate {
                             let def_map = crate_def_map(self.db, def_id.krate);
-                            if let Some(helpers) = def_map.data.exported_derives.get(&def_id) {
+                            if let Some(helpers) = def_map.data.exported_derives.get(&macro_id) {
                                 self.def_map
                                     .derive_helpers_in_scope
                                     .entry(ast_id.ast_id.map(|it| it.upcast()))
@@ -2425,7 +2425,7 @@ impl ModCollector<'_, '_> {
                 Arc::get_mut(&mut self.def_collector.def_map.data)
                     .unwrap()
                     .exported_derives
-                    .insert(self.def_collector.db.macro_def(macro_id.into()), helpers);
+                    .insert(macro_id.into(), helpers);
             }
         }
     }

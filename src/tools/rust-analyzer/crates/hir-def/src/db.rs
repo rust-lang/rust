@@ -5,16 +5,16 @@ use hir_expand::{
     EditionedFileId, HirFileId, InFile, Lookup, MacroCallId, MacroDefId, MacroDefKind,
     db::ExpandDatabase,
 };
-use intern::{Symbol, sym};
+use intern::sym;
 use la_arena::ArenaMap;
 use syntax::{AstPtr, ast};
 use triomphe::Arc;
 
 use crate::{
-    AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, EnumVariantId, EnumVariantLoc,
-    ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc,
-    GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroExpander, MacroId,
-    MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId,
+    AssocItemId, AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, EnumVariantId,
+    EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
+    FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroExpander,
+    MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId,
     StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId,
     TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
     attr::{Attrs, AttrsWithOwner},
@@ -25,11 +25,7 @@ use crate::{
     import_map::ImportMap,
     item_tree::{ItemTree, file_item_tree_query},
     lang_item::{self, LangItem},
-    nameres::{
-        assoc::{ImplItems, TraitItems},
-        crate_def_map,
-        diagnostics::DefDiagnostics,
-    },
+    nameres::{assoc::TraitItems, crate_def_map, diagnostics::DefDiagnostics},
     signatures::{
         ConstSignature, EnumSignature, FunctionSignature, ImplSignature, StaticSignature,
         StructSignature, TraitAliasSignature, TraitSignature, TypeAliasSignature, UnionSignature,
@@ -119,13 +115,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
         &self,
         id: VariantId,
     ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>);
-
-    #[salsa::transparent]
-    #[salsa::invoke(ImplItems::impl_items_query)]
-    fn impl_items(&self, e: ImplId) -> Arc<ImplItems>;
-
-    #[salsa::invoke(ImplItems::impl_items_with_diagnostics_query)]
-    fn impl_items_with_diagnostics(&self, e: ImplId) -> (Arc<ImplItems>, DefDiagnostics);
 
     #[salsa::transparent]
     #[salsa::invoke(TraitItems::trait_items_query)]
@@ -249,9 +238,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
         e: TypeAliasId,
     ) -> (Arc<TypeAliasSignature>, Arc<ExpressionStoreSourceMap>);
 
-    #[salsa::invoke(crate::signatures::extern_block_abi_query)]
-    fn extern_block_abi(&self, extern_block: ExternBlockId) -> Option<Symbol>;
-
     // endregion:data
 
     #[salsa::invoke(Body::body_with_source_map_query)]
@@ -312,16 +298,8 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     #[salsa::invoke(visibility::field_visibilities_query)]
     fn field_visibilities(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Visibility>>;
 
-    // FIXME: unify function_visibility and const_visibility?
-
-    #[salsa::invoke(visibility::function_visibility_query)]
-    fn function_visibility(&self, def: FunctionId) -> Visibility;
-
-    #[salsa::invoke(visibility::const_visibility_query)]
-    fn const_visibility(&self, def: ConstId) -> Visibility;
-
-    #[salsa::invoke(visibility::type_alias_visibility_query)]
-    fn type_alias_visibility(&self, def: TypeAliasId) -> Visibility;
+    #[salsa::invoke(visibility::assoc_visibility_query)]
+    fn assoc_visibility(&self, def: AssocItemId) -> Visibility;
 
     // endregion:visibilities
 

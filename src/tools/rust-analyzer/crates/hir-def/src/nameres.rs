@@ -62,8 +62,8 @@ use std::ops::Deref;
 
 use base_db::Crate;
 use hir_expand::{
-    EditionedFileId, ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId, mod_path::ModPath,
-    name::Name, proc_macro::ProcMacroKind,
+    EditionedFileId, ErasedAstId, HirFileId, InFile, MacroCallId, mod_path::ModPath, name::Name,
+    proc_macro::ProcMacroKind,
 };
 use intern::Symbol;
 use itertools::Itertools;
@@ -189,7 +189,7 @@ pub struct DefMap {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct DefMapCrateData {
     /// Side table for resolving derive helpers.
-    exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
+    exported_derives: FxHashMap<MacroId, Box<[Name]>>,
     fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
 
     /// Custom attributes registered with `#![register_attr]`.

@@ -324,7 +324,7 @@ impl<'a> SymbolCollector<'a> {
                 .to_smolstr(),
         );
         self.with_container_name(impl_name, |s| {
-            for &(ref name, assoc_item_id) in &self.db.impl_items(impl_id).items {
+            for &(ref name, assoc_item_id) in &impl_id.impl_items(self.db).items {
                 s.push_assoc_item(assoc_item_id, name, None)
             }
         })

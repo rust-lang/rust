@@ -49,7 +49,7 @@ pub mod find_path;
 pub mod import_map;
 pub mod visibility;
 
-use intern::{Interned, sym};
+use intern::{Interned, Symbol, sym};
 pub use rustc_abi as layout;
 use thin_vec::ThinVec;
 use triomphe::Arc;
@@ -88,7 +88,10 @@ use crate::{
     builtin_type::BuiltinType,
     db::DefDatabase,
     hir::generics::{LocalLifetimeParamId, LocalTypeOrConstParamId},
-    nameres::{LocalDefMap, block_def_map, crate_def_map, crate_local_def_map},
+    nameres::{
+        LocalDefMap, assoc::ImplItems, block_def_map, crate_def_map, crate_local_def_map,
+        diagnostics::DefDiagnostics,
+    },
     signatures::{EnumVariants, InactiveEnumVariantCode, VariantFields},
 };
 
@@ -287,6 +290,18 @@ impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_al
 type ImplLoc = ItemLoc<ast::Impl>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
 
+impl ImplId {
+    #[inline]
+    pub fn impl_items(self, db: &dyn DefDatabase) -> &ImplItems {
+        &self.impl_items_with_diagnostics(db).0
+    }
+
+    #[inline]
+    pub fn impl_items_with_diagnostics(self, db: &dyn DefDatabase) -> &(ImplItems, DefDiagnostics) {
+        ImplItems::of(db, self)
+    }
+}
+
 type UseLoc = ItemLoc<ast::Use>;
 impl_intern!(UseId, UseLoc, intern_use, lookup_intern_use);
 
@@ -295,6 +310,14 @@ impl_intern!(ExternCrateId, ExternCrateLoc, intern_extern_crate, lookup_intern_e
 
 type ExternBlockLoc = ItemLoc<ast::ExternBlock>;
 impl_intern!(ExternBlockId, ExternBlockLoc, intern_extern_block, lookup_intern_extern_block);
+
+#[salsa::tracked]
+impl ExternBlockId {
+    #[salsa::tracked]
+    pub fn abi(self, db: &dyn DefDatabase) -> Option<Symbol> {
+        signatures::extern_block_abi(db, self)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariantLoc {
@@ -770,7 +793,7 @@ impl DefWithBodyId {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum AssocItemId {
     FunctionId(FunctionId),
     ConstId(ConstId),
