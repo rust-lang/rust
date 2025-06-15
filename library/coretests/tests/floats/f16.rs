@@ -4,6 +4,8 @@
 use std::f16::consts;
 use std::num::FpCategory as Fp;
 
+use super::{assert_approx_eq, assert_biteq};
+
 /// Tolerance for results on the order of 10.0e-2
 #[allow(unused)]
 const TOL_N2: f16 = 0.0001;
@@ -48,34 +50,6 @@ fn test_num_f16() {
 
 // FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
 // the intrinsics.
-
-#[test]
-#[cfg(any(miri, target_has_reliable_f16_math))]
-fn test_min_nan() {
-    assert_biteq!(f16::NAN.min(2.0), 2.0);
-    assert_biteq!(2.0f16.min(f16::NAN), 2.0);
-}
-
-#[test]
-#[cfg(any(miri, target_has_reliable_f16_math))]
-fn test_max_nan() {
-    assert_biteq!(f16::NAN.max(2.0), 2.0);
-    assert_biteq!(2.0f16.max(f16::NAN), 2.0);
-}
-
-#[test]
-#[cfg(any(miri, target_has_reliable_f16_math))]
-fn test_minimum() {
-    assert!(f16::NAN.minimum(2.0).is_nan());
-    assert!(2.0f16.minimum(f16::NAN).is_nan());
-}
-
-#[test]
-#[cfg(any(miri, target_has_reliable_f16_math))]
-fn test_maximum() {
-    assert!(f16::NAN.maximum(2.0).is_nan());
-    assert!(2.0f16.maximum(f16::NAN).is_nan());
-}
 
 #[test]
 fn test_nan() {
@@ -226,98 +200,6 @@ fn test_classify() {
     assert_eq!(1f16.classify(), Fp::Normal);
     assert_eq!(1e-4f16.classify(), Fp::Normal);
     assert_eq!(1e-5f16.classify(), Fp::Subnormal);
-}
-
-#[test]
-#[cfg(any(miri, target_has_reliable_f16_math))]
-fn test_floor() {
-    assert_biteq!(1.0f16.floor(), 1.0f16);
-    assert_biteq!(1.3f16.floor(), 1.0f16);
-    assert_biteq!(1.5f16.floor(), 1.0f16);
-    assert_biteq!(1.7f16.floor(), 1.0f16);
-    assert_biteq!(0.0f16.floor(), 0.0f16);
-    assert_biteq!((-0.0f16).floor(), -0.0f16);
-    assert_biteq!((-1.0f16).floor(), -1.0f16);
-    assert_biteq!((-1.3f16).floor(), -2.0f16);
-    assert_biteq!((-1.5f16).floor(), -2.0f16);
-    assert_biteq!((-1.7f16).floor(), -2.0f16);
-}
-
-#[test]
-#[cfg(any(miri, target_has_reliable_f16_math))]
-fn test_ceil() {
-    assert_biteq!(1.0f16.ceil(), 1.0f16);
-    assert_biteq!(1.3f16.ceil(), 2.0f16);
-    assert_biteq!(1.5f16.ceil(), 2.0f16);
-    assert_biteq!(1.7f16.ceil(), 2.0f16);
-    assert_biteq!(0.0f16.ceil(), 0.0f16);
-    assert_biteq!((-0.0f16).ceil(), -0.0f16);
-    assert_biteq!((-1.0f16).ceil(), -1.0f16);
-    assert_biteq!((-1.3f16).ceil(), -1.0f16);
-    assert_biteq!((-1.5f16).ceil(), -1.0f16);
-    assert_biteq!((-1.7f16).ceil(), -1.0f16);
-}
-
-#[test]
-#[cfg(any(miri, target_has_reliable_f16_math))]
-fn test_round() {
-    assert_biteq!(2.5f16.round(), 3.0f16);
-    assert_biteq!(1.0f16.round(), 1.0f16);
-    assert_biteq!(1.3f16.round(), 1.0f16);
-    assert_biteq!(1.5f16.round(), 2.0f16);
-    assert_biteq!(1.7f16.round(), 2.0f16);
-    assert_biteq!(0.0f16.round(), 0.0f16);
-    assert_biteq!((-0.0f16).round(), -0.0f16);
-    assert_biteq!((-1.0f16).round(), -1.0f16);
-    assert_biteq!((-1.3f16).round(), -1.0f16);
-    assert_biteq!((-1.5f16).round(), -2.0f16);
-    assert_biteq!((-1.7f16).round(), -2.0f16);
-}
-
-#[test]
-#[cfg(any(miri, target_has_reliable_f16_math))]
-fn test_round_ties_even() {
-    assert_biteq!(2.5f16.round_ties_even(), 2.0f16);
-    assert_biteq!(1.0f16.round_ties_even(), 1.0f16);
-    assert_biteq!(1.3f16.round_ties_even(), 1.0f16);
-    assert_biteq!(1.5f16.round_ties_even(), 2.0f16);
-    assert_biteq!(1.7f16.round_ties_even(), 2.0f16);
-    assert_biteq!(0.0f16.round_ties_even(), 0.0f16);
-    assert_biteq!((-0.0f16).round_ties_even(), -0.0f16);
-    assert_biteq!((-1.0f16).round_ties_even(), -1.0f16);
-    assert_biteq!((-1.3f16).round_ties_even(), -1.0f16);
-    assert_biteq!((-1.5f16).round_ties_even(), -2.0f16);
-    assert_biteq!((-1.7f16).round_ties_even(), -2.0f16);
-}
-
-#[test]
-#[cfg(any(miri, target_has_reliable_f16_math))]
-fn test_trunc() {
-    assert_biteq!(1.0f16.trunc(), 1.0f16);
-    assert_biteq!(1.3f16.trunc(), 1.0f16);
-    assert_biteq!(1.5f16.trunc(), 1.0f16);
-    assert_biteq!(1.7f16.trunc(), 1.0f16);
-    assert_biteq!(0.0f16.trunc(), 0.0f16);
-    assert_biteq!((-0.0f16).trunc(), -0.0f16);
-    assert_biteq!((-1.0f16).trunc(), -1.0f16);
-    assert_biteq!((-1.3f16).trunc(), -1.0f16);
-    assert_biteq!((-1.5f16).trunc(), -1.0f16);
-    assert_biteq!((-1.7f16).trunc(), -1.0f16);
-}
-
-#[test]
-#[cfg(any(miri, target_has_reliable_f16_math))]
-fn test_fract() {
-    assert_biteq!(1.0f16.fract(), 0.0f16);
-    assert_biteq!(1.3f16.fract(), 0.2998f16);
-    assert_biteq!(1.5f16.fract(), 0.5f16);
-    assert_biteq!(1.7f16.fract(), 0.7f16);
-    assert_biteq!(0.0f16.fract(), 0.0f16);
-    assert_biteq!((-0.0f16).fract(), 0.0f16);
-    assert_biteq!((-1.0f16).fract(), 0.0f16);
-    assert_biteq!((-1.3f16).fract(), -0.2998f16);
-    assert_biteq!((-1.5f16).fract(), -0.5f16);
-    assert_biteq!((-1.7f16).fract(), -0.7f16);
 }
 
 #[test]

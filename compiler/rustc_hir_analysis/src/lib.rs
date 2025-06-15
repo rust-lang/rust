@@ -115,12 +115,6 @@ fn require_c_abi_if_c_variadic(
     abi: ExternAbi,
     span: Span,
 ) {
-    const CONVENTIONS_UNSTABLE: &str =
-        "`C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`";
-    const CONVENTIONS_STABLE: &str = "`C` or `cdecl`";
-    const UNSTABLE_EXPLAIN: &str =
-        "using calling conventions other than `C` or `cdecl` for varargs functions is unstable";
-
     // ABIs which can stably use varargs
     if !decl.c_variadic || matches!(abi, ExternAbi::C { .. } | ExternAbi::Cdecl { .. }) {
         return;
@@ -140,20 +134,18 @@ fn require_c_abi_if_c_variadic(
 
     // Looks like we need to pick an error to emit.
     // Is there any feature which we could have enabled to make this work?
+    let unstable_explain =
+        format!("C-variadic functions with the {abi} calling convention are unstable");
     match abi {
         ExternAbi::System { .. } => {
-            feature_err(&tcx.sess, sym::extern_system_varargs, span, UNSTABLE_EXPLAIN)
+            feature_err(&tcx.sess, sym::extern_system_varargs, span, unstable_explain)
         }
         abi if abi.supports_varargs() => {
-            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, UNSTABLE_EXPLAIN)
+            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, unstable_explain)
         }
         _ => tcx.dcx().create_err(errors::VariadicFunctionCompatibleConvention {
             span,
-            conventions: if tcx.sess.opts.unstable_features.is_nightly_build() {
-                CONVENTIONS_UNSTABLE
-            } else {
-                CONVENTIONS_STABLE
-            },
+            convention: &format!("{abi}"),
         }),
     }
     .emit();

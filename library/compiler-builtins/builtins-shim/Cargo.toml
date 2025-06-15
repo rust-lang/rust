@@ -1,0 +1,63 @@
+# NOTE: Must be kept in sync with `../compiler-builtins/Cargo.toml`.
+#
+# The manifest at `../compiler-builtins` is what actually gets used in the
+# rust-lang/rust tree; however, we can't build it out of tree because it
+# depends on `core` by path, and even optional Cargo dependencies need to be
+# available at build time. So, we work around this by having this "shim"
+# manifest that is identical except for the `core` dependency and forwards
+# to the same sources, which acts as the `compiler-builtins` Cargo entrypoint
+# for out of tree testing
+
+[package]
+name = "compiler_builtins"
+version = "0.1.160"
+authors = ["Jorge Aparicio <japaricious@gmail.com>"]
+description = "Compiler intrinsics used by the Rust compiler."
+repository = "https://github.com/rust-lang/compiler-builtins"
+license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
+edition = "2024"
+publish = false
+links = "compiler-rt"
+
+build = "../compiler-builtins/build.rs"
+
+[lib]
+path = "../compiler-builtins/src/lib.rs"
+bench = false
+doctest = false
+test = false
+
+[build-dependencies]
+cc = { optional = true, version = "1.2" }
+
+[features]
+default = ["compiler-builtins"]
+
+# Enable compilation of C code in compiler-rt, filling in some more optimized
+# implementations and also filling in unimplemented intrinsics
+c = ["dep:cc"]
+
+# Workaround for the Cranelift codegen backend. Disables any implementations
+# which use inline assembly and fall back to pure Rust versions (if available).
+no-asm = []
+
+# Workaround for codegen backends which haven't yet implemented `f16` and
+# `f128` support. Disabled any intrinsics which use those types.
+no-f16-f128 = []
+
+# Flag this library as the unstable compiler-builtins lib
+compiler-builtins = []
+
+# Generate memory-related intrinsics like memcpy
+mem = []
+
+# Mangle all names so this can be linked in with other versions or other
+# compiler-rt implementations. Also used for testing
+mangled-names = []
+
+# Only used in the compiler's build system
+rustc-dep-of-std = ["compiler-builtins"]
+
+# This makes certain traits and function specializations public that
+# are not normally public but are required by the `builtins-test`
+unstable-public-internals = []

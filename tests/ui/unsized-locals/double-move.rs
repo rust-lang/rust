@@ -1,5 +1,4 @@
-#![feature(unsized_locals, unsized_fn_params)]
-//~^ WARN the feature `unsized_locals` is incomplete
+#![feature(unsized_fn_params)]
 
 pub trait Foo {
     fn foo(self) -> String;
@@ -16,39 +15,39 @@ fn drop_unsized<T: ?Sized>(_: T) {}
 fn main() {
     {
         let x = "hello".to_owned().into_boxed_str();
-        let y = *x;
+        let y = *x; //~ERROR the size for values of type `str` cannot be known at compilation time [E0277]
         drop_unsized(y);
-        drop_unsized(y); //~ERROR use of moved value
+        drop_unsized(y);
     }
 
     {
         let x = "hello".to_owned().into_boxed_str();
-        let _y = *x;
-        drop_unsized(x); //~ERROR use of moved value
+        let _y = *x; //~ERROR the size for values of type `str` cannot be known at compilation time [E0277]
+        drop_unsized(x);
     }
 
     {
         let x = "hello".to_owned().into_boxed_str();
         drop_unsized(x);
-        let _y = *x; //~ERROR use of moved value
+        let _y = *x; //~ERROR the size for values of type `str` cannot be known at compilation time [E0277]
     }
 
     {
         let x = "hello".to_owned().into_boxed_str();
-        let y = *x;
+        let y = *x; //~ERROR the size for values of type `str` cannot be known at compilation time [E0277]
         y.foo();
-        y.foo(); //~ERROR use of moved value
+        y.foo();
     }
 
     {
         let x = "hello".to_owned().into_boxed_str();
-        let _y = *x;
-        x.foo(); //~ERROR use of moved value
+        let _y = *x; //~ERROR the size for values of type `str` cannot be known at compilation time [E0277]
+        x.foo();
     }
 
     {
         let x = "hello".to_owned().into_boxed_str();
         x.foo();
-        let _y = *x; //~ERROR use of moved value
+        let _y = *x; //~ERROR the size for values of type `str` cannot be known at compilation time [E0277]
     }
 }

@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::hash::{Hash, Hasher};
 use std::{fmt, ptr};
 
 use libc::{c_char, c_uint};
@@ -22,6 +23,14 @@ use crate::{common, llvm};
 impl PartialEq for Type {
     fn eq(&self, other: &Self) -> bool {
         ptr::eq(self, other)
+    }
+}
+
+impl Eq for Type {}
+
+impl Hash for Type {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        ptr::hash(self, state);
     }
 }
 

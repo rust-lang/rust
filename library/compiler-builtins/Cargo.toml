@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
+    "builtins-shim",
     "builtins-test",
-    "compiler-builtins",
     "crates/josh-sync",
     "crates/libm-macros",
     "crates/musl-math-sys",
@@ -14,8 +14,8 @@ members = [
 ]
 
 default-members = [
+    "builtins-shim",
     "builtins-test",
-    "compiler-builtins",
     "crates/libm-macros",
     "libm",
     "libm-test",
@@ -26,6 +26,10 @@ exclude = [
     # and `mangled-names` disabled, which is the opposite of what is needed for
     # other tests, so it makes sense to keep it out of the workspace.
     "builtins-test-intrinsics",
+    # We test via the `builtins-shim` crate, so exclude the `compiler-builtins`
+    # that has a dependency on `core`. See `builtins-shim/Cargo.toml` for more
+    # details.
+    "compiler-builtins",
 ]
 
 [profile.release]

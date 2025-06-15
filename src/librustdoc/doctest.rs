@@ -1053,14 +1053,14 @@ fn doctest_run_fn(
     let report_unused_externs = |uext| {
         unused_externs.lock().unwrap().push(uext);
     };
-    let (full_test_code, full_test_line_offset) = doctest.generate_unique_doctest(
+    let (wrapped, full_test_line_offset) = doctest.generate_unique_doctest(
         &scraped_test.text,
         scraped_test.langstr.test_harness,
         &global_opts,
         Some(&global_opts.crate_name),
     );
     let runnable_test = RunnableDocTest {
-        full_test_code,
+        full_test_code: wrapped.to_string(),
         full_test_line_offset,
         test_opts,
         global_opts,

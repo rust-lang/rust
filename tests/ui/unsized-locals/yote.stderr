@@ -1,0 +1,12 @@
+error[E0557]: feature has been removed
+  --> $DIR/yote.rs:3:12
+   |
+LL | #![feature(unsized_locals)]
+   |            ^^^^^^^^^^^^^^ feature has been removed
+   |
+   = note: removed in CURRENT_RUSTC_VERSION (you are using $RUSTC_VERSION)
+   = note: removed due to implementation concerns; see https://github.com/rust-lang/rust/issues/111942
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0557`.

@@ -492,7 +492,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let final_upvar_tys = self.final_upvar_tys(closure_def_id);
         debug!(?closure_hir_id, ?args, ?final_upvar_tys);
 
-        if self.tcx.features().unsized_locals() || self.tcx.features().unsized_fn_params() {
+        if self.tcx.features().unsized_fn_params() {
             for capture in
                 self.typeck_results.borrow().closure_min_captures_flattened(closure_def_id)
             {
