@@ -399,7 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // so we remove the user's `clone` call.
                     {
                         vec![(receiver_method.ident.span, conversion_method_name.to_string())]
-                    } else if expr.precedence() < ExprPrecedence::Unambiguous {
+                    } else if self.precedence(expr) < ExprPrecedence::Unambiguous {
                         vec![
                             (expr.span.shrink_to_lo(), "(".to_string()),
                             (expr.span.shrink_to_hi(), format!(").{}()", conversion_method_name)),
@@ -1395,7 +1395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let span = expr.span.find_oldest_ancestor_in_same_ctxt();
 
-            let mut sugg = if expr.precedence() >= ExprPrecedence::Unambiguous {
+            let mut sugg = if self.precedence(expr) >= ExprPrecedence::Unambiguous {
                 vec![(span.shrink_to_hi(), ".into()".to_owned())]
             } else {
                 vec![
@@ -3106,7 +3106,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "change the type of the numeric literal from `{checked_ty}` to `{expected_ty}`",
         );
 
-        let close_paren = if expr.precedence() < ExprPrecedence::Unambiguous {
+        let close_paren = if self.precedence(expr) < ExprPrecedence::Unambiguous {
             sugg.push((expr.span.shrink_to_lo(), "(".to_string()));
             ")"
         } else {
@@ -3131,7 +3131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let len = src.trim_end_matches(&checked_ty.to_string()).len();
                 span.with_lo(span.lo() + BytePos(len as u32))
             },
-            if expr.precedence() < ExprPrecedence::Unambiguous {
+            if self.precedence(expr) < ExprPrecedence::Unambiguous {
                 // Readd `)`
                 format!("{expected_ty})")
             } else {
