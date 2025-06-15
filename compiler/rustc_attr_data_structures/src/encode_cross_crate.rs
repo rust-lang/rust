@@ -36,6 +36,7 @@ impl AttributeKind {
             Naked(..) => No,
             NoMangle(..) => No,
             Optimize(..) => No,
+            PassByValue(..) => Yes,
             PubTransparent(..) => Yes,
             Repr(..) => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
