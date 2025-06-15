@@ -30,6 +30,7 @@ pub(crate) mod cfg;
 pub(crate) mod confusables;
 pub(crate) mod deprecation;
 pub(crate) mod repr;
+pub(crate) mod semantics;
 pub(crate) mod stability;
 pub(crate) mod transparency;
 pub(crate) mod util;
