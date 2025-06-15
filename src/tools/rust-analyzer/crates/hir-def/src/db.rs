@@ -5,7 +5,7 @@ use hir_expand::{
     EditionedFileId, HirFileId, InFile, Lookup, MacroCallId, MacroDefId, MacroDefKind,
     db::ExpandDatabase,
 };
-use intern::{Symbol, sym};
+use intern::sym;
 use la_arena::ArenaMap;
 use syntax::{AstPtr, ast};
 use triomphe::Arc;
@@ -237,9 +237,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
         &self,
         e: TypeAliasId,
     ) -> (Arc<TypeAliasSignature>, Arc<ExpressionStoreSourceMap>);
-
-    #[salsa::invoke(crate::signatures::extern_block_abi_query)]
-    fn extern_block_abi(&self, extern_block: ExternBlockId) -> Option<Symbol>;
 
     // endregion:data
 

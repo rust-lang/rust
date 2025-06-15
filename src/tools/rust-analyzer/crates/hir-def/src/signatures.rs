@@ -965,7 +965,7 @@ impl EnumVariants {
     }
 }
 
-pub(crate) fn extern_block_abi_query(
+pub(crate) fn extern_block_abi(
     db: &dyn DefDatabase,
     extern_block: ExternBlockId,
 ) -> Option<Symbol> {

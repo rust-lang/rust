@@ -49,7 +49,7 @@ pub mod find_path;
 pub mod import_map;
 pub mod visibility;
 
-use intern::{Interned, sym};
+use intern::{Interned, Symbol, sym};
 pub use rustc_abi as layout;
 use thin_vec::ThinVec;
 use triomphe::Arc;
@@ -310,6 +310,14 @@ impl_intern!(ExternCrateId, ExternCrateLoc, intern_extern_crate, lookup_intern_e
 
 type ExternBlockLoc = ItemLoc<ast::ExternBlock>;
 impl_intern!(ExternBlockId, ExternBlockLoc, intern_extern_block, lookup_intern_extern_block);
+
+#[salsa::tracked]
+impl ExternBlockId {
+    #[salsa::tracked]
+    pub fn abi(self, db: &dyn DefDatabase) -> Option<Symbol> {
+        signatures::extern_block_abi(db, self)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariantLoc {
