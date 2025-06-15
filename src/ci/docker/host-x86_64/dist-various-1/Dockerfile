@@ -73,11 +73,7 @@ RUN env \
     env \
     CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv6 -marm -mfpu=vfp" \
     CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv6 -marm -mfpu=vfp" \
-    bash musl.sh armhf && \
-    env \
-    CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv7-a+fp" \
-    CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv7-a+fp" \
-    bash musl.sh armv7hf
+    bash musl.sh armhf
 
 ENV RUN_MAKE_TARGETS=thumbv6m-none-eabi
 ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7m-none-eabi
@@ -89,7 +85,7 @@ ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,armv5te-unknown-linux-gnueabi
 ENV TARGETS=$TARGETS,armv5te-unknown-linux-musleabi
-ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
+
 ENV TARGETS=$TARGETS,aarch64-unknown-none
 ENV TARGETS=$TARGETS,aarch64-unknown-none-softfloat
 ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
@@ -121,7 +117,7 @@ ENV TARGETS=$TARGETS,x86_64-pc-windows-gnullvm
 ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft" \
     CFLAGS_arm_unknown_linux_musleabi="-march=armv6 -marm" \
     CFLAGS_arm_unknown_linux_musleabihf="-march=armv6 -marm -mfpu=vfp" \
-    CFLAGS_armv7_unknown_linux_musleabihf="-march=armv7-a+fp" \
+
     CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc \
     CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc \
     CC_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
@@ -157,7 +153,7 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \
       --musl-root-arm=/musl-arm \
       --musl-root-armhf=/musl-armhf \
-      --musl-root-armv7hf=/musl-armv7hf \
+
       --disable-docs
 
 ENV SCRIPT \
