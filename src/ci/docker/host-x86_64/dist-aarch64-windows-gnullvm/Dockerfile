@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     xz-utils
 
-COPY host-x86_64/dist-aarch64-windows-gnullvm/install-llvm-mingw.sh /build
+ENV ARCH=aarch64
+COPY host-x86_64/dist-x86_64-windows-gnullvm/install-llvm-mingw.sh /build
 RUN ./install-llvm-mingw.sh
 
 COPY scripts/sccache.sh /scripts/

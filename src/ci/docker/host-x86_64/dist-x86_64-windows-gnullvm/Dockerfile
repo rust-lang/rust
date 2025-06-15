@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     xz-utils
 
+ENV ARCH='i686 x86_64'
 COPY host-x86_64/dist-x86_64-windows-gnullvm/install-llvm-mingw.sh /build
 RUN ./install-llvm-mingw.sh
 
