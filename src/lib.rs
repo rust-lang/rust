@@ -202,8 +202,15 @@ impl CodegenBackend for GccCodegenBackend {
             **self.target_info.info.lock().expect("lock") = context.get_target_info();
         }
 
-        // NOTE: try the LTO frontend and check if it errors out. If so, do not embed the bitcode.
+        // While not required by the API, we gate this code on the master feature to make sure we
+        // don't abort the process while checking if LTO is supported.
+        // The following could will emit a fatal error if LTO is not supported and older versions
+        // of libgccjit (the ones without this commit:
+        // https://github.com/rust-lang/gcc/commit/a073b06800f064b3917a6113d4cc2a0c19a10fda) will
+        // abort on fatal errors.
+        #[cfg(feature = "master")]
         {
+            // NOTE: try the LTO frontend and check if it errors out. If so, do not embed the bitcode.
             let temp_dir = TempDir::new().expect("cannot create temporary directory");
             let temp_file = temp_dir.keep().join("result.asm");
             let context = Context::default();
