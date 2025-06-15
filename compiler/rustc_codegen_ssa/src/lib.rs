@@ -31,6 +31,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::CrateNum;
 use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -169,7 +170,6 @@ pub(crate) struct CachedModuleCodegen {
 #[derive(Copy, Clone, Debug, PartialEq, Encodable, Decodable)]
 pub enum ModuleKind {
     Regular,
-    Metadata,
     Allocator,
 }
 
@@ -233,6 +233,7 @@ pub struct CrateInfo {
     pub windows_subsystem: Option<String>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
     pub lint_levels: CodegenLintLevels,
+    pub metadata_symbol: String,
 }
 
 /// Target-specific options that get set in `cfg(...)`.
@@ -257,8 +258,6 @@ pub struct TargetConfig {
 pub struct CodegenResults {
     pub modules: Vec<CompiledModule>,
     pub allocator_module: Option<CompiledModule>,
-    pub metadata_module: Option<CompiledModule>,
-    pub metadata: rustc_metadata::EncodedMetadata,
     pub crate_info: CrateInfo,
 }
 
@@ -303,6 +302,7 @@ impl CodegenResults {
         sess: &Session,
         rlink_file: &Path,
         codegen_results: &CodegenResults,
+        metadata: &EncodedMetadata,
         outputs: &OutputFilenames,
     ) -> Result<usize, io::Error> {
         let mut encoder = FileEncoder::new(rlink_file)?;
@@ -312,6 +312,7 @@ impl CodegenResults {
         encoder.emit_raw_bytes(&RLINK_VERSION.to_be_bytes());
         encoder.emit_str(sess.cfg_version);
         Encodable::encode(codegen_results, &mut encoder);
+        Encodable::encode(metadata, &mut encoder);
         Encodable::encode(outputs, &mut encoder);
         encoder.finish().map_err(|(_path, err)| err)
     }
@@ -319,7 +320,7 @@ impl CodegenResults {
     pub fn deserialize_rlink(
         sess: &Session,
         data: Vec<u8>,
-    ) -> Result<(Self, OutputFilenames), CodegenErrors> {
+    ) -> Result<(Self, EncodedMetadata, OutputFilenames), CodegenErrors> {
         // The Decodable machinery is not used here because it panics if the input data is invalid
         // and because its internal representation may change.
         if !data.starts_with(RLINK_MAGIC) {
@@ -350,8 +351,9 @@ impl CodegenResults {
         }
 
         let codegen_results = CodegenResults::decode(&mut decoder);
+        let metadata = EncodedMetadata::decode(&mut decoder);
         let outputs = OutputFilenames::decode(&mut decoder);
-        Ok((codegen_results, outputs))
+        Ok((codegen_results, metadata, outputs))
     }
 }
 
