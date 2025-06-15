@@ -11,10 +11,10 @@ use syntax::{AstPtr, ast};
 use triomphe::Arc;
 
 use crate::{
-    AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, EnumVariantId, EnumVariantLoc,
-    ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc,
-    GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroExpander, MacroId,
-    MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId,
+    AssocItemId, AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, EnumVariantId,
+    EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
+    FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroExpander,
+    MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId,
     StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId,
     TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
     attr::{Attrs, AttrsWithOwner},
@@ -298,16 +298,8 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     #[salsa::invoke(visibility::field_visibilities_query)]
     fn field_visibilities(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Visibility>>;
 
-    // FIXME: unify function_visibility and const_visibility?
-
-    #[salsa::invoke(visibility::function_visibility_query)]
-    fn function_visibility(&self, def: FunctionId) -> Visibility;
-
-    #[salsa::invoke(visibility::const_visibility_query)]
-    fn const_visibility(&self, def: ConstId) -> Visibility;
-
-    #[salsa::invoke(visibility::type_alias_visibility_query)]
-    fn type_alias_visibility(&self, def: TypeAliasId) -> Visibility;
+    #[salsa::invoke(visibility::assoc_visibility_query)]
+    fn assoc_visibility(&self, def: AssocItemId) -> Visibility;
 
     // endregion:visibilities
 

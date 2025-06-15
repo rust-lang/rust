@@ -1431,7 +1431,7 @@ impl HasVisibility for Struct {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
         let source = loc.source(db);
-        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
+        visibility_from_ast(db, self.id, source.map(|src| src.visibility()))
     }
 }
 
@@ -1485,7 +1485,7 @@ impl HasVisibility for Union {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
         let source = loc.source(db);
-        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
+        visibility_from_ast(db, self.id, source.map(|src| src.visibility()))
     }
 }
 
@@ -1574,7 +1574,7 @@ impl HasVisibility for Enum {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
         let source = loc.source(db);
-        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
+        visibility_from_ast(db, self.id, source.map(|src| src.visibility()))
     }
 }
 
@@ -2632,7 +2632,7 @@ impl SelfParam {
 
 impl HasVisibility for Function {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.function_visibility(self.id)
+        db.assoc_visibility(self.id.into())
     }
 }
 
@@ -2692,7 +2692,7 @@ impl HasVisibility for ExternCrateDecl {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
         let source = loc.source(db);
-        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
+        visibility_from_ast(db, self.id, source.map(|src| src.visibility()))
     }
 }
 
@@ -2727,7 +2727,7 @@ impl Const {
 
 impl HasVisibility for Const {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.const_visibility(self.id)
+        db.assoc_visibility(self.id.into())
     }
 }
 
@@ -2813,7 +2813,7 @@ impl HasVisibility for Static {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
         let source = loc.source(db);
-        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
+        visibility_from_ast(db, self.id, source.map(|src| src.visibility()))
     }
 }
 
@@ -2915,7 +2915,7 @@ impl HasVisibility for Trait {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
         let source = loc.source(db);
-        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
+        visibility_from_ast(db, self.id, source.map(|src| src.visibility()))
     }
 }
 
@@ -2938,7 +2938,7 @@ impl HasVisibility for TraitAlias {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let loc = self.id.lookup(db);
         let source = loc.source(db);
-        visibility_from_ast(db, &self.id.resolver(db), source.map(|src| src.visibility()))
+        visibility_from_ast(db, self.id, source.map(|src| src.visibility()))
     }
 }
 
@@ -2976,7 +2976,7 @@ impl TypeAlias {
 
 impl HasVisibility for TypeAlias {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.type_alias_visibility(self.id)
+        db.assoc_visibility(self.id.into())
     }
 }
 
@@ -3200,7 +3200,7 @@ impl HasVisibility for Macro {
             MacroId::Macro2Id(id) => {
                 let loc = id.lookup(db);
                 let source = loc.source(db);
-                visibility_from_ast(db, &id.resolver(db), source.map(|src| src.visibility()))
+                visibility_from_ast(db, id, source.map(|src| src.visibility()))
             }
             MacroId::MacroRulesId(_) => Visibility::Public,
             MacroId::ProcMacroId(_) => Visibility::Public,

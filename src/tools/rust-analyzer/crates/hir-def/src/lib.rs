@@ -793,7 +793,7 @@ impl DefWithBodyId {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum AssocItemId {
     FunctionId(FunctionId),
     ConstId(ConstId),

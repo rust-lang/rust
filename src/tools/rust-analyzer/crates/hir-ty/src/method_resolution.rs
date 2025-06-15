@@ -1550,7 +1550,7 @@ fn is_valid_impl_method_candidate(
             check_that!(name.is_none_or(|n| n == item_name));
 
             if let Some(from_module) = visible_from_module {
-                if !db.const_visibility(c).is_visible_from(db, from_module) {
+                if !db.assoc_visibility(c.into()).is_visible_from(db, from_module) {
                     cov_mark::hit!(const_candidate_not_visible);
                     return IsValidCandidate::NotVisible;
                 }
@@ -1639,7 +1639,7 @@ fn is_valid_impl_fn_candidate(
     let data = db.function_signature(fn_id);
 
     if let Some(from_module) = visible_from_module {
-        if !db.function_visibility(fn_id).is_visible_from(db, from_module) {
+        if !db.assoc_visibility(fn_id.into()).is_visible_from(db, from_module) {
             cov_mark::hit!(autoderef_candidate_not_visible);
             return IsValidCandidate::NotVisible;
         }
