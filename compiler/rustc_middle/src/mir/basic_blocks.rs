@@ -52,6 +52,15 @@ impl<'tcx> BasicBlocks<'tcx> {
         BasicBlocks { basic_blocks, cache: Cache::default() }
     }
 
+    /// Force caching of traversals.
+    pub fn cache_traversals(&self) {
+        let _ = self.predecessors();
+        let _ = self.switch_sources();
+        let _ = self.reverse_postorder();
+        let _ = self.dominators();
+    }
+
+    #[inline]
     pub fn dominators(&self) -> &Dominators<BasicBlock> {
         self.cache.dominators.get_or_init(|| dominators(self))
     }
