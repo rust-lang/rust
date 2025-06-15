@@ -308,8 +308,16 @@ fn pretty_print_macro_expansion(
             {
                 " "
             }
-            (IDENT, _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
-            (_, IDENT) if prev_kind.is_keyword(Edition::CURRENT) => " ",
+            (IDENT | LIFETIME_IDENT, _)
+                if curr_kind.is_keyword(Edition::CURRENT) || curr_kind.is_literal() =>
+            {
+                " "
+            }
+            (_, IDENT | LIFETIME_IDENT)
+                if prev_kind.is_keyword(Edition::CURRENT) || prev_kind.is_literal() =>
+            {
+                " "
+            }
             (T![>], IDENT) => " ",
             (T![>], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![->], _) | (_, T![->]) => " ",
