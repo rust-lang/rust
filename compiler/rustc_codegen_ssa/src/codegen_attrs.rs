@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{ExternAbi, Size};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_attr_data_structures::ReprAttr::ReprAlign;
@@ -16,7 +16,7 @@ use rustc_middle::middle::codegen_fn_attrs::{
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self as ty, TyCtxt};
+use rustc_middle::ty::{self as ty, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 use rustc_session::parse::feature_err;
 use rustc_session::{Session, lint};
 use rustc_span::{Ident, Span, sym};
@@ -137,6 +137,28 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::rustc_deallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR,
             sym::rustc_allocator_zeroed => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
+            }
+            sym::rustc_autodiff => {
+                let list = attr.meta_item_list().unwrap_or_default();
+                if list.is_empty() {
+                    // Add the flag only to the primal function so LLVM can
+                    // optimize the derivative function.
+                    if let Some(sig) = fn_sig() {
+                        let sig = sig.skip_binder();
+
+                        let has_problematic_args = sig
+                            .skip_binder()
+                            .inputs()
+                            .iter()
+                            .any(|ty| is_abi_opt_sensitive(tcx, *ty));
+
+                        if has_problematic_args {
+                            codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_AUTODIFF_NO_ABI_OPT;
+                        }
+                    }
+
+                    // TODO(Sa4dUs): Handle static variable passed as argument case.
+                }
             }
             sym::naked => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
             sym::no_mangle => {
@@ -897,6 +919,44 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     }
 
     Some(AutoDiffAttrs { mode, width, ret_activity, input_activity: arg_activities })
+}
+
+fn is_abi_opt_sensitive<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        ty::Ref(_, inner, _) | ty::RawPtr(inner, _) => {
+            match inner.kind() {
+                ty::Slice(_) => {
+                    // Since we cannot guarantee that the slice length is large enough
+                    // to avoid optimization, we assume it is ABI-opt sensitive.
+                    return true;
+                }
+                ty::Array(elem_ty, len) => {
+                    let Some(len_val) = len.try_to_target_usize(tcx) else {
+                        return false;
+                    };
+
+                    let pci = PseudoCanonicalInput {
+                        typing_env: TypingEnv::fully_monomorphized(),
+                        value: *elem_ty,
+                    };
+
+                    if elem_ty.is_scalar() {
+                        let elem_size =
+                            tcx.layout_of(pci).ok().map(|layout| layout.size).unwrap_or(Size::ZERO);
+
+                        if elem_size.bytes() * len_val <= tcx.data_layout.pointer_size.bytes() * 2 {
+                            return true;
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            false
+        }
+        ty::FnPtr(_, _) => true,
+        _ => false,
+    }
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

@@ -136,6 +136,10 @@ bitflags::bitflags! {
         const ALLOCATOR_ZEROED          = 1 << 14;
         /// `#[no_builtins]`: indicates that disable implicit builtin knowledge of functions for the function.
         const NO_BUILTINS               = 1 << 15;
+        /// `#[rustc_autodiff_no_abi_opt]`: internal marker applied to `#[rustc_autodiff]` primal functions
+        /// whose argument layout may be sensitive to ABI-level optimizations. This marker prevents certain
+        /// optimizations that could otherwise break compatibility with Enzyme's expectations.
+        const RUSTC_AUTODIFF_NO_ABI_OPT = 1 << 16;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }
@@ -175,6 +179,7 @@ impl CodegenFnAttrs {
         self.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
             || self.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
             || self.export_name.is_some()
+            || self.flags.contains(CodegenFnAttrFlags::RUSTC_AUTODIFF_NO_ABI_OPT)
             || match self.linkage {
                 // These are private, so make sure we don't try to consider
                 // them external.
