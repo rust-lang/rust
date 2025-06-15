@@ -1360,7 +1360,7 @@ impl InferenceContext<'_> {
                 if let Some(variant) = self.result.variant_resolution_for_pat(p) {
                     let adt = variant.adt_id(self.db);
                     let is_multivariant = match adt {
-                        hir_def::AdtId::EnumId(e) => self.db.enum_variants(e).variants.len() != 1,
+                        hir_def::AdtId::EnumId(e) => e.enum_variants(self.db).variants.len() != 1,
                         _ => false,
                     };
                     if is_multivariant {

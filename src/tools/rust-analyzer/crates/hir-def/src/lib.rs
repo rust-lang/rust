@@ -51,6 +51,7 @@ pub mod visibility;
 
 use intern::{Interned, sym};
 pub use rustc_abi as layout;
+use thin_vec::ThinVec;
 use triomphe::Arc;
 
 pub use crate::signatures::LocalFieldId;
@@ -88,7 +89,7 @@ use crate::{
     db::DefDatabase,
     hir::generics::{LocalLifetimeParamId, LocalTypeOrConstParamId},
     nameres::{LocalDefMap, block_def_map, crate_def_map, crate_local_def_map},
-    signatures::VariantFields,
+    signatures::{EnumVariants, InactiveEnumVariantCode, VariantFields},
 };
 
 type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
@@ -252,6 +253,21 @@ impl_intern!(UnionId, UnionLoc, intern_union, lookup_intern_union);
 
 pub type EnumLoc = ItemLoc<ast::Enum>;
 impl_intern!(EnumId, EnumLoc, intern_enum, lookup_intern_enum);
+
+impl EnumId {
+    #[inline]
+    pub fn enum_variants(self, db: &dyn DefDatabase) -> &EnumVariants {
+        &self.enum_variants_with_diagnostics(db).0
+    }
+
+    #[inline]
+    pub fn enum_variants_with_diagnostics(
+        self,
+        db: &dyn DefDatabase,
+    ) -> &(EnumVariants, Option<ThinVec<InactiveEnumVariantCode>>) {
+        EnumVariants::of(db, self)
+    }
+}
 
 type ConstLoc = AssocItemLoc<ast::Const>;
 impl_intern!(ConstId, ConstLoc, intern_const, lookup_intern_const);

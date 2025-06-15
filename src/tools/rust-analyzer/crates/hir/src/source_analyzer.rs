@@ -829,7 +829,7 @@ impl<'db> SourceAnalyzer<'db> {
                                 handle_variants(id.into(), subst, &mut container)?
                             }
                             AdtId::EnumId(id) => {
-                                let variants = db.enum_variants(id);
+                                let variants = id.enum_variants(db);
                                 let variant = variants.variant(&field_name.as_name())?;
                                 container = Either::Left((variant, subst.clone()));
                                 (Either::Left(Variant { id: variant }), id.into(), subst.clone())

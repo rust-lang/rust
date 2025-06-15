@@ -688,7 +688,7 @@ impl Module {
                         Adt::Enum(e) => {
                             let source_map = db.enum_signature_with_source_map(e.id).1;
                             expr_store_diagnostics(db, acc, &source_map);
-                            let (variants, diagnostics) = db.enum_variants_with_diagnostics(e.id);
+                            let (variants, diagnostics) = e.id.enum_variants_with_diagnostics(db);
                             let file = e.id.lookup(db).id.file_id;
                             let ast_id_map = db.ast_id_map(file);
                             if let Some(diagnostics) = &diagnostics {
@@ -1504,11 +1504,11 @@ impl Enum {
     }
 
     pub fn variants(self, db: &dyn HirDatabase) -> Vec<Variant> {
-        db.enum_variants(self.id).variants.iter().map(|&(id, _, _)| Variant { id }).collect()
+        self.id.enum_variants(db).variants.iter().map(|&(id, _, _)| Variant { id }).collect()
     }
 
     pub fn num_variants(self, db: &dyn HirDatabase) -> usize {
-        db.enum_variants(self.id).variants.len()
+        self.id.enum_variants(db).variants.len()
     }
 
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {
@@ -1606,7 +1606,7 @@ impl Variant {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let lookup = self.id.lookup(db);
         let enum_ = lookup.parent;
-        db.enum_variants(enum_).variants[lookup.index as usize].1.clone()
+        enum_.enum_variants(db).variants[lookup.index as usize].1.clone()
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {

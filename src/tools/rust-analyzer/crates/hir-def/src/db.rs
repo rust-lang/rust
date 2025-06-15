@@ -8,7 +8,6 @@ use hir_expand::{
 use intern::{Symbol, sym};
 use la_arena::ArenaMap;
 use syntax::{AstPtr, ast};
-use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{
@@ -32,9 +31,9 @@ use crate::{
         diagnostics::DefDiagnostics,
     },
     signatures::{
-        ConstSignature, EnumSignature, EnumVariants, FunctionSignature, ImplSignature,
-        InactiveEnumVariantCode, StaticSignature, StructSignature, TraitAliasSignature,
-        TraitSignature, TypeAliasSignature, UnionSignature, VariantFields,
+        ConstSignature, EnumSignature, FunctionSignature, ImplSignature, StaticSignature,
+        StructSignature, TraitAliasSignature, TraitSignature, TypeAliasSignature, UnionSignature,
+        VariantFields,
     },
     tt,
     visibility::{self, Visibility},
@@ -120,19 +119,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
         &self,
         id: VariantId,
     ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>);
-
-    // FIXME: Should we make this transparent? The only unstable thing in `enum_variants_with_diagnostics()`
-    // is ast ids, and ast ids are pretty stable now.
-    #[salsa::tracked]
-    fn enum_variants(&self, id: EnumId) -> Arc<EnumVariants> {
-        self.enum_variants_with_diagnostics(id).0
-    }
-
-    #[salsa::invoke(EnumVariants::enum_variants_query)]
-    fn enum_variants_with_diagnostics(
-        &self,
-        id: EnumId,
-    ) -> (Arc<EnumVariants>, Option<Arc<ThinVec<InactiveEnumVariantCode>>>);
 
     #[salsa::transparent]
     #[salsa::invoke(ImplItems::impl_items_query)]

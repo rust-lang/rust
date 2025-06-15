@@ -884,11 +884,13 @@ pub struct EnumVariants {
     pub variants: Box<[(EnumVariantId, Name, FieldsShape)]>,
 }
 
+#[salsa::tracked]
 impl EnumVariants {
-    pub(crate) fn enum_variants_query(
+    #[salsa::tracked(returns(ref))]
+    pub(crate) fn of(
         db: &dyn DefDatabase,
         e: EnumId,
-    ) -> (Arc<EnumVariants>, Option<Arc<ThinVec<InactiveEnumVariantCode>>>) {
+    ) -> (EnumVariants, Option<ThinVec<InactiveEnumVariantCode>>) {
         let loc = e.lookup(db);
         let source = loc.source(db);
         let ast_id_map = db.ast_id_map(source.file_id);
@@ -898,7 +900,7 @@ impl EnumVariants {
         let cfg_options = loc.container.krate.cfg_options(db);
         let mut index = 0;
         let Some(variants) = source.value.variant_list() else {
-            return (Arc::new(EnumVariants { variants: Box::default() }), None);
+            return (EnumVariants { variants: Box::default() }, None);
         };
         let variants = variants
             .variants()
@@ -926,12 +928,11 @@ impl EnumVariants {
             })
             .collect();
 
-        (
-            Arc::new(EnumVariants { variants }),
-            diagnostics.is_empty().not().then(|| Arc::new(diagnostics)),
-        )
+        (EnumVariants { variants }, diagnostics.is_empty().not().then_some(diagnostics))
     }
+}
 
+impl EnumVariants {
     pub fn variant(&self, name: &Name) -> Option<EnumVariantId> {
         self.variants.iter().find_map(|(v, n, _)| if n == name { Some(*v) } else { None })
     }

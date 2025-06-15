@@ -528,8 +528,8 @@ impl DefMap {
                     // enum variant
                     cov_mark::hit!(can_import_enum_variant);
 
-                    let res = db
-                        .enum_variants(e)
+                    let res = e
+                        .enum_variants(db)
                         .variants
                         .iter()
                         .find(|(_, name, _)| name == segment)

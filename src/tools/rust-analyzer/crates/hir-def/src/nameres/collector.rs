@@ -995,9 +995,8 @@ impl<'db> DefCollector<'db> {
                     Some(ModuleDefId::AdtId(AdtId::EnumId(e))) => {
                         cov_mark::hit!(glob_enum);
                         // glob import from enum => just import all the variants
-                        let resolutions = self
-                            .db
-                            .enum_variants(e)
+                        let resolutions = e
+                            .enum_variants(self.db)
                             .variants
                             .iter()
                             .map(|&(variant, ref name, _)| {
