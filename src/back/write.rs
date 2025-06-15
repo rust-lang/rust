@@ -52,7 +52,6 @@ pub(crate) fn codegen(
                 );
             }*/
 
-            // TODO: only emit if libgccjit is compiled with LTO enabled?
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
                 let _timer = cgcx
                     .prof
