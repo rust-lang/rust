@@ -302,19 +302,12 @@ fn pretty_print_macro_expansion(
             (_, T!['{']) => " ",
             (T![;] | T!['{'] | T!['}'], _) => "\n",
             (_, T!['}']) => "\n",
-            (IDENT | LIFETIME_IDENT, IDENT | LIFETIME_IDENT) => " ",
-            _ if prev_kind.is_keyword(Edition::CURRENT)
-                && curr_kind.is_keyword(Edition::CURRENT) =>
-            {
-                " "
-            }
-            (IDENT | LIFETIME_IDENT, _)
-                if curr_kind.is_keyword(Edition::CURRENT) || curr_kind.is_literal() =>
-            {
-                " "
-            }
-            (_, IDENT | LIFETIME_IDENT)
-                if prev_kind.is_keyword(Edition::CURRENT) || prev_kind.is_literal() =>
+            _ if (prev_kind.is_any_identifier()
+                || prev_kind == LIFETIME_IDENT
+                || prev_kind.is_literal())
+                && (curr_kind.is_any_identifier()
+                    || curr_kind == LIFETIME_IDENT
+                    || curr_kind.is_literal()) =>
             {
                 " "
             }
