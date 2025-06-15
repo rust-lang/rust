@@ -431,7 +431,6 @@ pub struct S {}
                 "parse_shim",
                 "real_span_map_shim",
                 "macro_def_shim",
-                "macro_def_shim",
                 "file_item_tree_query",
                 "ast_id_map_shim",
                 "parse_macro_expansion_shim",

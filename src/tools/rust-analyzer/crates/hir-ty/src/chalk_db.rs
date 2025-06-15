@@ -63,7 +63,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     ) -> Option<rust_ir::AssociatedTyValueId<Interner>> {
         let alias_id = from_assoc_type_id(assoc_type_id);
         let trait_sig = self.db.type_alias_signature(alias_id);
-        self.db.impl_items(hir_def::ImplId::from_chalk(self.db, impl_id)).items.iter().find_map(
+        hir_def::ImplId::from_chalk(self.db, impl_id).impl_items(self.db).items.iter().find_map(
             |(name, item)| match item {
                 AssocItemId::TypeAliasId(alias) if &trait_sig.name == name => {
                     Some(TypeAliasAsValue(*alias).to_chalk(self.db))
@@ -880,8 +880,8 @@ fn impl_def_datum(db: &dyn HirDatabase, krate: Crate, impl_id: hir_def::ImplId) 
 
     let impl_datum_bound = rust_ir::ImplDatumBound { trait_ref, where_clauses };
     let trait_data = db.trait_items(trait_);
-    let associated_ty_value_ids = db
-        .impl_items(impl_id)
+    let associated_ty_value_ids = impl_id
+        .impl_items(db)
         .items
         .iter()
         .filter_map(|(_, item)| match item {

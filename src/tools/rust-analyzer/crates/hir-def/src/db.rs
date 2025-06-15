@@ -25,11 +25,7 @@ use crate::{
     import_map::ImportMap,
     item_tree::{ItemTree, file_item_tree_query},
     lang_item::{self, LangItem},
-    nameres::{
-        assoc::{ImplItems, TraitItems},
-        crate_def_map,
-        diagnostics::DefDiagnostics,
-    },
+    nameres::{assoc::TraitItems, crate_def_map, diagnostics::DefDiagnostics},
     signatures::{
         ConstSignature, EnumSignature, FunctionSignature, ImplSignature, StaticSignature,
         StructSignature, TraitAliasSignature, TraitSignature, TypeAliasSignature, UnionSignature,
@@ -119,13 +115,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
         &self,
         id: VariantId,
     ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>);
-
-    #[salsa::transparent]
-    #[salsa::invoke(ImplItems::impl_items_query)]
-    fn impl_items(&self, e: ImplId) -> Arc<ImplItems>;
-
-    #[salsa::invoke(ImplItems::impl_items_with_diagnostics_query)]
-    fn impl_items_with_diagnostics(&self, e: ImplId) -> (Arc<ImplItems>, DefDiagnostics);
 
     #[salsa::transparent]
     #[salsa::invoke(TraitItems::trait_items_query)]

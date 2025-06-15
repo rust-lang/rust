@@ -100,16 +100,10 @@ pub struct ImplItems {
     pub macro_calls: ThinVec<(AstId<ast::Item>, MacroCallId)>,
 }
 
+#[salsa::tracked]
 impl ImplItems {
-    #[inline]
-    pub(crate) fn impl_items_query(db: &dyn DefDatabase, id: ImplId) -> Arc<ImplItems> {
-        db.impl_items_with_diagnostics(id).0
-    }
-
-    pub(crate) fn impl_items_with_diagnostics_query(
-        db: &dyn DefDatabase,
-        id: ImplId,
-    ) -> (Arc<ImplItems>, DefDiagnostics) {
+    #[salsa::tracked(returns(ref))]
+    pub fn of(db: &dyn DefDatabase, id: ImplId) -> (ImplItems, DefDiagnostics) {
         let _p = tracing::info_span!("impl_items_with_diagnostics_query").entered();
         let ItemLoc { container: module_id, id: ast_id } = id.lookup(db);
 
@@ -118,9 +112,11 @@ impl ImplItems {
         let source = ast_id.with_value(collector.ast_id_map.get(ast_id.value)).to_node(db);
         let (items, macro_calls, diagnostics) = collector.collect(source.assoc_item_list());
 
-        (Arc::new(ImplItems { items, macro_calls }), DefDiagnostics::new(diagnostics))
+        (ImplItems { items, macro_calls }, DefDiagnostics::new(diagnostics))
     }
+}
 
+impl ImplItems {
     pub fn macro_calls(&self) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
         self.macro_calls.iter().copied()
     }

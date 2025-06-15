@@ -61,7 +61,7 @@ impl ChildBySource for TraitId {
 
 impl ChildBySource for ImplId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let data = db.impl_items(*self);
+        let data = self.impl_items(db);
         data.macro_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
                 let ptr = ast_id.to_ptr(db);

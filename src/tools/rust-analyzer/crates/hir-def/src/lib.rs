@@ -88,7 +88,10 @@ use crate::{
     builtin_type::BuiltinType,
     db::DefDatabase,
     hir::generics::{LocalLifetimeParamId, LocalTypeOrConstParamId},
-    nameres::{LocalDefMap, block_def_map, crate_def_map, crate_local_def_map},
+    nameres::{
+        LocalDefMap, assoc::ImplItems, block_def_map, crate_def_map, crate_local_def_map,
+        diagnostics::DefDiagnostics,
+    },
     signatures::{EnumVariants, InactiveEnumVariantCode, VariantFields},
 };
 
@@ -286,6 +289,18 @@ impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_al
 
 type ImplLoc = ItemLoc<ast::Impl>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
+
+impl ImplId {
+    #[inline]
+    pub fn impl_items(self, db: &dyn DefDatabase) -> &ImplItems {
+        &self.impl_items_with_diagnostics(db).0
+    }
+
+    #[inline]
+    pub fn impl_items_with_diagnostics(self, db: &dyn DefDatabase) -> &(ImplItems, DefDiagnostics) {
+        ImplItems::of(db, self)
+    }
+}
 
 type UseLoc = ItemLoc<ast::Use>;
 impl_intern!(UseId, UseLoc, intern_use, lookup_intern_use);

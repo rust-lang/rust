@@ -96,7 +96,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
     for (_, module_data) in crate_def_map.modules() {
         for impl_def in module_data.scope.impls() {
             lang_items.collect_lang_item(db, impl_def, LangItemTarget::ImplDef);
-            for &(_, assoc) in db.impl_items(impl_def).items.iter() {
+            for &(_, assoc) in impl_def.impl_items(db).items.iter() {
                 match assoc {
                     AssocItemId::FunctionId(f) => {
                         lang_items.collect_lang_item(db, f, LangItemTarget::Function)
