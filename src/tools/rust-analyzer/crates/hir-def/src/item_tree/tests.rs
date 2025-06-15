@@ -39,7 +39,7 @@ use a::{c, d::{e}};
             pub(self) extern crate self as renamed;
 
             // AstId: ExternCrate[7E1C, 0]
-            pub(super) extern crate bli;
+            pub(in super) extern crate bli;
 
             // AstId: Use[0000, 0]
             pub use crate::path::{nested, items as renamed, Trait as _};

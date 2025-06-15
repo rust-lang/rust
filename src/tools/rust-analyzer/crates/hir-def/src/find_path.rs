@@ -615,6 +615,7 @@ fn find_local_import_locations(
                         cov_mark::hit!(discount_private_imports);
                         false
                     }
+                    Visibility::PubCrate(_) => true,
                     Visibility::Public => true,
                 };
 
@@ -1286,7 +1287,6 @@ $0
 
     #[test]
     fn explicit_private_imports_crate() {
-        cov_mark::check!(explicit_private_imports);
         check_found_path(
             r#"
 //- /main.rs
