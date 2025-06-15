@@ -33,6 +33,7 @@ pub struct FileSymbol {
     /// Whether this symbol is a doc alias for the original symbol.
     pub is_alias: bool,
     pub is_assoc: bool,
+    pub is_import: bool,
     pub do_not_complete: Complete,
 }
 
@@ -196,6 +197,7 @@ impl<'a> SymbolCollector<'a> {
                 loc: dec_loc,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Complete::Yes,
             });
         };
@@ -226,6 +228,7 @@ impl<'a> SymbolCollector<'a> {
                     loc: dec_loc,
                     is_alias: false,
                     is_assoc: false,
+                    is_import: false,
                     do_not_complete: Complete::Yes,
                 });
             };
@@ -397,6 +400,7 @@ impl<'a> SymbolCollector<'a> {
                     container_name: self.current_container_name.clone(),
                     is_alias: true,
                     is_assoc,
+                    is_import: false,
                     do_not_complete,
                 });
             }
@@ -409,6 +413,7 @@ impl<'a> SymbolCollector<'a> {
             loc: dec_loc,
             is_alias: false,
             is_assoc,
+            is_import: false,
             do_not_complete,
         });
 
@@ -441,6 +446,7 @@ impl<'a> SymbolCollector<'a> {
                     container_name: self.current_container_name.clone(),
                     is_alias: true,
                     is_assoc: false,
+                    is_import: false,
                     do_not_complete,
                 });
             }
@@ -453,6 +459,7 @@ impl<'a> SymbolCollector<'a> {
             loc: dec_loc,
             is_alias: false,
             is_assoc: false,
+            is_import: false,
             do_not_complete,
         });
     }
