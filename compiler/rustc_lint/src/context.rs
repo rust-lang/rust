@@ -710,6 +710,15 @@ impl<'tcx> LateContext<'tcx> {
 
     /// Gets the absolute path of `def_id` as a vector of `Symbol`.
     ///
+    /// Note that this is kinda expensive because it has to
+    /// travel the tree and pretty-print. Use sparingly.
+    ///
+    /// If you're trying to match for an item given by its path, use a
+    /// diagnostic item. If you're only interested in given sections, use more
+    /// specific functions, such as [`TyCtxt::crate_name`]
+    ///
+    /// FIXME: It would be great if this could be optimized.
+    ///
     /// # Examples
     ///
     /// ```rust,ignore (no context or def id available)
