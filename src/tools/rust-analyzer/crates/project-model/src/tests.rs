@@ -235,7 +235,8 @@ fn smoke_test_real_sysroot_cargo() {
         AbsPath::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR"))),
         &Default::default(),
     );
-    let loaded_sysroot = sysroot.load_workspace(&RustSourceWorkspaceConfig::default_cargo());
+    let loaded_sysroot =
+        sysroot.load_workspace(&RustSourceWorkspaceConfig::default_cargo(), &|_| ());
     if let Some(loaded_sysroot) = loaded_sysroot {
         sysroot.set_workspace(loaded_sysroot);
     }

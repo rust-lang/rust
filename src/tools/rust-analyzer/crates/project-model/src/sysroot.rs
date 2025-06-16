@@ -195,6 +195,7 @@ impl Sysroot {
     pub fn load_workspace(
         &self,
         sysroot_source_config: &RustSourceWorkspaceConfig,
+        progress: &dyn Fn(String),
     ) -> Option<RustLibSrcWorkspace> {
         assert!(matches!(self.workspace, RustLibSrcWorkspace::Empty), "workspace already loaded");
         let Self { root: _, rust_lib_src_root: Some(src_root), workspace: _, error: _ } = self
@@ -205,7 +206,7 @@ impl Sysroot {
             let library_manifest = ManifestPath::try_from(src_root.join("Cargo.toml")).unwrap();
             if fs::metadata(&library_manifest).is_ok() {
                 if let Some(loaded) =
-                    self.load_library_via_cargo(library_manifest, src_root, cargo_config)
+                    self.load_library_via_cargo(library_manifest, src_root, cargo_config, progress)
                 {
                     return Some(loaded);
                 }
@@ -296,6 +297,7 @@ impl Sysroot {
         library_manifest: ManifestPath,
         rust_lib_src_dir: &AbsPathBuf,
         cargo_config: &CargoMetadataConfig,
+        progress: &dyn Fn(String),
     ) -> Option<RustLibSrcWorkspace> {
         tracing::debug!("Loading library metadata: {library_manifest}");
         let mut cargo_config = cargo_config.clone();
@@ -313,7 +315,7 @@ impl Sysroot {
             false,
             // Make sure we never attempt to write to the sysroot
             true,
-            &|_| (),
+            progress,
         ) {
             Ok(it) => it,
             Err(e) => {
