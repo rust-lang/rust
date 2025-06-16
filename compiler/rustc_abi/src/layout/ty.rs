@@ -182,6 +182,9 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug {
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
     fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
+    /// Returns `true` if the type is always passed indirectly. Currently only
+    /// used for `VaList`s.
+    fn is_pass_indirectly(this: TyAndLayout<'a, Self>) -> bool;
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
@@ -277,6 +280,13 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
     {
         Ty::is_transparent(self)
+    }
+
+    pub fn is_pass_indirectly<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_pass_indirectly(self)
     }
 
     /// Finds the one field that is not a 1-ZST.
