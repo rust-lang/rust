@@ -18,16 +18,16 @@ pub fn no_explicit_align() {}
 // align16: align 16
 // align1024: align 1024
 #[no_mangle]
-#[repr(align(8))]
+#[align(8)]
 pub fn lower_align() {}
 
-// the higher value of min-function-alignment and repr(align) wins out
+// the higher value of min-function-alignment and the align attribute wins out
 //
 // CHECK-LABEL: @higher_align
 // align16: align 32
 // align1024: align 1024
 #[no_mangle]
-#[repr(align(32))]
+#[align(32)]
 pub fn higher_align() {}
 
 // cold functions follow the same rules as other functions
