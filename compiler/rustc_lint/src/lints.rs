@@ -5,8 +5,8 @@ use std::num::NonZero;
 use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
+    Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, EmissionGuarantee,
+    LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
@@ -2716,13 +2716,6 @@ pub(crate) struct MacroExpandedMacroExportsAccessedByAbsolutePaths {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_hidden_lifetime_parameters)]
-pub(crate) struct ElidedLifetimesInPaths {
-    #[subdiagnostic]
-    pub subdiag: ElidedLifetimeInPathSubdiag,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_invalid_crate_type_value)]
 pub(crate) struct UnknownCrateTypes {
     #[subdiagnostic]
@@ -3282,5 +3275,26 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
                 );
             }
         }
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_hidden_lifetime_in_path)]
+pub(crate) struct HiddenLifetimeInPath {
+    #[subdiagnostic]
+    pub suggestions: HiddenLifetimeInPathSuggestion,
+}
+
+pub(crate) struct HiddenLifetimeInPathSuggestion {
+    pub suggestions: Vec<(Span, String)>,
+}
+
+impl Subdiagnostic for HiddenLifetimeInPathSuggestion {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        diag.multipart_suggestion_verbose(
+            fluent::lint_hidden_lifetime_in_path_suggestion,
+            self.suggestions,
+            Applicability::MachineApplicable,
+        );
     }
 }
