@@ -6,14 +6,16 @@ mod block;
 
 use itertools::Itertools;
 use rowan::Direction;
-use rustc_literal_escaper::{self, EscapeError, Mode, unescape_mixed, unescape_unicode};
+use rustc_literal_escaper::{
+    unescape_byte, unescape_byte_str, unescape_c_str, unescape_char, unescape_str, EscapeError,
+};
 
 use crate::{
-    AstNode, SyntaxError,
-    SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
-    SyntaxNode, SyntaxToken, T, TextSize, algo,
+    algo,
     ast::{self, HasAttrs, HasVisibility, IsString, RangeItem},
-    match_ast,
+    match_ast, AstNode, SyntaxError,
+    SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
+    SyntaxNode, SyntaxToken, TextSize, T,
 };
 
 pub(crate) fn validate(root: &SyntaxNode, errors: &mut Vec<SyntaxError>) {
@@ -47,7 +49,7 @@ pub(crate) fn validate(root: &SyntaxNode, errors: &mut Vec<SyntaxError>) {
 }
 
 fn rustc_unescape_error_to_string(err: EscapeError) -> (&'static str, bool) {
-    use rustc_literal_escaper::EscapeError as EE;
+    use EscapeError as EE;
 
     #[rustfmt::skip]
     let err_message = match err {
@@ -122,7 +124,8 @@ fn rustc_unescape_error_to_string(err: EscapeError) -> (&'static str, bool) {
 fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
     // FIXME: move this function to outer scope (https://github.com/rust-lang/rust-analyzer/pull/2834#discussion_r366196658)
     fn unquote(text: &str, prefix_len: usize, end_delimiter: char) -> Option<&str> {
-        text.rfind(end_delimiter).and_then(|end| text.get(prefix_len..end))
+        text.rfind(end_delimiter)
+            .and_then(|end| text.get(prefix_len..end))
     }
 
     let token = literal.token();
@@ -142,7 +145,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::String(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 1, '"') {
-                    unescape_unicode(without_quotes, Mode::Str, &mut |range, char| {
+                    unescape_str(without_quotes, |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -153,7 +156,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::ByteString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_unicode(without_quotes, Mode::ByteStr, &mut |range, char| {
+                    unescape_byte_str(without_quotes, |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -164,7 +167,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::CString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_mixed(without_quotes, Mode::CStr, &mut |range, char| {
+                    unescape_c_str(without_quotes, |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -174,20 +177,16 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         }
         ast::LiteralKind::Char(_) => {
             if let Some(without_quotes) = unquote(text, 1, '\'') {
-                unescape_unicode(without_quotes, Mode::Char, &mut |range, char| {
-                    if let Err(err) = char {
-                        push_err(1, range.start, err);
-                    }
-                });
+                if let Err(err) = unescape_char(without_quotes) {
+                    push_err(1, 0, err);
+                }
             }
         }
         ast::LiteralKind::Byte(_) => {
             if let Some(without_quotes) = unquote(text, 2, '\'') {
-                unescape_unicode(without_quotes, Mode::Byte, &mut |range, char| {
-                    if let Err(err) = char {
-                        push_err(2, range.start, err);
-                    }
-                });
+                if let Err(err) = unescape_byte(without_quotes) {
+                    push_err(2, 0, err);
+                }
             }
         }
         ast::LiteralKind::IntNumber(_)
@@ -237,15 +236,26 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
     }
 
     fn int_token(name_ref: Option<ast::NameRef>) -> Option<SyntaxToken> {
-        name_ref?.syntax().first_child_or_token()?.into_token().filter(|it| it.kind() == INT_NUMBER)
+        name_ref?
+            .syntax()
+            .first_child_or_token()?
+            .into_token()
+            .filter(|it| it.kind() == INT_NUMBER)
     }
 }
 
 fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
     let path_without_in_token = vis.in_token().is_none()
-        && vis.path().and_then(|p| p.as_single_name_ref()).and_then(|n| n.ident_token()).is_some();
+        && vis
+            .path()
+            .and_then(|p| p.as_single_name_ref())
+            .and_then(|n| n.ident_token())
+            .is_some();
     if path_without_in_token {
-        errors.push(SyntaxError::new("incorrect visibility restriction", vis.syntax.text_range()));
+        errors.push(SyntaxError::new(
+            "incorrect visibility restriction",
+            vis.syntax.text_range(),
+        ));
     }
     let parent = match vis.syntax().parent() {
         Some(it) => it,
@@ -256,14 +266,21 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
         _ => return,
     }
 
-    let impl_def = match parent.parent().and_then(|it| it.parent()).and_then(ast::Impl::cast) {
+    let impl_def = match parent
+        .parent()
+        .and_then(|it| it.parent())
+        .and_then(ast::Impl::cast)
+    {
         Some(it) => it,
         None => return,
     };
     // FIXME: disable validation if there's an attribute, since some proc macros use this syntax.
     // ideally the validation would run only on the fully expanded code, then this wouldn't be necessary.
     if impl_def.trait_().is_some() && impl_def.attrs().next().is_none() {
-        errors.push(SyntaxError::new("Unnecessary visibility qualifier", vis.syntax.text_range()));
+        errors.push(SyntaxError::new(
+            "Unnecessary visibility qualifier",
+            vis.syntax.text_range(),
+        ));
     }
 }
 
@@ -399,7 +416,10 @@ fn validate_trait_object_ty_plus(ty: ast::DynTraitType) -> Option<SyntaxError> {
     let more_than_one_bound = tbl.bounds().next_tuple::<(_, _)>().is_some();
 
     if more_than_one_bound && !matches!(preceding_token.kind(), T!['('] | T![<] | T![=]) {
-        Some(SyntaxError::new("ambiguous `+` in a type", ty.syntax().text_range()))
+        Some(SyntaxError::new(
+            "ambiguous `+` in a type",
+            ty.syntax().text_range(),
+        ))
     } else {
         None
     }
@@ -413,7 +433,10 @@ fn validate_impl_object_ty_plus(ty: ast::ImplTraitType) -> Option<SyntaxError> {
     let more_than_one_bound = tbl.bounds().next_tuple::<(_, _)>().is_some();
 
     if more_than_one_bound && !matches!(preceding_token.kind(), T!['('] | T![<] | T![=]) {
-        Some(SyntaxError::new("ambiguous `+` in a type", ty.syntax().text_range()))
+        Some(SyntaxError::new(
+            "ambiguous `+` in a type",
+            ty.syntax().text_range(),
+        ))
     } else {
         None
     }
@@ -435,7 +458,10 @@ fn validate_const(const_: ast::Const, errors: &mut Vec<SyntaxError>) {
         .and_then(|t| algo::skip_trivia_token(t, Direction::Next))
         .filter(|t| t.kind() == T![mut])
     {
-        errors.push(SyntaxError::new("const globals cannot be mutable", mut_token.text_range()));
+        errors.push(SyntaxError::new(
+            "const globals cannot be mutable",
+            mut_token.text_range(),
+        ));
     }
 }
 

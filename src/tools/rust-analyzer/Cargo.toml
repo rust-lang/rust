@@ -45,10 +45,11 @@ debug = 2
 # la-arena = { path = "lib/la-arena" }
 # lsp-server = { path = "lib/lsp-server" }
 
-
 # ungrammar = { path = "../ungrammar" }
 
 # salsa = { path = "../salsa" }
+
+# rustc-literal-escaper = { path = '../../../../literal-escaper/' }
 
 [workspace.dependencies]
 # local crates
@@ -141,7 +142,7 @@ serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }
 serde_json = "1.0.140"
 rustc-hash = "2.1.1"
-rustc-literal-escaper = "0.0.2"
+rustc-literal-escaper = "0.0.4"
 smallvec = { version = "1.14.0", features = [
   "const_new",
   "union",
