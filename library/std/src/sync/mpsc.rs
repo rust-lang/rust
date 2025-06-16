@@ -1148,6 +1148,7 @@ impl<T> From<SendError<T>> for TrySendError<T> {
     ///
     /// This conversion always returns a `TrySendError::Disconnected` containing the data in the `SendError<T>`.
     ///
+    /// ## Cost
     /// No data is allocated on the heap.
     fn from(err: SendError<T>) -> TrySendError<T> {
         match err {
@@ -1198,6 +1199,7 @@ impl From<RecvError> for TryRecvError {
     ///
     /// This conversion always returns `TryRecvError::Disconnected`.
     ///
+    /// ## Cost
     /// No data is allocated on the heap.
     fn from(err: RecvError) -> TryRecvError {
         match err {
@@ -1233,6 +1235,7 @@ impl From<RecvError> for RecvTimeoutError {
     ///
     /// This conversion always returns `RecvTimeoutError::Disconnected`.
     ///
+    /// ## Cost
     /// No data is allocated on the heap.
     fn from(err: RecvError) -> RecvTimeoutError {
         match err {

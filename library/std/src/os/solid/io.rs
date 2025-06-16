@@ -243,6 +243,7 @@ macro_rules! impl_owned_fd_traits {
         }
 
         impl From<net::$t> for OwnedFd {
+            #[doc = concat!("Create a `OwnedFd` from inner `", stringify!($t), "`")]
             #[inline]
             fn from(socket: net::$t) -> OwnedFd {
                 socket.into_inner().into_socket().into_inner()
@@ -250,6 +251,7 @@ macro_rules! impl_owned_fd_traits {
         }
 
         impl From<OwnedFd> for net::$t {
+            #[doc = concat!("Create a `", stringify!($t), "` with inner `OwnedFd`")]
             #[inline]
             fn from(owned_fd: OwnedFd) -> Self {
                 Self::from_inner(FromInner::from_inner(FromInner::from_inner(owned_fd)))

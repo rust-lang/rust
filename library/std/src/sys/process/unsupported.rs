@@ -129,6 +129,7 @@ impl From<io::Stderr> for Stdio {
 }
 
 impl From<File> for Stdio {
+    /// Wrap `File` in an `InheritFile`.
     fn from(file: File) -> Stdio {
         Stdio::InheritFile(file)
     }

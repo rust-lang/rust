@@ -378,6 +378,7 @@ where
     T: MaskElement,
     LaneCount<N>: SupportedLaneCount,
 {
+    /// Uses `from_array` to create a new `Mask`
     #[inline]
     fn from(array: [bool; N]) -> Self {
         Self::from_array(array)
@@ -389,6 +390,7 @@ where
     T: MaskElement,
     LaneCount<N>: SupportedLaneCount,
 {
+    /// Converts a SIMD mask to an array of bools.
     #[inline]
     fn from(vector: Mask<T, N>) -> Self {
         vector.to_array()
@@ -634,6 +636,7 @@ macro_rules! impl_from {
         where
             LaneCount<N>: SupportedLaneCount,
         {
+            /// Casts the value into the other `Mask`
             #[inline]
             fn from(value: Mask<$from, N>) -> Self {
                 value.cast()
