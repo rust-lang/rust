@@ -1,6 +1,4 @@
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#![allow(static_mut_refs)]
-
+use std::cell::Cell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::thread;
 
@@ -1027,21 +1025,26 @@ fn extract_if_drop_panic_leak() {
     assert_eq!(d7.dropped(), 1);
 }
 
+macro_rules! struct_with_counted_drop {
+    ($struct_name:ident$(($elt_ty:ty))?, $drop_counter:ident $(=> $drop_stmt:expr)?) => {
+        thread_local! {static $drop_counter: Cell<i32> = Cell::new(0);}
+
+        struct $struct_name$(($elt_ty))?;
+
+        impl Drop for $struct_name {
+            fn drop(&mut self) {
+                $drop_counter.set($drop_counter.get() + 1);
+
+                $($drop_stmt(self))?
+            }
+        }
+    };
+}
+
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn extract_if_pred_panic_leak() {
-    static mut DROPS: i32 = 0;
-
-    #[derive(Debug)]
-    struct D(u32);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-        }
-    }
+    struct_with_counted_drop!(D(u32), DROPS);
 
     let mut q = LinkedList::new();
     q.push_back(D(3));
@@ -1053,26 +1056,17 @@ fn extract_if_pred_panic_leak() {
     q.push_front(D(1));
     q.push_front(D(0));
 
-    catch_unwind(AssertUnwindSafe(|| {
+    _ = catch_unwind(AssertUnwindSafe(|| {
         q.extract_if(|item| if item.0 >= 2 { panic!() } else { true }).for_each(drop)
-    }))
-    .ok();
+    }));
 
-    assert_eq!(unsafe { DROPS }, 2); // 0 and 1
+    assert_eq!(DROPS.get(), 2); // 0 and 1
     assert_eq!(q.len(), 6);
 }
 
 #[test]
 fn test_drop() {
-    static mut DROPS: i32 = 0;
-    struct Elem;
-    impl Drop for Elem {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-        }
-    }
+    struct_with_counted_drop!(Elem, DROPS);
 
     let mut ring = LinkedList::new();
     ring.push_back(Elem);
@@ -1081,20 +1075,12 @@ fn test_drop() {
     ring.push_front(Elem);
     drop(ring);
 
-    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(DROPS.get(), 4);
 }
 
 #[test]
 fn test_drop_with_pop() {
-    static mut DROPS: i32 = 0;
-    struct Elem;
-    impl Drop for Elem {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-        }
-    }
+    struct_with_counted_drop!(Elem, DROPS);
 
     let mut ring = LinkedList::new();
     ring.push_back(Elem);
@@ -1104,23 +1090,15 @@ fn test_drop_with_pop() {
 
     drop(ring.pop_back());
     drop(ring.pop_front());
-    assert_eq!(unsafe { DROPS }, 2);
+    assert_eq!(DROPS.get(), 2);
 
     drop(ring);
-    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(DROPS.get(), 4);
 }
 
 #[test]
 fn test_drop_clear() {
-    static mut DROPS: i32 = 0;
-    struct Elem;
-    impl Drop for Elem {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-        }
-    }
+    struct_with_counted_drop!(Elem, DROPS);
 
     let mut ring = LinkedList::new();
     ring.push_back(Elem);
@@ -1128,30 +1106,16 @@ fn test_drop_clear() {
     ring.push_back(Elem);
     ring.push_front(Elem);
     ring.clear();
-    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(DROPS.get(), 4);
 
     drop(ring);
-    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(DROPS.get(), 4);
 }
 
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_drop_panic() {
-    static mut DROPS: i32 = 0;
-
-    struct D(bool);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-
-            if self.0 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
+    struct_with_counted_drop!(D(bool), DROPS => |this: &D| if this.0 { panic!("panic in `drop`"); } );
 
     let mut q = LinkedList::new();
     q.push_back(D(false));
@@ -1165,7 +1129,7 @@ fn test_drop_panic() {
 
     catch_unwind(move || drop(q)).ok();
 
-    assert_eq!(unsafe { DROPS }, 8);
+    assert_eq!(DROPS.get(), 8);
 }
 
 #[test]
