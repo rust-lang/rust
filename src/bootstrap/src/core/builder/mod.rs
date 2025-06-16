@@ -1027,6 +1027,7 @@ impl<'a> Builder<'a> {
                 test::HtmlCheck,
                 test::RustInstaller,
                 test::TestFloatParse,
+                test::CompilerBuiltins,
                 test::CollectLicenseMetadata,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,

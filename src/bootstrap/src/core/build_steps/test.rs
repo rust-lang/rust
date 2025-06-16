@@ -2731,6 +2731,68 @@ impl Step for Crate {
     }
 }
 
+/// Test compiler-builtins via its testcrate.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CompilerBuiltins {
+    compiler: Compiler,
+    target: TargetSelection,
+    mode: Mode,
+}
+
+impl Step for CompilerBuiltins {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.paths(&["library/compiler-builtins", "library/compiler-builtins/compiler-builtins"])
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+        let host = run.build_triple();
+        let compiler = builder.compiler_for(builder.top_stage, host, host);
+
+        builder.ensure(CompilerBuiltins { compiler, target: run.target, mode: Mode::Std });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let compiler = self.compiler;
+        let target = self.target;
+        let mode = self.mode;
+
+        builder.ensure(compile::Std::new(compiler, compiler.host).force_recompile(true));
+        let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
+
+        // Also prepare a sysroot for the target.
+        if !builder.config.is_host_target(target) {
+            builder.ensure(compile::Std::new(compiler, target).force_recompile(true));
+            builder.ensure(RemoteCopyLibs { compiler, target });
+        }
+
+        let make_cargo = |f: fn(&mut builder::Cargo) -> &mut builder::Cargo| {
+            let mut c = builder::Cargo::new(
+                builder,
+                compiler,
+                mode,
+                SourceType::InTree,
+                target,
+                Kind::Test,
+            );
+            f(&mut c);
+            c
+        };
+
+        // Most tests are in the builtins-test crate.
+        let crates = ["compiler-builtins".to_string(), "builtins-test".to_string()];
+        let cargo = make_cargo(|c| c);
+        run_cargo_test(cargo, &[], &crates, "compiler-buitlins", target, builder);
+        let cargo = make_cargo(|c| c.arg("--release"));
+        run_cargo_test(cargo, &[], &crates, "compiler-buitlins --release", target, builder);
+        let cargo = make_cargo(|c| c.arg("--features=c"));
+        run_cargo_test(cargo, &[], &crates, "compiler-buitlins --features c", target, builder);
+    }
+}
+
 /// Rustdoc is special in various ways, which is why this step is different from `Crate`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRustdoc {
