@@ -82,13 +82,16 @@ pub(super) fn mangle<'tcx>(
 }
 
 pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> String {
-    if item_name == "rust_eh_personality" {
+    match item_name {
         // rust_eh_personality must not be renamed as LLVM hard-codes the name
-        return "rust_eh_personality".to_owned();
-    } else if item_name == "__rust_no_alloc_shim_is_unstable" {
+        "rust_eh_personality" => return item_name.to_owned(),
         // Temporary back compat hack to give people the chance to migrate to
         // include #[rustc_std_internal_symbol].
-        return "__rust_no_alloc_shim_is_unstable".to_owned();
+        "__rust_no_alloc_shim_is_unstable" => return item_name.to_owned(),
+        // Apple availability symbols need to not be mangled to be usable by
+        // C/Objective-C code.
+        "__isPlatformVersionAtLeast" | "__isOSVersionAtLeast" => return item_name.to_owned(),
+        _ => {}
     }
 
     let prefix = "_R";
