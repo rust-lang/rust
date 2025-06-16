@@ -30,6 +30,8 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
 
         let typing_env = body.typing_env(tcx);
         let ssa = SsaLocals::new(tcx, body, typing_env);
+        debug!(borrowed_locals = ?ssa.borrowed_locals());
+        debug!(copy_classes = ?ssa.copy_classes());
 
         let fully_moved = fully_moved_locals(&ssa, body);
         debug!(?fully_moved);
@@ -43,14 +45,8 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
 
         let any_replacement = ssa.copy_classes().iter_enumerated().any(|(l, &h)| l != h);
 
-        Replacer {
-            tcx,
-            copy_classes: ssa.copy_classes(),
-            fully_moved,
-            borrowed_locals: ssa.borrowed_locals(),
-            storage_to_remove,
-        }
-        .visit_body_preserves_cfg(body);
+        Replacer { tcx, copy_classes: ssa.copy_classes(), fully_moved, storage_to_remove }
+            .visit_body_preserves_cfg(body);
 
         if any_replacement {
             crate::simplify::remove_unused_definitions(body);
@@ -102,7 +98,6 @@ struct Replacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     fully_moved: DenseBitSet<Local>,
     storage_to_remove: DenseBitSet<Local>,
-    borrowed_locals: &'a DenseBitSet<Local>,
     copy_classes: &'a IndexSlice<Local, Local>,
 }
 
@@ -111,34 +106,18 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         self.tcx
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn visit_local(&mut self, local: &mut Local, ctxt: PlaceContext, _: Location) {
         let new_local = self.copy_classes[*local];
-        // We must not unify two locals that are borrowed. But this is fine if one is borrowed and
-        // the other is not. We chose to check the original local, and not the target. That way, if
-        // the original local is borrowed and the target is not, we do not pessimize the whole class.
-        if self.borrowed_locals.contains(*local) {
-            return;
-        }
         match ctxt {
             // Do not modify the local in storage statements.
             PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead) => {}
-            // The local should have been marked as non-SSA.
-            PlaceContext::MutatingUse(_) => assert_eq!(*local, new_local),
             // We access the value.
             _ => *local = new_local,
         }
     }
 
-    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, loc: Location) {
-        if let Some(new_projection) = self.process_projection(place.projection, loc) {
-            place.projection = self.tcx().mk_place_elems(&new_projection);
-        }
-
-        // Any non-mutating use context is ok.
-        let ctxt = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
-        self.visit_local(&mut place.local, ctxt, loc)
-    }
-
+    #[tracing::instrument(level = "trace", skip(self))]
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {
         if let Operand::Move(place) = *operand
             // A move out of a projection of a copy is equivalent to a copy of the original
@@ -151,6 +130,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         self.super_operand(operand, loc);
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, loc: Location) {
         // When removing storage statements, we need to remove both (#107511).
         if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = stmt.kind
