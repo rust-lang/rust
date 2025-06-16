@@ -5,7 +5,9 @@
         "python3",
         "x.py",
         "check",
-        "--json-output"
+        "--json-output",
+        "--build-dir",
+        "build/rust-analyzer"
     ],
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
@@ -27,7 +29,9 @@
         "python3",
         "x.py",
         "check",
-        "--json-output"
+        "--json-output",
+        "--build-dir",
+        "build/rust-analyzer"
     ],
     "rust-analyzer.cargo.sysrootSrc": "./library",
     "rust-analyzer.rustc.source": "./Cargo.toml",
