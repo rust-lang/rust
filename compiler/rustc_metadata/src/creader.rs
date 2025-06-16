@@ -1,7 +1,6 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
 use std::error::Error;
-use std::ops::Fn;
 use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
@@ -276,12 +275,6 @@ impl CStore {
             .filter_map(|(cnum, data)| data.as_deref().map(|data| (cnum, data)))
     }
 
-    fn iter_crate_data_mut(&mut self) -> impl Iterator<Item = (CrateNum, &mut CrateMetadata)> {
-        self.metas
-            .iter_enumerated_mut()
-            .filter_map(|(cnum, data)| data.as_deref_mut().map(|data| (cnum, data)))
-    }
-
     fn push_dependencies_in_postorder(&self, deps: &mut IndexSet<CrateNum>, cnum: CrateNum) {
         if !deps.contains(&cnum) {
             let data = self.get_crate_data(cnum);
@@ -305,13 +298,6 @@ impl CStore {
             self.push_dependencies_in_postorder(&mut deps, cnum);
         }
         deps
-    }
-
-    fn crate_dependencies_in_reverse_postorder(
-        &self,
-        cnum: CrateNum,
-    ) -> impl Iterator<Item = CrateNum> {
-        self.crate_dependencies_in_postorder(cnum).into_iter().rev()
     }
 
     pub(crate) fn injected_panic_runtime(&self) -> Option<CrateNum> {
@@ -966,47 +952,27 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // If we need a panic runtime, we try to find an existing one here. At
         // the same time we perform some general validation of the DAG we've got
         // going such as ensuring everything has a compatible panic strategy.
-        //
-        // The logic for finding the panic runtime here is pretty much the same
-        // as the allocator case with the only addition that the panic strategy
-        // compilation mode also comes into play.
-        let desired_strategy = self.sess.panic_strategy();
-        let mut runtime_found = false;
         let mut needs_panic_runtime = attr::contains_name(&krate.attrs, sym::needs_panic_runtime);
-
-        let mut panic_runtimes = Vec::new();
-        for (cnum, data) in self.cstore.iter_crate_data() {
-            needs_panic_runtime = needs_panic_runtime || data.needs_panic_runtime();
-            if data.is_panic_runtime() {
-                // Inject a dependency from all #![needs_panic_runtime] to this
-                // #![panic_runtime] crate.
-                panic_runtimes.push(cnum);
-                runtime_found = runtime_found || data.dep_kind() == CrateDepKind::Explicit;
-            }
-        }
-        for cnum in panic_runtimes {
-            self.inject_dependency_if(cnum, "a panic runtime", &|data| data.needs_panic_runtime());
+        for (_cnum, data) in self.cstore.iter_crate_data() {
+            needs_panic_runtime |= data.needs_panic_runtime();
         }
 
-        // If an explicitly linked and matching panic runtime was found, or if
-        // we just don't need one at all, then we're done here and there's
-        // nothing else to do.
-        if !needs_panic_runtime || runtime_found {
+        // If we just don't need a panic runtime at all, then we're done here
+        // and there's nothing else to do.
+        if !needs_panic_runtime {
             return;
         }
 
-        // By this point we know that we (a) need a panic runtime and (b) no
-        // panic runtime was explicitly linked. Here we just load an appropriate
-        // default runtime for our panic strategy and then inject the
-        // dependencies.
+        // By this point we know that we need a panic runtime. Here we just load
+        // an appropriate default runtime for our panic strategy.
         //
         // We may resolve to an already loaded crate (as the crate may not have
-        // been explicitly linked prior to this) and we may re-inject
-        // dependencies again, but both of those situations are fine.
+        // been explicitly linked prior to this), but this is fine.
         //
         // Also note that we have yet to perform validation of the crate graph
         // in terms of everyone has a compatible panic runtime format, that's
         // performed later as part of the `dependency_format` module.
+        let desired_strategy = self.sess.panic_strategy();
         let name = match desired_strategy {
             PanicStrategy::Unwind => sym::panic_unwind,
             PanicStrategy::Abort => sym::panic_abort,
@@ -1031,7 +997,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }
 
         self.cstore.injected_panic_runtime = Some(cnum);
-        self.inject_dependency_if(cnum, "a panic runtime", &|data| data.needs_panic_runtime());
     }
 
     fn inject_profiler_runtime(&mut self) {
@@ -1209,45 +1174,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let cmeta = self.cstore.get_crate_data(cnum);
         if !cmeta.is_compiler_builtins() {
             self.dcx().emit_err(errors::CrateNotCompilerBuiltins { crate_name: cmeta.name() });
-        }
-    }
-
-    fn inject_dependency_if(
-        &mut self,
-        krate: CrateNum,
-        what: &str,
-        needs_dep: &dyn Fn(&CrateMetadata) -> bool,
-    ) {
-        // Don't perform this validation if the session has errors, as one of
-        // those errors may indicate a circular dependency which could cause
-        // this to stack overflow.
-        if self.dcx().has_errors().is_some() {
-            return;
-        }
-
-        // Before we inject any dependencies, make sure we don't inject a
-        // circular dependency by validating that this crate doesn't
-        // transitively depend on any crates satisfying `needs_dep`.
-        for dep in self.cstore.crate_dependencies_in_reverse_postorder(krate) {
-            let data = self.cstore.get_crate_data(dep);
-            if needs_dep(&data) {
-                self.dcx().emit_err(errors::NoTransitiveNeedsDep {
-                    crate_name: self.cstore.get_crate_data(krate).name(),
-                    needs_crate_name: what,
-                    deps_crate_name: data.name(),
-                });
-            }
-        }
-
-        // All crates satisfying `needs_dep` do not explicitly depend on the
-        // crate provided for this compile, but in order for this compilation to
-        // be successfully linked we need to inject a dependency (to order the
-        // crates on the command line correctly).
-        for (cnum, data) in self.cstore.iter_crate_data_mut() {
-            if needs_dep(data) {
-                info!("injecting a dep from {} to {}", cnum, krate);
-                data.add_dependency(krate);
-            }
         }
     }
 
