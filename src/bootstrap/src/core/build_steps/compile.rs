@@ -1022,6 +1022,12 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // If only `compiler` was passed, do not run this step.
+        // Instead the `Assemble` step will take care of compiling Rustc.
+        if run.builder.paths == vec![PathBuf::from("compiler")] {
+            return;
+        }
+
         let crates = run.cargo_crates_in_set();
         run.builder.ensure(Rustc {
             build_compiler: run
