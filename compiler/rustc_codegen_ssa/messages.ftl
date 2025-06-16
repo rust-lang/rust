@@ -48,8 +48,6 @@ codegen_ssa_error_writing_def_file =
 
 codegen_ssa_expected_name_value_pair = expected name value pair
 
-codegen_ssa_expected_one_argument = expected one argument
-
 codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
 codegen_ssa_extern_funcs_not_found = some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified
@@ -85,9 +83,6 @@ codegen_ssa_incorrect_cgu_reuse_type =
     }`{$expected_reuse}`
 
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
-
-codegen_ssa_invalid_argument = invalid argument
-    .help = valid inline arguments are `always` and `never`
 
 codegen_ssa_invalid_instruction_set = invalid instruction set specified
 
