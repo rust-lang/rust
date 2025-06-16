@@ -1,8 +1,32 @@
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for opaque types
   --> $DIR/issue-95307.rs:7:28
    |
 LL |     async fn new() -> [u8; _];
    |                            ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for opaque types
+  --> $DIR/issue-95307.rs:7:28
+   |
+LL |     async fn new() -> [u8; _];
+   |                            ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for opaque types
+  --> $DIR/issue-95307.rs:7:28
+   |
+LL |     async fn new() -> [u8; _];
+   |                            ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for opaque types
+  --> $DIR/issue-95307.rs:7:28
+   |
+LL |     async fn new() -> [u8; _];
+   |                            ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/issue-95307.rs:7:28
@@ -14,7 +38,7 @@ LL |     async fn new() -> [u8; _];
    = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 2 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0121, E0658.
 For more information about an error, try `rustc --explain E0121`.
