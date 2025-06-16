@@ -364,7 +364,7 @@ To find documentation-related issues, use the [A-docs label].
 
 You can find documentation style guidelines in [RFC 1574].
 
-To build the standard library documentation, use `x doc --stage 0 library --open`.
+To build the standard library documentation, use `x doc --stage 1 library --open`.
 To build the documentation for a book (e.g. the unstable book), use `x doc src/doc/unstable-book.`
 Results should appear in `build/host/doc`, as well as automatically open in your default browser.
 See [Building Documentation](./building/compiler-documenting.md#building-documentation) for more
