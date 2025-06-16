@@ -39,7 +39,6 @@ fn remove_dup_assign(
     ends: usize,
     cache: &mut ResultCache,
 ) {
-    let mut curr = 0;
     let mut file_copy = file.clone();
     let mut reduction_count = 0;
     // Not worth it.
@@ -427,7 +426,6 @@ pub(super) fn reduce(path: impl AsRef<Path>) {
     println!("running `linearize_cf` on {path:?}.");
     linearize_cf(&mut file, &path, &mut cache);
     let mut out = std::fs::File::create(&path).expect("Could not save the reduction result.");
-    for line in file {
-        out.write_all(line.as_bytes());
-    }
+    let file = file.into_iter().collect::<String>();
+    out.write_all(file.as_bytes()).expect("failed to write into file");
 }
