@@ -170,7 +170,7 @@ impl ProjectWorkspace {
     pub fn load(
         manifest: ProjectManifest,
         config: &CargoConfig,
-        progress: &dyn Fn(String),
+        progress: &(dyn Fn(String) + Sync),
     ) -> anyhow::Result<ProjectWorkspace> {
         ProjectWorkspace::load_inner(&manifest, config, progress)
             .with_context(|| format!("Failed to load the project at {manifest}"))
@@ -179,7 +179,7 @@ impl ProjectWorkspace {
     fn load_inner(
         manifest: &ProjectManifest,
         config: &CargoConfig,
-        progress: &dyn Fn(String),
+        progress: &(dyn Fn(String) + Sync),
     ) -> anyhow::Result<ProjectWorkspace> {
         let res = match manifest {
             ProjectManifest::ProjectJson(project_json) => {
@@ -206,7 +206,7 @@ impl ProjectWorkspace {
     fn load_cargo(
         cargo_toml: &ManifestPath,
         config: &CargoConfig,
-        progress: &dyn Fn(String),
+        progress: &(dyn Fn(String) + Sync),
     ) -> Result<ProjectWorkspace, anyhow::Error> {
         progress("Discovering sysroot".to_owned());
         let CargoConfig {
@@ -304,7 +304,7 @@ impl ProjectWorkspace {
                         &sysroot,
                         *no_deps,
                         false,
-                        &|_| (),
+                        progress,
                     ) {
                         Ok((meta, _error)) => {
                             let workspace = CargoWorkspace::new(
@@ -347,13 +347,16 @@ impl ProjectWorkspace {
                     &sysroot,
                     *no_deps,
                     false,
-                    &|_| (),
+                    progress,
                 )
             });
             let loaded_sysroot = s.spawn(|| {
-                sysroot.load_workspace(&RustSourceWorkspaceConfig::CargoMetadata(
-                    sysroot_metadata_config(extra_env, &targets),
-                ))
+                sysroot.load_workspace(
+                    &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
+                        extra_env, &targets,
+                    )),
+                    progress,
+                )
             });
             let cargo_config_extra_env =
                 s.spawn(|| cargo_config_env(cargo_toml, extra_env, &sysroot));
@@ -411,7 +414,7 @@ impl ProjectWorkspace {
     pub fn load_inline(
         mut project_json: ProjectJson,
         config: &CargoConfig,
-        progress: &dyn Fn(String),
+        progress: &(dyn Fn(String) + Sync),
     ) -> ProjectWorkspace {
         progress("Discovering sysroot".to_owned());
         let mut sysroot =
@@ -443,11 +446,18 @@ impl ProjectWorkspace {
             });
             let loaded_sysroot = s.spawn(|| {
                 if let Some(sysroot_project) = sysroot_project {
-                    sysroot.load_workspace(&RustSourceWorkspaceConfig::Json(*sysroot_project))
+                    sysroot.load_workspace(
+                        &RustSourceWorkspaceConfig::Json(*sysroot_project),
+                        progress,
+                    )
                 } else {
-                    sysroot.load_workspace(&RustSourceWorkspaceConfig::CargoMetadata(
-                        sysroot_metadata_config(&config.extra_env, &targets),
-                    ))
+                    sysroot.load_workspace(
+                        &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
+                            &config.extra_env,
+                            &targets,
+                        )),
+                        progress,
+                    )
                 }
             });
 
@@ -497,9 +507,13 @@ impl ProjectWorkspace {
             .unwrap_or_default();
         let rustc_cfg = rustc_cfg::get(query_config, None, &config.extra_env);
         let data_layout = target_data_layout::get(query_config, None, &config.extra_env);
-        let loaded_sysroot = sysroot.load_workspace(&RustSourceWorkspaceConfig::CargoMetadata(
-            sysroot_metadata_config(&config.extra_env, &targets),
-        ));
+        let loaded_sysroot = sysroot.load_workspace(
+            &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
+                &config.extra_env,
+                &targets,
+            )),
+            &|_| (),
+        );
         if let Some(loaded_sysroot) = loaded_sysroot {
             sysroot.set_workspace(loaded_sysroot);
         }

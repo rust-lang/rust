@@ -12,6 +12,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use serde_derive::Deserialize;
 use serde_json::from_value;
 use span::Edition;
+use stdx::process::spawn_with_streaming_output;
 use toolchain::Tool;
 
 use crate::{CfgOverrides, InvocationStrategy};
@@ -399,11 +400,21 @@ impl CargoWorkspace {
         // FIXME: Fetching metadata is a slow process, as it might require
         // calling crates.io. We should be reporting progress here, but it's
         // unclear whether cargo itself supports it.
-        progress("metadata".to_owned());
+        progress("cargo metadata: started".to_owned());
 
-        (|| -> anyhow::Result<(_, _)> {
-            let output = meta.cargo_command().output()?;
+        let res = (|| -> anyhow::Result<(_, _)> {
+            let mut errored = false;
+            let output =
+                spawn_with_streaming_output(meta.cargo_command(), &mut |_| (), &mut |line| {
+                    errored = errored || line.starts_with("error") || line.starts_with("warning");
+                    if errored {
+                        progress("cargo metadata: ?".to_owned());
+                        return;
+                    }
+                    progress(format!("cargo metadata: {line}"));
+                })?;
             if !output.status.success() {
+                progress(format!("cargo metadata: failed {}", output.status));
                 let error = cargo_metadata::Error::CargoMetadata {
                     stderr: String::from_utf8(output.stderr)?,
                 }
@@ -431,7 +442,9 @@ impl CargoWorkspace {
                 .ok_or(cargo_metadata::Error::NoJson)?;
             Ok((cargo_metadata::MetadataCommand::parse(stdout)?, None))
         })()
-        .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))
+        .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()));
+        progress("cargo metadata: finished".to_owned());
+        res
     }
 
     pub fn new(
