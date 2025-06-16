@@ -1,6 +1,6 @@
 use std::cmp;
 
-use rustc_abi::{BackendRepr, ExternAbi, HasDataLayout, Reg, Size, WrappingRange};
+use rustc_abi::{Align, BackendRepr, ExternAbi, HasDataLayout, Reg, Size, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::packed::Pu128;
@@ -13,7 +13,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi, PassMode};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -558,8 +558,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
                 };
-                let ty = bx.cast_backend_type(cast_ty);
-                bx.load(ty, llslot, self.fn_abi.ret.layout.align.abi)
+                load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align.abi)
             }
         };
         bx.ret(llval);
@@ -1618,8 +1617,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     MemFlags::empty(),
                 );
                 // ...and then load it with the ABI type.
-                let cast_ty = bx.cast_backend_type(cast);
-                llval = bx.load(cast_ty, llscratch, scratch_align);
+                llval = load_cast(bx, cast, llscratch, scratch_align);
                 bx.lifetime_end(llscratch, scratch_size);
             } else {
                 // We can't use `PlaceRef::load` here because the argument
@@ -1968,4 +1966,48 @@ enum ReturnDest<'tcx, V> {
     IndirectOperand(PlaceRef<'tcx, V>, mir::Local),
     /// Store a direct return value to an operand local place.
     DirectOperand(mir::Local),
+}
+
+fn load_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    cast: &CastTarget,
+    ptr: Bx::Value,
+    align: Align,
+) -> Bx::Value {
+    let cast_ty = bx.cast_backend_type(cast);
+    if let Some(offset_from_start) = cast.rest_offset {
+        assert!(cast.prefix[1..].iter().all(|p| p.is_none()));
+        assert_eq!(cast.rest.unit.size, cast.rest.total);
+        let first_ty = bx.reg_backend_type(&cast.prefix[0].unwrap());
+        let second_ty = bx.reg_backend_type(&cast.rest.unit);
+        let first = bx.load(first_ty, ptr, align);
+        let second_ptr = bx.inbounds_ptradd(ptr, bx.const_usize(offset_from_start.bytes()));
+        let second = bx.load(second_ty, second_ptr, align.restrict_for_offset(offset_from_start));
+        let res = bx.cx().const_poison(cast_ty);
+        let res = bx.insert_value(res, first, 0);
+        bx.insert_value(res, second, 1)
+    } else {
+        bx.load(cast_ty, ptr, align)
+    }
+}
+
+pub fn store_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    cast: &CastTarget,
+    value: Bx::Value,
+    ptr: Bx::Value,
+    align: Align,
+) {
+    if let Some(offset_from_start) = cast.rest_offset {
+        assert!(cast.prefix[1..].iter().all(|p| p.is_none()));
+        assert_eq!(cast.rest.unit.size, cast.rest.total);
+        assert!(cast.prefix[0].is_some());
+        let first = bx.extract_value(value, 0);
+        let second = bx.extract_value(value, 1);
+        bx.store(first, ptr, align);
+        let second_ptr = bx.inbounds_ptradd(ptr, bx.const_usize(offset_from_start.bytes()));
+        bx.store(second, second_ptr, align.restrict_for_offset(offset_from_start));
+    } else {
+        bx.store(value, ptr, align);
+    };
 }
