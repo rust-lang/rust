@@ -82,9 +82,20 @@ jobs:
         #path: rust
         #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
 
+    - name: Prepare
+      run: ./y.sh prepare --only-libcore
+
+    - name: Check formatting
+      run: ./y.sh fmt --check
+
+    - name: clippy
+      run: |
+        cargo clippy --all-targets -- -D warnings
+        cargo clippy --all-targets --no-default-features -- -D warnings
+        cargo clippy --manifest-path build_system/Cargo.toml --all-targets -- -D warnings
+
     - name: Build
       run: |
-        ./y.sh prepare --only-libcore
         ./y.sh build --sysroot
         ./y.sh test --cargo-tests
 
@@ -105,14 +116,6 @@ jobs:
     - name: Run tests
       run: |
         ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}
-
-    - name: Check formatting
-      run: ./y.sh fmt --check
-
-    - name: clippy
-      run: |
-        cargo clippy --all-targets -- -D warnings
-        cargo clippy --all-targets --features master -- -D warnings
 
   duplicates:
     runs-on: ubuntu-24.04
