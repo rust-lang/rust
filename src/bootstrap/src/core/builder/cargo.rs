@@ -278,9 +278,7 @@ impl Cargo {
             self.rustdocflags.arg(&arg);
         }
 
-        if !builder.config.dry_run()
-            && builder.cc.borrow()[&target].args().iter().any(|arg| arg == "-gz")
-        {
+        if !builder.config.dry_run() && builder.cc[&target].args().iter().any(|arg| arg == "-gz") {
             self.rustflags.arg("-Clink-arg=-gz");
         }
 
