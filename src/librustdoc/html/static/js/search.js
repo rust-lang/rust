@@ -5872,6 +5872,10 @@ Lev1TParametricDescription.prototype.offsetIncrs3 = /*2 bits per value */ new In
     0xa0fc0000,0x5555ba08,0x55555555,
 ]);
 
+// ====================
+// WARNING: Nothing should be added below this comment: we need the `initSearch` function to
+// be called ONLY when the whole file has been parsed and loaded.
+
 // @ts-expect-error
 function initSearch(searchIndx) {
     rawSearchIndex = searchIndx;
