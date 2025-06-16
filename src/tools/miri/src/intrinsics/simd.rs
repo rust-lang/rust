@@ -37,6 +37,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "ceil"
             | "floor"
             | "round"
+            | "round_ties_even"
             | "trunc"
             | "fsqrt"
             | "fsin"
@@ -72,6 +73,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "ceil" => Op::Round(rustc_apfloat::Round::TowardPositive),
                     "floor" => Op::Round(rustc_apfloat::Round::TowardNegative),
                     "round" => Op::Round(rustc_apfloat::Round::NearestTiesToAway),
+                    "round_ties_even" => Op::Round(rustc_apfloat::Round::NearestTiesToEven),
                     "trunc" => Op::Round(rustc_apfloat::Round::TowardZero),
                     "ctlz" => Op::Numeric(sym::ctlz),
                     "ctpop" => Op::Numeric(sym::ctpop),
