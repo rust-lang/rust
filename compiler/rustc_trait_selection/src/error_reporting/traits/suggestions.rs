@@ -1195,6 +1195,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             c @ ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, _)
                 if self.tcx.hir_span(*hir_id).lo() == span.lo() =>
             {
+                if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(*hir_id)
+                    && let hir::ExprKind::Call(base, _) = expr.kind
+                    && let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, _)) = base.kind
+                    && ty.span == span
+                {
+                    // Do not suggest borrowing when we already do so. This would happen with
+                    // `let _ = &str::from("");` where the expression corresponds to the `str`.
+                    return false;
+                }
                 c
             }
             c if matches!(
