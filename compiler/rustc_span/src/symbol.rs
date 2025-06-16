@@ -1887,6 +1887,7 @@ symbols! {
         rustc_regions,
         rustc_reservation_impl,
         rustc_serialize,
+        rustc_significant_interior_mutable_type,
         rustc_skip_during_method_dispatch,
         rustc_specialization_trait,
         rustc_std_internal_symbol,

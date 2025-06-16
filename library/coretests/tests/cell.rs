@@ -456,6 +456,7 @@ fn refcell_format() {
 }
 
 #[allow(dead_code)]
+#[cfg_attr(not(bootstrap), allow(interior_mutable_consts))]
 fn const_cells() {
     const UNSAFE_CELL: UnsafeCell<i32> = UnsafeCell::new(3);
     const _: i32 = UNSAFE_CELL.into_inner();
