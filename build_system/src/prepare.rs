@@ -18,9 +18,9 @@ fn prepare_libcore(
     if let Some(path) = sysroot_source {
         rustlib_dir = Path::new(&path)
             .canonicalize()
-            .map_err(|error| format!("Failed to canonicalize path: {:?}", error))?;
+            .map_err(|error| format!("Failed to canonicalize path: {error:?}"))?;
         if !rustlib_dir.is_dir() {
-            return Err(format!("Custom sysroot path {:?} not found", rustlib_dir));
+            return Err(format!("Custom sysroot path {rustlib_dir:?} not found"));
         }
     } else {
         let rustc_path = match get_rustc_path() {
@@ -36,17 +36,17 @@ fn prepare_libcore(
         rustlib_dir = parent
             .join("../lib/rustlib/src/rust")
             .canonicalize()
-            .map_err(|error| format!("Failed to canonicalize path: {:?}", error))?;
+            .map_err(|error| format!("Failed to canonicalize path: {error:?}"))?;
         if !rustlib_dir.is_dir() {
             return Err("Please install `rust-src` component".to_string());
         }
     }
 
     let sysroot_dir = sysroot_path.join("sysroot_src");
-    if sysroot_dir.is_dir() {
-        if let Err(error) = fs::remove_dir_all(&sysroot_dir) {
-            return Err(format!("Failed to remove `{}`: {:?}", sysroot_dir.display(), error,));
-        }
+    if sysroot_dir.is_dir()
+        && let Err(error) = fs::remove_dir_all(&sysroot_dir)
+    {
+        return Err(format!("Failed to remove `{}`: {:?}", sysroot_dir.display(), error,));
     }
 
     let sysroot_library_dir = sysroot_dir.join("library");
@@ -122,7 +122,7 @@ fn prepare_rand() -> Result<(), String> {
     // Apply patch for the rand crate.
     let file_path = "patches/crates/0001-Remove-deny-warnings.patch";
     let rand_dir = Path::new("build/rand");
-    println!("[GIT] apply `{}`", file_path);
+    println!("[GIT] apply `{file_path}`");
     let path = Path::new("../..").join(file_path);
     run_command_with_output(&[&"git", &"apply", &path], Some(rand_dir))?;
     run_command_with_output(&[&"git", &"add", &"-A"], Some(rand_dir))?;
@@ -149,7 +149,7 @@ fn clone_and_setup<F>(repo_url: &str, checkout_commit: &str, extra: Option<F>) -
 where
     F: Fn(&Path) -> Result<(), String>,
 {
-    let clone_result = git_clone_root_dir(repo_url, &Path::new(crate::BUILD_DIR), false)?;
+    let clone_result = git_clone_root_dir(repo_url, Path::new(crate::BUILD_DIR), false)?;
     if !clone_result.ran_clone {
         println!("`{}` has already been cloned", clone_result.repo_name);
     }

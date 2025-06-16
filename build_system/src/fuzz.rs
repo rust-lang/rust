@@ -56,7 +56,7 @@ pub fn run() -> Result<(), String> {
                 )
                 .map_err(|err| (format!("Fuzz thread count not a number {err:?}!")))?;
             }
-            _ => return Err(format!("Unknown option {}", arg)),
+            _ => return Err(format!("Unknown option {arg}")),
         }
     }
 
@@ -70,11 +70,11 @@ pub fn run() -> Result<(), String> {
 
     // Ensure that we are on the newest rustlantis commit.
     let cmd: &[&dyn AsRef<OsStr>] = &[&"git", &"pull", &"origin"];
-    run_command_with_output(cmd, Some(&Path::new("clones/rustlantis")))?;
+    run_command_with_output(cmd, Some(Path::new("clones/rustlantis")))?;
 
     // Build the release version of rustlantis
     let cmd: &[&dyn AsRef<OsStr>] = &[&"cargo", &"build", &"--release"];
-    run_command_with_output(cmd, Some(&Path::new("clones/rustlantis")))?;
+    run_command_with_output(cmd, Some(Path::new("clones/rustlantis")))?;
     // Fuzz a given range
     fuzz_range(start, start + count, threads);
     Ok(())
@@ -104,13 +104,13 @@ fn fuzz_range(start: u64, end: u64, threads: usize) {
                 match test(next, false) {
                     Err(err) => {
                         // If the test failed at compile-time...
-                        println!("test({}) failed because {err:?}", next);
+                        println!("test({next}) failed because {err:?}");
                         // ... copy that file to the directory `target/fuzz/compiletime_error`...
                         let mut out_path: std::path::PathBuf =
                             "target/fuzz/compiletime_error".into();
                         std::fs::create_dir_all(&out_path).unwrap();
                         // .. into a file named `fuzz{seed}.rs`.
-                        out_path.push(&format!("fuzz{next}.rs"));
+                        out_path.push(format!("fuzz{next}.rs"));
                         std::fs::copy(err, out_path).unwrap();
                     }
                     Ok(Err(err)) => {
@@ -122,12 +122,12 @@ fn fuzz_range(start: u64, end: u64, threads: usize) {
                         let Ok(Err(tmp_print_err)) = test(next, true) else {
                             // ... if that file does not reproduce the issue...
                             // ... save the original sample in a file named `fuzz{seed}.rs`...
-                            out_path.push(&format!("fuzz{next}.rs"));
+                            out_path.push(format!("fuzz{next}.rs"));
                             std::fs::copy(err, &out_path).unwrap();
                             continue;
                         };
                         // ... if that new file still produces the issue, copy it to `fuzz{seed}.rs`..
-                        out_path.push(&format!("fuzz{next}.rs"));
+                        out_path.push(format!("fuzz{next}.rs"));
                         std::fs::copy(tmp_print_err, &out_path).unwrap();
                         // ... and start reducing it, using some properties of `rustlantis` to speed up the process.
                         reduce::reduce(&out_path);
@@ -240,10 +240,10 @@ fn test_cached(
     cache: &mut ResultCache,
 ) -> Result<Result<(), std::path::PathBuf>, String> {
     //  Test `source_file` with release GCC ...
-    let gcc_res = release_gcc(&source_file)?;
+    let gcc_res = release_gcc(source_file)?;
     if cache.is_none() {
         // ...test `source_file` with debug LLVM ...
-        *cache = Some((debug_llvm(&source_file)?, gcc_res.clone()));
+        *cache = Some((debug_llvm(source_file)?, gcc_res.clone()));
     }
     let (llvm_res, old_gcc) = cache.as_ref().unwrap();
     // ... compare the results ...
@@ -269,12 +269,12 @@ fn test_file(
 fn generate(seed: u64, print_tmp_vars: bool) -> Result<std::path::PathBuf, String> {
     use std::io::Write;
     let mut out_path = std::env::temp_dir();
-    out_path.push(&format!("fuzz{seed}.rs"));
+    out_path.push(format!("fuzz{seed}.rs"));
     // We need to get the command output here.
     let mut generate = std::process::Command::new("cargo");
     generate
         .args(["run", "--release", "--bin", "generate"])
-        .arg(&format!("{seed}"))
+        .arg(format!("{seed}"))
         .current_dir("clones/rustlantis");
     if print_tmp_vars {
         generate.arg("--debug");

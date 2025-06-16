@@ -53,9 +53,9 @@ fn get_number_after_arg(
     match args.next() {
         Some(nb) if !nb.is_empty() => match usize::from_str(&nb) {
             Ok(nb) => Ok(nb),
-            Err(_) => Err(format!("Expected a number after `{}`, found `{}`", option, nb)),
+            Err(_) => Err(format!("Expected a number after `{option}`, found `{nb}`")),
         },
-        _ => Err(format!("Expected a number after `{}`, found nothing", option)),
+        _ => Err(format!("Expected a number after `{option}`, found nothing")),
     }
 }
 
@@ -76,8 +76,8 @@ fn show_usage() {
     for (option, (doc, _)) in get_runners() {
         // FIXME: Instead of using the hard-coded `23` value, better to compute it instead.
         let needed_spaces = 23_usize.saturating_sub(option.len());
-        let spaces: String = std::iter::repeat(' ').take(needed_spaces).collect();
-        println!("    {}{}: {}", option, spaces, doc);
+        let spaces: String = std::iter::repeat_n(' ', needed_spaces).collect();
+        println!("    {option}{spaces}: {doc}");
     }
     println!("    --help                 : Show this help");
 }
@@ -139,7 +139,7 @@ impl TestArg {
                         test_arg.sysroot_features.push(feature);
                     }
                     _ => {
-                        return Err(format!("Expected an argument after `{}`, found nothing", arg));
+                        return Err(format!("Expected an argument after `{arg}`, found nothing"));
                     }
                 },
                 "--help" => {
@@ -154,7 +154,7 @@ impl TestArg {
                 }
                 arg => {
                     if !test_arg.config_info.parse_argument(arg, &mut args)? {
-                        return Err(format!("Unknown option {}", arg));
+                        return Err(format!("Unknown option {arg}"));
                     }
                 }
             }
@@ -192,7 +192,7 @@ fn build_if_no_backend(env: &Env, args: &TestArg) -> Result<(), String> {
         command.push(&"--release");
         &tmp_env
     } else {
-        &env
+        env
     };
     for flag in args.flags.iter() {
         command.push(flag);
@@ -252,7 +252,7 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &"--target",
         &args.config_info.target_triple,
     ]);
-    run_command_with_output_and_env(&command, None, Some(&env))?;
+    run_command_with_output_and_env(&command, None, Some(env))?;
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[BUILD] example");
@@ -264,7 +264,7 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &"--target",
         &args.config_info.target_triple,
     ]);
-    run_command_with_output_and_env(&command, None, Some(&env))?;
+    run_command_with_output_and_env(&command, None, Some(env))?;
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[AOT] mini_core_hello_world");
@@ -279,14 +279,14 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &"--target",
         &args.config_info.target_triple,
     ]);
-    run_command_with_output_and_env(&command, None, Some(&env))?;
+    run_command_with_output_and_env(&command, None, Some(env))?;
 
     let command: &[&dyn AsRef<OsStr>] = &[
         &Path::new(&args.config_info.cargo_target_dir).join("mini_core_hello_world"),
         &"abc",
         &"bcd",
     ];
-    maybe_run_command_in_vm(&command, env, args)?;
+    maybe_run_command_in_vm(command, env, args)?;
     Ok(())
 }
 
@@ -512,19 +512,19 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     let cargo = String::from_utf8(
         run_command_with_env(&[&"rustup", &"which", &"cargo"], rust_dir, Some(env))?.stdout,
     )
-    .map_err(|error| format!("Failed to retrieve cargo path: {:?}", error))
+    .map_err(|error| format!("Failed to retrieve cargo path: {error:?}"))
     .and_then(|cargo| {
         let cargo = cargo.trim().to_owned();
-        if cargo.is_empty() { Err(format!("`cargo` path is empty")) } else { Ok(cargo) }
+        if cargo.is_empty() { Err("`cargo` path is empty".to_string()) } else { Ok(cargo) }
     })?;
     let rustc = String::from_utf8(
         run_command_with_env(&[&"rustup", &toolchain, &"which", &"rustc"], rust_dir, Some(env))?
             .stdout,
     )
-    .map_err(|error| format!("Failed to retrieve rustc path: {:?}", error))
+    .map_err(|error| format!("Failed to retrieve rustc path: {error:?}"))
     .and_then(|rustc| {
         let rustc = rustc.trim().to_owned();
-        if rustc.is_empty() { Err(format!("`rustc` path is empty")) } else { Ok(rustc) }
+        if rustc.is_empty() { Err("`rustc` path is empty".to_string()) } else { Ok(rustc) }
     })?;
     let llvm_filecheck = match run_command_with_env(
         &[
@@ -551,7 +551,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     let file_path = rust_dir_path.join("config.toml");
     std::fs::write(
         &file_path,
-        &format!(
+        format!(
             r#"change-id = 115898
 
 [rust]
@@ -590,7 +590,7 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     let codegen_backend_path = format!(
         "{pwd}/target/{channel}/librustc_codegen_gcc.{dylib_ext}",
         pwd = std::env::current_dir()
-            .map_err(|error| format!("`current_dir` failed: {:?}", error))?
+            .map_err(|error| format!("`current_dir` failed: {error:?}"))?
             .display(),
         channel = args.config_info.channel.as_str(),
         dylib_ext = args.config_info.dylib_ext,
@@ -645,11 +645,11 @@ where
     F: Fn(&[&dyn AsRef<OsStr>], Option<&Path>, &Env) -> Result<(), String>,
 {
     let toolchain = get_toolchain()?;
-    let toolchain_arg = format!("+{}", toolchain);
+    let toolchain_arg = format!("+{toolchain}");
     let rustc_version = String::from_utf8(
         run_command_with_env(&[&args.config_info.rustc_command[0], &"-V"], cwd, Some(env))?.stdout,
     )
-    .map_err(|error| format!("Failed to retrieve rustc version: {:?}", error))?;
+    .map_err(|error| format!("Failed to retrieve rustc version: {error:?}"))?;
     let rustc_toolchain_version = String::from_utf8(
         run_command_with_env(
             &[&args.config_info.rustc_command[0], &toolchain_arg, &"-V"],
@@ -658,20 +658,19 @@ where
         )?
         .stdout,
     )
-    .map_err(|error| format!("Failed to retrieve rustc +toolchain version: {:?}", error))?;
+    .map_err(|error| format!("Failed to retrieve rustc +toolchain version: {error:?}"))?;
 
     if rustc_version != rustc_toolchain_version {
         eprintln!(
-            "rustc_codegen_gcc is built for `{}` but the default rustc version is `{}`.",
-            rustc_toolchain_version, rustc_version,
+            "rustc_codegen_gcc is built for `{rustc_toolchain_version}` but the default rustc version is `{rustc_version}`.",
         );
-        eprintln!("Using `{}`.", rustc_toolchain_version);
+        eprintln!("Using `{rustc_toolchain_version}`.");
     }
     let mut env = env.clone();
     let rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
     env.insert("RUSTDOCFLAGS".to_string(), rustflags);
     let mut cargo_command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &toolchain_arg];
-    cargo_command.extend_from_slice(&command);
+    cargo_command.extend_from_slice(command);
     callback(&cargo_command, cwd, &env)
 }
 
@@ -884,7 +883,7 @@ fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<
     // Tests generating errors.
     let file = File::open(file_path)
         .map_err(|error| format!("Failed to read `{}`: {:?}", file_path.display(), error))?;
-    for line in BufReader::new(file).lines().filter_map(|line| line.ok()) {
+    for line in BufReader::new(file).lines().map_while(Result::ok) {
         let line = line.trim();
         if line.is_empty() {
             continue;
@@ -953,7 +952,7 @@ where
 
     if !prepare_files_callback(&rust_path)? {
         // FIXME: create a function "display_if_not_quiet" or something along the line.
-        println!("Keeping all {} tests", test_type);
+        println!("Keeping all {test_type} tests");
     }
 
     if test_type == "ui" {
@@ -985,8 +984,7 @@ where
                         "borrowck",
                         "test-attrs",
                     ]
-                    .iter()
-                    .any(|name| *name == dir_name)
+                    .contains(&dir_name)
                     {
                         remove_dir_all(dir).map_err(|error| {
                             format!("Failed to remove folder `{}`: {:?}", dir.display(), error)
@@ -1041,10 +1039,7 @@ where
         if nb_parts > 0 {
             let current_part = args.current_part.unwrap();
             // FIXME: create a function "display_if_not_quiet" or something along the line.
-            println!(
-                "Splitting ui_test into {} parts (and running part {})",
-                nb_parts, current_part
-            );
+            println!("Splitting ui_test into {nb_parts} parts (and running part {current_part})");
             let out = String::from_utf8(
                 run_command(
                     &[
@@ -1062,7 +1057,7 @@ where
                 )?
                 .stdout,
             )
-            .map_err(|error| format!("Failed to retrieve output of find command: {:?}", error))?;
+            .map_err(|error| format!("Failed to retrieve output of find command: {error:?}"))?;
             let mut files = out
                 .split('\n')
                 .map(|line| line.trim())
@@ -1082,7 +1077,7 @@ where
     }
 
     // FIXME: create a function "display_if_not_quiet" or something along the line.
-    println!("[TEST] rustc {} test suite", test_type);
+    println!("[TEST] rustc {test_type} test suite");
     env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
 
     let extra =
@@ -1106,7 +1101,7 @@ where
             &"always",
             &"--stage",
             &"0",
-            &format!("tests/{}", test_type),
+            &format!("tests/{test_type}"),
             &"--compiletest-rustc-args",
             &rustc_args,
         ],
@@ -1182,7 +1177,7 @@ fn retain_files_callback<'a>(
             run_command(
                 &[
                     &"find",
-                    &format!("tests/{}", test_type),
+                    &format!("tests/{test_type}"),
                     &"-mindepth",
                     &"1",
                     &"-type",
@@ -1201,7 +1196,7 @@ fn retain_files_callback<'a>(
             run_command(
                 &[
                     &"find",
-                    &format!("tests/{}", test_type),
+                    &format!("tests/{test_type}"),
                     &"-type",
                     &"f",
                     &"-name",
@@ -1216,15 +1211,12 @@ fn retain_files_callback<'a>(
         }
 
         // Putting back only the failing ones.
-        if let Ok(files) = std::fs::read_to_string(&file_path) {
+        if let Ok(files) = std::fs::read_to_string(file_path) {
             for file in files.split('\n').map(|line| line.trim()).filter(|line| !line.is_empty()) {
-                run_command(&[&"git", &"checkout", &"--", &file], Some(&rust_path))?;
+                run_command(&[&"git", &"checkout", &"--", &file], Some(rust_path))?;
             }
         } else {
-            println!(
-                "Failed to read `{}`, not putting back failing {} tests",
-                file_path, test_type
-            );
+            println!("Failed to read `{file_path}`, not putting back failing {test_type} tests");
         }
 
         Ok(true)
@@ -1252,8 +1244,7 @@ fn remove_files_callback<'a>(
                 }
             } else {
                 println!(
-                    "Failed to read `{}`, not putting back failing {} tests",
-                    file_path, test_type
+                    "Failed to read `{file_path}`, not putting back failing {test_type} tests"
                 );
             }
         } else {
@@ -1266,7 +1257,7 @@ fn remove_files_callback<'a>(
                     remove_file(&path)?;
                 }
             } else {
-                println!("Failed to read `{}`, not putting back failing ui tests", file_path);
+                println!("Failed to read `{file_path}`, not putting back failing ui tests");
             }
         }
         Ok(true)
