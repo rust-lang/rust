@@ -2,10 +2,11 @@ error[E0277]: `NotDebug` doesn't implement `Debug`
   --> $DIR/dbg-macro-requires-debug.rs:6:23
    |
 LL |     let _: NotDebug = dbg!(NotDebug);
-   |                       ^^^^^^^^^^^^^^ `NotDebug` cannot be formatted using `{:?}`
+   |                       ^^^^^^^^^^^^^^ `NotDebug` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = help: the trait `Debug` is not implemented for `NotDebug`
    = note: add `#[derive(Debug)]` to `NotDebug` or manually `impl Debug for NotDebug`
+   = note: required for `&NotDebug` to implement `Debug`
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `NotDebug` with `#[derive(Debug)]`
    |
