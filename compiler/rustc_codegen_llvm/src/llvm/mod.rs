@@ -351,17 +351,14 @@ impl Intrinsic {
 }
 
 /// Safe wrapper for `LLVMAddAlias2`
-pub(crate) fn add_alias(
-    module: &Module,
+pub(crate) fn add_alias<'ll>(
+    module: &'ll Module,
     ty: &Type,
     address_space: AddressSpace,
     aliasee: &Value,
-    name: &[u8],
-) {
-    unsafe {
-        let data = name.as_c_char_ptr();
-        LLVMAddAlias2(value, data, address_space, aliasee, name.len());
-    }
+    name: &CStr,
+) -> &'ll Value {
+    unsafe { LLVMAddAlias2(module, ty, address_space.0, aliasee, name.as_ptr()) }
 }
 
 /// Safe wrapper for `LLVMSetValueName2` from a byte slice

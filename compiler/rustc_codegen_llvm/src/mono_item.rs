@@ -1,3 +1,6 @@
+use std::ffi::CString;
+
+use rustc_abi::AddressSpace;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -6,6 +9,7 @@ use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::RelocModel;
 use tracing::debug;
 
@@ -77,7 +81,50 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 
         self.assume_dso_local(lldecl, false);
 
+        let symbol_name = self.tcx.symbol_name(instance);
+        if symbol_name.name.contains("__rdl_alloc") {
+            self.weak_alias(
+                lldecl,
+                symbol_name.name,
+                &mangle_internal_symbol(self.tcx, "__rust_alloc"),
+            );
+        }
+        if symbol_name.name.contains("__rdl_dealloc") {
+            self.weak_alias(
+                lldecl,
+                symbol_name.name,
+                &mangle_internal_symbol(self.tcx, "__rust_dealloc"),
+            );
+        }
+        if symbol_name.name.contains("__rdl_realloc") {
+            self.weak_alias(
+                lldecl,
+                symbol_name.name,
+                &mangle_internal_symbol(self.tcx, "__rust_realloc"),
+            );
+        }
+        if symbol_name.name.contains("__rdl_alloc_zeroed") {
+            self.weak_alias(
+                lldecl,
+                symbol_name.name,
+                &mangle_internal_symbol(self.tcx, "__rust_alloc_zeroed"),
+            );
+        }
+
         self.instances.borrow_mut().insert(instance, lldecl);
+    }
+
+    fn weak_alias(&self, aliasee: Self::Function, _aliasee_name: &str, name: &str) {
+        let ty = self.get_type_of_global(aliasee);
+        let alias = llvm::add_alias(
+            self.llmod,
+            ty,
+            AddressSpace::DATA,
+            aliasee,
+            &CString::new(name).unwrap(),
+        );
+
+        llvm::set_linkage(alias, llvm::Linkage::WeakAnyLinkage);
     }
 }
 
