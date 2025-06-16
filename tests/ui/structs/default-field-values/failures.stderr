@@ -12,6 +12,18 @@ error: default fields are not supported in tuple structs
 LL | pub struct Rak(i32 = 42);
    |                      ^^ default fields are only supported on structs
 
+error: unions cannot have default field values
+  --> $DIR/failures.rs:54:14
+   |
+LL |     x: i32 = 1,
+   |              ^
+
+error: unions cannot have default field values
+  --> $DIR/failures.rs:55:14
+   |
+LL |     y: f32 = 2.,
+   |              ^^
+
 error[E0277]: the trait bound `S: Default` is not satisfied
   --> $DIR/failures.rs:16:5
    |
@@ -102,7 +114,7 @@ LL -     let _ = Rak(.., 0);
 LL +     let _ = Rak(0);
    |
 
-error: aborting due to 8 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0061, E0277, E0308.
 For more information about an error, try `rustc --explain E0061`.
