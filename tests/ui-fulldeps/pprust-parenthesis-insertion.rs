@@ -88,6 +88,18 @@ static EXPRS: &[&str] = &[
     // expressions.
     "match 2 { _ => 1 - 1 }",
     "match 2 { _ => ({ 1 }) - 1 }",
+    // Attributes on a Binary, Cast, Assign, and AssignOp expression require
+    // parentheses.
+    "#[attr] (1 + 1)",
+    "#[attr] (1 as T)",
+    "#[attr] (x = 1)",
+    "#[attr] (x += 1)",
+    // If the attribute were not present on the binary operation, it would be
+    // legal to render this without not just the inner parentheses, but also the
+    // outer ones. `return x + .. .field` (Yes, really.) Currently the
+    // pretty-printer does not take advantage of this edge case.
+    "(return #[attr] (x + ..)).field",
+    "(return x + ..).field",
     // Grammar restriction: break value starting with a labeled loop is not
     // allowed, except if the break is also labeled.
     "break 'outer 'inner: loop {} + 2",
@@ -154,7 +166,12 @@ struct Unparenthesize;
 impl MutVisitor for Unparenthesize {
     fn visit_expr(&mut self, e: &mut P<Expr>) {
         while let ExprKind::Paren(paren) = &mut e.kind {
+            let paren_attrs = mem::take(&mut e.attrs);
             *e = mem::replace(paren, Expr::dummy());
+            if !paren_attrs.is_empty() {
+                assert!(e.attrs.is_empty());
+                e.attrs = paren_attrs;
+            }
         }
         mut_visit::walk_expr(self, e);
     }
