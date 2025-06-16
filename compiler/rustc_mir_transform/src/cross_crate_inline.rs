@@ -50,6 +50,13 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         _ => {}
     }
 
+    // If the crate is likely to be mostly unused, use cross-crate inlining to defer codegen until
+    // the function is referenced, in order to skip codegen for unused functions. This is
+    // intentionally after the check for `inline(never)`, so that `inline(never)` wins.
+    if tcx.sess.opts.unstable_opts.hint_mostly_unused {
+        return true;
+    }
+
     let sig = tcx.fn_sig(def_id).instantiate_identity();
     for ty in sig.inputs().skip_binder().iter().chain(std::iter::once(&sig.output().skip_binder()))
     {
