@@ -10,6 +10,7 @@ note: the lint level is defined here
    |
 LL | #![deny(unknown_or_malformed_diagnostic_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(malformed_diagnostic_format_literals)]` implied by `#[deny(unknown_or_malformed_diagnostic_attributes)]`
 
 error: there is no parameter `unknown` on trait `MultiLine2`
   --> $DIR/multiline_spans.rs:12:60

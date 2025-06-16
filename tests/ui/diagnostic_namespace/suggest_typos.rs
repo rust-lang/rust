@@ -1,5 +1,5 @@
 //@ reference: attributes.diagnostic.namespace.unknown-invalid-syntax
-#![deny(unknown_or_malformed_diagnostic_attributes)]
+#![deny(unknown_diagnostic_attributes)]
 
 #[diagnostic::onunimplemented]
 //~^ERROR unknown diagnostic attribute
