@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // emitting an object file is not necessary if user didn't ask for one
 //
 // This test is similar to run-make/artifact-incr-cache but it doesn't

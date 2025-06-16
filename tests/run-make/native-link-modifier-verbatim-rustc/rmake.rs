@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // `verbatim` is a native link modifier that forces rustc to only accept libraries with
 // a specified name. This test checks that this modifier works as intended.
 // This test is the same as native-link-modifier-linker, but with rlibs.

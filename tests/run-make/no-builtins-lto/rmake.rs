@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // The rlib produced by a no_builtins crate should be explicitly linked
 // during compilation, and as a result be present in the linker arguments.
 // See the comments inside this file for more details.

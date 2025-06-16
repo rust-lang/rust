@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Test output of const super trait errors in both stable and nightly.
 // We don't want to provide suggestions on stable that only make sense in nightly.
 

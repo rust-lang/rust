@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Almost identical to `extern-multiple-copies`, but with a variation in the --extern calls
 // and the addition of #[macro_use] in the rust code files, which used to break --extern
 // until #33625.

@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Passing --emit=dep-info to the Rust compiler should create a .d file...
 // but it failed to do so in Rust 1.69.0 when combined with -Z unpretty=expanded
 // due to a bug. This test checks that -Z unpretty=expanded does not prevent the

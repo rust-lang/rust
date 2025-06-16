@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // The --extern flag can override the default crate search of
 // the compiler and directly fetch a given path. There are a few rules
 // to follow: for example, there can't be more than one rlib, the crates must

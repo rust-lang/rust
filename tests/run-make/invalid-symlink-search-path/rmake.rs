@@ -5,6 +5,7 @@
 //
 // See https://github.com/rust-lang/rust/issues/26006
 
+//@ needs-target-std
 //@ needs-symlink
 //Reason: symlink requires elevated permission in Windows
 
