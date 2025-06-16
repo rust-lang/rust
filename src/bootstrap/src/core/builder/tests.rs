@@ -15,11 +15,12 @@ static TEST_TRIPLE_2: &str = "i686-unknown-hurd-gnu";
 static TEST_TRIPLE_3: &str = "i686-unknown-netbsd";
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
-    configure_with_args(&[cmd.to_owned()], host, target)
+    configure_with_args(&[cmd], host, target)
 }
 
-fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config {
-    let mut config = Config::parse(Flags::parse(cmd));
+fn configure_with_args(cmd: &[&str], host: &[&str], target: &[&str]) -> Config {
+    let cmd = cmd.iter().copied().map(String::from).collect::<Vec<_>>();
+    let mut config = Config::parse(Flags::parse(&cmd));
     // don't save toolstates
     config.save_toolstates = None;
     config.set_dry_run(DryRun::SelfCheck);
@@ -67,7 +68,7 @@ fn run_build(paths: &[PathBuf], config: Config) -> Cache {
 fn check_cli<const N: usize>(paths: [&str; N]) {
     run_build(
         &paths.map(PathBuf::from),
-        configure_with_args(&paths.map(String::from), &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
+        configure_with_args(&paths, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
     );
 }
 
@@ -1000,8 +1001,7 @@ mod sysroot_target_dirs {
 /// cg_gcc tests instead.
 #[test]
 fn test_test_compiler() {
-    let cmd = &["test", "compiler"].map(str::to_owned);
-    let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+    let config = configure_with_args(&["test", "compiler"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
     let cache = run_build(&config.paths.clone(), config);
 
     let compiler = cache.contains::<test::CrateLibrustc>();
@@ -1034,8 +1034,7 @@ fn test_test_coverage() {
         // Print each test case so that if one fails, the most recently printed
         // case is the one that failed.
         println!("Testing case: {cmd:?}");
-        let cmd = cmd.iter().copied().map(str::to_owned).collect::<Vec<_>>();
-        let config = configure_with_args(&cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+        let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
         let mut cache = run_build(&config.paths.clone(), config);
 
         let modes =
@@ -1207,8 +1206,7 @@ fn test_get_tool_rustc_compiler() {
 /// of `Any { .. }`.
 #[test]
 fn step_cycle_debug() {
-    let cmd = ["run", "cyclic-step"].map(str::to_owned);
-    let config = configure_with_args(&cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+    let config = configure_with_args(&["run", "cyclic-step"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
 
     let err = panic::catch_unwind(|| run_build(&config.paths.clone(), config)).unwrap_err();
     let err = err.downcast_ref::<String>().unwrap().as_str();
@@ -1232,4 +1230,82 @@ fn any_debug() {
     assert_eq!(format!("{x:?}"), format!("{:?}", MyStruct { x: 7 }));
     // Downcasting to the underlying type should succeed.
     assert_eq!(x.downcast_ref::<MyStruct>(), Some(&MyStruct { x: 7 }));
+}
+
+/// The staging tests use insta for snapshot testing.
+/// See bootstrap's README on how to bless the snapshots.
+mod staging {
+    use crate::core::builder::tests::{
+        TEST_TRIPLE_1, configure, configure_with_args, render_steps, run_build,
+    };
+
+    #[test]
+    fn build_compiler_stage_1() {
+        let mut cache = run_build(
+            &["compiler".into()],
+            configure_with_args(&["build", "--stage", "1"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
+        );
+        let steps = cache.into_executed_steps();
+        insta::assert_snapshot!(render_steps(&steps), @r"
+        [build] rustc 0 <target1> -> std 0 <target1>
+        [build] llvm <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        ");
+    }
+}
+
+/// Renders the executed bootstrap steps for usage in snapshot tests with insta.
+/// Only renders certain important steps.
+/// Each value in `steps` should be a tuple of (Step, step output).
+fn render_steps(steps: &[(Box<dyn Any>, Box<dyn Any>)]) -> String {
+    steps
+        .iter()
+        .filter_map(|(step, output)| {
+            // FIXME: implement an optional method on Step to produce metadata for test, instead
+            // of this downcasting
+            if let Some((rustc, output)) = downcast_step::<compile::Rustc>(step, output) {
+                Some(format!(
+                    "[build] {} -> {}",
+                    render_compiler(rustc.build_compiler),
+                    // FIXME: return the correct stage from the `Rustc` step, now it behaves weirdly
+                    render_compiler(Compiler::new(rustc.build_compiler.stage + 1, rustc.target)),
+                ))
+            } else if let Some((std, output)) = downcast_step::<compile::Std>(step, output) {
+                Some(format!(
+                    "[build] {} -> std {} <{}>",
+                    render_compiler(std.compiler),
+                    std.compiler.stage,
+                    std.target
+                ))
+            } else if let Some((llvm, output)) = downcast_step::<llvm::Llvm>(step, output) {
+                Some(format!("[build] llvm <{}>", llvm.target))
+            } else {
+                None
+            }
+        })
+        .map(|line| {
+            line.replace(TEST_TRIPLE_1, "target1")
+                .replace(TEST_TRIPLE_2, "target2")
+                .replace(TEST_TRIPLE_3, "target3")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn downcast_step<'a, S: Step>(
+    step: &'a Box<dyn Any>,
+    output: &'a Box<dyn Any>,
+) -> Option<(&'a S, &'a S::Output)> {
+    let Some(step) = step.downcast_ref::<S>() else {
+        return None;
+    };
+    let Some(output) = output.downcast_ref::<S::Output>() else {
+        return None;
+    };
+    Some((step, output))
+}
+
+fn render_compiler(compiler: Compiler) -> String {
+    format!("rustc {} <{}>", compiler.stage, compiler.host)
 }
