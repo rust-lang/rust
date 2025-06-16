@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // This test checks the proper function of `-l link-arg=NAME`, which, unlike
 // -C link-arg, is supposed to guarantee that the order relative to other -l
 // options will be respected. In this test, compilation fails (because none of the

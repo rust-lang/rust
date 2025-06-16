@@ -40,7 +40,18 @@ fn apply_attrs_to_abi_param(param: AbiParam, arg_attrs: ArgAttributes) -> AbiPar
     }
 }
 
-fn cast_target_to_abi_params(cast: &CastTarget) -> SmallVec<[AbiParam; 2]> {
+fn cast_target_to_abi_params(cast: &CastTarget) -> SmallVec<[(Size, AbiParam); 2]> {
+    if let Some(offset_from_start) = cast.rest_offset {
+        assert!(cast.prefix[1..].iter().all(|p| p.is_none()));
+        assert_eq!(cast.rest.unit.size, cast.rest.total);
+        let first = cast.prefix[0].unwrap();
+        let second = cast.rest.unit;
+        return smallvec![
+            (Size::ZERO, reg_to_abi_param(first)),
+            (offset_from_start, reg_to_abi_param(second))
+        ];
+    }
+
     let (rest_count, rem_bytes) = if cast.rest.unit.size.bytes() == 0 {
         (0, 0)
     } else {
@@ -55,25 +66,32 @@ fn cast_target_to_abi_params(cast: &CastTarget) -> SmallVec<[AbiParam; 2]> {
     // different types in Cranelift IR. Instead a single array of primitive types is used.
 
     // Create list of fields in the main structure
-    let mut args = cast
+    let args = cast
         .prefix
         .iter()
         .flatten()
         .map(|&reg| reg_to_abi_param(reg))
-        .chain((0..rest_count).map(|_| reg_to_abi_param(cast.rest.unit)))
-        .collect::<SmallVec<_>>();
+        .chain((0..rest_count).map(|_| reg_to_abi_param(cast.rest.unit)));
+
+    let mut res = SmallVec::new();
+    let mut offset = Size::ZERO;
+
+    for arg in args {
+        res.push((offset, arg));
+        offset += Size::from_bytes(arg.value_type.bytes());
+    }
 
     // Append final integer
     if rem_bytes != 0 {
         // Only integers can be really split further.
         assert_eq!(cast.rest.unit.kind, RegKind::Integer);
-        args.push(reg_to_abi_param(Reg {
-            kind: RegKind::Integer,
-            size: Size::from_bytes(rem_bytes),
-        }));
+        res.push((
+            offset,
+            reg_to_abi_param(Reg { kind: RegKind::Integer, size: Size::from_bytes(rem_bytes) }),
+        ));
     }
 
-    args
+    res
 }
 
 impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
@@ -104,7 +122,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             },
             PassMode::Cast { ref cast, pad_i32 } => {
                 assert!(!pad_i32, "padding support not yet implemented");
-                cast_target_to_abi_params(cast)
+                cast_target_to_abi_params(cast).into_iter().map(|(_, param)| param).collect()
             }
             PassMode::Indirect { attrs, meta_attrs: None, on_stack } => {
                 if on_stack {
@@ -160,9 +178,10 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 }
                 _ => unreachable!("{:?}", self.layout.backend_repr),
             },
-            PassMode::Cast { ref cast, .. } => {
-                (None, cast_target_to_abi_params(cast).into_iter().collect())
-            }
+            PassMode::Cast { ref cast, .. } => (
+                None,
+                cast_target_to_abi_params(cast).into_iter().map(|(_, param)| param).collect(),
+            ),
             PassMode::Indirect { attrs, meta_attrs: None, on_stack } => {
                 assert!(!on_stack);
                 (
@@ -187,12 +206,14 @@ pub(super) fn to_casted_value<'tcx>(
 ) -> SmallVec<[Value; 2]> {
     let (ptr, meta) = arg.force_stack(fx);
     assert!(meta.is_none());
-    let mut offset = 0;
     cast_target_to_abi_params(cast)
         .into_iter()
-        .map(|param| {
-            let val = ptr.offset_i64(fx, offset).load(fx, param.value_type, MemFlags::new());
-            offset += i64::from(param.value_type.bytes());
+        .map(|(offset, param)| {
+            let val = ptr.offset_i64(fx, offset.bytes() as i64).load(
+                fx,
+                param.value_type,
+                MemFlags::new(),
+            );
             val
         })
         .collect()
@@ -205,7 +226,7 @@ pub(super) fn from_casted_value<'tcx>(
     cast: &CastTarget,
 ) -> CValue<'tcx> {
     let abi_params = cast_target_to_abi_params(cast);
-    let abi_param_size: u32 = abi_params.iter().map(|param| param.value_type.bytes()).sum();
+    let abi_param_size: u32 = abi_params.iter().map(|(_, param)| param.value_type.bytes()).sum();
     let layout_size = u32::try_from(layout.size.bytes()).unwrap();
     let ptr = fx.create_stack_slot(
         // Stack slot size may be bigger for example `[u8; 3]` which is packed into an `i32`.
@@ -214,16 +235,13 @@ pub(super) fn from_casted_value<'tcx>(
         std::cmp::max(abi_param_size, layout_size),
         u32::try_from(layout.align.abi.bytes()).unwrap(),
     );
-    let mut offset = 0;
     let mut block_params_iter = block_params.iter().copied();
-    for param in abi_params {
-        let val = ptr.offset_i64(fx, offset).store(
+    for (offset, _) in abi_params {
+        ptr.offset_i64(fx, offset.bytes() as i64).store(
             fx,
             block_params_iter.next().unwrap(),
             MemFlags::new(),
-        );
-        offset += i64::from(param.value_type.bytes());
-        val
+        )
     }
     assert_eq!(block_params_iter.next(), None, "Leftover block param");
     CValue::by_ref(ptr, layout)

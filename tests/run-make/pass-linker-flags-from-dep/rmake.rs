@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // A similar test to pass-linker-flags, testing that the `-l link-arg` flag
 // respects the order relative to other `-l` flags, but this time, the flags
 // are passed on the compilation of a dependency. This test checks that the
