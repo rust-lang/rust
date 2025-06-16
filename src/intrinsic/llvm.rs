@@ -1556,4 +1556,5 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
     func
 }
 
+#[cfg(feature = "master")]
 include!("archs.rs");

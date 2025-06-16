@@ -4,8 +4,8 @@ use std::convert::TryFrom;
 use std::ops::Deref;
 
 use gccjit::{
-    BinaryOp, Block, ComparisonOp, Context, Function, FunctionType, LValue, Location, RValue,
-    ToRValue, Type, UnaryOp,
+    BinaryOp, Block, ComparisonOp, Context, Function, LValue, Location, RValue, ToRValue, Type,
+    UnaryOp,
 };
 use rustc_abi as abi;
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
@@ -785,7 +785,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 let f128_type = self.type_f128();
                 let fmodf128 = self.context.new_function(
                     None,
-                    FunctionType::Extern,
+                    gccjit::FunctionType::Extern,
                     f128_type,
                     &[
                         self.context.new_parameter(None, f128_type, "a"),
