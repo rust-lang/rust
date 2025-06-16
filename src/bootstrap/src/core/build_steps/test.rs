@@ -3058,6 +3058,8 @@ impl Step for Bootstrap {
         cargo
             .rustflag("-Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
+            // Needed for insta to correctly write pending snapshots to the right directories.
+            .env("INSTA_WORKSPACE_ROOT", &builder.src)
             .env("RUSTC_BOOTSTRAP", "1");
 
         // bootstrap tests are racy on directory creation so just run them one at a time.
