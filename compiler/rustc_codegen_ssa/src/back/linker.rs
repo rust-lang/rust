@@ -1086,19 +1086,10 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
-    // export symbols from a dynamic library. When building a dynamic library,
-    // however, we're going to want some symbols exported, so this function
-    // generates a DEF file which lists all the symbols.
-    //
-    // The linker will read this `*.def` file and export all the symbols from
-    // the dynamic library. Note that this is not as simple as just exporting
-    // all the symbols in the current crate (as specified by `codegen.reachable`)
-    // but rather we also need to possibly export the symbols of upstream
-    // crates. Upstream rlibs may be linked statically to this dynamic library,
-    // in which case they may continue to transitively be used and hence need
-    // their symbols exported.
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, _symbols: &[String]) {
+        // We already add /EXPORT arguments to the .drectve section of symbols.o. We generate
+        // a .DEF file here anyway as it might prevent auto-export of some symbols.
+
         // Symbol visibility takes care of this typically
         if crate_type == CrateType::Executable {
             let should_export_executable_symbols =
@@ -1116,10 +1107,6 @@ impl<'a> Linker for MsvcLinker<'a> {
             // straight to exports.
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
-            for symbol in symbols {
-                debug!("  _{symbol}");
-                writeln!(f, "  {symbol}")?;
-            }
         };
         if let Err(error) = res {
             self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });

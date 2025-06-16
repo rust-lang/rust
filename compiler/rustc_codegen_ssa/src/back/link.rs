@@ -1976,9 +1976,11 @@ fn add_linked_symbol_object(
     cmd: &mut dyn Linker,
     sess: &Session,
     tmpdir: &Path,
-    symbols: &[(String, SymbolExportKind)],
+    crate_type: CrateType,
+    linked_symbols: &[(String, SymbolExportKind)],
+    exported_symbols: &[String],
 ) {
-    if symbols.is_empty() {
+    if linked_symbols.is_empty() && exported_symbols.is_empty() {
         return;
     }
 
@@ -2015,7 +2017,7 @@ fn add_linked_symbol_object(
         None
     };
 
-    for (sym, kind) in symbols.iter() {
+    for (sym, kind) in linked_symbols.iter() {
         let symbol = file.add_symbol(object::write::Symbol {
             name: sym.clone().into(),
             value: 0,
@@ -2070,6 +2072,38 @@ fn add_linked_symbol_object(
         if let Some(section) = ld64_section_helper {
             apple::add_data_and_relocation(&mut file, section, symbol, &sess.target, *kind)
                 .expect("failed adding relocation");
+        }
+    }
+
+    if sess.target.is_like_msvc {
+        // Symbol visibility takes care of this for executables typically
+        let should_filter_symbols = if crate_type == CrateType::Executable {
+            sess.opts.unstable_opts.export_executable_symbols
+        } else {
+            true
+        };
+        if should_filter_symbols {
+            // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
+            // export symbols from a dynamic library. When building a dynamic library,
+            // however, we're going to want some symbols exported, so this adds a
+            // `.drectve` section which lists all the symbols using /EXPORT arguments.
+            //
+            // The linker will read these arguments from the `.drectve` section and
+            // export all the symbols from the dynamic library. Note that this is not
+            // as simple as just exporting all the symbols in the current crate (as
+            // specified by `codegen.reachable`) but rather we also need to possibly
+            // export the symbols of upstream crates. Upstream rlibs may be linked
+            // statically to this dynamic library, in which case they may continue to
+            // transitively be used and hence need their symbols exported.
+            let drectve = exported_symbols
+                .into_iter()
+                .map(|sym| format!(" /EXPORT:\"{sym}\""))
+                .collect::<Vec<_>>()
+                .join("");
+
+            let section =
+                file.add_section(vec![], b".drectve".to_vec(), object::SectionKind::Linker);
+            file.append_section_data(section, drectve.as_bytes(), 1);
         }
     }
 
@@ -2247,7 +2281,9 @@ fn linker_with_args(
         cmd,
         sess,
         tmpdir,
+        crate_type,
         &codegen_results.crate_info.linked_symbols[&crate_type],
+        &codegen_results.crate_info.exported_symbols[&crate_type],
     );
 
     // Sanitizer libraries.
