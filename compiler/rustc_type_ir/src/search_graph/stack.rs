@@ -50,7 +50,7 @@ pub(super) struct StackEntry<X: Cx> {
     pub nested_goals: NestedGoals<X>,
 }
 
-#[derive_where(Default; X: Cx)]
+#[derive_where(Debug, Default; X: Cx)]
 pub(super) struct Stack<X: Cx> {
     entries: IndexVec<StackDepth, StackEntry<X>>,
 }
@@ -81,7 +81,14 @@ impl<X: Cx> Stack<X> {
     }
 
     pub(super) fn push(&mut self, entry: StackEntry<X>) -> StackDepth {
+        if cfg!(debug_assertions) && self.entries.iter().any(|e| e.input == entry.input) {
+            panic!("pushing duplicate entry on stack: {entry:?} {:?}", self.entries);
+        }
         self.entries.push(entry)
+    }
+
+    pub(super) fn get(&self, depth: StackDepth) -> Option<&StackEntry<X>> {
+        self.entries.get(depth)
     }
 
     pub(super) fn pop(&mut self) -> StackEntry<X> {
@@ -94,6 +101,10 @@ impl<X: Cx> Stack<X> {
 
     pub(super) fn iter(&self) -> impl Iterator<Item = &StackEntry<X>> {
         self.entries.iter()
+    }
+
+    pub(super) fn iter_enumerated(&self) -> impl Iterator<Item = (StackDepth, &StackEntry<X>)> {
+        self.entries.iter_enumerated()
     }
 
     pub(super) fn find(&self, input: X::Input) -> Option<StackDepth> {
