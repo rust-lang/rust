@@ -154,8 +154,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::roundf64 => ("llvm.round", &[bx.type_f64()]),
         sym::roundf128 => ("llvm.round", &[bx.type_f128()]),
 
-        sym::ptr_mask => ("llvm.ptrmask", &[bx.type_ptr(), bx.type_isize()]),
-
         _ => return None,
     };
     Some(bx.call_intrinsic(
@@ -181,6 +179,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
             _ if simple.is_some() => simple.unwrap(),
+            sym::ptr_mask => {
+                let ptr = args[0].immediate();
+                self.call_intrinsic(
+                    "llvm.ptrmask",
+                    &[self.val_ty(ptr), self.type_isize()],
+                    &[ptr, args[1].immediate()],
+                )
+            }
             sym::is_val_statically_known => {
                 if let OperandValue::Immediate(imm) = args[0].val {
                     self.call_intrinsic(
@@ -232,11 +238,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
-            sym::va_copy => self.call_intrinsic(
-                "llvm.va_copy",
-                &[self.type_ptr()],
-                &[args[0].immediate(), args[1].immediate()],
-            ),
+            sym::va_copy => {
+                let dest = args[0].immediate();
+                self.call_intrinsic(
+                    "llvm.va_copy",
+                    &[self.val_ty(dest)],
+                    &[dest, args[1].immediate()],
+                )
+            }
             sym::va_arg => {
                 match result.layout.backend_repr {
                     BackendRepr::Scalar(scalar) => {
@@ -309,15 +318,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::prefetch_write_instruction => (1, 0),
                     _ => bug!(),
                 };
+                let ptr = args[0].immediate();
                 self.call_intrinsic(
                     "llvm.prefetch",
-                    &[self.type_ptr()],
-                    &[
-                        args[0].immediate(),
-                        self.const_i32(rw),
-                        args[1].immediate(),
-                        self.const_i32(cache_type),
-                    ],
+                    &[self.val_ty(ptr)],
+                    &[ptr, self.const_i32(rw), args[1].immediate(), self.const_i32(cache_type)],
                 )
             }
             sym::carrying_mul_add => {
@@ -378,7 +383,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::ctlz | sym::cttz => {
                         let y = self.const_bool(false);
                         let ret = self.call_intrinsic(
-                            &format!("llvm.{name}"),
+                            format!("llvm.{name}"),
                             &[llty],
                             &[args[0].immediate(), y],
                         );
@@ -423,7 +428,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         // always uses `u32`.
                         let raw_shift = self.intcast(raw_shift, self.val_ty(val), false);
 
-                        self.call_intrinsic(&llvm_name, &[llty], &[val, val, raw_shift])
+                        self.call_intrinsic(llvm_name, &[llty], &[val, val, raw_shift])
                     }
                     sym::saturating_add | sym::saturating_sub => {
                         let is_add = name == sym::saturating_add;
@@ -434,7 +439,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             if signed { 's' } else { 'u' },
                             if is_add { "add" } else { "sub" },
                         );
-                        self.call_intrinsic(&llvm_name, &[llty], &[lhs, rhs])
+                        self.call_intrinsic(llvm_name, &[llty], &[lhs, rhs])
                     }
                     _ => bug!(),
                 }
@@ -637,11 +642,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 
     fn va_start(&mut self, va_list: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.va_start", &[self.type_ptr()], &[va_list])
+        self.call_intrinsic("llvm.va_start", &[self.val_ty(va_list)], &[va_list])
     }
 
     fn va_end(&mut self, va_list: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.va_end", &[self.type_ptr()], &[va_list])
+        self.call_intrinsic("llvm.va_end", &[self.val_ty(va_list)], &[va_list])
     }
 }
 
@@ -1018,7 +1023,7 @@ fn codegen_emcc_try<'ll, 'tcx>(
         let selector = bx.extract_value(vals, 1);
 
         // Check if the typeid we got is the one for a Rust panic.
-        let rust_typeid = bx.call_intrinsic("llvm.eh.typeid.for", &[bx.type_ptr()], &[tydesc]);
+        let rust_typeid = bx.call_intrinsic("llvm.eh.typeid.for", &[bx.val_ty(tydesc)], &[tydesc]);
         let is_rust_panic = bx.icmp(IntPredicate::IntEQ, selector, rust_typeid);
         let is_rust_panic = bx.zext(is_rust_panic, bx.type_bool());
 
@@ -2393,7 +2398,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
-        return Ok(bx.call_intrinsic(&llvm_intrinsic, &[vec_ty], &[lhs, rhs]));
+        return Ok(bx.call_intrinsic(llvm_intrinsic, &[vec_ty], &[lhs, rhs]));
     }
 
     span_bug!(span, "unknown SIMD intrinsic");
