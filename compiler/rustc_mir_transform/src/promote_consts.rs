@@ -731,14 +731,13 @@ struct Promoter<'a, 'tcx> {
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
     fn new_block(&mut self) -> BasicBlock {
         let span = self.promoted.span;
-        self.promoted.basic_blocks_mut().push(BasicBlockData {
-            statements: vec![],
-            terminator: Some(Terminator {
+        self.promoted.basic_blocks_mut().push(BasicBlockData::new(
+            Some(Terminator {
                 source_info: SourceInfo::outermost(span),
                 kind: TerminatorKind::Return,
             }),
-            is_cleanup: false,
-        })
+            false,
+        ))
     }
 
     fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
