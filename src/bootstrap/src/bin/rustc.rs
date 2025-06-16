@@ -159,7 +159,8 @@ fn main() {
         // This... is a bit of a hack how we detect this. Ideally this
         // information should be encoded in the crate I guess? Would likely
         // require an RFC amendment to RFC 1513, however.
-        if crate_name == Some("panic_abort") {
+        // cfg(not(bootstrap))
+        if crate_name == Some("panic_abort") && stage == "0" {
             cmd.arg("-C").arg("panic=abort");
         }
 
