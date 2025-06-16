@@ -1,18 +1,17 @@
-use rustc_abi::{
-    AddressSpace, Integer, Primitive, Scalar, Size, TagEncoding, Variants, WrappingRange,
-};
+use rustc_abi::{Scalar, Size, TagEncoding, Variants, WrappingRange};
 use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
+use rustc_middle::ty::layout::PrimitiveExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingEnv};
 use rustc_session::Session;
 use tracing::debug;
 
-/// This pass inserts checks at places where enums are constructed and checks
-/// the operand passed to the enum creation for validity. This prevents
-/// creating enums backed by invalid discriminants.
+/// This pass inserts checks for a valid enum discriminant where they are most
+/// likely to find UB, because checking everywhere like Miri would generate too
+/// much MIR.
 pub(super) struct CheckEnums;
 
 impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
@@ -147,28 +146,6 @@ impl<'a, 'tcx> EnumFinder<'a, 'tcx> {
     fn into_found_enums(self) -> Vec<EnumCheckType<'tcx>> {
         self.enums
     }
-
-    /// In some cases the enum discriminant is stored in a tag that is represented by
-    /// primitive. This method returns the actual discriminant type and size for that
-    /// tag.
-    fn tag_type_and_size_for_primitive(&self, primitive: Primitive) -> TyAndSize<'tcx> {
-        let discr_ty = match primitive {
-            Primitive::Int(Integer::I8, false) => self.tcx.types.u8,
-            Primitive::Int(Integer::I8, true) => self.tcx.types.i8,
-            Primitive::Int(Integer::I16, false) => self.tcx.types.u16,
-            Primitive::Int(Integer::I16, true) => self.tcx.types.i16,
-            Primitive::Int(Integer::I32, false) => self.tcx.types.u32,
-            Primitive::Int(Integer::I32, true) => self.tcx.types.i32,
-            Primitive::Int(Integer::I64, false) => self.tcx.types.u64,
-            Primitive::Int(Integer::I64, true) => self.tcx.types.i64,
-            Primitive::Pointer(AddressSpace(0)) => self.tcx.types.usize,
-            _ => bug!("Invalid discriminant {:#?}", primitive),
-        };
-        let Ok(discr_layout) = self.tcx.layout_of(self.typing_env.as_query_input(discr_ty)) else {
-            bug!("Invalid discriminant {:#?}", primitive);
-        };
-        TyAndSize { ty: discr_ty, size: discr_layout.size }
-    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for EnumFinder<'a, 'tcx> {
@@ -211,7 +188,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EnumFinder<'a, 'tcx> {
                     let valid_discrs =
                         adt_def.discriminants(self.tcx).map(|(_, discr)| discr.val).collect();
 
-                    let discr = self.tag_type_and_size_for_primitive(value);
+                    let discr =
+                        TyAndSize { ty: value.to_int_ty(self.tcx), size: value.size(&self.tcx) };
                     self.enums.push(EnumCheckType::Direct {
                         source_op: op.to_copy(),
                         discr,
@@ -226,7 +204,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EnumFinder<'a, 'tcx> {
                     tag_field,
                     ..
                 } => {
-                    let discr = self.tag_type_and_size_for_primitive(value);
+                    let discr =
+                        TyAndSize { ty: value.to_int_ty(self.tcx), size: value.size(&self.tcx) };
                     self.enums.push(EnumCheckType::WithNiche {
                         source_op: op.to_copy(),
                         discr,
@@ -342,24 +321,6 @@ fn insert_discr_cast_to_u128<'tcx>(
     discr
 }
 
-fn cast_to_usize<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
-    block_data: &mut BasicBlockData<'tcx>,
-    u128_op: Operand<'tcx>,
-    source_info: SourceInfo,
-) -> Operand<'tcx> {
-    let rvalue = Rvalue::Cast(CastKind::IntToInt, u128_op, tcx.types.usize);
-    let usize_val =
-        local_decls.push(LocalDecl::with_source_info(tcx.types.usize, source_info)).into();
-    block_data.statements.push(Statement {
-        source_info,
-        kind: StatementKind::Assign(Box::new((usize_val, rvalue))),
-    });
-
-    Operand::Copy(usize_val)
-}
-
 fn insert_direct_enum_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
@@ -442,13 +403,7 @@ fn insert_direct_enum_check<'tcx>(
             cond: Operand::Copy(is_ok),
             expected: true,
             target: new_block,
-            msg: Box::new(AssertKind::InvalidEnumConstruction(cast_to_usize(
-                tcx,
-                local_decls,
-                block_data,
-                Operand::Copy(discr),
-                source_info,
-            ))),
+            msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Copy(discr))),
             // This calls panic_invalid_enum_construction, which is #[rustc_nounwind].
             // We never want to insert an unwind into unsafe code, because unwinding could
             // make a failing UB check turn into much worse UB when we start unwinding.
@@ -567,13 +522,7 @@ fn insert_niche_check<'tcx>(
             cond: Operand::Copy(is_ok),
             expected: true,
             target: new_block,
-            msg: Box::new(AssertKind::InvalidEnumConstruction(cast_to_usize(
-                tcx,
-                local_decls,
-                block_data,
-                Operand::Copy(discr),
-                source_info,
-            ))),
+            msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Copy(discr))),
             // This calls panic_invalid_enum_construction, which is #[rustc_nounwind].
             // We never want to insert an unwind into unsafe code, because unwinding could
             // make a failing UB check turn into much worse UB when we start unwinding.
