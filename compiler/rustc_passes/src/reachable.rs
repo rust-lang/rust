@@ -205,22 +205,32 @@ impl<'tcx> ReachableContext<'tcx> {
                     }
 
                     hir::ItemKind::Const(_, _, _, init) => {
-                        // Only things actually ending up in the final constant value are reachable
-                        // for codegen. Everything else is only needed during const-eval, so even if
-                        // const-eval happens in a downstream crate, all they need is
-                        // `mir_for_ctfe`.
-                        match self.tcx.const_eval_poly_to_alloc(item.owner_id.def_id.into()) {
-                            Ok(alloc) => {
-                                let alloc = self.tcx.global_alloc(alloc.alloc_id).unwrap_memory();
-                                self.propagate_from_alloc(alloc);
+                        let predicates = self.tcx.predicates_of(item.owner_id);
+
+                        if predicates.predicates.is_empty()
+                            || !rustc_trait_selection::traits::impossible_predicates(
+                                self.tcx,
+                                predicates.instantiate_identity(self.tcx).predicates,
+                            )
+                        {
+                            // Only things actually ending up in the final constant value are reachable
+                            // for codegen. Everything else is only needed during const-eval, so even if
+                            // const-eval happens in a downstream crate, all they need is
+                            // `mir_for_ctfe`.
+                            match self.tcx.const_eval_poly_to_alloc(item.owner_id.def_id.into()) {
+                                Ok(alloc) => {
+                                    let alloc =
+                                        self.tcx.global_alloc(alloc.alloc_id).unwrap_memory();
+                                    self.propagate_from_alloc(alloc);
+                                }
+                                // We can't figure out which value the constant will evaluate to. In
+                                // lieu of that, we have to consider everything mentioned in the const
+                                // initializer reachable, since it *may* end up in the final value.
+                                Err(ErrorHandled::TooGeneric(_)) => self.visit_nested_body(init),
+                                // If there was an error evaluating the const, nothing can be reachable
+                                // via it, and anyway compilation will fail.
+                                Err(ErrorHandled::Reported(..)) => {}
                             }
-                            // We can't figure out which value the constant will evaluate to. In
-                            // lieu of that, we have to consider everything mentioned in the const
-                            // initializer reachable, since it *may* end up in the final value.
-                            Err(ErrorHandled::TooGeneric(_)) => self.visit_nested_body(init),
-                            // If there was an error evaluating the const, nothing can be reachable
-                            // via it, and anyway compilation will fail.
-                            Err(ErrorHandled::Reported(..)) => {}
                         }
                     }
                     hir::ItemKind::Static(..) => {
