@@ -441,6 +441,14 @@ impl f64 {
     /// [`MAX_EXP`]: f64::MAX_EXP
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX: f64 = 1.7976931348623157e+308_f64;
+    
+    /// Largest negative normal `f64` value.
+    ///
+    /// Equal to &minus;2<sup>[`MIN_EXP`]&nbsp;&minus;&nbsp;1</sup>.
+    ///
+    /// [`MIN_EXP`]: f64::MIN_EXP
+    #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    pub const MAX_NEGATIVE: f64 = -2.2250738585072014e-308_f64;
 
     /// One greater than the minimum possible *normal* power of 2 exponent
     /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
