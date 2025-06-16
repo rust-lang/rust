@@ -250,6 +250,9 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[export_stable]`.
+    ExportStable,
+
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
 
