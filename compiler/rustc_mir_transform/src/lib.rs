@@ -117,6 +117,7 @@ declare_passes! {
     mod check_inline : CheckForceInline;
     mod check_call_recursion : CheckCallRecursion, CheckDropRecursion;
     mod check_alignment : CheckAlignment;
+    mod check_enums : CheckEnums;
     mod check_const_item_mutation : CheckConstItemMutation;
     mod check_null : CheckNull;
     mod check_packed_ref : CheckPackedRef;
@@ -666,6 +667,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             // Add some UB checks before any UB gets optimized away.
             &check_alignment::CheckAlignment,
             &check_null::CheckNull,
+            &check_enums::CheckEnums,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
