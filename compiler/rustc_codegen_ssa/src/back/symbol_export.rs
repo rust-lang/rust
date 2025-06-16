@@ -219,6 +219,7 @@ fn exported_symbols_provider_local<'tcx>(
             .chain([
                 mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
                 mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
+                mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
             ])
         {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
@@ -232,19 +233,6 @@ fn exported_symbols_provider_local<'tcx>(
                 },
             ));
         }
-
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(
-            tcx,
-            &mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
-        ));
-        symbols.push((
-            exported_symbol,
-            SymbolExportInfo {
-                level: SymbolExportLevel::Rust,
-                kind: SymbolExportKind::Data,
-                used: false,
-            },
-        ))
     }
 
     if tcx.sess.instrument_coverage() || tcx.sess.opts.cg.profile_generate.enabled() {
