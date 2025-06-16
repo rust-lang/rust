@@ -10,7 +10,7 @@
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
 use rustc_hir::diagnostic_items::DiagnosticItems;
-use rustc_hir::{Attribute, OwnerId};
+use rustc_hir::{Attribute, CRATE_OWNER_ID, OwnerId};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
@@ -67,7 +67,7 @@ fn diagnostic_items(tcx: TyCtxt<'_>, _: LocalCrate) -> DiagnosticItems {
 
     // Collect diagnostic items in this crate.
     let crate_items = tcx.hir_crate_items(());
-    for id in crate_items.owners() {
+    for id in crate_items.owners().chain(std::iter::once(CRATE_OWNER_ID)) {
         observe_item(tcx, &mut diagnostic_items, id);
     }
 
