@@ -1012,7 +1012,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
     };
     let func = cx.context.get_builtin_function(gcc_name);
     cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
-    return func;
+    func
 }
 
 #[cfg(feature = "master")]

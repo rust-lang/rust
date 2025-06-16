@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 use super::ResultCache;
 
 /// Saves a reduced file for a given `stage`
-fn save_reduction(lines: &[String], path: &PathBuf, stage: &str) {
-    let mut path = path.clone();
-    path.set_extension(&format!("rs.{stage}"));
+fn save_reduction(lines: &[String], path: &Path, stage: &str) {
+    let mut path = path.to_path_buf();
+    path.set_extension(format!("rs.{stage}"));
     let mut file = std::fs::File::create(&path).expect("Could not create the reduced example file");
     for line in lines {
         file.write_all(line.as_bytes()).expect("Could not save the reduced example");
@@ -14,8 +14,8 @@ fn save_reduction(lines: &[String], path: &PathBuf, stage: &str) {
 }
 
 /// Checks if a given reduction is valid.
-fn test_reduction(lines: &[String], path: &PathBuf, cache: &mut ResultCache) -> bool {
-    let mut path = path.clone();
+fn test_reduction(lines: &[String], path: &Path, cache: &mut ResultCache) -> bool {
+    let mut path = path.to_path_buf();
     path.set_extension("rs_reduced");
     let mut file = std::fs::File::create(&path).expect("Could not create the reduced example file");
     for line in lines {
@@ -25,7 +25,7 @@ fn test_reduction(lines: &[String], path: &PathBuf, cache: &mut ResultCache) -> 
     let Ok(Err(_)) = res else {
         return false;
     };
-    return true;
+    true
 }
 
 /// Removes duplicate assignments in bulk.
@@ -73,8 +73,8 @@ fn remove_dup_assign(
         return;
     }
     // Check if the removed lines affected the execution result in any way, shape or form.
-    if test_reduction(&file_copy, &path, cache) {
-        println!("Reduced {path:?} by {} lines `remove_dup_assign`", reduction_count);
+    if test_reduction(&file_copy, path, cache) {
+        println!("Reduced {path:?} by {reduction_count} lines `remove_dup_assign`");
         *file = file_copy;
     } else {
         // The execution result changed.
@@ -110,7 +110,7 @@ fn remove_dump_var(file: &mut Vec<String>, path: &PathBuf) {
         // Not cached - the execution result can change.
         let mut uncached = None;
         // Check if this reduction is valid.
-        if test_reduction(&file_copy, &path, &mut uncached) {
+        if test_reduction(&file_copy, path, &mut uncached) {
             println!("Reduced {path:?} by 3 lines `remove_dump_var`");
             *file = file_copy;
             curr = line;
@@ -160,7 +160,7 @@ fn match_to_goto(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache
             file_copy.remove(match_starts);
         }
         file_copy.insert(match_starts, format!("Goto(bb{bb_ident})\n"));
-        if test_reduction(&file_copy, &path, cache) {
+        if test_reduction(&file_copy, path, cache) {
             println!("Reduced {path:?} by {} lines `match_to_goto`", match_ends - match_starts);
             *file = file_copy;
             curr = match_starts;
@@ -203,11 +203,12 @@ fn block_abort(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache) 
         // ..and insert an unconditional call to abort.
         file_copy.insert(
             block_starts,
-            format!("Call(tmp = core::intrinsics::abort(), ReturnTo(bb1), UnwindUnreachable())\n"),
+            "Call(tmp = core::intrinsics::abort(), ReturnTo(bb1), UnwindUnreachable())\n"
+                .to_string(),
         );
-        file_copy.insert(block_starts, format!("let tmp = ();\n"));
+        file_copy.insert(block_starts, "let tmp = ();\n".to_string());
 
-        if test_reduction(&file_copy, &path, cache) {
+        if test_reduction(&file_copy, path, cache) {
             println!("Reduced {path:?} by {} lines `block_abort`", block_ends - block_starts - 2);
             *file = file_copy;
             curr = block_starts;
@@ -248,7 +249,7 @@ fn remove_block(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache)
         }
         let mut file_copy = file.clone();
         file_copy.drain(block_starts..block_ends);
-        if test_reduction(&file_copy, &path, cache) {
+        if test_reduction(&file_copy, path, cache) {
             println!("Reduced {path:?} by {} lines `remove_blocks`", block_ends - block_starts);
             *file = file_copy;
             curr = block_starts;
@@ -295,7 +296,7 @@ fn linearize_cf(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache)
         file_copy.remove(block_starts - 2);
         file_copy.remove(block_starts - 2);
         // Check if this reduction is valid.
-        if test_reduction(&file_copy, &path, cache) {
+        if test_reduction(&file_copy, path, cache) {
             println!("Reduced {path:?} by 3 lines `linearize_cf`");
             *file = file_copy;
             curr = block_starts;
@@ -345,7 +346,7 @@ fn remove_fn_calls(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCac
         file_copy.insert(fn_call, format!("Goto({block})\n"));
         file_copy.insert(fn_call, format!("{place} = 0;\n"));
         // Check if this reduction is valid.
-        if test_reduction(&file_copy, &path, cache) {
+        if test_reduction(&file_copy, path, cache) {
             println!("Reduced {path:?} using `remove_fn_calls` {cache:?}");
             *file = file_copy;
             curr = fn_call;
@@ -382,7 +383,7 @@ fn remove_fns(file: &mut Vec<String>, path: &PathBuf, cache: &mut ResultCache) {
         // Remove the function.\\
         file_copy.drain(fn_start..fn_end);
         // Check if this reduction is valid.
-        if test_reduction(&file_copy, &path, cache) {
+        if test_reduction(&file_copy, path, cache) {
             println!("Reduced {path:?} by {} lines `remove_fns`", fn_end - fn_start);
             *file = file_copy;
         } else {

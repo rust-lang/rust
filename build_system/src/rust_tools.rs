@@ -9,15 +9,14 @@ use crate::utils::{get_toolchain, rustc_toolchain_version_info, rustc_version_in
 
 fn args(command: &str) -> Result<Option<Vec<String>>, String> {
     // We skip the binary and the "cargo"/"rustc" option.
-    if let Some("--help") = std::env::args().skip(2).next().as_deref() {
+    if let Some("--help") = std::env::args().nth(2).as_deref() {
         usage(command);
         return Ok(None);
     }
     let args = std::env::args().skip(2).collect::<Vec<_>>();
     if args.is_empty() {
         return Err(format!(
-            "Expected at least one argument for `{}` subcommand, found none",
-            command
+            "Expected at least one argument for `{command}` subcommand, found none"
         ));
     }
     Ok(Some(args))
@@ -26,12 +25,11 @@ fn args(command: &str) -> Result<Option<Vec<String>>, String> {
 fn usage(command: &str) {
     println!(
         r#"
-`{}` command help:
+`{command}` command help:
 
     [args]     : Arguments to be passed to the cargo command
     --help     : Show this help
 "#,
-        command,
     )
 }
 
@@ -50,10 +48,10 @@ impl RustcTools {
         // expected.
         let current_dir = std::env::current_dir()
             .and_then(|path| path.canonicalize())
-            .map_err(|error| format!("Failed to get current directory path: {:?}", error))?;
+            .map_err(|error| format!("Failed to get current directory path: {error:?}"))?;
         let current_exe = std::env::current_exe()
             .and_then(|path| path.canonicalize())
-            .map_err(|error| format!("Failed to get current exe path: {:?}", error))?;
+            .map_err(|error| format!("Failed to get current exe path: {error:?}"))?;
         let mut parent_dir =
             current_exe.components().map(|comp| comp.as_os_str()).collect::<Vec<_>>();
         // We run this script from "build_system/target/release/y", so we need to remove these elements.
@@ -67,7 +65,7 @@ impl RustcTools {
                 ));
             }
         }
-        let parent_dir = PathBuf::from(parent_dir.join(&OsStr::new("/")));
+        let parent_dir = PathBuf::from(parent_dir.join(OsStr::new("/")));
         std::env::set_current_dir(&parent_dir).map_err(|error| {
             format!("Failed to go to `{}` folder: {:?}", parent_dir.display(), error)
         })?;
@@ -91,7 +89,7 @@ impl RustcTools {
         std::env::set_current_dir(&current_dir).map_err(|error| {
             format!("Failed to go back to `{}` folder: {:?}", current_dir.display(), error)
         })?;
-        let toolchain = format!("+{}", toolchain);
+        let toolchain = format!("+{toolchain}");
         Ok(Some(Self { toolchain, args, env, config }))
     }
 }
