@@ -1882,6 +1882,19 @@ impl FromStr for PathBuf {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<P: AsRef<Path>> FromIterator<P> for PathBuf {
+    /// Creates a new `PathBuf` from the [`Path`] elements of an iterator.
+    ///
+    /// This uses [`push`](Self::push) to add each element, so can be used to adjoin multiple path
+    /// [components](Components).
+    ///
+    /// # Examples
+    /// ```
+    /// # use std::path::PathBuf;
+    /// let path = PathBuf::from_iter(["/tmp", "foo", "bar"]);
+    /// assert_eq!(path, PathBuf::from("/tmp/foo/bar"));
+    /// ```
+    ///
+    /// See documentation for [`push`](Self::push) for more details on how the path is constructed.
     fn from_iter<I: IntoIterator<Item = P>>(iter: I) -> PathBuf {
         let mut buf = PathBuf::new();
         buf.extend(iter);
@@ -1891,6 +1904,20 @@ impl<P: AsRef<Path>> FromIterator<P> for PathBuf {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<P: AsRef<Path>> Extend<P> for PathBuf {
+    /// Extends `self` with [`Path`] elements from `iter`.
+    ///
+    /// This uses [`push`](Self::push) to add each element, so can be used to adjoin multiple path
+    /// [components](Components).
+    ///
+    /// # Examples
+    /// ```
+    /// # use std::path::PathBuf;
+    /// let mut path = PathBuf::from("/tmp");
+    /// path.extend(["foo", "bar", "file.txt"]);
+    /// assert_eq!(path, PathBuf::from("/tmp/foo/bar/file.txt"));
+    /// ```
+    ///
+    /// See documentation for [`push`](Self::push) for more details on how the path is constructed.
     fn extend<I: IntoIterator<Item = P>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |p| self.push(p.as_ref()));
     }
