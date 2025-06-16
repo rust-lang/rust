@@ -1,14 +1,23 @@
+//! Regression test for issue #11881
+//!
+//! Originally, the compiler would ICE when trying to parameterize on certain encoder types
+//! due to issues with higher-ranked trait bounds and lifetime inference. This test checks
+//! that various encoder patterns work correctly:
+//! - Generic encoders with associated error types
+//! - Higher-ranked trait bounds (for<'r> Encodable<JsonEncoder<'r>>)
+//! - Multiple encoder implementations for the same type
+//! - Polymorphic encoding functions
+
 //@ run-pass
 
 #![allow(unused_must_use)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use std::fmt;
-use std::io::prelude::*;
 use std::io::Cursor;
-use std::slice;
+use std::io::prelude::*;
 use std::marker::PhantomData;
+use std::{fmt, slice};
 
 trait Encoder {
     type Error;
@@ -45,7 +54,6 @@ impl Encoder for OpaqueEncoder {
     type Error = ();
 }
 
-
 struct Foo {
     baz: bool,
 }
@@ -69,7 +77,6 @@ impl<S: Encoder> Encodable<S> for Bar {
 enum WireProtocol {
     JSON,
     Opaque,
-    // ...
 }
 
 fn encode_json<T: for<'a> Encodable<JsonEncoder<'a>>>(val: &T, wr: &mut Cursor<Vec<u8>>) {
