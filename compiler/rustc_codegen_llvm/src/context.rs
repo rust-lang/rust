@@ -208,7 +208,7 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
-    // Ensure the data-layout values hardcoded remain the defaults.
+    // Ensure our hardcoded data-layout values remain the defaults.
     {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess, false);
         unsafe {
@@ -220,7 +220,17 @@ pub(crate) unsafe fn create_module<'ll>(
             str::from_utf8(unsafe { CStr::from_ptr(llvm_data_layout) }.to_bytes())
                 .expect("got a non-UTF8 data-layout from LLVM");
 
-        if target_data_layout != llvm_data_layout {
+        if tcx.sess.target.os == "aix" {
+            // We committed a travesty to fix a bug in LLVM and/or clang, depending on POV:
+            // clang overrides the data layout for AIX targets, instead of reusing LLVM's layout,
+            // which causes problems in flang, rustc, and other LLVM-based compilers which,
+            // instead of having individual impls of layout logic, parse LLVM datalayout strings.
+            // As a hotfix, we override the AIX datalayout and thus now check for NON-conformance!
+            // See https://github.com/llvm/llvm-project/issues/133599 for more.
+            if target_data_layout == llvm_data_layout {
+                bug!("LLVM got fixed, please remove this exception in cg_llvm!");
+            }
+        } else if target_data_layout != llvm_data_layout {
             tcx.dcx().emit_err(crate::errors::MismatchedDataLayout {
                 rustc_target: sess.opts.target_triple.to_string().as_str(),
                 rustc_layout: target_data_layout.as_str(),

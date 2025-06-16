@@ -17,7 +17,12 @@ pub(crate) fn target() -> Target {
             std: None, // ?
         },
         pointer_width: 64,
-        data_layout: "E-m:a-Fi64-i64:64-i128:128-n32:64-S128-v256:256:256-v512:512:512".into(),
+        // Note that the f64:32:64 deviates from what LLVM thinks should be the case,
+        // because LLVM doesn't know the layout actually used for AIX's C ABI,
+        // as clang reimplements it instead of trusting the datalayout string implicitly.
+        // See https://github.com/llvm/llvm-project/issues/133599 for more.
+        data_layout: "E-m:a-Fi64-i64:64-f64:32:64-i128:128-n32:64-S128-v256:256:256-v512:512:512"
+            .into(),
         arch: "powerpc64".into(),
         options: base,
     }
