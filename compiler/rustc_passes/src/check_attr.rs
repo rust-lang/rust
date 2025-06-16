@@ -204,6 +204,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::RustcLayoutScalarValidRangeStart(_num, attr_span)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(_num, attr_span),
                 ) => self.check_rustc_layout_scalar_valid_range(*attr_span, span, target),
+                Attribute::Parsed(AttributeKind::ExportStable) => {
+                    // handled in `check_export`
+                }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
@@ -346,7 +349,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::cfg_attr
                             | sym::cfg_trace
                             | sym::cfg_attr_trace
-                            | sym::export_stable // handled in `check_export`
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)

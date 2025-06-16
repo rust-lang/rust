@@ -40,12 +40,6 @@ error: malformed `crate_name` attribute input
 LL | #[crate_name]
    | ^^^^^^^^^^^^^ help: must be of the form: `#[crate_name = "name"]`
 
-error: malformed `export_stable` attribute input
-  --> $DIR/malformed-attrs.rs:81:1
-   |
-LL | #[export_stable = 1]
-   | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[export_stable]`
-
 error: malformed `coverage` attribute input
   --> $DIR/malformed-attrs.rs:90:1
    |
@@ -480,6 +474,15 @@ LL | #[target_feature]
    | |
    | expected this to be a list
    | help: must be of the form: `#[target_feature(enable = "feat1, feat2")]`
+
+error[E0565]: malformed `export_stable` attribute input
+  --> $DIR/malformed-attrs.rs:81:1
+   |
+LL | #[export_stable = 1]
+   | ^^^^^^^^^^^^^^^^---^
+   | |               |
+   | |               didn't expect any arguments here
+   | help: must be of the form: `#[export_stable]`
 
 error[E0539]: malformed `link_name` attribute input
   --> $DIR/malformed-attrs.rs:86:1

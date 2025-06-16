@@ -248,6 +248,9 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[export_stable]`.
+    ExportStable,
+
     /// Represents `#[ignore]`
     Ignore {
         span: Span,

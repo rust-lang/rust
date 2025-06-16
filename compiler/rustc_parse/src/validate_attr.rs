@@ -271,6 +271,7 @@ pub fn check_builtin_meta_item(
         if matches!(
             name,
             sym::inline
+                | sym::export_stable
                 | sym::may_dangle
                 | sym::rustc_as_ptr
                 | sym::rustc_pub_transparent

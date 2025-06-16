@@ -1,9 +1,11 @@
 use rustc_attr_data_structures::AttributeKind;
 use rustc_attr_data_structures::AttributeKind::{LinkName, LinkSection};
 use rustc_feature::{AttributeTemplate, template};
-use rustc_span::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 
-use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
+use crate::attributes::{
+    AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
+};
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::NullOnLinkSection;
@@ -56,4 +58,11 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
 
         Some(LinkSection { name, span: cx.attr_span })
     }
+}
+
+pub(crate) struct ExportStableParser;
+impl<S: Stage> NoArgsAttributeParser<S> for ExportStableParser {
+    const PATH: &[Symbol] = &[sym::export_stable];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
 }
