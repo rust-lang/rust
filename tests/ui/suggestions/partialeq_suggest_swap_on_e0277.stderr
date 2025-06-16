@@ -10,6 +10,8 @@ LL |     String::from("Girls Band Cry") == T(String::from("Girls Band Cry"));
              `String` implements `PartialEq<ByteStr>`
              `String` implements `PartialEq<ByteString>`
              `String` implements `PartialEq<Cow<'_, str>>`
+             `String` implements `PartialEq<Path>`
+             `String` implements `PartialEq<PathBuf>`
              `String` implements `PartialEq<str>`
              `String` implements `PartialEq`
    = note: `T` implements `PartialEq<String>`
