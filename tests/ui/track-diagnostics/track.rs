@@ -13,6 +13,11 @@
 // top of this file are present, then assume all args are present.
 //@ normalize-stderr: "note: compiler flags: .*-Z ui-testing.*-Z track-diagnostics" -> "note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics"
 
+// FIXME: output is different between stage1 and stage2. This should be possible to remove
+// when stages get bumped.
+// For the grep: cfg(bootstrap)
+//@normalize-stderr: "thread 'rustc' panicked" -> "thread 'rustc' ($$TID) panicked"
+
 fn main() {
     break rust
     //~^ ERROR cannot find value `rust` in this scope

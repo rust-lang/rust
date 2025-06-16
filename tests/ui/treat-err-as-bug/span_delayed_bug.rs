@@ -1,7 +1,7 @@
 //@ compile-flags: -Ztreat-err-as-bug -Zeagerly-emit-delayed-bugs
 //@ failure-status: 101
 //@ normalize-stderr: "note: .*\n\n" -> ""
-//@ normalize-stderr: "thread 'rustc' panicked.*:\n.*\n" -> ""
+//@ normalize-stderr: "thread 'rustc'.*panicked.*:\n.*\n" -> ""
 //@ rustc-env:RUST_BACKTRACE=0
 
 #![feature(rustc_attrs)]

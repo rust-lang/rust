@@ -630,6 +630,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(name, &name_ptr)?;
                 this.write_scalar(res, dest)?;
             }
+            "GetThreadId" => {
+                let [handle] = this.check_shim(abi, sys_conv, link_name, args)?;
+                let handle = this.read_handle(handle, "GetThreadId")?;
+
+                let thread = match handle {
+                    Handle::Thread(thread) => thread,
+                    Handle::Pseudo(PseudoHandle::CurrentThread) => this.active_thread(),
+                    _ => this.invalid_handle("GetThreadDescription")?,
+                };
+
+                this.write_scalar(Scalar::from_u32(this.get_tid(thread)), dest)?;
+            }
 
             // Miscellaneous
             "ExitProcess" => {

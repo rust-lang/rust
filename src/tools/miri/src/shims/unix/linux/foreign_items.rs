@@ -117,7 +117,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "gettid" => {
                 let [] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
-                let result = this.linux_gettid()?;
+                let result = this.unix_gettid(link_name)?;
                 this.write_scalar(result, dest)?;
             }
 
