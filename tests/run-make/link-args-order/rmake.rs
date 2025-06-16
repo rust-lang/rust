@@ -1,5 +1,6 @@
 //@ needs-target-std
-//
+//@ ignore-wasm (explicit linker invocations)
+
 // Passing linker arguments to the compiler used to be lost or reordered in a messy way
 // as they were passed further to the linker. This was fixed in #70665, and this test
 // checks that linker arguments remain intact and in the order they were originally passed in.

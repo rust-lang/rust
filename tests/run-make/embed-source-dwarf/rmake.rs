@@ -1,6 +1,8 @@
 //@ needs-target-std
 //@ ignore-windows
 //@ ignore-apple
+//@ ignore-wasm (`object` doesn't handle wasm object files)
+//@ ignore-cross-compile
 
 // This test should be replaced with one in tests/debuginfo once we can easily
 // tell via GDB or LLDB if debuginfo contains source code. Cheap tricks in LLDB

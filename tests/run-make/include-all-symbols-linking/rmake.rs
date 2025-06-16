@@ -7,7 +7,9 @@
 // See https://github.com/rust-lang/rust/pull/95604
 // See https://github.com/rust-lang/rust/issues/47384
 
-//@ needs-target-std
+//@ ignore-cross-compile
+//@ needs-crate-type: cdylib
+//@ needs-dynamic-linking
 //@ ignore-wasm differences in object file formats causes errors in the llvm_objdump step.
 //@ ignore-windows differences in object file formats causes errors in the llvm_objdump step.
 

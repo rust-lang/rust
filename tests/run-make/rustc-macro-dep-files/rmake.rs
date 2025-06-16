@@ -1,5 +1,7 @@
-//@ needs-target-std
-//
+//@ ignore-cross-compile
+//@ needs-crate-type: proc-macro
+//@ ignore-musl (FIXME: can't find `-lunwind`)
+
 // --emit dep-info used to print all macro-generated code it could
 // find as if it was part of a nonexistent file named "proc-macro source",
 // which is not a valid path. After this was fixed in #36776, this test checks
