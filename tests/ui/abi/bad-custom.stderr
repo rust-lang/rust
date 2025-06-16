@@ -245,43 +245,85 @@ LL +     #[unsafe(naked)]
 LL |     extern "custom" fn negate(a: i64) -> i64 {
    |
 
-error: functions with the `"custom"` ABI cannot be called
+error: functions with the "custom" ABI cannot be called
+  --> $DIR/bad-custom.rs:75:14
+   |
+LL |     unsafe { f(x) }
+   |              ^^^^
+   |
+note: an `extern "custom"` function can only be called using inline assembly
   --> $DIR/bad-custom.rs:75:14
    |
 LL |     unsafe { f(x) }
    |              ^^^^
 
-error: functions with the `"custom"` ABI cannot be called
+error: functions with the "custom" ABI cannot be called
+  --> $DIR/bad-custom.rs:80:14
+   |
+LL |     unsafe { f(x) }
+   |              ^^^^
+   |
+note: an `extern "custom"` function can only be called using inline assembly
   --> $DIR/bad-custom.rs:80:14
    |
 LL |     unsafe { f(x) }
    |              ^^^^
 
-error: functions with the `"custom"` ABI cannot be called
+error: functions with the "custom" ABI cannot be called
+  --> $DIR/bad-custom.rs:87:14
+   |
+LL |     unsafe { f(x) }
+   |              ^^^^
+   |
+note: an `extern "custom"` function can only be called using inline assembly
   --> $DIR/bad-custom.rs:87:14
    |
 LL |     unsafe { f(x) }
    |              ^^^^
 
-error: functions with the `"custom"` ABI cannot be called
+error: functions with the "custom" ABI cannot be called
+  --> $DIR/bad-custom.rs:109:20
+   |
+LL |         assert_eq!(double(21), 42);
+   |                    ^^^^^^^^^^
+   |
+note: an `extern "custom"` function can only be called using inline assembly
   --> $DIR/bad-custom.rs:109:20
    |
 LL |         assert_eq!(double(21), 42);
    |                    ^^^^^^^^^^
 
-error: functions with the `"custom"` ABI cannot be called
+error: functions with the "custom" ABI cannot be called
+  --> $DIR/bad-custom.rs:112:29
+   |
+LL |         assert_eq!(unsafe { increment(41) }, 42);
+   |                             ^^^^^^^^^^^^^
+   |
+note: an `extern "custom"` function can only be called using inline assembly
   --> $DIR/bad-custom.rs:112:29
    |
 LL |         assert_eq!(unsafe { increment(41) }, 42);
    |                             ^^^^^^^^^^^^^
 
-error: functions with the `"custom"` ABI cannot be called
+error: functions with the "custom" ABI cannot be called
+  --> $DIR/bad-custom.rs:115:17
+   |
+LL |         assert!(Thing(41).is_even());
+   |                 ^^^^^^^^^^^^^^^^^^^
+   |
+note: an `extern "custom"` function can only be called using inline assembly
   --> $DIR/bad-custom.rs:115:17
    |
 LL |         assert!(Thing(41).is_even());
    |                 ^^^^^^^^^^^^^^^^^^^
 
-error: functions with the `"custom"` ABI cannot be called
+error: functions with the "custom" ABI cannot be called
+  --> $DIR/bad-custom.rs:118:20
+   |
+LL |         assert_eq!(Thing::bitwise_not(42), !42);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: an `extern "custom"` function can only be called using inline assembly
   --> $DIR/bad-custom.rs:118:20
    |
 LL |         assert_eq!(Thing::bitwise_not(42), !42);

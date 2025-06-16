@@ -69,13 +69,13 @@ LL | fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 error[E0570]: `"riscv-interrupt-m"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:85:1
+  --> $DIR/unsupported.rs:86:1
    |
 LL | extern "riscv-interrupt-m" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: the calling convention "thiscall" is not supported on this target
-  --> $DIR/unsupported.rs:100:20
+  --> $DIR/unsupported.rs:102:20
    |
 LL | fn thiscall_ptr(f: extern "thiscall" fn()) {
    |                    ^^^^^^^^^^^^^^^^^^^^^^
@@ -84,13 +84,13 @@ LL | fn thiscall_ptr(f: extern "thiscall" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 error[E0570]: `"thiscall"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:105:1
+  --> $DIR/unsupported.rs:107:1
    |
 LL | extern "thiscall" {}
    | ^^^^^^^^^^^^^^^^^^^^
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:112:19
+  --> $DIR/unsupported.rs:114:19
    |
 LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    |                   ^^^^^^^^^^^^^^^^^^^^^
@@ -101,7 +101,7 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:119:1
+  --> $DIR/unsupported.rs:121:1
    |
 LL | extern "stdcall" {}
    | ^^^^^^^^^^^^^^^^^^^
@@ -111,7 +111,7 @@ LL | extern "stdcall" {}
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:123:1
+  --> $DIR/unsupported.rs:125:1
    |
 LL | extern "stdcall-unwind" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -121,7 +121,7 @@ LL | extern "stdcall-unwind" {}
    = help: if you need `extern "stdcall-unwind"` on win32 and `extern "C-unwind"` everywhere else, use `extern "system-unwind"`
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:131:17
+  --> $DIR/unsupported.rs:133:17
    |
 LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    |                 ^^^^^^^^^^^^^^^^^^^
@@ -131,7 +131,7 @@ LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    = help: use `extern "C"` instead
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:136:1
+  --> $DIR/unsupported.rs:138:1
    |
 LL | extern "cdecl" {}
    | ^^^^^^^^^^^^^^^^^
@@ -141,7 +141,7 @@ LL | extern "cdecl" {}
    = help: use `extern "C"` instead
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:139:1
+  --> $DIR/unsupported.rs:141:1
    |
 LL | extern "cdecl-unwind" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -151,7 +151,7 @@ LL | extern "cdecl-unwind" {}
    = help: use `extern "C-unwind"` instead
 
 warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
-  --> $DIR/unsupported.rs:153:21
+  --> $DIR/unsupported.rs:155:21
    |
 LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -160,7 +160,7 @@ LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
-  --> $DIR/unsupported.rs:161:22
+  --> $DIR/unsupported.rs:163:22
    |
 LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -169,13 +169,13 @@ LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:166:1
+  --> $DIR/unsupported.rs:168:1
    |
 LL | extern "C-cmse-nonsecure-entry" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:171:1
+  --> $DIR/unsupported.rs:173:1
    |
 LL | extern "cdecl" {}
    | ^^^^^^^^^^^^^^^^^
@@ -220,14 +220,26 @@ error[E0570]: `"riscv-interrupt-m"` is not a supported ABI for the current targe
 LL | extern "riscv-interrupt-m" fn riscv() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: functions with the "x86-interrupt" ABI cannot be called
+  --> $DIR/unsupported.rs:94:5
+   |
+LL |     f()
+   |     ^^^
+   |
+note: an `extern "x86-interrupt"` function can only be called using inline assembly
+  --> $DIR/unsupported.rs:94:5
+   |
+LL |     f()
+   |     ^^^
+
 error[E0570]: `"thiscall"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:98:1
+  --> $DIR/unsupported.rs:100:1
    |
 LL | extern "thiscall" fn thiscall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:108:1
+  --> $DIR/unsupported.rs:110:1
    |
 LL | extern "stdcall" fn stdcall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -237,7 +249,7 @@ LL | extern "stdcall" fn stdcall() {}
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:128:1
+  --> $DIR/unsupported.rs:130:1
    |
 LL | extern "cdecl" fn cdecl() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -247,12 +259,12 @@ LL | extern "cdecl" fn cdecl() {}
    = help: use `extern "C"` instead
 
 error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:159:1
+  --> $DIR/unsupported.rs:161:1
    |
 LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 15 previous errors; 17 warnings emitted
+error: aborting due to 16 previous errors; 17 warnings emitted
 
 For more information about this error, try `rustc --explain E0570`.
 Future incompatibility report: Future breakage diagnostic:
@@ -312,7 +324,7 @@ LL | fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
 
 Future breakage diagnostic:
 warning: the calling convention "thiscall" is not supported on this target
-  --> $DIR/unsupported.rs:100:20
+  --> $DIR/unsupported.rs:102:20
    |
 LL | fn thiscall_ptr(f: extern "thiscall" fn()) {
    |                    ^^^^^^^^^^^^^^^^^^^^^^
@@ -323,7 +335,7 @@ LL | fn thiscall_ptr(f: extern "thiscall" fn()) {
 
 Future breakage diagnostic:
 warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
-  --> $DIR/unsupported.rs:153:21
+  --> $DIR/unsupported.rs:155:21
    |
 LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -334,7 +346,7 @@ LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
 
 Future breakage diagnostic:
 warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
-  --> $DIR/unsupported.rs:161:22
+  --> $DIR/unsupported.rs:163:22
    |
 LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
