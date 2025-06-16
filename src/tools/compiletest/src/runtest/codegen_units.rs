@@ -32,7 +32,7 @@ impl TestCx<'_> {
 
         let expected: Vec<MonoItem> = errors::load_errors(&self.testpaths.file, None)
             .iter()
-            .map(|e| str_to_mono_item(&e.msg[..], false))
+            .map(|e| str_to_mono_item(&e.msg.text[..], false))
             .collect();
 
         let mut missing = Vec::new();

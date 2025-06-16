@@ -177,6 +177,10 @@ pub struct Config {
     /// `true` to overwrite stderr/stdout files instead of complaining about changes in output.
     pub bless: bool,
 
+    /// `true` to attempt to add annotations to the test file.
+    // This only adds annotations, it does not delete ones that were not found.
+    pub try_annotate: bool,
+
     /// Stop as soon as possible after any test fails.
     /// May run a few more tests before stopping, due to threading.
     pub fail_fast: bool,
@@ -913,4 +917,12 @@ pub fn incremental_dir(
     revision: Option<&str>,
 ) -> Utf8PathBuf {
     output_base_name(config, testpaths, revision).with_extension("inc")
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Location {
+    pub line_start: usize,
+    pub line_end: usize,
+    pub column_start: usize,
+    pub column_end: usize,
 }
