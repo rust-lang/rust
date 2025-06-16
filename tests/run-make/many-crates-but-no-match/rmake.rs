@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // An extended version of the ui/changing-crates.rs test, this test puts
 // multiple mismatching crates into the search path of crateC (A2 and A3)
 // and checks that the standard error contains helpful messages to indicate
