@@ -28,7 +28,7 @@ use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
-use crate::handle_placeholders::{LoweredConstraints, RegionTracker};
+use crate::handle_placeholders::{LoweredConstraints, PlaceholderReachability, RegionTracker};
 use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
 use crate::polonius::LiveLoans;
 use crate::polonius::legacy::PoloniusOutput;
@@ -360,15 +360,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             outlives_constraints,
             scc_annotations,
             type_tests,
-            liveness_constraints,
+            mut liveness_constraints,
             universe_causes,
-            placeholder_indices,
             member_constraints,
         } = lowered_constraints;
 
         debug!("universal_regions: {:#?}", universal_region_relations.universal_regions);
         debug!("outlives constraints: {:#?}", outlives_constraints);
-        debug!("placeholder_indices: {:#?}", placeholder_indices);
         debug!("type tests: {:#?}", type_tests);
 
         let constraint_graph = Frozen::freeze(outlives_constraints.graph(definitions.len()));
@@ -377,8 +375,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             sccs_info(infcx, &constraint_sccs);
         }
 
-        let mut scc_values =
-            RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
+        let mut scc_values = RegionValues::new(location_map, universal_regions.len());
 
         for region in liveness_constraints.regions() {
             let scc = constraint_sccs.scc(region);
@@ -388,7 +385,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let member_constraints =
             Rc::new(member_constraints.into_mapped(|r| constraint_sccs.scc(r)));
 
-        let mut result = Self {
+        for variable in definitions.indices() {
+            if let NllRegionVariableOrigin::FreeRegion = definitions[variable].origin {
+                // For each free, universally quantified region X:
+
+                let scc = constraint_sccs.scc(variable);
+
+                // Add all nodes in the CFG to liveness constraints
+                liveness_constraints.add_all_points(variable);
+                scc_values.add_all_points(scc);
+
+                // Add `end(X)` into the set for X.
+                scc_values.add_element(scc, variable);
+            }
+        }
+
+        Self {
             definitions,
             liveness_constraints,
             constraints: outlives_constraints,
@@ -402,90 +414,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             scc_values,
             type_tests,
             universal_region_relations,
-        };
-
-        result.init_free_and_bound_regions();
-
-        result
-    }
-
-    /// Initializes the region variables for each universally
-    /// quantified region (lifetime parameter). The first N variables
-    /// always correspond to the regions appearing in the function
-    /// signature (both named and anonymous) and where-clauses. This
-    /// function iterates over those regions and initializes them with
-    /// minimum values.
-    ///
-    /// For example:
-    /// ```
-    /// fn foo<'a, 'b>( /* ... */ ) where 'a: 'b { /* ... */ }
-    /// ```
-    /// would initialize two variables like so:
-    /// ```ignore (illustrative)
-    /// R0 = { CFG, R0 } // 'a
-    /// R1 = { CFG, R0, R1 } // 'b
-    /// ```
-    /// Here, R0 represents `'a`, and it contains (a) the entire CFG
-    /// and (b) any universally quantified regions that it outlives,
-    /// which in this case is just itself. R1 (`'b`) in contrast also
-    /// outlives `'a` and hence contains R0 and R1.
-    ///
-    /// This bit of logic also handles invalid universe relations
-    /// for higher-kinded types.
-    ///
-    /// We Walk each SCC `A` and `B` such that `A: B`
-    /// and ensure that universe(A) can see universe(B).
-    ///
-    /// This serves to enforce the 'empty/placeholder' hierarchy
-    /// (described in more detail on `RegionKind`):
-    ///
-    /// ```ignore (illustrative)
-    /// static -----+
-    ///   |         |
-    /// empty(U0) placeholder(U1)
-    ///   |      /
-    /// empty(U1)
-    /// ```
-    ///
-    /// In particular, imagine we have variables R0 in U0 and R1
-    /// created in U1, and constraints like this;
-    ///
-    /// ```ignore (illustrative)
-    /// R1: !1 // R1 outlives the placeholder in U1
-    /// R1: R0 // R1 outlives R0
-    /// ```
-    ///
-    /// Here, we wish for R1 to be `'static`, because it
-    /// cannot outlive `placeholder(U1)` and `empty(U0)` any other way.
-    ///
-    /// Thanks to this loop, what happens is that the `R1: R0`
-    /// constraint has lowered the universe of `R1` to `U0`, which in turn
-    /// means that the `R1: !1` constraint here will cause
-    /// `R1` to become `'static`.
-    fn init_free_and_bound_regions(&mut self) {
-        for variable in self.definitions.indices() {
-            let scc = self.constraint_sccs.scc(variable);
-
-            match self.definitions[variable].origin {
-                NllRegionVariableOrigin::FreeRegion => {
-                    // For each free, universally quantified region X:
-
-                    // Add all nodes in the CFG to liveness constraints
-                    self.liveness_constraints.add_all_points(variable);
-                    self.scc_values.add_all_points(scc);
-
-                    // Add `end(X)` into the set for X.
-                    self.scc_values.add_element(scc, variable);
-                }
-
-                NllRegionVariableOrigin::Placeholder(placeholder) => {
-                    self.scc_values.add_element(scc, placeholder);
-                }
-
-                NllRegionVariableOrigin::Existential { .. } => {
-                    // For existential, regions, nothing to do.
-                }
-            }
         }
     }
 
@@ -540,14 +468,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn region_value_str(&self, r: RegionVid) -> String {
         let scc = self.constraint_sccs.scc(r);
         self.scc_values.region_value_str(scc)
-    }
-
-    pub(crate) fn placeholders_contained_in(
-        &self,
-        r: RegionVid,
-    ) -> impl Iterator<Item = ty::PlaceholderRegion> {
-        let scc = self.constraint_sccs.scc(r);
-        self.scc_values.placeholders_contained_in(scc)
     }
 
     /// Once region solving has completed, this function will return the member constraints that
@@ -901,8 +821,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         //
         // It doesn't matter *what* universe because the promoted `T` will
         // always be in the root universe.
-        if let Some(p) = self.scc_values.placeholders_contained_in(r_scc).next() {
-            debug!("encountered placeholder in higher universe: {:?}, requiring 'static", p);
+        if let PlaceholderReachability::Placeholders { min_placeholder, .. } =
+            self.scc_annotations[r_scc].reachable_placeholders()
+        {
+            debug!(
+                "encountered placeholder in higher universe: {min_placeholder:?}, requiring 'static"
+            );
+
             let static_r = self.universal_regions().fr_static;
             propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                 subject,
@@ -1792,14 +1717,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         match *element {
             RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
             RegionElement::RootUniversalRegion(r) => r,
-            RegionElement::PlaceholderRegion(error_placeholder) => self
-                .definitions
-                .iter_enumerated()
-                .find_map(|(r, definition)| match definition.origin {
-                    NllRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),
-                    _ => None,
-                })
-                .unwrap(),
         }
     }
 
@@ -2080,6 +1997,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// mean they are unequal).
     fn scc_representative(&self, scc: ConstraintSccIndex) -> RegionVid {
         self.scc_annotations[scc].representative.rvid()
+    }
+
+    /// If the representative of an SCC is a placeholder, return
+    /// its originating `PlaceholderRegion`.
+    pub(crate) fn placeholder_representative(
+        &self,
+        scc: ConstraintSccIndex,
+    ) -> Option<ty::PlaceholderRegion> {
+        if let Representative::Placeholder(r) = self.scc_annotations[scc].representative
+            && let NllRegionVariableOrigin::Placeholder(p) = self.definitions[r].origin
+        {
+            Some(p)
+        } else {
+            None
+        }
     }
 
     pub(crate) fn liveness_constraints(&self) -> &LivenessValues {

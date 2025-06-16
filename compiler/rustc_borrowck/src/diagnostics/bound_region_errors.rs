@@ -179,7 +179,6 @@ pub(crate) trait TypeOpInfo<'tcx> {
         cause: ObligationCause<'tcx>,
     ) {
         let tcx = mbcx.infcx.tcx;
-
         // FIXME: these adjusted universes are not (always) the same ones as we compute
         // earlier. They probably should be, but the logic downstream is complicated,
         // and assumes they use whatever this is.

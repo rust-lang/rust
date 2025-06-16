@@ -20,7 +20,7 @@ use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
 use crate::consumers::OutlivesConstraint;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
 use crate::member_constraints::MemberConstraintSet;
-use crate::region_infer::values::{LivenessValues, PlaceholderIndices};
+use crate::region_infer::values::LivenessValues;
 use crate::region_infer::{ConstraintSccs, RegionDefinition, Representative, TypeTest};
 use crate::ty::VarianceDiagInfo;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
@@ -39,7 +39,6 @@ pub(crate) struct LoweredConstraints<'tcx> {
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
     pub(crate) liveness_constraints: LivenessValues,
     pub(crate) universe_causes: FxIndexMap<UniverseIndex, UniverseInfo<'tcx>>,
-    pub(crate) placeholder_indices: PlaceholderIndices,
 }
 
 impl<'d, 'tcx, A: scc::Annotation> SccAnnotations<'d, 'tcx, A> {
@@ -69,7 +68,7 @@ impl scc::Annotations<RegionVid> for SccAnnotations<'_, '_, RegionTracker> {
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq)]
-enum PlaceholderReachability {
+pub(crate) enum PlaceholderReachability {
     /// This SCC reaches no placeholders.
     NoPlaceholders,
     /// This SCC reaches at least one placeholder.
@@ -218,6 +217,10 @@ impl RegionTracker {
             PlaceholderReachability::Placeholders { min_placeholder, .. } => Some(min_placeholder),
         }
     }
+
+    pub(crate) fn reachable_placeholders(&self) -> PlaceholderReachability {
+        self.reachable_placeholders
+    }
 }
 /// Pick the smallest universe index out of two, preferring
 /// the first argument if they are equal.
@@ -336,13 +339,12 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
     let (definitions, has_placeholders) = region_definitions(universal_regions, infcx);
 
     let MirTypeckRegionConstraints {
-        placeholder_indices,
-        placeholder_index_to_region: _,
         liveness_constraints,
         mut outlives_constraints,
         mut member_constraints,
         universe_causes,
         type_tests,
+        ..
     } = constraints;
 
     if let Some(guar) = universal_regions.tainted_by_errors() {
@@ -384,7 +386,6 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
             outlives_constraints: Frozen::freeze(outlives_constraints),
             liveness_constraints,
             universe_causes,
-            placeholder_indices,
         };
     }
     debug!("Placeholders present; activating placeholder handling logic!");
@@ -427,7 +428,6 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         type_tests,
         liveness_constraints,
         universe_causes,
-        placeholder_indices,
     }
 }
 

@@ -240,49 +240,39 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         &self,
         diag: &mut Diag<'_>,
         lower_bound: RegionVid,
-    ) {
+    ) -> Option<()> {
         let mut suggestions = vec![];
         let tcx = self.infcx.tcx;
 
-        // find generic associated types in the given region 'lower_bound'
-        let gat_id_and_generics = self
-            .regioncx
-            .placeholders_contained_in(lower_bound)
-            .map(|placeholder| {
-                if let Some(id) = placeholder.bound.kind.get_id()
-                    && let Some(placeholder_id) = id.as_local()
-                    && let gat_hir_id = tcx.local_def_id_to_hir_id(placeholder_id)
-                    && let Some(generics_impl) =
-                        tcx.parent_hir_node(tcx.parent_hir_id(gat_hir_id)).generics()
-                {
-                    Some((gat_hir_id, generics_impl))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        debug!(?gat_id_and_generics);
-
         // find higher-ranked trait bounds bounded to the generic associated types
+        let scc = self.regioncx.constraint_sccs().scc(lower_bound);
+
+        let placeholder: ty::PlaceholderRegion = self.regioncx.placeholder_representative(scc)?;
+
+        let placeholder_id = placeholder.bound.kind.get_id()?.as_local()?;
+        let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id);
+        let generics_impl =
+            self.infcx.tcx.parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id)).generics()?;
+
         let mut hrtb_bounds = vec![];
-        gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
-            for pred in generics.predicates {
-                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
-                    pred.kind
-                else {
-                    continue;
-                };
-                if bound_generic_params
-                    .iter()
-                    .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
-                    .is_some()
-                {
-                    for bound in *bounds {
-                        hrtb_bounds.push(bound);
-                    }
+
+        for pred in generics_impl.predicates {
+            let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
+                pred.kind
+            else {
+                continue;
+            };
+            if bound_generic_params
+                .iter()
+                .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                .is_some()
+            {
+                for bound in *bounds {
+                    hrtb_bounds.push(bound);
                 }
             }
-        });
+        }
+
         debug!(?hrtb_bounds);
 
         hrtb_bounds.iter().for_each(|bound| {
@@ -327,6 +317,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
+        Some(())
     }
 
     /// Produces nice borrowck error diagnostics for all the errors collected in `nll_errors`.
