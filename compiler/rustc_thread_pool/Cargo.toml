@@ -1,0 +1,50 @@
+[package]
+name = "rustc_thread_pool"
+version = "0.0.0"
+authors = ["Niko Matsakis <niko@alum.mit.edu>",
+           "Josh Stone <cuviper@gmail.com>"]
+description = "Core APIs for Rayon - fork for rustc"
+license = "MIT OR Apache-2.0"
+rust-version = "1.63"
+edition = "2021"
+readme = "README.md"
+keywords = ["parallel", "thread", "concurrency", "join", "performance"]
+categories = ["concurrency"]
+
+[dependencies]
+crossbeam-deque = "0.8"
+crossbeam-utils = "0.8"
+
+[dev-dependencies]
+rand = "0.9"
+rand_xorshift = "0.4"
+scoped-tls = "1.0"
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"
+
+[[test]]
+name = "stack_overflow_crash"
+path = "tests/stack_overflow_crash.rs"
+
+# NB: having one [[test]] manually defined means we need to declare them all
+
+[[test]]
+name = "double_init_fail"
+path = "tests/double_init_fail.rs"
+
+[[test]]
+name = "init_zero_threads"
+path = "tests/init_zero_threads.rs"
+
+[[test]]
+name = "scope_join"
+path = "tests/scope_join.rs"
+
+[[test]]
+name = "simple_panic"
+path = "tests/simple_panic.rs"
+
+[[test]]
+name = "scoped_threadpool"
+path = "tests/scoped_threadpool.rs"
