@@ -6,8 +6,8 @@ use crate::{CodegenBackend, SysrootKind, build_sysroot};
 static ABI_CAFE_REPO: GitRepo = GitRepo::github(
     "Gankra",
     "abi-cafe",
-    "49efdca14e9d48c34e50552d1f620615a87637bb",
-    "21fed1b4ca4cd439",
+    "94d38030419eb00a1ba80e5e2b4d763dcee58db4",
+    "6efb4457893c8670",
     "abi-cafe",
 );
 
@@ -45,6 +45,8 @@ pub(crate) fn run(
 
     let mut cmd = ABI_CAFE.run(bootstrap_host_compiler, dirs);
     cmd.arg("--");
+
+    cmd.arg("--debug");
 
     cmd.arg("--rules").arg(dirs.source_dir.join("scripts/abi-cafe-rules.toml"));
 
