@@ -538,6 +538,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::RawBorrow { .. }
             | ExprKind::Adt { .. }
             | ExprKind::Loop { .. }
+            | ExprKind::LoopMatch { .. }
             | ExprKind::LogicalOp { .. }
             | ExprKind::Call { .. }
             | ExprKind::Field { .. }
@@ -548,6 +549,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::UpvarRef { .. }
             | ExprKind::Break { .. }
             | ExprKind::Continue { .. }
+            | ExprKind::ConstContinue { .. }
             | ExprKind::Return { .. }
             | ExprKind::Become { .. }
             | ExprKind::InlineAsm { .. }
