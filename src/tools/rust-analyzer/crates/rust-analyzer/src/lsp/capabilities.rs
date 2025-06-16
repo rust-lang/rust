@@ -77,7 +77,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             _ => Some(OneOf::Left(false)),
         },
         document_on_type_formatting_provider: Some({
-            let mut chars = ide::Analysis::SUPPORTED_TRIGGER_CHARS.chars();
+            let mut chars = ide::Analysis::SUPPORTED_TRIGGER_CHARS.iter();
             DocumentOnTypeFormattingOptions {
                 first_trigger_character: chars.next().unwrap().to_string(),
                 more_trigger_character: Some(chars.map(|c| c.to_string()).collect()),
