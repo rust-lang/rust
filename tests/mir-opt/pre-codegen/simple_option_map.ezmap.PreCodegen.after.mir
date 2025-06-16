@@ -8,10 +8,8 @@ fn ezmap(_1: Option<i32>) -> Option<i32> {
         let _3: i32;
         let mut _4: i32;
         scope 2 {
-            scope 4 (inlined ezmap::{closure#0}) {
+            scope 3 (inlined ezmap::{closure#0}) {
             }
-        }
-        scope 3 (inlined drop_in_place::<{closure@$DIR/simple_option_map.rs:23:12: 23:15}> - shim(None)) {
         }
     }
 

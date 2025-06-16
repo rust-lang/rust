@@ -13,8 +13,6 @@ fn saturating_sub_at_home(_1: u32, _2: u32) -> u32 {
         let _6: u32;
         scope 3 {
         }
-        scope 4 (inlined drop_in_place::<u32> - shim(None)) {
-        }
     }
 
     bb0: {

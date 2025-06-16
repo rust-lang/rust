@@ -611,6 +611,23 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     caller_body: &mut Body<'tcx>,
     callsite: &CallSite<'tcx>,
 ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
+    // Fast path to inline trivial drops.
+    if let InstanceKind::DropGlue(_, None) = callsite.callee.def {
+        let terminator = caller_body[callsite.block].terminator_mut();
+        let target = match terminator.kind {
+            TerminatorKind::Call { target, .. } => target,
+            TerminatorKind::Drop { target, .. } => Some(target),
+            _ => bug!("unexpected terminator kind {:?}", terminator.kind),
+        };
+        if let Some(target) = target {
+            terminator.kind = TerminatorKind::Goto { target };
+        } else {
+            terminator.kind = TerminatorKind::Unreachable;
+        }
+        let next_block = caller_body.basic_blocks.next_index();
+        return Ok(next_block..next_block);
+    }
+
     let tcx = inliner.tcx();
     check_mir_is_available(inliner, caller_body, callsite.callee)?;
 
