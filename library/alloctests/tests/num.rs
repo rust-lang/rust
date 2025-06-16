@@ -52,6 +52,8 @@ int_to_s!(
     i32,
     test_i64_to_string,
     i64,
+    test_isize_to_string,
+    isize,
     test_i128_to_string,
     i128,
 );
@@ -64,6 +66,8 @@ uint_to_s!(
     u32,
     test_u64_to_string,
     u64,
+    test_usize_to_string,
+    usize,
     test_u128_to_string,
     u128,
 );

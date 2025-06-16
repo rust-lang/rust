@@ -2870,6 +2870,7 @@ impl_to_string! {
     i32, u32,
     i64, u64,
     isize, usize,
+    i128, u128,
 }
 
 #[cfg(not(no_global_oom_handling))]
