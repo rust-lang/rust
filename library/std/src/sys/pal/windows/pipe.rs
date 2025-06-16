@@ -1,14 +1,9 @@
-use crate::ffi::OsStr;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
+use crate::ops::Neg;
 use crate::os::windows::prelude::*;
-use crate::path::Path;
-use crate::random::{DefaultRandomSource, Random};
-use crate::sync::atomic::Ordering::Relaxed;
-use crate::sync::atomic::{Atomic, AtomicUsize};
+use crate::sys::api::utf16;
 use crate::sys::c;
-use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
-use crate::sys::pal::windows::api::{self, WinError};
 use crate::sys_common::{FromInner, IntoInner};
 use crate::{mem, ptr};
 
@@ -62,92 +57,113 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
 
     // Note that we specifically do *not* use `CreatePipe` here because
     // unfortunately the anonymous pipes returned do not support overlapped
-    // operations. Instead, we create a "hopefully unique" name and create a
-    // named pipe which has overlapped operations enabled.
+    // operations. Instead, we use `NtCreateNamedPipeFile` to create the
+    // anonymous pipe with overlapped support.
     //
-    // Once we do this, we connect do it as usual via `CreateFileW`, and then
+    // Once we do this, we connect to it via `NtOpenFile`, and then
     // we return those reader/writer halves. Note that the `ours` pipe return
     // value is always the named pipe, whereas `theirs` is just the normal file.
     // This should hopefully shield us from child processes which assume their
     // stdout is a named pipe, which would indeed be odd!
     unsafe {
-        let ours;
-        let mut name;
-        let mut tries = 0;
-        loop {
-            tries += 1;
-            name = format!(
-                r"\\.\pipe\__rust_anonymous_pipe1__.{}.{}",
-                c::GetCurrentProcessId(),
-                random_number(),
-            );
-            let wide_name = OsStr::new(&name).encode_wide().chain(Some(0)).collect::<Vec<_>>();
-            let mut flags = c::FILE_FLAG_FIRST_PIPE_INSTANCE | c::FILE_FLAG_OVERLAPPED;
-            if ours_readable {
-                flags |= c::PIPE_ACCESS_INBOUND;
-            } else {
-                flags |= c::PIPE_ACCESS_OUTBOUND;
-            }
+        let mut io_status = c::IO_STATUS_BLOCK::default();
+        let mut object_attributes = c::OBJECT_ATTRIBUTES::default();
+        object_attributes.Length = size_of::<c::OBJECT_ATTRIBUTES>() as u32;
 
-            let handle = c::CreateNamedPipeW(
-                wide_name.as_ptr(),
-                flags,
-                c::PIPE_TYPE_BYTE
-                    | c::PIPE_READMODE_BYTE
-                    | c::PIPE_WAIT
-                    | c::PIPE_REJECT_REMOTE_CLIENTS,
+        // Open a handle to the pipe filesystem (`\??\PIPE\`).
+        // This will be used when creating a new annon pipe.
+        let pipe_fs = {
+            let path = c::UNICODE_STRING::from_ref(utf16!(r"\??\PIPE\"));
+            object_attributes.ObjectName = &path;
+            let mut pipe_fs = ptr::null_mut();
+            let status = c::NtOpenFile(
+                &mut pipe_fs,
+                c::SYNCHRONIZE | c::GENERIC_READ,
+                &object_attributes,
+                &mut io_status,
+                c::FILE_SHARE_READ | c::FILE_SHARE_WRITE,
+                c::FILE_SYNCHRONOUS_IO_NONALERT, // synchronous access
+            );
+            if c::nt_success(status) {
+                Handle::from_raw_handle(pipe_fs)
+            } else {
+                return Err(io::Error::from_raw_os_error(c::RtlNtStatusToDosError(status) as i32));
+            }
+        };
+
+        // From now on we're using handles instead of paths to create and open pipes.
+        // So set the `ObjectName` to a zero length string.
+        let empty = c::UNICODE_STRING::default();
+        object_attributes.ObjectName = &empty;
+
+        // Create our side of the pipe for async access.
+        let ours = {
+            // Use the pipe filesystem as the root directory.
+            // With no name provided, an anonymous pipe will be created.
+            object_attributes.RootDirectory = pipe_fs.as_raw_handle();
+
+            // A negative timeout value is a relative time (rather than an absolute time).
+            // The time is given in 100's of nanoseconds so this is 50 milliseconds.
+            // This value was chosen to be consistent with the default timeout set by `CreateNamedPipeW`
+            // See: https://learn.microsoft.com/en-us/windows/win32/api/namedpipeapi/nf-namedpipeapi-createnamedpipew
+            let timeout = (50_i64 * 10000).neg() as u64;
+
+            let mut ours = ptr::null_mut();
+            let status = c::NtCreateNamedPipeFile(
+                &mut ours,
+                c::SYNCHRONIZE | if ours_readable { c::GENERIC_READ } else { c::GENERIC_WRITE },
+                &object_attributes,
+                &mut io_status,
+                if ours_readable { c::FILE_SHARE_WRITE } else { c::FILE_SHARE_READ },
+                c::FILE_CREATE,
+                0,
+                c::FILE_PIPE_BYTE_STREAM_TYPE,
+                c::FILE_PIPE_BYTE_STREAM_MODE,
+                c::FILE_PIPE_QUEUE_OPERATION,
+                // only allow one client pipe
                 1,
                 PIPE_BUFFER_CAPACITY,
                 PIPE_BUFFER_CAPACITY,
-                0,
-                ptr::null_mut(),
+                &timeout,
             );
-
-            // We pass the `FILE_FLAG_FIRST_PIPE_INSTANCE` flag above, and we're
-            // also just doing a best effort at selecting a unique name. If
-            // `ERROR_ACCESS_DENIED` is returned then it could mean that we
-            // accidentally conflicted with an already existing pipe, so we try
-            // again.
-            //
-            // Don't try again too much though as this could also perhaps be a
-            // legit error.
-            if handle == c::INVALID_HANDLE_VALUE {
-                let error = api::get_last_error();
-                if tries < 10 && error == WinError::ACCESS_DENIED {
-                    continue;
-                } else {
-                    return Err(io::Error::from_raw_os_error(error.code as i32));
-                }
+            if c::nt_success(status) {
+                Handle::from_raw_handle(ours)
+            } else {
+                return Err(io::Error::from_raw_os_error(c::RtlNtStatusToDosError(status) as i32));
             }
-
-            ours = Handle::from_raw_handle(handle);
-            break;
-        }
-
-        // Connect to the named pipe we just created. This handle is going to be
-        // returned in `theirs`, so if `ours` is readable we want this to be
-        // writable, otherwise if `ours` is writable we want this to be
-        // readable.
-        //
-        // Additionally we don't enable overlapped mode on this because most
-        // client processes aren't enabled to work with that.
-        let mut opts = OpenOptions::new();
-        opts.write(ours_readable);
-        opts.read(!ours_readable);
-        opts.share_mode(0);
-        let size = size_of::<c::SECURITY_ATTRIBUTES>();
-        let mut sa = c::SECURITY_ATTRIBUTES {
-            nLength: size as u32,
-            lpSecurityDescriptor: ptr::null_mut(),
-            bInheritHandle: their_handle_inheritable as i32,
         };
-        opts.security_attributes(&mut sa);
-        let theirs = File::open(Path::new(&name), &opts)?;
 
-        Ok(Pipes {
-            ours: AnonPipe { inner: ours },
-            theirs: AnonPipe { inner: theirs.into_inner() },
-        })
+        // Open their side of the pipe for synchronous access.
+        let theirs = {
+            // We can reopen the anonymous pipe without a name by setting
+            // RootDirectory to the pipe handle and not setting a path name,
+            object_attributes.RootDirectory = ours.as_raw_handle();
+
+            if their_handle_inheritable {
+                object_attributes.Attributes |= c::OBJ_INHERIT;
+            }
+            let mut theirs = ptr::null_mut();
+            let status = c::NtOpenFile(
+                &mut theirs,
+                c::SYNCHRONIZE
+                    | if ours_readable {
+                        c::GENERIC_WRITE | c::FILE_READ_ATTRIBUTES
+                    } else {
+                        c::GENERIC_READ
+                    },
+                &object_attributes,
+                &mut io_status,
+                0,
+                c::FILE_NON_DIRECTORY_FILE | c::FILE_SYNCHRONOUS_IO_NONALERT,
+            );
+            if c::nt_success(status) {
+                Handle::from_raw_handle(theirs)
+            } else {
+                return Err(io::Error::from_raw_os_error(c::RtlNtStatusToDosError(status) as i32));
+            }
+        };
+
+        Ok(Pipes { ours: AnonPipe { inner: ours }, theirs: AnonPipe { inner: theirs } })
     }
 }
 
@@ -189,17 +205,6 @@ pub fn spawn_pipe_relay(
 
     // Return the pipe that should be sent to the child process.
     Ok(theirs)
-}
-
-fn random_number() -> usize {
-    static N: Atomic<usize> = AtomicUsize::new(0);
-    loop {
-        if N.load(Relaxed) != 0 {
-            return N.fetch_add(1, Relaxed);
-        }
-
-        N.store(usize::random(&mut DefaultRandomSource), Relaxed);
-    }
 }
 
 impl AnonPipe {
