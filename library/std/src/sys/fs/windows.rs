@@ -132,6 +132,7 @@ impl Iterator for ReadDir {
             let mut wfd = mem::zeroed();
             loop {
                 if c::FindNextFileW(handle.0, &mut wfd) == 0 {
+                    self.handle = None;
                     match api::get_last_error() {
                         WinError::NO_MORE_FILES => return None,
                         WinError { code } => {
