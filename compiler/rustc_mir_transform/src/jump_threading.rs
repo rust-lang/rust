@@ -89,7 +89,7 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             opportunities: Vec::new(),
         };
 
-        for bb in body.basic_blocks.indices() {
+        for (bb, _) in traversal::preorder(body) {
             finder.start_from_switch(bb);
         }
 
