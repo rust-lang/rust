@@ -397,6 +397,8 @@ pub enum ObligationCauseCode<'tcx> {
 
     RustCall,
 
+    DynCompatible(Span),
+
     /// Obligations to prove that a `Drop` or negative auto trait impl is not stronger than
     /// the ADT it's being implemented for.
     AlwaysApplicableImpl,
