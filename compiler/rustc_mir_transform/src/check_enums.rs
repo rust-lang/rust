@@ -52,7 +52,8 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                             insert_direct_enum_check(
                                 tcx,
                                 local_decls,
-                                &mut basic_blocks[block],
+                                basic_blocks,
+                                block,
                                 source_op,
                                 discr,
                                 op_size,
@@ -324,7 +325,8 @@ fn insert_discr_cast_to_u128<'tcx>(
 fn insert_direct_enum_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
-    block_data: &mut BasicBlockData<'tcx>,
+    basic_blocks: &mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    current_block: BasicBlock,
     source_op: Operand<'tcx>,
     discr: TyAndSize<'tcx>,
     op_size: Size,
@@ -332,6 +334,10 @@ fn insert_direct_enum_check<'tcx>(
     source_info: SourceInfo,
     new_block: BasicBlock,
 ) {
+    // Insert a new target block that is branched to in case of an invalid discriminant.
+    let invalid_discr_block_data = BasicBlockData::new(None, false);
+    let invalid_discr_block = basic_blocks.push(invalid_discr_block_data);
+    let block_data = &mut basic_blocks[current_block];
     let discr = insert_discr_cast_to_u128(
         tcx,
         local_decls,
@@ -342,65 +348,28 @@ fn insert_direct_enum_check<'tcx>(
         None,
         source_info,
     );
-    // Gather all valid enum discriminants as constants.
-    let discriminant_constants = discriminants
-        .into_iter()
-        .map(|discr| Const::Val(ConstValue::from_u128(discr), tcx.types.u128));
 
-    // Baseline comparision operator:
-    let is_ok: Place<'_> =
-        local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-    block_data.statements.push(Statement {
+    // Branch based on the discriminant value.
+    block_data.terminator = Some(Terminator {
         source_info,
-        kind: StatementKind::Assign(Box::new((
-            is_ok,
-            Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
+        kind: TerminatorKind::SwitchInt {
+            discr: Operand::Copy(discr),
+            targets: SwitchTargets::new(
+                discriminants.into_iter().map(|discr| (discr, new_block)),
+                invalid_discr_block,
+            ),
+        },
+    });
+
+    // Abort in case of an invalid enum discriminant.
+    basic_blocks[invalid_discr_block].terminator = Some(Terminator {
+        source_info,
+        kind: TerminatorKind::Assert {
+            cond: Operand::Constant(Box::new(ConstOperand {
                 span: source_info.span,
                 user_ty: None,
                 const_: Const::Val(ConstValue::from_bool(false), tcx.types.bool),
-            }))),
-        ))),
-    });
-
-    // Loop over the list of the discriminants and insert checks for equality.
-    for const_discr in discriminant_constants {
-        let is_that_variant: Place<'_> =
-            local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
-        block_data.statements.push(Statement {
-            source_info,
-            kind: StatementKind::Assign(Box::new((
-                is_that_variant,
-                Rvalue::BinaryOp(
-                    BinOp::Eq,
-                    Box::new((
-                        Operand::Copy(discr),
-                        Operand::Constant(Box::new(ConstOperand {
-                            span: source_info.span,
-                            user_ty: None,
-                            const_: const_discr,
-                        })),
-                    )),
-                ),
-            ))),
-        });
-
-        block_data.statements.push(Statement {
-            source_info,
-            kind: StatementKind::Assign(Box::new((
-                is_ok,
-                Rvalue::BinaryOp(
-                    BinOp::BitOr,
-                    Box::new((Operand::Copy(is_that_variant), Operand::Copy(is_ok))),
-                ),
-            ))),
-        });
-    }
-
-    // Branch based on the computed equality.
-    block_data.terminator = Some(Terminator {
-        source_info,
-        kind: TerminatorKind::Assert {
-            cond: Operand::Copy(is_ok),
+            })),
             expected: true,
             target: new_block,
             msg: Box::new(AssertKind::InvalidEnumConstruction(Operand::Copy(discr))),
