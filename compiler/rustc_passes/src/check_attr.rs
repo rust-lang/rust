@@ -147,6 +147,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_),
                 ) => { /* do nothing  */ }
+                Attribute::Parsed(AttributeKind::MayDangle(_)) => {
+                    self.check_may_dangle(hir_id, attr)
+                }
                 Attribute::Unparsed(_) => {
                     match attr.path().as_slice() {
                         [sym::diagnostic, sym::do_not_recommend, ..] => {
@@ -225,7 +228,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                         [sym::must_use, ..] => self.check_must_use(hir_id, attr, target),
-                        [sym::may_dangle, ..] => self.check_may_dangle(hir_id, attr),
                         [sym::rustc_pass_by_value, ..] => self.check_pass_by_value(attr, span, target),
                         [sym::rustc_allow_incoherent_impl, ..] => {
                             self.check_allow_incoherent_impl(attr, span, target)

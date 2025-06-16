@@ -19,6 +19,7 @@ use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInterna
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::repr::ReprParser;
+use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
@@ -104,6 +105,7 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
+        Single<MayDangleParser>,
         Single<TransparencyParser>,
         // tidy-alphabetical-end
     ];
