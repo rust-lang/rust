@@ -368,7 +368,12 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         (InlineAttr::None, _) if instance.def.requires_inline(cx.tcx) => InlineAttr::Hint,
         (inline, _) => inline,
     };
-    to_add.extend(inline_attr(cx, inline));
+    if cx.tcx.has_inline_always_override(instance) {
+        eprintln!("Applying override");
+        to_add.extend(inline_attr(cx, InlineAttr::Always));
+    } else {
+        to_add.extend(inline_attr(cx, inline));
+    }
 
     // The `uwtable` attribute according to LLVM is:
     //
