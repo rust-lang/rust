@@ -378,27 +378,89 @@ impl Command {
             callback()?;
         }
 
+        let mut _reset = None;
         // Although we're performing an exec here we may also return with an
         // error from this function (without actually exec'ing) in which case we
         // want to be sure to restore the global environment back to what it
         // once was, ensuring that our temporary override, when free'd, doesn't
         // corrupt our process's environment.
-        let mut _reset = None;
-        if let Some(envp) = maybe_envp {
-            struct Reset(*const *const libc::c_char);
+        struct Reset(*const *const libc::c_char);
 
-            impl Drop for Reset {
-                fn drop(&mut self) {
-                    unsafe {
-                        *sys::env::environ() = self.0;
-                    }
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                unsafe {
+                    *sys::env::environ() = self.0;
                 }
             }
+        }
 
+        if let Some(envp) = maybe_envp
+            && self.get_resolve_in_parent_path()
+            && self.env_saw_path()
+            && self.get_program_kind() == ProgramKind::PathLookup
+        {
+            use crate::ffi::CStr;
+            // execvpe is a gnu extension...
+            #[cfg(all(target_os = "linux", target_env = "gnu"))]
+            unsafe fn exec_with_env(
+                program: &CStr,
+                args: &CStringArray,
+                envp: &CStringArray,
+            ) -> io::Error {
+                unsafe { libc::execvpe(program.as_ptr(), args.as_ptr(), envp.as_ptr()) };
+                io::Error::last_os_error()
+            }
+
+            // ...so if we're not gnu then use our own implementation.
+            #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+            unsafe fn exec_with_env(
+                program: &CStr,
+                args: &CStringArray,
+                envp: &CStringArray,
+            ) -> io::Error {
+                unsafe {
+                    let name = program.to_bytes();
+                    let mut buffer =
+                        [const { mem::MaybeUninit::<u8>::uninit() }; libc::PATH_MAX as usize];
+                    let mut environ = *sys::env::environ();
+                    // Search the environment for PATH and, if found,
+                    // search the paths for the executable by trying to execve each candidate.
+                    while !(*environ).is_null() {
+                        let kv = CStr::from_ptr(*environ);
+                        if let Some(value) = kv.to_bytes().strip_prefix(b"PATH=") {
+                            for path in value.split(|&b| b == b':') {
+                                if buffer.len() - 2 >= path.len().saturating_add(name.len()) {
+                                    let buf_ptr = buffer.as_mut_ptr().cast::<u8>();
+                                    let mut offset = 0;
+                                    if !path.is_empty() {
+                                        buf_ptr.copy_from(path.as_ptr(), path.len());
+                                        offset += path.len();
+                                        if path.last() != Some(&b'/') {
+                                            *buf_ptr.add(path.len()) = b'/';
+                                            offset += 1;
+                                        }
+                                    }
+                                    buf_ptr.add(offset).copy_from(name.as_ptr(), name.len());
+                                    offset += name.len();
+                                    *buf_ptr.add(offset) = 0;
+                                    libc::execve(buf_ptr.cast(), args.as_ptr(), envp.as_ptr());
+                                }
+                            }
+                            break;
+                        }
+                        environ = environ.add(1);
+                    }
+                    // If execve is successful then it'll never return,
+                    // thus we only reach this point on failure..
+                    io::Error::from_raw_os_error(libc::ENOENT)
+                }
+            }
+            _reset = Some(Reset(*sys::env::environ()));
+            return Err(exec_with_env(self.get_program_cstr(), self.get_argv(), envp));
+        } else if let Some(envp) = maybe_envp {
             _reset = Some(Reset(*sys::env::environ()));
             *sys::env::environ() = envp.as_ptr();
         }
-
         libc::execvp(self.get_program_cstr().as_ptr(), self.get_argv().as_ptr());
         Err(io::Error::last_os_error())
     }
@@ -453,7 +515,9 @@ impl Command {
 
         if self.get_gid().is_some()
             || self.get_uid().is_some()
-            || (self.env_saw_path() && !self.program_is_path())
+            || (!self.get_resolve_in_parent_path()
+                && self.env_saw_path()
+                && !self.program_is_path())
             || !self.get_closures().is_empty()
             || self.get_groups().is_some()
             || self.get_chroot().is_some()
