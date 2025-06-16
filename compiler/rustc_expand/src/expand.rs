@@ -26,7 +26,7 @@ use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
 use rustc_span::hygiene::SyntaxContext;
-use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, sym};
+use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, Symbol, sym};
 use smallvec::SmallVec;
 
 use crate::base::*;
@@ -2415,7 +2415,17 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_ty(&mut self, node: &mut P<ast::Ty>) {
-        self.visit_node(node)
+        // Save the pre-expanded name of this `ImplTrait`, so that later when defining
+        // an APIT we use a name that doesn't have any placeholder fragments in it.
+        if let ast::TyKind::ImplTrait(id, _) = &mut node.kind {
+            // HACK: Assign an ID to this node out-of-order.
+            self.visit_id(id);
+            let id = *id;
+            let name = Symbol::intern(&pprust::ty_to_string(node).replace('\n', " "));
+            self.cx.resolver.insert_impl_trait_name(id, name);
+        }
+
+        self.visit_node(node);
     }
 
     fn visit_pat(&mut self, node: &mut P<ast::Pat>) {

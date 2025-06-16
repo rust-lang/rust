@@ -522,6 +522,10 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         });
         Ok(idents)
     }
+
+    fn insert_impl_trait_name(&mut self, id: NodeId, name: Symbol) {
+        self.impl_trait_names.insert(id, name);
+    }
 }
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
