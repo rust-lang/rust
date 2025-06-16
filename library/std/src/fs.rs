@@ -132,6 +132,33 @@ pub enum TryLockError {
     WouldBlock,
 }
 
+/// An object providing access to a directory on the filesystem.
+///
+/// Files are automatically closed when they go out of scope.  Errors detected
+/// on closing are ignored by the implementation of `Drop`.
+///
+/// # Examples
+///
+/// Opens a directory and then a file inside it.
+///
+/// ```no_run
+/// #![feature(dirfd)]
+/// use std::{fs::Dir, io::Read};
+///
+/// fn main() -> std::io::Result<()> {
+///     let dir = Dir::new("foo")?;
+///     let mut file = dir.open("bar.txt")?;
+///     let mut s = String::new();
+///     file.read_to_string(&mut s)?;
+///     println!("{}", s);
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "dirfd", issue = "120426")]
+pub struct Dir {
+    inner: fs_imp::Dir,
+}
+
 /// Metadata information about a file.
 ///
 /// This structure is returned from the [`metadata`] or
@@ -1449,6 +1476,223 @@ impl Seek for Arc<File> {
     }
     fn stream_position(&mut self) -> io::Result<u64> {
         (&**self).stream_position()
+    }
+}
+
+impl Dir {
+    /// Attempts to open a directory at `path` in read-only mode.
+    ///
+    /// See [`new_with`] for more options.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir, io::Read};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     let mut f = dir.open("bar.txt")?;
+    ///     let mut data = vec![];
+    ///     f.read_to_end(&mut data)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// [`new_with`]: Dir::new_with
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        Ok(Self { inner: fs_imp::Dir::new(path)? })
+    }
+
+    /// Attempts to open a directory at `path` with the options specified by `opts`.
+    ///
+    /// # Errors
+    ///
+    /// This function may return an error according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::{Dir, OpenOptions};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new_with("foo", OpenOptions::new().write(true))?;
+    ///     let mut f = dir.remove_file("bar.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn new_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
+        Ok(Self { inner: fs_imp::Dir::new_with(path, &opts.0)? })
+    }
+
+    /// Attempts to open a file in read-only mode relative to this directory.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing file.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir, io::Read};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     let mut f = dir.open("bar.txt")?;
+    ///     let mut data = vec![];
+    ///     f.read_to_end(&mut data)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
+        self.inner.open(path).map(|f| File { inner: f })
+    }
+
+    /// Attempts to open a file relative to this directory with the options specified by `opts`.
+    ///
+    /// # Errors
+    ///
+    /// This function may return an error according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::{Dir, OpenOptions}, io::Read};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     let mut f = dir.open_with("bar.txt", OpenOptions::new().read(true))?;
+    ///     let mut data = vec![];
+    ///     f.read_to_end(&mut data)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
+        self.inner.open_with(path, &opts.0).map(|f| File { inner: f })
+    }
+
+    /// Attempts to create a directory relative to this directory.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` points to an existing file or directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::{Dir, OpenOptions}, io::Read};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     let mut f = dir.open_with("bar.txt", OpenOptions::new().read(true))?;
+    ///     let mut data = vec![];
+    ///     f.read_to_end(&mut data)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.create_dir(path)
+    }
+
+    /// Attempts to remove a file relative to this directory.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing file.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     dir.remove_file("bar.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.remove_file(path)
+    }
+
+    /// Attempts to remove a directory relative to this directory.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing, non-empty directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     dir.remove_dir("baz")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.remove_dir(path)
+    }
+
+    /// Attempts to rename a file or directory relative to this directory to a new name, replacing
+    /// the destination file if present.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `from` does not point to an existing file or directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     dir.rename("bar.txt", &dir, "quux.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        from: P,
+        to_dir: &Self,
+        to: Q,
+    ) -> io::Result<()> {
+        self.inner.rename(from, &to_dir.inner, to)
+    }
+}
+
+#[unstable(feature = "dirfd", issue = "120426")]
+impl fmt::Debug for Dir {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
     }
 }
 
