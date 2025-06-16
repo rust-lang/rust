@@ -234,7 +234,14 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         pats: &[hir::PatField<'_>],
     ) {
         let variant = match self.typeck_results().node_type(lhs.hir_id).kind() {
-            ty::Adt(adt, _) => adt.variant_of_res(res),
+            ty::Adt(adt, _) => {
+                // Marks the ADT live if its variant appears as the pattern,
+                // considering cases when we have `let T(x) = foo()` and `fn foo<T>() -> T;`,
+                // we will lose the liveness info of `T` cause we cannot mark it live when visiting `foo`.
+                // Related issue: https://github.com/rust-lang/rust/issues/120770
+                self.check_def_id(adt.did());
+                adt.variant_of_res(res)
+            }
             _ => span_bug!(lhs.span, "non-ADT in struct pattern"),
         };
         for pat in pats {
@@ -254,7 +261,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         dotdot: hir::DotDotPos,
     ) {
         let variant = match self.typeck_results().node_type(lhs.hir_id).kind() {
-            ty::Adt(adt, _) => adt.variant_of_res(res),
+            ty::Adt(adt, _) => {
+                // Marks the ADT live if its variant appears as the pattern
+                self.check_def_id(adt.did());
+                adt.variant_of_res(res)
+            }
             _ => {
                 self.tcx.dcx().span_delayed_bug(lhs.span, "non-ADT in tuple struct pattern");
                 return;
@@ -357,31 +368,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         if let Some(impl_of) = self.tcx.impl_of_method(def_id) {
             if !self.tcx.is_automatically_derived(impl_of) {
                 return false;
-            }
-
-            // don't ignore impls for Enums and pub Structs whose methods don't have self receiver,
-            // cause external crate may call such methods to construct values of these types
-            if let Some(local_impl_of) = impl_of.as_local()
-                && let Some(local_def_id) = def_id.as_local()
-                && let Some(fn_sig) =
-                    self.tcx.hir_fn_sig_by_hir_id(self.tcx.local_def_id_to_hir_id(local_def_id))
-                && matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None)
-                && let TyKind::Path(QPath::Resolved(_, path)) =
-                    self.tcx.hir_expect_item(local_impl_of).expect_impl().self_ty.kind
-                && let Res::Def(def_kind, did) = path.res
-            {
-                match def_kind {
-                    // for example, #[derive(Default)] pub struct T(i32);
-                    // external crate can call T::default() to construct T,
-                    // so that don't ignore impl Default for pub Enum and Structs
-                    DefKind::Struct | DefKind::Union if self.tcx.visibility(did).is_public() => {
-                        return false;
-                    }
-                    // don't ignore impl Default for Enums,
-                    // cause we don't know which variant is constructed
-                    DefKind::Enum => return false,
-                    _ => (),
-                };
             }
 
             if let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of)
@@ -494,38 +480,25 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         impl_id: hir::ItemId,
         local_def_id: LocalDefId,
     ) -> bool {
-        if self.should_ignore_item(local_def_id.to_def_id()) {
-            return false;
-        }
-
         let trait_def_id = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
-            DefKind::AssocFn => self.tcx.associated_item(local_def_id).trait_item_def_id,
+            DefKind::AssocFn => self
+                .tcx
+                .associated_item(local_def_id)
+                .trait_item_def_id
+                .and_then(|def_id| def_id.as_local()),
             // impl items are live if the corresponding traits are live
             DefKind::Impl { of_trait: true } => self
                 .tcx
                 .impl_trait_ref(impl_id.owner_id.def_id)
-                .and_then(|trait_ref| Some(trait_ref.skip_binder().def_id)),
+                .and_then(|trait_ref| trait_ref.skip_binder().def_id.as_local()),
             _ => None,
         };
 
-        if let Some(trait_def_id) = trait_def_id {
-            if let Some(trait_def_id) = trait_def_id.as_local()
-                && !self.live_symbols.contains(&trait_def_id)
-            {
-                return false;
-            }
-
-            // FIXME: legacy logic to check whether the function may construct `Self`,
-            // this can be removed after supporting marking ADTs appearing in patterns
-            // as live, then we can check private impls of public traits directly
-            if let Some(fn_sig) =
-                self.tcx.hir_fn_sig_by_hir_id(self.tcx.local_def_id_to_hir_id(local_def_id))
-                && matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None)
-                && self.tcx.visibility(trait_def_id).is_public()
-            {
-                return true;
-            }
+        if let Some(trait_def_id) = trait_def_id
+            && !self.live_symbols.contains(&trait_def_id)
+        {
+            return false;
         }
 
         // The impl or impl item is used if the corresponding trait or trait item is used and the ty is used.
@@ -635,6 +608,11 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     fn visit_pat_expr(&mut self, expr: &'tcx rustc_hir::PatExpr<'tcx>) {
         match &expr.kind {
             rustc_hir::PatExprKind::Path(qpath) => {
+                // mark the type of variant live when meeting E::V in expr
+                if let ty::Adt(adt, _) = self.typeck_results().node_type(expr.hir_id).kind() {
+                    self.check_def_id(adt.did());
+                }
+
                 let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
                 self.handle_res(res);
             }

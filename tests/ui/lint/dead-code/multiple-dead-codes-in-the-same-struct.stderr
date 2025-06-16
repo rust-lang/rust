@@ -56,8 +56,6 @@ warning: struct `Foo` is never constructed
    |
 LL | struct Foo(usize, #[allow(unused)] usize);
    |        ^^^
-   |
-   = note: `Foo` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
 
 error: aborting due to 2 previous errors; 2 warnings emitted
 
