@@ -446,7 +446,7 @@ impl Config {
             return Some(PathBuf::new());
         }
 
-        let VersionMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
+        let VersionMetadata { date, version, .. } = self.stage0_metadata.rustfmt.as_ref()?;
         let channel = format!("{version}-{date}");
 
         let host = self.host_target;
