@@ -206,6 +206,15 @@ const handleSrcHighlight = (function() {
     };
 }());
 
+//  Workaround for https://github.com/rust-lang/rust/issues/141464
+if (navigator.userAgent.includes("Firefox")) {
+  document.addEventListener("copy", e => {
+    const text = nonnull(window.getSelection()).toString();
+    nonnull(e.clipboardData).setData("text/plain", text);
+    e.preventDefault();
+  });
+}
+
 window.addEventListener("hashchange", highlightSrcLines);
 
 onEachLazy(document.querySelectorAll("a[data-nosnippet]"), el => {
