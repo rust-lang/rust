@@ -2,16 +2,16 @@
 //!
 //! This module provides a structured way to execute and manage commands efficiently,
 //! ensuring controlled failure handling and output management.
-
+#![allow(warnings)]
 use std::ffi::OsStr;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
-use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
+use std::process::{Child, Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
 
 use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
 
-use super::execution_context::ExecutionContext;
+use super::execution_context::{DeferredCommand, ExecutionContext};
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]
@@ -156,6 +156,21 @@ impl BootstrapCommand {
     #[track_caller]
     pub fn run_capture_stdout(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
         exec_ctx.as_ref().run(self, OutputMode::Capture, OutputMode::Print)
+    }
+
+    /// Spawn the command in background, while capturing and returning all its output.
+    #[track_caller]
+    pub fn start_capture(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> DeferredCommand {
+        exec_ctx.as_ref().start(self, OutputMode::Capture, OutputMode::Capture)
+    }
+
+    /// Spawn the command in background, while capturing and returning stdout, and printing stderr.
+    #[track_caller]
+    pub fn start_capture_stdout(
+        &mut self,
+        exec_ctx: impl AsRef<ExecutionContext>,
+    ) -> DeferredCommand {
+        exec_ctx.as_ref().start(self, OutputMode::Capture, OutputMode::Print)
     }
 
     /// Provides access to the stdlib Command inside.
