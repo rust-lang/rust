@@ -30,7 +30,7 @@ use crate::fmt;
 /// Files are compared as strings, not `Path`, which could be unexpected.
 /// See [`Location::file`]'s documentation for more discussion.
 #[lang = "panic_location"]
-#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub struct Location<'a> {
     // Note: this filename will have exactly one nul byte at its end, but otherwise
@@ -41,6 +41,17 @@ pub struct Location<'a> {
     file_bytes_with_nul: &'a [u8],
     line: u32,
     col: u32,
+}
+
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+impl fmt::Debug for Location<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Location")
+            .field("file", &self.file())
+            .field("line", &self.line)
+            .field("column", &self.col)
+            .finish()
+    }
 }
 
 impl<'a> Location<'a> {
