@@ -796,10 +796,8 @@ pub(crate) fn build_index(
         desc_index,
         empty_desc,
     };
-    let index = OrderedJson::array_unsorted([
-        OrderedJson::serialize(crate_name.as_str()).unwrap(),
-        OrderedJson::serialize(data).unwrap(),
-    ]);
+
+    let index = OrderedJson::array_builder().push(crate_name.as_str()).push(data).build();
     SerializedSearchIndex { index, desc }
 }
 
