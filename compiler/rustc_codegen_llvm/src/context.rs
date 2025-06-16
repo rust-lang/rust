@@ -927,6 +927,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let t_isize = self.type_isize();
         let t_metadata = self.type_metadata();
         let t_token = self.type_token();
+        let x86amx = self.type_x86amx();
 
         ifn!("llvm.wasm.get.exception", fn(t_token) -> ptr);
         ifn!("llvm.wasm.get.ehselector", fn(t_token) -> t_i32);
@@ -1039,6 +1040,9 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.masked.gather", fn(1, t_i32, same_width_vector(0, i1), 0) -> 0);
         ifn!("llvm.masked.scatter", fn(0, 1, t_i32, same_width_vector(0, i1)) -> void);
 
+        ifn!("llvm.x86.cast.vector.to.tile", fn(0) -> x86amx);
+        ifn!("llvm.x86.cast.tile.to.vector", fn(x86amx) -> 0);
+
         bug!("Unknown intrinsic: `{base_name}`")
     }
 
@@ -1057,6 +1061,21 @@ impl<'ll> CodegenCx<'ll, '_> {
         };
         self.eh_catch_typeinfo.set(Some(eh_catch_typeinfo));
         eh_catch_typeinfo
+    }
+
+    pub(crate) fn intrinsic_type(
+        &self,
+        intrinsic: llvm::Intrinsic,
+        type_params: &[&'ll Type],
+    ) -> &'ll Type {
+        unsafe {
+            llvm::LLVMIntrinsicGetType(
+                self.llcx(),
+                intrinsic.id(),
+                type_params.as_ptr(),
+                type_params.len(),
+            )
+        }
     }
 }
 

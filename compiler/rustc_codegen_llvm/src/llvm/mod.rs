@@ -339,8 +339,16 @@ impl Intrinsic {
         NonZero::new(id).map(|id| Self { id })
     }
 
+    pub(crate) fn id(self) -> NonZero<c_uint> {
+        self.id
+    }
+
     pub(crate) fn is_overloaded(self) -> bool {
         unsafe { LLVMIntrinsicIsOverloaded(self.id) == True }
+    }
+
+    pub(crate) fn is_target_specific(self) -> bool {
+        unsafe { LLVMRustIsTargetIntrinsic(self.id) }
     }
 
     pub(crate) fn overloaded_name<'ll>(
