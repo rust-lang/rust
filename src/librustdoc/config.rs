@@ -613,9 +613,17 @@ impl Options {
             )
             .collect();
 
-        let test_args = matches.opt_strs("test-args");
-        let test_args: Vec<String> =
-            test_args.iter().flat_map(|s| s.split_whitespace()).map(|s| s.to_string()).collect();
+        let mut test_args = matches.opt_strs("test-arg");
+
+        // FIXME: Emit a (hard) deprecation warning in a few releases from the time of writing
+        //        once at least Cargo has had a good chance to migrate to the new flag.
+        test_args.extend(
+            matches
+                .opt_strs("test-args")
+                .iter()
+                .flat_map(|s| s.split_whitespace())
+                .map(|s| s.to_string()),
+        );
 
         let should_test = matches.opt_present("test");
         let no_run = matches.opt_present("no-run");

@@ -1,4 +1,4 @@
-//@ compile-flags: --test --crate-name=empty_fn --extern=empty_fn --test-args=--test-threads=1
+//@ compile-flags: --test --crate-name=empty_fn --extern=empty_fn --test-arg=--test-threads=1
 //@ aux-build:empty-fn.rs
 //@ check-pass
 //@ normalize-stdout: "tests/rustdoc-ui/issues" -> "$$DIR"
