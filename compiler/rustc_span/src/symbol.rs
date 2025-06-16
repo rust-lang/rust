@@ -1504,6 +1504,7 @@ symbols! {
         not,
         notable_trait,
         note,
+        nvptx_target_feature,
         object_safe_for_dispatch,
         of,
         off,
