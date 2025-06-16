@@ -1,5 +1,5 @@
 use rustc_abi::{HasDataLayout, TargetDataLayout};
-use rustc_hir::Attribute;
+use rustc_hir::AttrItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
@@ -66,7 +66,7 @@ pub fn ensure_wf<'tcx>(
     }
 }
 
-fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
+fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &AttrItem) {
     let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
     let span = tcx.def_span(item_def_id.to_def_id());

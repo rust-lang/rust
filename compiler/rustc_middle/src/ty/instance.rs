@@ -291,9 +291,9 @@ impl<'tcx> InstanceKind<'tcx> {
     pub fn get_attrs(
         &self,
         tcx: TyCtxt<'tcx>,
-        attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        tcx.get_attrs(self.def_id(), attr)
+        name: Symbol,
+    ) -> impl Iterator<Item = &'tcx hir::AttrItem> {
+        tcx.get_attrs(self.def_id(), name)
     }
 
     /// Returns `true` if the LLVM version of this instance is unconditionally
