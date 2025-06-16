@@ -89,6 +89,7 @@ pub trait TypeSuperVisitable<I: Interner>: TypeVisitable<I> {
 /// that recurses into the type's fields in a non-custom fashion.
 pub trait TypeVisitor<I: Interner>: Sized {
     #[cfg(feature = "nightly")]
+    #[cfg_attr(not(bootstrap), must_use)]
     type Result: VisitorResult = ();
 
     #[cfg(not(feature = "nightly"))]

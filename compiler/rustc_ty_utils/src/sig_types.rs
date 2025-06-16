@@ -9,6 +9,7 @@ use rustc_span::Span;
 use tracing::{instrument, trace};
 
 pub trait SpannedTypeVisitor<'tcx> {
+    #[cfg_attr(not(bootstrap), must_use)]
     type Result: VisitorResult = ();
     fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> Self::Result;
 }

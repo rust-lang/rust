@@ -224,6 +224,7 @@ pub trait Visitor<'v>: Sized {
 
     /// The result type of the `visit_*` methods. Can be either `()`,
     /// or `ControlFlow<T>`.
+    #[cfg_attr(not(bootstrap), must_use)]
     type Result: VisitorResult = ();
 
     /// If `type NestedFilter` is set to visit nested items, this method

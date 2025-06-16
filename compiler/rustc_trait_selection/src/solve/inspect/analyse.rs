@@ -461,6 +461,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
 
 /// The public API to interact with proof trees.
 pub trait ProofTreeVisitor<'tcx> {
+    #[cfg_attr(not(bootstrap), must_use)]
     type Result: VisitorResult = ();
 
     fn span(&self) -> Span;
