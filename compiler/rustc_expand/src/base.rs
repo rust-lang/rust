@@ -35,6 +35,7 @@ use crate::base::ast::MetaItemInner;
 use crate::errors;
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
+use crate::stats::MacroStat;
 
 // When adding new variants, make sure to
 // adjust the `visit_*` / `flat_map_*` calls in `InvocationCollector`
@@ -1191,7 +1192,7 @@ pub struct ExtCtxt<'a> {
     /// not to expand it again.
     pub(super) expanded_inert_attrs: MarkedAttrs,
     /// `-Zmacro-stats` data.
-    pub macro_stats: FxHashMap<(Symbol, MacroKind), crate::stats::MacroStat>, // njn: quals
+    pub macro_stats: FxHashMap<(Symbol, MacroKind), MacroStat>,
 }
 
 impl<'a> ExtCtxt<'a> {
