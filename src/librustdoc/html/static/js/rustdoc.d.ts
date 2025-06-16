@@ -97,27 +97,28 @@ declare namespace rustdoc {
     interface SearchState {
         rustdocToolbar: HTMLElement|null;
         loadingText: string;
-        input: HTMLInputElement|null;
+        inputElement: function(): HTMLInputElement|null;
+        containerElement: function(): Element|null;
         title: string;
         titleBeforeSearch: string;
-        timeout: number|null;
+        timeout: ReturnType<typeof setTimeout>|null;
         currentTab: number;
         focusedByTab: [number|null, number|null, number|null];
         clearInputTimeout: function;
-        outputElement: function(): HTMLElement|null;
+        outputElement: function(): Element|null;
         focus: function();
         defocus: function();
-        showResults: function(HTMLElement|null|undefined);
+        toggle: function();
+        showResults: function();
         removeQueryParameters: function();
         hideResults: function();
         getQueryStringParams: function(): Object.<any, string>;
-        origPlaceholder: string;
         setup: function();
         setLoadingSearch: function();
         descShards: Map<string, SearchDescShard[]>;
         loadDesc: function({descShard: SearchDescShard, descIndex: number}): Promise<string|null>;
         loadedDescShard: function(string, number, string);
-        isDisplayed: function(): boolean,
+        isDisplayed: function(): boolean;
     }
 
     interface SearchDescShard {

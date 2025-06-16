@@ -1,6 +1,8 @@
 // Checks that the search tab results work correctly with function signature syntax
 // First, try a search-by-name
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#search-button"
+wait-for: ".search-input"
 write-into: (".search-input", "Foo")
 // To be SURE that the search will be run.
 press-key: 'Enter'
@@ -23,6 +25,8 @@ wait-for-attribute: ("#search-tabs > button:nth-of-type(3)", {"class": "selected
 
 // Now try search-by-return
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#search-button"
+wait-for: ".search-input"
 write-into: (".search-input", "-> String")
 // To be SURE that the search will be run.
 press-key: 'Enter'
@@ -45,6 +49,7 @@ wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected
 
 // Try with a search-by-return with no results
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#search-button"
 write-into: (".search-input", "-> Something")
 // To be SURE that the search will be run.
 press-key: 'Enter'
@@ -65,6 +70,7 @@ assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Parameters", 
 
 // Try with a search-by-parameter-and-return
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#search-button"
 write-into: (".search-input", "pattern -> str")
 // To be SURE that the search will be run.
 press-key: 'Enter'

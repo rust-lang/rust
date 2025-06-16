@@ -212,6 +212,8 @@ call-function: ("check-search-color", {
 // Check the alias.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
+click: "#search-button"
+wait-for: ".search-input"
 write-into: (".search-input", "thisisanalias")
 // To be SURE that the search will be run.
 press-key: 'Enter'
