@@ -986,7 +986,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     // of the pattern, as this just looks confusing, instead use the span
                     // of the discriminant.
                     match bm.0 {
-                        hir::ByRef::Yes(m) => {
+                        hir::ByRef::Yes(_, m) => {
                             let bk = ty::BorrowKind::from_mutbl(m);
                             self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
                         }
@@ -1004,7 +1004,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     // Deref patterns on boxes don't borrow, so we ignore them here.
                     // HACK: this could be a fake pattern corresponding to a deref inserted by match
                     // ergonomics, in which case `pat.hir_id` will be the id of the subpattern.
-                    if let hir::ByRef::Yes(mutability) =
+                    if let hir::ByRef::Yes(_, mutability) =
                         self.cx.typeck_results().deref_pat_borrow_mode(place.place.ty(), subpattern)
                     {
                         let bk = ty::BorrowKind::from_mutbl(mutability);
@@ -1256,7 +1256,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     .get(pat.hir_id)
                     .expect("missing binding mode");
 
-                if matches!(bm.0, hir::ByRef::Yes(_)) {
+                if let hir::ByRef::Yes(pinnedness, _) = bm.0 {
+                    let base_ty = if pinnedness.is_pinned() {
+                        base_ty.pinned_ty().ok_or_else(|| {
+                            debug!("By-pin-ref binding of non-`Pin` type: {base_ty:?}");
+                            self.cx.report_bug(pat.span, "by-pin-ref binding of non-`Pin` type")
+                        })?
+                    } else {
+                        base_ty
+                    };
                     // a bind-by-ref means that the base_ty will be the type of the ident itself,
                     // but what we want here is the type of the underlying value being borrowed.
                     // So peel off one-level, turning the &T into T.
@@ -1264,7 +1272,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     {
                         Some(ty) => Ok(ty),
                         None => {
-                            debug!("By-ref binding of non-derefable type");
+                            debug!("By-ref binding of non-derefable type: {base_ty:?}");
                             Err(self
                                 .cx
                                 .report_bug(pat.span, "by-ref binding of non-derefable type"))
@@ -1706,6 +1714,18 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     };
                     self.pat_deref_place(pat.hir_id, place_with_id, pat, target_ty)?
                 }
+                adjustment::PatAdjust::PinDeref => {
+                    debug!("`PinDeref` of non-pinned-reference type: {:?}", adjust.source);
+                    let target_ty = adjust.source.pinned_ty().ok_or_else(|| {
+                        self.cx.report_bug(
+                            self.cx.tcx().hir_span(pat.hir_id),
+                            "`PinDeref` of non-pinned-reference type",
+                        )
+                    })?;
+                    let kind = ProjectionKind::Field(FieldIdx::ZERO, FIRST_VARIANT);
+                    place_with_id = self.cat_projection(pat.hir_id, place_with_id, target_ty, kind);
+                    self.cat_deref(pat.hir_id, place_with_id)?
+                }
             };
         }
         drop(typeck_results); // explicitly release borrow of typeck results, just in case.
@@ -1877,7 +1897,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             // Deref patterns on boxes are lowered using a built-in deref.
             hir::ByRef::No => self.cat_deref(hir_id, base_place),
             // For other types, we create a temporary to match on.
-            hir::ByRef::Yes(mutability) => {
+            hir::ByRef::Yes(_, mutability) => {
                 let re_erased = self.cx.tcx().lifetimes.re_erased;
                 let ty = Ty::new_ref(self.cx.tcx(), re_erased, target_ty, mutability);
                 // A deref pattern stores the result of `Deref::deref` or `DerefMut::deref_mut` ...

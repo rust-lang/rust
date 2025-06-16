@@ -101,3 +101,10 @@ pub enum Pinnedness {
     Not,
     Pinned,
 }
+
+impl Pinnedness {
+    /// Return `true` if self is pinned
+    pub fn is_pinned(self) -> bool {
+        matches!(self, Self::Pinned)
+    }
+}
