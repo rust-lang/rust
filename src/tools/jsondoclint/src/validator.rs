@@ -271,7 +271,7 @@ impl<'a> Validator<'a> {
             Type::RawPointer { is_mutable: _, type_ } => self.check_type(&**type_),
             Type::BorrowedRef { lifetime: _, is_mutable: _, type_ } => self.check_type(&**type_),
             Type::QualifiedPath { name: _, args, self_type, trait_ } => {
-                self.check_generic_args(&**args);
+                self.check_opt_generic_args(&args);
                 self.check_type(&**self_type);
                 if let Some(trait_) = trait_ {
                     self.check_path(trait_, PathKind::Trait);
@@ -309,13 +309,12 @@ impl<'a> Validator<'a> {
             self.fail(&x.id, ErrorKind::Custom(format!("No entry in '$.paths' for {x:?}")));
         }
 
-        if let Some(args) = &x.args {
-            self.check_generic_args(&**args);
-        }
+        self.check_opt_generic_args(&x.args);
     }
 
-    fn check_generic_args(&mut self, x: &'a GenericArgs) {
-        match x {
+    fn check_opt_generic_args(&mut self, x: &'a Option<Box<GenericArgs>>) {
+        let Some(x) = x else { return };
+        match &**x {
             GenericArgs::AngleBracketed { args, constraints } => {
                 args.iter().for_each(|arg| self.check_generic_arg(arg));
                 constraints.iter().for_each(|bind| self.check_assoc_item_constraint(bind));
@@ -355,7 +354,7 @@ impl<'a> Validator<'a> {
     }
 
     fn check_assoc_item_constraint(&mut self, bind: &'a AssocItemConstraint) {
-        self.check_generic_args(&bind.args);
+        self.check_opt_generic_args(&bind.args);
         match &bind.binding {
             AssocItemConstraintKind::Equality(term) => self.check_term(term),
             AssocItemConstraintKind::Constraint(bounds) => {
