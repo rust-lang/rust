@@ -100,12 +100,3 @@ pub(crate) struct AbiRequiredTargetFeature<'a> {
     /// Whether this is a problem at a call site or at a declaration.
     pub is_call: bool,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_wasm_c_abi_transition)]
-#[help]
-pub(crate) struct WasmCAbiTransition<'a> {
-    pub ty: Ty<'a>,
-    /// Whether this is a problem at a call site or at a declaration.
-    pub is_call: bool,
-}
