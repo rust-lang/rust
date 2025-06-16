@@ -84,6 +84,7 @@ features = [
 [dev-dependencies]
 pretty_assertions = "1.4"
 tempfile = "3.15.0"
+insta = "1.43"
 
 # We care a lot about bootstrap's compile times, so don't include debuginfo for
 # dependencies, only bootstrap itself.
