@@ -1,52 +1,25 @@
-// Make sure the generated suggestion suggest editing the user
-// code instead of the std macro implementation
+// Make sure the generated suggestion suggest editing the user code instead of
+// the macro implementation (which might come from an external crate).
+// issue: <https://github.com/rust-lang/rust/issues/139049>
 
 //@ run-rustfix
 
 #![allow(dead_code)]
 
-use std::fmt::{self, Display};
-
-struct Mutex;
-
-impl Mutex {
-    fn lock(&self) -> MutexGuard<'_> {
-        MutexGuard(self)
-    }
-}
-
-struct MutexGuard<'a>(&'a Mutex);
-
-impl<'a> Drop for MutexGuard<'a> {
-    fn drop(&mut self) {}
-}
-
-struct Out;
-
-impl Out {
-    fn write_fmt(&self, _args: fmt::Arguments) {}
-}
-
-impl<'a> Display for MutexGuard<'a> {
-    fn fmt(&self, _formatter: &mut fmt::Formatter) -> fmt::Result {
-        Ok(())
-    }
-}
+// You could assume that this comes from an extern crate (it doesn't
+// because an aux crate would be overkill for this test).
+macro_rules! perform { ($e:expr) => { D(&$e).end() } }
+//~^ ERROR does not live long enough
+//~| ERROR does not live long enough
 
 fn main() {
-    let _write = {
-        let mutex = Mutex;
-        write!(Out, "{}", mutex.lock())
-        //~^ ERROR `mutex` does not live long enough
-        //~| SUGGESTION ;
-    };
+    { let l = (); perform!(l) };
+    //~^ SUGGESTION ;
 
-    let _write = {
-        use std::io::Write as _;
-
-        let mutex = Mutex;
-        write!(std::io::stdout(), "{}", mutex.lock())
-        //~^ ERROR `mutex` does not live long enough
-        //~| SUGGESTION let x
-    };
+    let _x = { let l = (); perform!(l) };
+    //~^ SUGGESTION let x
 }
+
+struct D<T>(T);
+impl<T> Drop for D<T> { fn drop(&mut self) {} }
+impl<T> D<T> { fn end(&self) -> String { String::new() } }
