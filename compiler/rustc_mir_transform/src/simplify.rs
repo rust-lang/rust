@@ -75,6 +75,8 @@ impl SimplifyCfg {
 
 pub(super) fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     if CfgSimplifier::new(tcx, body).simplify() {
+        // `simplify` returns that it changed something. We must invalidate the CFG caches as they
+        // are not consistent with the modified CFG any more.
         body.basic_blocks.invalidate_cfg_cache();
     }
     remove_dead_blocks(body);
@@ -123,6 +125,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // Preserve `SwitchInt` reads on built and analysis MIR, or if `-Zmir-preserve-ub`.
         let preserve_switch_reads = matches!(body.phase, MirPhase::Built | MirPhase::Analysis(_))
             || tcx.sess.opts.unstable_opts.mir_preserve_ub;
+        // Do not clear caches yet. The caller to `simplify` will do it if anything changed.
         let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
 
         CfgSimplifier { preserve_switch_reads, basic_blocks, pred_count }
