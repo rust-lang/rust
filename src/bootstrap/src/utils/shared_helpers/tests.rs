@@ -1,10 +1,3 @@
-//! The `shared_helpers` module can't have its own tests submodule, because
-//! that would cause problems for the shim binaries that include it via
-//! `#[path]`, so instead those unit tests live here.
-//!
-//! To prevent tidy from complaining about this file not being named `tests.rs`,
-//! it lives inside a submodule directory named `tests`.
-
 use crate::utils::shared_helpers::parse_value_from_args;
 
 #[test]
