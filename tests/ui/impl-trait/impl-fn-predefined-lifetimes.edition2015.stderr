@@ -1,0 +1,11 @@
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/impl-fn-predefined-lifetimes.rs:8:9
+   |
+LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
+   |                                                -- this generic parameter must be used with a generic lifetime parameter
+LL |     |x| x
+   |         ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0792`.

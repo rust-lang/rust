@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Sized + 'a` captures lifetime that does not appear in bounds
-  --> $DIR/rpit-hidden-erased-unsoundness.rs:16:5
+  --> $DIR/rpit-hidden-erased-unsoundness.rs:19:5
    |
 LL | fn step2<'a, 'b: 'a>() -> impl Sized + 'a {
    |              --           --------------- opaque type defined here
