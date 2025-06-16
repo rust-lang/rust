@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/main.rs:7:9
    |
 LL |     let () = dep::Renamed;
-   |         ^^   ------------ this expression has type `Renamed`
+   |         ^^   ------------ this expression has type `dep::Renamed`
    |         |
    |         expected `Renamed`, found `()`
 
