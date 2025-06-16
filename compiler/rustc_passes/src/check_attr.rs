@@ -1560,6 +1560,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         }
 
+        // `#[must_use]` can be applied to an associated type in a trait, so that it will
+        // warn on unused associated types in generic contexts.
+        if let Target::AssocTy = target
+            && let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id
+            && let containing_item = self.tcx.hir_expect_item(parent_def_id)
+            && let hir::ItemKind::Trait(..) = containing_item.kind
+        {
+            return;
+        }
+
         let article = match target {
             Target::ExternCrate
             | Target::Enum
