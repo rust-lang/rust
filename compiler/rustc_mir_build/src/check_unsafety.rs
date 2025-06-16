@@ -543,6 +543,20 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
             }
             ExprKind::RawBorrow { arg, .. } => {
+                // Handle the case where we're taking a raw pointer to a union field
+                if let ExprKind::Scope { value: arg, .. } = self.thir[arg].kind {
+                    if self.is_union_field_access(arg) {
+                        // Taking a raw pointer to a union field is safe - just check the base expression
+                        // but skip the union field safety check
+                        self.visit_union_field_for_raw_borrow(arg);
+                        return;
+                    }
+                } else if self.is_union_field_access(arg) {
+                    // Direct raw borrow of union field
+                    self.visit_union_field_for_raw_borrow(arg);
+                    return;
+                }
+
                 if let ExprKind::Scope { value: arg, .. } = self.thir[arg].kind
                     && let ExprKind::Deref { arg } = self.thir[arg].kind
                 {
@@ -647,6 +661,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     if adt_def.variant(variant_index).fields[name].safety.is_unsafe() {
                         self.requires_unsafe(expr.span, UseOfUnsafeField);
                     } else if adt_def.is_union() {
+                        // Check if this field access is part of a raw borrow operation
+                        // If so, we've already handled it above and shouldn't reach here
                         if let Some(assigned_ty) = self.assignment_info {
                             if assigned_ty.needs_drop(self.tcx, self.typing_env) {
                                 // This would be unsafe, but should be outright impossible since we
@@ -657,6 +673,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                                 );
                             }
                         } else {
+                            // Only require unsafe if this is not a raw borrow operation
                             self.requires_unsafe(expr.span, AccessToUnionField);
                         }
                     }
@@ -707,6 +724,46 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             _ => {}
         }
         visit::walk_expr(self, expr);
+    }
+}
+
+impl<'a, 'tcx> UnsafetyVisitor<'a, 'tcx> {
+    /// Check if an expression is a union field access
+    fn is_union_field_access(&self, expr_id: ExprId) -> bool {
+        match self.thir[expr_id].kind {
+            ExprKind::Field { lhs, .. } => {
+                let lhs = &self.thir[lhs];
+                if let ty::Adt(adt_def, _) = lhs.ty.kind() { adt_def.is_union() } else { false }
+            }
+            _ => false,
+        }
+    }
+
+    /// Visit a union field access in the context of a raw borrow operation
+    /// This ensures we still check safety of nested operations while allowing
+    /// the raw pointer creation itself
+    fn visit_union_field_for_raw_borrow(&mut self, expr_id: ExprId) {
+        match self.thir[expr_id].kind {
+            ExprKind::Field { lhs, variant_index, name } => {
+                let lhs_expr = &self.thir[lhs];
+                if let ty::Adt(adt_def, _) = lhs_expr.ty.kind() {
+                    // Check for unsafe fields but skip the union access check
+                    if adt_def.variant(variant_index).fields[name].safety.is_unsafe() {
+                        self.requires_unsafe(self.thir[expr_id].span, UseOfUnsafeField);
+                    }
+                    // For unions, we don't require unsafe for raw pointer creation
+                    // But we still need to check the LHS for safety
+                    self.visit_expr(lhs_expr);
+                } else {
+                    // Not a union, use normal visiting
+                    visit::walk_expr(self, &self.thir[expr_id]);
+                }
+            }
+            _ => {
+                // Not a field access, use normal visiting
+                visit::walk_expr(self, &self.thir[expr_id]);
+            }
+        }
     }
 }
 
