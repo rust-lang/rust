@@ -1,3 +1,7 @@
+//! Data structures for representing parsed attributes in the Rust compiler.
+//! For detailed documentation about attribute processing,
+//! see [rustc_attr_parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html).
+
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![doc(rust_logo)]

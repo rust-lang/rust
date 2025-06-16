@@ -121,7 +121,7 @@ pub struct File {
 ///
 /// [`try_lock`]: File::try_lock
 /// [`try_lock_shared`]: File::try_lock_shared
-#[unstable(feature = "file_lock", issue = "130994")]
+#[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
 pub enum TryLockError {
     /// The lock could not be acquired due to an I/O error on the file. The standard library will
     /// not return an [`ErrorKind::WouldBlock`] error inside [`TryLockError::Error`]
@@ -366,10 +366,10 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
     inner(path.as_ref(), contents.as_ref())
 }
 
-#[unstable(feature = "file_lock", issue = "130994")]
+#[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
 impl error::Error for TryLockError {}
 
-#[unstable(feature = "file_lock", issue = "130994")]
+#[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Debug for TryLockError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -379,7 +379,7 @@ impl fmt::Debug for TryLockError {
     }
 }
 
-#[unstable(feature = "file_lock", issue = "130994")]
+#[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Display for TryLockError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -390,7 +390,7 @@ impl fmt::Display for TryLockError {
     }
 }
 
-#[unstable(feature = "file_lock", issue = "130994")]
+#[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
 impl From<TryLockError> for io::Error {
     fn from(err: TryLockError) -> io::Error {
         match err {
@@ -713,7 +713,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -722,7 +721,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
     pub fn lock(&self) -> io::Result<()> {
         self.inner.lock()
     }
@@ -766,7 +765,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -775,7 +773,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
     pub fn lock_shared(&self) -> io::Result<()> {
         self.inner.lock_shared()
     }
@@ -824,7 +822,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::{File, TryLockError};
     ///
     /// fn main() -> std::io::Result<()> {
@@ -840,7 +837,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
     pub fn try_lock(&self) -> Result<(), TryLockError> {
         self.inner.try_lock()
     }
@@ -888,7 +885,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::{File, TryLockError};
     ///
     /// fn main() -> std::io::Result<()> {
@@ -905,7 +901,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
         self.inner.try_lock_shared()
     }
@@ -933,7 +929,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -943,7 +938,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_lock", issue = "130994")]
+    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
     pub fn unlock(&self) -> io::Result<()> {
         self.inner.unlock()
     }
