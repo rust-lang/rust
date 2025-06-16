@@ -13,10 +13,10 @@ use stable_mir::mir::mono::{Instance, InstanceDef, StaticDef};
 use stable_mir::mir::{BinOp, Body, Place, UnOp};
 use stable_mir::target::MachineInfo;
 use stable_mir::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, FieldDef, FnDef, ForeignDef,
-    ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates, Generics,
-    ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy, Span, TraitDecl,
-    TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef,
+    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, CoroutineDef, Discr, FieldDef, FnDef,
+    ForeignDef, ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates,
+    Generics, ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy, Span,
+    TraitDecl, TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef, VariantIdx,
 };
 use stable_mir::{
     AssocItems, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls,
@@ -228,6 +228,21 @@ impl<'tcx> SmirInterface<'tcx> {
     /// The number of variants in this ADT.
     pub(crate) fn adt_variants_len(&self, def: AdtDef) -> usize {
         self.cx.adt_variants_len(def)
+    }
+
+    /// Discriminant for a given variant index of AdtDef
+    pub(crate) fn adt_discr_for_variant(&self, adt: AdtDef, variant: VariantIdx) -> Discr {
+        self.cx.adt_discr_for_variant(adt, variant)
+    }
+
+    /// Discriminant for a given variand index and args of a coroutine
+    pub(crate) fn coroutine_discr_for_variant(
+        &self,
+        coroutine: CoroutineDef,
+        args: &GenericArgs,
+        variant: VariantIdx,
+    ) -> Discr {
+        self.cx.coroutine_discr_for_variant(coroutine, args, variant)
     }
 
     /// The name of a variant.
