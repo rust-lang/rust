@@ -63,6 +63,7 @@
 #![allow(unused_labels)]
 #![allow(clippy::unwrap_or_default)]
 #![allow(ambiguous_wide_pointer_comparisons)]
+#![allow(leading_zeros_in_decimal_literals)]
 #![allow(clippy::invisible_characters)]
 #![warn(clippy::almost_complete_letter_range)] //~ ERROR: lint `clippy::almost_complete_letter_range`
 #![warn(clippy::blacklisted_name)] //~ ERROR: lint `clippy::blacklisted_name`
@@ -136,6 +137,7 @@
 #![warn(clippy::unused_label)] //~ ERROR: lint `clippy::unused_label`
 #![warn(clippy::unwrap_or_else_default)] //~ ERROR: lint `clippy::unwrap_or_else_default`
 #![warn(clippy::vtable_address_comparisons)] //~ ERROR: lint `clippy::vtable_address_comparisons`
+#![warn(clippy::zero_prefixed_literal)] //~ ERROR: lint `clippy::zero_prefixed_literal`
 #![warn(clippy::zero_width_space)] //~ ERROR: lint `clippy::zero_width_space`
 
 fn main() {}
