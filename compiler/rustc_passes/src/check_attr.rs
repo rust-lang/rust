@@ -147,6 +147,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_),
                 ) => { /* do nothing  */ }
+                Attribute::Parsed(AttributeKind::AsPtr(_)) => {
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                }
                 Attribute::Unparsed(_) => {
                     match attr.path().as_slice() {
                         [sym::diagnostic, sym::do_not_recommend, ..] => {
@@ -188,9 +191,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_rustc_std_internal_symbol(attr, span, target)
                         }
                         [sym::naked, ..] => self.check_naked(hir_id, attr, span, target, attrs),
-                        [sym::rustc_as_ptr, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr, span, target)
-                        }
                         [sym::rustc_no_implicit_autorefs, ..] => {
                             self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                         }
