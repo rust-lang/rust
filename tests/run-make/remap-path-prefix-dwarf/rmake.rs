@@ -4,6 +4,7 @@
 // It tests several cases, each of them has a detailed description attached to it.
 // See https://github.com/rust-lang/rust/pull/96867
 
+//@ needs-target-std
 //@ ignore-windows
 // Reason: the remap path prefix is not printed in the dwarf dump.
 

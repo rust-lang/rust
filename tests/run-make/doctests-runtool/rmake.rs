@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Tests behavior of rustdoc `--test-runtool`.
 
 use std::path::PathBuf;

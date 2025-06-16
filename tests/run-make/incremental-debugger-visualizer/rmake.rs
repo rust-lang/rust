@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // This test ensures that changes to files referenced via #[debugger_visualizer]
 // (in this case, foo.py and foo.natvis) are picked up when compiling incrementally.
 // See https://github.com/rust-lang/rust/pull/111641
