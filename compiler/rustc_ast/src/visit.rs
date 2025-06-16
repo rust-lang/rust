@@ -1420,7 +1420,7 @@ macro_rules! common_visitor_and_walkers {
                     let StructExpr { qself, path, fields, rest } = &$($mut)?**se;
                     try_visit!(vis.visit_qself(qself));
                     try_visit!(vis.visit_path(path));
-                    visit_expr_fields(vis, fields);
+                    try_visit!(visit_expr_fields(vis, fields));
                     match rest {
                         StructRest::Base(expr) => try_visit!(vis.visit_expr(expr)),
                         StructRest::Rest(_span) => {}
