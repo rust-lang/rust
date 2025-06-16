@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed for `[Foo<{integer}>; _]`
-  --> $DIR/copy-check-deferred-after-fallback.rs:39:9
+  --> $DIR/copy-check-deferred-after-fallback.rs:37:9
    |
 LL |     let b = [Foo(PhantomData); _];
    |         ^    ---------------- type must be known at this point

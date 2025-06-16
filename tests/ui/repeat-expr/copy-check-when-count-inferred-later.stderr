@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `String: Copy` is not satisfied
-  --> $DIR/copy-check-when-count-inferred-later.rs:8:14
+  --> $DIR/copy-check-when-count-inferred-later.rs:6:14
    |
 LL |     let a = [String::new(); _];
    |              ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`

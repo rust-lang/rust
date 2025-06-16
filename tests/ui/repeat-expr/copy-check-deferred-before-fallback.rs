@@ -1,5 +1,4 @@
 //@ check-pass
-#![feature(generic_arg_infer)]
 
 // Test when deferring repeat expr checks to end of typechecking whether they're
 // checked before integer fallback occurs. We accomplish this by having the repeat
