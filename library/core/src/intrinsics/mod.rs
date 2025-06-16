@@ -397,6 +397,7 @@ pub const unsafe fn assume(b: bool) {
 /// This intrinsic does not have a stable counterpart.
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
+#[rustc_diagnostic_item = "cold_path"]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
 #[cold]

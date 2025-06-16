@@ -1012,6 +1012,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
     }
 
     fn convert_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> ArmId {
+        let attrs = self.tcx.hir().attrs(arm.hir_id);
         let arm = Arm {
             pattern: self.pattern_from_hir(&arm.pat),
             guard: arm.guard.as_ref().map(|g| self.mirror_expr(g)),
@@ -1019,6 +1020,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             lint_level: LintLevel::Explicit(arm.hir_id),
             scope: region::Scope { local_id: arm.hir_id.local_id, data: region::ScopeData::Node },
             span: arm.span,
+            is_cold: attrs.iter().any(|a| a.name_or_empty() == sym::cold),
         };
         self.thir.arms.push(arm)
     }
