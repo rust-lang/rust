@@ -11,13 +11,17 @@ LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires computing layout of `Foo`...
    = note: ...which requires computing layout of `[u8; unsafe { intrinsics::size_of::<Foo>() }]`...
-   = note: ...which requires normalizing `[u8; unsafe { intrinsics::size_of::<Foo>() }]`...
+note: ...which requires normalizing `[u8; unsafe { intrinsics::size_of::<Foo>() }]`...
+  --> $DIR/issue-44415.rs:6:17
+   |
+LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires evaluating type-level constant, completing the cycle
 note: cycle used when checking that `Foo` is well-formed
-  --> $DIR/issue-44415.rs:5:1
+  --> $DIR/issue-44415.rs:6:17
    |
-LL | struct Foo {
-   | ^^^^^^^^^^
+LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error
