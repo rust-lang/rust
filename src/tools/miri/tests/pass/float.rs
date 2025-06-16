@@ -1066,17 +1066,39 @@ pub fn libm() {
     assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1.0);
     assert_eq!((-1f64).powf(f64::NEG_INFINITY), 1.0);
 
-    // For pow (powf in rust) the C standard says:
-    // x^0 = 1 for all x even a sNaN
-    // FIXME(#4286): this does not match the behavior of all implementations.
-    assert_eq!(SNAN_F32.powf(0.0), 1.0);
-    assert_eq!(SNAN_F64.powf(0.0), 1.0);
+    // Makes sure an operations returns both `1` and a `NaN` randomly.
+    macro_rules! test_snan_nondet {
+        ($pow_op:expr) => {{
+            let mut nan_seen = false;
+            let mut one_seen = false;
 
-    // For pown (powi in rust) the C standard says:
-    // x^0 = 1 for all x even a sNaN
-    // FIXME(#4286): this does not match the behavior of all implementations.
-    assert_eq!(SNAN_F32.powi(0), 1.0);
-    assert_eq!(SNAN_F64.powi(0), 1.0);
+            for _ in 0..64 {
+                let res = $pow_op;
+                nan_seen |= res.is_nan();
+                one_seen |= res == 1.0;
+
+                // little speedup
+                if nan_seen && one_seen { break; };
+            }
+
+            let op_as_str = stringify!($pow_op);
+
+            assert!(nan_seen && one_seen, "{} should return both `NaN` or `1.0` randomly", op_as_str);
+        }};
+    }
+
+    // x^(SNaN) = (1 | NaN)
+    test_snan_nondet!(f32::powf(SNAN_F32, 0.0));
+    test_snan_nondet!(f64::powf(SNAN_F64, 0.0));
+
+    // 1^(SNaN) = (1 | NaN)
+    test_snan_nondet!(f32::powf(1.0, SNAN_F32));
+    test_snan_nondet!(f64::powf(1.0, SNAN_F64));
+
+    // same as powf (keep it consistent):
+    // x^(SNaN) = (1 | NaN)
+    test_snan_nondet!(f32::powi(SNAN_F32, 0));
+    test_snan_nondet!(f64::powi(SNAN_F64, 0));
 
     assert_eq!(0f32.powi(10), 0.0);
     assert_eq!(0f64.powi(100), 0.0);
