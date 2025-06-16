@@ -85,7 +85,7 @@ impl fmt::Display for TerminationInfo {
             DataRace { involves_non_atomic, ptr, op1, op2, .. } =>
                 write!(
                     f,
-                    "{} detected between (1) {} on {} and (2) {} on {} at {ptr:?}. (2) just happened here",
+                    "{} detected between (1) {} on {} and (2) {} on {} at {ptr:?}",
                     if *involves_non_atomic { "Data race" } else { "Race condition" },
                     op1.action,
                     op1.thread_info,
@@ -224,7 +224,7 @@ pub fn report_error<'tcx>(
     use InterpErrorKind::*;
     use UndefinedBehaviorInfo::*;
 
-    let mut msg = vec![];
+    let mut labels = vec![];
 
     let (title, helps) = if let MachineStop(info) = e.kind() {
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
@@ -237,7 +237,10 @@ pub fn report_error<'tcx>(
                 Some("unsupported operation"),
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
                 Some("Undefined Behavior"),
-            Deadlock => Some("deadlock"),
+            Deadlock => {
+                labels.push(format!("this thread got stuck here"));
+                None
+            }
             GenmcStuckExecution => {
                 // This case should only happen in GenMC mode. We treat it like a normal program exit.
                 assert!(ecx.machine.data_race.as_genmc_ref().is_some());
@@ -259,7 +262,7 @@ pub fn report_error<'tcx>(
                 ]
             }
             StackedBorrowsUb { help, history, .. } => {
-                msg.extend(help.clone());
+                labels.extend(help.clone());
                 let mut helps = vec![
                     note!("this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental"),
                     note!("see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information"),
@@ -297,6 +300,7 @@ pub fn report_error<'tcx>(
             Int2PtrWithStrictProvenance =>
                 vec![note!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead")],
             DataRace { op1, extra, retag_explain, .. } => {
+                labels.push(format!("(2) just happened here"));
                 let mut helps = vec![note_span!(op1.span, "and (1) occurred earlier here")];
                 if let Some(extra) = extra {
                     helps.push(note!("{extra}"));
@@ -426,12 +430,20 @@ pub fn report_error<'tcx>(
         _ => {}
     }
 
-    msg.insert(0, format_interp_error(ecx.tcx.dcx(), e));
+    let mut primary_msg = String::new();
+    if let Some(title) = title {
+        write!(primary_msg, "{title}: ").unwrap();
+    }
+    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), e)).unwrap();
+
+    if labels.is_empty() {
+        labels.push(format!("{} occurred here", title.unwrap_or("error")));
+    }
 
     report_msg(
         DiagLevel::Error,
-        if let Some(title) = title { format!("{title}: {}", msg[0]) } else { msg[0].clone() },
-        msg,
+        primary_msg,
+        labels,
         vec![],
         helps,
         &stacktrace,
@@ -449,8 +461,8 @@ pub fn report_error<'tcx>(
                 any_pruned |= was_pruned;
                 report_msg(
                     DiagLevel::Error,
-                    format!("deadlock: the evaluated program deadlocked"),
-                    vec![format!("the evaluated program deadlocked")],
+                    format!("the evaluated program deadlocked"),
+                    vec![format!("this thread got stuck here")],
                     vec![],
                     vec![],
                     &stacktrace,
@@ -611,7 +623,7 @@ impl<'tcx> MiriMachine<'tcx> {
         let stacktrace = Frame::generate_stacktrace_from_stack(self.threads.active_thread_stack());
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
-        let (title, diag_level) = match &e {
+        let (label, diag_level) = match &e {
             RejectedIsolatedOp(_) =>
                 ("operation rejected by isolation".to_string(), DiagLevel::Warning),
             Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
@@ -626,10 +638,10 @@ impl<'tcx> MiriMachine<'tcx> {
             | FreedAlloc(..)
             | ProgressReport { .. }
             | WeakMemoryOutdatedLoad { .. } =>
-                ("tracking was triggered".to_string(), DiagLevel::Note),
+                ("tracking was triggered here".to_string(), DiagLevel::Note),
         };
 
-        let msg = match &e {
+        let title = match &e {
             CreatedPointerTag(tag, None, _) => format!("created base tag {tag:?}"),
             CreatedPointerTag(tag, Some(perm), None) =>
                 format!("created {tag:?} with {perm} derived from unknown tag"),
@@ -735,7 +747,7 @@ impl<'tcx> MiriMachine<'tcx> {
         report_msg(
             diag_level,
             title,
-            vec![msg],
+            vec![label],
             notes,
             helps,
             &stacktrace,

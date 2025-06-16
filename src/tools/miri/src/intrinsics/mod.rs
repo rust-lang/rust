@@ -292,11 +292,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let b = this.read_scalar(b)?.to_f32()?;
                 let c = this.read_scalar(c)?.to_f32()?;
                 let fuse: bool = this.machine.float_nondet && this.machine.rng.get_mut().random();
-                let res = if fuse {
-                    a.mul_add(b, c).value
-                } else {
-                    ((a * b).value + c).value
-                };
+                let res = if fuse { a.mul_add(b, c).value } else { ((a * b).value + c).value };
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }
@@ -306,11 +302,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let b = this.read_scalar(b)?.to_f64()?;
                 let c = this.read_scalar(c)?.to_f64()?;
                 let fuse: bool = this.machine.float_nondet && this.machine.rng.get_mut().random();
-                let res = if fuse {
-                    a.mul_add(b, c).value
-                } else {
-                    ((a * b).value + c).value
-                };
+                let res = if fuse { a.mul_add(b, c).value } else { ((a * b).value + c).value };
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }

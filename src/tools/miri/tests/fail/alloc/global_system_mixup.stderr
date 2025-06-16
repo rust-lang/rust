@@ -2,7 +2,7 @@ error: Undefined Behavior: deallocating ALLOC, which is Rust heap memory, using 
   --> RUSTLIB/std/src/sys/alloc/PLATFORM.rs:LL:CC
    |
 LL |         FREE();
-   | ^ deallocating ALLOC, which is Rust heap memory, using PLATFORM heap deallocation operation
+   | ^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

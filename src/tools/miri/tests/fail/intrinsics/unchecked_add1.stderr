@@ -2,7 +2,7 @@ error: Undefined Behavior: arithmetic overflow in `unchecked_add`
   --> tests/fail/intrinsics/unchecked_add1.rs:LL:CC
    |
 LL |     let _val = unsafe { 40000u16.unchecked_add(30000) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ arithmetic overflow in `unchecked_add`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

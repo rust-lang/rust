@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value: encountered an unaligned 
   --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
    |
 LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered an unaligned reference (required ALIGN byte alignment but found ALIGN)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
