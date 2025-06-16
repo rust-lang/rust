@@ -1,5 +1,11 @@
+error[E0570]: "C-cmse-nonsecure-call" is not a supported ABI for the current target
+  --> $DIR/gate_test.rs:4:46
+   |
+LL |         core::mem::transmute::<usize, extern "C-cmse-nonsecure-call" fn(i32, i32, i32, i32) -> i32>(
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0658]: the extern "C-cmse-nonsecure-call" ABI is experimental and subject to change
-  --> $DIR/gate_test.rs:5:46
+  --> $DIR/gate_test.rs:4:46
    |
 LL |         core::mem::transmute::<usize, extern "C-cmse-nonsecure-call" fn(i32, i32, i32, i32) -> i32>(
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,16 +14,7 @@ LL |         core::mem::transmute::<usize, extern "C-cmse-nonsecure-call" fn(i32
    = help: add `#![feature(abi_c_cmse_nonsecure_call)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0658`.
-Future incompatibility report: Future breakage diagnostic:
-warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
-  --> $DIR/gate_test.rs:5:39
-   |
-LL |         core::mem::transmute::<usize, extern "C-cmse-nonsecure-call" fn(i32, i32, i32, i32) -> i32>(
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
+Some errors have detailed explanations: E0570, E0658.
+For more information about an error, try `rustc --explain E0570`.
