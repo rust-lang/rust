@@ -257,11 +257,11 @@ impl<'tcx> TransformVisitor<'tcx> {
             StatementKind::Assign(Box::new((Place::return_place(), none_value))),
         )];
 
-        body.basic_blocks_mut().push(BasicBlockData {
+        body.basic_blocks_mut().push(BasicBlockData::new_stmts(
             statements,
-            terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
-            is_cleanup: false,
-        });
+            Some(Terminator { source_info, kind: TerminatorKind::Return }),
+            false,
+        ));
 
         block
     }
@@ -1073,11 +1073,11 @@ fn insert_switch<'tcx>(
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().raw.insert(
         0,
-        BasicBlockData {
-            statements: vec![assign],
-            terminator: Some(Terminator { source_info, kind: switch }),
-            is_cleanup: false,
-        },
+        BasicBlockData::new_stmts(
+            vec![assign],
+            Some(Terminator { source_info, kind: switch }),
+            false,
+        ),
     );
 
     for b in body.basic_blocks_mut().iter_mut() {
@@ -1087,11 +1087,7 @@ fn insert_switch<'tcx>(
 
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator { source_info, kind }),
-        is_cleanup: false,
-    })
+    body.basic_blocks_mut().push(BasicBlockData::new(Some(Terminator { source_info, kind }), false))
 }
 
 fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) -> Statement<'tcx> {
@@ -1112,11 +1108,11 @@ fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) ->
 
 fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData {
-        statements: [return_poll_ready_assign(tcx, source_info)].to_vec(),
-        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
-        is_cleanup: false,
-    })
+    body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+        [return_poll_ready_assign(tcx, source_info)].to_vec(),
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        false,
+    ))
 }
 
 fn insert_panic_block<'tcx>(
@@ -1200,13 +1196,11 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
     body: &mut Body<'tcx>,
 ) {
     let source_info = SourceInfo::outermost(body.span);
-    let poison_block = body.basic_blocks_mut().push(BasicBlockData {
-        statements: vec![
-            transform.set_discr(VariantIdx::new(CoroutineArgs::POISONED), source_info),
-        ],
-        terminator: Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
-        is_cleanup: true,
-    });
+    let poison_block = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+        vec![transform.set_discr(VariantIdx::new(CoroutineArgs::POISONED), source_info)],
+        Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
+        true,
+    ));
 
     for (idx, block) in body.basic_blocks_mut().iter_enumerated_mut() {
         let source_info = block.terminator().source_info;
@@ -1357,14 +1351,11 @@ fn create_cases<'tcx>(
                 }
 
                 // Then jump to the real target
-                let block = body.basic_blocks_mut().push(BasicBlockData {
+                let block = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
                     statements,
-                    terminator: Some(Terminator {
-                        source_info,
-                        kind: TerminatorKind::Goto { target },
-                    }),
-                    is_cleanup: false,
-                });
+                    Some(Terminator { source_info, kind: TerminatorKind::Goto { target } }),
+                    false,
+                ));
 
                 (point.state, block)
             })

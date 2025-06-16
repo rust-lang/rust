@@ -78,14 +78,13 @@ impl<'tcx> MirPatch<'tcx> {
             return bb;
         }
 
-        let bb = self.new_block(BasicBlockData {
-            statements: vec![],
-            terminator: Some(Terminator {
+        let bb = self.new_block(BasicBlockData::new(
+            Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindResume,
             }),
-            is_cleanup: true,
-        });
+            true,
+        ));
         self.resume_block = Some(bb);
         bb
     }
@@ -95,14 +94,13 @@ impl<'tcx> MirPatch<'tcx> {
             return bb;
         }
 
-        let bb = self.new_block(BasicBlockData {
-            statements: vec![],
-            terminator: Some(Terminator {
+        let bb = self.new_block(BasicBlockData::new(
+            Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
             }),
-            is_cleanup: true,
-        });
+            true,
+        ));
         self.unreachable_cleanup_block = Some(bb);
         bb
     }
@@ -112,14 +110,13 @@ impl<'tcx> MirPatch<'tcx> {
             return bb;
         }
 
-        let bb = self.new_block(BasicBlockData {
-            statements: vec![],
-            terminator: Some(Terminator {
+        let bb = self.new_block(BasicBlockData::new(
+            Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
             }),
-            is_cleanup: false,
-        });
+            false,
+        ));
         self.unreachable_no_cleanup_block = Some(bb);
         bb
     }
@@ -131,14 +128,13 @@ impl<'tcx> MirPatch<'tcx> {
             return cached_bb;
         }
 
-        let bb = self.new_block(BasicBlockData {
-            statements: vec![],
-            terminator: Some(Terminator {
+        let bb = self.new_block(BasicBlockData::new(
+            Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindTerminate(reason),
             }),
-            is_cleanup: true,
-        });
+            true,
+        ));
         self.terminate_block = Some((bb, reason));
         bb
     }
