@@ -405,8 +405,10 @@ mod expressions {
     fn expr_format_args() {
         let expr;
         format_arguments::new_const(&[]);
-        format_arguments::new_v1(&[""],
-            &[format_argument::new_display(&expr)]);
+        {
+            super let args = [format_argument::new_display(&expr)];
+            format_arguments::new_v1(&[""], &args)
+        };
     }
 }
 mod items {

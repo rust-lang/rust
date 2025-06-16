@@ -9,28 +9,35 @@ if let StmtKind::Let(local) = stmt.kind
     && let ExprKind::Call(func, args) = e.kind
     && paths::STD_IO_STDIO__PRINT.matches_path(cx, func) // Add the path to `clippy_utils::paths` if needed
     && args.len() == 1
-    && let ExprKind::Call(func1, args1) = args[0].kind
-    && paths::CORE_FMT_RT_NEW_V1.matches_path(cx, func1) // Add the path to `clippy_utils::paths` if needed
-    && args1.len() == 2
+    && let ExprKind::Block(block1, None) = args[0].kind
+    && block1.stmts.len() == 1
+    && let StmtKind::Let(local1) = block1.stmts[0].kind
+    && let Some(init1) = local1.init
+    && let ExprKind::Array(elements) = init1.kind
+    && elements.len() == 1
+    && let ExprKind::Call(func1, args1) = elements[0].kind
+    && paths::CORE_FMT_RT_ARGUMENT_NEW_DISPLAY.matches_path(cx, func1) // Add the path to `clippy_utils::paths` if needed
+    && args1.len() == 1
     && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = args1[0].kind
-    && let ExprKind::Array(elements) = inner.kind
-    && elements.len() == 2
-    && let ExprKind::Lit(ref lit) = elements[0].kind
+    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local1.pat.kind
+    && name.as_str() == "args"
+    && let Some(trailing_expr) = block1.expr
+    && let ExprKind::Call(func2, args2) = trailing_expr.kind
+    && paths::CORE_FMT_RT_NEW_V1.matches_path(cx, func2) // Add the path to `clippy_utils::paths` if needed
+    && args2.len() == 2
+    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner1) = args2[0].kind
+    && let ExprKind::Array(elements1) = inner1.kind
+    && elements1.len() == 2
+    && let ExprKind::Lit(ref lit) = elements1[0].kind
     && let LitKind::Str(s, _) = lit.node
     && s.as_str() == ""
-    && let ExprKind::Lit(ref lit1) = elements[1].kind
+    && let ExprKind::Lit(ref lit1) = elements1[1].kind
     && let LitKind::Str(s1, _) = lit1.node
     && s1.as_str() == "\n"
-    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner1) = args1[1].kind
-    && let ExprKind::Array(elements1) = inner1.kind
-    && elements1.len() == 1
-    && let ExprKind::Call(func2, args2) = elements1[0].kind
-    && paths::CORE_FMT_RT_ARGUMENT_NEW_DISPLAY.matches_path(cx, func2) // Add the path to `clippy_utils::paths` if needed
-    && args2.len() == 1
-    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner2) = args2[0].kind
+    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner2) = args2[1].kind
     && block.expr.is_none()
-    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
-    && name.as_str() == "print_text"
+    && let PatKind::Binding(BindingMode::NONE, _, name1, None) = local.pat.kind
+    && name1.as_str() == "print_text"
 {
     // report your lint here
 }
