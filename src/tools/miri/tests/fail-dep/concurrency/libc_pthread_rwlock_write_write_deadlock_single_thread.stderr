@@ -1,8 +1,8 @@
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> tests/fail-dep/concurrency/libc_pthread_rwlock_write_write_deadlock_single_thread.rs:LL:CC
    |
 LL |         libc::pthread_rwlock_wrlock(rw.get());
-   |                                             ^ the evaluated program deadlocked
+   |                                             ^ this thread got stuck here
    |
    = note: BACKTRACE:
    = note: inside `main` at tests/fail-dep/concurrency/libc_pthread_rwlock_write_write_deadlock_single_thread.rs:LL:CC

@@ -1,36 +1,36 @@
-note: tracking was triggered
+note: created Miri bare-metal heap allocation of 123 bytes (alignment ALIGN bytes) with id $ALLOC
   --> tests/pass/alloc-access-tracking.rs:LL:CC
    |
 LL |         let ptr = miri_alloc(123, 1);
-   |                   ^^^^^^^^^^^^^^^^^^ created Miri bare-metal heap allocation of 123 bytes (alignment ALIGN bytes) with id $ALLOC
+   |                   ^^^^^^^^^^^^^^^^^^ tracking was triggered here
    |
    = note: BACKTRACE:
    = note: inside `miri_start` at tests/pass/alloc-access-tracking.rs:LL:CC
 
-note: tracking was triggered
+note: write access to allocation with id $ALLOC
   --> tests/pass/alloc-access-tracking.rs:LL:CC
    |
 LL |         *ptr = 42; // Crucially, only a write is printed here, no read!
-   |         ^^^^^^^^^ write access to allocation with id $ALLOC
+   |         ^^^^^^^^^ tracking was triggered here
    |
    = note: BACKTRACE:
    = note: inside `miri_start` at tests/pass/alloc-access-tracking.rs:LL:CC
 
-note: tracking was triggered
+note: read access to allocation with id $ALLOC
   --> tests/pass/alloc-access-tracking.rs:LL:CC
    |
 LL |         assert_eq!(*ptr, 42);
-   |         ^^^^^^^^^^^^^^^^^^^^ read access to allocation with id $ALLOC
+   |         ^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
    |
    = note: BACKTRACE:
    = note: inside `miri_start` at RUSTLIB/core/src/macros/mod.rs:LL:CC
    = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-note: tracking was triggered
+note: freed allocation with id $ALLOC
   --> tests/pass/alloc-access-tracking.rs:LL:CC
    |
 LL |         miri_dealloc(ptr, 123, 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ freed allocation with id $ALLOC
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
    |
    = note: BACKTRACE:
    = note: inside `miri_start` at tests/pass/alloc-access-tracking.rs:LL:CC

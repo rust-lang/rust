@@ -2,7 +2,7 @@ error: Undefined Behavior: pointer not dereferenceable: pointer must point to so
   --> tests/fail-dep/libc/memcpy_zero.rs:LL:CC
    |
 LL |         libc::memcpy(to.cast(), from.cast(), 0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pointer not dereferenceable: pointer must point to some allocation, but got 0x17[noalloc] which is a dangling pointer (it has no provenance)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

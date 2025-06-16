@@ -2,7 +2,7 @@ error: Undefined Behavior: memory access failed: attempting to access 129 bytes,
   --> tests/fail-dep/libc/affinity.rs:LL:CC
    |
 LL |     let err = unsafe { sched_setaffinity(PID, size_of::<cpu_set_t>() + 1, &cpuset) };
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: attempting to access 129 bytes, but got ALLOC which is only 128 bytes from the end of the allocation
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

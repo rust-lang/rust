@@ -2,7 +2,7 @@ error: unsupported operation: `miri_promise_symbolic_alignment`: alignment must 
   --> tests/fail/unaligned_pointers/promise_alignment_zero.rs:LL:CC
    |
 LL |     unsafe { utils::miri_promise_symbolic_alignment(buffer.as_ptr().cast(), 0) };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `miri_promise_symbolic_alignment`: alignment must be a power of 2, got 0
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:

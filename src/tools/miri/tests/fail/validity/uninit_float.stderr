@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value at .value[0]: encountered 
   --> tests/fail/validity/uninit_float.rs:LL:CC
    |
 LL |     let _val: [f32; 1] = unsafe { std::mem::uninitialized() };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .value[0]: encountered uninitialized memory, but expected a floating point number
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

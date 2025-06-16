@@ -2,7 +2,7 @@ error: Undefined Behavior: overflowing shift by 64 in `unchecked_shr`
   --> tests/fail/intrinsics/unchecked_shr.rs:LL:CC
    |
 LL |         let _n = 1i64.unchecked_shr(64);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by 64 in `unchecked_shr`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

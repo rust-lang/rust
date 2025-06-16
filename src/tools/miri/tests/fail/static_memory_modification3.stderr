@@ -2,7 +2,7 @@ error: Undefined Behavior: writing to ALLOC which is read-only
   --> tests/fail/static_memory_modification3.rs:LL:CC
    |
 LL |         transmute::<&[u8], &mut [u8]>(bs)[4] = 42;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to ALLOC which is read-only
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

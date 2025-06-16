@@ -2,7 +2,7 @@ error: Undefined Behavior: not granting access to tag <TAG> because that would r
   --> tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
    |
 LL | pub fn safe(x: &i32, y: &mut i32) {
-   |                      ^ not granting access to tag <TAG> because that would remove [SharedReadOnly for <TAG>] which is strongly protected
+   |                      ^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information

@@ -4,7 +4,6 @@ error: Undefined Behavior: trying to retag from <TAG> for SharedReadOnly permiss
 LL |     ret
    |     ^^^
    |     |
-   |     trying to retag from <TAG> for SharedReadOnly permission at ALLOC[0x4], but that tag does not exist in the borrow stack for this location
    |     this error occurs as part of retag (of a reference/box inside this compound value) at ALLOC[0x4..0x8]
    |     errors for retagging in fields are fairly new; please reach out to us (e.g. at <https://rust-lang.zulipchat.com/#narrow/stream/269128-miri>) if you find this error troubling
    |

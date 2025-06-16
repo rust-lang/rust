@@ -3,7 +3,7 @@ error: abnormal termination: the program aborted execution
   --> tests/fail/alloc/alloc_error_handler_custom.rs:LL:CC
    |
 LL |     core::intrinsics::abort();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the program aborted execution
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
    = note: BACKTRACE:
    = note: inside `alloc_error_handler` at tests/fail/alloc/alloc_error_handler_custom.rs:LL:CC

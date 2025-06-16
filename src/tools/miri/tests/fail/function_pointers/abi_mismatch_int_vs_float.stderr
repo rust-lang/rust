@@ -2,7 +2,7 @@ error: Undefined Behavior: calling a function with argument of type f32 passing 
   --> tests/fail/function_pointers/abi_mismatch_int_vs_float.rs:LL:CC
    |
 LL |     g(42)
-   |     ^^^^^ calling a function with argument of type f32 passing data of type i32
+   |     ^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

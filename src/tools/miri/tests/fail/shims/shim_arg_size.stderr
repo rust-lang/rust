@@ -2,7 +2,7 @@ error: Undefined Behavior: scalar size mismatch: expected 4 bytes but got 1 byte
   --> tests/fail/shims/shim_arg_size.rs:LL:CC
    |
 LL |         memchr(std::ptr::null(), 0, 0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ scalar size mismatch: expected 4 bytes but got 1 bytes instead
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

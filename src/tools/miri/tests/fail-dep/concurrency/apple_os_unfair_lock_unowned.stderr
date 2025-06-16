@@ -2,7 +2,7 @@ error: abnormal termination: attempted to unlock an os_unfair_lock not owned by 
   --> tests/fail-dep/concurrency/apple_os_unfair_lock_unowned.rs:LL:CC
    |
 LL |         libc::os_unfair_lock_unlock(lock.get());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempted to unlock an os_unfair_lock not owned by the current thread
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
    = note: BACKTRACE:
    = note: inside `main` at tests/fail-dep/concurrency/apple_os_unfair_lock_unowned.rs:LL:CC

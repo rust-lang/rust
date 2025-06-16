@@ -2,7 +2,7 @@ error: Undefined Behavior: attempting deallocation using <TAG> at ALLOC, but tha
   --> tests/fail/stacked_borrows/illegal_deALLOC.rs:LL:CC
    |
 LL |         dealloc(ptr2, Layout::from_size_align_unchecked(1, 1));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempting deallocation using <TAG> at ALLOC, but that tag does not exist in the borrow stack for this location
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information

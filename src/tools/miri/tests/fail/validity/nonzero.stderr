@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value: encountered 0, but expect
   --> tests/fail/validity/nonzero.rs:LL:CC
    |
 LL |     let _x = Some(unsafe { NonZero(0) });
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

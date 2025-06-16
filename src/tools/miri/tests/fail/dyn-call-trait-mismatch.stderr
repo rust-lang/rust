@@ -2,7 +2,7 @@ error: Undefined Behavior: using vtable for `T1` but `T2` was expected
   --> tests/fail/dyn-call-trait-mismatch.rs:LL:CC
    |
 LL |     r2.method2();
-   |     ^^^^^^^^^^^^ using vtable for `T1` but `T2` was expected
+   |     ^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

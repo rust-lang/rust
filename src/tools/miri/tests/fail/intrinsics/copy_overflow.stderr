@@ -2,7 +2,7 @@ error: Undefined Behavior: overflow computing total size of `copy`
   --> tests/fail/intrinsics/copy_overflow.rs:LL:CC
    |
 LL |         (&mut y as *mut i32).copy_from(&x, 1usize << (mem::size_of::<usize>() * 8 - 1));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow computing total size of `copy`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

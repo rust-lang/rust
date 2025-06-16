@@ -1,6 +1,6 @@
 error: Undefined Behavior: calling a function with fewer arguments than it requires
    |
-   = note: calling a function with fewer arguments than it requires
+   = note: Undefined Behavior occurred here
    = note: (no span available)
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

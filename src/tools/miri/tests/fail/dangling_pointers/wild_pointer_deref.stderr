@@ -2,7 +2,7 @@ error: Undefined Behavior: memory access failed: attempting to access 4 bytes, b
   --> tests/fail/dangling_pointers/wild_pointer_deref.rs:LL:CC
    |
 LL |     let x = unsafe { *p };
-   |                      ^^ memory access failed: attempting to access 4 bytes, but got 0x2c[noalloc] which is a dangling pointer (it has no provenance)
+   |                      ^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

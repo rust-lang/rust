@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value at .<enum-tag>: encountere
   --> tests/fail/validity/transmute_through_ptr.rs:LL:CC
    |
 LL |     let y = x; // reading this ought to be enough to trigger validation
-   |             ^ constructing invalid value at .<enum-tag>: encountered $HEX, but expected a valid enum tag
+   |             ^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

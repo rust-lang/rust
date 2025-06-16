@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value: encountered 0x02, but exp
   --> tests/fail/intrinsics/typed-swap-invalid-scalar.rs:LL:CC
    |
 LL |         typed_swap_nonoverlapping(a, b);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0x02, but expected a boolean
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

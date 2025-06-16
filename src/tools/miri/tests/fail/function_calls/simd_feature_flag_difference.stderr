@@ -2,7 +2,7 @@ error: Undefined Behavior: calling a function that requires unavailable target f
   --> tests/fail/function_calls/simd_feature_flag_difference.rs:LL:CC
    |
 LL |     unsafe { foo(0.0, x) }
-   |              ^^^^^^^^^^^ calling a function that requires unavailable target features: avx
+   |              ^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

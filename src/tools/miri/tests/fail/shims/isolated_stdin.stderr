@@ -1,7 +1,7 @@
 error: unsupported operation: `read` from stdin not available when isolation is enabled
   --> RUSTLIB/std/$FILE:LL:CC
    |
-   | ^ `read` from stdin not available when isolation is enabled
+   | ^ unsupported operation occurred here
    |
    = help: set `MIRIFLAGS=-Zmiri-disable-isolation` to disable isolation;
    = help: or set `MIRIFLAGS=-Zmiri-isolation-error=warn` to make Miri return an error code from isolated operations (if supported for that operation) and continue with a warning

@@ -1,8 +1,8 @@
 error: Undefined Behavior: `fmul_fast` intrinsic called with non-finite value as second parameter
   --> tests/fail/intrinsics/fast_math_second.rs:LL:CC
    |
-LL | ...f32 = core::intrinsics::fmul_fast(3.4f32, f32::INFINITY);
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `fmul_fast` intrinsic called with non-finite value as second parameter
+LL | ...   let _x: f32 = core::intrinsics::fmul_fast(3.4f32, f32::INFINITY);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

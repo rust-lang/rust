@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value: wrong trait in wide point
   --> tests/fail/dyn-upcast-nop-wrong-trait.rs:LL:CC
    |
 LL |     let ptr: *const (dyn fmt::Debug + Send + Sync) = unsafe { std::mem::transmute(ptr) };
-   |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: wrong trait in wide pointer vtable: expected `std::fmt::Debug + std::marker::Send + std::marker::Sync`, but encountered `std::fmt::Display`
+   |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

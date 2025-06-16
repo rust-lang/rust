@@ -2,7 +2,7 @@ error: Undefined Behavior: ABI mismatch: calling a non-variadic function with a 
   --> tests/fail/shims/vararg_caller_signature_mismatch.rs:LL:CC
    |
 LL |     let res = unsafe { pipe(fds.as_mut_ptr()) };
-   |                        ^^^^^^^^^^^^^^^^^^^^^^ ABI mismatch: calling a non-variadic function with a variadic caller-side signature
+   |                        ^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

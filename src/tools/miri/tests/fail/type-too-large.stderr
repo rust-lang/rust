@@ -2,7 +2,7 @@ error: post-monomorphization error: values of the type `[u8; 2305843011361177600
   --> tests/fail/type-too-large.rs:LL:CC
    |
 LL |     _fat = [0; (1u64 << 61) as usize + (1u64 << 31) as usize];
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ values of the type `[u8; 2305843011361177600]` are too big for the target architecture
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ post-monomorphization error occurred here
    |
    = note: BACKTRACE:
    = note: inside `main` at tests/fail/type-too-large.rs:LL:CC

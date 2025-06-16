@@ -2,7 +2,7 @@ error: Undefined Behavior: using uninitialized data, but this operation requires
   --> tests/fail-dep/concurrency/libc_pthread_mutexattr_double_destroy.rs:LL:CC
    |
 LL |         libc::pthread_mutexattr_destroy(attr.as_mut_ptr());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

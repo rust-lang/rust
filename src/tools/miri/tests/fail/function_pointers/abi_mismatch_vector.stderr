@@ -2,7 +2,7 @@ error: Undefined Behavior: calling a function with argument of type std::simd::S
   --> tests/fail/function_pointers/abi_mismatch_vector.rs:LL:CC
    |
 LL |     g(Default::default())
-   |     ^^^^^^^^^^^^^^^^^^^^^ calling a function with argument of type std::simd::Simd<u32, 8> passing data of type std::simd::Simd<u64, 4>
+   |     ^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
