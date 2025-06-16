@@ -13,6 +13,10 @@
       let mut _8: std::pin::Pin<&mut {async fn body of ActionPermit<'_, T>::perform()}>;
       let mut _9: &mut std::task::Context<'_>;
       let mut _10: &mut std::task::Context<'_>;
++     let mut _52: *mut ActionPermit<'_, T>;
++     let mut _53: ();
++     let mut _54: *mut {async fn body of ActionPermit<'_, T>::perform()};
++     let mut _55: ();
       scope 1 {
           debug fut => _2;
           let _4: std::pin::Pin<&mut {async fn body of ActionPermit<'_, T>::perform()}>;
@@ -96,12 +100,45 @@
 +                     scope 11 (inlined <std::future::Ready<()> as IntoFuture>::into_future) {
 +                     }
 +                 }
++                 scope 24 (inlined drop_in_place::<ActionPermit<'_, T>> - shim(Some(ActionPermit<'_, T>))) {
++                 }
 +             }
           }
 +         scope 5 (inlined Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}>::new_unchecked) {
 +         }
       }
 +     scope 4 (inlined ActionPermit::<'_, T>::perform) {
++     }
++     scope 25 (inlined drop_in_place::<{async fn body of ActionPermit<'_, T>::perform()}> - shim(Some({async fn body of ActionPermit<'_, T>::perform()}))) {
++         let mut _56: &mut std::task::Context<'_>;
++         let _57: ActionPermit<'_, T>;
++         let mut _58: std::future::Ready<()>;
++         let mut _59: std::future::Ready<()>;
++         let mut _60: ();
++         let mut _62: ();
++         let _63: ();
++         let mut _64: std::task::Poll<()>;
++         let mut _65: std::pin::Pin<&mut std::future::Ready<()>>;
++         let mut _66: &mut std::future::Ready<()>;
++         let mut _67: &mut std::future::Ready<()>;
++         let mut _68: &mut std::task::Context<'_>;
++         let mut _69: &mut std::task::Context<'_>;
++         let mut _70: &mut std::task::Context<'_>;
++         let mut _71: isize;
++         let mut _73: !;
++         let mut _74: &mut std::task::Context<'_>;
++         let mut _75: ();
++         let mut _76: ();
++         let mut _77: &mut std::task::Context<'_>;
++         let mut _78: u32;
++         scope 26 {
++             let mut _61: std::future::Ready<()>;
++             scope 27 {
++                 let _72: ();
++                 scope 28 {
++                 }
++             }
++         }
 +     }
   
       bb0: {
@@ -149,16 +186,11 @@
 +         StorageLive(_40);
 +         _33 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
 +         _32 = discriminant((*_33));
-+         switchInt(move _32) -> [0: bb3, 1: bb10, 3: bb9, otherwise: bb5];
++         switchInt(move _32) -> [0: bb2, 1: bb8, 3: bb7, otherwise: bb4];
       }
   
 -     bb3: {
 +     bb1: {
-+         StorageDead(_2);
-+         return;
-+     }
-+ 
-+     bb2: {
 +         StorageDead(_40);
 +         StorageDead(_39);
 +         StorageDead(_38);
@@ -183,10 +215,34 @@
           _0 = const ();
           StorageDead(_4);
 -         drop(_2) -> [return: bb4, unwind unreachable];
-+         drop(_2) -> [return: bb1, unwind unreachable];
++         StorageLive(_54);
++         _54 = &raw mut _2;
++         StorageLive(_55);
++         StorageLive(_56);
++         StorageLive(_57);
++         StorageLive(_59);
++         StorageLive(_60);
++         StorageLive(_61);
++         StorageLive(_62);
++         StorageLive(_63);
++         StorageLive(_64);
++         StorageLive(_65);
++         StorageLive(_66);
++         StorageLive(_67);
++         StorageLive(_68);
++         StorageLive(_69);
++         StorageLive(_70);
++         StorageLive(_71);
++         StorageLive(_72);
++         StorageLive(_73);
++         StorageLive(_76);
++         StorageLive(_77);
++         StorageLive(_78);
++         _78 = discriminant((*_54));
++         switchInt(move _78) -> [0: bb13, 3: bb14, otherwise: bb12];
       }
   
-+     bb3: {
++     bb2: {
 +         _31 = move _9;
 +         _34 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
 +         _35 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
@@ -204,12 +260,10 @@
 +         StorageDead(_13);
 +         _36 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
 +         (((*_36) as variant#3).1: std::future::Ready<()>) = move _12;
-+         goto -> bb4;
++         goto -> bb3;
 +     }
 + 
-      bb4: {
--         StorageDead(_2);
--         return;
++     bb3: {
 +         StorageLive(_17);
 +         StorageLive(_18);
 +         StorageLive(_19);
@@ -250,14 +304,14 @@
 +         StorageDead(_44);
 +         StorageLive(_50);
 +         _50 = discriminant(_43);
-+         switchInt(move _50) -> [0: bb11, 1: bb12, otherwise: bb5];
++         switchInt(move _50) -> [0: bb9, 1: bb10, otherwise: bb4];
 +     }
 + 
-+     bb5: {
+      bb4: {
 +         unreachable;
 +     }
 + 
-+     bb6: {
++     bb5: {
 +         _17 = const ();
 +         StorageDead(_23);
 +         StorageDead(_21);
@@ -272,10 +326,10 @@
 +         StorageDead(_29);
 +         _38 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
 +         discriminant((*_38)) = 3;
-+         goto -> bb2;
++         goto -> bb1;
 +     }
 + 
-+     bb7: {
++     bb6: {
 +         StorageLive(_26);
 +         _26 = copy ((_18 as Ready).0: ());
 +         _30 = copy _26;
@@ -286,17 +340,13 @@
 +         StorageDead(_17);
 +         StorageDead(_12);
 +         _39 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         drop((((*_39) as variant#3).0: ActionPermit<'_, T>)) -> [return: bb8, unwind unreachable];
++         StorageLive(_52);
++         _52 = &raw mut (((*_39) as variant#3).0: ActionPermit<'_, T>);
++         StorageLive(_53);
++         drop(((*_52).0: std::cell::Ref<'_, T>)) -> [return: bb11, unwind unreachable];
 +     }
 + 
-+     bb8: {
-+         _7 = Poll::<()>::Ready(move _30);
-+         _40 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         discriminant((*_40)) = 1;
-+         goto -> bb2;
-+     }
-+ 
-+     bb9: {
++     bb7: {
 +         StorageLive(_12);
 +         StorageLive(_28);
 +         StorageLive(_29);
@@ -305,18 +355,18 @@
 +         _31 = move _28;
 +         StorageDead(_28);
 +         _16 = const ();
-+         goto -> bb4;
++         goto -> bb3;
 +     }
 + 
-+     bb10: {
-+         assert(const false, "`async fn` resumed after completion") -> [success: bb10, unwind unreachable];
++     bb8: {
++         assert(const false, "`async fn` resumed after completion") -> [success: bb8, unwind unreachable];
 +     }
 + 
-+     bb11: {
++     bb9: {
 +         _51 = option::expect_failed(const "`Ready` polled after completion") -> unwind unreachable;
 +     }
 + 
-+     bb12: {
++     bb10: {
 +         _42 = move ((_43 as Some).0: ());
 +         StorageDead(_50);
 +         StorageDead(_43);
@@ -328,7 +378,57 @@
 +         StorageDead(_22);
 +         StorageDead(_19);
 +         _25 = discriminant(_18);
-+         switchInt(move _25) -> [0: bb7, 1: bb6, otherwise: bb5];
++         switchInt(move _25) -> [0: bb6, 1: bb5, otherwise: bb4];
++     }
++ 
++     bb11: {
++         StorageDead(_53);
++         StorageDead(_52);
++         _7 = Poll::<()>::Ready(move _30);
++         _40 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
++         discriminant((*_40)) = 1;
++         goto -> bb1;
++     }
++ 
++     bb12: {
++         StorageDead(_78);
++         StorageDead(_77);
++         StorageDead(_76);
++         StorageDead(_73);
++         StorageDead(_72);
++         StorageDead(_71);
++         StorageDead(_70);
++         StorageDead(_69);
++         StorageDead(_68);
++         StorageDead(_67);
++         StorageDead(_66);
++         StorageDead(_65);
++         StorageDead(_64);
++         StorageDead(_63);
++         StorageDead(_62);
++         StorageDead(_61);
++         StorageDead(_60);
++         StorageDead(_59);
++         StorageDead(_57);
++         StorageDead(_56);
++         StorageDead(_55);
++         StorageDead(_54);
+          StorageDead(_2);
+          return;
++     }
++ 
++     bb13: {
++         drop(((*_54).0: ActionPermit<'_, T>)) -> [return: bb12, unwind unreachable];
++     }
++ 
++     bb14: {
++         StorageLive(_58);
++         StorageLive(_74);
++         StorageLive(_75);
++         StorageDead(_75);
++         StorageDead(_74);
++         StorageDead(_58);
++         drop((((*_54) as variant#3).0: ActionPermit<'_, T>)) -> [return: bb12, unwind unreachable];
       }
   }
   

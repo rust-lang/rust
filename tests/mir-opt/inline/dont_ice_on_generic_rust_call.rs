@@ -1,4 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
 //@ compile-flags: -Zmir-enable-passes=+Inline --crate-type=lib
 
 #![feature(fn_traits, tuple_trait, unboxed_closures)]

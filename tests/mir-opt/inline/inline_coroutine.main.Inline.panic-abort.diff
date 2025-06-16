@@ -8,6 +8,8 @@
       let mut _3: &mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8};
       let mut _4: {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8};
 +     let mut _5: bool;
++     let mut _9: *mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8};
++     let mut _10: ();
       scope 1 {
           debug _r => _1;
       }
@@ -23,6 +25,15 @@
 +         let mut _6: &mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8};
 +         let mut _7: u32;
 +         let mut _8: i32;
++     }
++     scope 6 (inlined drop_in_place::<{coroutine@$DIR/inline_coroutine.rs:20:5: 20:8}> - shim(Some({coroutine@$DIR/inline_coroutine.rs:20:5: 20:8}))) {
++         debug a => _15;
++         let mut _11: bool;
++         let mut _12: i32;
++         let mut _13: bool;
++         let mut _14: bool;
++         let _15: bool;
++         let mut _16: u32;
 +     }
   
       bb0: {
@@ -41,70 +52,88 @@
 +         StorageLive(_7);
 +         _6 = copy (_2.0: &mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8});
 +         _7 = discriminant((*_6));
-+         switchInt(move _7) -> [0: bb3, 1: bb7, 3: bb8, otherwise: bb9];
++         switchInt(move _7) -> [0: bb2, 1: bb6, 3: bb7, otherwise: bb8];
       }
   
       bb1: {
 -         _3 = &mut _4;
 -         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8}>::new(move _3) -> [return: bb2, unwind unreachable];
-+         StorageDead(_4);
-+         _0 = const ();
-+         StorageDead(_1);
-+         return;
++         StorageDead(_7);
++         StorageDead(_6);
++         StorageDead(_5);
++         StorageDead(_2);
++         StorageLive(_9);
++         _9 = &raw mut _4;
++         StorageLive(_10);
++         StorageLive(_11);
++         StorageLive(_13);
++         StorageLive(_14);
++         StorageLive(_15);
++         StorageLive(_16);
++         _16 = discriminant((*_9));
++         switchInt(move _16) -> [0: bb9, 3: bb10, otherwise: bb9];
       }
   
       bb2: {
 -         StorageDead(_3);
 -         _1 = <{coroutine@$DIR/inline_coroutine.rs:20:5: 20:8} as Coroutine<bool>>::resume(move _2, const false) -> [return: bb3, unwind unreachable];
-+         StorageDead(_7);
-+         StorageDead(_6);
-+         StorageDead(_5);
-+         StorageDead(_2);
-+         drop(_4) -> [return: bb1, unwind unreachable];
++         StorageLive(_8);
++         switchInt(copy _5) -> [0: bb3, otherwise: bb4];
       }
   
       bb3: {
 -         StorageDead(_2);
 -         drop(_4) -> [return: bb4, unwind unreachable];
-+         StorageLive(_8);
-+         switchInt(copy _5) -> [0: bb4, otherwise: bb5];
++         _8 = const 13_i32;
++         goto -> bb5;
       }
   
       bb4: {
--         StorageDead(_4);
--         _0 = const ();
--         StorageDead(_1);
--         return;
-+         _8 = const 13_i32;
-+         goto -> bb6;
++         _8 = const 7_i32;
++         goto -> bb5;
 +     }
 + 
 +     bb5: {
-+         _8 = const 7_i32;
-+         goto -> bb6;
-+     }
-+ 
-+     bb6: {
 +         _1 = CoroutineState::<i32, bool>::Yielded(move _8);
 +         StorageDead(_8);
 +         discriminant((*_6)) = 3;
-+         goto -> bb2;
++         goto -> bb1;
++     }
++ 
++     bb6: {
++         assert(const false, "coroutine resumed after completion") -> [success: bb6, unwind unreachable];
 +     }
 + 
 +     bb7: {
-+         assert(const false, "coroutine resumed after completion") -> [success: bb7, unwind unreachable];
-+     }
-+ 
-+     bb8: {
 +         StorageLive(_8);
 +         StorageDead(_8);
 +         _1 = CoroutineState::<i32, bool>::Complete(copy _5);
 +         discriminant((*_6)) = 1;
-+         goto -> bb2;
++         goto -> bb1;
++     }
++ 
++     bb8: {
++         unreachable;
 +     }
 + 
 +     bb9: {
-+         unreachable;
++         StorageDead(_16);
++         StorageDead(_15);
++         StorageDead(_14);
++         StorageDead(_13);
++         StorageDead(_11);
++         StorageDead(_10);
++         StorageDead(_9);
+          StorageDead(_4);
+          _0 = const ();
+          StorageDead(_1);
+          return;
++     }
++ 
++     bb10: {
++         StorageLive(_12);
++         StorageDead(_12);
++         goto -> bb9;
       }
   }
   

@@ -1,0 +1,271 @@
+- // MIR for `caller` before Inline
++ // MIR for `caller` after Inline
+  
+  fn caller(_1: Box<[i32]>) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: std::boxed::Box<[i32]>;
+      let mut _4: *const [i32];
++     let mut _5: *mut std::boxed::Box<[i32]>;
++     let mut _6: ();
++     let mut _27: std::alloc::Layout;
++     scope 1 (inlined drop_in_place::<Box<[i32]>> - shim(Some(Box<[i32]>))) {
++         let mut _7: &mut std::boxed::Box<[i32]>;
++         let mut _8: ();
++         let mut _9: &mut std::boxed::Box<[i32]>;
++         let mut _10: ();
++         let mut _11: *const [i32];
++         scope 2 (inlined <Box<[i32]> as Drop>::drop) {
++             let mut _13: *const [i32];
++             let mut _14: *mut [i32];
++             let mut _15: &std::alloc::Layout;
++             let _16: ();
++             let mut _17: &std::alloc::Global;
++             let _25: std::ptr::NonNull<[i32]>;
++             let _26: std::marker::PhantomData<[i32]>;
++             scope 3 {
++                 let _12: std::alloc::Layout;
++                 scope 4 {
++                     scope 12 (inlined Layout::size) {
++                     }
++                     scope 13 (inlined Unique::<[i32]>::cast::<u8>) {
++                         let mut _23: std::ptr::NonNull<u8>;
++                         scope 14 (inlined NonNull::<[i32]>::cast::<u8>) {
++                             let mut _24: *const u8;
++                             scope 15 (inlined NonNull::<[i32]>::as_ptr) {
++                             }
++                         }
++                     }
++                     scope 16 (inlined <NonNull<u8> as From<Unique<u8>>>::from) {
++                         scope 17 (inlined Unique::<u8>::as_non_null_ptr) {
++                         }
++                     }
++                     scope 18 (inlined <std::alloc::Global as Allocator>::deallocate) {
++                         let mut _28: usize;
++                         let mut _29: &std::alloc::Layout;
++                         let mut _30: *mut u8;
++                         let mut _31: std::alloc::Layout;
++                         scope 19 (inlined Layout::size) {
++                         }
++                         scope 20 (inlined NonNull::<u8>::as_ptr) {
++                         }
++                         scope 21 (inlined std::alloc::dealloc) {
++                             let mut _32: &std::alloc::Layout;
++                             let mut _33: usize;
++                             let mut _34: &std::alloc::Layout;
++                             scope 22 (inlined Layout::size) {
++                             }
++                             scope 23 (inlined Layout::align) {
++                                 let mut _35: std::ptr::Alignment;
++                                 scope 24 (inlined std::ptr::Alignment::as_usize) {
++                                     let _36: std::ptr::alignment::AlignmentEnum;
++                                     let mut _37: u32;
++                                     let mut _38: bool;
++                                     let mut _39: bool;
++                                     let mut _40: bool;
++                                 }
++                             }
++                         }
++                     }
++                 }
++                 scope 5 (inlined Unique::<[i32]>::as_ptr) {
++                     scope 6 (inlined NonNull::<[i32]>::as_ptr) {
++                     }
++                 }
++                 scope 7 (inlined Layout::for_value_raw::<[i32]>) {
++                     let mut _18: usize;
++                     let mut _19: usize;
++                     scope 8 {
++                         scope 11 (inlined #[track_caller] Layout::from_size_align_unchecked) {
++                             let mut _20: bool;
++                             let _21: ();
++                             let mut _22: std::ptr::Alignment;
++                         }
++                     }
++                     scope 9 (inlined size_of_val_raw::<[i32]>) {
++                     }
++                     scope 10 (inlined align_of_val_raw::<[i32]>) {
++                     }
++                 }
++             }
++         }
++     }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = move _1;
+          _4 = copy ((_3.0: std::ptr::Unique<[i32]>).0: std::ptr::NonNull<[i32]>) as *const [i32] (Transmute);
+-         _2 = callee(move (*_4)) -> [return: bb1, unwind: bb3];
++         _2 = callee(move (*_4)) -> [return: bb1, unwind: bb2];
+      }
+  
+      bb1: {
+-         drop(_3) -> [return: bb2, unwind: bb4];
++         StorageLive(_5);
++         _5 = &raw mut _3;
++         StorageLive(_6);
++         StorageLive(_7);
++         StorageLive(_8);
++         StorageLive(_9);
++         StorageLive(_10);
++         StorageLive(_11);
++         _11 = copy (((*_5).0: std::ptr::Unique<[i32]>).0: std::ptr::NonNull<[i32]>) as *const [i32] (Transmute);
++         drop((*_11)) -> [return: bb4, unwind: bb5];
+      }
+  
+-     bb2: {
++     bb2 (cleanup): {
++         drop(_3) -> [return: bb3, unwind terminate(cleanup)];
++     }
++ 
++     bb3 (cleanup): {
++         resume;
++     }
++ 
++     bb4: {
++         _7 = &mut (*_5);
++         StorageLive(_12);
++         StorageLive(_14);
++         StorageLive(_16);
++         StorageLive(_18);
++         StorageLive(_21);
++         StorageLive(_23);
++         StorageLive(_25);
++         StorageLive(_26);
++         _25 = copy (((*_7).0: std::ptr::Unique<[i32]>).0: std::ptr::NonNull<[i32]>);
++         _26 = copy (((*_7).0: std::ptr::Unique<[i32]>).1: std::marker::PhantomData<[i32]>);
++         StorageLive(_13);
++         _14 = copy _25 as *mut [i32] (Transmute);
++         _13 = copy _25 as *const [i32] (Transmute);
++         StorageLive(_19);
++         _18 = std::intrinsics::size_of_val::<[i32]>(copy _13) -> [return: bb8, unwind unreachable];
++     }
++ 
++     bb5 (cleanup): {
++         _9 = &mut (*_5);
++         _10 = <Box<[i32]> as Drop>::drop(move _9) -> [return: bb3, unwind terminate(cleanup)];
++     }
++ 
++     bb6: {
++         StorageDead(_26);
++         StorageDead(_25);
++         StorageDead(_23);
++         StorageDead(_21);
++         StorageDead(_18);
++         StorageDead(_16);
++         StorageDead(_14);
++         StorageDead(_12);
++         StorageDead(_11);
++         StorageDead(_10);
++         StorageDead(_9);
++         StorageDead(_8);
++         StorageDead(_7);
++         StorageDead(_6);
++         StorageDead(_5);
+          StorageDead(_3);
+          StorageDead(_2);
+          _0 = const ();
+          return;
+      }
+  
+-     bb3 (cleanup): {
+-         drop(_3) -> [return: bb4, unwind terminate(cleanup)];
++     bb7: {
++         StorageLive(_17);
++         _17 = &((*_7).1: std::alloc::Global);
++         StorageLive(_24);
++         _24 = copy _14 as *const u8 (PtrToPtr);
++         _23 = NonNull::<u8> { pointer: move _24 };
++         StorageDead(_24);
++         StorageLive(_27);
++         _27 = copy _12;
++         StorageLive(_28);
++         StorageLive(_29);
++         _29 = &_27;
++         _28 = copy (_27.0: usize);
++         StorageDead(_29);
++         switchInt(move _28) -> [0: bb13, otherwise: bb12];
+      }
+  
+-     bb4 (cleanup): {
+-         resume;
++     bb8: {
++         _19 = std::intrinsics::align_of_val::<[i32]>(move _13) -> [return: bb9, unwind unreachable];
++     }
++ 
++     bb9: {
++         StorageLive(_20);
++         _20 = UbChecks();
++         switchInt(move _20) -> [0: bb11, otherwise: bb10];
++     }
++ 
++     bb10: {
++         _21 = Layout::from_size_align_unchecked::precondition_check(copy _18, copy _19) -> [return: bb11, unwind unreachable];
++     }
++ 
++     bb11: {
++         StorageDead(_20);
++         StorageLive(_22);
++         _22 = copy _19 as std::ptr::Alignment (Transmute);
++         _12 = Layout { size: copy _18, align: move _22 };
++         StorageDead(_22);
++         StorageDead(_19);
++         StorageDead(_13);
++         StorageLive(_15);
++         _15 = &_12;
++         StorageDead(_15);
++         switchInt(move _18) -> [0: bb6, otherwise: bb7];
++     }
++ 
++     bb12: {
++         StorageLive(_30);
++         _30 = copy _23 as *mut u8 (Transmute);
++         StorageLive(_31);
++         _31 = copy _27;
++         StorageLive(_32);
++         _32 = &_31;
++         StorageDead(_32);
++         StorageLive(_33);
++         StorageLive(_34);
++         _34 = &_31;
++         StorageLive(_35);
++         _35 = copy (_27.1: std::ptr::Alignment);
++         StorageLive(_37);
++         StorageLive(_38);
++         StorageLive(_39);
++         StorageLive(_40);
++         StorageLive(_36);
++         _36 = copy (_35.0: std::ptr::alignment::AlignmentEnum);
++         _37 = discriminant(_36);
++         _38 = Ge(copy _37, const 1_u32);
++         _39 = Le(copy _37, const 2147483648_u32);
++         _40 = BitAnd(move _38, move _39);
++         assume(move _40);
++         _33 = copy _37 as usize (IntToInt);
++         StorageDead(_36);
++         StorageDead(_40);
++         StorageDead(_39);
++         StorageDead(_38);
++         StorageDead(_37);
++         StorageDead(_35);
++         StorageDead(_34);
++         _16 = alloc::alloc::__rust_dealloc(move _30, move _28, move _33) -> [return: bb14, unwind unreachable];
++     }
++ 
++     bb13: {
++         StorageDead(_28);
++         StorageDead(_27);
++         StorageDead(_17);
++         goto -> bb6;
++     }
++ 
++     bb14: {
++         StorageDead(_33);
++         StorageDead(_31);
++         StorageDead(_30);
++         goto -> bb13;
+      }
+  }
+  
