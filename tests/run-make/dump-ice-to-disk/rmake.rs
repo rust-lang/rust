@@ -17,14 +17,14 @@
 //!
 //! # Test history
 //!
-//! - The previous rmake.rs iteration of this test was flakey for unknown reason on `i686-mingw`
-//!   *specifically*, so assertion failures in this test was made extremely verbose to help
-//!   diagnose why the ICE messages was different *specifically* on `i686-mingw`.
-//! - An attempt is made to re-enable this test on `i686-mingw` (by removing `ignore-windows`). If
-//!   this test is still flakey, please restore the `ignore-windows` directive.
+//! The previous rmake.rs iteration of this test was flaky for unknown reason on
+//! `i686-pc-windows-gnu` *specifically*, so assertion failures in this test was made extremely
+//! verbose to help diagnose why the ICE messages was different. It appears that backtraces on
+//! `i686-pc-windows-gnu` specifically are quite unpredictable in how many backtrace frames are
+//! involved.
 
-//@ ignore-windows
-//FIXME(#128911): still flakey on i686-mingw.
+//@ ignore-cross-compile (exercising ICE dump on host)
+//@ ignore-i686-pc-windows-gnu (unwind mechanism produces unpredictable backtraces)
 
 use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
