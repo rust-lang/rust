@@ -344,7 +344,7 @@ config_data! {
         /// - typing `{` in a use item adds a closing `}` in the right place
         /// - typing `>` to complete a return type `->` will insert a whitespace after it
         /// - typing `<` in a path or type position inserts a closing `>` after the path or type.
-        typing_triggerChars: Option<String> = Some("=.".to_owned()),
+        typing_triggerChars: Option<String> = Some("=.+".to_owned()),
 
 
         /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].

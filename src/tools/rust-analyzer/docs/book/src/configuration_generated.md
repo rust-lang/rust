@@ -1410,7 +1410,7 @@ Show documentation.
 
 ## rust-analyzer.typing.triggerChars {#typing.triggerChars}
 
-Default: `"=."`
+Default: `"=.+"`
 
 Specify the characters allowed to invoke special on typing triggers.
 - typing `=` after `let` tries to smartly add `;` if `=` is followed by an existing expression
