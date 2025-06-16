@@ -20,7 +20,7 @@ use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, cargo_profile_var,
+    Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, StepMetadata, cargo_profile_var,
 };
 use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -478,6 +478,13 @@ macro_rules! bootstrap_tool {
                         ToolArtifactKind::Binary
                     }
                 })
+            }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                Some(
+                    StepMetadata::build(stringify!($name), self.target)
+                        .built_by(self.compiler)
+                )
             }
         }
         )+

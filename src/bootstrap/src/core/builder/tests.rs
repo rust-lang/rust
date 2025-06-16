@@ -1242,7 +1242,27 @@ mod staging {
     use crate::core::builder::tests::{
         TEST_TRIPLE_1, configure, configure_with_args, render_steps, run_build,
     };
+    use crate::utils::cache::Cache;
     use crate::utils::tests::{ConfigBuilder, TestCtx};
+
+    #[test]
+    fn build_compiler_no_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .get_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_compiler_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("build").path("compiler").stage(0).run();
+    }
 
     #[test]
     fn build_compiler_stage_1() {
@@ -1252,22 +1272,173 @@ mod staging {
                 .path("compiler")
                 .stage(1)
                 .get_steps(), @r"
-        [build] rustc 0 <host> -> std 0 <host>
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         ");
     }
 
+    #[test]
+    fn build_compiler_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .stage(2)
+                .get_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        ");
+    }
+
+    #[test]
+    fn build_library_no_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+            .path("library")
+            .get_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_library_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("build").path("library").stage(0).run();
+    }
+
+    #[test]
+    fn build_library_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("library")
+                .stage(1)
+                .get_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+    }
+
+    #[test]
+    fn build_library_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("library")
+                .stage(2)
+                .get_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        ");
+    }
+
+    #[test]
+    fn build_miri_no_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("miri")
+                .get_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_miri_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("build").path("miri").stage(0).run();
+    }
+
+    #[test]
+    fn build_miri_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("miri")
+                .stage(1)
+                .get_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        ");
+    }
+
+    #[test]
+    fn build_miri_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("miri")
+                .stage(2)
+                .get_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        ");
+    }
+
+    #[test]
+    fn build_bootstrap_tool_no_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("opt-dist")
+                .get_steps(), @"[build] rustc 0 <host> -> OptimizedDist <host>");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_bootstrap_tool_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("build").path("opt-dist").stage(0).run();
+    }
+
+    #[test]
+    fn build_bootstrap_tool_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("opt-dist")
+                .stage(1)
+                .get_steps(), @"[build] rustc 0 <host> -> OptimizedDist <host>");
+    }
+
+    #[test]
+    fn build_bootstrap_tool_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("opt-dist")
+                .stage(2)
+                .get_steps(), @"[build] rustc 0 <host> -> OptimizedDist <host>");
+    }
+
     impl ConfigBuilder {
-        fn get_steps(self) -> String {
+        fn run(self) -> Cache {
             let config = self.create_config();
 
             let kind = config.cmd.kind();
             let build = Build::new(config);
             let builder = Builder::new(&build);
             builder.run_step_descriptions(&Builder::get_step_descriptions(kind), &builder.paths);
-            render_steps(&builder.cache.into_executed_steps())
+            builder.cache
+        }
+
+        fn get_steps(self) -> String {
+            let cache = self.run();
+            render_steps(&cache.into_executed_steps())
         }
     }
 }
