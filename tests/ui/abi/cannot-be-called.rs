@@ -18,16 +18,10 @@
 #![no_core]
 #![feature(
     no_core,
-    lang_items,
-    abi_ptx,
     abi_msp430_interrupt,
     abi_avr_interrupt,
-    abi_gpu_kernel,
     abi_x86_interrupt,
-    abi_riscv_interrupt,
-    abi_c_cmse_nonsecure_call,
-    abi_vectorcall,
-    cmse_nonsecure_entry
+    abi_riscv_interrupt
 )]
 
 extern crate minicore;
@@ -45,10 +39,10 @@ extern "x86-interrupt" fn x86() {}
 //[riscv32,riscv64,avr,msp430]~^ ERROR is not a supported ABI
 
 fn call_the_interrupts() {
-    msp430();
-    //[msp430]~^ ERROR functions with the "msp430-interrupt" ABI cannot be called
     avr();
     //[avr]~^ ERROR functions with the "avr-interrupt" ABI cannot be called
+    msp430();
+    //[msp430]~^ ERROR functions with the "msp430-interrupt" ABI cannot be called
     riscv_m();
     //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-m" ABI cannot be called
     riscv_s();
@@ -57,18 +51,18 @@ fn call_the_interrupts() {
     //[x64,x64_win,i686]~^ ERROR functions with the "x86-interrupt" ABI cannot be called
 }
 
-fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-    //[x64,x64_win,i686,riscv32,riscv64,avr]~^ WARN unsupported_fn_ptr_calling_conventions
-    //[x64,x64_win,i686,riscv32,riscv64,avr]~^^ WARN this was previously accepted
-    f()
-    //[msp430]~^ ERROR functions with the "msp430-interrupt" ABI cannot be called
-}
-
 fn avr_ptr(f: extern "avr-interrupt" fn()) {
     //[x64,x64_win,i686,riscv32,riscv64,msp430]~^ WARN unsupported_fn_ptr_calling_conventions
     //[x64,x64_win,i686,riscv32,riscv64,msp430]~^^ WARN this was previously accepted
     f()
     //[avr]~^ ERROR functions with the "avr-interrupt" ABI cannot be called
+}
+
+fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
+    //[x64,x64_win,i686,riscv32,riscv64,avr]~^ WARN unsupported_fn_ptr_calling_conventions
+    //[x64,x64_win,i686,riscv32,riscv64,avr]~^^ WARN this was previously accepted
+    f()
+    //[msp430]~^ ERROR functions with the "msp430-interrupt" ABI cannot be called
 }
 
 fn riscv_m_ptr(f: extern "riscv-interrupt-m" fn()) {

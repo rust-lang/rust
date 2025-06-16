@@ -1,4 +1,4 @@
-error: functions with the `"custom"` ABI must be unsafe
+error: functions with the "custom" ABI must be unsafe
   --> $DIR/feature-gate-abi-custom.rs:16:5
    |
 LL |     extern "custom" fn m7();
@@ -9,7 +9,7 @@ help: add the `unsafe` keyword to this definition
 LL |     unsafe extern "custom" fn m7();
    |     ++++++
 
-error: functions with the `"custom"` ABI must be unsafe
+error: functions with the "custom" ABI must be unsafe
   --> $DIR/feature-gate-abi-custom.rs:20:5
    |
 LL |     extern "custom" fn dm7() {
@@ -20,7 +20,7 @@ help: add the `unsafe` keyword to this definition
 LL |     unsafe extern "custom" fn dm7() {
    |     ++++++
 
-error: functions with the `"custom"` ABI must be unsafe
+error: functions with the "custom" ABI must be unsafe
   --> $DIR/feature-gate-abi-custom.rs:32:5
    |
 LL |     extern "custom" fn m7() {
@@ -31,7 +31,7 @@ help: add the `unsafe` keyword to this definition
 LL |     unsafe extern "custom" fn m7() {
    |     ++++++
 
-error: functions with the `"custom"` ABI must be unsafe
+error: functions with the "custom" ABI must be unsafe
   --> $DIR/feature-gate-abi-custom.rs:42:5
    |
 LL |     extern "custom" fn im7() {
