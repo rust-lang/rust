@@ -1,16 +1,16 @@
-/// The search graph is responsible for caching and cycle detection in the trait
-/// solver. Making sure that caching doesn't result in soundness bugs or unstable
-/// query results is very challenging and makes this one of the most-involved
-/// self-contained components of the compiler.
-///
-/// We added fuzzing support to test its correctness. The fuzzers used to verify
-/// the current implementation can be found in https://github.com/lcnr/search_graph_fuzz.
-///
-/// This is just a quick overview of the general design, please check out the relevant
-/// [rustc-dev-guide chapter](https://rustc-dev-guide.rust-lang.org/solve/caching.html) for
-/// more details. Caching is split between a global cache and the per-cycle `provisional_cache`.
-/// The global cache has to be completely unobservable, while the per-cycle cache may impact
-/// behavior as long as the resulting behavior is still correct.
+//! The search graph is responsible for caching and cycle detection in the trait
+//! solver. Making sure that caching doesn't result in soundness bugs or unstable
+//! query results is very challenging and makes this one of the most-involved
+//! self-contained components of the compiler.
+//!
+//! We added fuzzing support to test its correctness. The fuzzers used to verify
+//! the current implementation can be found in <https://github.com/lcnr/search_graph_fuzz>.
+//!
+//! This is just a quick overview of the general design, please check out the relevant
+//! [rustc-dev-guide chapter](https://rustc-dev-guide.rust-lang.org/solve/caching.html) for
+//! more details. Caching is split between a global cache and the per-cycle `provisional_cache`.
+//! The global cache has to be completely unobservable, while the per-cycle cache may impact
+//! behavior as long as the resulting behavior is still correct.
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::hash_map::Entry;
