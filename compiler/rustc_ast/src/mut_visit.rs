@@ -168,7 +168,7 @@ pub trait MutVisitor: Sized + MutVisitorResult<Result = ()> {
         walk_flat_map_arm(self, arm)
     }
 
-    fn visit_pat(&mut self, p: &mut P<Pat>) {
+    fn visit_pat(&mut self, p: &mut Pat) {
         walk_pat(self, p);
     }
 
@@ -176,7 +176,7 @@ pub trait MutVisitor: Sized + MutVisitorResult<Result = ()> {
         walk_anon_const(self, c);
     }
 
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         walk_expr(self, e);
     }
 
@@ -194,7 +194,7 @@ pub trait MutVisitor: Sized + MutVisitorResult<Result = ()> {
         walk_generic_arg(self, arg);
     }
 
-    fn visit_ty(&mut self, t: &mut P<Ty>) {
+    fn visit_ty(&mut self, t: &mut Ty) {
         walk_ty(self, t);
     }
 
