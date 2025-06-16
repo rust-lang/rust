@@ -13,7 +13,7 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
-#![feature(no_core, lang_items, repr_simd, intrinsics)]
+#![feature(no_core, lang_items, repr_simd)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
@@ -34,9 +34,6 @@ pub struct m64x2([i64; 2]);
 
 #[repr(simd)]
 pub struct m64x4([i64; 4]);
-
-#[rustc_intrinsic]
-unsafe fn simd_bitmask<V, B>(mask: V) -> B;
 
 // CHECK-LABEL: bitmask_m8x16
 #[no_mangle]

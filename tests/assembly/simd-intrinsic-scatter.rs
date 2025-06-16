@@ -6,7 +6,7 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
-#![feature(no_core, lang_items, repr_simd, intrinsics)]
+#![feature(no_core, lang_items, repr_simd)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
@@ -21,9 +21,6 @@ pub struct m64x4([i64; 4]);
 
 #[repr(simd)]
 pub struct pf64x4([*mut f64; 4]);
-
-#[rustc_intrinsic]
-unsafe fn simd_scatter<V, P, M>(values: V, pointer: P, mask: M);
 
 // CHECK-LABEL: scatter_f64x4
 #[no_mangle]
