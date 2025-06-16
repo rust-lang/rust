@@ -1,6 +1,6 @@
-hir_typeck_abi_custom_call =
-    functions with the `"custom"` ABI cannot be called
-    .note = an `extern "custom"` function can only be called from within inline assembly
+hir_typeck_abi_cannot_be_called =
+    functions with the {$abi} ABI cannot be called
+    .note = an `extern {$abi}` function can only be called using inline assembly
 
 hir_typeck_add_missing_parentheses_in_range = you must surround the range in parentheses to call its `{$func_name}` function
 

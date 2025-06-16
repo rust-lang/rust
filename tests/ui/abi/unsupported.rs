@@ -81,6 +81,7 @@ fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
     //[x64,x64_win,i686,arm,aarch64]~^ WARN unsupported_fn_ptr_calling_conventions
     //[x64,x64_win,i686,arm,aarch64]~^^ WARN this was previously accepted
     f()
+    //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-m" ABI cannot be called
 }
 extern "riscv-interrupt-m" {}
 //[x64,x64_win,i686,arm,aarch64]~^ ERROR is not a supported ABI
@@ -91,6 +92,7 @@ fn x86_ptr(f: extern "x86-interrupt" fn()) {
     //[aarch64,arm,riscv32,riscv64]~^ WARN unsupported_fn_ptr_calling_conventions
     //[aarch64,arm,riscv32,riscv64]~^^ WARN this was previously accepted
     f()
+    //[x64,x64_win,i686]~^ ERROR functions with the "x86-interrupt" ABI cannot be called
 }
 extern "x86-interrupt" {}
 //[aarch64,arm,riscv32,riscv64]~^ ERROR is not a supported ABI
