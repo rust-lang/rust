@@ -1,4 +1,5 @@
 use rustc_attr_data_structures::AttributeKind;
+use rustc_feature::template;
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
@@ -13,37 +14,33 @@ pub(crate) struct ConfusablesParser {
 }
 
 impl<S: Stage> AttributeParser<S> for ConfusablesParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(&[sym::rustc_confusables], |this, cx, args| {
-        let Some(list) = args.list() else {
-            // FIXME(jdonszelmann): error when not a list? Bring validation code here.
-            //       NOTE: currently subsequent attributes are silently ignored using
-            //       tcx.get_attr().
-            return;
-        };
-
-        if list.is_empty() {
-            cx.emit_err(session_diagnostics::EmptyConfusables { span: cx.attr_span });
-        }
-
-        for param in list.mixed() {
-            let span = param.span();
-
-            let Some(lit) = param.lit() else {
-                cx.emit_err(session_diagnostics::IncorrectMetaItem {
-                    span,
-                    suggestion: Some(session_diagnostics::IncorrectMetaItemSuggestion {
-                        lo: span.shrink_to_lo(),
-                        hi: span.shrink_to_hi(),
-                    }),
-                });
-                continue;
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+        &[sym::rustc_confusables],
+        template!(List: r#""name1", "name2", ..."#),
+        |this, cx, args| {
+            let Some(list) = args.list() else {
+                cx.expected_list(cx.attr_span);
+                return;
             };
 
-            this.confusables.push(lit.symbol);
-        }
+            if list.is_empty() {
+                cx.emit_err(session_diagnostics::EmptyConfusables { span: cx.attr_span });
+            }
 
-        this.first_span.get_or_insert(cx.attr_span);
-    })];
+            for param in list.mixed() {
+                let span = param.span();
+
+                let Some(lit) = param.lit().and_then(|i| i.value_str()) else {
+                    cx.expected_string_literal(span, param.lit());
+                    continue;
+                };
+
+                this.confusables.push(lit);
+            }
+
+            this.first_span.get_or_insert(cx.attr_span);
+        },
+    )];
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.confusables.is_empty() {

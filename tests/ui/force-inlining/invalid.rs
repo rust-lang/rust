@@ -9,7 +9,6 @@
 // Test that invalid force inlining attributes error as expected.
 
 #[rustc_force_inline("foo")]
-//~^ ERROR malformed `rustc_force_inline` attribute input
 pub fn forced1() {
 }
 

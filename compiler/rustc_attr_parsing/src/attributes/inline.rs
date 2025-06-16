@@ -29,7 +29,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
                     return None;
                 };
 
-                match l.meta_item().and_then(|i| i.word_without_args().map(|i| i.name)) {
+                match l.meta_item().and_then(|i| i.path().word_sym()) {
                     Some(sym::always) => {
                         Some(AttributeKind::Inline(InlineAttr::Always, cx.attr_span))
                     }
@@ -63,7 +63,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(Word, List: "reason", NameValueStr: "reason");
 
-    fn convert(cx: &AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let reason = match args {
             ArgParser::NoArgs => None,
             ArgParser::List(list) => {
@@ -73,7 +73,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
                 };
 
                 let Some(reason) = l.lit().and_then(|i| i.kind.str()) else {
-                    cx.expected_string_literal(l.span());
+                    cx.expected_string_literal(l.span(), l.lit());
                     return None;
                 };
 
@@ -81,7 +81,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
             }
             ArgParser::NameValue(v) => {
                 let Some(reason) = v.value_as_str() else {
-                    cx.expected_string_literal(v.value_span);
+                    cx.expected_string_literal(v.value_span, Some(v.value_as_lit()));
                     return None;
                 };
 
