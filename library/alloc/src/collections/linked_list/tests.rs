@@ -56,48 +56,33 @@ fn list_from<T: Clone>(v: &[T]) -> LinkedList<T> {
     v.iter().cloned().collect()
 }
 
+/// Starting from the head of the LinkedList,
+/// follow the next links, while checking the prev links,
+/// and check that length equals the count of visited nodes.
 fn check_links<T>(list: &LinkedList<T>) {
-    unsafe {
-        let mut len = 0;
-        let mut last_ptr: Option<&Node<T>> = None;
-        let mut node_ptr: &Node<T>;
-        match list.head {
-            None => {
-                // tail node should also be None.
-                assert!(list.tail.is_none());
-                assert_eq!(0, list.len);
-                return;
-            }
-            Some(node) => node_ptr = &*node.as_ptr(),
-        }
-        loop {
-            match (last_ptr, node_ptr.prev) {
-                (None, None) => {}
-                (None, _) => panic!("prev link for head"),
-                (Some(p), Some(pptr)) => {
-                    assert_eq!(p as *const Node<T>, pptr.as_ptr() as *const Node<T>);
-                }
-                _ => panic!("prev link is none, not good"),
-            }
-            match node_ptr.next {
-                Some(next) => {
-                    last_ptr = Some(node_ptr);
-                    node_ptr = &*next.as_ptr();
-                    len += 1;
-                }
-                None => {
-                    len += 1;
-                    break;
-                }
-            }
-        }
+    let mut node: &Node<T> = if let Some(node) = list.head {
+        // SAFETY: depends on correctness of LinkedList
+        unsafe { &*node.as_ptr() }
+    } else {
+        assert!(list.tail.is_none(), "empty list should have no tail node");
+        assert_eq!(list.len, 0, "empty list should have length 0");
+        return;
+    };
 
-        // verify that the tail node points to the last node.
-        let tail = list.tail.as_ref().expect("some tail node").as_ref();
-        assert_eq!(tail as *const Node<T>, node_ptr as *const Node<T>);
-        // check that len matches interior links.
-        assert_eq!(len, list.len);
+    assert!(node.prev.is_none(), "head node should not have a prev link");
+    let mut prev;
+    let mut len = 1;
+    while let Some(next) = node.next {
+        prev = node;
+        // SAFETY: depends on correctness of LinkedList
+        node = unsafe { &*next.as_ptr() };
+        len += 1;
+        assert_eq!(node.prev.expect("missing prev link"), prev.into(), "bad prev link");
     }
+
+    let tail = list.tail.expect("list is non-empty, so there should be a tail node");
+    assert_eq!(tail, node.into(), "tail node points to the last node");
+    assert_eq!(len, list.len, "len matches interior links");
 }
 
 #[test]
@@ -1027,7 +1012,7 @@ fn extract_if_drop_panic_leak() {
 
 macro_rules! struct_with_counted_drop {
     ($struct_name:ident$(($elt_ty:ty))?, $drop_counter:ident $(=> $drop_stmt:expr)?) => {
-        thread_local! {static $drop_counter: Cell<i32> = Cell::new(0);}
+        thread_local! {static $drop_counter: Cell<u32> = Cell::new(0);}
 
         struct $struct_name$(($elt_ty))?;
 
