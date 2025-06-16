@@ -218,8 +218,9 @@
 -         StorageLive(_14);
 -         _14 = &mut _11;
 -         _13 = &mut (*_14);
+-         _12 = move _13;
 +         _13 = &mut _11;
-          _12 = move _13;
++         _12 = copy _13;
           StorageDead(_13);
 -         StorageDead(_14);
           StorageLive(_15);
@@ -251,7 +252,8 @@
           StorageLive(_23);
           StorageLive(_24);
           _24 = copy _21;
-          _23 = opaque::<&&mut usize>(move _24) -> [return: bb3, unwind continue];
+-         _23 = opaque::<&&mut usize>(move _24) -> [return: bb3, unwind continue];
++         _23 = opaque::<&&mut usize>(copy _24) -> [return: bb3, unwind continue];
       }
   
       bb3: {
@@ -275,7 +277,8 @@
           StorageLive(_30);
           StorageLive(_31);
           _31 = copy _28;
-          _30 = opaque::<*mut &mut usize>(move _31) -> [return: bb4, unwind continue];
+-         _30 = opaque::<*mut &mut usize>(move _31) -> [return: bb4, unwind continue];
++         _30 = opaque::<*mut &mut usize>(copy _31) -> [return: bb4, unwind continue];
       }
   
       bb4: {
@@ -296,8 +299,10 @@
           _35 = copy (*_34);
           StorageLive(_36);
           StorageLive(_37);
-          _37 = move _34;
-          _36 = opaque::<&mut usize>(move _37) -> [return: bb5, unwind continue];
+-         _37 = move _34;
+-         _36 = opaque::<&mut usize>(move _37) -> [return: bb5, unwind continue];
++         _37 = copy _34;
++         _36 = opaque::<&mut usize>(copy _37) -> [return: bb5, unwind continue];
       }
   
       bb5: {
@@ -316,15 +321,19 @@
           StorageLive(_41);
           _41 = copy (*_40);
           StorageLive(_42);
-          _42 = move _40;
+-         _42 = move _40;
++         _42 = copy _40;
           StorageLive(_43);
           _43 = copy (*_42);
           StorageLive(_44);
-          _44 = move _42;
+-         _44 = move _42;
++         _44 = copy _42;
           StorageLive(_45);
           StorageLive(_46);
-          _46 = move _44;
-          _45 = opaque::<&mut usize>(move _46) -> [return: bb6, unwind continue];
+-         _46 = move _44;
+-         _45 = opaque::<&mut usize>(move _46) -> [return: bb6, unwind continue];
++         _46 = copy _44;
++         _45 = opaque::<&mut usize>(copy _46) -> [return: bb6, unwind continue];
       }
   
       bb6: {
@@ -364,8 +373,9 @@
 -         StorageLive(_55);
 -         _55 = &mut (*_1);
 -         _54 = &mut (*_55);
+-         _2 = move _54;
 +         _54 = &mut (*_1);
-          _2 = move _54;
++         _2 = copy _54;
           StorageDead(_54);
 -         StorageDead(_55);
           StorageLive(_56);
