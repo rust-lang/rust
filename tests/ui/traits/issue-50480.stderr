@@ -32,10 +32,7 @@ error[E0412]: cannot find type `NotDefined` in this scope
 LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |               ^^^^^^^^^^ not found in this scope
    |
-help: you might be missing a type parameter
-   |
-LL | struct Foo<NotDefined>(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
-   |           ++++++++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0412]: cannot find type `N` in this scope
   --> $DIR/issue-50480.rs:14:18
