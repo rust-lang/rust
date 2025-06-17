@@ -51,5 +51,16 @@ LL | |     }
    = note: `-D clippy::if-same-then-else` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::if_same_then_else)]`
 
-error: aborting due to 4 previous errors
+error: this if-then-else expression assigns a bool literal
+  --> tests/ui/needless_bool_assign.rs:54:12
+   |
+LL |       } else if x || y {
+   |  ____________^
+LL | |         z = true;
+LL | |     } else {
+LL | |         z = false;
+LL | |     }
+   | |_____^ help: you can reduce it to: `{ z = x || y; }`
+
+error: aborting due to 5 previous errors
 

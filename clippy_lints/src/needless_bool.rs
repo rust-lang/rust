@@ -199,11 +199,16 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                 let mut applicability = Applicability::MachineApplicable;
                 let cond = Sugg::hir_with_applicability(cx, cond, "..", &mut applicability);
                 let lhs = snippet_with_applicability(cx, lhs_a.span, "..", &mut applicability);
-                let sugg = if a == b {
+                let mut sugg = if a == b {
                     format!("{cond}; {lhs} = {a:?};")
                 } else {
                     format!("{lhs} = {};", if a { cond } else { !cond })
                 };
+
+                if is_else_clause(cx.tcx, e) {
+                    sugg = format!("{{ {sugg} }}");
+                }
+
                 span_lint_and_sugg(
                     cx,
                     NEEDLESS_BOOL_ASSIGN,
