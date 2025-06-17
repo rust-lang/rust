@@ -1,0 +1,112 @@
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/repr-align.rs:8:14
+   |
+LL | #[repr(align(16.0))]
+   |              ^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/repr-align.rs:11:14
+   |
+LL | #[repr(align(15))]
+   |              ^^
+
+error[E0589]: invalid `repr(align)` attribute: larger than 2^29
+  --> $DIR/repr-align.rs:14:14
+   |
+LL | #[repr(align(4294967296))]
+   |              ^^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/repr-align.rs:21:14
+   |
+LL | #[repr(align(0))]
+   |              ^
+
+error[E0589]: invalid `repr(align)` attribute: not an unsuffixed integer
+  --> $DIR/repr-align.rs:27:14
+   |
+LL | #[repr(align(16.0))]
+   |              ^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/repr-align.rs:30:14
+   |
+LL | #[repr(align(15))]
+   |              ^^
+
+error[E0589]: invalid `repr(align)` attribute: larger than 2^29
+  --> $DIR/repr-align.rs:33:14
+   |
+LL | #[repr(align(4294967296))]
+   |              ^^^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: not a power of two
+  --> $DIR/repr-align.rs:40:14
+   |
+LL | #[repr(align(0))]
+   |              ^
+
+error[E0589]: invalid alignment value: not an unsuffixed integer
+  --> $DIR/repr-align.rs:46:9
+   |
+LL | #[align(16.0)]
+   |         ^^^^
+
+error[E0589]: invalid alignment value: not a power of two
+  --> $DIR/repr-align.rs:49:9
+   |
+LL | #[align(15)]
+   |         ^^
+
+error[E0589]: invalid alignment value: larger than 2^29
+  --> $DIR/repr-align.rs:52:9
+   |
+LL | #[align(4294967296)]
+   |         ^^^^^^^^^^
+
+error[E0589]: invalid alignment value: not a power of two
+  --> $DIR/repr-align.rs:59:9
+   |
+LL | #[align(0)]
+   |         ^
+
+error[E0806]: alignment must not be greater than 8192 bytes for COFF targets
+  --> $DIR/repr-align.rs:17:8
+   |
+LL | #[repr(align(536870912))]
+   |        ^^^^^^^^^^^^^^^^
+
+error[E0806]: alignment must not be greater than 8192 bytes for COFF targets
+  --> $DIR/repr-align.rs:24:8
+   |
+LL | #[repr(align(16384))]
+   |        ^^^^^^^^^^^^
+
+error[E0806]: alignment must not be greater than 8192 bytes for COFF targets
+  --> $DIR/repr-align.rs:36:8
+   |
+LL | #[repr(align(536870912))]
+   |        ^^^^^^^^^^^^^^^^
+
+error[E0806]: alignment must not be greater than 8192 bytes for COFF targets
+  --> $DIR/repr-align.rs:43:8
+   |
+LL | #[repr(align(16384))]
+   |        ^^^^^^^^^^^^
+
+error[E0806]: alignment must not be greater than 8192 bytes for COFF targets
+  --> $DIR/repr-align.rs:55:1
+   |
+LL | #[align(536870912)]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error[E0806]: alignment must not be greater than 8192 bytes for COFF targets
+  --> $DIR/repr-align.rs:62:1
+   |
+LL | #[align(16384)]
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
+
+Some errors have detailed explanations: E0589, E0806.
+For more information about an error, try `rustc --explain E0589`.
