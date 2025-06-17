@@ -30,6 +30,14 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
+//
+// WARNING: When you update `FORMAT_VERSION`, please also update the "Latest feature" line with a
+// description of the change. This minimizes the risk of two concurrent PRs changing
+// `FORMAT_VERSION` from N to N+1 and git merging them without conflicts; the "Latest feature" line
+// will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
+// are deliberately not in a doc comment, because they need not be in public docs.)
+//
+// Latest feature: rustdoc JSON: Don't apply #[repr] privacy heuristics
 pub const FORMAT_VERSION: u32 = 46;
 
 /// The root of the emitted JSON blob.
