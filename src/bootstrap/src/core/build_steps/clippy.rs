@@ -289,7 +289,7 @@ macro_rules! lint_any {
                 let target = self.target;
 
                 if !builder.download_rustc() {
-                    builder.ensure(check::Rustc::new(target, builder).build_kind(Some(Kind::Check)));
+                    builder.ensure(check::Rustc::new(target, builder));
                 };
 
                 let cargo = prepare_tool_cargo(
