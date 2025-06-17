@@ -13,12 +13,12 @@ use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, UniverseIndex};
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::constraints::graph::{ConstraintGraph, Normal, RegionGraph};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
 use crate::consumers::OutlivesConstraint;
-use crate::diagnostics::UniverseInfo;
+use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
 use crate::member_constraints::MemberConstraintSet;
 use crate::region_infer::values::{LivenessValues, PlaceholderIndices};
 use crate::region_infer::{ConstraintSccs, RegionDefinition, Representative, TypeTest};
@@ -181,6 +181,43 @@ impl RegionTracker {
 
         Some((max_u_rvid, max_u))
     }
+
+    /// Check for the second and final type of placeholder leak,
+    /// where a placeholder `'p` outlives (transitively) an existential `'e`
+    /// and `'e` cannot name `'p`. This is sort of a dual of `unnameable_placeholder`;
+    /// one of the members of this SCC cannot be named by the SCC.
+    ///
+    /// Returns *a* culprit (though there may be more than one).
+    fn reaches_existential_that_cannot_name_us(&self) -> Option<RegionVid> {
+        let Representative::Placeholder(_p) = self.representative else {
+            return None;
+        };
+
+        let (reachable_lowest_max_u, reachable_lowest_max_u_rvid) = self.max_nameable_universe;
+
+        (!self.reachable_placeholders.can_be_named_by(reachable_lowest_max_u))
+            .then_some(reachable_lowest_max_u_rvid)
+    }
+
+    /// Determine if this SCC reaches a placeholder that isn't `placeholder_rvid`,
+    /// returning it if that is the case. This prefers the placeholder with the
+    /// smallest region variable ID.
+    fn reaches_other_placeholder(&self, placeholder_rvid: RegionVid) -> Option<RegionVid> {
+        match self.reachable_placeholders {
+            PlaceholderReachability::NoPlaceholders => None,
+            PlaceholderReachability::Placeholders { min_placeholder, max_placeholder, .. }
+                if min_placeholder == max_placeholder =>
+            {
+                None
+            }
+            PlaceholderReachability::Placeholders { min_placeholder, max_placeholder, .. }
+                if min_placeholder == placeholder_rvid =>
+            {
+                Some(max_placeholder)
+            }
+            PlaceholderReachability::Placeholders { min_placeholder, .. } => Some(min_placeholder),
+        }
+    }
 }
 /// Pick the smallest universe index out of two, preferring
 /// the first argument if they are equal.
@@ -293,6 +330,7 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
     constraints: MirTypeckRegionConstraints<'tcx>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     infcx: &BorrowckInferCtxt<'tcx>,
+    errors_buffer: &mut RegionErrors<'tcx>,
 ) -> LoweredConstraints<'tcx> {
     let universal_regions = &universal_region_relations.universal_regions;
     let (definitions, has_placeholders) = region_definitions(universal_regions, infcx);
@@ -357,6 +395,13 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         fr_static,
         &mut outlives_constraints,
         &definitions,
+    );
+
+    find_placeholder_mismatch_errors(
+        &definitions,
+        &constraint_sccs,
+        &scc_annotations,
+        errors_buffer,
     );
 
     let (constraint_sccs, scc_annotations) = if added_constraints {
@@ -509,4 +554,66 @@ fn find_region<'tcx>(
     // we are only searching for regions we found in the region graph,
     // so if we don't find what we are looking for there's a bug somwehere.
     bug!("Should have found something!");
+}
+
+/// Identify errors where placeholders illegally reach other regions, and generate
+/// errors stored into `errors_buffer`.
+///
+/// There are two sources of such errors:
+/// 1. A placeholder reaches (possibly transitively) another placeholder.
+/// 2. A placeholder `p` reaches (possibly transitively) an existential `e`,
+///    where `e` has an allowed maximum universe smaller than `p`'s.
+///
+/// There are other potential placeholder errors, but those are detected after
+/// region inference, since it may apply type tests or member constraints that
+/// alter the contents of SCCs and thus can't be detected at this point.
+#[instrument(skip(definitions, sccs, annotations, errors_buffer), level = "debug")]
+fn find_placeholder_mismatch_errors<'tcx>(
+    definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    sccs: &Sccs<RegionVid, ConstraintSccIndex>,
+    annotations: &SccAnnotations<'_, '_, RegionTracker>,
+    errors_buffer: &mut RegionErrors<'tcx>,
+) {
+    use NllRegionVariableOrigin::Placeholder;
+    for (rvid, definition) in definitions.iter_enumerated() {
+        let Placeholder(origin_a) = definition.origin else {
+            continue;
+        };
+
+        let scc = sccs.scc(rvid);
+        let annotation = annotations.scc_to_annotation[scc];
+
+        if let Some(existental_that_cannot_name_rvid) =
+            annotation.reaches_existential_that_cannot_name_us()
+        {
+            errors_buffer.push(RegionErrorKind::PlaceholderOutlivesExistentialThatCannotNameIt {
+                longer_fr: rvid,
+                existental_that_cannot_name_longer: existental_that_cannot_name_rvid,
+                placeholder: origin_a,
+            })
+        }
+
+        let Some(other_placeholder) = annotation.reaches_other_placeholder(rvid) else {
+            trace!("{rvid:?} reaches no other placeholders");
+            continue;
+        };
+
+        debug!(
+            "Placeholder {rvid:?} of SCC {scc:?} reaches other placeholder {other_placeholder:?}"
+        );
+
+        // FIXME SURELY there is a neater way to do this?
+        let Placeholder(origin_b) = definitions[other_placeholder].origin else {
+            unreachable!(
+                "Region {rvid:?}, {other_placeholder:?} should be placeholders but aren't!"
+            );
+        };
+
+        errors_buffer.push(RegionErrorKind::PlaceholderOutlivesPlaceholder {
+            rvid_a: rvid,
+            rvid_b: other_placeholder,
+            origin_a,
+            origin_b,
+        });
+    }
 }

@@ -120,8 +120,31 @@ pub(crate) enum RegionErrorKind<'tcx> {
         member_region: ty::Region<'tcx>,
     },
 
-    /// Higher-ranked subtyping error.
-    BoundUniversalRegionError {
+    /// 'a outlives 'b, and both are placeholders.
+    PlaceholderOutlivesPlaceholder {
+        rvid_a: RegionVid,
+        rvid_b: RegionVid,
+        origin_a: ty::PlaceholderRegion,
+        origin_b: ty::PlaceholderRegion,
+    },
+
+    /// Indicates that a placeholder has a universe too large for one
+    /// of its member existentials, or, equivalently, that there is
+    /// a path through the outlives constraint graph from a placeholder
+    /// to an existential region that cannot name it.
+    PlaceholderOutlivesExistentialThatCannotNameIt {
+        /// the placeholder that transitively outlives an
+        /// existential that shouldn't leak into it
+        longer_fr: RegionVid,
+        /// The existential leaking into `longer_fr`.
+        existental_that_cannot_name_longer: RegionVid,
+        // `longer_fr`'s originating placeholder region.
+        placeholder: ty::PlaceholderRegion,
+    },
+
+    /// Higher-ranked subtyping error. A placeholder outlives
+    /// either a location or a universal region.
+    PlaceholderOutlivesLocationOrUniversal {
         /// The placeholder free region.
         longer_fr: RegionVid,
         /// The region element that erroneously must be outlived by `longer_fr`.
@@ -388,29 +411,55 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                 }
 
-                RegionErrorKind::BoundUniversalRegionError {
+                RegionErrorKind::PlaceholderOutlivesLocationOrUniversal {
                     longer_fr,
                     placeholder,
                     error_element,
+                } => self.report_erroneous_rvid_reaches_placeholder(
+                    longer_fr,
+                    placeholder,
+                    self.regioncx.region_from_element(longer_fr, &error_element),
+                ),
+                RegionErrorKind::PlaceholderOutlivesPlaceholder {
+                    rvid_a,
+                    rvid_b,
+                    origin_a,
+                    origin_b,
                 } => {
-                    let error_vid = self.regioncx.region_from_element(longer_fr, &error_element);
+                    debug!(
+                        "Placeholder mismatch: {rvid_a:?} ({origin_a:?}) reaches {rvid_b:?} ({origin_b:?})"
+                    );
 
-                    // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
                     let cause = self
                         .regioncx
                         .best_blame_constraint(
-                            longer_fr,
-                            NllRegionVariableOrigin::Placeholder(placeholder),
-                            error_vid,
+                            rvid_a,
+                            NllRegionVariableOrigin::Placeholder(origin_a),
+                            rvid_b,
                         )
                         .0
                         .cause;
 
-                    let universe = placeholder.universe;
-                    let universe_info = self.regioncx.universe_info(universe);
-
-                    universe_info.report_erroneous_element(self, placeholder, error_element, cause);
+                    // FIXME We may be able to shorten the code path here, and immediately
+                    // report a `RegionResolutionError::UpperBoundUniverseConflict`, but
+                    // that's left for a future refactoring.
+                    self.regioncx.universe_info(origin_a.universe).report_erroneous_element(
+                        self,
+                        origin_a,
+                        Some(origin_b),
+                        cause,
+                    );
                 }
+
+                RegionErrorKind::PlaceholderOutlivesExistentialThatCannotNameIt {
+                    longer_fr,
+                    existental_that_cannot_name_longer,
+                    placeholder,
+                } => self.report_erroneous_rvid_reaches_placeholder(
+                    longer_fr,
+                    placeholder,
+                    existental_that_cannot_name_longer,
+                ),
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
                     if is_reported {

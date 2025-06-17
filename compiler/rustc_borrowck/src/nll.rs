@@ -114,10 +114,13 @@ pub(crate) fn compute_regions<'tcx>(
         Rc::clone(&location_map),
     );
 
+    let mut placeholder_errors = RegionErrors::new(infcx.tcx);
+
     let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
         constraints,
         &universal_region_relations,
         infcx,
+        &mut placeholder_errors,
     );
 
     // If requested, emit legacy polonius facts.
@@ -167,8 +170,16 @@ pub(crate) fn compute_regions<'tcx>(
     });
 
     // Solve the region constraints.
-    let (closure_region_requirements, nll_errors) =
+    let (closure_region_requirements, region_inference_errors) =
         regioncx.solve(infcx, body, polonius_output.clone());
+
+    let nll_errors = if region_inference_errors.has_errors().is_some() {
+        debug!("Errors already reported, skipping these: {placeholder_errors:?}");
+        region_inference_errors
+    } else {
+        // Only flag the higher-kinded bounds errors if there are no borrowck errors.
+        placeholder_errors
+    };
 
     if let Some(guar) = nll_errors.has_errors() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
