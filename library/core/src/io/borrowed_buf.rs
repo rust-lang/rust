@@ -297,9 +297,9 @@ impl<'a> BorrowedCursor<'a> {
         self
     }
 
-    /// Initializes all bytes in the cursor.
+    /// Initializes all bytes in the cursor and returns them.
     #[inline]
-    pub fn ensure_init(&mut self) -> &mut Self {
+    pub fn ensure_init(&mut self) -> &mut [u8] {
         // SAFETY: always in bounds and we never uninitialize these bytes.
         let uninit = unsafe { self.buf.buf.get_unchecked_mut(self.buf.init..) };
 
@@ -310,7 +310,7 @@ impl<'a> BorrowedCursor<'a> {
         }
         self.buf.init = self.buf.capacity();
 
-        self
+        self.init_mut()
     }
 
     /// Asserts that the first `n` unfilled bytes of the cursor are initialized.
