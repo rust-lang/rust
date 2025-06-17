@@ -178,6 +178,11 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
     }
 }
 
+/// Return the host target on which we are currently running.
+pub fn get_host_target() -> TargetSelection {
+    TargetSelection::from_user(env!("BUILD_TRIPLE"))
+}
+
 /// Rename a file if from and to are in the same filesystem or
 /// copy and remove the file otherwise
 pub fn move_file<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
