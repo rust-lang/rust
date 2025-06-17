@@ -423,38 +423,7 @@ impl FromClean<clean::WherePredicate> for WherePredicate {
             BoundPredicate { ty, bounds, bound_params } => WherePredicate::BoundPredicate {
                 type_: ty.into_json(renderer),
                 bounds: bounds.into_json(renderer),
-                generic_params: bound_params
-                    .iter()
-                    .map(|x| {
-                        let name = x.name.to_string();
-                        let kind = match &x.kind {
-                            clean::GenericParamDefKind::Lifetime { outlives } => {
-                                GenericParamDefKind::Lifetime {
-                                    outlives: outlives.iter().map(|lt| lt.0.to_string()).collect(),
-                                }
-                            }
-                            clean::GenericParamDefKind::Type { bounds, default, synthetic } => {
-                                GenericParamDefKind::Type {
-                                    bounds: bounds
-                                        .into_iter()
-                                        .map(|bound| bound.into_json(renderer))
-                                        .collect(),
-                                    default: default
-                                        .as_ref()
-                                        .map(|ty| ty.as_ref().into_json(renderer)),
-                                    is_synthetic: *synthetic,
-                                }
-                            }
-                            clean::GenericParamDefKind::Const { ty, default, synthetic: _ } => {
-                                GenericParamDefKind::Const {
-                                    type_: ty.as_ref().into_json(renderer),
-                                    default: default.as_ref().map(|d| d.as_ref().clone()),
-                                }
-                            }
-                        };
-                        GenericParamDef { name, kind }
-                    })
-                    .collect(),
+                generic_params: bound_params.into_json(renderer),
             },
             RegionPredicate { lifetime, bounds } => WherePredicate::LifetimePredicate {
                 lifetime: convert_lifetime(lifetime),
