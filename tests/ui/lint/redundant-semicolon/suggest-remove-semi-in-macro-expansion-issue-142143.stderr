@@ -2,7 +2,7 @@ error: unnecessary trailing semicolon
   --> $DIR/suggest-remove-semi-in-macro-expansion-issue-142143.rs:6:43
    |
 LL |     ($stmt:stmt) => { #[allow(bad_style)] $stmt }
-   |                                           ^^^^^ help: remove this semicolon
+   |                                           ^^^^^
 ...
 LL |     m!(;);
    |     ----- in this macro invocation
