@@ -6,22 +6,15 @@
 //! to a new platform, and allows for an unprecedented level of control over how
 //! the compiler works.
 //!
-//! # Using custom targets
+//! # Using targets and target.json
 //!
-//! A target tuple, as passed via `rustc --target=TUPLE`, will first be
-//! compared against the list of built-in targets. This is to ease distributing
-//! rustc (no need for configuration files) and also to hold these built-in
-//! targets as immutable and sacred. If `TUPLE` is not one of the built-in
-//! targets, rustc will check if a file named `TUPLE` exists. If it does, it
-//! will be loaded as the target configuration. If the file does not exist,
-//! rustc will search each directory in the environment variable
-//! `RUST_TARGET_PATH` for a file named `TUPLE.json`. The first one found will
-//! be loaded. If no file is found in any of those directories, a fatal error
-//! will be given.
+//! Invoking "rustc --target=${TUPLE}" will result in rustc initiating the [`Target::search`] by
+//! - checking if "$TUPLE" is a complete path to a json (ending with ".json") and loading if so
+//! - checking builtin targets for "${TUPLE}"
+//! - checking directories in "${RUST_TARGET_PATH}" for "${TUPLE}.json"
+//! - checking for "${RUSTC_SYSROOT}/lib/rustlib/${TUPLE}/target.json"
 //!
-//! Projects defining their own targets should use
-//! `--target=path/to/my-awesome-platform.json` instead of adding to
-//! `RUST_TARGET_PATH`.
+//! Code will then be compiled using the first discovered target spec.
 //!
 //! # Defining a new target
 //!
