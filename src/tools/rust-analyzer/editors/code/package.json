@@ -683,6 +683,16 @@
             {
                 "title": "assist",
                 "properties": {
+                    "rust-analyzer.assist.preferSelf": {
+                        "markdownDescription": "When inserting a type (e.g. in \"fill match arms\" assist), prefer to use `Self` over the type name where possible.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "assist",
+                "properties": {
                     "rust-analyzer.assist.termSearch.borrowcheck": {
                         "markdownDescription": "Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.",
                         "default": true,

@@ -452,6 +452,8 @@ config_data! {
         assist_emitMustUse: bool               = false,
         /// Placeholder expression to use for missing expressions in assists.
         assist_expressionFillDefault: ExprFillDefaultDef              = ExprFillDefaultDef::Todo,
+        /// When inserting a type (e.g. in "fill match arms" assist), prefer to use `Self` over the type name where possible.
+        assist_preferSelf: bool = false,
         /// Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.
         assist_termSearch_borrowcheck: bool = true,
         /// Term search fuel in "units of work" for assists (Defaults to 1800).
@@ -1505,6 +1507,7 @@ impl Config {
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
                 ExprFillDefaultDef::Underscore => ExprFillDefaultMode::Underscore,
             },
+            prefer_self_ty: *self.assist_preferSelf(source_root),
         }
     }
 
