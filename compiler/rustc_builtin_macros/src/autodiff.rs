@@ -344,7 +344,7 @@ mod llvm_enzyme {
             ident: first_ident(&meta_item_vec[0]),
             generics,
             contract: None,
-            body: None,
+            body: None, // This leads to an error when the ad function is inside a traits
             define_opaque: None,
         });
         let mut rustc_ad_attr =
