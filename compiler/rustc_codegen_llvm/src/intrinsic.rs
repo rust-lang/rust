@@ -198,6 +198,21 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 )
             }
             _ if tcx.has_attr(def_id, sym::rustc_autodiff) => {
+                // NOTE(Sa4dUs): This is a hacky way to get the autodiff items
+                // so we can focus on the lowering of the intrinsic call
+
+                // `diff_items` is empty even when autodiff is enabled, and if we're here,
+                // it's because some function was marked as intrinsic and had the `rustc_autodiff` attr
+                let diff_items = tcx.collect_and_partition_mono_items(()).autodiff_items;
+
+                // this shouldn't happen?
+                if diff_items.is_empty() {
+                    bug!("no autodiff items found for {def_id:?}");
+                }
+
+                // TODO(Sa4dUs): generate the enzyme call itself, based on the logic in `builder.rs`
+
+                // Just gen the fallback body for now
                 return Err(ty::Instance::new_raw(def_id, instance.args));
             }
             sym::is_val_statically_known => {
