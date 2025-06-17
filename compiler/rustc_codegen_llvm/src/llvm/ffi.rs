@@ -1004,12 +1004,21 @@ unsafe extern "C" {
         SLen: c_uint,
     ) -> MetadataKindId;
 
-    // Create modules.
+    // Create, print, and destroy modules.
+    pub(crate) fn LLVMPrintModuleToFile(
+        M: &Module,
+        Name: *const c_char,
+        Error_message: *mut c_char,
+    );
+    pub(crate) fn LLVMDisposeModule(M: &Module);
     pub(crate) fn LLVMModuleCreateWithNameInContext(
         ModuleID: *const c_char,
         C: &Context,
     ) -> &Module;
     pub(crate) fn LLVMCloneModule(M: &Module) -> &Module;
+
+    pub(crate) fn LLVMGetTarget(M: &Module) -> *const c_char;
+    pub(crate) fn LLVMSetTarget(M: &Module, Name: *const c_char);
 
     /// Data layout. See Module::getDataLayout.
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
@@ -1138,6 +1147,11 @@ unsafe extern "C" {
         Count: c_uint,
         Packed: Bool,
     ) -> &'a Value;
+    pub(crate) fn LLVMConstNamedStruct<'a>(
+        StructTy: &'a Type,
+        ConstantVals: *const &'a Value,
+        Count: c_uint,
+    ) -> &'a Value;
     pub(crate) fn LLVMConstVector(ScalarConstantVals: *const &Value, Size: c_uint) -> &Value;
 
     // Constant expressions
@@ -1170,6 +1184,12 @@ unsafe extern "C" {
     // Operations on global variables
     pub(crate) fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMAddGlobal<'a>(M: &'a Module, Ty: &'a Type, Name: *const c_char) -> &'a Value;
+    pub(crate) fn LLVMAddGlobalInAddressSpace<'a>(
+        M: &'a Module,
+        Ty: &'a Type,
+        Name: *const c_char,
+        addrspace: c_uint,
+    ) -> &'a Value;
     pub(crate) fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
     pub(crate) fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
@@ -1217,6 +1237,8 @@ unsafe extern "C" {
     ) -> &'a BasicBlock;
 
     // Operations on instructions
+    pub(crate) fn LLVMGetInstructionParent(Inst: &Value) -> &BasicBlock;
+    pub(crate) fn LLVMGetCalledValue(CallInst: &Value) -> Option<&Value>;
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;
@@ -2562,6 +2584,7 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustSetDataLayoutFromTargetMachine<'a>(M: &'a Module, TM: &'a TargetMachine);
 
+    pub(crate) fn LLVMRustPositionBuilderPastAllocas<'a>(B: &Builder<'a>, Fn: &'a Value);
     pub(crate) fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
 
     pub(crate) fn LLVMRustSetModulePICLevel(M: &Module);
