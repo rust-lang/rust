@@ -1331,8 +1331,8 @@ impl<'a> Builder<'a> {
             target = "STD",
             skip_all,
             fields(
-                stage = stage,
-                host = ?host,
+                compiler = ?compiler,
+                target = ?target,
             ),
         ),
     )]
