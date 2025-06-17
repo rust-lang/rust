@@ -317,7 +317,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let name = if bx.sess().fewer_names() {
             None
         } else {
-            Some(match whole_local_var.or(fallback_var.clone()) {
+            Some(match whole_local_var.or_else(|| fallback_var.clone()) {
                 Some(var) if var.name != sym::empty => var.name.to_string(),
                 _ => format!("{local:?}"),
             })
