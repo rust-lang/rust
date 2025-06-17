@@ -719,7 +719,7 @@ impl<T, const N: usize> Cell<[T; N]> {
 #[rustc_diagnostic_item = "RefCell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefCell<T: ?Sized> {
-    borrow: Cell<BorrowFlag>,
+    borrow: Cell<BorrowCounter>,
     // Stores the location of the earliest currently active borrow.
     // This gets updated whenever we go from having zero borrows
     // to having a single borrow. When a borrow occurs, this gets included
@@ -732,54 +732,48 @@ pub struct RefCell<T: ?Sized> {
 /// An error returned by [`RefCell::try_borrow`].
 #[stable(feature = "try_borrow", since = "1.13.0")]
 #[non_exhaustive]
+#[derive(Debug)]
 pub struct BorrowError {
     #[cfg(feature = "debug_refcell")]
     location: &'static crate::panic::Location<'static>,
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
-impl Debug for BorrowError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut builder = f.debug_struct("BorrowError");
-
-        #[cfg(feature = "debug_refcell")]
-        builder.field("location", self.location);
-
-        builder.finish()
-    }
-}
-
-#[stable(feature = "try_borrow", since = "1.13.0")]
 impl Display for BorrowError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt("already mutably borrowed", f)
+        #[cfg(feature = "debug_refcell")]
+        let res = write!(
+            f,
+            "RefCell already mutably borrowed; a previous borrow was at {}",
+            self.location
+        );
+
+        #[cfg(not(feature = "debug_refcell"))]
+        let res = Display::fmt("RefCell already mutably borrowed", f);
+
+        res
     }
 }
 
 /// An error returned by [`RefCell::try_borrow_mut`].
 #[stable(feature = "try_borrow", since = "1.13.0")]
 #[non_exhaustive]
+#[derive(Debug)]
 pub struct BorrowMutError {
     #[cfg(feature = "debug_refcell")]
     location: &'static crate::panic::Location<'static>,
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
-impl Debug for BorrowMutError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut builder = f.debug_struct("BorrowMutError");
-
-        #[cfg(feature = "debug_refcell")]
-        builder.field("location", self.location);
-
-        builder.finish()
-    }
-}
-
-#[stable(feature = "try_borrow", since = "1.13.0")]
 impl Display for BorrowMutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt("already borrowed", f)
+        #[cfg(feature = "debug_refcell")]
+        let res = write!(f, "RefCell already borrowed; a previous borrow was at {}", self.location);
+
+        #[cfg(not(feature = "debug_refcell"))]
+        let res = Display::fmt("RefCell already borrowed", f);
+
+        res
     }
 }
 
@@ -788,7 +782,7 @@ impl Display for BorrowMutError {
 #[track_caller]
 #[cold]
 fn panic_already_borrowed(err: BorrowMutError) -> ! {
-    panic!("already borrowed: {:?}", err)
+    panic!("{err}")
 }
 
 // This ensures the panicking code is outlined from `borrow` for `RefCell`.
@@ -796,7 +790,7 @@ fn panic_already_borrowed(err: BorrowMutError) -> ! {
 #[track_caller]
 #[cold]
 fn panic_already_mutably_borrowed(err: BorrowError) -> ! {
-    panic!("already mutably borrowed: {:?}", err)
+    panic!("{err}")
 }
 
 // Positive values represent the number of `Ref` active. Negative values
@@ -806,22 +800,22 @@ fn panic_already_mutably_borrowed(err: BorrowError) -> ! {
 //
 // `Ref` and `RefMut` are both two words in size, and so there will likely never
 // be enough `Ref`s or `RefMut`s in existence to overflow half of the `usize`
-// range. Thus, a `BorrowFlag` will probably never overflow or underflow.
+// range. Thus, a `BorrowCounter` will probably never overflow or underflow.
 // However, this is not a guarantee, as a pathological program could repeatedly
 // create and then mem::forget `Ref`s or `RefMut`s. Thus, all code must
 // explicitly check for overflow and underflow in order to avoid unsafety, or at
 // least behave correctly in the event that overflow or underflow happens (e.g.,
 // see BorrowRef::new).
-type BorrowFlag = isize;
-const UNUSED: BorrowFlag = 0;
+type BorrowCounter = isize;
+const UNUSED: BorrowCounter = 0;
 
 #[inline(always)]
-fn is_writing(x: BorrowFlag) -> bool {
+fn is_writing(x: BorrowCounter) -> bool {
     x < UNUSED
 }
 
 #[inline(always)]
-fn is_reading(x: BorrowFlag) -> bool {
+fn is_reading(x: BorrowCounter) -> bool {
     x > UNUSED
 }
 
@@ -1401,12 +1395,12 @@ impl<T> From<T> for RefCell<T> {
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<RefCell<U>> for RefCell<T> {}
 
 struct BorrowRef<'b> {
-    borrow: &'b Cell<BorrowFlag>,
+    borrow: &'b Cell<BorrowCounter>,
 }
 
 impl<'b> BorrowRef<'b> {
     #[inline]
-    fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRef<'b>> {
+    fn new(borrow: &'b Cell<BorrowCounter>) -> Option<BorrowRef<'b>> {
         let b = borrow.get().wrapping_add(1);
         if !is_reading(b) {
             // Incrementing borrow can result in a non-reading value (<= 0) in these cases:
@@ -1447,7 +1441,7 @@ impl Clone for BorrowRef<'_> {
         debug_assert!(is_reading(borrow));
         // Prevent the borrow counter from overflowing into
         // a writing borrow.
-        assert!(borrow != BorrowFlag::MAX);
+        assert!(borrow != BorrowCounter::MAX);
         self.borrow.set(borrow + 1);
         BorrowRef { borrow: self.borrow }
     }
@@ -1795,7 +1789,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
 }
 
 struct BorrowRefMut<'b> {
-    borrow: &'b Cell<BorrowFlag>,
+    borrow: &'b Cell<BorrowCounter>,
 }
 
 impl Drop for BorrowRefMut<'_> {
@@ -1809,7 +1803,7 @@ impl Drop for BorrowRefMut<'_> {
 
 impl<'b> BorrowRefMut<'b> {
     #[inline]
-    fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRefMut<'b>> {
+    fn new(borrow: &'b Cell<BorrowCounter>) -> Option<BorrowRefMut<'b>> {
         // NOTE: Unlike BorrowRefMut::clone, new is called to create the initial
         // mutable reference, and so there must currently be no existing
         // references. Thus, while clone increments the mutable refcount, here
@@ -1833,7 +1827,7 @@ impl<'b> BorrowRefMut<'b> {
         let borrow = self.borrow.get();
         debug_assert!(is_writing(borrow));
         // Prevent the borrow counter from underflowing.
-        assert!(borrow != BorrowFlag::MIN);
+        assert!(borrow != BorrowCounter::MIN);
         self.borrow.set(borrow - 1);
         BorrowRefMut { borrow: self.borrow }
     }
