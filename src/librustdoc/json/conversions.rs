@@ -201,17 +201,6 @@ impl FromClean<clean::GenericArg> for GenericArg {
     }
 }
 
-impl FromClean<clean::Constant> for Constant {
-    // FIXME(generic_const_items): Add support for generic const items.
-    fn from_clean(constant: &clean::Constant, renderer: &JsonRenderer<'_>) -> Self {
-        let tcx = renderer.tcx;
-        let expr = constant.expr(tcx);
-        let value = constant.value(tcx);
-        let is_literal = constant.is_literal(tcx);
-        Constant { expr, value, is_literal }
-    }
-}
-
 impl FromClean<clean::ConstantKind> for Constant {
     // FIXME(generic_const_items): Add support for generic const items.
     fn from_clean(constant: &clean::ConstantKind, renderer: &JsonRenderer<'_>) -> Self {
