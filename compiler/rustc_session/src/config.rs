@@ -476,22 +476,17 @@ impl LinkerFeaturesCli {
     /// The caller should ensure that e.g. `nightly_options::is_unstable_enabled()`
     /// returns false.
     pub(crate) fn check_unstable_variants(&self, target_tuple: &TargetTuple) -> Result<(), String> {
-        // `-C linker-features=[-+]lld` is only stable on x64 linux.
-        let check_lld = |features: LinkerFeatures, polarity: &str| {
-            let has_lld = features.is_lld_enabled();
-            if has_lld && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
-                return Err(format!(
-                    "`-C linker-features={polarity}lld` is unstable on the `{target_tuple}` \
+        // `-C linker-features=-lld` is only stable on x64 linux.
+        let has_minus_lld = self.disabled.is_lld_enabled();
+        if has_minus_lld && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+            return Err(format!(
+                "`-C linker-features=-lld` is unstable on the `{target_tuple}` \
                     target. The `-Z unstable-options` flag must also be passed to use it on this target",
-                ));
-            }
-            Ok(())
-        };
-        check_lld(self.enabled, "+")?;
-        check_lld(self.disabled, "-")?;
+            ));
+        }
 
-        // Since only lld is stable, any non-lld feature used is unstable, and that's an error.
-        let unstable_enabled = self.enabled - LinkerFeatures::LLD;
+        // Any `+lld` or non-lld feature used is unstable, and that's an error.
+        let unstable_enabled = self.enabled;
         let unstable_disabled = self.disabled - LinkerFeatures::LLD;
         if !unstable_enabled.union(unstable_disabled).is_empty() {
             let unstable_features: Vec<_> = unstable_enabled
@@ -500,8 +495,8 @@ impl LinkerFeaturesCli {
                 .chain(unstable_disabled.iter().map(|f| format!("-{}", f.as_str().unwrap())))
                 .collect();
             return Err(format!(
-                "the requested `-C linker-features={}` are unstable, and also require the \
-                `-Z unstable-options` flag to be usable",
+                "`-C linker-features={}` is unstable, and also requires the \
+                `-Z unstable-options` flag to be used",
                 unstable_features.join(","),
             ));
         }
