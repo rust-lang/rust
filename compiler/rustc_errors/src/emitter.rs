@@ -543,13 +543,13 @@ impl Emitter for HumanEmitter {
 /// An emitter that does nothing when emitting a non-fatal diagnostic.
 /// Fatal diagnostics are forwarded to `fatal_emitter` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
-pub struct SilentEmitter {
+pub struct FatalOnlyEmitter {
     pub fatal_emitter: Box<dyn Emitter + DynSend>,
     pub fatal_note: Option<String>,
     pub emit_fatal_diagnostic: bool,
 }
 
-impl Emitter for SilentEmitter {
+impl Emitter for FatalOnlyEmitter {
     fn source_map(&self) -> Option<&SourceMap> {
         None
     }

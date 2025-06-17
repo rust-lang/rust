@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_data_structures::sync::IntoDynSyncSend;
-use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter, SilentEmitter, stderr_destination};
+use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter, FatalOnlyEmitter, stderr_destination};
 use rustc_errors::registry::Registry;
 use rustc_errors::translation::Translator;
 use rustc_errors::{ColorConfig, Diag, DiagCtxt, DiagInner, Level as DiagnosticLevel};
@@ -111,7 +111,7 @@ fn default_dcx(
     );
 
     let emitter: Box<DynEmitter> = if !show_parse_errors {
-        Box::new(SilentEmitter {
+        Box::new(FatalOnlyEmitter {
             fatal_emitter: emitter,
             fatal_note: None,
             emit_fatal_diagnostic: false,

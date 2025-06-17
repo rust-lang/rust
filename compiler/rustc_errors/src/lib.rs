@@ -770,7 +770,7 @@ impl DiagCtxt {
         let mut inner = self.inner.borrow_mut();
         let mut prev_emitter = Box::new(FalseEmitter) as Box<dyn Emitter + DynSend>;
         std::mem::swap(&mut inner.emitter, &mut prev_emitter);
-        let new_emitter = Box::new(emitter::SilentEmitter {
+        let new_emitter = Box::new(emitter::FatalOnlyEmitter {
             fatal_emitter: prev_emitter,
             fatal_note,
             emit_fatal_diagnostic,

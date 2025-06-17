@@ -8,7 +8,7 @@ use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock};
-use rustc_errors::emitter::{HumanEmitter, SilentEmitter, stderr_destination};
+use rustc_errors::emitter::{FatalOnlyEmitter, HumanEmitter, stderr_destination};
 use rustc_errors::translation::Translator;
 use rustc_errors::{
     ColorConfig, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, EmissionGuarantee, MultiSpan,
@@ -275,7 +275,7 @@ impl ParseSess {
         }
     }
 
-    pub fn with_silent_emitter(
+    pub fn with_fatal_emitter(
         locale_resources: Vec<&'static str>,
         fatal_note: String,
 
@@ -285,7 +285,7 @@ impl ParseSess {
         let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
         let fatal_emitter =
             Box::new(HumanEmitter::new(stderr_destination(ColorConfig::Auto), translator));
-        let dcx = DiagCtxt::new(Box::new(SilentEmitter {
+        let dcx = DiagCtxt::new(Box::new(FatalOnlyEmitter {
             fatal_emitter,
             fatal_note: Some(fatal_note),
             emit_fatal_diagnostic,
