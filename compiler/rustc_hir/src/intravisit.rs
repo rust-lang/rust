@@ -980,7 +980,6 @@ pub fn walk_unambig_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> 
         Some(ambig_ty) => visitor.visit_ty(ambig_ty),
         None => {
             let Ty { hir_id, span, kind: _ } = typ;
-            try_visit!(visitor.visit_id(*hir_id));
             visitor.visit_infer(*hir_id, *span, InferKind::Ty(typ))
         }
     }
@@ -1046,7 +1045,6 @@ pub fn walk_unambig_const_arg<'v, V: Visitor<'v>>(
         Some(ambig_ct) => visitor.visit_const_arg(ambig_ct),
         None => {
             let ConstArg { hir_id, kind: _ } = const_arg;
-            try_visit!(visitor.visit_id(*hir_id));
             visitor.visit_infer(*hir_id, const_arg.span(), InferKind::Const(const_arg))
         }
     }
