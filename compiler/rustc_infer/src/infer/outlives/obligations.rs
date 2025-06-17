@@ -141,7 +141,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
-            infer::RelateParamBound(
+            SubregionOrigin::RelateParamBound(
                 cause.span,
                 sup_type,
                 match cause.code().peel_derives() {

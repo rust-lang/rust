@@ -9,7 +9,7 @@ use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, pluralize, struct_
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisit};
-use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
@@ -311,7 +311,7 @@ fn compare_method_predicate_entailment<'tcx>(
 
     let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(
         impl_m_span,
-        infer::HigherRankedType,
+        BoundRegionConversionTime::HigherRankedType,
         tcx.fn_sig(impl_m.def_id).instantiate_identity(),
     );
 
@@ -518,7 +518,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         param_env,
         infcx.instantiate_binder_with_fresh_vars(
             return_span,
-            infer::HigherRankedType,
+            BoundRegionConversionTime::HigherRankedType,
             tcx.fn_sig(impl_m.def_id).instantiate_identity(),
         ),
     );

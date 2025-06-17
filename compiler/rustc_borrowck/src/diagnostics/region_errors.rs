@@ -10,7 +10,7 @@ use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
-use rustc_infer::infer::{NllRegionVariableOrigin, RelateParamBound};
+use rustc_infer::infer::{NllRegionVariableOrigin, SubregionOrigin};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint};
@@ -329,7 +329,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             self.infcx.tcx,
                             type_test.generic_kind.to_ty(self.infcx.tcx),
                         );
-                        let origin = RelateParamBound(type_test_span, generic_ty, None);
+                        let origin =
+                            SubregionOrigin::RelateParamBound(type_test_span, generic_ty, None);
                         self.buffer_error(self.infcx.err_ctxt().construct_generic_bound_failure(
                             self.body.source.def_id().expect_local(),
                             type_test_span,

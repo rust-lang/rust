@@ -9,7 +9,9 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
 use rustc_hir_analysis::hir_ty_lowering::{
     FeedConstTy, GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
-use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
+use rustc_infer::infer::{
+    BoundRegionConversionTime, DefineOpaqueTypes, InferOk, RegionVariableOrigin,
+};
 use rustc_lint::builtin::SUPERTRAIT_ITEM_SHADOWING_USAGE;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
@@ -194,7 +196,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         match pick.autoref_or_ptr_adjustment {
             Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {
-                let region = self.next_region_var(infer::Autoref(self.span));
+                let region = self.next_region_var(RegionVariableOrigin::Autoref(self.span));
                 // Type we're wrapping in a reference, used later for unsizing
                 let base_ty = target;
 
@@ -239,7 +241,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
 
             Some(probe::AutorefOrPtrAdjustment::ReborrowPin(mutbl)) => {
-                let region = self.next_region_var(infer::Autoref(self.span));
+                let region = self.next_region_var(RegionVariableOrigin::Autoref(self.span));
 
                 target = match target.kind() {
                     ty::Adt(pin, args) if self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) => {
@@ -752,6 +754,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        self.fcx.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, value)
+        self.fcx.instantiate_binder_with_fresh_vars(
+            self.span,
+            BoundRegionConversionTime::FnCall,
+            value,
+        )
     }
 }
