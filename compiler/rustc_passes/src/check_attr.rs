@@ -147,6 +147,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_),
                 ) => { /* do nothing  */ }
+                Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
+                    self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
+                }
                 Attribute::Unparsed(_) => {
                     match attr.path().as_slice() {
                         [sym::diagnostic, sym::do_not_recommend, ..] => {
@@ -188,26 +191,23 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_rustc_std_internal_symbol(attr, span, target)
                         }
                         [sym::naked, ..] => self.check_naked(hir_id, attr, span, target, attrs),
-                        [sym::rustc_as_ptr, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr, span, target)
-                        }
                         [sym::rustc_no_implicit_autorefs, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
                         [sym::rustc_never_returns_null_ptr, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
                         [sym::rustc_legacy_const_generics, ..] => {
                             self.check_rustc_legacy_const_generics(hir_id, attr, span, target, item)
                         }
                         [sym::rustc_lint_query_instability, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
                         [sym::rustc_lint_untracked_query_information, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
                         [sym::rustc_lint_diagnostics, ..] => {
-                            self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                            self.check_applied_to_fn_or_method(hir_id, attr.span(), span, target)
                         }
                         [sym::rustc_lint_opt_ty, ..] => self.check_rustc_lint_opt_ty(attr, span, target),
                         [sym::rustc_lint_opt_deny_field_access, ..] => {
@@ -1825,15 +1825,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_applied_to_fn_or_method(
         &self,
         hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
+        attr_span: Span,
+        defn_span: Span,
         target: Target,
     ) {
         let is_function = matches!(target, Target::Fn | Target::Method(..));
         if !is_function {
             self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                attr_span: attr.span(),
-                defn_span: span,
+                attr_span,
+                defn_span,
                 on_crate: hir_id == CRATE_HIR_ID,
             });
         }

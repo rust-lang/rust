@@ -887,7 +887,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_legacy_const_generics, Normal, template!(List: "N"), ErrorFollowing,
         EncodeCrossCrate::Yes,
     ),
-    // Do not const-check this function's body. It will always get replaced during CTFE.
+    // Do not const-check this function's body. It will always get replaced during CTFE via `hook_special_const_fn`.
     rustc_attr!(
         rustc_do_not_const_check, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::Yes, "`#[rustc_do_not_const_check]` skips const-check for this function's body",

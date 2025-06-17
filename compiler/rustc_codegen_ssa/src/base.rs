@@ -15,11 +15,10 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir::ItemId;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
-use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
-use rustc_middle::middle::exported_symbols::SymbolExportKind;
-use rustc_middle::middle::{exported_symbols, lang_items};
+use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
+use rustc_middle::middle::lang_items;
 use rustc_middle::mir::BinOp;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
@@ -28,7 +27,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
-use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
+use rustc_session::config::{self, CrateType, EntryFnType};
 use rustc_span::{DUMMY_SP, Symbol, sym};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
@@ -37,7 +36,6 @@ use tracing::{debug, info};
 
 use crate::assert_module_sources::CguReuse;
 use crate::back::link::are_upstream_rust_objects_already_included;
-use crate::back::metadata::create_compressed_metadata_file;
 use crate::back::write::{
     ComputedLtoType, OngoingCodegen, compute_per_cgu_lto_type, start_async_codegen,
     submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm,
@@ -48,8 +46,7 @@ use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{
-    CachedModuleCodegen, CodegenLintLevels, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
-    errors, meth, mir,
+    CachedModuleCodegen, CodegenLintLevels, CrateInfo, ModuleCodegen, ModuleKind, errors, meth, mir,
 };
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
@@ -669,12 +666,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     target_cpu: String,
-    metadata: EncodedMetadata,
-    need_metadata_module: bool,
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -707,39 +702,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let metadata_module = need_metadata_module.then(|| {
-        // Emit compressed metadata object.
-        let metadata_cgu_name =
-            cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
-        tcx.sess.time("write_compressed_metadata", || {
-            let file_name = tcx.output_filenames(()).temp_path_for_cgu(
-                OutputType::Metadata,
-                &metadata_cgu_name,
-                tcx.sess.invocation_temp.as_deref(),
-            );
-            let data = create_compressed_metadata_file(
-                tcx.sess,
-                &metadata,
-                &exported_symbols::metadata_symbol_name(tcx),
-            );
-            if let Err(error) = std::fs::write(&file_name, data) {
-                tcx.dcx().emit_fatal(errors::MetadataObjectFileWrite { error });
-            }
-            CompiledModule {
-                name: metadata_cgu_name,
-                kind: ModuleKind::Metadata,
-                object: Some(file_name),
-                dwarf_object: None,
-                bytecode: None,
-                assembly: None,
-                llvm_ir: None,
-                links_from_incr_cache: Vec::new(),
-            }
-        })
-    });
-
-    let ongoing_codegen =
-        start_async_codegen(backend.clone(), tcx, target_cpu, metadata, metadata_module);
+    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu);
 
     // Codegen an allocator shim, if necessary.
     if let Some(kind) = allocator_kind_for_codegen(tcx) {
@@ -1010,6 +973,7 @@ impl CrateInfo {
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
             lint_levels: CodegenLintLevels::from_tcx(tcx),
+            metadata_symbol: exported_symbols::metadata_symbol_name(tcx),
         };
 
         info.native_libraries.reserve(n_crates);

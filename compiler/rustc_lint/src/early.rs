@@ -33,21 +33,14 @@ pub struct EarlyContextAndPass<'ecx, 'tcx, T: EarlyLintPass> {
 }
 
 impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
-    // This always-inlined function is for the hot call site.
-    #[inline(always)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    fn inlined_check_id(&mut self, id: ast::NodeId) {
+    fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
             self.context.opt_span_lint(lint_id.lint, span, |diag| {
                 diagnostics::decorate_builtin_lint(self.context.sess(), self.tcx, diagnostic, diag);
             });
         }
-    }
-
-    // This non-inlined function is for the cold call sites.
-    fn check_id(&mut self, id: ast::NodeId) {
-        self.inlined_check_id(id)
     }
 
     /// Merge the lints specified by any lint attributes into the
@@ -61,7 +54,6 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
         debug!(?id);
         let push = self.context.builder.push(attrs, is_crate_node, None);
 
-        self.inlined_check_id(id);
         debug!("early context: enter_attrs({:?})", attrs);
         lint_callback!(self, check_attributes, attrs);
         ensure_sufficient_stack(|| f(self));
@@ -136,12 +128,8 @@ impl<'ast, 'ecx, 'tcx, T: EarlyLintPass> ast_visit::Visitor<'ast>
         // the AST struct that they wrap (e.g. an item)
         self.with_lint_attrs(s.id, s.attrs(), |cx| {
             lint_callback!(cx, check_stmt, s);
+            ast_visit::walk_stmt(cx, s);
         });
-        // The visitor for the AST struct wrapped
-        // by the statement (e.g. `Item`) will call
-        // `with_lint_attrs`, so do this walk
-        // outside of the above `with_lint_attrs` call
-        ast_visit::walk_stmt(self, s);
     }
 
     fn visit_fn(&mut self, fk: ast_visit::FnKind<'ast>, span: Span, id: ast::NodeId) {

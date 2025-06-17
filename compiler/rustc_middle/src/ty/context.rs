@@ -47,7 +47,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
-use rustc_session::{Limit, MetadataKind, Session};
+use rustc_session::{Limit, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
@@ -1858,23 +1858,14 @@ impl<'tcx> TyCtxt<'tcx> {
         &self.crate_types
     }
 
-    pub fn metadata_kind(self) -> MetadataKind {
-        self.crate_types()
-            .iter()
-            .map(|ty| match *ty {
-                CrateType::Executable
-                | CrateType::Staticlib
-                | CrateType::Cdylib
-                | CrateType::Sdylib => MetadataKind::None,
-                CrateType::Rlib => MetadataKind::Uncompressed,
-                CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
-            })
-            .max()
-            .unwrap_or(MetadataKind::None)
-    }
-
     pub fn needs_metadata(self) -> bool {
-        self.metadata_kind() != MetadataKind::None
+        self.crate_types().iter().any(|ty| match *ty {
+            CrateType::Executable
+            | CrateType::Staticlib
+            | CrateType::Cdylib
+            | CrateType::Sdylib => false,
+            CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
+        })
     }
 
     pub fn needs_crate_hash(self) -> bool {

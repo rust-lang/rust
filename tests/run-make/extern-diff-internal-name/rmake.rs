@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // In the following scenario:
 // 1. The crate foo, is referenced multiple times
 // 2. --extern foo=./path/to/libbar.rlib is specified to rustc

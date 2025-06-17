@@ -2285,12 +2285,23 @@ pub struct Expr<'hir> {
 }
 
 impl Expr<'_> {
-    pub fn precedence(&self) -> ExprPrecedence {
+    pub fn precedence(
+        &self,
+        for_each_attr: &dyn Fn(HirId, &mut dyn FnMut(&Attribute)),
+    ) -> ExprPrecedence {
+        let prefix_attrs_precedence = || -> ExprPrecedence {
+            let mut has_outer_attr = false;
+            for_each_attr(self.hir_id, &mut |attr: &Attribute| {
+                has_outer_attr |= matches!(attr.style(), AttrStyle::Outer)
+            });
+            if has_outer_attr { ExprPrecedence::Prefix } else { ExprPrecedence::Unambiguous }
+        };
+
         match &self.kind {
             ExprKind::Closure(closure) => {
                 match closure.fn_decl.output {
                     FnRetTy::DefaultReturn(_) => ExprPrecedence::Jump,
-                    FnRetTy::Return(_) => ExprPrecedence::Unambiguous,
+                    FnRetTy::Return(_) => prefix_attrs_precedence(),
                 }
             }
 
@@ -2315,7 +2326,7 @@ impl Expr<'_> {
             | ExprKind::Let(..)
             | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
-            // Never need parens
+            // Need parens if and only if there are prefix attributes.
             ExprKind::Array(_)
             | ExprKind::Block(..)
             | ExprKind::Call(..)
@@ -2337,9 +2348,9 @@ impl Expr<'_> {
             | ExprKind::Type(..)
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Use(..)
-            | ExprKind::Err(_) => ExprPrecedence::Unambiguous,
+            | ExprKind::Err(_) => prefix_attrs_precedence(),
 
-            ExprKind::DropTemps(expr, ..) => expr.precedence(),
+            ExprKind::DropTemps(expr, ..) => expr.precedence(for_each_attr),
         }
     }
 
@@ -3064,6 +3075,7 @@ pub struct TraitItem<'hir> {
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
     pub defaultness: Defaultness,
+    pub has_delayed_lints: bool,
 }
 
 macro_rules! expect_methods_self_kind {
@@ -3168,6 +3180,7 @@ pub struct ImplItem<'hir> {
     pub defaultness: Defaultness,
     pub span: Span,
     pub vis_span: Span,
+    pub has_delayed_lints: bool,
 }
 
 impl<'hir> ImplItem<'hir> {
@@ -4087,6 +4100,7 @@ pub struct Item<'hir> {
     pub kind: ItemKind<'hir>,
     pub span: Span,
     pub vis_span: Span,
+    pub has_delayed_lints: bool,
 }
 
 impl<'hir> Item<'hir> {
@@ -4492,6 +4506,7 @@ pub struct ForeignItem<'hir> {
     pub owner_id: OwnerId,
     pub span: Span,
     pub vis_span: Span,
+    pub has_delayed_lints: bool,
 }
 
 impl ForeignItem<'_> {
@@ -4974,7 +4989,7 @@ mod size_asserts {
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);
-    static_assert_size!(ForeignItem<'_>, 88);
+    static_assert_size!(ForeignItem<'_>, 96);
     static_assert_size!(ForeignItemKind<'_>, 56);
     static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 64);

@@ -1,4 +1,4 @@
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_char, c_uint};
 use std::marker::PhantomData;
@@ -138,7 +138,7 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
 
     intrinsics:
-        RefCell<FxHashMap<(&'static str, SmallVec<[&'ll Type; 2]>), (&'ll Type, &'ll Value)>>,
+        RefCell<FxHashMap<(Cow<'static, str>, SmallVec<[&'ll Type; 2]>), (&'ll Type, &'ll Value)>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -845,45 +845,16 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 impl<'ll> CodegenCx<'ll, '_> {
     pub(crate) fn get_intrinsic(
         &self,
-        base_name: &str,
+        base_name: Cow<'static, str>,
         type_params: &[&'ll Type],
     ) -> (&'ll Type, &'ll Value) {
-        if let Some(v) =
-            self.intrinsics.borrow().get(&(base_name, SmallVec::from_slice(type_params)))
-        {
-            return *v;
-        }
-
-        self.declare_intrinsic(base_name, type_params)
-    }
-
-    fn insert_intrinsic(
-        &self,
-        base_name: &'static str,
-        type_params: &[&'ll Type],
-        args: Option<&[&'ll llvm::Type]>,
-        ret: &'ll llvm::Type,
-    ) -> (&'ll llvm::Type, &'ll llvm::Value) {
-        let fn_ty = if let Some(args) = args {
-            self.type_func(args, ret)
-        } else {
-            self.type_variadic_func(&[], ret)
-        };
-
-        let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
-            .expect("Unknown LLVM intrinsic `{base_name}`");
-
-        let full_name = if intrinsic.is_overloaded() {
-            &intrinsic.overloaded_name(self.llmod, type_params)
-        } else {
-            base_name
-        };
-
-        let f = self.declare_cfn(full_name, llvm::UnnamedAddr::No, fn_ty);
-        self.intrinsics
+        *self
+            .intrinsics
             .borrow_mut()
-            .insert((base_name, SmallVec::from_slice(type_params)), (fn_ty, f));
-        (fn_ty, f)
+            .entry((base_name, SmallVec::from_slice(type_params)))
+            .or_insert_with_key(|(base_name, type_params)| {
+                self.declare_intrinsic(base_name, type_params)
+            })
     }
 
     fn declare_intrinsic(
@@ -891,155 +862,22 @@ impl<'ll> CodegenCx<'ll, '_> {
         base_name: &str,
         type_params: &[&'ll Type],
     ) -> (&'ll Type, &'ll Value) {
-        macro_rules! param {
-            ($index:literal) => {
-                type_params[$index]
-            };
-            ($other:expr) => {
-                $other
-            };
-        }
-        macro_rules! ifn {
-            ($name:expr, fn(...) -> $ret:expr) => (
-                if base_name == $name {
-                    return self.insert_intrinsic($name, type_params, None, param!($ret));
-                }
-            );
-            ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
-                if base_name == $name {
-                    return self.insert_intrinsic($name, type_params, Some(&[$(param!($arg)),*]), param!($ret));
-                }
-            );
-        }
-        macro_rules! mk_struct {
-            ($($field_ty:expr),*) => (self.type_struct( &[$(param!($field_ty)),*], false))
-        }
-
-        let same_width_vector = |index, element_ty| {
-            self.type_vector(element_ty, self.vector_length(type_params[index]) as u64)
-        };
-
-        let ptr = self.type_ptr();
-        let void = self.type_void();
-        let i1 = self.type_i1();
-        let t_i32 = self.type_i32();
-        let t_i64 = self.type_i64();
-        let t_isize = self.type_isize();
-        let t_metadata = self.type_metadata();
-        let t_token = self.type_token();
-
-        ifn!("llvm.wasm.get.exception", fn(t_token) -> ptr);
-        ifn!("llvm.wasm.get.ehselector", fn(t_token) -> t_i32);
-
-        ifn!("llvm.wasm.trunc.unsigned", fn(1) -> 0);
-        ifn!("llvm.wasm.trunc.signed", fn(1) -> 0);
-        ifn!("llvm.fptosi.sat", fn(1) -> 0);
-        ifn!("llvm.fptoui.sat", fn(1) -> 0);
-
-        ifn!("llvm.trap", fn() -> void);
-        ifn!("llvm.debugtrap", fn() -> void);
-        ifn!("llvm.frameaddress", fn(t_i32) -> ptr);
-
-        ifn!("llvm.powi", fn(0, 1) -> 0);
-        ifn!("llvm.pow", fn(0, 0) -> 0);
-        ifn!("llvm.sqrt", fn(0) -> 0);
-        ifn!("llvm.sin", fn(0) -> 0);
-        ifn!("llvm.cos", fn(0) -> 0);
-        ifn!("llvm.exp", fn(0) -> 0);
-        ifn!("llvm.exp2", fn(0) -> 0);
-        ifn!("llvm.log", fn(0) -> 0);
-        ifn!("llvm.log10", fn(0) -> 0);
-        ifn!("llvm.log2", fn(0) -> 0);
-        ifn!("llvm.fma", fn(0, 0, 0) -> 0);
-        ifn!("llvm.fmuladd", fn(0, 0, 0) -> 0);
-        ifn!("llvm.fabs", fn(0) -> 0);
-        ifn!("llvm.minnum", fn(0, 0) -> 0);
-        ifn!("llvm.minimum", fn(0, 0) -> 0);
-        ifn!("llvm.maxnum", fn(0, 0) -> 0);
-        ifn!("llvm.maximum", fn(0, 0) -> 0);
-        ifn!("llvm.floor", fn(0) -> 0);
-        ifn!("llvm.ceil", fn(0) -> 0);
-        ifn!("llvm.trunc", fn(0) -> 0);
-        ifn!("llvm.copysign", fn(0, 0) -> 0);
-        ifn!("llvm.round", fn(0) -> 0);
-        ifn!("llvm.rint", fn(0) -> 0);
-        ifn!("llvm.nearbyint", fn(0) -> 0);
-
-        ifn!("llvm.ctpop", fn(0) -> 0);
-        ifn!("llvm.ctlz", fn(0, i1) -> 0);
-        ifn!("llvm.cttz", fn(0, i1) -> 0);
-        ifn!("llvm.bswap", fn(0) -> 0);
-        ifn!("llvm.bitreverse", fn(0) -> 0);
-        ifn!("llvm.fshl", fn(0, 0, 0) -> 0);
-        ifn!("llvm.fshr", fn(0, 0, 0) -> 0);
-
-        ifn!("llvm.sadd.with.overflow", fn(0, 0) -> mk_struct! {0, i1});
-        ifn!("llvm.uadd.with.overflow", fn(0, 0) -> mk_struct! {0, i1});
-        ifn!("llvm.ssub.with.overflow", fn(0, 0) -> mk_struct! {0, i1});
-        ifn!("llvm.usub.with.overflow", fn(0, 0) -> mk_struct! {0, i1});
-        ifn!("llvm.smul.with.overflow", fn(0, 0) -> mk_struct! {0, i1});
-        ifn!("llvm.umul.with.overflow", fn(0, 0) -> mk_struct! {0, i1});
-
-        ifn!("llvm.sadd.sat", fn(0, 0) -> 0);
-        ifn!("llvm.uadd.sat", fn(0, 0) -> 0);
-        ifn!("llvm.ssub.sat", fn(0, 0) -> 0);
-        ifn!("llvm.usub.sat", fn(0, 0) -> 0);
-
-        ifn!("llvm.scmp", fn(1, 1) -> 0);
-        ifn!("llvm.ucmp", fn(1, 1) -> 0);
-
-        ifn!("llvm.lifetime.start", fn(t_i64, 0) -> void);
-        ifn!("llvm.lifetime.end", fn(t_i64, 0) -> void);
-
-        ifn!("llvm.is.constant", fn(0) -> i1);
-        ifn!("llvm.expect", fn(0, 0) -> 0);
-
-        ifn!("llvm.eh.typeid.for", fn(0) -> t_i32);
-        ifn!("llvm.localescape", fn(...) -> void);
-        ifn!("llvm.localrecover", fn(ptr, ptr, t_i32) -> ptr);
-
-        ifn!("llvm.assume", fn(i1) -> void);
-        ifn!("llvm.prefetch", fn(0, t_i32, t_i32, t_i32) -> void);
-
         // This isn't an "LLVM intrinsic", but LLVM's optimization passes
         // recognize it like one (including turning it into `bcmp` sometimes)
         // and we use it to implement intrinsics like `raw_eq` and `compare_bytes`
         if base_name == "memcmp" {
-            let fn_ty = self.type_func(&[ptr, ptr, t_isize], self.type_int());
+            let fn_ty = self
+                .type_func(&[self.type_ptr(), self.type_ptr(), self.type_isize()], self.type_int());
             let f = self.declare_cfn("memcmp", llvm::UnnamedAddr::No, fn_ty);
-            self.intrinsics.borrow_mut().insert(("memcmp", SmallVec::new()), (fn_ty, f));
 
             return (fn_ty, f);
         }
 
-        // variadic intrinsics
-        ifn!("llvm.va_start", fn(0) -> void);
-        ifn!("llvm.va_end", fn(0) -> void);
-        ifn!("llvm.va_copy", fn(0, 0) -> void);
+        let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
+            .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
+        let f = intrinsic.get_declaration(self.llmod, &type_params);
 
-        if self.sess().instrument_coverage() {
-            ifn!("llvm.instrprof.increment", fn(ptr, t_i64, t_i32, t_i32) -> void);
-            ifn!("llvm.instrprof.mcdc.parameters", fn(ptr, t_i64, t_i32) -> void);
-            ifn!("llvm.instrprof.mcdc.tvbitmap.update", fn(ptr, t_i64, t_i32, ptr) -> void);
-        }
-
-        ifn!("llvm.type.test", fn(ptr, t_metadata) -> i1);
-        ifn!("llvm.type.checked.load", fn(ptr, t_i32, t_metadata) -> mk_struct! {ptr, i1});
-
-        if self.sess().opts.debuginfo != DebugInfo::None {
-            ifn!("llvm.dbg.declare", fn(t_metadata, t_metadata, t_metadata) -> void);
-            ifn!("llvm.dbg.value", fn(t_metadata, t_metadata, t_metadata) -> void);
-        }
-
-        ifn!("llvm.ptrmask", fn(0, 1) -> 0);
-        ifn!("llvm.threadlocal.address", fn(ptr) -> ptr);
-
-        ifn!("llvm.masked.load", fn(1, t_i32, same_width_vector(0, i1), 0) -> 0);
-        ifn!("llvm.masked.store", fn(0, 1, t_i32, same_width_vector(0, i1)) -> void);
-        ifn!("llvm.masked.gather", fn(1, t_i32, same_width_vector(0, i1), 0) -> 0);
-        ifn!("llvm.masked.scatter", fn(0, 1, t_i32, same_width_vector(0, i1)) -> void);
-
-        bug!("Unknown intrinsic: `{base_name}`")
+        (self.get_type_of_global(f), f)
     }
 
     pub(crate) fn eh_catch_typeinfo(&self) -> &'ll Value {

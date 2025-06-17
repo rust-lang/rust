@@ -7,6 +7,7 @@ use std::cell::Cell;
 use std::slice;
 
 use rustc_ast::BindingMode;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
@@ -848,6 +849,20 @@ impl<'tcx> LateContext<'tcx> {
                 let proj = Ty::new_projection(tcx, assoc.def_id, [self_ty]);
                 tcx.try_normalize_erasing_regions(self.typing_env(), proj).ok()
             })
+    }
+
+    /// Returns the effective precedence of an expression for the purpose of
+    /// rendering diagnostic. This is not the same as the precedence that would
+    /// be used for pretty-printing HIR by rustc_hir_pretty.
+    pub fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
+        let for_each_attr = |id: hir::HirId, callback: &mut dyn FnMut(&hir::Attribute)| {
+            for attr in self.tcx.hir_attrs(id) {
+                if attr.span().desugaring_kind().is_none() {
+                    callback(attr);
+                }
+            }
+        };
+        expr.precedence(&for_each_attr)
     }
 
     /// If the given expression is a local binding, find the initializer expression.

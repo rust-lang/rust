@@ -1700,7 +1700,8 @@ fn visit_nested_use_tree<'a, V: Visitor<'a>>(
 }
 
 pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) -> V::Result {
-    let Stmt { id: _, kind, span: _ } = statement;
+    let Stmt { id, kind, span: _ } = statement;
+    try_visit!(visit_id(visitor, id));
     match kind {
         StmtKind::Let(local) => try_visit!(visitor.visit_local(local)),
         StmtKind::Item(item) => try_visit!(visitor.visit_item(item)),

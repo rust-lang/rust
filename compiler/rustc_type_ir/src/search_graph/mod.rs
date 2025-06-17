@@ -842,9 +842,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// evaluating this entry would not have ended up depending on either a goal
     /// already on the stack or a provisional cache entry.
     fn candidate_is_applicable(
-        stack: &Stack<X>,
+        &self,
         step_kind_from_parent: PathKind,
-        provisional_cache: &HashMap<X::Input, Vec<ProvisionalCacheEntry<X>>>,
         nested_goals: &NestedGoals<X>,
     ) -> bool {
         // If the global cache entry didn't depend on any nested goals, it always
@@ -855,7 +854,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
         // If a nested goal of the global cache entry is on the stack, we would
         // definitely encounter a cycle.
-        if stack.iter().any(|e| nested_goals.contains(e.input)) {
+        if self.stack.iter().any(|e| nested_goals.contains(e.input)) {
             debug!("cache entry not applicable due to stack");
             return false;
         }
@@ -864,7 +863,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         // would apply for any of its nested goals.
         #[allow(rustc::potential_query_instability)]
         for (input, path_from_global_entry) in nested_goals.iter() {
-            let Some(entries) = provisional_cache.get(&input) else {
+            let Some(entries) = self.provisional_cache.get(&input) else {
                 continue;
             };
 
@@ -890,7 +889,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 // We check if any of the paths taken while computing the global goal
                 // would end up with an applicable provisional cache entry.
                 let head = heads.highest_cycle_head();
-                let head_to_curr = Self::cycle_path_kind(stack, step_kind_from_parent, head);
+                let head_to_curr = Self::cycle_path_kind(&self.stack, step_kind_from_parent, head);
                 let full_paths = path_from_global_entry.extend_with(head_to_curr);
                 if full_paths.contains(head_to_provisional.into()) {
                     debug!(
@@ -918,12 +917,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         cx.with_global_cache(|cache| {
             cache
                 .get(cx, input, available_depth, |nested_goals| {
-                    Self::candidate_is_applicable(
-                        &self.stack,
-                        step_kind_from_parent,
-                        &self.provisional_cache,
-                        nested_goals,
-                    )
+                    self.candidate_is_applicable(step_kind_from_parent, nested_goals)
                 })
                 .map(|c| c.result)
         })
@@ -942,12 +936,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         cx.with_global_cache(|cache| {
             let CacheData { result, required_depth, encountered_overflow, nested_goals } = cache
                 .get(cx, input, available_depth, |nested_goals| {
-                    Self::candidate_is_applicable(
-                        &self.stack,
-                        step_kind_from_parent,
-                        &self.provisional_cache,
-                        nested_goals,
-                    )
+                    self.candidate_is_applicable(step_kind_from_parent, nested_goals)
                 })?;
 
             // We don't move cycle participants to the global cache, so the
