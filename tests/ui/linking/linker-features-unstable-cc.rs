@@ -1,5 +1,4 @@
-// Check that only `-C linker-features=[+-]lld` is stable on x64 linux, and that other linker
-// features require using `-Z unstable-options`.
+// Check that non-lld linker features require using `-Z unstable-options`.
 //
 // Note that, currently, only `lld` is parsed on the CLI, but that other linker features can exist
 // internally (`cc`).

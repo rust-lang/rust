@@ -12,6 +12,7 @@ fn main() {
         .input("main.rs")
         .arg("-Clinker-features=+lld")
         .arg("-Clink-self-contained=+linker")
+        .arg("-Zunstable-options")
         .link_arg("-Tscript.t")
         .run();
 }
