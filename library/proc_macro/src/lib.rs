@@ -45,6 +45,7 @@ mod diagnostic;
 mod escape;
 mod to_tokens;
 
+use core::ops::BitOr;
 use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
@@ -237,7 +238,7 @@ impl Default for TokenStream {
 }
 
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
-pub use quote::{quote, quote_span};
+pub use quote::{HasIterator, RepInterp, ThereIsNoIteratorInRepetition, ext, quote, quote_span};
 
 fn tree_to_bridge_tree(
     tree: TokenTree,
