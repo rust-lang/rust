@@ -422,6 +422,23 @@ the different revisions.
 >
 > By convention, the `FALSE` cfg is used to have an always-false config.
 
+### Automatic error annotations
+
+`compiletest` provides the `--try-annotate` flag to add missing annotations.
+
+Note that this flag is an experimental and crude tool. If you use it, you should carefully review
+and modify its changes:
+- trim down the annotation so it tests what you want to test, for example some particular wording
+ of a diagnostic or just the error code/lint name.
+- delete or normalize parts of the annotations that refer to line numbers, like
+ `{async block@src/main.rs:8:13: 8:18}`, so that they don't cause churn later when the UI test
+ itself changes.
+
+You have to pass this flag to `compiletest` like so:
+```text
+./x test tests/ui -- --try-annotate 
+```
+
 ## Controlling pass/fail expectations
 
 By default, a UI test is expected to **generate a compile error** because most
