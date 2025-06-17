@@ -1876,6 +1876,21 @@ pub(crate) fn linked_symbols(
         }
     }
 
+    match tcx.sess.lto() {
+        Lto::No | Lto::ThinLocal => {}
+        Lto::Thin | Lto::Fat => {
+            // We really only need symbols from upstream rlibs to end up in the linked symbols list.
+            // The rest are in separate object files which the linker will always link in and
+            // doesn't have rules around the order in which they need to appear.
+            // When doing LTO, some of the symbols in the linked symbols list may end up getting
+            // internalized, which then prevents referencing them from symbols.o. When doing LTO,
+            // all object files that get linked in will be local object files rather than pulled in
+            // from rlibs, so an empty linked symbols list works fine to avoid referencing all those
+            // internalized symbols from symbols.o.
+            return Vec::new();
+        }
+    }
+
     let mut symbols = Vec::new();
 
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
