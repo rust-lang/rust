@@ -79,9 +79,9 @@ impl GitInfo {
             .start_capture_stdout(&exec_ctx);
 
         GitInfo::Present(Some(Info {
-            commit_date: ver_date.wait_for_output().stdout().trim().to_string(),
-            sha: ver_hash.wait_for_output().stdout().trim().to_string(),
-            short_sha: short_ver_hash.wait_for_output().stdout().trim().to_string(),
+            commit_date: ver_date.wait_for_output(&exec_ctx).stdout().trim().to_string(),
+            sha: ver_hash.wait_for_output(&exec_ctx).stdout().trim().to_string(),
+            short_sha: short_ver_hash.wait_for_output(&exec_ctx).stdout().trim().to_string(),
         }))
     }
 

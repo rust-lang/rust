@@ -94,14 +94,7 @@ impl ExecutionContext {
         let executed_at = std::panic::Location::caller();
 
         if self.dry_run() && !command.run_always {
-            return DeferredCommand {
-                process: None,
-                stdout,
-                stderr,
-                command,
-                exec_ctx: Arc::new(self.clone()),
-                created_at,
-            };
+            return DeferredCommand { process: None, stdout, stderr, command, created_at };
         }
 
         #[cfg(feature = "tracing")]
@@ -117,14 +110,7 @@ impl ExecutionContext {
 
         let child = cmd.spawn().unwrap();
 
-        DeferredCommand {
-            process: Some(child),
-            stdout,
-            stderr,
-            command,
-            exec_ctx: Arc::new(self.clone()),
-            created_at,
-        }
+        DeferredCommand { process: Some(child), stdout, stderr, command, created_at }
     }
 
     /// Execute a command and return its output.
@@ -137,7 +123,7 @@ impl ExecutionContext {
         stdout: OutputMode,
         stderr: OutputMode,
     ) -> CommandOutput {
-        self.start(command, stdout, stderr).wait_for_output()
+        self.start(command, stdout, stderr).wait_for_output(self)
     }
 
     fn fail(&self, message: &str, output: CommandOutput) -> ! {
@@ -164,20 +150,28 @@ impl ExecutionContext {
     }
 }
 
+impl AsRef<ExecutionContext> for ExecutionContext {
+    fn as_ref(&self) -> &ExecutionContext {
+        self
+    }
+}
+
 pub struct DeferredCommand<'a> {
     process: Option<Child>,
     command: &'a mut BootstrapCommand,
     stdout: OutputMode,
     stderr: OutputMode,
-    exec_ctx: Arc<ExecutionContext>,
     created_at: Location<'a>,
 }
 
 impl<'a> DeferredCommand<'a> {
-    pub fn wait_for_output(mut self) -> CommandOutput {
+    pub fn wait_for_output(mut self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
         if self.process.is_none() {
             return CommandOutput::default();
         }
+
+        let exec_ctx = exec_ctx.as_ref();
+
         let output = self.process.take().unwrap().wait_with_output();
 
         let created_at = self.created_at;
@@ -234,14 +228,14 @@ Executed at: {executed_at}"#,
         if !output.is_success() {
             match self.command.failure_behavior {
                 BehaviorOnFailure::DelayFail => {
-                    if self.exec_ctx.fail_fast {
-                        self.exec_ctx.fail(&message, output);
+                    if exec_ctx.fail_fast {
+                        exec_ctx.fail(&message, output);
                     }
 
-                    self.exec_ctx.add_to_delay_failure(message);
+                    exec_ctx.add_to_delay_failure(message);
                 }
                 BehaviorOnFailure::Exit => {
-                    self.exec_ctx.fail(&message, output);
+                    exec_ctx.fail(&message, output);
                 }
                 BehaviorOnFailure::Ignore => {
                     // If failures are allowed, either the error has been printed already
