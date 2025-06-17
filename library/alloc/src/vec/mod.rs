@@ -2032,7 +2032,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
     pub fn insert(&mut self, index: usize, element: T) {
-        let _ = self.insert_mut(index, element);
+        assert!(self.insert_mut(index, element).is_some(), "index out of bounds");
     }
 
     /// Inserts an element at position `index` within the vector, shifting all
