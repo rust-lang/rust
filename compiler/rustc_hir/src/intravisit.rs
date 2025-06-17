@@ -380,7 +380,7 @@ pub trait Visitor<'v>: Sized {
     ///
     /// The [`Visitor::visit_infer`] method should be overridden in order to handle infer vars.
     fn visit_const_arg(&mut self, c: &'v ConstArg<'v, AmbigArg>) -> Self::Result {
-        walk_ambig_const_arg(self, c)
+        walk_const_arg(self, c)
     }
 
     #[allow(unused_variables)]
@@ -525,7 +525,7 @@ pub trait VisitorExt<'v>: Visitor<'v> {
     /// Named `visit_const_arg_unambig` instead of `visit_unambig_const_arg` to aid in
     /// discovery by IDes when `v.visit_const_arg` is written.
     fn visit_const_arg_unambig(&mut self, c: &'v ConstArg<'v>) -> Self::Result {
-        walk_const_arg(self, c)
+        walk_unambig_const_arg(self, c)
     }
 }
 impl<'v, V: Visitor<'v>> VisitorExt<'v> for V {}
@@ -1038,7 +1038,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
     V::Result::output()
 }
 
-pub fn walk_const_arg<'v, V: Visitor<'v>>(
+pub fn walk_unambig_const_arg<'v, V: Visitor<'v>>(
     visitor: &mut V,
     const_arg: &'v ConstArg<'v>,
 ) -> V::Result {
@@ -1052,7 +1052,7 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
     }
 }
 
-pub fn walk_ambig_const_arg<'v, V: Visitor<'v>>(
+pub fn walk_const_arg<'v, V: Visitor<'v>>(
     visitor: &mut V,
     const_arg: &'v ConstArg<'v, AmbigArg>,
 ) -> V::Result {
