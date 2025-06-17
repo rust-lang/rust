@@ -10,7 +10,7 @@ use syntax::ast::{self, Pat, make};
 use crate::RootDatabase;
 
 /// Enum types that implement `std::ops::Try` trait.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum TryEnum {
     Result,
     Option,
