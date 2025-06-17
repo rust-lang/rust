@@ -59,6 +59,7 @@ impl GitInfo {
         }
 
         // Ok, let's scrape some info
+        // We use the command's spawn API to execute these commands concurrently, which leads to performance improvements.
         let mut git_log_cmd = helpers::git(Some(dir));
         let ver_date = git_log_cmd
             .arg("log")
