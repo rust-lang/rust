@@ -2,8 +2,9 @@ use rustc_abi::ExternAbi;
 use rustc_attr_data_structures::{AttributeKind, ReprAttr};
 use rustc_attr_parsing::AttributeParser;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::FnKind;
+use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::{AttrArgs, AttrItem, Attribute, GenericParamKind, PatExprKind, PatKind};
+use rustc_middle::hir::nested_filter::All;
 use rustc_middle::ty;
 use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
@@ -489,21 +490,59 @@ declare_lint! {
 declare_lint_pass!(NonUpperCaseGlobals => [NON_UPPER_CASE_GLOBALS]);
 
 impl NonUpperCaseGlobals {
-    fn check_upper_case(cx: &LateContext<'_>, sort: &str, ident: &Ident) {
+    fn check_upper_case(cx: &LateContext<'_>, sort: &str, did: Option<LocalDefId>, ident: &Ident) {
         let name = ident.name.as_str();
         if name.chars().any(|c| c.is_lowercase()) {
             let uc = NonSnakeCase::to_snake_case(name).to_uppercase();
+
             // We cannot provide meaningful suggestions
             // if the characters are in the category of "Lowercase Letter".
-            let sub = if *name != uc {
-                NonUpperCaseGlobalSub::Suggestion { span: ident.span, replace: uc }
-            } else {
-                NonUpperCaseGlobalSub::Label { span: ident.span }
+            let sub = |span| {
+                if *name != uc {
+                    NonUpperCaseGlobalSub::Suggestion { span, replace: uc.clone() }
+                } else {
+                    NonUpperCaseGlobalSub::Label { span }
+                }
             };
+
+            struct UsageCollector<'a, 'tcx> {
+                cx: &'tcx LateContext<'a>,
+                did: LocalDefId,
+                collected: Vec<Span>,
+            }
+
+            impl<'v, 'tcx> Visitor<'v> for UsageCollector<'v, 'tcx> {
+                type NestedFilter = All;
+
+                fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                    self.cx.tcx
+                }
+
+                fn visit_path(
+                    &mut self,
+                    path: &rustc_hir::Path<'v>,
+                    _id: rustc_hir::HirId,
+                ) -> Self::Result {
+                    for seg in path.segments {
+                        if seg.res.opt_def_id() == Some(self.did.to_def_id()) {
+                            self.collected.push(seg.ident.span);
+                        }
+                    }
+                }
+            }
+
+            let usages = if let Some(did) = did {
+                let mut usage_collector = UsageCollector { cx, did, collected: Vec::new() };
+                cx.tcx.hir_walk_toplevel_module(&mut usage_collector);
+                usage_collector.collected.into_iter().map(|span| sub(span)).collect()
+            } else {
+                vec![]
+            };
+
             cx.emit_span_lint(
                 NON_UPPER_CASE_GLOBALS,
                 ident.span,
-                NonUpperCaseGlobal { sort, name, sub },
+                NonUpperCaseGlobal { sort, name, sub: sub(ident.span), usages },
             );
         }
     }
@@ -516,10 +555,20 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
             hir::ItemKind::Static(_, ident, ..)
                 if !ast::attr::contains_name(attrs, sym::no_mangle) =>
             {
-                NonUpperCaseGlobals::check_upper_case(cx, "static variable", &ident);
+                NonUpperCaseGlobals::check_upper_case(
+                    cx,
+                    "static variable",
+                    Some(it.owner_id.def_id),
+                    &ident,
+                );
             }
             hir::ItemKind::Const(ident, ..) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "constant", &ident);
+                NonUpperCaseGlobals::check_upper_case(
+                    cx,
+                    "constant",
+                    Some(it.owner_id.def_id),
+                    &ident,
+                );
             }
             _ => {}
         }
@@ -527,7 +576,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, ti: &hir::TraitItem<'_>) {
         if let hir::TraitItemKind::Const(..) = ti.kind {
-            NonUpperCaseGlobals::check_upper_case(cx, "associated constant", &ti.ident);
+            NonUpperCaseGlobals::check_upper_case(cx, "associated constant", None, &ti.ident);
         }
     }
 
@@ -535,7 +584,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
         if let hir::ImplItemKind::Const(..) = ii.kind
             && !assoc_item_in_trait_impl(cx, ii)
         {
-            NonUpperCaseGlobals::check_upper_case(cx, "associated constant", &ii.ident);
+            NonUpperCaseGlobals::check_upper_case(cx, "associated constant", None, &ii.ident);
         }
     }
 
@@ -551,6 +600,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
                     NonUpperCaseGlobals::check_upper_case(
                         cx,
                         "constant in pattern",
+                        None,
                         &segment.ident,
                     );
                 }
@@ -560,7 +610,12 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
 
     fn check_generic_param(&mut self, cx: &LateContext<'_>, param: &hir::GenericParam<'_>) {
         if let GenericParamKind::Const { .. } = param.kind {
-            NonUpperCaseGlobals::check_upper_case(cx, "const parameter", &param.name.ident());
+            NonUpperCaseGlobals::check_upper_case(
+                cx,
+                "const parameter",
+                Some(param.def_id),
+                &param.name.ident(),
+            );
         }
     }
 }

@@ -1348,6 +1348,8 @@ pub(crate) struct NonUpperCaseGlobal<'a> {
     pub name: &'a str,
     #[subdiagnostic]
     pub sub: NonUpperCaseGlobalSub,
+    #[subdiagnostic]
+    pub usages: Vec<NonUpperCaseGlobalSub>,
 }
 
 #[derive(Subdiagnostic)]
