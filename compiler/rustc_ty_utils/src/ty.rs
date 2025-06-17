@@ -23,7 +23,7 @@ fn sizedness_constraint_for_ty<'tcx>(
     ty: Ty<'tcx>,
 ) -> Option<Ty<'tcx>> {
     match ty.kind() {
-        // Always `Sized` or `MetaSized`
+        // Always `{Meta,Pointee,}Sized`
         ty::Bool
         | ty::Char
         | ty::Int(..)
@@ -44,11 +44,11 @@ fn sizedness_constraint_for_ty<'tcx>(
         ty::Str | ty::Slice(..) | ty::Dynamic(_, _, ty::Dyn) => match sizedness {
             // Never `Sized`
             SizedTraitKind::Sized => Some(ty),
-            // Always `MetaSized`
-            SizedTraitKind::MetaSized => None,
+            // Always `{Meta,Pointee}Sized`
+            SizedTraitKind::MetaSized | SizedTraitKind::PointeeSized => None,
         },
 
-        // Maybe `Sized` or `MetaSized`
+        // Maybe `{Meta,Pointee,}Sized`
         ty::Param(..) | ty::Alias(..) | ty::Error(_) => Some(ty),
 
         // We cannot instantiate the binder, so just return the *original* type back,
@@ -58,8 +58,11 @@ fn sizedness_constraint_for_ty<'tcx>(
             sizedness_constraint_for_ty(tcx, sizedness, inner_ty.skip_binder()).map(|_| ty)
         }
 
-        // Never `MetaSized` or `Sized`
-        ty::Foreign(..) => Some(ty),
+        // Never `{Meta,}Sized`
+        ty::Foreign(..) => match sizedness {
+            SizedTraitKind::Sized | SizedTraitKind::MetaSized => Some(ty),
+            SizedTraitKind::PointeeSized => None,
+        },
 
         // Recursive cases
         ty::Pat(ty, _) => sizedness_constraint_for_ty(tcx, sizedness, *ty),

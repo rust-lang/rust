@@ -377,6 +377,8 @@ pub enum SizedTraitKind {
     Sized,
     /// `MetaSized` trait
     MetaSized,
+    /// `PointeeSized` trait
+    PointeeSized,
 }
 
 impl SizedTraitKind {
@@ -385,6 +387,7 @@ impl SizedTraitKind {
         cx.require_lang_item(match self {
             SizedTraitKind::Sized => TraitSolverLangItem::Sized,
             SizedTraitKind::MetaSized => TraitSolverLangItem::MetaSized,
+            SizedTraitKind::PointeeSized => TraitSolverLangItem::PointeeSized,
         })
     }
 }

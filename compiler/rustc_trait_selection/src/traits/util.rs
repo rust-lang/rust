@@ -374,6 +374,7 @@ pub fn sizedness_fast_path<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
         let sizedness = match tcx.as_lang_item(trait_ref.def_id()) {
             Some(LangItem::Sized) => SizedTraitKind::Sized,
             Some(LangItem::MetaSized) => SizedTraitKind::MetaSized,
+            Some(LangItem::PointeeSized) => SizedTraitKind::PointeeSized,
             _ => return false,
         };
 

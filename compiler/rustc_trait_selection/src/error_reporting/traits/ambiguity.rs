@@ -201,7 +201,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // begin with in those cases.
                 if matches!(
                     self.tcx.as_lang_item(trait_pred.def_id()),
-                    Some(LangItem::Sized | LangItem::MetaSized)
+                    Some(LangItem::Sized | LangItem::MetaSized | LangItem::PointeeSized)
                 ) {
                     match self.tainted_by_errors() {
                         None => {

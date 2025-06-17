@@ -270,7 +270,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.sizedness_conditions(obligation, SizedTraitKind::MetaSized)
                 }
                 Some(LangItem::PointeeSized) => {
-                    bug!("`PointeeSized` is removing during lowering");
+                    self.sizedness_conditions(obligation, SizedTraitKind::PointeeSized)
                 }
                 Some(LangItem::Copy | LangItem::Clone) => self.copy_clone_conditions(obligation),
                 Some(LangItem::FusedIterator) => self.fused_iterator_conditions(obligation),
