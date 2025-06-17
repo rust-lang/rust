@@ -2,16 +2,15 @@
 
 use std::iter;
 
-use hir_expand::Lookup;
+use base_db::Crate;
+use hir_expand::{InFile, Lookup};
 use la_arena::ArenaMap;
+use syntax::ast::{self, HasVisibility};
 use triomphe::Arc;
 
 use crate::{
-    ConstId, FunctionId, HasModule, ItemContainerId, ItemLoc, ItemTreeLoc, LocalFieldId,
-    LocalModuleId, ModuleId, TraitId, TypeAliasId, VariantId,
-    db::DefDatabase,
-    nameres::DefMap,
-    resolver::{HasResolver, Resolver},
+    AssocItemId, HasModule, ItemContainerId, LocalFieldId, LocalModuleId, ModuleId, TraitId,
+    VariantId, db::DefDatabase, nameres::DefMap, resolver::HasResolver, src::HasSource,
 };
 
 pub use crate::item_tree::{RawVisibility, VisibilityExplicitness};
@@ -21,6 +20,8 @@ pub use crate::item_tree::{RawVisibility, VisibilityExplicitness};
 pub enum Visibility {
     /// Visibility is restricted to a certain module.
     Module(ModuleId, VisibilityExplicitness),
+    /// Visibility is restricted to the crate.
+    PubCrate(Crate),
     /// Visibility is unrestricted.
     Public,
 }
@@ -43,8 +44,13 @@ impl Visibility {
     pub fn is_visible_from(self, db: &dyn DefDatabase, from_module: ModuleId) -> bool {
         let to_module = match self {
             Visibility::Module(m, _) => m,
+            Visibility::PubCrate(krate) => return from_module.krate == krate,
             Visibility::Public => return true,
         };
+        if from_module == to_module {
+            // if the modules are the same, visibility is trivially satisfied
+            return true;
+        }
         // if they're not in the same crate, it can't be visible
         if from_module.krate != to_module.krate {
             return false;
@@ -61,11 +67,17 @@ impl Visibility {
     ) -> bool {
         let to_module = match self {
             Visibility::Module(m, _) => m,
+            Visibility::PubCrate(krate) => return def_map.krate() == krate,
             Visibility::Public => return true,
         };
         // if they're not in the same crate, it can't be visible
         if def_map.krate() != to_module.krate {
             return false;
+        }
+
+        if from_module == to_module.local_id && def_map.block_id() == to_module.block {
+            // if the modules are the same, visibility is trivially satisfied
+            return true;
         }
         Self::is_visible_from_def_map_(db, def_map, to_module, from_module)
     }
@@ -90,9 +102,7 @@ impl Visibility {
                 // `to_module` is not a block, so there is no parent def map to use.
                 (None, _) => (),
                 // `to_module` is at `def_map`'s block, no need to move further.
-                (Some(a), Some(b)) if a == b => {
-                    cov_mark::hit!(is_visible_from_same_block_def_map);
-                }
+                (Some(a), Some(b)) if a == b => {}
                 _ => {
                     if let Some(parent) = to_module.def_map(db).parent() {
                         to_module = parent;
@@ -134,26 +144,56 @@ impl Visibility {
     pub(crate) fn max(self, other: Visibility, def_map: &DefMap) -> Option<Visibility> {
         match (self, other) {
             (_, Visibility::Public) | (Visibility::Public, _) => Some(Visibility::Public),
+            (Visibility::PubCrate(krate), Visibility::PubCrate(krateb)) => {
+                if krate == krateb {
+                    Some(Visibility::PubCrate(krate))
+                } else {
+                    None
+                }
+            }
+            (Visibility::Module(mod_, _), Visibility::PubCrate(krate))
+            | (Visibility::PubCrate(krate), Visibility::Module(mod_, _)) => {
+                if mod_.krate == krate {
+                    Some(Visibility::PubCrate(krate))
+                } else {
+                    None
+                }
+            }
             (Visibility::Module(mod_a, expl_a), Visibility::Module(mod_b, expl_b)) => {
-                if mod_a.krate != mod_b.krate {
+                if mod_a == mod_b {
+                    // Most module visibilities are `pub(self)`, and assuming no errors
+                    // this will be the common and thus fast path.
+                    return Some(Visibility::Module(
+                        mod_a,
+                        match (expl_a, expl_b) {
+                            (VisibilityExplicitness::Explicit, _)
+                            | (_, VisibilityExplicitness::Explicit) => {
+                                VisibilityExplicitness::Explicit
+                            }
+                            _ => VisibilityExplicitness::Implicit,
+                        },
+                    ));
+                }
+
+                if mod_a.krate() != def_map.krate() || mod_b.krate() != def_map.krate() {
                     return None;
                 }
 
                 let def_block = def_map.block_id();
-                if (mod_a.containing_block(), mod_b.containing_block()) != (def_block, def_block) {
+                if mod_a.containing_block() != def_block || mod_b.containing_block() != def_block {
                     return None;
                 }
 
                 let mut a_ancestors =
                     iter::successors(Some(mod_a.local_id), |&m| def_map[m].parent);
-                let mut b_ancestors =
-                    iter::successors(Some(mod_b.local_id), |&m| def_map[m].parent);
 
                 if a_ancestors.any(|m| m == mod_b.local_id) {
                     // B is above A
                     return Some(Visibility::Module(mod_b, expl_b));
                 }
 
+                let mut b_ancestors =
+                    iter::successors(Some(mod_b.local_id), |&m| def_map[m].parent);
                 if b_ancestors.any(|m| m == mod_a.local_id) {
                     // A is above B
                     return Some(Visibility::Module(mod_a, expl_a));
@@ -171,26 +211,52 @@ impl Visibility {
     pub(crate) fn min(self, other: Visibility, def_map: &DefMap) -> Option<Visibility> {
         match (self, other) {
             (vis, Visibility::Public) | (Visibility::Public, vis) => Some(vis),
+            (Visibility::PubCrate(krate), Visibility::PubCrate(krateb)) => {
+                if krate == krateb {
+                    Some(Visibility::PubCrate(krate))
+                } else {
+                    None
+                }
+            }
+            (Visibility::Module(mod_, exp), Visibility::PubCrate(krate))
+            | (Visibility::PubCrate(krate), Visibility::Module(mod_, exp)) => {
+                if mod_.krate == krate { Some(Visibility::Module(mod_, exp)) } else { None }
+            }
             (Visibility::Module(mod_a, expl_a), Visibility::Module(mod_b, expl_b)) => {
-                if mod_a.krate != mod_b.krate {
+                if mod_a == mod_b {
+                    // Most module visibilities are `pub(self)`, and assuming no errors
+                    // this will be the common and thus fast path.
+                    return Some(Visibility::Module(
+                        mod_a,
+                        match (expl_a, expl_b) {
+                            (VisibilityExplicitness::Explicit, _)
+                            | (_, VisibilityExplicitness::Explicit) => {
+                                VisibilityExplicitness::Explicit
+                            }
+                            _ => VisibilityExplicitness::Implicit,
+                        },
+                    ));
+                }
+
+                if mod_a.krate() != def_map.krate() || mod_b.krate() != def_map.krate() {
                     return None;
                 }
 
                 let def_block = def_map.block_id();
-                if (mod_a.containing_block(), mod_b.containing_block()) != (def_block, def_block) {
+                if mod_a.containing_block() != def_block || mod_b.containing_block() != def_block {
                     return None;
                 }
 
                 let mut a_ancestors =
                     iter::successors(Some(mod_a.local_id), |&m| def_map[m].parent);
-                let mut b_ancestors =
-                    iter::successors(Some(mod_b.local_id), |&m| def_map[m].parent);
 
                 if a_ancestors.any(|m| m == mod_b.local_id) {
                     // B is above A
                     return Some(Visibility::Module(mod_a, expl_a));
                 }
 
+                let mut b_ancestors =
+                    iter::successors(Some(mod_b.local_id), |&m| def_map[m].parent);
                 if b_ancestors.any(|m| m == mod_a.local_id) {
                     // A is above B
                     return Some(Visibility::Module(mod_b, expl_b));
@@ -217,49 +283,62 @@ pub(crate) fn field_visibilities_query(
     for (field_id, field_data) in fields.iter() {
         res.insert(field_id, Visibility::resolve(db, &resolver, &field_data.visibility));
     }
+    res.shrink_to_fit();
     Arc::new(res)
 }
 
-/// Resolve visibility of a function.
-pub(crate) fn function_visibility_query(db: &dyn DefDatabase, def: FunctionId) -> Visibility {
-    let resolver = def.resolver(db);
-    let loc = def.lookup(db);
-    let tree = loc.item_tree_id().item_tree(db);
-    if let ItemContainerId::TraitId(trait_id) = loc.container {
-        trait_vis(db, &resolver, trait_id)
-    } else {
-        Visibility::resolve(db, &resolver, &tree[tree[loc.id.value].visibility])
+pub fn visibility_from_ast(
+    db: &dyn DefDatabase,
+    has_resolver: impl HasResolver,
+    ast_vis: InFile<Option<ast::Visibility>>,
+) -> Visibility {
+    let mut span_map = None;
+    let raw_vis = crate::item_tree::visibility_from_ast(db, ast_vis.value, &mut |range| {
+        span_map.get_or_insert_with(|| db.span_map(ast_vis.file_id)).span_for_range(range).ctx
+    });
+    if raw_vis == RawVisibility::Public {
+        return Visibility::Public;
     }
-}
 
-/// Resolve visibility of a const.
-pub(crate) fn const_visibility_query(db: &dyn DefDatabase, def: ConstId) -> Visibility {
-    let resolver = def.resolver(db);
-    let loc = def.lookup(db);
-    let tree = loc.item_tree_id().item_tree(db);
-    if let ItemContainerId::TraitId(trait_id) = loc.container {
-        trait_vis(db, &resolver, trait_id)
-    } else {
-        Visibility::resolve(db, &resolver, &tree[tree[loc.id.value].visibility])
-    }
+    Visibility::resolve(db, &has_resolver.resolver(db), &raw_vis)
 }
 
 /// Resolve visibility of a type alias.
-pub(crate) fn type_alias_visibility_query(db: &dyn DefDatabase, def: TypeAliasId) -> Visibility {
-    let resolver = def.resolver(db);
-    let loc = def.lookup(db);
-    let tree = loc.item_tree_id().item_tree(db);
-    if let ItemContainerId::TraitId(trait_id) = loc.container {
-        trait_vis(db, &resolver, trait_id)
-    } else {
-        Visibility::resolve(db, &resolver, &tree[tree[loc.id.value].visibility])
+pub(crate) fn assoc_visibility_query(db: &dyn DefDatabase, def: AssocItemId) -> Visibility {
+    match def {
+        AssocItemId::FunctionId(function_id) => {
+            let loc = function_id.lookup(db);
+            trait_item_visibility(db, loc.container).unwrap_or_else(|| {
+                let source = loc.source(db);
+                visibility_from_ast(db, function_id, source.map(|src| src.visibility()))
+            })
+        }
+        AssocItemId::ConstId(const_id) => {
+            let loc = const_id.lookup(db);
+            trait_item_visibility(db, loc.container).unwrap_or_else(|| {
+                let source = loc.source(db);
+                visibility_from_ast(db, const_id, source.map(|src| src.visibility()))
+            })
+        }
+        AssocItemId::TypeAliasId(type_alias_id) => {
+            let loc = type_alias_id.lookup(db);
+            trait_item_visibility(db, loc.container).unwrap_or_else(|| {
+                let source = loc.source(db);
+                visibility_from_ast(db, type_alias_id, source.map(|src| src.visibility()))
+            })
+        }
     }
 }
 
-#[inline]
-fn trait_vis(db: &dyn DefDatabase, resolver: &Resolver<'_>, trait_id: TraitId) -> Visibility {
-    let ItemLoc { id: tree_id, .. } = trait_id.lookup(db);
-    let item_tree = tree_id.item_tree(db);
-    let tr_def = &item_tree[tree_id.value];
-    Visibility::resolve(db, resolver, &item_tree[tr_def.visibility])
+fn trait_item_visibility(db: &dyn DefDatabase, container: ItemContainerId) -> Option<Visibility> {
+    match container {
+        ItemContainerId::TraitId(trait_) => Some(trait_visibility(db, trait_)),
+        _ => None,
+    }
+}
+
+fn trait_visibility(db: &dyn DefDatabase, def: TraitId) -> Visibility {
+    let loc = def.lookup(db);
+    let source = loc.source(db);
+    visibility_from_ast(db, def, source.map(|src| src.visibility()))
 }

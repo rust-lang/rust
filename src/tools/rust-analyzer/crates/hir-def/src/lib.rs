@@ -49,8 +49,9 @@ pub mod find_path;
 pub mod import_map;
 pub mod visibility;
 
-use intern::{Interned, sym};
+use intern::{Interned, Symbol, sym};
 pub use rustc_abi as layout;
+use thin_vec::ThinVec;
 use triomphe::Arc;
 
 pub use crate::signatures::LocalFieldId;
@@ -74,12 +75,11 @@ use hir_expand::{
     name::Name,
     proc_macro::{CustomProcMacroExpander, ProcMacroKind},
 };
-use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
 use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
 use stdx::impl_from;
-use syntax::ast;
+use syntax::{AstNode, ast};
 
 pub use hir_expand::{Intern, Lookup, tt};
 
@@ -88,12 +88,11 @@ use crate::{
     builtin_type::BuiltinType,
     db::DefDatabase,
     hir::generics::{LocalLifetimeParamId, LocalTypeOrConstParamId},
-    item_tree::{
-        Const, Enum, ExternCrate, Function, Impl, ItemTreeId, ItemTreeNode, Macro2, MacroRules,
-        Static, Struct, Trait, TraitAlias, TypeAlias, Union, Use, Variant,
+    nameres::{
+        LocalDefMap, assoc::ImplItems, block_def_map, crate_def_map, crate_local_def_map,
+        diagnostics::DefDiagnostics,
     },
-    nameres::{LocalDefMap, block_def_map, crate_def_map, crate_local_def_map},
-    signatures::VariantFields,
+    signatures::{EnumVariants, InactiveEnumVariantCode, VariantFields},
 };
 
 type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
@@ -113,68 +112,109 @@ pub struct ImportPathConfig {
 }
 
 #[derive(Debug)]
-pub struct ItemLoc<N: ItemTreeNode> {
+pub struct ItemLoc<N: AstIdNode> {
     pub container: ModuleId,
-    pub id: ItemTreeId<N>,
+    pub id: AstId<N>,
 }
 
-impl<N: ItemTreeNode> Clone for ItemLoc<N> {
+impl<N: AstIdNode> Clone for ItemLoc<N> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<N: ItemTreeNode> Copy for ItemLoc<N> {}
+impl<N: AstIdNode> Copy for ItemLoc<N> {}
 
-impl<N: ItemTreeNode> PartialEq for ItemLoc<N> {
+impl<N: AstIdNode> PartialEq for ItemLoc<N> {
     fn eq(&self, other: &Self) -> bool {
         self.container == other.container && self.id == other.id
     }
 }
 
-impl<N: ItemTreeNode> Eq for ItemLoc<N> {}
+impl<N: AstIdNode> Eq for ItemLoc<N> {}
 
-impl<N: ItemTreeNode> Hash for ItemLoc<N> {
+impl<N: AstIdNode> Hash for ItemLoc<N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.container.hash(state);
         self.id.hash(state);
+    }
+}
+
+impl<N: AstIdNode> HasModule for ItemLoc<N> {
+    #[inline]
+    fn module(&self, _db: &dyn DefDatabase) -> ModuleId {
+        self.container
     }
 }
 
 #[derive(Debug)]
-pub struct AssocItemLoc<N: ItemTreeNode> {
+pub struct AssocItemLoc<N: AstIdNode> {
+    // FIXME: Store this as an erased `salsa::Id` to save space
     pub container: ItemContainerId,
-    pub id: ItemTreeId<N>,
+    pub id: AstId<N>,
 }
 
-impl<N: ItemTreeNode> Clone for AssocItemLoc<N> {
+impl<N: AstIdNode> Clone for AssocItemLoc<N> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<N: ItemTreeNode> Copy for AssocItemLoc<N> {}
+impl<N: AstIdNode> Copy for AssocItemLoc<N> {}
 
-impl<N: ItemTreeNode> PartialEq for AssocItemLoc<N> {
+impl<N: AstIdNode> PartialEq for AssocItemLoc<N> {
     fn eq(&self, other: &Self) -> bool {
         self.container == other.container && self.id == other.id
     }
 }
 
-impl<N: ItemTreeNode> Eq for AssocItemLoc<N> {}
+impl<N: AstIdNode> Eq for AssocItemLoc<N> {}
 
-impl<N: ItemTreeNode> Hash for AssocItemLoc<N> {
+impl<N: AstIdNode> Hash for AssocItemLoc<N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.container.hash(state);
         self.id.hash(state);
     }
 }
 
-pub trait ItemTreeLoc {
+impl<N: AstIdNode> HasModule for AssocItemLoc<N> {
+    #[inline]
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        self.container.module(db)
+    }
+}
+
+pub trait AstIdLoc {
     type Container;
-    type Id;
-    fn item_tree_id(&self) -> ItemTreeId<Self::Id>;
+    type Ast: AstNode;
+    fn ast_id(&self) -> AstId<Self::Ast>;
     fn container(&self) -> Self::Container;
+}
+
+impl<N: AstIdNode> AstIdLoc for ItemLoc<N> {
+    type Container = ModuleId;
+    type Ast = N;
+    #[inline]
+    fn ast_id(&self) -> AstId<Self::Ast> {
+        self.id
+    }
+    #[inline]
+    fn container(&self) -> Self::Container {
+        self.container
+    }
+}
+
+impl<N: AstIdNode> AstIdLoc for AssocItemLoc<N> {
+    type Container = ItemContainerId;
+    type Ast = N;
+    #[inline]
+    fn ast_id(&self) -> AstId<Self::Ast> {
+        self.id
+    }
+    #[inline]
+    fn container(&self) -> Self::Container {
+        self.container
+    }
 }
 
 macro_rules! impl_intern {
@@ -186,74 +226,103 @@ macro_rules! impl_intern {
 
 macro_rules! impl_loc {
     ($loc:ident, $id:ident: $id_ty:ident, $container:ident: $container_type:ident) => {
-        impl ItemTreeLoc for $loc {
+        impl AstIdLoc for $loc {
             type Container = $container_type;
-            type Id = $id_ty;
-            fn item_tree_id(&self) -> ItemTreeId<Self::Id> {
+            type Ast = ast::$id_ty;
+            fn ast_id(&self) -> AstId<Self::Ast> {
                 self.$id
             }
             fn container(&self) -> Self::Container {
                 self.$container
             }
         }
+
+        impl HasModule for $loc {
+            #[inline]
+            fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+                self.$container.module(db)
+            }
+        }
     };
 }
 
-type FunctionLoc = AssocItemLoc<Function>;
+type FunctionLoc = AssocItemLoc<ast::Fn>;
 impl_intern!(FunctionId, FunctionLoc, intern_function, lookup_intern_function);
-impl_loc!(FunctionLoc, id: Function, container: ItemContainerId);
 
-type StructLoc = ItemLoc<Struct>;
+type StructLoc = ItemLoc<ast::Struct>;
 impl_intern!(StructId, StructLoc, intern_struct, lookup_intern_struct);
-impl_loc!(StructLoc, id: Struct, container: ModuleId);
 
-pub type UnionLoc = ItemLoc<Union>;
+pub type UnionLoc = ItemLoc<ast::Union>;
 impl_intern!(UnionId, UnionLoc, intern_union, lookup_intern_union);
-impl_loc!(UnionLoc, id: Union, container: ModuleId);
 
-pub type EnumLoc = ItemLoc<Enum>;
+pub type EnumLoc = ItemLoc<ast::Enum>;
 impl_intern!(EnumId, EnumLoc, intern_enum, lookup_intern_enum);
-impl_loc!(EnumLoc, id: Enum, container: ModuleId);
 
-type ConstLoc = AssocItemLoc<Const>;
+impl EnumId {
+    #[inline]
+    pub fn enum_variants(self, db: &dyn DefDatabase) -> &EnumVariants {
+        &self.enum_variants_with_diagnostics(db).0
+    }
+
+    #[inline]
+    pub fn enum_variants_with_diagnostics(
+        self,
+        db: &dyn DefDatabase,
+    ) -> &(EnumVariants, Option<ThinVec<InactiveEnumVariantCode>>) {
+        EnumVariants::of(db, self)
+    }
+}
+
+type ConstLoc = AssocItemLoc<ast::Const>;
 impl_intern!(ConstId, ConstLoc, intern_const, lookup_intern_const);
-impl_loc!(ConstLoc, id: Const, container: ItemContainerId);
 
-pub type StaticLoc = AssocItemLoc<Static>;
+pub type StaticLoc = AssocItemLoc<ast::Static>;
 impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
-impl_loc!(StaticLoc, id: Static, container: ItemContainerId);
 
-pub type TraitLoc = ItemLoc<Trait>;
+pub type TraitLoc = ItemLoc<ast::Trait>;
 impl_intern!(TraitId, TraitLoc, intern_trait, lookup_intern_trait);
-impl_loc!(TraitLoc, id: Trait, container: ModuleId);
 
-pub type TraitAliasLoc = ItemLoc<TraitAlias>;
+pub type TraitAliasLoc = ItemLoc<ast::TraitAlias>;
 impl_intern!(TraitAliasId, TraitAliasLoc, intern_trait_alias, lookup_intern_trait_alias);
-impl_loc!(TraitAliasLoc, id: TraitAlias, container: ModuleId);
 
-type TypeAliasLoc = AssocItemLoc<TypeAlias>;
+type TypeAliasLoc = AssocItemLoc<ast::TypeAlias>;
 impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_alias);
-impl_loc!(TypeAliasLoc, id: TypeAlias, container: ItemContainerId);
 
-type ImplLoc = ItemLoc<Impl>;
+type ImplLoc = ItemLoc<ast::Impl>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
-impl_loc!(ImplLoc, id: Impl, container: ModuleId);
 
-type UseLoc = ItemLoc<Use>;
+impl ImplId {
+    #[inline]
+    pub fn impl_items(self, db: &dyn DefDatabase) -> &ImplItems {
+        &self.impl_items_with_diagnostics(db).0
+    }
+
+    #[inline]
+    pub fn impl_items_with_diagnostics(self, db: &dyn DefDatabase) -> &(ImplItems, DefDiagnostics) {
+        ImplItems::of(db, self)
+    }
+}
+
+type UseLoc = ItemLoc<ast::Use>;
 impl_intern!(UseId, UseLoc, intern_use, lookup_intern_use);
-impl_loc!(UseLoc, id: Use, container: ModuleId);
 
-type ExternCrateLoc = ItemLoc<ExternCrate>;
+type ExternCrateLoc = ItemLoc<ast::ExternCrate>;
 impl_intern!(ExternCrateId, ExternCrateLoc, intern_extern_crate, lookup_intern_extern_crate);
-impl_loc!(ExternCrateLoc, id: ExternCrate, container: ModuleId);
 
-type ExternBlockLoc = ItemLoc<ExternBlock>;
+type ExternBlockLoc = ItemLoc<ast::ExternBlock>;
 impl_intern!(ExternBlockId, ExternBlockLoc, intern_extern_block, lookup_intern_extern_block);
-impl_loc!(ExternBlockLoc, id: ExternBlock, container: ModuleId);
+
+#[salsa::tracked]
+impl ExternBlockId {
+    #[salsa::tracked]
+    pub fn abi(self, db: &dyn DefDatabase) -> Option<Symbol> {
+        signatures::extern_block_abi(db, self)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariantLoc {
-    pub id: ItemTreeId<Variant>,
+    pub id: AstId<ast::Variant>,
     pub parent: EnumId,
     pub index: u32,
 }
@@ -262,18 +331,18 @@ impl_loc!(EnumVariantLoc, id: Variant, parent: EnumId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Macro2Loc {
     pub container: ModuleId,
-    pub id: ItemTreeId<Macro2>,
+    pub id: AstId<ast::MacroDef>,
     pub expander: MacroExpander,
     pub allow_internal_unsafe: bool,
     pub edition: Edition,
 }
 impl_intern!(Macro2Id, Macro2Loc, intern_macro2, lookup_intern_macro2);
-impl_loc!(Macro2Loc, id: Macro2, container: ModuleId);
+impl_loc!(Macro2Loc, id: MacroDef, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroRulesLoc {
     pub container: ModuleId,
-    pub id: ItemTreeId<MacroRules>,
+    pub id: AstId<ast::MacroRules>,
     pub expander: MacroExpander,
     pub flags: MacroRulesLocFlags,
     pub edition: Edition,
@@ -301,13 +370,13 @@ pub enum MacroExpander {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ProcMacroLoc {
     pub container: CrateRootModuleId,
-    pub id: ItemTreeId<Function>,
+    pub id: AstId<ast::Fn>,
     pub expander: CustomProcMacroExpander,
     pub kind: ProcMacroKind,
     pub edition: Edition,
 }
 impl_intern!(ProcMacroId, ProcMacroLoc, intern_proc_macro, lookup_intern_proc_macro);
-impl_loc!(ProcMacroLoc, id: Function, container: CrateRootModuleId);
+impl_loc!(ProcMacroLoc, id: Fn, container: CrateRootModuleId);
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub struct BlockLoc {
@@ -315,7 +384,26 @@ pub struct BlockLoc {
     /// The containing module.
     pub module: ModuleId,
 }
-impl_intern!(BlockId, BlockLoc, intern_block, lookup_intern_block);
+#[salsa_macros::tracked(debug)]
+#[derive(PartialOrd, Ord)]
+pub struct BlockIdLt<'db> {
+    pub loc: BlockLoc,
+}
+pub type BlockId = BlockIdLt<'static>;
+impl hir_expand::Intern for BlockLoc {
+    type Database = dyn DefDatabase;
+    type ID = BlockId;
+    fn intern(self, db: &Self::Database) -> Self::ID {
+        unsafe { std::mem::transmute::<BlockIdLt<'_>, BlockId>(BlockIdLt::new(db, self)) }
+    }
+}
+impl hir_expand::Lookup for BlockId {
+    type Database = dyn DefDatabase;
+    type Data = BlockLoc;
+    fn lookup(&self, db: &Self::Database) -> Self::Data {
+        self.loc(db)
+    }
+}
 
 /// A `ModuleId` that is always a crate's root module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -334,6 +422,18 @@ impl CrateRootModuleId {
     }
 
     pub fn krate(self) -> Crate {
+        self.krate
+    }
+}
+
+impl HasModule for CrateRootModuleId {
+    #[inline]
+    fn module(&self, _db: &dyn DefDatabase) -> ModuleId {
+        ModuleId { krate: self.krate, block: None, local_id: DefMap::ROOT }
+    }
+
+    #[inline]
+    fn krate(&self, _db: &dyn DefDatabase) -> Crate {
         self.krate
     }
 }
@@ -466,11 +566,19 @@ impl ModuleId {
     }
 }
 
+impl HasModule for ModuleId {
+    #[inline]
+    fn module(&self, _db: &dyn DefDatabase) -> ModuleId {
+        *self
+    }
+}
+
 /// An ID of a module, **local** to a `DefMap`.
 pub type LocalModuleId = Idx<nameres::ModuleData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FieldId {
+    // FIXME: Store this as an erased `salsa::Id` to save space
     pub parent: VariantId,
     pub local_id: LocalFieldId,
 }
@@ -486,6 +594,7 @@ pub struct TupleFieldId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TypeOrConstParamId {
+    // FIXME: Store this as an erased `salsa::Id` to save space
     pub parent: GenericDefId,
     pub local_id: LocalTypeOrConstParamId,
 }
@@ -544,6 +653,7 @@ impl From<ConstParamId> for TypeOrConstParamId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LifetimeParamId {
+    // FIXME: Store this as an erased `salsa::Id` to save space
     pub parent: GenericDefId,
     pub local_id: LocalLifetimeParamId,
 }
@@ -642,15 +752,10 @@ impl GeneralConstId {
     pub fn name(self, db: &dyn DefDatabase) -> String {
         match self {
             GeneralConstId::StaticId(it) => {
-                let loc = it.lookup(db);
-                let tree = loc.item_tree_id().item_tree(db);
-                let name = tree[loc.id.value].name.display(db, Edition::CURRENT);
-                name.to_string()
+                db.static_signature(it).name.display(db, Edition::CURRENT).to_string()
             }
             GeneralConstId::ConstId(const_id) => {
-                let loc = const_id.lookup(db);
-                let tree = loc.item_tree_id().item_tree(db);
-                tree[loc.id.value].name.as_ref().map_or_else(
+                db.const_signature(const_id).name.as_ref().map_or_else(
                     || "_".to_owned(),
                     |name| name.display(db, Edition::CURRENT).to_string(),
                 )
@@ -692,7 +797,7 @@ impl DefWithBodyId {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum AssocItemId {
     FunctionId(FunctionId),
     ConstId(ConstId),
@@ -768,8 +873,8 @@ impl GenericDefId {
             GenericDefId::TraitId(it) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::TraitAliasId(it) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::ImplId(it) => file_id_and_params_of_item_loc(db, it),
-            GenericDefId::ConstId(it) => (it.lookup(db).id.file_id(), None),
-            GenericDefId::StaticId(it) => (it.lookup(db).id.file_id(), None),
+            GenericDefId::ConstId(it) => (it.lookup(db).id.file_id, None),
+            GenericDefId::StaticId(it) => (it.lookup(db).id.file_id, None),
         }
     }
 
@@ -935,9 +1040,9 @@ impl VariantId {
 
     pub fn file_id(self, db: &dyn DefDatabase) -> HirFileId {
         match self {
-            VariantId::EnumVariantId(it) => it.lookup(db).id.file_id(),
-            VariantId::StructId(it) => it.lookup(db).id.file_id(),
-            VariantId::UnionId(it) => it.lookup(db).id.file_id(),
+            VariantId::EnumVariantId(it) => it.lookup(db).id.file_id,
+            VariantId::StructId(it) => it.lookup(db).id.file_id,
+            VariantId::UnionId(it) => it.lookup(db).id.file_id,
         }
     }
 
@@ -977,7 +1082,7 @@ pub trait HasModule {
 
 impl<N, ItemId> HasModule for ItemId
 where
-    N: ItemTreeNode,
+    N: AstIdNode,
     ItemId: Lookup<Database = dyn DefDatabase, Data = ItemLoc<N>> + Copy,
 {
     #[inline]
@@ -1003,7 +1108,7 @@ where
 #[inline]
 fn module_for_assoc_item_loc<'db>(
     db: &(dyn 'db + DefDatabase),
-    id: impl Lookup<Database = dyn DefDatabase, Data = AssocItemLoc<impl ItemTreeNode>>,
+    id: impl Lookup<Database = dyn DefDatabase, Data = AssocItemLoc<impl AstIdNode>>,
 ) -> ModuleId {
     id.lookup(db).container.module(db)
 }
@@ -1245,7 +1350,7 @@ pub struct SyntheticSyntax;
 // Crate authors can opt their type out of completions in some cases.
 // This is done with the `#[rust_analyzer::completions(...)]` attribute.
 //
-// All completeable things support `#[rust_analyzer::completions(ignore_flyimport)]`,
+// All completable things support `#[rust_analyzer::completions(ignore_flyimport)]`,
 // which causes the thing to get excluded from flyimport completion. It will still
 // be completed when in scope. This is analogous to the setting `rust-analyzer.completion.autoimport.exclude`
 // with `"type": "always"`.

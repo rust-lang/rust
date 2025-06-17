@@ -9,9 +9,10 @@ use std::{
 use hir_expand::{Lookup, mod_path::PathKind};
 use itertools::Itertools;
 use span::Edition;
+use syntax::ast::HasName;
 
 use crate::{
-    AdtId, DefWithBodyId, GenericDefId, ItemTreeLoc, TypeParamId, VariantId,
+    AdtId, DefWithBodyId, GenericDefId, TypeParamId, VariantId,
     expr_store::path::{GenericArg, GenericArgs},
     hir::{
         Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, Movability, Statement,
@@ -19,6 +20,7 @@ use crate::{
     },
     lang_item::LangItemTarget,
     signatures::{FnFlags, FunctionSignature, StructSignature},
+    src::HasSource,
     type_ref::{ConstRef, LifetimeRef, Mutability, TraitBoundModifier, TypeBound, UseArgRef},
 };
 use crate::{LifetimeParamId, signatures::StructFlags};
@@ -48,6 +50,17 @@ pub enum LineFormat {
     Indentation,
 }
 
+fn item_name<Id, Loc>(db: &dyn DefDatabase, id: Id, default: &str) -> String
+where
+    Id: Lookup<Database = dyn DefDatabase, Data = Loc>,
+    Loc: HasSource,
+    Loc::Value: ast::HasName,
+{
+    let loc = id.lookup(db);
+    let source = loc.source(db);
+    source.value.name().map_or_else(|| default.to_owned(), |name| name.to_string())
+}
+
 pub fn print_body_hir(
     db: &dyn DefDatabase,
     body: &Body,
@@ -55,31 +68,14 @@ pub fn print_body_hir(
     edition: Edition,
 ) -> String {
     let header = match owner {
-        DefWithBodyId::FunctionId(it) => {
-            it.lookup(db).id.resolved(db, |it| format!("fn {}", it.name.display(db, edition)))
-        }
-        DefWithBodyId::StaticId(it) => it
-            .lookup(db)
-            .id
-            .resolved(db, |it| format!("static {} = ", it.name.display(db, edition))),
-        DefWithBodyId::ConstId(it) => it.lookup(db).id.resolved(db, |it| {
-            format!(
-                "const {} = ",
-                match &it.name {
-                    Some(name) => name.display(db, edition).to_string(),
-                    None => "_".to_owned(),
-                }
-            )
-        }),
-        DefWithBodyId::VariantId(it) => {
-            let loc = it.lookup(db);
-            let enum_loc = loc.parent.lookup(db);
-            format!(
-                "enum {}::{}",
-                enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db, edition),
-                loc.id.item_tree(db)[loc.id.value].name.display(db, edition),
-            )
-        }
+        DefWithBodyId::FunctionId(it) => format!("fn {}", item_name(db, it, "<missing>")),
+        DefWithBodyId::StaticId(it) => format!("static {} = ", item_name(db, it, "<missing>")),
+        DefWithBodyId::ConstId(it) => format!("const {} = ", item_name(db, it, "_")),
+        DefWithBodyId::VariantId(it) => format!(
+            "enum {}::{}",
+            item_name(db, it.lookup(db).parent, "<missing>"),
+            item_name(db, it, "<missing>")
+        ),
     };
 
     let mut p = Printer {
@@ -116,22 +112,13 @@ pub fn print_body_hir(
 
 pub fn print_variant_body_hir(db: &dyn DefDatabase, owner: VariantId, edition: Edition) -> String {
     let header = match owner {
-        VariantId::StructId(it) => {
-            it.lookup(db).id.resolved(db, |it| format!("struct {}", it.name.display(db, edition)))
-        }
-        VariantId::EnumVariantId(enum_variant_id) => {
-            let loc = enum_variant_id.lookup(db);
-            let enum_loc = loc.parent.lookup(db);
-            format!(
-                "enum {}::{}",
-                enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db, edition),
-                loc.id.item_tree(db)[loc.id.value].name.display(db, edition),
-            )
-        }
-        VariantId::UnionId(union_id) => union_id
-            .lookup(db)
-            .id
-            .resolved(db, |it| format!("union {}", it.name.display(db, edition))),
+        VariantId::StructId(it) => format!("struct {}", item_name(db, it, "<missing>")),
+        VariantId::EnumVariantId(it) => format!(
+            "enum {}::{}",
+            item_name(db, it.lookup(db).parent, "<missing>"),
+            item_name(db, it, "<missing>")
+        ),
+        VariantId::UnionId(it) => format!("union {}", item_name(db, it, "<missing>")),
     };
 
     let fields = db.variant_fields(owner);
@@ -154,9 +141,11 @@ pub fn print_variant_body_hir(db: &dyn DefDatabase, owner: VariantId, edition: E
         let FieldData { name, type_ref, visibility, is_unsafe } = data;
         match visibility {
             crate::item_tree::RawVisibility::Module(interned, _visibility_explicitness) => {
-                w!(p, "{}", interned.display(db, p.edition))
+                w!(p, "pub(in {})", interned.display(db, p.edition))
             }
             crate::item_tree::RawVisibility::Public => w!(p, "pub "),
+            crate::item_tree::RawVisibility::PubCrate => w!(p, "pub(crate) "),
+            crate::item_tree::RawVisibility::PubSelf(_) => w!(p, "pub(self) "),
         }
         if *is_unsafe {
             w!(p, "unsafe ");
@@ -1089,10 +1078,7 @@ impl Printer<'_> {
             w!(self, "builtin#lang(");
             macro_rules! write_name {
                 ($it:ident) => {{
-                    let loc = $it.lookup(self.db);
-                    let tree = loc.item_tree_id().item_tree(self.db);
-                    let name = &tree[loc.id.value].name;
-                    w!(self, "{}", name.display(self.db, self.edition));
+                    w!(self, "{}", item_name(self.db, $it, "<missing>"));
                 }};
             }
             match *it {

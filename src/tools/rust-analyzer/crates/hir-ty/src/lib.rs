@@ -98,7 +98,7 @@ pub use lower::{
     ValueTyDefId, associated_type_shorthand_candidates, diagnostics::*,
 };
 pub use mapping::{
-    from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
+    ToChalk, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
     lt_from_placeholder_idx, lt_to_placeholder_idx, to_assoc_type_id, to_chalk_trait_id,
     to_foreign_def_id, to_placeholder_idx,
 };
@@ -542,7 +542,7 @@ impl CallableSig {
     }
 
     pub fn from_def(db: &dyn HirDatabase, def: FnDefId, substs: &Substitution) -> CallableSig {
-        let callable_def = db.lookup_intern_callable_def(def.into());
+        let callable_def = ToChalk::from_chalk(db, def);
         let sig = db.callable_item_signature(callable_def);
         sig.substitute(Interner, substs)
     }

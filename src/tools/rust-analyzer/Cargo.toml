@@ -87,11 +87,11 @@ vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.113", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.113", default-features = false }
-ra-ap-rustc_index = { version = "0.113", default-features = false }
-ra-ap-rustc_abi = { version = "0.113", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.113", default-features = false }
+ra-ap-rustc_lexer = { version = "0.116", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.116", default-features = false }
+ra-ap-rustc_index = { version = "0.116", default-features = false }
+ra-ap-rustc_abi = { version = "0.116", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.116", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 
@@ -101,24 +101,24 @@ la-arena = { version = "0.3.1" }
 lsp-server = { version = "0.7.8" }
 
 # non-local crates
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 arrayvec = "0.7.6"
-bitflags = "2.9.0"
-cargo_metadata = "0.19.2"
-camino = "1.1.9"
-chalk-solve = { version = "0.102.0", default-features = false }
-chalk-ir = "0.102.0"
-chalk-recursive = { version = "0.102.0", default-features = false }
-chalk-derive = "0.102.0"
+bitflags = "2.9.1"
+cargo_metadata = "0.20.0"
+camino = "1.1.10"
+chalk-solve = { version = "0.103.0", default-features = false }
+chalk-ir = "0.103.0"
+chalk-recursive = { version = "0.103.0", default-features = false }
+chalk-derive = "0.103.0"
 crossbeam-channel = "0.5.15"
 dissimilar = "1.0.10"
 dot = "0.1.4"
 either = "1.15.0"
 expect-test = "1.5.1"
-indexmap = { version = "2.8.0", features = ["serde"] }
+indexmap = { version = "2.9.0", features = ["serde"] }
 itertools = "0.14.0"
-libc = "0.2.171"
-libloading = "0.8.6"
+libc = "0.2.172"
+libloading = "0.8.8"
 memmap2 = "0.9.5"
 nohash-hasher = "0.2.0"
 oorandom = "11.1.5"
@@ -129,20 +129,22 @@ object = { version = "0.36.7", default-features = false, features = [
   "macho",
   "pe",
 ] }
-process-wrap = { version = "8.2.0", features = ["std"] }
+process-wrap = { version = "8.2.1", features = ["std"] }
 pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.6", default-features = false }
 rayon = "1.10.0"
 rowan = "=0.15.15"
-salsa = { version = "0.22.0", default-features = false, features = ["rayon","salsa_unstable"] }
+# Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
+# on impls without it
+salsa = { version = "0.22.0", default-features = true, features = ["rayon","salsa_unstable", "macros"] }
 salsa-macros = "0.22.0"
 semver = "1.0.26"
 serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }
 serde_json = "1.0.140"
 rustc-hash = "2.1.1"
-rustc-literal-escaper = "0.0.2"
-smallvec = { version = "1.14.0", features = [
+rustc-literal-escaper = "0.0.3"
+smallvec = { version = "1.15.1", features = [
   "const_new",
   "union",
   "const_generics",
@@ -166,7 +168,7 @@ xshell = "0.2.7"
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=6.1.0", features = ["raw-api", "inline"] }
 # We need to freeze the version of the crate, as it needs to match with dashmap
-hashbrown = { version = "0.14.0", features = [
+hashbrown = { version = "0.14.*", features = [
   "inline-more",
 ], default-features = false }
 

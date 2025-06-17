@@ -34,9 +34,7 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe + Any {
         current_dir: String,
     ) -> Result<tt::TopSubtree, ProcMacroExpansionError>;
 
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.type_id() == self.type_id()
-    }
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool;
 }
 
 impl PartialEq for dyn ProcMacroExpander {

@@ -25,7 +25,6 @@ use hir_expand::{
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::{FileRangeWrapper, HirFileRange, InRealFile},
-    inert_attr_macro::find_builtin_attr_idx,
     mod_path::{ModPath, PathKind},
     name::AsName,
 };
@@ -159,13 +158,13 @@ pub struct SemanticsImpl<'db> {
     macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, MacroCallId>>,
 }
 
-impl<DB> fmt::Debug for Semantics<'_, DB> {
+impl<DB: ?Sized> fmt::Debug for Semantics<'_, DB> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Semantics {{ ... }}")
     }
 }
 
-impl<'db, DB> ops::Deref for Semantics<'db, DB> {
+impl<'db, DB: ?Sized> ops::Deref for Semantics<'db, DB> {
     type Target = SemanticsImpl<'db>;
 
     fn deref(&self) -> &Self::Target {
@@ -173,12 +172,28 @@ impl<'db, DB> ops::Deref for Semantics<'db, DB> {
     }
 }
 
+// Note: while this variant of `Semantics<'_, _>` might seem unused, as it does not
+// find actual use within the rust-analyzer project itself, it exists to enable the use
+// within e.g. tracked salsa functions in third-party crates that build upon `ra_ap_hir`.
+impl Semantics<'_, dyn HirDatabase> {
+    /// Creates an instance that's weakly coupled to its underlying database type.
+    pub fn new_dyn(db: &'_ dyn HirDatabase) -> Semantics<'_, dyn HirDatabase> {
+        let impl_ = SemanticsImpl::new(db);
+        Semantics { db, imp: impl_ }
+    }
+}
+
 impl<DB: HirDatabase> Semantics<'_, DB> {
+    /// Creates an instance that's strongly coupled to its underlying database type.
     pub fn new(db: &DB) -> Semantics<'_, DB> {
         let impl_ = SemanticsImpl::new(db);
         Semantics { db, imp: impl_ }
     }
+}
 
+// Note: We take `DB` as `?Sized` here in order to support type-erased
+// use of `Semantics` via `Semantics<'_, dyn HirDatabase>`:
+impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
     pub fn hir_file_for(&self, syntax_node: &SyntaxNode) -> HirFileId {
         self.imp.find_file(syntax_node).file_id
     }
@@ -229,7 +244,7 @@ impl<DB: HirDatabase> Semantics<'_, DB> {
         offset: TextSize,
     ) -> impl Iterator<Item = ast::NameLike> + 'slf {
         node.token_at_offset(offset)
-            .map(move |token| self.descend_into_macros_no_opaque(token))
+            .map(move |token| self.descend_into_macros_no_opaque(token, true))
             .map(|descendants| descendants.into_iter().filter_map(move |it| it.value.parent()))
             // re-order the tokens from token_at_offset by returning the ancestors with the smaller first nodes first
             // See algo::ancestors_at_offset, which uses the same approach
@@ -953,13 +968,6 @@ impl<'db> SemanticsImpl<'db> {
             let Some(item) = ast::Item::cast(ancestor) else {
                 return false;
             };
-            // Optimization to skip the semantic check.
-            if item.attrs().all(|attr| {
-                attr.simple_name()
-                    .is_some_and(|attr| find_builtin_attr_idx(&Symbol::intern(&attr)).is_some())
-            }) {
-                return false;
-            }
             self.with_ctx(|ctx| {
                 if ctx.item_to_macro_call(token.with_value(&item)).is_some() {
                     return true;
@@ -1001,10 +1009,11 @@ impl<'db> SemanticsImpl<'db> {
     pub fn descend_into_macros_no_opaque(
         &self,
         token: SyntaxToken,
+        always_descend_into_derives: bool,
     ) -> SmallVec<[InFile<SyntaxToken>; 1]> {
         let mut res = smallvec![];
         let token = self.wrap_token_infile(token);
-        self.descend_into_macros_all(token.clone(), true, &mut |t, ctx| {
+        self.descend_into_macros_all(token.clone(), always_descend_into_derives, &mut |t, ctx| {
             if !ctx.is_opaque(self.db) {
                 // Don't descend into opaque contexts
                 res.push(t);

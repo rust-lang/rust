@@ -39,6 +39,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -70,6 +71,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -101,6 +103,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -134,6 +137,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -167,6 +171,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -200,6 +205,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -231,6 +237,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -264,6 +271,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -297,6 +305,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -332,6 +341,7 @@
                 ),
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -367,6 +377,7 @@
                 ),
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -400,6 +411,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -433,6 +445,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -464,6 +477,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -497,6 +511,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -530,6 +545,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -565,6 +581,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -600,6 +617,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -633,6 +651,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -666,6 +685,7 @@
                 ),
                 is_alias: false,
                 is_assoc: true,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -699,6 +719,7 @@
                 ),
                 is_alias: false,
                 is_assoc: true,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -732,6 +753,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -763,6 +785,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -796,6 +819,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -829,6 +853,7 @@
                 ),
                 is_alias: false,
                 is_assoc: true,
+                is_import: false,
                 do_not_complete: Yes,
             },
         ],
@@ -875,6 +900,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
         ],
@@ -919,6 +945,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -952,6 +979,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -985,6 +1013,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -1018,6 +1047,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -1051,6 +1081,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
         ],

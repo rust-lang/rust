@@ -297,11 +297,8 @@ impl MirLowerCtx<'_> {
         let result_ref = TyKind::Ref(mutability, error_lifetime(), result_ty).intern(Interner);
         let mut result: Place = self.temp(result_ref, current, span)?.into();
         let index_fn_op = Operand::const_zst(
-            TyKind::FnDef(
-                self.db.intern_callable_def(CallableDefId::FunctionId(index_fn.0)).into(),
-                index_fn.1,
-            )
-            .intern(Interner),
+            TyKind::FnDef(CallableDefId::FunctionId(index_fn.0).to_chalk(self.db), index_fn.1)
+                .intern(Interner),
         );
         let Some(current) = self.lower_call(
             index_fn_op,
@@ -357,7 +354,7 @@ impl MirLowerCtx<'_> {
             .ok_or(MirLowerError::LangItemNotFound(trait_lang_item))?;
         let deref_fn_op = Operand::const_zst(
             TyKind::FnDef(
-                self.db.intern_callable_def(CallableDefId::FunctionId(deref_fn)).into(),
+                CallableDefId::FunctionId(deref_fn).to_chalk(self.db),
                 Substitution::from1(Interner, source_ty),
             )
             .intern(Interner),
