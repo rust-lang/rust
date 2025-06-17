@@ -1047,6 +1047,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
+    /// Load the array into a new `Simd`
     #[inline]
     fn from(array: [T; N]) -> Self {
         Self::from_array(array)

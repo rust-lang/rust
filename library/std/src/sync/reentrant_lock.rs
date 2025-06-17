@@ -389,6 +389,7 @@ impl<T: Default> Default for ReentrantLock<T> {
 
 #[unstable(feature = "reentrant_lock", issue = "121440")]
 impl<T> From<T> for ReentrantLock<T> {
+    /// Create a new `ReentrantLock` wrapping `T`
     fn from(t: T) -> Self {
         Self::new(t)
     }

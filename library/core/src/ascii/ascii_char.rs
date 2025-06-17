@@ -547,6 +547,7 @@ macro_rules! into_int_impl {
         $(
             #[unstable(feature = "ascii_char", issue = "110998")]
             impl From<AsciiChar> for $ty {
+                #[doc = concat!("Convert `AsciiChar` as `u8` into `", stringify!($ty), "`")]
                 #[inline]
                 fn from(chr: AsciiChar) -> $ty {
                     chr as u8 as $ty

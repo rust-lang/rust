@@ -3135,6 +3135,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     /// [`Vec<T>`]: crate::vec::Vec
     /// [`VecDeque<T>`]: crate::collections::VecDeque
     ///
+    /// ## Cost
     /// This conversion is guaranteed to run in *O*(1) time
     /// and to not re-allocate the `Vec`'s buffer or allocate
     /// any additional memory.

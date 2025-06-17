@@ -511,6 +511,7 @@ impl<E> From<E> for Report<E>
 where
     E: Error,
 {
+    /// Create a `Report` with error of `E`, with all other parameters `false`
     fn from(error: E) -> Self {
         Report { error, show_backtrace: false, pretty: false }
     }

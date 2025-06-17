@@ -107,9 +107,7 @@ pub trait Wake {
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "wake_trait", since = "1.51.0")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
-    /// Use a [`Wake`]-able type as a `Waker`.
-    ///
-    /// No heap allocations or atomic operations are used for this conversion.
+    /// Use a [`Wake`]-able type as a `Waker`, without any heap allocations or atomic operations.
     fn from(waker: Arc<W>) -> Waker {
         // SAFETY: This is safe because raw_waker safely constructs
         // a RawWaker from Arc<W>.
@@ -119,9 +117,7 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "wake_trait", since = "1.51.0")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
-    /// Use a `Wake`-able type as a `RawWaker`.
-    ///
-    /// No heap allocations or atomic operations are used for this conversion.
+    /// Use a `Wake`-able type as a `RawWaker`, without any heap allocations or atomic operations.
     fn from(waker: Arc<W>) -> RawWaker {
         raw_waker(waker)
     }
@@ -286,9 +282,7 @@ pub trait LocalWake {
 
 #[unstable(feature = "local_waker", issue = "118959")]
 impl<W: LocalWake + 'static> From<Rc<W>> for LocalWaker {
-    /// Use a `Wake`-able type as a `LocalWaker`.
-    ///
-    /// No heap allocations or atomic operations are used for this conversion.
+    /// Use a `LocalWake`-able type as a `LocalWaker`, without any heap allocations or atomic operations.
     fn from(waker: Rc<W>) -> LocalWaker {
         // SAFETY: This is safe because raw_waker safely constructs
         // a RawWaker from Rc<W>.
@@ -298,9 +292,7 @@ impl<W: LocalWake + 'static> From<Rc<W>> for LocalWaker {
 #[allow(ineffective_unstable_trait_impl)]
 #[unstable(feature = "local_waker", issue = "118959")]
 impl<W: LocalWake + 'static> From<Rc<W>> for RawWaker {
-    /// Use a `Wake`-able type as a `RawWaker`.
-    ///
-    /// No heap allocations or atomic operations are used for this conversion.
+    /// Use a `LocalWake`-able type as a `RawWaker`, without any heap allocations or atomic operations.
     fn from(waker: Rc<W>) -> RawWaker {
         local_raw_waker(waker)
     }
