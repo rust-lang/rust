@@ -147,13 +147,9 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
     fn evaluate_root_goal(
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
-        generate_proof_tree: GenerateProofTree,
         span: <Self::Interner as Interner>::Span,
         stalled_on: Option<GoalStalledOn<Self::Interner>>,
-    ) -> (
-        Result<GoalEvaluation<Self::Interner>, NoSolution>,
-        Option<inspect::GoalEvaluation<Self::Interner>>,
-    );
+    ) -> Result<GoalEvaluation<Self::Interner>, NoSolution>;
 
     /// Check whether evaluating `goal` with a depth of `root_depth` may
     /// succeed. This only returns `false` if the goal is guaranteed to
@@ -173,14 +169,22 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
     fn evaluate_root_goal_raw(
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
-        generate_proof_tree: GenerateProofTree,
         stalled_on: Option<GoalStalledOn<Self::Interner>>,
+    ) -> Result<
+        (NestedNormalizationGoals<Self::Interner>, GoalEvaluation<Self::Interner>),
+        NoSolution,
+    >;
+
+    fn evaluate_root_goal_proof_tree(
+        &self,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        origin_span: <Self::Interner as Interner>::Span,
     ) -> (
         Result<
             (NestedNormalizationGoals<Self::Interner>, GoalEvaluation<Self::Interner>),
             NoSolution,
         >,
-        Option<inspect::GoalEvaluation<Self::Interner>>,
+        inspect::GoalEvaluation<Self::Interner>,
     );
 }
 
@@ -193,13 +197,17 @@ where
     fn evaluate_root_goal(
         &self,
         goal: Goal<I, I::Predicate>,
-        generate_proof_tree: GenerateProofTree,
         span: I::Span,
         stalled_on: Option<GoalStalledOn<I>>,
-    ) -> (Result<GoalEvaluation<I>, NoSolution>, Option<inspect::GoalEvaluation<I>>) {
-        EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, span, |ecx| {
-            ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal, stalled_on)
-        })
+    ) -> Result<GoalEvaluation<I>, NoSolution> {
+        EvalCtxt::enter_root(
+            self,
+            self.cx().recursion_limit(),
+            GenerateProofTree::No,
+            span,
+            |ecx| ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal, stalled_on),
+        )
+        .0
     }
 
     fn root_goal_may_hold_with_depth(
@@ -220,21 +228,37 @@ where
     fn evaluate_root_goal_raw(
         &self,
         goal: Goal<I, I::Predicate>,
-        generate_proof_tree: GenerateProofTree,
         stalled_on: Option<GoalStalledOn<I>>,
-    ) -> (
-        Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolution>,
-        Option<inspect::GoalEvaluation<I>>,
-    ) {
+    ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolution> {
         EvalCtxt::enter_root(
             self,
             self.cx().recursion_limit(),
-            generate_proof_tree,
+            GenerateProofTree::No,
             I::Span::dummy(),
             |ecx| {
                 ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal, stalled_on)
             },
         )
+        .0
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn evaluate_root_goal_proof_tree(
+        &self,
+        goal: Goal<I, I::Predicate>,
+        origin_span: I::Span,
+    ) -> (
+        Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolution>,
+        inspect::GoalEvaluation<I>,
+    ) {
+        let (result, proof_tree) = EvalCtxt::enter_root(
+            self,
+            self.cx().recursion_limit(),
+            GenerateProofTree::Yes,
+            origin_span,
+            |ecx| ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal, None),
+        );
+        (result, proof_tree.unwrap())
     }
 }
 
