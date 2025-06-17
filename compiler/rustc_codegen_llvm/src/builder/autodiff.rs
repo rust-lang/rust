@@ -114,7 +114,7 @@ fn match_args_from_caller_to_enzyme<'ll>(
             let mul = unsafe {
                 llvm::LLVMBuildMul(
                     builder.llbuilder,
-                    cx.get_const_i64(elem_bytes_size),
+                    cx.get_const_int(cx.type_i64(), elem_bytes_size),
                     next_outer_arg,
                     UNNAMED,
                 )
@@ -385,7 +385,7 @@ fn generate_enzyme_call<'ll>(
         if attrs.width > 1 {
             let enzyme_width = cx.create_metadata("enzyme_width".to_string()).unwrap();
             args.push(cx.get_metadata_value(enzyme_width));
-            args.push(cx.get_const_i64(attrs.width as u64));
+            args.push(cx.get_const_int(cx.type_i64(), attrs.width as u64));
         }
 
         let has_sret = has_sret(outer_fn);

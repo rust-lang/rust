@@ -679,11 +679,8 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         llvm::LLVMMetadataAsValue(self.llcx(), metadata)
     }
 
-    // FIXME(autodiff): We should split `ConstCodegenMethods` to pull the reusable parts
-    // onto a trait that is also implemented for GenericCx.
-    pub(crate) fn get_const_i64(&self, n: u64) -> &'ll Value {
-        let ty = unsafe { llvm::LLVMInt64TypeInContext(self.llcx()) };
-        unsafe { llvm::LLVMConstInt(ty, n, llvm::False) }
+    pub(crate) fn get_const_int(&self, ty: &'ll Type, val: u64) -> &'ll Value {
+        unsafe { llvm::LLVMConstInt(ty, val, llvm::False) }
     }
 
     pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
