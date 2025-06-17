@@ -446,6 +446,7 @@ fn test_option_and() {
     }
     let mut x = Some(42_u8);
     let _ = x.and(g());
+    //~^ or_fun_call
 }
 
 fn test_result_and() {
@@ -455,6 +456,7 @@ fn test_result_and() {
     }
     let mut x: Result<u8, ()> = Ok(42);
     let _ = x.and(g());
+    //~^ or_fun_call
 }
 
 fn main() {}
