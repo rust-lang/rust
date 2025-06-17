@@ -710,6 +710,12 @@ impl Pat {
     }
 }
 
+impl From<P<Pat>> for Pat {
+    fn from(value: P<Pat>) -> Self {
+        *value
+    }
+}
+
 /// A single field in a struct pattern.
 ///
 /// Patterns like the fields of `Foo { x, ref y, ref mut z }`
@@ -1553,17 +1559,23 @@ impl Expr {
         )
     }
 
-    /// Creates a dummy `P<Expr>`.
+    /// Creates a dummy `Expr`.
     ///
     /// Should only be used when it will be replaced afterwards or as a return value when an error was encountered.
-    pub fn dummy() -> P<Expr> {
-        P(Expr {
+    pub fn dummy() -> Expr {
+        Expr {
             id: DUMMY_NODE_ID,
             kind: ExprKind::Dummy,
             span: DUMMY_SP,
             attrs: ThinVec::new(),
             tokens: None,
-        })
+        }
+    }
+}
+
+impl From<P<Expr>> for Expr {
+    fn from(value: P<Expr>) -> Self {
+        *value
     }
 }
 
@@ -2371,6 +2383,12 @@ impl Clone for Ty {
             span: self.span,
             tokens: self.tokens.clone(),
         })
+    }
+}
+
+impl From<P<Ty>> for Ty {
+    fn from(value: P<Ty>) -> Self {
+        *value
     }
 }
 
