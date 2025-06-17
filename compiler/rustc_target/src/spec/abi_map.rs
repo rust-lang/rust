@@ -12,16 +12,19 @@ pub struct AbiMap {
     os: OsKind,
 }
 
+/// result from trying to map an ABI
 #[derive(Copy, Clone, Debug)]
 pub enum AbiMapping {
     /// this ABI is exactly mapped for this platform
     Direct(CanonAbi),
     /// we don't yet warn on this, but we will
     Deprecated(CanonAbi),
+    /// ABI we do not map for this platform: it must not reach codegen
     Invalid,
 }
 
 impl AbiMapping {
+    /// optionally get a [CanonAbi], even if Deprecated
     pub fn into_option(self) -> Option<CanonAbi> {
         match self {
             Self::Direct(abi) | Self::Deprecated(abi) => Some(abi),
@@ -29,6 +32,7 @@ impl AbiMapping {
         }
     }
 
+    /// get a [CanonAbi] even if Deprecated, panicking if Invalid
     #[track_caller]
     pub fn unwrap(self) -> CanonAbi {
         self.into_option().unwrap()
@@ -40,6 +44,7 @@ impl AbiMapping {
 }
 
 impl AbiMap {
+    /// create an AbiMap according to arbitrary fields on the [Target]
     pub fn from_target(target: &Target) -> Self {
         // the purpose of this little exercise is to force listing what affects these mappings
         let arch = match &*target.arch {
@@ -59,6 +64,7 @@ impl AbiMap {
         AbiMap { arch, os }
     }
 
+    /// lower an [ExternAbi] to a [CanonAbi] if this AbiMap allows
     pub fn canonize_abi(&self, extern_abi: ExternAbi, has_c_varargs: bool) -> AbiMapping {
         let AbiMap { os, arch } = *self;
 
