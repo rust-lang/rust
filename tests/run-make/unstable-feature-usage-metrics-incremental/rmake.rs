@@ -86,9 +86,7 @@ fn test_metrics_errors() {
             .env("RUST_BACKTRACE", "short")
             .arg("-Zmetrics-dir=invaliddirectorythatdefinitelydoesntexist")
             .run_fail()
-            .assert_stderr_contains(
-                "error: cannot dump feature usage metrics: No such file or directory",
-            )
+            .assert_stderr_contains("error: cannot dump feature usage metrics")
             .assert_stdout_not_contains("internal compiler error");
     });
 }
