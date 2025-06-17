@@ -25,14 +25,24 @@
 //!
 //! # Defining a new target
 //!
-//! Targets are defined using [JSON](https://json.org/). The `Target` struct in
-//! this module defines the format the JSON file should take, though each
-//! underscore in the field names should be replaced with a hyphen (`-`) in the
-//! JSON file. Some fields are required in every target specification, such as
-//! `llvm-target`, `target-endian`, `target-pointer-width`, `data-layout`,
-//! `arch`, and `os`. In general, options passed to rustc with `-C` override
-//! the target's settings, though `target-feature` and `link-args` will *add*
-//! to the list specified by the target, rather than replace.
+//! Targets are defined using a struct which additionally has serialization to and from [JSON].
+//! The `Target` struct in this module loosely corresponds with the format the JSON takes.
+//! We usually try to make the fields equivalent but we have given up on a 1:1 correspondence
+//! between the JSON and the actual structure itself.
+//!
+//! Some fields are required in every target spec, and they should be embedded in Target directly.
+//! Optional keys are in TargetOptions, but Target derefs to it, for no practical difference.
+//! Most notable is the "data-layout" field which specifies Rust's notion of sizes and alignments
+//! for several key types, such as f64, pointers, and so on.
+//!
+//! At one point we felt `-C` options should override the target's settings, like in C compilers,
+//! but that was an essentially-unmarked route for making code incorrect and Rust unsound.
+//! Confronted with programmers who prefer a compiler with a good UX instead of a lethal weapon,
+//! we have almost-entirely recanted that notion, though we hope "target modifiers" will offer
+//! a way to have a decent UX yet still extend the necessary compiler controls, without
+//! requiring a new target spec for each and every single possible target micro-variant.
+//!
+//! [JSON]: https://json.org
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
