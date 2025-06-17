@@ -7,12 +7,11 @@
 //!
 //! # Test history
 //!
-//! - forked from dump-ice-to-disk test, which has flakeyness issues on i686-mingw, I'm assuming
-//! those will be present in this test as well on the same platform
+//! - Forked from `dump-ice-to-disk` test, which previously had backtrace unpredictability on
+//! `i686-pc-windows-gnu`.
 
-//@ needs-target-std
-//@ ignore-windows
-//FIXME(#128911): still flakey on i686-mingw.
+//@ ignore-cross-compile (exercises metrics incremental on host)
+//@ ignore-i686-pc-windows-gnu (unwind mechanism produces unpredictable backtraces)
 
 use std::path::{Path, PathBuf};
 
@@ -87,9 +86,7 @@ fn test_metrics_errors() {
             .env("RUST_BACKTRACE", "short")
             .arg("-Zmetrics-dir=invaliddirectorythatdefinitelydoesntexist")
             .run_fail()
-            .assert_stderr_contains(
-                "error: cannot dump feature usage metrics: No such file or directory",
-            )
+            .assert_stderr_contains("error: cannot dump feature usage metrics")
             .assert_stdout_not_contains("internal compiler error");
     });
 }
