@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ revisions: riscv64 riscv64-zbb loongarch64
 //@ compile-flags: -C opt-level=3
@@ -9,51 +10,13 @@
 //@ [loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@ [loongarch64] needs-llvm-components: loongarch
 
-#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
 
-// FIXME: Migrate these code after PR #130693 is landed.
-// vvvvv core
-
-#[lang = "sized"]
-trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for i8 {}
-impl Copy for u32 {}
-impl Copy for i32 {}
-
-#[lang = "neg"]
-trait Neg {
-    type Output;
-
-    fn neg(self) -> Self::Output;
-}
-
-impl Neg for i8 {
-    type Output = i8;
-
-    fn neg(self) -> Self::Output {
-        -self
-    }
-}
-
-#[lang = "Ordering"]
-#[repr(i8)]
-enum Ordering {
-    Less = -1,
-    Equal = 0,
-    Greater = 1,
-}
-
-#[rustc_intrinsic]
-fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering;
-
-// ^^^^^ core
+extern crate minicore;
+use minicore::*;
 
 // Reimplementation of function `{integer}::max`.
 macro_rules! max {
