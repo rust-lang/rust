@@ -575,10 +575,24 @@ define_Conf! {
     #[conf_deprecated("Please use `cognitive-complexity-threshold` instead", cognitive_complexity_threshold)]
     cyclomatic_complexity_threshold: u64 = 25,
     /// The list of disallowed macros, written as fully qualified paths.
+    ///
+    /// **Fields:**
+    /// - `path` (required): the fully qualified path to the macro that should be disallowed
+    /// - `reason` (optional): explanation why this macro is disallowed
+    /// - `replacement` (optional): suggested alternative macro
+    /// - `allow-invalid` (optional, `false` by default): when set to `true`, it will ignore this entry
+    ///   if the path doesn't exist, instead of emitting an error
     #[disallowed_paths_allow_replacements = true]
     #[lints(disallowed_macros)]
     disallowed_macros: Vec<DisallowedPath> = Vec::new(),
     /// The list of disallowed methods, written as fully qualified paths.
+    ///
+    /// **Fields:**
+    /// - `path` (required): the fully qualified path to the method that should be disallowed
+    /// - `reason` (optional): explanation why this method is disallowed
+    /// - `replacement` (optional): suggested alternative method
+    /// - `allow-invalid` (optional, `false` by default): when set to `true`, it will ignore this entry
+    ///   if the path doesn't exist, instead of emitting an error
     #[disallowed_paths_allow_replacements = true]
     #[lints(disallowed_methods)]
     disallowed_methods: Vec<DisallowedPath> = Vec::new(),
@@ -588,6 +602,13 @@ define_Conf! {
     #[lints(disallowed_names)]
     disallowed_names: Vec<String> = DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect(),
     /// The list of disallowed types, written as fully qualified paths.
+    ///
+    /// **Fields:**
+    /// - `path` (required): the fully qualified path to the type that should be disallowed
+    /// - `reason` (optional): explanation why this type is disallowed
+    /// - `replacement` (optional): suggested alternative type
+    /// - `allow-invalid` (optional, `false` by default): when set to `true`, it will ignore this entry
+    ///   if the path doesn't exist, instead of emitting an error
     #[disallowed_paths_allow_replacements = true]
     #[lints(disallowed_types)]
     disallowed_types: Vec<DisallowedPath> = Vec::new(),
