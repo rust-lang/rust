@@ -17,8 +17,8 @@ fn bar(_1: &mut Vec<i32>) -> Vec<i32> {
     let mut _0: Vec<i32>;
     let mut _2: Vec<i32>;
     let mut _3: &Vec<i32>;
-    let  _4: ();
-    let mut _5: &mut Vec<i32>;
+    let mut _4: &mut Vec<i32>;
+    let mut _5: &mut i32;
     debug vec => _1;
     debug new_vec => _2;
     bb0: {
@@ -26,18 +26,18 @@ fn bar(_1: &mut Vec<i32>) -> Vec<i32> {
         _2 = <Vec<i32> as Clone>::clone(move _3) -> [return: bb1, unwind continue];
     }
     bb1: {
-        _5 = &mut _2;
-        _4 = Vec::<i32>::push(move _5, 1_i32) -> [return: bb2, unwind: bb3];
+        _4 = &mut _2;
+        _5 = Vec::<i32>::push_mut(move _4, 1_i32) -> [return: bb4, unwind: bb2];
     }
     bb2: {
-        _0 = move _2;
-        return;
+        drop(_2) -> [return: bb3, unwind terminate];
     }
     bb3: {
-        drop(_2) -> [return: bb4, unwind terminate];
+        resume;
     }
     bb4: {
-        resume;
+        _0 = move _2;
+        return;
     }
 }
 fn demux(_1: u8) -> u8 {

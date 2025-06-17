@@ -191,7 +191,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         unsafe {
             let ptr = self.ptr().add(off);
             ptr::write(ptr, value);
-            ptr
+            &mut *ptr
         }
     }
 
@@ -1963,9 +1963,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
             self.grow();
         }
 
-        let back_ptr = unsafe { self.buffer_write(self.to_physical_idx(self.len), value) };
+        let len = self.len;
         self.len += 1;
-        unsafe { &mut *back_ptr }
+        unsafe { self.buffer_write(self.to_physical_idx(len), value) }
     }
 
     #[inline]
@@ -2118,8 +2118,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
             unsafe {
                 // see `remove()` for explanation why this wrap_copy() call is safe.
                 self.wrap_copy(self.to_physical_idx(index), self.to_physical_idx(index + 1), k);
-                let ptr = self.buffer_write(self.to_physical_idx(index), value);
                 self.len += 1;
+                let ptr = self.buffer_write(self.to_physical_idx(index), value);
                 Some(ptr)
             }
         } else {
@@ -2127,8 +2127,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
             self.head = self.wrap_sub(self.head, 1);
             unsafe {
                 self.wrap_copy(old_head, self.head, index);
-                let ptr = self.buffer_write(self.to_physical_idx(index), value);
                 self.len += 1;
+                let ptr = self.buffer_write(self.to_physical_idx(index), value);
                 Some(ptr)
             }
         }
