@@ -439,4 +439,22 @@ fn test_option_get_or_insert() {
     //~^ or_fun_call
 }
 
+fn test_option_and() {
+    // assume that this is slow call
+    fn g() -> Option<u8> {
+        Some(99)
+    }
+    let mut x = Some(42_u8);
+    let _ = x.and(g());
+}
+
+fn test_result_and() {
+    // assume that this is slow call
+    fn g() -> Result<u8, ()> {
+        Ok(99)
+    }
+    let mut x: Result<u8, ()> = Ok(42);
+    let _ = x.and(g());
+}
+
 fn main() {}
