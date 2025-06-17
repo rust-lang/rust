@@ -66,7 +66,7 @@ impl<T, const N: usize> IntoIterator for [T; N] {
         // FIXME: If normal `transmute` ever gets smart enough to allow this
         // directly, use it instead of `transmute_unchecked`.
         let data: [MaybeUninit<T>; N] = unsafe { transmute_unchecked(self) };
-        // SAFETY: The original array was entirely initialized and the the alive
+        // SAFETY: The original array was entirely initialized and the alive
         // range we're passing here represents that fact.
         let inner = unsafe { InnerSized::new_unchecked(IndexRange::zero_to(N), data) };
         IntoIter { inner }

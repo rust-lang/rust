@@ -325,7 +325,7 @@ macro_rules! impl_binary_long {
             // ________________
             //       0b00101110
             //              ^^^
-            // `duo` is now back in the `duo_shl1` state it was at in the the third step, with an
+            // `duo` is now back in the `duo_shl1` state it was at in the third step, with an
             // unset quotient bit.
             //
             // final step (`shl` was 4, so exactly 4 steps must be taken)

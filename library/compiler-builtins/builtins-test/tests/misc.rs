@@ -3,7 +3,7 @@
 
 use builtins_test::*;
 
-/// Make sure that the the edge case tester and randomized tester don't break, and list examples of
+/// Make sure that the edge case tester and randomized tester don't break, and list examples of
 /// fuzz values for documentation purposes.
 #[test]
 fn fuzz_values() {
