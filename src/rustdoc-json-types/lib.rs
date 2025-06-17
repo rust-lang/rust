@@ -32,6 +32,19 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 /// Consuming code should assert that this value matches the format version(s) that it supports.
 pub const FORMAT_VERSION: u32 = 46;
 
+pub mod postcard {
+
+    pub type Magic = [u8; 22];
+    pub const MAGIC: Magic = *b"\x00\xFFRustdocJsonPostcard\xFF";
+
+    #[derive(Clone, Debug, PartialEq, Eq, serde_derive::Serialize, serde_derive::Deserialize)]
+    pub struct Header {
+        // Order here matters
+        pub magic: Magic,
+        pub format_version: u32,
+    }
+}
+
 /// The root of the emitted JSON blob.
 ///
 /// It contains all type/documentation information
