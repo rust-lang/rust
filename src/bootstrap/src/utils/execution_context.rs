@@ -3,6 +3,7 @@
 //! This module provides the [`ExecutionContext`] type, which holds global configuration
 //! relevant during the execution of commands in bootstrap. This includes dry-run
 //! mode, verbosity level, and behavior on failure.
+use std::panic::Location;
 use std::process::Child;
 use std::sync::{Arc, Mutex};
 
@@ -89,6 +90,9 @@ impl ExecutionContext {
     ) -> DeferredCommand<'a> {
         command.mark_as_executed();
 
+        let created_at = command.get_created_location();
+        let executed_at = std::panic::Location::caller();
+
         if self.dry_run() && !command.run_always {
             return DeferredCommand {
                 process: None,
@@ -96,14 +100,12 @@ impl ExecutionContext {
                 stderr,
                 command,
                 exec_ctx: Arc::new(self.clone()),
+                created_at,
             };
         }
 
         #[cfg(feature = "tracing")]
         let _run_span = trace_cmd!(command);
-
-        let created_at = command.get_created_location();
-        let executed_at = std::panic::Location::caller();
 
         self.verbose(|| {
             println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
@@ -121,6 +123,7 @@ impl ExecutionContext {
             stderr,
             command,
             exec_ctx: Arc::new(self.clone()),
+            created_at,
         }
     }
 
@@ -167,6 +170,7 @@ pub struct DeferredCommand<'a> {
     stdout: OutputMode,
     stderr: OutputMode,
     exec_ctx: Arc<ExecutionContext>,
+    created_at: Location<'a>,
 }
 
 impl<'a> DeferredCommand<'a> {
@@ -176,7 +180,7 @@ impl<'a> DeferredCommand<'a> {
         }
         let output = self.process.take().unwrap().wait_with_output();
 
-        let created_at = self.command.get_created_location();
+        let created_at = self.created_at;
         let executed_at = std::panic::Location::caller();
 
         use std::fmt::Write;
