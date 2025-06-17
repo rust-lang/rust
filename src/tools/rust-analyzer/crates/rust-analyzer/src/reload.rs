@@ -114,6 +114,16 @@ impl GlobalState {
                 Durability::HIGH,
             );
         }
+
+        if self.config.cargo(None) != old_config.cargo(None) {
+            let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
+            self.fetch_workspaces_queue.request_op("cargo config changed".to_owned(), req)
+        }
+
+        if self.config.cfg_set_test(None) != old_config.cfg_set_test(None) {
+            let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
+            self.fetch_workspaces_queue.request_op("cfg_set_test config changed".to_owned(), req)
+        }
     }
 
     pub(crate) fn current_status(&self) -> lsp_ext::ServerStatusParams {
