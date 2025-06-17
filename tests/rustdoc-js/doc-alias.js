@@ -231,6 +231,13 @@ const EXPECTED = [
     {
         'query': 'UnionItem',
         'others': [
+            // normalization actually removes the underscores, so this counts as an exact match.
+            {
+                'path': 'doc_alias::Union',
+                'name': 'union_item',
+                'desc': 'Doc for <code>Union::union_item</code>',
+                'href': '../doc_alias/union.Union.html#structfield.union_item'
+            },
             {
                 'path': 'doc_alias',
                 'name': 'Union',
@@ -238,13 +245,6 @@ const EXPECTED = [
                 'alias': 'UnionItem',
                 'href': '../doc_alias/union.Union.html',
                 'is_alias': true
-            },
-            // Not an alias!
-            {
-                'path': 'doc_alias::Union',
-                'name': 'union_item',
-                'desc': 'Doc for <code>Union::union_item</code>',
-                'href': '../doc_alias/union.Union.html#structfield.union_item'
             },
         ],
     },

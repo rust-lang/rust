@@ -1,3 +1,5 @@
+// ignore-order
+
 const PARSED = [
     {
         query: '中文',

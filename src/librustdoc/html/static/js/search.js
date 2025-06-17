@@ -4273,7 +4273,11 @@ class DocSearch {
             };
         }
 
-        // @ts-expect-error
+        /**
+         * Handle searching by doc aliases
+         *
+         * @type {function(rustdoc.ResultsTable, string, Object=, Object=): Promise<void>}
+         */
         const handleAliases = async(ret, query, filterCrates, currentCrate) => {
             const lowerQuery = query.toLowerCase();
             // We separate aliases and crate aliases because we want to have current crate
@@ -4328,6 +4332,16 @@ class DocSearch {
                 Promise.all(aliases.map(fetchDesc)),
             ]);
 
+            // if there are any existing results that match exactly, those go before aliases.
+            let exactMatches = 0;
+            while (
+                ret.others[exactMatches] !== undefined &&
+                ret.others[exactMatches].dist === 0 &&
+                ret.others[exactMatches].path_dist === 0
+            ) {
+                exactMatches += 1;
+            }
+
             // @ts-expect-error
             const pushFunc = alias => {
                 alias.alias = query;
@@ -4336,12 +4350,11 @@ class DocSearch {
                 alias.fullPath = alias.displayPath + alias.name;
                 alias.href = res[1];
 
-                ret.others.unshift(alias);
+                ret.others.splice(exactMatches, 0, alias);
                 if (ret.others.length > MAX_RESULTS) {
                     ret.others.pop();
                 }
             };
-
             aliases.forEach((alias, i) => {
                 // @ts-expect-error
                 alias.desc = descs[i];

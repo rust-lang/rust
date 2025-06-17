@@ -129,7 +129,7 @@ declare namespace rustdoc {
 
     /**
      * A single parsed "atom" in a search query. For example,
-     * 
+     *
      *     std::fmt::Formatter, Write -> Result<()>
      *     ┏━━━━━━━━━━━━━━━━━━  ┌────    ┏━━━━━┅┅┅┅┄┄┄┄┄┄┄┄┄┄┄┄┄┄┐
      *     ┃                    │        ┗ QueryElement {        ┊
@@ -264,6 +264,7 @@ declare namespace rustdoc {
         displayTypeSignature: Promise<rustdoc.DisplayTypeSignature> | null,
         item: Row,
         dontValidate?: boolean,
+        alias?: string,
     }
 
     /**
