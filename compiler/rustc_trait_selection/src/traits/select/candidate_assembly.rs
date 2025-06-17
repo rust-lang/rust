@@ -101,7 +101,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     );
                 }
                 Some(LangItem::PointeeSized) => {
-                    bug!("`PointeeSized` is removed during lowering");
+                    tcx.dcx().delayed_bug("`PointeeSized` is removed during lowering");
                 }
                 Some(LangItem::Unsize) => {
                     self.assemble_candidates_for_unsizing(obligation, &mut candidates);
