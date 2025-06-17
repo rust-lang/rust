@@ -39,7 +39,7 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<
         cov_mark::hit!(type_mismatch_range_adjustment);
         Some(salient_token_range)
     });
-    let mut diag = Diagnostic::new(
+    Diagnostic::new(
         DiagnosticCode::RustcHardError("E0308"),
         format!(
             "expected {}, found {}",
@@ -52,11 +52,7 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<
         ),
         display_range,
     )
-    .with_fixes(fixes(ctx, d));
-    if diag.fixes.is_some() {
-        diag.experimental = false;
-    }
-    diag
+    .with_fixes(fixes(ctx, d))
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<'_>) -> Option<Vec<Assist>> {
