@@ -342,10 +342,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                 }
                             }
                         } else if let LocalInfo::BlockTailTemp(info) = local_decl.local_info() {
-                            let sp = info
-                                .span
-                                .find_ancestor_in_same_ctxt(local_decl.source_info.span)
-                                .unwrap_or(info.span);
+                            let sp = info.span.find_oldest_ancestor_in_same_ctxt();
                             if info.tail_result_is_ignored {
                                 // #85581: If the first mutable borrow's scope contains
                                 // the second borrow, this suggestion isn't helpful.
