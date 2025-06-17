@@ -90,7 +90,13 @@ impl ExecutionContext {
         command.mark_as_executed();
 
         if self.dry_run() && !command.run_always {
-            return DeferredCommand::new(None, stdout, stderr, command, Arc::new(self.clone()));
+            return DeferredCommand {
+                process: None,
+                stdout,
+                stderr,
+                command,
+                exec_ctx: Arc::new(self.clone()),
+            };
         }
 
         #[cfg(feature = "tracing")]
@@ -109,7 +115,13 @@ impl ExecutionContext {
 
         let child = cmd.spawn().unwrap();
 
-        DeferredCommand::new(Some(child), stdout, stderr, command, Arc::new(self.clone()))
+        DeferredCommand {
+            process: Some(child),
+            stdout,
+            stderr,
+            command,
+            exec_ctx: Arc::new(self.clone()),
+        }
     }
 
     /// Execute a command and return its output.
@@ -158,16 +170,6 @@ pub struct DeferredCommand<'a> {
 }
 
 impl<'a> DeferredCommand<'a> {
-    pub fn new(
-        child: Option<Child>,
-        stdout: OutputMode,
-        stderr: OutputMode,
-        command: &'a mut BootstrapCommand,
-        exec_ctx: Arc<ExecutionContext>,
-    ) -> Self {
-        DeferredCommand { process: child, stdout, stderr, command, exec_ctx }
-    }
-
     pub fn wait_for_output(mut self) -> CommandOutput {
         if self.process.is_none() {
             return CommandOutput::default();
