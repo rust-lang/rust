@@ -3118,6 +3118,7 @@ pub(crate) mod dep_tracking {
     }
 
     impl_dep_tracking_hash_via_hash!(
+        (),
         AutoDiff,
         bool,
         usize,
