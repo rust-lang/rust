@@ -2,11 +2,10 @@
 //!
 //! This module provides a structured way to execute and manage commands efficiently,
 //! ensuring controlled failure handling and output management.
-#![allow(warnings)]
 use std::ffi::OsStr;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
-use std::process::{Child, Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
+use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
 
 use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
@@ -73,7 +72,7 @@ pub struct BootstrapCommand {
     drop_bomb: DropBomb,
 }
 
-impl BootstrapCommand {
+impl<'a> BootstrapCommand {
     #[track_caller]
     pub fn new<S: AsRef<OsStr>>(program: S) -> Self {
         Command::new(program).into()
@@ -160,16 +159,19 @@ impl BootstrapCommand {
 
     /// Spawn the command in background, while capturing and returning all its output.
     #[track_caller]
-    pub fn start_capture(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> DeferredCommand {
+    pub fn start_capture(
+        &'a mut self,
+        exec_ctx: impl AsRef<ExecutionContext>,
+    ) -> DeferredCommand<'a> {
         exec_ctx.as_ref().start(self, OutputMode::Capture, OutputMode::Capture)
     }
 
     /// Spawn the command in background, while capturing and returning stdout, and printing stderr.
     #[track_caller]
     pub fn start_capture_stdout(
-        &mut self,
+        &'a mut self,
         exec_ctx: impl AsRef<ExecutionContext>,
-    ) -> DeferredCommand {
+    ) -> DeferredCommand<'a> {
         exec_ctx.as_ref().start(self, OutputMode::Capture, OutputMode::Print)
     }
 

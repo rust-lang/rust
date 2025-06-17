@@ -94,7 +94,7 @@ impl ExecutionContext {
         let executed_at = std::panic::Location::caller();
 
         if self.dry_run() && !command.run_always {
-            return DeferredCommand { process: None, stdout, stderr, command, created_at };
+            return DeferredCommand { process: None, stdout, stderr, command, executed_at };
         }
 
         #[cfg(feature = "tracing")]
@@ -110,7 +110,7 @@ impl ExecutionContext {
 
         let child = cmd.spawn().unwrap();
 
-        DeferredCommand { process: Some(child), stdout, stderr, command, created_at }
+        DeferredCommand { process: Some(child), stdout, stderr, command, executed_at }
     }
 
     /// Execute a command and return its output.
@@ -161,7 +161,7 @@ pub struct DeferredCommand<'a> {
     command: &'a mut BootstrapCommand,
     stdout: OutputMode,
     stderr: OutputMode,
-    created_at: Location<'a>,
+    executed_at: &'a Location<'a>,
 }
 
 impl<'a> DeferredCommand<'a> {
@@ -174,8 +174,8 @@ impl<'a> DeferredCommand<'a> {
 
         let output = self.process.take().unwrap().wait_with_output();
 
-        let created_at = self.created_at;
-        let executed_at = std::panic::Location::caller();
+        let created_at = self.command.get_created_location();
+        let executed_at = self.executed_at;
 
         use std::fmt::Write;
 
