@@ -1,37 +1,20 @@
-error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/bound_vars_in_args.rs:17:1
+error[E0034]: multiple applicable items in scope
+  --> $DIR/bound_vars_in_args.rs:19:20
    |
-LL | struct Bar
-   | ^^^^^^^^^^ doesn't have a size known at compile-time
+LL |     for<T> Foo<T>::IAT: Sized;
+   |                    ^^^ multiple `IAT` found
    |
-   = help: the trait `Sized` is not implemented for `T`
-note: required by a bound in `Foo<T>::IAT`
-  --> $DIR/bound_vars_in_args.rs:13:9
+note: candidate #1 is defined in an impl for the type `Foo<[u8]>`
+  --> $DIR/bound_vars_in_args.rs:10:5
    |
-LL | impl<T: Sized> Foo<T> {
-   |         ^^^^^ required by this bound in `Foo<T>::IAT`
 LL |     type IAT = u8;
-   |          --- required by a bound in this associated type
-
-error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/bound_vars_in_args.rs:17:1
+   |     ^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Foo<T>`
+  --> $DIR/bound_vars_in_args.rs:14:5
    |
-LL | / struct Bar
-LL | |
-LL | |
-LL | | where
-LL | |     for<T> Foo<T>::IAT: Sized;
-   | |______________________________^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `T`
-note: required by a bound in `Foo<T>::IAT`
-  --> $DIR/bound_vars_in_args.rs:13:9
-   |
-LL | impl<T: Sized> Foo<T> {
-   |         ^^^^^ required by this bound in `Foo<T>::IAT`
 LL |     type IAT = u8;
-   |          --- required by a bound in this associated type
+   |     ^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0034`.

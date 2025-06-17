@@ -380,54 +380,44 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         assert!(!self_ty.has_infer());
 
         // We don't just call the normal normalization routine here as we can't provide the
-        // correct `ParamEnv` and it seems dubious to invoke arbitrary trait solving under
+        // correct `ParamEnv` and it would be wrong to invoke arbitrary trait solving under
         // the wrong `ParamEnv`. Expanding free aliases doesn't need a `ParamEnv` so we do
         // this just to make resolution a little bit smarter.
         let self_ty = self.tcx.expand_free_alias_tys(self_ty);
         debug!("select_inherent_assoc_candidates: self_ty={:?}", self_ty);
 
-        // We make an infcx and replace any escaping vars with placeholders so that IAT res
-        // with type/const bound vars in arguments is slightly smarter. `for<T> <Foo<T>>::IAT`
-        // would otherwise unify with `impl Foo<u8>` when ideally we would not.
-        let infcx = self.tcx().infer_ctxt().build(TypingMode::non_body_analysis());
-        let mut universes = if self_ty.has_escaping_bound_vars() {
-            vec![None; self_ty.outer_exclusive_binder().as_usize()]
-        } else {
-            vec![]
-        };
-        let candidates =
-            rustc_trait_selection::traits::with_replaced_escaping_bound_vars(
-                &infcx,
-                &mut universes,
-                self_ty,
-                |self_ty| {
-                    candidates
-                        .into_iter()
-                        .filter(|&InherentAssocCandidate { impl_, .. }| {
-                            let impl_ty = self.tcx().type_of(impl_).instantiate_identity();
+        let candidates = candidates
+            .into_iter()
+            .filter(|&InherentAssocCandidate { impl_, .. }| {
+                let impl_ty = self.tcx().type_of(impl_).instantiate_identity();
 
-                            // See comment on doing this operation for `self_ty`
-                            let impl_ty = self.tcx.expand_free_alias_tys(impl_ty);
-                            debug!("select_inherent_assoc_candidates: impl_ty={:?}", impl_ty);
+                // See comment on doing this operation for `self_ty`
+                let impl_ty = self.tcx.expand_free_alias_tys(impl_ty);
+                debug!("select_inherent_assoc_candidates: impl_ty={:?}", impl_ty);
 
-                            // We treat parameters in the self ty as rigid and parameters in the impl ty as infers
-                            // because it allows `impl<T> Foo<T>` to unify with `Foo<u8>::IAT`, while also disallowing
-                            // `Foo<T>::IAT` from unifying with `impl Foo<u8>`.
-                            //
-                            // We don't really care about a depth limit here because we're only working with user-written
-                            // types and if they wrote a type that would take hours to walk then that's kind of on them. On
-                            // the other hand the default depth limit is relatively low and could realistically be hit by
-                            // users in normal cases.
-                            //
-                            // `DeepRejectCtxt` leads to slightly worse IAT resolution than real type equality in cases
-                            // where the `impl_ty` has repeated uses of generic parameters. E.g. `impl<T> Foo<T, T>` would
-                            // be considered a valid candidate when resolving `Foo<u8, u16>::IAT`.
-                            ty::DeepRejectCtxt::relate_rigid_infer(self.tcx)
-                                .types_may_unify_with_depth(self_ty, impl_ty, usize::MAX)
-                        })
-                        .collect()
-                },
-            );
+                // We treat parameters in the self ty as rigid and parameters in the impl ty as infers
+                // because it allows `impl<T> Foo<T>` to unify with `Foo<u8>::IAT`, while also disallowing
+                // `Foo<T>::IAT` from unifying with `impl Foo<u8>`.
+                //
+                // We don't really care about a depth limit here because we're only working with user-written
+                // types and if they wrote a type that would take hours to walk then that's kind of on them. On
+                // the other hand the default depth limit is relatively low and could realistically be hit by
+                // users in normal cases.
+                //
+                // `DeepRejectCtxt` leads to slightly worse IAT resolution than real type equality in cases
+                // where the `impl_ty` has repeated uses of generic parameters. E.g. `impl<T> Foo<T, T>` would
+                // be considered a valid candidate when resolving `Foo<u8, u16>::IAT`.
+                //
+                // Not replacing escaping bound vars in `self_ty` with placeholders also leads to slightly worse
+                // resolution, but it probably won't come up in practice and it would be backwards compatible
+                // to switch over to doing that.
+                ty::DeepRejectCtxt::relate_rigid_infer(self.tcx).types_may_unify_with_depth(
+                    self_ty,
+                    impl_ty,
+                    usize::MAX,
+                )
+            })
+            .collect();
 
         (candidates, vec![])
     }

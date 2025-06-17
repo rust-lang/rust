@@ -322,6 +322,39 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
     ) -> (Vec<InherentAssocCandidate>, Vec<FulfillmentError<'tcx>>) {
         let tcx = self.tcx();
         let infcx = &self.infcx;
+        let mut fulfillment_errors = vec![];
+
+        let mut filter_iat_candidate = |self_ty, impl_| {
+            let ocx = ObligationCtxt::new_with_diagnostics(self);
+            let self_ty = ocx.normalize(&ObligationCause::dummy(), self.param_env, self_ty);
+
+            let impl_args = infcx.fresh_args_for_item(span, impl_);
+            let impl_ty = tcx.type_of(impl_).instantiate(tcx, impl_args);
+            let impl_ty = ocx.normalize(&ObligationCause::dummy(), self.param_env, impl_ty);
+
+            // Check that the self types can be related.
+            if ocx.eq(&ObligationCause::dummy(), self.param_env, impl_ty, self_ty).is_err() {
+                return false;
+            }
+
+            // Check whether the impl imposes obligations we have to worry about.
+            let impl_bounds = tcx.predicates_of(impl_).instantiate(tcx, impl_args);
+            let impl_bounds = ocx.normalize(&ObligationCause::dummy(), self.param_env, impl_bounds);
+            let impl_obligations = traits::predicates_for_generics(
+                |_, _| ObligationCause::dummy(),
+                self.param_env,
+                impl_bounds,
+            );
+            ocx.register_obligations(impl_obligations);
+
+            let mut errors = ocx.select_where_possible();
+            if !errors.is_empty() {
+                fulfillment_errors.append(&mut errors);
+                return false;
+            }
+
+            true
+        };
 
         let mut universes = if self_ty.has_escaping_bound_vars() {
             vec![None; self_ty.outer_exclusive_binder().as_usize()]
@@ -329,52 +362,12 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             vec![]
         };
 
-        let mut fulfillment_errors = vec![];
         let candidates =
             traits::with_replaced_escaping_bound_vars(infcx, &mut universes, self_ty, |self_ty| {
                 candidates
                     .into_iter()
                     .filter(|&InherentAssocCandidate { impl_, .. }| {
-                        infcx.probe(|_| {
-                            let ocx = ObligationCtxt::new_with_diagnostics(self);
-                            let self_ty =
-                                ocx.normalize(&ObligationCause::dummy(), self.param_env, self_ty);
-
-                            let impl_args = infcx.fresh_args_for_item(span, impl_);
-                            let impl_ty = tcx.type_of(impl_).instantiate(tcx, impl_args);
-                            let impl_ty =
-                                ocx.normalize(&ObligationCause::dummy(), self.param_env, impl_ty);
-
-                            // Check that the self types can be related.
-                            if ocx
-                                .eq(&ObligationCause::dummy(), self.param_env, impl_ty, self_ty)
-                                .is_err()
-                            {
-                                return false;
-                            }
-
-                            // Check whether the impl imposes obligations we have to worry about.
-                            let impl_bounds = tcx.predicates_of(impl_).instantiate(tcx, impl_args);
-                            let impl_bounds = ocx.normalize(
-                                &ObligationCause::dummy(),
-                                self.param_env,
-                                impl_bounds,
-                            );
-                            let impl_obligations = traits::predicates_for_generics(
-                                |_, _| ObligationCause::dummy(),
-                                self.param_env,
-                                impl_bounds,
-                            );
-                            ocx.register_obligations(impl_obligations);
-
-                            let mut errors = ocx.select_where_possible();
-                            if !errors.is_empty() {
-                                fulfillment_errors.append(&mut errors);
-                                return false;
-                            }
-
-                            true
-                        })
+                        infcx.probe(|_| filter_iat_candidate(self_ty, impl_))
                     })
                     .collect()
             });
