@@ -47,8 +47,8 @@ where
 pub(crate) fn complete_expr_path(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
-    expr_ctx: &PathExprCtx,
+    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
+    expr_ctx: &PathExprCtx<'_>,
 ) {
     let _p = tracing::info_span!("complete_expr_path").entered();
     if !ctx.qualifier_ctx.none() {

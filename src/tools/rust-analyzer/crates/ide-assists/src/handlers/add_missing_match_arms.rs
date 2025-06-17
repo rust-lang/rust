@@ -413,8 +413,8 @@ impl ExtendedEnum {
     fn enum_(
         db: &RootDatabase,
         enum_: hir::Enum,
-        enum_ty: &hir::Type,
-        self_ty: Option<&hir::Type>,
+        enum_ty: &hir::Type<'_>,
+        self_ty: Option<&hir::Type<'_>>,
     ) -> Self {
         ExtendedEnum::Enum {
             enum_,
@@ -448,7 +448,7 @@ impl ExtendedEnum {
 fn resolve_enum_def(
     sema: &Semantics<'_, RootDatabase>,
     expr: &ast::Expr,
-    self_ty: Option<&hir::Type>,
+    self_ty: Option<&hir::Type<'_>>,
 ) -> Option<ExtendedEnum> {
     sema.type_of_expr(expr)?.adjusted().autoderef(sema.db).find_map(|ty| match ty.as_adt() {
         Some(Adt::Enum(e)) => Some(ExtendedEnum::enum_(sema.db, e, &ty, self_ty)),
@@ -459,7 +459,7 @@ fn resolve_enum_def(
 fn resolve_tuple_of_enum_def(
     sema: &Semantics<'_, RootDatabase>,
     expr: &ast::Expr,
-    self_ty: Option<&hir::Type>,
+    self_ty: Option<&hir::Type<'_>>,
 ) -> Option<Vec<ExtendedEnum>> {
     sema.type_of_expr(expr)?
         .adjusted()
@@ -483,7 +483,7 @@ fn resolve_tuple_of_enum_def(
 fn resolve_array_of_enum_def(
     sema: &Semantics<'_, RootDatabase>,
     expr: &ast::Expr,
-    self_ty: Option<&hir::Type>,
+    self_ty: Option<&hir::Type<'_>>,
 ) -> Option<(ExtendedEnum, usize)> {
     sema.type_of_expr(expr)?.adjusted().as_array(sema.db).and_then(|(ty, len)| {
         ty.autoderef(sema.db).find_map(|ty| match ty.as_adt() {

@@ -107,7 +107,7 @@ pub(crate) fn view_memory_layout(
     fn read_layout(
         nodes: &mut Vec<MemoryLayoutNode>,
         db: &RootDatabase,
-        ty: &Type,
+        ty: &Type<'_>,
         layout: &Layout,
         parent_idx: usize,
         display_target: DisplayTarget,

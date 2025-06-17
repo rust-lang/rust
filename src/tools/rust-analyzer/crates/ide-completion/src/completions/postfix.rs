@@ -28,7 +28,7 @@ use crate::{
 pub(crate) fn complete_postfix(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    dot_access: &DotAccess,
+    dot_access: &DotAccess<'_>,
 ) {
     if !ctx.config.enable_postfix_completions {
         return;

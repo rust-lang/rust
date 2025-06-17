@@ -38,9 +38,9 @@ struct ExpansionResult {
     derive_ctx: Option<(SyntaxNode, SyntaxNode, TextSize, ast::Attr)>,
 }
 
-pub(super) struct AnalysisResult {
-    pub(super) analysis: CompletionAnalysis,
-    pub(super) expected: (Option<Type>, Option<ast::NameOrNameRef>),
+pub(super) struct AnalysisResult<'db> {
+    pub(super) analysis: CompletionAnalysis<'db>,
+    pub(super) expected: (Option<Type<'db>>, Option<ast::NameOrNameRef>),
     pub(super) qualifier_ctx: QualifierCtx,
     /// the original token of the expanded file
     pub(super) token: SyntaxToken,
@@ -48,13 +48,13 @@ pub(super) struct AnalysisResult {
     pub(super) original_offset: TextSize,
 }
 
-pub(super) fn expand_and_analyze(
-    sema: &Semantics<'_, RootDatabase>,
+pub(super) fn expand_and_analyze<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     original_file: InFile<SyntaxNode>,
     speculative_file: SyntaxNode,
     offset: TextSize,
     original_token: &SyntaxToken,
-) -> Option<AnalysisResult> {
+) -> Option<AnalysisResult<'db>> {
     // as we insert after the offset, right biased will *always* pick the identifier no matter
     // if there is an ident already typed or not
     let fake_ident_token = speculative_file.token_at_offset(offset).right_biased()?;
@@ -432,12 +432,13 @@ fn expand(
 
 /// Fill the completion context, this is what does semantic reasoning about the surrounding context
 /// of the completion location.
-fn analyze(
-    sema: &Semantics<'_, RootDatabase>,
+fn analyze<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     expansion_result: ExpansionResult,
     original_token: &SyntaxToken,
     self_token: &SyntaxToken,
-) -> Option<(CompletionAnalysis, (Option<Type>, Option<ast::NameOrNameRef>), QualifierCtx)> {
+) -> Option<(CompletionAnalysis<'db>, (Option<Type<'db>>, Option<ast::NameOrNameRef>), QualifierCtx)>
+{
     let _p = tracing::info_span!("CompletionContext::analyze").entered();
     let ExpansionResult {
         original_file,
@@ -555,17 +556,17 @@ fn analyze(
 }
 
 /// Calculate the expected type and name of the cursor position.
-fn expected_type_and_name(
-    sema: &Semantics<'_, RootDatabase>,
+fn expected_type_and_name<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     token: &SyntaxToken,
     name_like: &ast::NameLike,
-) -> (Option<Type>, Option<NameOrNameRef>) {
+) -> (Option<Type<'db>>, Option<NameOrNameRef>) {
     let mut node = match token.parent() {
         Some(it) => it,
         None => return (None, None),
     };
 
-    let strip_refs = |mut ty: Type| match name_like {
+    let strip_refs = |mut ty: Type<'db>| match name_like {
         ast::NameLike::NameRef(n) => {
             let p = match n.syntax().parent() {
                 Some(it) => it,
@@ -805,13 +806,13 @@ fn classify_name(
     Some(NameContext { name, kind })
 }
 
-fn classify_name_ref(
-    sema: &Semantics<'_, RootDatabase>,
+fn classify_name_ref<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     original_file: &SyntaxNode,
     name_ref: ast::NameRef,
     original_offset: TextSize,
     parent: SyntaxNode,
-) -> Option<(NameRefContext, QualifierCtx)> {
+) -> Option<(NameRefContext<'db>, QualifierCtx)> {
     let nameref = find_node_at_offset(original_file, original_offset);
 
     let make_res = |kind| (NameRefContext { nameref: nameref.clone(), kind }, Default::default());
