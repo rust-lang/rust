@@ -420,7 +420,6 @@ impl Config {
             src: flags_src,
             jobs: flags_jobs,
             warnings: flags_warnings,
-            error_format: flags_error_format,
             json_output: flags_json_output,
             color: flags_color,
             bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
