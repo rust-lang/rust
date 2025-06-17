@@ -1,46 +1,48 @@
-error[E0597]: `mutex` does not live long enough
-  --> $DIR/span-semicolon-issue-139049.rs:39:27
+error[E0597]: `l` does not live long enough
+  --> $DIR/span-semicolon-issue-139049.rs:11:41
    |
-LL |         let mutex = Mutex;
-   |             ----- binding `mutex` declared here
-LL |         write!(Out, "{}", mutex.lock())
-   |                           ^^^^^-------
-   |                           |
-   |                           borrowed value does not live long enough
-   |                           a temporary with access to the borrow is created here ...
+LL | macro_rules! perform { ($e:expr) => { D(&$e).end() } }
+   |                                       --^^^-
+   |                                       | |
+   |                                       | borrowed value does not live long enough
+   |                                       a temporary with access to the borrow is created here ...
 ...
-LL |     };
-   |     -- ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `MutexGuard`
-   |     |
-   |     `mutex` dropped here while still borrowed
+LL |     { let l = (); perform!(l) };
+   |           -       ----------- -- ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |           |       |           |
+   |           |       |           `l` dropped here while still borrowed
+   |           |       in this macro invocation
+   |           binding `l` declared here
    |
+   = note: this error originates in the macro `perform` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
    |
-LL |         write!(Out, "{}", mutex.lock());
-   |                                        +
+LL |     { let l = (); perform!(l); };
+   |                              +
 
-error[E0597]: `mutex` does not live long enough
-  --> $DIR/span-semicolon-issue-139049.rs:48:41
+error[E0597]: `l` does not live long enough
+  --> $DIR/span-semicolon-issue-139049.rs:11:41
    |
-LL |         let mutex = Mutex;
-   |             ----- binding `mutex` declared here
-LL |         write!(std::io::stdout(), "{}", mutex.lock())
-   |                                         ^^^^^-------
-   |                                         |
-   |                                         borrowed value does not live long enough
-   |                                         a temporary with access to the borrow is created here ...
+LL | macro_rules! perform { ($e:expr) => { D(&$e).end() } }
+   |                                       --^^^-
+   |                                       | |
+   |                                       | borrowed value does not live long enough
+   |                                       a temporary with access to the borrow is created here ...
 ...
-LL |     };
-   |     -- ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `MutexGuard`
-   |     |
-   |     `mutex` dropped here while still borrowed
+LL |     let _x = { let l = (); perform!(l) };
+   |                    -       ----------- -- ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+   |                    |       |           |
+   |                    |       |           `l` dropped here while still borrowed
+   |                    |       in this macro invocation
+   |                    binding `l` declared here
    |
    = note: the temporary is part of an expression at the end of a block;
            consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
+   = note: this error originates in the macro `perform` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: for example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block
    |
-LL |         let x = write!(std::io::stdout(), "{}", mutex.lock()); x
-   |         +++++++                                              +++
+LL |     let _x = { let l = (); let x = perform!(l); x };
+   |                            +++++++            +++
 
 error: aborting due to 2 previous errors
 
