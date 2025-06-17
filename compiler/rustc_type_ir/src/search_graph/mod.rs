@@ -652,7 +652,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 // Do not try to move a goal into the cache again if we're testing
                 // the global cache.
                 assert_eq!(result, expected, "input={input:?}");
-            } else if D::inspect_is_noop(inspect) {
+            } else {
                 self.insert_global_cache(cx, final_entry, result, dep_node)
             }
         } else if D::ENABLE_PROVISIONAL_CACHE {
