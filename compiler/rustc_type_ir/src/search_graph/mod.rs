@@ -381,18 +381,16 @@ impl PathsToNested {
 /// The nested goals of each stack entry and the path from the
 /// stack entry to that nested goal.
 ///
+/// They are used when checking whether reevaluating a global cache
+/// would encounter a cycle or use a provisional cache entry given the
+/// currentl search graph state. We need to disable the global cache
+/// in this case as it could otherwise result in behaviorial differences.
+/// Cycles can impact behavior. The cycle ABA may have different final
+/// results from a the cycle BAB depending on the cycle root.
+///
 /// We only start tracking nested goals once we've either encountered
 /// overflow or a solver cycle. This is a performance optimization to
 /// avoid tracking nested goals on the happy path.
-///
-/// We use nested goals for two reasons:
-/// - when rebasing provisional cache entries
-/// - when checking whether we have to ignore a global cache entry as reevaluating
-///   it would encounter a cycle or use a provisional cache entry.
-///
-/// We need to disable the global cache if using it would hide a cycle, as
-/// cycles can impact behavior. The cycle ABA may have different final
-/// results from a the cycle BAB depending on the cycle root.
 #[derive_where(Debug, Default, Clone; X: Cx)]
 struct NestedGoals<X: Cx> {
     nested_goals: HashMap<X::Input, PathsToNested>,
