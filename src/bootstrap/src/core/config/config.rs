@@ -730,7 +730,9 @@ impl Config {
 
         config.jobs = Some(threads_from_config(flags.jobs.unwrap_or(jobs.unwrap_or(0))));
 
-        if let Some(file_build) = build {
+        if let Some(flags_build) = flags.build {
+            config.host_target = TargetSelection::from_user(&flags_build);
+        } else if let Some(file_build) = build {
             config.host_target = TargetSelection::from_user(&file_build);
         };
 
