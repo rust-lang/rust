@@ -2032,40 +2032,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
     pub fn insert(&mut self, index: usize, element: T) {
-        #[cold]
-        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-        #[track_caller]
-        #[optimize(size)]
-        fn assert_failed(index: usize, len: usize) -> ! {
-            panic!("insertion index (is {index}) should be <= len (is {len})");
-        }
-
-        let len = self.len();
-        if index > len {
-            assert_failed(index, len);
-        }
-
-        // space for the new element
-        if len == self.buf.capacity() {
-            self.buf.grow_one();
-        }
-
-        unsafe {
-            // infallible
-            // The spot to put the new value
-            {
-                let p = self.as_mut_ptr().add(index);
-                if index < len {
-                    // Shift everything over to make space. (Duplicating the
-                    // `index`th element into two consecutive places.)
-                    ptr::copy(p, p.add(1), len - index);
-                }
-                // Write it in, overwriting the first copy of the `index`th
-                // element.
-                ptr::write(p, element);
-            }
-            self.set_len(len + 1);
-        }
+        let _ = self.insert_mut(index, element);
     }
 
     /// Inserts an element at position `index` within the vector, shifting all
@@ -2530,18 +2497,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[rustc_confusables("push_back", "put", "append")]
     #[track_caller]
     pub fn push(&mut self, value: T) {
-        // Inform codegen that the length does not change across grow_one().
-        let len = self.len;
-        // This will panic or abort if we would allocate > isize::MAX bytes
-        // or if the length increment would overflow for zero-sized types.
-        if len == self.buf.capacity() {
-            self.buf.grow_one();
-        }
-        unsafe {
-            let end = self.as_mut_ptr().add(len);
-            ptr::write(end, value);
-            self.len = len + 1;
-        }
+        let _ = self.push_mut(value);
     }
 
     /// Appends an element if there is sufficient spare capacity, otherwise an error is returned
@@ -2582,15 +2538,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
     pub fn push_within_capacity(&mut self, value: T) -> Result<(), T> {
-        if self.len == self.buf.capacity() {
-            return Err(value);
-        }
-        unsafe {
-            let end = self.as_mut_ptr().add(self.len);
-            ptr::write(end, value);
-            self.len += 1;
-        }
-        Ok(())
+        self.push_mut_within_capacity(value).map(|_| ())
     }
 
     /// Appends an element to the back of a collection, returning a reference to it.
