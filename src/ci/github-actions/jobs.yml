@@ -300,7 +300,7 @@ auto:
     env:
       IMAGE: i686-gnu-nopt
       DOCKER_SCRIPT: >-
-        python3 ../x.py test --stage 1 --config /config/nopt-std-config.toml library/std &&
+        python3 ../x.py test --stage 1 --set rust.optimize=false library/std &&
         /scripts/stage_2_test_set2.sh
     <<: *job-linux-4c
 

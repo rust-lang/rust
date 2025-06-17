@@ -130,24 +130,54 @@ impl Deprecation {
     }
 }
 
-/// Represent parsed, *built in*, inert attributes.
+/// Represents parsed *built-in* inert attributes.
 ///
-/// That means attributes that are not actually ever expanded.
-/// For more information on this, see the module docs on the [`rustc_attr_parsing`] crate.
-/// They're instead used as markers, to guide the compilation process in various way in most every stage of the compiler.
-/// These are kept around after the AST, into the HIR and further on.
+/// ## Overview
+/// These attributes are markers that guide the compilation process and are never expanded into other code.
+/// They persist throughout the compilation phases, from AST to HIR and beyond.
 ///
-/// The word "parsed" could be a little misleading here, because the parser already parses
-/// attributes early on. However, the result, an [`ast::Attribute`]
-/// is only parsed at a high level, still containing a token stream in many cases. That is
-/// because the structure of the contents varies from attribute to attribute.
-/// With a parsed attribute I mean that each attribute is processed individually into a
-/// final structure, which on-site (the place where the attribute is useful for, think the
-/// the place where `must_use` is checked) little to no extra parsing or validating needs to
-/// happen.
+/// ## Attribute Processing
+/// While attributes are initially parsed by [`rustc_parse`] into [`ast::Attribute`], they still contain raw token streams
+/// because different attributes have different internal structures. This enum represents the final,
+/// fully parsed form of these attributes, where each variant contains contains all the information and
+/// structure relevant for the specific attribute.
 ///
-/// For more docs, look in [`rustc_attr_parsing`].
+/// Some attributes can be applied multiple times to the same item, and they are "collapsed" into a single
+/// semantic attribute. For example:
+/// ```rust
+/// #[repr(C)]
+/// #[repr(packed)]
+/// struct S { }
+/// ```
+/// This is equivalent to `#[repr(C, packed)]` and results in a single [`AttributeKind::Repr`] containing
+/// both `C` and `packed` annotations. This collapsing happens during parsing and is reflected in the
+/// data structures defined in this enum.
 ///
+/// ## Usage
+/// These parsed attributes are used throughout the compiler to:
+/// - Control code generation (e.g., `#[repr]`)
+/// - Mark API stability (`#[stable]`, `#[unstable]`)
+/// - Provide documentation (`#[doc]`)
+/// - Guide compiler behavior (e.g., `#[allow_internal_unstable]`)
+///
+/// ## Note on Attribute Organization
+/// Some attributes like `InlineAttr`, `OptimizeAttr`, and `InstructionSetAttr` are defined separately
+/// from this enum because they are used in specific compiler phases (like code generation) and don't
+/// need to persist throughout the entire compilation process. They are typically processed and
+/// converted into their final form earlier in the compilation pipeline.
+///
+/// For example:
+/// - `InlineAttr` is used during code generation to control function inlining
+/// - `OptimizeAttr` is used to control optimization levels
+/// - `InstructionSetAttr` is used for target-specific code generation
+///
+/// These attributes are handled by their respective compiler passes in the [`rustc_codegen_ssa`] crate
+/// and don't need to be preserved in the same way as the attributes in this enum.
+///
+/// For more details on attribute parsing, see the [`rustc_attr_parsing`] crate.
+///
+/// [`rustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
+/// [`rustc_codegen_ssa`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/index.html
 /// [`rustc_attr_parsing`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum AttributeKind {
@@ -157,6 +187,9 @@ pub enum AttributeKind {
 
     /// Represents `#[allow_internal_unstable]`.
     AllowInternalUnstable(ThinVec<(Symbol, Span)>),
+
+    /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
+    AsPtr(Span),
 
     /// Represents `#[rustc_default_body_unstable]`.
     BodyStability {

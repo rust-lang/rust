@@ -78,6 +78,14 @@ LL |         break for_loop;
    |               not found in this scope
    |               help: use the similarly named label: `'for_loop`
 
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/label_misspelled.rs:4:5
+   |
+LL |     'while_loop: while true {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
+   |
+   = note: `#[warn(while_true)]` on by default
+
 warning: unused label
   --> $DIR/label_misspelled.rs:4:5
    |
@@ -89,14 +97,6 @@ note: the lint level is defined here
    |
 LL | #![warn(unused_labels)]
    |         ^^^^^^^^^^^^^
-
-warning: denote infinite loops with `loop { ... }`
-  --> $DIR/label_misspelled.rs:4:5
-   |
-LL |     'while_loop: while true {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
-   |
-   = note: `#[warn(while_true)]` on by default
 
 warning: unused label
   --> $DIR/label_misspelled.rs:9:5
@@ -122,17 +122,17 @@ warning: denote infinite loops with `loop { ... }`
 LL |     'while_loop: while true {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
 
-warning: unused label
-  --> $DIR/label_misspelled.rs:47:5
-   |
-LL |     'while_loop: while true {
-   |     ^^^^^^^^^^^
-
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/label_misspelled.rs:47:5
    |
 LL |     'while_loop: while true {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
+
+warning: unused label
+  --> $DIR/label_misspelled.rs:47:5
+   |
+LL |     'while_loop: while true {
+   |     ^^^^^^^^^^^
 
 warning: unused label
   --> $DIR/label_misspelled.rs:52:5

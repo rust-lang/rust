@@ -48,7 +48,6 @@ extern crate rustc_index;
 #[cfg(feature = "master")]
 extern crate rustc_interface;
 extern crate rustc_macros;
-extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -106,7 +105,6 @@ use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetCon
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::DiagCtxtHandle;
-use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
@@ -230,20 +228,9 @@ impl CodegenBackend for GccCodegenBackend {
         providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess, true)
     }
 
-    fn codegen_crate(
-        &self,
-        tcx: TyCtxt<'_>,
-        metadata: EncodedMetadata,
-        need_metadata_module: bool,
-    ) -> Box<dyn Any> {
+    fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
         let target_cpu = target_cpu(tcx.sess);
-        let res = codegen_crate(
-            self.clone(),
-            tcx,
-            target_cpu.to_string(),
-            metadata,
-            need_metadata_module,
-        );
+        let res = codegen_crate(self.clone(), tcx, target_cpu.to_string());
 
         Box::new(res)
     }

@@ -22,10 +22,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-RUN mkdir -p /config
-RUN echo "[rust]" > /config/nopt-std-config.toml
-RUN echo "optimize = false" >> /config/nopt-std-config.toml
-
 ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu --disable-optimize-tests
 ARG SCRIPT_ARG
 COPY scripts/stage_2_test_set1.sh /scripts/

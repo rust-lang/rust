@@ -2009,7 +2009,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // Note that if we encounter `PATH` we make sure to append to our own `PATH`
             // rather than stomp over it.
             if !builder.config.dry_run() && target.is_msvc() {
-                for (k, v) in builder.cc.borrow()[&target].env() {
+                for (k, v) in builder.cc[&target].env() {
                     if k != "PATH" {
                         cmd.env(k, v);
                     }
@@ -2026,8 +2026,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // address sanitizer enabled (e.g., ntdll.dll).
             cmd.env("ASAN_WIN_CONTINUE_ON_INTERCEPTION_FAILURE", "1");
             // Add the address sanitizer runtime to the PATH - it is located next to cl.exe.
-            let asan_runtime_path =
-                builder.cc.borrow()[&target].path().parent().unwrap().to_path_buf();
+            let asan_runtime_path = builder.cc[&target].path().parent().unwrap().to_path_buf();
             let old_path = cmd
                 .get_envs()
                 .find_map(|(k, v)| (k == "PATH").then_some(v))
@@ -3059,6 +3058,8 @@ impl Step for Bootstrap {
         cargo
             .rustflag("-Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
+            // Needed for insta to correctly write pending snapshots to the right directories.
+            .env("INSTA_WORKSPACE_ROOT", &builder.src)
             .env("RUSTC_BOOTSTRAP", "1");
 
         // bootstrap tests are racy on directory creation so just run them one at a time.

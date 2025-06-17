@@ -80,6 +80,13 @@ impl<'a> State<'a> {
         (self.attrs)(id)
     }
 
+    fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
+        let for_each_attr = |id: HirId, callback: &mut dyn FnMut(&hir::Attribute)| {
+            self.attrs(id).iter().for_each(callback);
+        };
+        expr.precedence(&for_each_attr)
+    }
+
     fn print_attrs_as_inner(&mut self, attrs: &[hir::Attribute]) {
         self.print_either_attributes(attrs, ast::AttrStyle::Inner)
     }
@@ -1164,7 +1171,7 @@ impl<'a> State<'a> {
         }
         self.space();
         self.word_space("=");
-        let npals = || parser::needs_par_as_let_scrutinee(init.precedence());
+        let npals = || parser::needs_par_as_let_scrutinee(self.precedence(init));
         self.print_expr_cond_paren(init, Self::cond_needs_par(init) || npals())
     }
 
@@ -1265,7 +1272,7 @@ impl<'a> State<'a> {
     fn print_expr_call(&mut self, func: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
         let needs_paren = match func.kind {
             hir::ExprKind::Field(..) => true,
-            _ => func.precedence() < ExprPrecedence::Unambiguous,
+            _ => self.precedence(func) < ExprPrecedence::Unambiguous,
         };
 
         self.print_expr_cond_paren(func, needs_paren);
@@ -1279,7 +1286,10 @@ impl<'a> State<'a> {
         args: &[hir::Expr<'_>],
     ) {
         let base_args = args;
-        self.print_expr_cond_paren(receiver, receiver.precedence() < ExprPrecedence::Unambiguous);
+        self.print_expr_cond_paren(
+            receiver,
+            self.precedence(receiver) < ExprPrecedence::Unambiguous,
+        );
         self.word(".");
         self.print_ident(segment.ident);
 
@@ -1293,8 +1303,8 @@ impl<'a> State<'a> {
 
     fn print_expr_binary(&mut self, op: hir::BinOpKind, lhs: &hir::Expr<'_>, rhs: &hir::Expr<'_>) {
         let binop_prec = op.precedence();
-        let left_prec = lhs.precedence();
-        let right_prec = rhs.precedence();
+        let left_prec = self.precedence(lhs);
+        let right_prec = self.precedence(rhs);
 
         let (mut left_needs_paren, right_needs_paren) = match op.fixity() {
             Fixity::Left => (left_prec < binop_prec, right_prec <= binop_prec),
@@ -1323,7 +1333,7 @@ impl<'a> State<'a> {
 
     fn print_expr_unary(&mut self, op: hir::UnOp, expr: &hir::Expr<'_>) {
         self.word(op.as_str());
-        self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Prefix);
+        self.print_expr_cond_paren(expr, self.precedence(expr) < ExprPrecedence::Prefix);
     }
 
     fn print_expr_addr_of(
@@ -1340,7 +1350,7 @@ impl<'a> State<'a> {
                 self.print_mutability(mutability, true);
             }
         }
-        self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Prefix);
+        self.print_expr_cond_paren(expr, self.precedence(expr) < ExprPrecedence::Prefix);
     }
 
     fn print_literal(&mut self, lit: &hir::Lit) {
@@ -1483,7 +1493,7 @@ impl<'a> State<'a> {
                 self.print_literal(lit);
             }
             hir::ExprKind::Cast(expr, ty) => {
-                self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Cast);
+                self.print_expr_cond_paren(expr, self.precedence(expr) < ExprPrecedence::Cast);
                 self.space();
                 self.word_space("as");
                 self.print_type(ty);
@@ -1580,24 +1590,30 @@ impl<'a> State<'a> {
                 self.print_block(blk, cb, ib);
             }
             hir::ExprKind::Assign(lhs, rhs, _) => {
-                self.print_expr_cond_paren(lhs, lhs.precedence() <= ExprPrecedence::Assign);
+                self.print_expr_cond_paren(lhs, self.precedence(lhs) <= ExprPrecedence::Assign);
                 self.space();
                 self.word_space("=");
-                self.print_expr_cond_paren(rhs, rhs.precedence() < ExprPrecedence::Assign);
+                self.print_expr_cond_paren(rhs, self.precedence(rhs) < ExprPrecedence::Assign);
             }
             hir::ExprKind::AssignOp(op, lhs, rhs) => {
-                self.print_expr_cond_paren(lhs, lhs.precedence() <= ExprPrecedence::Assign);
+                self.print_expr_cond_paren(lhs, self.precedence(lhs) <= ExprPrecedence::Assign);
                 self.space();
                 self.word_space(op.node.as_str());
-                self.print_expr_cond_paren(rhs, rhs.precedence() < ExprPrecedence::Assign);
+                self.print_expr_cond_paren(rhs, self.precedence(rhs) < ExprPrecedence::Assign);
             }
             hir::ExprKind::Field(expr, ident) => {
-                self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Unambiguous);
+                self.print_expr_cond_paren(
+                    expr,
+                    self.precedence(expr) < ExprPrecedence::Unambiguous,
+                );
                 self.word(".");
                 self.print_ident(ident);
             }
             hir::ExprKind::Index(expr, index, _) => {
-                self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Unambiguous);
+                self.print_expr_cond_paren(
+                    expr,
+                    self.precedence(expr) < ExprPrecedence::Unambiguous,
+                );
                 self.word("[");
                 self.print_expr(index);
                 self.word("]");
@@ -1611,7 +1627,7 @@ impl<'a> State<'a> {
                 }
                 if let Some(expr) = opt_expr {
                     self.space();
-                    self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Jump);
+                    self.print_expr_cond_paren(expr, self.precedence(expr) < ExprPrecedence::Jump);
                 }
             }
             hir::ExprKind::Continue(destination) => {
@@ -1625,13 +1641,13 @@ impl<'a> State<'a> {
                 self.word("return");
                 if let Some(expr) = result {
                     self.word(" ");
-                    self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Jump);
+                    self.print_expr_cond_paren(expr, self.precedence(expr) < ExprPrecedence::Jump);
                 }
             }
             hir::ExprKind::Become(result) => {
                 self.word("become");
                 self.word(" ");
-                self.print_expr_cond_paren(result, result.precedence() < ExprPrecedence::Jump);
+                self.print_expr_cond_paren(result, self.precedence(result) < ExprPrecedence::Jump);
             }
             hir::ExprKind::InlineAsm(asm) => {
                 self.word("asm!");
@@ -1669,7 +1685,7 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::Yield(expr, _) => {
                 self.word_space("yield");
-                self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Jump);
+                self.print_expr_cond_paren(expr, self.precedence(expr) < ExprPrecedence::Jump);
             }
             hir::ExprKind::Err(_) => {
                 self.popen();

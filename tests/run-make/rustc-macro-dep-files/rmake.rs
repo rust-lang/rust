@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // --emit dep-info used to print all macro-generated code it could
 // find as if it was part of a nonexistent file named "proc-macro source",
 // which is not a valid path. After this was fixed in #36776, this test checks

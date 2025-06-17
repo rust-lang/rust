@@ -415,24 +415,24 @@ pub(crate) enum AliasPossibility {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum PathSource<'a, 'c> {
+pub(crate) enum PathSource<'a, 'ast, 'ra> {
     /// Type paths `Path`.
     Type,
     /// Trait paths in bounds or impls.
     Trait(AliasPossibility),
     /// Expression paths `path`, with optional parent context.
-    Expr(Option<&'a Expr>),
+    Expr(Option<&'ast Expr>),
     /// Paths in path patterns `Path`.
     Pat,
     /// Paths in struct expressions and patterns `Path { .. }`.
     Struct,
     /// Paths in tuple struct patterns `Path(..)`.
-    TupleStruct(Span, &'a [Span]),
+    TupleStruct(Span, &'ra [Span]),
     /// `m::A::B` in `<T as m::A>::B::C`.
     ///
     /// Second field holds the "cause" of this one, i.e. the context within
     /// which the trait item is resolved. Used for diagnostics.
-    TraitItem(Namespace, &'c PathSource<'a, 'c>),
+    TraitItem(Namespace, &'a PathSource<'a, 'ast, 'ra>),
     /// Paths in delegation item
     Delegation,
     /// An arg in a `use<'a, N>` precise-capturing bound.
@@ -443,7 +443,7 @@ pub(crate) enum PathSource<'a, 'c> {
     DefineOpaques,
 }
 
-impl<'a> PathSource<'a, '_> {
+impl PathSource<'_, '_, '_> {
     fn namespace(self) -> Namespace {
         match self {
             PathSource::Type
@@ -773,7 +773,7 @@ struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
-impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
+impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn visit_attribute(&mut self, _: &'ast Attribute) {
         // We do not want to resolve expressions that appear in attributes,
         // as they do not correspond to actual code.
@@ -1462,7 +1462,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
     }
 }
 
-impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
+impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     fn new(resolver: &'a mut Resolver<'ra, 'tcx>) -> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
@@ -2010,7 +2010,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         &mut self,
         partial_res: PartialRes,
         path: &[Segment],
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         path_span: Span,
     ) {
         let proj_start = path.len() - partial_res.unresolved_segments();
@@ -4161,7 +4161,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         id: NodeId,
         qself: &Option<P<QSelf>>,
         path: &Path,
-        source: PathSource<'ast, '_>,
+        source: PathSource<'_, 'ast, '_>,
     ) {
         self.smart_resolve_path_fragment(
             qself,
@@ -4178,7 +4178,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         &mut self,
         qself: &Option<P<QSelf>>,
         path: &[Segment],
-        source: PathSource<'ast, '_>,
+        source: PathSource<'_, 'ast, '_>,
         finalize: Finalize,
         record_partial_res: RecordPartialRes,
         parent_qself: Option<&QSelf>,
@@ -4482,7 +4482,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         span: Span,
         defer_to_typeck: bool,
         finalize: Finalize,
-        source: PathSource<'ast, '_>,
+        source: PathSource<'_, 'ast, '_>,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'ra>>> {
         let mut fin_res = None;
 
@@ -4525,7 +4525,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         ns: Namespace,
         finalize: Finalize,
-        source: PathSource<'ast, '_>,
+        source: PathSource<'_, 'ast, '_>,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'ra>>> {
         debug!(
             "resolve_qpath(qself={:?}, path={:?}, ns={:?}, finalize={:?})",

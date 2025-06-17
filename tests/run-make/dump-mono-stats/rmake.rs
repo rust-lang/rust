@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // A flag named dump-mono-stats was added to the compiler in 2022, which
 // collects stats on instantiation of items and their associated costs.
 // This test checks that the output stat file exists, and that it contains

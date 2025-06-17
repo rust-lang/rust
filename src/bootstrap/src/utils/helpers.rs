@@ -98,7 +98,7 @@ pub fn is_dylib(path: &Path) -> bool {
 
 /// Return the path to the containing submodule if available.
 pub fn submodule_path_of(builder: &Builder<'_>, path: &str) -> Option<String> {
-    let submodule_paths = build_helper::util::parse_gitmodules(&builder.src);
+    let submodule_paths = builder.submodule_paths();
     submodule_paths.iter().find_map(|submodule_path| {
         if path.starts_with(submodule_path) { Some(submodule_path.to_string()) } else { None }
     })
@@ -268,24 +268,6 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
         Some(s) if !s.is_empty() => Some(s),
         _ => None,
     }
-}
-
-// FIXME: get rid of this function
-pub fn check_run(cmd: &mut BootstrapCommand, print_cmd_on_fail: bool) -> bool {
-    let status = match cmd.as_command_mut().status() {
-        Ok(status) => status,
-        Err(e) => {
-            println!("failed to execute command: {cmd:?}\nERROR: {e}");
-            return false;
-        }
-    };
-    if !status.success() && print_cmd_on_fail {
-        println!(
-            "\n\ncommand did not execute successfully: {cmd:?}\n\
-             expected success, got: {status}\n\n"
-        );
-    }
-    status.success()
 }
 
 pub fn make(host: &str) -> PathBuf {

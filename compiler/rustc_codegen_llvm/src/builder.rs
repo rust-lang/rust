@@ -507,7 +507,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         let name = format!("llvm.{}{oop_str}.with.overflow", if signed { 's' } else { 'u' });
 
-        let res = self.call_intrinsic(&name, &[self.type_ix(width)], &[lhs, rhs]);
+        let res = self.call_intrinsic(name, &[self.type_ix(width)], &[lhs, rhs]);
         (self.extract_value(res, 0), self.extract_value(res, 1))
     }
 
@@ -1038,7 +1038,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let size = ty.primitive_size(self.tcx);
         let name = if ty.is_signed() { "llvm.scmp" } else { "llvm.ucmp" };
 
-        Some(self.call_intrinsic(&name, &[self.type_i8(), self.type_ix(size.bits())], &[lhs, rhs]))
+        Some(self.call_intrinsic(name, &[self.type_i8(), self.type_ix(size.bits())], &[lhs, rhs]))
     }
 
     /* Miscellaneous instructions */
@@ -1393,7 +1393,8 @@ impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {
         // Forward to the `get_static` method of `CodegenCx`
         let global = self.cx().get_static(def_id);
         if self.cx().tcx.is_thread_local_static(def_id) {
-            let pointer = self.call_intrinsic("llvm.threadlocal.address", &[], &[global]);
+            let pointer =
+                self.call_intrinsic("llvm.threadlocal.address", &[self.val_ty(global)], &[global]);
             // Cast to default address space if globals are in a different addrspace
             self.pointercast(pointer, self.type_ptr())
         } else {
@@ -1590,15 +1591,15 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub(crate) fn call_intrinsic(
         &mut self,
-        base_name: &str,
+        base_name: impl Into<Cow<'static, str>>,
         type_params: &[&'ll Type],
         args: &[&'ll Value],
     ) -> &'ll Value {
-        let (ty, f) = self.cx.get_intrinsic(base_name, type_params);
+        let (ty, f) = self.cx.get_intrinsic(base_name.into(), type_params);
         self.call(ty, None, None, f, args, None, None)
     }
 
-    fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: &'ll Value, size: Size) {
+    fn call_lifetime_intrinsic(&mut self, intrinsic: &'static str, ptr: &'ll Value, size: Size) {
         let size = size.bytes();
         if size == 0 {
             return;
@@ -1608,7 +1609,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        self.call_intrinsic(intrinsic, &[self.type_ptr()], &[self.cx.const_u64(size), ptr]);
+        self.call_intrinsic(intrinsic, &[self.val_ty(ptr)], &[self.cx.const_u64(size), ptr]);
     }
 }
 impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {

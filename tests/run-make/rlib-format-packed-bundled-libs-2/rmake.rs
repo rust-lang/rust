@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // `-Z packed_bundled_libs` is an unstable rustc flag that makes the compiler
 // only require a native library and no supplementary object files to compile.
 // This test simply checks that this flag can be passed alongside verbatim syntax

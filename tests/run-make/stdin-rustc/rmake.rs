@@ -1,3 +1,4 @@
+//@ needs-target-std
 //! This test checks rustc `-` (stdin) support
 
 use std::path::PathBuf;
