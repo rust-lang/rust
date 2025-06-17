@@ -108,7 +108,7 @@ impl ExecutionContext {
         cmd.stdout(stdout.stdio());
         cmd.stderr(stderr.stdio());
 
-        let child = cmd.spawn().unwrap();
+        let child = cmd.spawn();
 
         DeferredCommand { process: Some(child), stdout, stderr, command, executed_at }
     }
@@ -157,7 +157,7 @@ impl AsRef<ExecutionContext> for ExecutionContext {
 }
 
 pub struct DeferredCommand<'a> {
-    process: Option<Child>,
+    process: Option<Result<Child, std::io::Error>>,
     command: &'a mut BootstrapCommand,
     stdout: OutputMode,
     stderr: OutputMode,
@@ -166,61 +166,77 @@ pub struct DeferredCommand<'a> {
 
 impl<'a> DeferredCommand<'a> {
     pub fn wait_for_output(mut self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
-        if self.process.is_none() {
-            return CommandOutput::default();
-        }
-
         let exec_ctx = exec_ctx.as_ref();
 
-        let output = self.process.take().unwrap().wait_with_output();
+        let process = match self.process.take() {
+            Some(p) => p,
+            None => return CommandOutput::default(),
+        };
 
         let created_at = self.command.get_created_location();
         let executed_at = self.executed_at;
 
-        use std::fmt::Write;
-
         let mut message = String::new();
-        let output: CommandOutput = match output {
-            // Command has succeeded
-            Ok(output) if output.status.success() => {
-                CommandOutput::from_output(output, self.stdout, self.stderr)
-            }
-            // Command has started, but then it failed
-            Ok(output) => {
-                writeln!(
-                    message,
-                    r#"
+
+        let output = match process {
+            Ok(child) => match child.wait_with_output() {
+                Ok(result) if result.status.success() => {
+                    // Successful execution
+                    CommandOutput::from_output(result, self.stdout, self.stderr)
+                }
+                Ok(result) => {
+                    // Command ran but failed
+                    use std::fmt::Write;
+
+                    writeln!(
+                        message,
+                        r#"
 Command {:?} did not execute successfully.
 Expected success, got {}
 Created at: {created_at}
 Executed at: {executed_at}"#,
-                    self.command, output.status,
-                )
-                .unwrap();
+                        self.command, result.status,
+                    )
+                    .unwrap();
 
-                let output: CommandOutput =
-                    CommandOutput::from_output(output, self.stdout, self.stderr);
+                    let output = CommandOutput::from_output(result, self.stdout, self.stderr);
 
-                // If the output mode is OutputMode::Capture, we can now print the output.
-                // If it is OutputMode::Print, then the output has already been printed to
-                // stdout/stderr, and we thus don't have anything captured to print anyway.
-                if self.stdout.captures() {
-                    writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
+                    if self.stdout.captures() {
+                        writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
+                    }
+                    if self.stderr.captures() {
+                        writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
+                    }
+
+                    output
                 }
-                if self.stderr.captures() {
-                    writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
+                Err(e) => {
+                    // Failed to wait for output
+                    use std::fmt::Write;
+
+                    writeln!(
+                        message,
+                        "\n\nCommand {:?} did not execute successfully.\
+                        \nIt was not possible to execute the command: {e:?}",
+                        self.command
+                    )
+                    .unwrap();
+
+                    CommandOutput::did_not_start(self.stdout, self.stderr)
                 }
-                output
-            }
-            // The command did not even start
+            },
             Err(e) => {
+                // Failed to spawn the command
+                use std::fmt::Write;
+
                 writeln!(
                     message,
                     "\n\nCommand {:?} did not execute successfully.\
-            \nIt was not possible to execute the command: {e:?}",
+                    \nIt was not possible to execute the command: {e:?}",
                     self.command
                 )
                 .unwrap();
+
                 CommandOutput::did_not_start(self.stdout, self.stderr)
             }
         };
@@ -231,7 +247,6 @@ Executed at: {executed_at}"#,
                     if exec_ctx.fail_fast {
                         exec_ctx.fail(&message, output);
                     }
-
                     exec_ctx.add_to_delay_failure(message);
                 }
                 BehaviorOnFailure::Exit => {
@@ -244,6 +259,7 @@ Executed at: {executed_at}"#,
                 }
             }
         }
+
         output
     }
 }
