@@ -11,7 +11,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_metadata::rendered_const;
 use rustc_middle::{bug, ty};
-use rustc_span::{Pos, Symbol, kw};
+use rustc_span::{Pos, kw, sym};
 use rustdoc_json_types::*;
 use thin_vec::ThinVec;
 
@@ -783,10 +783,7 @@ impl FromClean<clean::Import> for Use {
         use clean::ImportKind::*;
         let (name, is_glob) = match import.kind {
             Simple(s) => (s.to_string(), false),
-            Glob => (
-                import.source.path.last_opt().unwrap_or_else(|| Symbol::intern("*")).to_string(),
-                true,
-            ),
+            Glob => (import.source.path.last_opt().unwrap_or(sym::asterisk).to_string(), true),
         };
         Use {
             source: import.source.path.whole_name(),
