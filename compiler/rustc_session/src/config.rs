@@ -375,28 +375,22 @@ impl LinkSelfContained {
             return Ok(());
         }
 
-        // `-C link-self-contained=[-+]linker` is only stable on x64 linux.
-        let check_linker = |components: LinkSelfContainedComponents, polarity: &str| {
-            let has_linker = components.is_linker_enabled();
-            if has_linker && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
-                return Err(format!(
-                    "`-C link-self-contained={polarity}linker` is unstable on the `{target_tuple}` \
+        // `-C link-self-contained=-linker` is only stable on x64 linux.
+        let has_minus_linker = self.disabled_components.is_linker_enabled();
+        if has_minus_linker && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+            return Err(format!(
+                "`-C link-self-contained=-linker` is unstable on the `{target_tuple}` \
                     target. The `-Z unstable-options` flag must also be passed to use it on this target",
-                ));
-            }
-            Ok(())
-        };
-        check_linker(self.enabled_components, "+")?;
-        check_linker(self.disabled_components, "-")?;
+            ));
+        }
 
-        // Since only the linker component is stable, any other component used is unstable, and
-        // that's an error.
-        let unstable_enabled = self.enabled_components - LinkSelfContainedComponents::LINKER;
+        // Any `+linker` or other component used is unstable, and that's an error.
+        let unstable_enabled = self.enabled_components;
         let unstable_disabled = self.disabled_components - LinkSelfContainedComponents::LINKER;
         if !unstable_enabled.union(unstable_disabled).is_empty() {
             return Err(String::from(
-                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`\
-                /`+linker` are stable, the `-Z unstable-options` flag must also be passed to use \
+                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker` \
+                are stable, the `-Z unstable-options` flag must also be passed to use \
                 the unstable values",
             ));
         }
