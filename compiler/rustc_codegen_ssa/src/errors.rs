@@ -1145,6 +1145,14 @@ pub(crate) struct InvalidNoSanitize {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_sanitize)]
+#[note]
+pub(crate) struct InvalidSanitize {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_invalid_link_ordinal_nargs)]
 #[note]
 pub(crate) struct InvalidLinkOrdinalNargs {

@@ -654,6 +654,12 @@ passes_rustc_std_internal_symbol =
     attribute should be applied to functions or statics
     .label = not a function or static
 
+passes_sanitize_attribute_not_allowed =
+    sanitize attribute not allowed here
+    .not_fn_impl_mod = not a function, impl block, or module
+    .no_body = function has no body
+    .help = sanitize attribute can be applied to a function (with body), impl block, or module
+
 passes_should_be_applied_to_fn =
     attribute should be applied to a function definition
     .label = {$on_crate ->
