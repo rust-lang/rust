@@ -246,12 +246,17 @@ pub enum Mode {
     /// Build a codegen backend for rustc, placing the output in the "stageN-codegen" directory.
     Codegen,
 
-    /// Build a tool, placing output in the "stage0-bootstrap-tools"
-    /// directory. This is for miscellaneous sets of tools that are built
-    /// using the bootstrap stage0 compiler in its entirety (target libraries
-    /// and all). Typically these tools compile with stable Rust.
+    /// Build a tool, placing output in the "bootstrap-tools"
+    /// directory. This is for miscellaneous sets of tools that extend
+    /// bootstrap.
     ///
-    /// Only works for stage 0.
+    /// These tools are intended to be only executed on the host system that
+    /// invokes bootstrap, and they thus cannot be cross-compiled.
+    ///
+    /// They are always built using the stage0 compiler, and typically they
+    /// can be compiled with stable Rust.
+    ///
+    /// These tools also essentially do not participate in staging.
     ToolBootstrap,
 
     /// Build a tool which uses the locally built std, placing output in the
@@ -804,7 +809,9 @@ impl Build {
             Mode::Std => "-std",
             Mode::Rustc => "-rustc",
             Mode::Codegen => "-codegen",
-            Mode::ToolBootstrap => "-bootstrap-tools",
+            Mode::ToolBootstrap => {
+                return self.out.join(compiler.host).join("bootstrap-tools");
+            }
             Mode::ToolStd | Mode::ToolRustc => "-tools",
         };
         self.out.join(compiler.host).join(format!("stage{}{}", compiler.stage, suffix))
