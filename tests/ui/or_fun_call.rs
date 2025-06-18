@@ -283,6 +283,7 @@ mod issue8993 {
         let _ = Some(4).map_or(g(), f);
         //~^ or_fun_call
         let _ = Some(4).map_or(0, f);
+        let _ = Some(4).map_or("asd".to_string().len() as i32, f);
     }
 }
 
@@ -426,6 +427,7 @@ mod result_map_or {
         let _ = x.map_or(g(), f);
         //~^ or_fun_call
         let _ = x.map_or(0, f);
+        let _ = x.map_or("asd".to_string().len() as i32, f);
     }
 }
 
