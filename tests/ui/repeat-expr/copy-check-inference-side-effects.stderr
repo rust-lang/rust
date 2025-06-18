@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed for `[Foo<_>; 2]`
-  --> $DIR/copy-check-inference-side-effects.rs:17:9
+  --> $DIR/copy-check-inference-side-effects.rs:15:9
    |
 LL |     let a /* : [Foo<?x>; 2] */ = [Foo::<_>; 2];
    |         ^
@@ -13,7 +13,7 @@ LL |     let a: [Foo<N>; 2] /* : [Foo<?x>; 2] */ = [Foo::<_>; 2];
    |          +++++++++++++
 
 error[E0282]: type annotations needed for `[String; _]`
-  --> $DIR/copy-check-inference-side-effects.rs:27:9
+  --> $DIR/copy-check-inference-side-effects.rs:25:9
    |
 LL |     let b /* : [String; ?x] */ = ["string".to_string(); _];
    |         ^                         -------------------- type must be known at this point
