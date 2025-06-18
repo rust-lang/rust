@@ -3,6 +3,9 @@
 #![feature(inherent_associated_types)]
 #![expect(incomplete_features)]
 
+// A behaviour test showcasing that IAT resolution can pick the right
+// candidate even if it has an alias, if it's the only candidate.
+
 trait Identity {
     type Assoc;
 }

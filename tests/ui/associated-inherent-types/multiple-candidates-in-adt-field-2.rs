@@ -1,8 +1,8 @@
 #![feature(inherent_associated_types)]
 #![expect(incomplete_features)]
 
-// Test that when we have an unnormalized projection we don't normalize it
-// to determine which IAT to resolve to.
+// Test that when we have an unnormalized projection in the IAT self ty
+// we don't normalize it to determine which IAT to resolve to.
 
 struct Foo<T>(T);
 impl Foo<u8> {
