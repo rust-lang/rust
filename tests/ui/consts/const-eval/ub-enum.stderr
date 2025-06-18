@@ -56,7 +56,7 @@ LL | const BAD_ENUM2_WRAPPED: Wrap<Enum2> = unsafe { mem::transmute(&0) };
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC0[0x0..0x8], but memory is uninitialized at [0x0..0x8], and this operation requires initialized memory
   --> $DIR/ub-enum.rs:61:41
    |
 LL | const BAD_ENUM2_UNDEF: Enum2 = unsafe { MaybeUninit { uninit: () }.init };

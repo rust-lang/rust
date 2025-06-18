@@ -1,4 +1,4 @@
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC0[0x0..0x8], but memory is uninitialized at [0x0..0x8], and this operation requires initialized memory
   --> $DIR/const-err-enum-discriminant.rs:8:21
    |
 LL |     Boo = [unsafe { Foo { b: () }.a }; 4][3],

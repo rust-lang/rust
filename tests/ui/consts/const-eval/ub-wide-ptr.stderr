@@ -71,7 +71,7 @@ LL | const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUni
                HEX_DUMP
            }
 
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC32[0x0..0x8], but memory is uninitialized at [0x4..0x8], and this operation requires initialized memory
   --> $DIR/ub-wide-ptr.rs:63:1
    |
 LL | const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
@@ -179,7 +179,7 @@ note: erroneous constant encountered
 LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC33[0x0..0x8], but memory is uninitialized at [0x4..0x8], and this operation requires initialized memory
   --> $DIR/ub-wide-ptr.rs:101:1
    |
 LL | const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {

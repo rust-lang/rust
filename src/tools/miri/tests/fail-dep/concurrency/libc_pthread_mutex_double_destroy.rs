@@ -16,6 +16,6 @@ fn main() {
         libc::pthread_mutex_destroy(mutex.as_mut_ptr());
 
         libc::pthread_mutex_destroy(mutex.as_mut_ptr());
-        //~^ ERROR: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+        //~^ ERROR: /Undefined Behavior: reading memory .*, but memory is uninitialized/
     }
 }

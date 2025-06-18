@@ -1,4 +1,4 @@
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC0[0x0..0x4], but memory is uninitialized at [0x1..0x4], and this operation requires initialized memory
   --> $DIR/invalid-patterns.rs:40:32
    |
 LL |   get_flag::<false, { unsafe { char_raw.character } }>();
@@ -26,7 +26,7 @@ LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character
                42                                              │ B
            }
 
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC1[0x0..0x4], but memory is uninitialized at [0x1..0x4], and this operation requires initialized memory
   --> $DIR/invalid-patterns.rs:44:58
    |
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();

@@ -15,6 +15,6 @@ fn main() {
         libc::pthread_cond_destroy(cond.as_mut_ptr());
 
         libc::pthread_cond_destroy(cond.as_mut_ptr());
-        //~^ ERROR: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+        //~^ ERROR: /Undefined Behavior: reading memory .*, but memory is uninitialized/
     }
 }

@@ -103,7 +103,7 @@ LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
                HEX_DUMP
            }
 
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC3[0x0..0x8], but memory is uninitialized at [0x0..0x8], and this operation requires initialized memory
   --> $DIR/ub-ref-ptr.rs:48:41
    |
 LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
@@ -120,7 +120,7 @@ LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
                HEX_DUMP
            }
 
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC4[0x0..0x8], but memory is uninitialized at [0x0..0x8], and this operation requires initialized memory
   --> $DIR/ub-ref-ptr.rs:53:38
    |
 LL | const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
