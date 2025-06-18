@@ -303,7 +303,7 @@ its not used by any of the targets.)
 **This setting is currently unstable and requires usage of `-Zunstable-options`.**
 
 The `--timings` option will tell `rustc` to emit messages when a certain compilation
-section (such as code generation or linking) begins or ends. The messages will have
+section (such as code generation or linking) begins or ends. The messages currently have
 the following format:
 
 ```json
@@ -311,9 +311,13 @@ the following format:
     "$message_type": "section_timing", /* Type of this message */
     "event": "start", /* Marks the "start" or "end" of the compilation section */
     "name": "link",  /* The name of the compilation section */
-    "time": 12345    /* Opaque timestamp when the message was emitted, in microseconds */
+    // Opaque timestamp when the message was emitted, in microseconds
+    // The timestamp is currently relative to the beginning of the compilation session
+    "time": 12345
 }
 ```
+
+Note that the JSON format of the `timings` messages is unstable and subject to change.
 
 Compilation sections can be nested; for example, if you encounter the start of "foo",
 then the start of "bar", then the end of "bar" and then the end of "bar", it means that the
