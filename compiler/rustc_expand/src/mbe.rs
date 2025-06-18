@@ -78,7 +78,13 @@ enum TokenTree {
     /// only covers the ident, e.g. `var`.)
     MetaVar(Span, Ident),
     /// e.g., `$var:expr`. Only appears on the LHS.
-    MetaVarDecl(Span, Ident /* name to bind */, Option<NonterminalKind>),
+    MetaVarDecl {
+        span: Span,
+        /// Name to bind.
+        name: Ident,
+        /// The fragment specifier.
+        kind: NonterminalKind,
+    },
     /// A meta-variable expression inside `${...}`.
     MetaVarExpr(DelimSpan, MetaVarExpr),
 }
@@ -102,7 +108,7 @@ impl TokenTree {
         match *self {
             TokenTree::Token(Token { span, .. })
             | TokenTree::MetaVar(span, _)
-            | TokenTree::MetaVarDecl(span, _, _) => span,
+            | TokenTree::MetaVarDecl { span, .. } => span,
             TokenTree::Delimited(span, ..)
             | TokenTree::MetaVarExpr(span, _)
             | TokenTree::Sequence(span, _) => span.entire(),

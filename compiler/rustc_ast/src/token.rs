@@ -1085,6 +1085,7 @@ pub enum NtExprKind {
     Expr2021 { inferred: bool },
 }
 
+/// A macro nonterminal, known in documentation as a fragment specifier.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
 pub enum NonterminalKind {
     Item,

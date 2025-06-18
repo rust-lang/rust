@@ -68,8 +68,15 @@ pub(super) fn parse(
         };
 
         // Push a metavariable with no fragment specifier at the given span
-        let mut push_empty_metavar = |span| {
-            result.push(TokenTree::MetaVarDecl(span, ident, None));
+        let mut missing_fragment_specifier = |span| {
+            sess.dcx().emit_err(errors::MissingFragmentSpecifier {
+                span,
+                add_span: span.shrink_to_hi(),
+                valid: VALID_FRAGMENT_NAMES_MSG,
+            });
+
+            // Fall back to a `TokenTree` since that will match anything if we continue expanding.
+            result.push(TokenTree::MetaVarDecl { span, name: ident, kind: NonterminalKind::TT });
         };
 
         // Not consuming the next token immediately, as it may not be a colon
@@ -84,13 +91,13 @@ pub(super) fn parse(
             // since if it's not a token then it will be an invalid declaration.
             let Some(tokenstream::TokenTree::Token(token, _)) = iter.next() else {
                 // Invalid, return a nice source location as `var:`
-                push_empty_metavar(colon_span.with_lo(start_sp.lo()));
+                missing_fragment_specifier(colon_span.with_lo(start_sp.lo()));
                 continue;
             };
 
             let Some((fragment, _)) = token.ident() else {
                 // No identifier for the fragment specifier;
-                push_empty_metavar(token.span);
+                missing_fragment_specifier(token.span);
                 continue;
             };
 
@@ -114,11 +121,11 @@ pub(super) fn parse(
                 });
                 NonterminalKind::Ident
             });
-            result.push(TokenTree::MetaVarDecl(span, ident, Some(kind)));
+            result.push(TokenTree::MetaVarDecl { span, name: ident, kind });
         } else {
             // Whether it's none or some other tree, it doesn't belong to
             // the current meta variable, returning the original span.
-            push_empty_metavar(start_sp);
+            missing_fragment_specifier(start_sp);
         }
     }
     result
