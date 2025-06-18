@@ -9,13 +9,12 @@ use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
+use rustc_data_structures::sync::WorkerLocal;
 use rustc_data_structures::{parallel, thousands};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
-use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
-use rustc_hir::definitions::Definitions;
+use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId};
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
@@ -30,7 +29,6 @@ use rustc_parse::{
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::Resolver;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
-use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
@@ -904,13 +902,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     let dep_type = DepsType { dep_names: rustc_query_impl::dep_kind_names() };
     let dep_graph = setup_dep_graph(sess, crate_name, &dep_type);
 
-    let cstore =
-        FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
-    let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
-
-    let stable_crate_ids = FreezeLock::new(StableCrateIdMap::default());
-    let untracked =
-        Untracked { cstore, source_span: AppendOnlyIndexVec::new(), definitions, stable_crate_ids };
+    let cstore = Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _;
 
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
@@ -953,7 +945,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             stable_crate_id,
             arena,
             hir_arena,
-            untracked,
+            cstore,
             dep_graph,
             rustc_query_impl::query_callbacks(arena),
             rustc_query_impl::query_system(
