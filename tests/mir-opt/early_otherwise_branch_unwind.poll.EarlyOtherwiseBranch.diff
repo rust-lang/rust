@@ -53,10 +53,8 @@
       }
   
       bb6: {
-          StorageLive(_6);
           _6 = copy ((((_1 as Ready).0: std::result::Result<std::option::Option<std::vec::Vec<u8>>, u8>) as Err).0: u8);
           _0 = const ();
-          StorageDead(_6);
           goto -> bb17;
       }
   

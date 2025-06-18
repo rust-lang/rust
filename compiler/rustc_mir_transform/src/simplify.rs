@@ -310,7 +310,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     fn strip_nops(&mut self) {
         for blk in self.basic_blocks.iter_mut() {
-            blk.retain_statements(|stmt| !matches!(stmt.kind, StatementKind::Nop))
+            blk.strip_nops();
         }
     }
 }
@@ -485,6 +485,7 @@ struct UsedLocals {
     increment: bool,
     arg_count: u32,
     use_count: IndexVec<Local, u32>,
+    debuginfo_use: IndexVec<Local, bool>,
 }
 
 impl UsedLocals {
@@ -494,6 +495,7 @@ impl UsedLocals {
             increment: true,
             arg_count: body.arg_count.try_into().unwrap(),
             use_count: IndexVec::from_elem(0, &body.local_decls),
+            debuginfo_use: IndexVec::from_elem(false, &body.local_decls),
         };
         this.visit_body(body);
         this
@@ -503,8 +505,19 @@ impl UsedLocals {
     ///
     /// Return place and arguments are always considered used.
     fn is_used(&self, local: Local) -> bool {
-        trace!("is_used({:?}): use_count: {:?}", local, self.use_count[local]);
-        local.as_u32() <= self.arg_count || self.use_count[local] != 0
+        trace!(
+            "is_used({:?}): use_count: {:?}, debuginfo_use: {}",
+            local, self.use_count[local], self.debuginfo_use[local]
+        );
+        local.as_u32() <= self.arg_count || self.use_count[local] != 0 || self.debuginfo_use[local]
+    }
+
+    fn is_only_debuginfo_used(&self, local: Local) -> bool {
+        local.as_u32() > self.arg_count && self.use_count[local] == 0 && self.debuginfo_use[local]
+    }
+
+    fn is_debuginfo_used(&self, local: Local) -> bool {
+        self.debuginfo_use[local]
     }
 
     /// Updates the use counts to reflect the removal of given statement.
@@ -514,6 +527,12 @@ impl UsedLocals {
         // The location of the statement is irrelevant.
         let location = Location::START;
         self.visit_statement(statement, location);
+    }
+
+    fn statement_debuginfo_updated(&mut self, statement: &Statement<'_>) {
+        // The location of the statement is irrelevant.
+        let location = Location::START;
+        self.visit_statement_debuginfos(&statement.debuginfos, location);
     }
 
     /// Visits a left-hand side of an assignment.
@@ -573,12 +592,15 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
     }
 
     fn visit_local(&mut self, local: Local, ctx: PlaceContext, _location: Location) {
+        if ctx == PlaceContext::NonUse(NonUseContext::VarDebugInfo) {
+            self.debuginfo_use[local] = true;
+            return;
+        }
         if self.increment {
             self.use_count[local] += 1;
-        } else if ctx != PlaceContext::NonUse(NonUseContext::VarDebugInfo) {
-            assert_ne!(self.use_count[local], 0);
+        } else {
             self.use_count[local] -= 1;
-        }
+        };
     }
 }
 
@@ -595,30 +617,40 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
 
         for data in body.basic_blocks.as_mut_preserves_cfg() {
             // Remove unnecessary StorageLive and StorageDead annotations.
-            data.retain_statements(|statement| {
-                let keep = match &statement.kind {
+            for statement in data.statements.iter_mut() {
+                let drop_debuginfo = match &statement.kind {
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                        used_locals.is_used(*local)
+                        if used_locals.is_used(*local)
+                            && !used_locals.is_only_debuginfo_used(*local)
+                        {
+                            continue;
+                        }
+                        true
                     }
-                    StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
-
-                    StatementKind::SetDiscriminant { place, .. }
-                    | StatementKind::BackwardIncompatibleDropHint { place, reason: _ }
-                    | StatementKind::Deinit(place) => used_locals.is_used(place.local),
-                    StatementKind::Nop => false,
-                    _ => true,
+                    StatementKind::Assign(box (place, _))
+                    | StatementKind::SetDiscriminant { box place, .. }
+                    | StatementKind::BackwardIncompatibleDropHint { box place, .. }
+                    | StatementKind::Deinit(box place) => {
+                        if used_locals.is_used(place.local)
+                            && !(used_locals.is_only_debuginfo_used(place.local)
+                                && statement.kind.as_debuginfo().is_some())
+                        {
+                            continue;
+                        }
+                        !used_locals.is_debuginfo_used(place.local)
+                    }
+                    _ => continue,
                 };
-
-                if !keep {
-                    trace!("removing statement {:?}", statement);
-                    modified = true;
-                    used_locals.statement_removed(statement);
-                }
-
-                keep
-            });
+                trace!("removing statement {:?}", statement);
+                modified = true;
+                used_locals.statement_removed(statement);
+                statement.make_nop(drop_debuginfo);
+                used_locals.statement_debuginfo_updated(statement);
+            }
+            data.strip_nops();
         }
     }
+    // cleanup unused local
 }
 
 struct LocalUpdater<'tcx> {

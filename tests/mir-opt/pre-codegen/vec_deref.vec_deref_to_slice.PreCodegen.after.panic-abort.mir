@@ -55,8 +55,6 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
     }
 
     bb0: {
-        StorageLive(_6);
-        StorageLive(_7);
         StorageLive(_2);
         StorageLive(_3);
         // DBG: AssignRef(_6, ((*_1).0: alloc::raw_vec::RawVec<u8>))
@@ -72,8 +70,6 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
         StorageDead(_4);
         StorageDead(_3);
         StorageDead(_2);
-        StorageDead(_7);
-        StorageDead(_6);
         return;
     }
 }

@@ -1426,6 +1426,10 @@ impl<'tcx> BasicBlockData<'tcx> {
         });
         self.after_last_stmt_debuginfos.extend_from_slice(&debuginfos);
     }
+
+    pub fn strip_nops(&mut self) {
+        self.retain_statements(|stmt| !matches!(stmt.kind, StatementKind::Nop))
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

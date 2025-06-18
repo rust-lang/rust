@@ -4,33 +4,34 @@ fn int_range(_1: usize, _2: usize) -> () {
     debug start => _1;
     debug end => _2;
     let mut _0: ();
-    let mut _3: std::ops::Range<usize>;
-    let mut _4: std::ops::Range<usize>;
-    let mut _10: std::option::Option<usize>;
-    let _12: ();
-    let mut _13: &mut std::ops::Range<usize>;
+    let mut _3: usize;
+    let mut _8: std::option::Option<usize>;
+    let _10: ();
+    let mut _11: std::ops::Range<usize>;
+    let mut _12: &mut std::ops::Range<usize>;
     scope 1 {
-        debug iter => _4;
-        let _11: usize;
+        debug ((iter: std::ops::Range<usize>).0: usize) => _3;
+        debug ((iter: std::ops::Range<usize>).1: usize) => _2;
+        let _9: usize;
         scope 2 {
-            debug i => _11;
+            debug i => _9;
         }
         scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) {
-            debug self => _13;
+            debug self => _12;
             scope 5 (inlined <std::ops::Range<usize> as iter::range::RangeIteratorImpl>::spec_next) {
-                debug self => _13;
-                let mut _7: bool;
-                let _8: usize;
-                let mut _9: usize;
+                debug self => _12;
+                let mut _5: bool;
+                let _6: usize;
+                let mut _7: usize;
+                let mut _13: &usize;
                 let mut _14: &usize;
-                let mut _15: &usize;
                 scope 6 {
-                    debug old => _8;
+                    debug old => _6;
                     scope 8 (inlined <usize as Step>::forward_unchecked) {
-                        debug start => _8;
+                        debug start => _6;
                         debug n => const 1_usize;
                         scope 9 (inlined #[track_caller] core::num::<impl usize>::unchecked_add) {
-                            debug self => _8;
+                            debug self => _6;
                             debug rhs => const 1_usize;
                             scope 10 (inlined core::ub_checks::check_language_ub) {
                                 scope 11 (inlined core::ub_checks::check_language_ub::runtime) {
@@ -40,68 +41,58 @@ fn int_range(_1: usize, _2: usize) -> () {
                     }
                 }
                 scope 7 (inlined std::cmp::impls::<impl PartialOrd for usize>::lt) {
-                    debug self => _14;
-                    debug other => _15;
-                    let mut _5: usize;
-                    let mut _6: usize;
+                    debug self => _13;
+                    debug other => _14;
+                    let mut _4: usize;
                 }
             }
         }
     }
     scope 3 (inlined <std::ops::Range<usize> as IntoIterator>::into_iter) {
-        debug self => _3;
+        debug ((self: std::ops::Range<usize>).0: usize) => _1;
+        debug ((self: std::ops::Range<usize>).1: usize) => _2;
     }
 
     bb0: {
-        _3 = std::ops::Range::<usize> { start: copy _1, end: copy _2 };
-        StorageLive(_4);
-        _4 = copy _3;
+        StorageLive(_3);
+        _3 = copy _1;
         goto -> bb1;
     }
 
     bb1: {
-        StorageLive(_10);
-        // DBG: AssignRef(_13, _4)
-        StorageLive(_7);
-        StorageLive(_14);
-        // DBG: AssignRef(_14, (_4.0: usize))
-        StorageLive(_15);
-        // DBG: AssignRef(_15, (_4.1: usize))
+        StorageLive(_8);
+        // DBG: AssignRef(_12, _11)
         StorageLive(_5);
-        _5 = copy (_4.0: usize);
-        StorageLive(_6);
-        _6 = copy (_4.1: usize);
-        _7 = Lt(move _5, move _6);
-        StorageDead(_6);
-        StorageDead(_5);
-        switchInt(move _7) -> [0: bb2, otherwise: bb3];
+        // DBG: AssignRef(_13, (_11.0: usize))
+        // DBG: AssignRef(_14, (_11.1: usize))
+        StorageLive(_4);
+        _4 = copy _3;
+        _5 = Lt(move _4, copy _2);
+        StorageDead(_4);
+        switchInt(move _5) -> [0: bb2, otherwise: bb3];
     }
 
     bb2: {
-        StorageDead(_15);
-        StorageDead(_14);
-        StorageDead(_7);
-        StorageDead(_10);
-        StorageDead(_4);
+        StorageDead(_5);
+        StorageDead(_8);
+        StorageDead(_3);
         return;
     }
 
     bb3: {
-        StorageDead(_15);
-        StorageDead(_14);
-        _8 = copy (_4.0: usize);
-        StorageLive(_9);
-        _9 = AddUnchecked(copy _8, const 1_usize);
-        (_4.0: usize) = move _9;
-        StorageDead(_9);
-        _10 = Option::<usize>::Some(copy _8);
+        _6 = copy _3;
+        StorageLive(_7);
+        _7 = AddUnchecked(copy _6, const 1_usize);
+        _3 = move _7;
         StorageDead(_7);
-        _11 = copy ((_10 as Some).0: usize);
-        _12 = opaque::<usize>(move _11) -> [return: bb4, unwind continue];
+        _8 = Option::<usize>::Some(copy _6);
+        StorageDead(_5);
+        _9 = copy ((_8 as Some).0: usize);
+        _10 = opaque::<usize>(move _9) -> [return: bb4, unwind continue];
     }
 
     bb4: {
-        StorageDead(_10);
+        StorageDead(_8);
         goto -> bb1;
     }
 }
