@@ -117,6 +117,70 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         }
         bx
     }
+
+    pub(crate) fn my_alloca2(&mut self, ty: &'ll Type, align: Align, name: &str) -> &'ll Value {
+        let val = unsafe {
+            let alloca = llvm::LLVMBuildAlloca(self.llbuilder, ty, UNNAMED);
+            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
+            // Cast to default addrspace if necessary
+            llvm::LLVMBuildPointerCast(self.llbuilder, alloca, self.cx.type_ptr(), UNNAMED)
+        };
+        if name != "" {
+            let name = std::ffi::CString::new(name).unwrap();
+            llvm::set_value_name(val, &name.as_bytes());
+        }
+        val
+    }
+
+    pub(crate) fn inbounds_gep(
+        &mut self,
+        ty: &'ll Type,
+        ptr: &'ll Value,
+        indices: &[&'ll Value],
+    ) -> &'ll Value {
+        unsafe {
+            llvm::LLVMBuildGEPWithNoWrapFlags(
+                self.llbuilder,
+                ty,
+                ptr,
+                indices.as_ptr(),
+                indices.len() as c_uint,
+                UNNAMED,
+                GEPNoWrapFlags::InBounds,
+            )
+        }
+    }
+
+    pub(crate) fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
+        debug!("Store {:?} -> {:?}", val, ptr);
+        assert_eq!(self.cx.type_kind(self.cx.val_ty(ptr)), TypeKind::Pointer);
+        unsafe {
+            let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+            llvm::LLVMSetAlignment(store, align.bytes() as c_uint);
+            store
+        }
+    }
+
+    pub(crate) fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
+        unsafe {
+            let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
+            llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
+            load
+        }
+    }
+
+    fn memset(&mut self, ptr: &'ll Value, fill_byte: &'ll Value, size: &'ll Value, align: Align) {
+        unsafe {
+            llvm::LLVMRustBuildMemSet(
+                self.llbuilder,
+                ptr,
+                align.bytes() as c_uint,
+                fill_byte,
+                size,
+                false,
+            );
+        }
+    }
 }
 
 /// Empty string, to be used where LLVM expects an instruction name, indicating

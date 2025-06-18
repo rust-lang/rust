@@ -683,6 +683,22 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMConstInt(ty, val, llvm::False) }
     }
 
+    pub(crate) fn get_const_i64(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i64(), n)
+    }
+
+    pub(crate) fn get_const_i32(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i32(), n)
+    }
+
+    pub(crate) fn get_const_i16(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i16(), n)
+    }
+
+    pub(crate) fn get_const_i8(&self, n: u64) -> &'ll Value {
+        self.get_const_int(self.type_i8(), n)
+    }
+
     pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
         let name = SmallCStr::new(name);
         unsafe { llvm::LLVMGetNamedFunction((**self).borrow().llmod, name.as_ptr()) }
