@@ -18,6 +18,7 @@ use std::marker::PhantomData;
 
 use rustc_attr_data_structures::AttributeKind;
 use rustc_attr_data_structures::lints::AttributeLintKind;
+use rustc_feature::AttributeTemplate;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
@@ -29,6 +30,7 @@ pub(crate) mod allow_unstable;
 pub(crate) mod cfg;
 pub(crate) mod confusables;
 pub(crate) mod deprecation;
+pub(crate) mod inline;
 pub(crate) mod lint_helpers;
 pub(crate) mod repr;
 pub(crate) mod stability;
@@ -36,7 +38,7 @@ pub(crate) mod transparency;
 pub(crate) mod util;
 
 type AcceptFn<T, S> = for<'sess> fn(&mut T, &mut AcceptContext<'_, 'sess, S>, &ArgParser<'_>);
-type AcceptMapping<T, S> = &'static [(&'static [Symbol], AcceptFn<T, S>)];
+type AcceptMapping<T, S> = &'static [(&'static [Symbol], AttributeTemplate, AcceptFn<T, S>)];
 
 /// An [`AttributeParser`] is a type which searches for syntactic attributes.
 ///
@@ -88,6 +90,9 @@ pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
     const ATTRIBUTE_ORDER: AttributeOrder;
     const ON_DUPLICATE: OnDuplicate<S>;
 
+    /// The template this attribute parser should implement. Used for diagnostics.
+    const TEMPLATE: AttributeTemplate;
+
     /// Converts a single syntactical attribute to a single semantic attribute, or [`AttributeKind`]
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind>;
 }
@@ -104,8 +109,10 @@ impl<T: SingleAttributeParser<S>, S: Stage> Default for Single<T, S> {
 }
 
 impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> {
-    const ATTRIBUTES: AcceptMapping<Self, S> =
-        &[(T::PATH, |group: &mut Single<T, S>, cx, args| {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+        T::PATH,
+        <T as SingleAttributeParser<S>>::TEMPLATE,
+        |group: &mut Single<T, S>, cx, args| {
             if let Some(pa) = T::convert(cx, args) {
                 match T::ATTRIBUTE_ORDER {
                     // keep the first and report immediately. ignore this attribute
@@ -126,7 +133,8 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
 
                 group.1 = Some((pa, cx.attr_span));
             }
-        })];
+        },
+    )];
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         Some(self.1?.0)
@@ -223,6 +231,9 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     type Item;
     const CONVERT: ConvertFn<Self::Item>;
 
+    /// The template this attribute parser should implement. Used for diagnostics.
+    const TEMPLATE: AttributeTemplate;
+
     /// Converts a single syntactical attribute to a number of elements of the semantic attribute, or [`AttributeKind`]
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
@@ -242,8 +253,11 @@ impl<T: CombineAttributeParser<S>, S: Stage> Default for Combine<T, S> {
 }
 
 impl<T: CombineAttributeParser<S>, S: Stage> AttributeParser<S> for Combine<T, S> {
-    const ATTRIBUTES: AcceptMapping<Self, S> =
-        &[(T::PATH, |group: &mut Combine<T, S>, cx, args| group.1.extend(T::extend(cx, args)))];
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+        T::PATH,
+        <T as CombineAttributeParser<S>>::TEMPLATE,
+        |group: &mut Combine<T, S>, cx, args| group.1.extend(T::extend(cx, args)),
+    )];
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.1.is_empty() { None } else { Some(T::CONVERT(self.1)) }
