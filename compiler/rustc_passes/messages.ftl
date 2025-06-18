@@ -553,7 +553,7 @@ passes_object_lifetime_err =
     {$repr}
 
 passes_only_has_effect_on =
-    `#[{$attr_name}]` only has an effect on {$passes_only_has_effect_on ->
+    `#[{$attr_name}]` only has an effect on {$target_name ->
         [function] functions
         [module] modules
         [trait_implementation_block] trait implementation blocks

@@ -17,7 +17,7 @@ longer instrument non-atomic store / load operations, but it will instrument
 atomic operations to avoid reporting false positives and provide meaning full
 stack traces.
 
-This attribute was previously named `no_sanitized`.
+This attribute was previously named `no_sanitize`.
 
 ## Examples
 

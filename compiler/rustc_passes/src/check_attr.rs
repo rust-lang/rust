@@ -313,7 +313,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::diagnostic, sym::on_unimplemented, ..] => {
                             self.check_diagnostic_on_unimplemented(attr.span(), hir_id, target)
                         }
-                        [sym::coverage, ..] => self.check_coverage(attr.span(), span, target),
                         [sym::sanitize, ..] => {
                             self.check_sanitize(attr, span, target)
                         }

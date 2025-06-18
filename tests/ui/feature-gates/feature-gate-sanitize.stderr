@@ -1,14 +1,14 @@
 error[E0557]: feature has been removed
-  --> $DIR/feature-gate-sanitize.rs:1:12
+  --> $DIR/feature-gate-sanitize.rs:2:12
    |
 LL | #![feature(no_sanitize)]
    |            ^^^^^^^^^^^ feature has been removed
    |
-   = note: removed in CURRENT_RUSTC_VERSION (you are using $RUSTC_VERSION); see <https://github.com/rust-lang/rust/pull/1234> for more information
+   = note: removed in CURRENT_RUSTC_VERSION; see <https://github.com/rust-lang/rust/pull/142681> for more information
    = note: renamed to sanitize(xyz = "on|off")
 
 error[E0658]: the `#[sanitize]` attribute is an experimental feature
-  --> $DIR/feature-gate-sanitize.rs:3:1
+  --> $DIR/feature-gate-sanitize.rs:4:1
    |
 LL | #[sanitize(address = "on")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
