@@ -57,10 +57,10 @@ pub fn main_inner(profile: Profile) {
 
     #[cfg(not(feature = "master"))]
     fn filter(filename: &Path) -> bool {
-        if let Some(filename) = filename.to_str() {
-            if filename.ends_with("gep.rs") {
-                return false;
-            }
+        if let Some(filename) = filename.to_str()
+            && filename.ends_with("gep.rs")
+        {
+            return false;
         }
         rust_filter(filename)
     }
