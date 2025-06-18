@@ -580,12 +580,12 @@ fn test_get_tool_rustc_compiler() {
 
     let compiler = Compiler::new(2, target_triple_1);
     let expected = Compiler::new(1, target_triple_1);
-    let actual = tool::get_tool_rustc_compiler(&builder, compiler);
+    let actual = tool::get_tool_rustc_build_compiler(&builder, compiler);
     assert_eq!(expected, actual);
 
     let compiler = Compiler::new(1, target_triple_1);
     let expected = Compiler::new(0, target_triple_1);
-    let actual = tool::get_tool_rustc_compiler(&builder, compiler);
+    let actual = tool::get_tool_rustc_build_compiler(&builder, compiler);
     assert_eq!(expected, actual);
 
     let mut config = configure("build", &[], &[]);
@@ -595,7 +595,7 @@ fn test_get_tool_rustc_compiler() {
 
     let compiler = Compiler::new(1, target_triple_1);
     let expected = Compiler::new(1, target_triple_1);
-    let actual = tool::get_tool_rustc_compiler(&builder, compiler);
+    let actual = tool::get_tool_rustc_build_compiler(&builder, compiler);
     assert_eq!(expected, actual);
 }
 
