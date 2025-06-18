@@ -14,6 +14,10 @@ LL |     };
    |     |
    |     `mutex` dropped here while still borrowed
    |
+help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
+   |
+LL |         write!(Out, "{}", mutex.lock()); /* no semicolon */
+   |                                        +
 
 error[E0597]: `mutex` does not live long enough
   --> $DIR/format-args-temporaries-in-write.rs:47:29
@@ -31,6 +35,10 @@ LL |     };
    |     |
    |     `mutex` dropped here while still borrowed
    |
+help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
+   |
+LL |         writeln!(Out, "{}", mutex.lock()); /* no semicolon */
+   |                                          +
 
 error: aborting due to 2 previous errors
 

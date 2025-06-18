@@ -12,6 +12,8 @@ trait ImportantTrait2 {}
 #[diagnostic::on_unimplemented(message = "Test {1:}")]
 //~^WARN positional format arguments are not allowed here
 //~|WARN positional format arguments are not allowed here
+//~|WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
+//~|WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
 trait ImportantTrait3 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:123}")]
@@ -20,17 +22,22 @@ trait ImportantTrait3 {}
 trait ImportantTrait4 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-//~^WARN expected `}`, found `!`
-//~|WARN expected `}`, found `!`
-//~|WARN unmatched `}` found
-//~|WARN unmatched `}` found
+//~^WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
+//~|WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
 trait ImportantTrait5 {}
+
+#[diagnostic::on_unimplemented(message = "Test {Self:}")]
+//~^WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
+//~|WARN invalid format specifier [unknown_or_malformed_diagnostic_attributes]
+trait ImportantTrait6 {}
+
 
 fn check_1(_: impl ImportantTrait1) {}
 fn check_2(_: impl ImportantTrait2) {}
 fn check_3(_: impl ImportantTrait3) {}
 fn check_4(_: impl ImportantTrait4) {}
 fn check_5(_: impl ImportantTrait5) {}
+fn check_6(_: impl ImportantTrait6) {}
 
 fn main() {
     check_1(());
@@ -42,5 +49,7 @@ fn main() {
     check_4(());
     //~^ERROR Test ()
     check_5(());
-    //~^ERROR Test {Self:!}
+    //~^ERROR Test ()
+    check_6(());
+    //~^ERROR Test ()
 }

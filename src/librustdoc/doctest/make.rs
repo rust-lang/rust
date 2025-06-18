@@ -196,6 +196,80 @@ pub(crate) struct DocTestBuilder {
     pub(crate) can_be_merged: bool,
 }
 
+/// Contains needed information for doctest to be correctly generated with expected "wrapping".
+pub(crate) struct WrapperInfo {
+    pub(crate) before: String,
+    pub(crate) after: String,
+    pub(crate) returns_result: bool,
+    insert_indent_space: bool,
+}
+
+impl WrapperInfo {
+    fn len(&self) -> usize {
+        self.before.len() + self.after.len()
+    }
+}
+
+/// Contains a doctest information. Can be converted into code with the `to_string()` method.
+pub(crate) enum DocTestWrapResult {
+    Valid {
+        crate_level_code: String,
+        /// This field can be `None` if one of the following conditions is true:
+        ///
+        /// * The doctest's codeblock has the `test_harness` attribute.
+        /// * The doctest has a `main` function.
+        /// * The doctest has the `![no_std]` attribute.
+        wrapper: Option<WrapperInfo>,
+        /// Contains the doctest processed code without the wrappers (which are stored in the
+        /// `wrapper` field).
+        code: String,
+    },
+    /// Contains the original source code.
+    SyntaxError(String),
+}
+
+impl std::string::ToString for DocTestWrapResult {
+    fn to_string(&self) -> String {
+        match self {
+            Self::SyntaxError(s) => s.clone(),
+            Self::Valid { crate_level_code, wrapper, code } => {
+                let mut prog_len = code.len() + crate_level_code.len();
+                if let Some(wrapper) = wrapper {
+                    prog_len += wrapper.len();
+                    if wrapper.insert_indent_space {
+                        prog_len += code.lines().count() * 4;
+                    }
+                }
+                let mut prog = String::with_capacity(prog_len);
+
+                prog.push_str(crate_level_code);
+                if let Some(wrapper) = wrapper {
+                    prog.push_str(&wrapper.before);
+
+                    // add extra 4 spaces for each line to offset the code block
+                    if wrapper.insert_indent_space {
+                        write!(
+                            prog,
+                            "{}",
+                            fmt::from_fn(|f| code
+                                .lines()
+                                .map(|line| fmt::from_fn(move |f| write!(f, "    {line}")))
+                                .joined("\n", f))
+                        )
+                        .unwrap();
+                    } else {
+                        prog.push_str(code);
+                    }
+                    prog.push_str(&wrapper.after);
+                } else {
+                    prog.push_str(code);
+                }
+                prog
+            }
+        }
+    }
+}
+
 impl DocTestBuilder {
     fn invalid(
         global_crate_attrs: Vec<String>,
@@ -228,50 +302,49 @@ impl DocTestBuilder {
         dont_insert_main: bool,
         opts: &GlobalTestOptions,
         crate_name: Option<&str>,
-    ) -> (String, usize) {
+    ) -> (DocTestWrapResult, usize) {
         if self.invalid_ast {
             // If the AST failed to compile, no need to go generate a complete doctest, the error
             // will be better this way.
             debug!("invalid AST:\n{test_code}");
-            return (test_code.to_string(), 0);
+            return (DocTestWrapResult::SyntaxError(test_code.to_string()), 0);
         }
         let mut line_offset = 0;
-        let mut prog = String::new();
-        let everything_else = self.everything_else.trim();
-
+        let mut crate_level_code = String::new();
+        let processed_code = self.everything_else.trim();
         if self.global_crate_attrs.is_empty() {
             // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
             // lints that are commonly triggered in doctests. The crate-level test attributes are
             // commonly used to make tests fail in case they trigger warnings, so having this there in
             // that case may cause some tests to pass when they shouldn't have.
-            prog.push_str("#![allow(unused)]\n");
+            crate_level_code.push_str("#![allow(unused)]\n");
             line_offset += 1;
         }
 
         // Next, any attributes that came from #![doc(test(attr(...)))].
         for attr in &self.global_crate_attrs {
-            prog.push_str(&format!("#![{attr}]\n"));
+            crate_level_code.push_str(&format!("#![{attr}]\n"));
             line_offset += 1;
         }
 
         // Now push any outer attributes from the example, assuming they
         // are intended to be crate attributes.
         if !self.crate_attrs.is_empty() {
-            prog.push_str(&self.crate_attrs);
+            crate_level_code.push_str(&self.crate_attrs);
             if !self.crate_attrs.ends_with('\n') {
-                prog.push('\n');
+                crate_level_code.push('\n');
             }
         }
         if !self.maybe_crate_attrs.is_empty() {
-            prog.push_str(&self.maybe_crate_attrs);
+            crate_level_code.push_str(&self.maybe_crate_attrs);
             if !self.maybe_crate_attrs.ends_with('\n') {
-                prog.push('\n');
+                crate_level_code.push('\n');
             }
         }
         if !self.crates.is_empty() {
-            prog.push_str(&self.crates);
+            crate_level_code.push_str(&self.crates);
             if !self.crates.ends_with('\n') {
-                prog.push('\n');
+                crate_level_code.push('\n');
             }
         }
 
@@ -289,17 +362,20 @@ impl DocTestBuilder {
         {
             // rustdoc implicitly inserts an `extern crate` item for the own crate
             // which may be unused, so we need to allow the lint.
-            prog.push_str("#[allow(unused_extern_crates)]\n");
+            crate_level_code.push_str("#[allow(unused_extern_crates)]\n");
 
-            prog.push_str(&format!("extern crate r#{crate_name};\n"));
+            crate_level_code.push_str(&format!("extern crate r#{crate_name};\n"));
             line_offset += 1;
         }
 
         // FIXME: This code cannot yet handle no_std test cases yet
-        if dont_insert_main || self.has_main_fn || prog.contains("![no_std]") {
-            prog.push_str(everything_else);
+        let wrapper = if dont_insert_main
+            || self.has_main_fn
+            || crate_level_code.contains("![no_std]")
+        {
+            None
         } else {
-            let returns_result = everything_else.ends_with("(())");
+            let returns_result = processed_code.ends_with("(())");
             // Give each doctest main function a unique name.
             // This is for example needed for the tooling around `-C instrument-coverage`.
             let inner_fn_name = if let Some(ref test_id) = self.test_id {
@@ -333,28 +409,22 @@ impl DocTestBuilder {
             // /// ``` <- end of the inner main
             line_offset += 1;
 
-            prog.push_str(&main_pre);
+            Some(WrapperInfo {
+                before: main_pre,
+                after: main_post,
+                returns_result,
+                insert_indent_space: opts.insert_indent_space,
+            })
+        };
 
-            // add extra 4 spaces for each line to offset the code block
-            if opts.insert_indent_space {
-                write!(
-                    prog,
-                    "{}",
-                    fmt::from_fn(|f| everything_else
-                        .lines()
-                        .map(|line| fmt::from_fn(move |f| write!(f, "    {line}")))
-                        .joined("\n", f))
-                )
-                .unwrap();
-            } else {
-                prog.push_str(everything_else);
-            };
-            prog.push_str(&main_post);
-        }
-
-        debug!("final doctest:\n{prog}");
-
-        (prog, line_offset)
+        (
+            DocTestWrapResult::Valid {
+                code: processed_code.to_string(),
+                wrapper,
+                crate_level_code,
+            },
+            line_offset,
+        )
     }
 }
 

@@ -15,11 +15,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // This is given by `alignof(max_align_t)`. The following list is taken from
         // `library/std/src/sys/alloc/mod.rs` (where this is called `MIN_ALIGN`) and should
         // be kept in sync.
+        let os = this.tcx.sess.target.os.as_ref();
         let max_fundamental_align = match this.tcx.sess.target.arch.as_ref() {
-            "x86" | "arm" | "loongarch32" | "mips" | "mips32r6" | "powerpc" | "powerpc64"
-            | "wasm32" => 8,
-            "x86_64" | "aarch64" | "mips64" | "mips64r6" | "s390x" | "sparc64" | "loongarch64" =>
-                16,
+            "riscv32" if matches!(os, "espidf" | "zkvm") => 4,
+            "xtensa" if matches!(os, "espidf") => 4,
+            "x86" | "arm" | "m68k" | "csky" | "loongarch32" | "mips" | "mips32r6" | "powerpc"
+            | "powerpc64" | "sparc" | "wasm32" | "hexagon" | "riscv32" | "xtensa" => 8,
+            "x86_64" | "aarch64" | "arm64ec" | "loongarch64" | "mips64" | "mips64r6" | "s390x"
+            | "sparc64" | "riscv64" | "wasm64" => 16,
             arch => bug!("unsupported target architecture for malloc: `{}`", arch),
         };
         // The C standard only requires sufficient alignment for any *type* with size less than or

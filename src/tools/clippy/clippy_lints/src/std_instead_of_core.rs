@@ -1,13 +1,13 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::Msrv;
 use rustc_attr_data_structures::{StabilityLevel, StableSince};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HirId, Path, PathSegment};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_hir::{Block, Body, HirId, Path, PathSegment};
+use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};
@@ -88,23 +88,34 @@ declare_clippy_lint! {
 }
 
 pub struct StdReexports {
-    // Paths which can be either a module or a macro (e.g. `std::env`) will cause this check to happen
-    // twice. First for the mod, second for the macro. This is used to avoid the lint reporting for the macro
-    // when the path could be also be used to access the module.
-    prev_span: Span,
+    lint_point: (Span, Option<LintPoint>),
     msrv: Msrv,
 }
 
 impl StdReexports {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            prev_span: Span::default(),
+            lint_point: Default::default(),
             msrv: conf.msrv,
         }
+    }
+
+    fn lint_if_finish(&mut self, cx: &LateContext<'_>, (span, item): (Span, Option<LintPoint>)) {
+        if span.source_equal(self.lint_point.0) {
+            return;
+        }
+
+        if !self.lint_point.0.is_dummy() {
+            emit_lints(cx, &self.lint_point);
+        }
+
+        self.lint_point = (span, item);
     }
 }
 
 impl_lint_pass!(StdReexports => [STD_INSTEAD_OF_CORE, STD_INSTEAD_OF_ALLOC, ALLOC_INSTEAD_OF_CORE]);
+
+type LintPoint = (&'static Lint, &'static str, &'static str);
 
 impl<'tcx> LateLintPass<'tcx> for StdReexports {
     fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'tcx>, _: HirId) {
@@ -119,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                     sym::core => (STD_INSTEAD_OF_CORE, "std", "core"),
                     sym::alloc => (STD_INSTEAD_OF_ALLOC, "std", "alloc"),
                     _ => {
-                        self.prev_span = first_segment.ident.span;
+                        self.lint_if_finish(cx, (first_segment.ident.span, None));
                         return;
                     },
                 },
@@ -127,32 +138,44 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                     if cx.tcx.crate_name(def_id.krate) == sym::core {
                         (ALLOC_INSTEAD_OF_CORE, "alloc", "core")
                     } else {
-                        self.prev_span = first_segment.ident.span;
+                        self.lint_if_finish(cx, (first_segment.ident.span, None));
                         return;
                     }
                 },
                 _ => return,
             };
-            if first_segment.ident.span != self.prev_span {
-                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
-                span_lint_and_then(
-                    cx,
-                    lint,
-                    first_segment.ident.span,
-                    format!("used import from `{used_mod}` instead of `{replace_with}`"),
-                    |diag| {
-                        diag.span_suggestion(
-                            first_segment.ident.span,
-                            format!("consider importing the item from `{replace_with}`"),
-                            replace_with.to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                    },
-                );
-                self.prev_span = first_segment.ident.span;
-            }
+
+            self.lint_if_finish(cx, (first_segment.ident.span, Some((lint, used_mod, replace_with))));
         }
     }
+
+    fn check_block_post(&mut self, cx: &LateContext<'tcx>, _: &Block<'tcx>) {
+        self.lint_if_finish(cx, Default::default());
+    }
+
+    fn check_body_post(&mut self, cx: &LateContext<'tcx>, _: &Body<'tcx>) {
+        self.lint_if_finish(cx, Default::default());
+    }
+
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
+        self.lint_if_finish(cx, Default::default());
+    }
+}
+
+fn emit_lints(cx: &LateContext<'_>, (span, item): &(Span, Option<LintPoint>)) {
+    let Some((lint, used_mod, replace_with)) = item else {
+        return;
+    };
+
+    span_lint_and_sugg(
+        cx,
+        lint,
+        *span,
+        format!("used import from `{used_mod}` instead of `{replace_with}`"),
+        format!("consider importing the item from `{replace_with}`"),
+        (*replace_with).to_string(),
+        Applicability::MachineApplicable,
+    );
 }
 
 /// Returns the first named segment of a [`Path`].

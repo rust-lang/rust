@@ -40,3 +40,46 @@ LL |     deserialize::<()>()?;
 
 warning: 2 warnings emitted
 
+Future incompatibility report: Future breakage diagnostic:
+warning: this function depends on never type fallback being `()`
+  --> $DIR/dependency-on-fallback-to-unit.rs:8:1
+   |
+LL | fn def() {
+   | ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `!: Default` will fail
+  --> $DIR/dependency-on-fallback-to-unit.rs:12:19
+   |
+LL |         false => <_>::default(),
+   |                   ^
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL -         false => <_>::default(),
+LL +         false => <()>::default(),
+   |
+
+Future breakage diagnostic:
+warning: this function depends on never type fallback being `()`
+  --> $DIR/dependency-on-fallback-to-unit.rs:19:1
+   |
+LL | fn question_mark() -> Result<(), ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `!: Default` will fail
+  --> $DIR/dependency-on-fallback-to-unit.rs:22:5
+   |
+LL |     deserialize()?;
+   |     ^^^^^^^^^^^^^
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     deserialize::<()>()?;
+   |                ++++++
+

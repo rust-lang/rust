@@ -17,7 +17,7 @@ fn compares_as_u8s() {
 #[test]
 fn debug() {
     let s = c"abc\x01\x02\n\xE2\x80\xA6\xFF";
-    assert_eq!(format!("{s:?}"), r#""abc\x01\x02\n\xe2\x80\xa6\xff""#);
+    assert_eq!(format!("{s:?}"), r#""abc\x01\x02\n…\xff""#);
 }
 
 #[test]

@@ -9,9 +9,9 @@ pub struct E(Result<&'static str, isize>);
 pub type F = Option<isize>;
 pub type G = usize;
 pub type H = &'static str;
-pub type I = Box<Fn()>;
-pub type I32Iterator = Iterator<Item=i32>;
-pub type U32Iterator = Iterator<Item=u32>;
+pub type I = Box<dyn Fn()>;
+pub type I32Iterator = dyn Iterator<Item=i32>;
+pub type U32Iterator = dyn Iterator<Item=u32>;
 
 pub fn id_A() -> TypeId { TypeId::of::<A>() }
 pub fn id_B() -> TypeId { TypeId::of::<B>() }

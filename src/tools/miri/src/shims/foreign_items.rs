@@ -238,7 +238,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // First deal with any external C functions in linked .so file.
         #[cfg(unix)]
-        if this.machine.native_lib.as_ref().is_some() {
+        if !this.machine.native_lib.is_empty() {
             use crate::shims::native_lib::EvalContextExt as _;
             // An Ok(false) here means that the function being called was not exported
             // by the specified `.so` file; we should continue and check if it corresponds to

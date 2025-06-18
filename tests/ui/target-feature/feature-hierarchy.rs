@@ -12,10 +12,18 @@
 // Tests vetting "feature hierarchies" in the cases where we impose them.
 
 // Supporting minimal rust core code
+#[lang = "pointee_sized"]
+trait PointeeSized {}
+
+#[lang = "meta_sized"]
+trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+trait Sized: MetaSized {}
+
 #[lang = "copy"]
 trait Copy {}
+
 impl Copy for bool {}
 
 #[stable(feature = "test", since = "1.0.0")]

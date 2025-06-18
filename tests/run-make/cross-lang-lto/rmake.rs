@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // This test checks that the object files we generate are actually
 // LLVM bitcode files (as used by linker LTO plugins) when compiling with
 // -Clinker-plugin-lto.

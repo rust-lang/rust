@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // This is a simple smoke test for rustc's `--emit dep-info` feature. It prints out
 // information about dependencies in a Makefile-compatible format, as a `.d` file.
 // Note that this test does not check that the `.d` file is Makefile-compatible.

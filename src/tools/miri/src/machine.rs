@@ -558,9 +558,9 @@ pub struct MiriMachine<'tcx> {
 
     /// Handle of the optional shared object file for native functions.
     #[cfg(unix)]
-    pub native_lib: Option<(libloading::Library, std::path::PathBuf)>,
+    pub native_lib: Vec<(libloading::Library, std::path::PathBuf)>,
     #[cfg(not(unix))]
-    pub native_lib: Option<!>,
+    pub native_lib: Vec<!>,
 
     /// Run a garbage collector for BorTags every N basic blocks.
     pub(crate) gc_interval: u32,
@@ -618,6 +618,9 @@ pub struct MiriMachine<'tcx> {
 
     /// Always prefer the intrinsic fallback body over the native Miri implementation.
     pub force_intrinsic_fallback: bool,
+
+    /// Whether floating-point operations can behave non-deterministically.
+    pub float_nondet: bool,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -720,7 +723,7 @@ impl<'tcx> MiriMachine<'tcx> {
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
             #[cfg(target_os = "linux")]
-            allocator: if config.native_lib.is_some() {
+            allocator: if !config.native_lib.is_empty() {
                 Some(Rc::new(RefCell::new(crate::alloc::isolated_alloc::IsolatedAlloc::new())))
             } else { None },
             tracked_alloc_ids: config.tracked_alloc_ids.clone(),
@@ -732,7 +735,7 @@ impl<'tcx> MiriMachine<'tcx> {
             basic_block_count: 0,
             monotonic_clock: MonotonicClock::new(config.isolated_op == IsolatedOp::Allow),
             #[cfg(unix)]
-            native_lib: config.native_lib.as_ref().map(|lib_file_path| {
+            native_lib: config.native_lib.iter().map(|lib_file_path| {
                 let host_triple = rustc_session::config::host_tuple();
                 let target_triple = tcx.sess.opts.target_triple.tuple();
                 // Check if host target == the session target.
@@ -752,11 +755,11 @@ impl<'tcx> MiriMachine<'tcx> {
                     },
                     lib_file_path.clone(),
                 )
-            }),
+            }).collect(),
             #[cfg(not(unix))]
-            native_lib: config.native_lib.as_ref().map(|_| {
+            native_lib: config.native_lib.iter().map(|_| {
                 panic!("calling functions from native libraries via FFI is only supported on Unix")
-            }),
+            }).collect(),
             gc_interval: config.gc_interval,
             since_gc: 0,
             num_cpus: config.num_cpus,
@@ -778,6 +781,7 @@ impl<'tcx> MiriMachine<'tcx> {
             int2ptr_warned: Default::default(),
             mangle_internal_symbol_cache: Default::default(),
             force_intrinsic_fallback: config.force_intrinsic_fallback,
+            float_nondet: config.float_nondet,
         }
     }
 
@@ -956,6 +960,7 @@ impl VisitProvenance for MiriMachine<'_> {
             int2ptr_warned: _,
             mangle_internal_symbol_cache: _,
             force_intrinsic_fallback: _,
+            float_nondet: _,
         } = self;
 
         threads.visit_provenance(visit);

@@ -11,7 +11,7 @@ use rustc_ast_ir::Mutability;
 use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
-use crate::solve::AdtDestructorKind;
+use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
 
@@ -228,6 +228,8 @@ pub trait Region<I: Interner<Region = Self>>:
 
     fn new_static(interner: I) -> Self;
 
+    fn new_placeholder(interner: I, var: I::PlaceholderRegion) -> Self;
+
     fn is_bound(self) -> bool {
         matches!(self.kind(), ty::ReBound(..))
     }
@@ -253,6 +255,8 @@ pub trait Const<I: Interner<Const = Self>>:
     fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: I::BoundConst) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
+
+    fn new_placeholder(interner: I, param: I::PlaceholderConst) -> Self;
 
     fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
 
@@ -524,13 +528,14 @@ pub trait Clauses<I: Interner<Clauses = Self>>:
 }
 
 /// Common capabilities of placeholder kinds
-pub trait PlaceholderLike: Copy + Debug + Hash + Eq {
+pub trait PlaceholderLike<I: Interner>: Copy + Debug + Hash + Eq {
     fn universe(self) -> ty::UniverseIndex;
     fn var(self) -> ty::BoundVar;
 
+    type Bound: BoundVarLike<I>;
+    fn new(ui: ty::UniverseIndex, bound: Self::Bound) -> Self;
+    fn new_anon(ui: ty::UniverseIndex, var: ty::BoundVar) -> Self;
     fn with_updated_universe(self, ui: ty::UniverseIndex) -> Self;
-
-    fn new(ui: ty::UniverseIndex, var: ty::BoundVar) -> Self;
 }
 
 pub trait IntoKind {
@@ -539,13 +544,13 @@ pub trait IntoKind {
     fn kind(self) -> Self::Kind;
 }
 
-pub trait BoundVarLike<I: Interner> {
+pub trait BoundVarLike<I: Interner>: Copy + Debug + Hash + Eq {
     fn var(self) -> ty::BoundVar;
 
     fn assert_eq(self, var: I::BoundVarKind);
 }
 
-pub trait ParamLike {
+pub trait ParamLike: Copy + Debug + Hash + Eq {
     fn index(self) -> u32;
 }
 
@@ -566,7 +571,11 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     // FIXME: perhaps use `all_fields` and expose `FieldDef`.
     fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
 
-    fn sized_constraint(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
+    fn sizedness_constraint(
+        self,
+        interner: I,
+        sizedness: SizedTraitKind,
+    ) -> Option<ty::EarlyBinder<I, I::Ty>>;
 
     fn is_fundamental(self) -> bool;
 

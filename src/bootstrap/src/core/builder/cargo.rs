@@ -278,9 +278,7 @@ impl Cargo {
             self.rustdocflags.arg(&arg);
         }
 
-        if !builder.config.dry_run()
-            && builder.cc.borrow()[&target].args().iter().any(|arg| arg == "-gz")
-        {
+        if !builder.config.dry_run() && builder.cc[&target].args().iter().any(|arg| arg == "-gz") {
             self.rustflags.arg("-Clink-arg=-gz");
         }
 
@@ -551,7 +549,7 @@ impl Builder<'_> {
         let libdir = self.rustc_libdir(compiler);
 
         let sysroot_str = sysroot.as_os_str().to_str().expect("sysroot should be UTF-8");
-        if self.is_verbose() && !matches!(self.config.dry_run, DryRun::SelfCheck) {
+        if self.is_verbose() && !matches!(self.config.get_dry_run(), DryRun::SelfCheck) {
             println!("using sysroot {sysroot_str}");
         }
 

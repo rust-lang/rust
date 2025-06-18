@@ -10,8 +10,14 @@
 //@ has no_doc_primitive/index.html
 //! A [`char`] and its [`char::len_utf8`].
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 
 impl char {
     pub fn len_utf8(self) -> usize {

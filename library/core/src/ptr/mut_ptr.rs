@@ -1,28 +1,12 @@
 use super::*;
 use crate::cmp::Ordering::{Equal, Greater, Less};
 use crate::intrinsics::const_eval_select;
+use crate::marker::PointeeSized;
 use crate::mem::{self, SizedTypeProperties};
 use crate::slice::{self, SliceIndex};
 
-impl<T: ?Sized> *mut T {
-    /// Returns `true` if the pointer is null.
-    ///
-    /// Note that unsized types have many possible null pointers, as only the
-    /// raw data pointer is considered, not their length, vtable, etc.
-    /// Therefore, two pointers that are null may still not compare equal to
-    /// each other.
-    ///
-    /// # Panics during const evaluation
-    ///
-    /// If this method is used during const evaluation, and `self` is a pointer
-    /// that is offset beyond the bounds of the memory it initially pointed to,
-    /// then there might not be enough information to determine whether the
-    /// pointer is null. This is because the absolute address in memory is not
-    /// known at compile time. If the nullness of the pointer cannot be
-    /// determined, this method will panic.
-    ///
-    /// In-bounds pointers are never null, so the method will never panic for
-    /// such pointers.
+impl<T: PointeeSized> *mut T {
+    #[doc = include_str!("docs/is_null.md")]
     ///
     /// # Examples
     ///
@@ -127,7 +111,7 @@ impl<T: ?Sized> *mut T {
     #[inline]
     pub const fn with_metadata_of<U>(self, meta: *const U) -> *mut U
     where
-        U: ?Sized,
+        U: PointeeSized,
     {
         from_raw_parts_mut::<U>(self as *mut (), metadata(meta))
     }
@@ -1906,53 +1890,10 @@ impl<T> *mut [T] {
         unsafe { index.get_unchecked_mut(self) }
     }
 
-    /// Returns `None` if the pointer is null, or else returns a shared slice to
-    /// the value wrapped in `Some`. In contrast to [`as_ref`], this does not require
-    /// that the value has to be initialized.
+    #[doc = include_str!("docs/as_uninit_slice.md")]
     ///
-    /// For the mutable counterpart see [`as_uninit_slice_mut`].
-    ///
-    /// [`as_ref`]: pointer#method.as_ref-1
-    /// [`as_uninit_slice_mut`]: #method.as_uninit_slice_mut
-    ///
-    /// # Safety
-    ///
-    /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// all of the following is true:
-    ///
-    /// * The pointer must be [valid] for reads for `ptr.len() * size_of::<T>()` many bytes,
-    ///   and it must be properly aligned. This means in particular:
-    ///
-    ///     * The entire memory range of this slice must be contained within a single [allocation]!
-    ///       Slices can never span across multiple allocations.
-    ///
-    ///     * The pointer must be aligned even for zero-length slices. One
-    ///       reason for this is that enum layout optimizations may rely on references
-    ///       (including slices of any length) being aligned and non-null to distinguish
-    ///       them from other data. You can obtain a pointer that is usable as `data`
-    ///       for zero-length slices using [`NonNull::dangling()`].
-    ///
-    /// * The total size `ptr.len() * size_of::<T>()` of the slice must be no larger than `isize::MAX`.
-    ///   See the safety documentation of [`pointer::offset`].
-    ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get mutated (except inside `UnsafeCell`).
-    ///
-    /// This applies even if the result of this method is unused!
-    ///
-    /// See also [`slice::from_raw_parts`][].
-    ///
-    /// [valid]: crate::ptr#safety
-    /// [allocation]: crate::ptr#allocation
-    ///
-    /// # Panics during const evaluation
-    ///
-    /// This method will panic during const evaluation if the pointer cannot be
-    /// determined to be null or not. See [`is_null`] for more information.
-    ///
-    /// [`is_null`]: #method.is_null-1
+    /// # See Also
+    /// For the mutable counterpart see [`as_uninit_slice_mut`](pointer::as_uninit_slice_mut).
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
@@ -2066,7 +2007,7 @@ impl<T, const N: usize> *mut [T; N] {
 
 /// Pointer equality is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> PartialEq for *mut T {
+impl<T: PointeeSized> PartialEq for *mut T {
     #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn eq(&self, other: &*mut T) -> bool {
@@ -2076,11 +2017,11 @@ impl<T: ?Sized> PartialEq for *mut T {
 
 /// Pointer equality is an equivalence relation.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Eq for *mut T {}
+impl<T: PointeeSized> Eq for *mut T {}
 
 /// Pointer comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Ord for *mut T {
+impl<T: PointeeSized> Ord for *mut T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn cmp(&self, other: &*mut T) -> Ordering {
@@ -2096,7 +2037,7 @@ impl<T: ?Sized> Ord for *mut T {
 
 /// Pointer comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> PartialOrd for *mut T {
+impl<T: PointeeSized> PartialOrd for *mut T {
     #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &*mut T) -> Option<Ordering> {

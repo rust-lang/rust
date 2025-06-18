@@ -2,7 +2,8 @@
 
 use std::borrow::Cow;
 use std::fs::{
-    DirBuilder, File, FileType, OpenOptions, ReadDir, read_dir, remove_dir, remove_file, rename,
+    DirBuilder, File, FileType, OpenOptions, ReadDir, TryLockError, read_dir, remove_dir,
+    remove_file, rename,
 };
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -89,103 +90,27 @@ impl UnixFileDescription for FileHandle {
         communicate_allowed: bool,
         op: FlockOp,
     ) -> InterpResult<'tcx, io::Result<()>> {
-        // cfg(bootstrap)
-        macro_rules! cfg_select_dispatch {
-            ($($tokens:tt)*) => {
-                #[cfg(bootstrap)]
-                cfg_match! { $($tokens)* }
-
-                #[cfg(not(bootstrap))]
-                cfg_select! { $($tokens)* }
-            };
-        }
-
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        cfg_select_dispatch! {
-            all(target_family = "unix", not(target_os = "solaris")) => {
-                use std::os::fd::AsRawFd;
 
-                use FlockOp::*;
-                // We always use non-blocking call to prevent interpreter from being blocked
-                let (host_op, lock_nb) = match op {
-                    SharedLock { nonblocking } => (libc::LOCK_SH | libc::LOCK_NB, nonblocking),
-                    ExclusiveLock { nonblocking } => (libc::LOCK_EX | libc::LOCK_NB, nonblocking),
-                    Unlock => (libc::LOCK_UN, false),
-                };
-
-                let fd = self.file.as_raw_fd();
-                let ret = unsafe { libc::flock(fd, host_op) };
-                let res = match ret {
-                    0 => Ok(()),
-                    -1 => {
-                        let err = io::Error::last_os_error();
-                        if !lock_nb && err.kind() == io::ErrorKind::WouldBlock {
-                            throw_unsup_format!("blocking `flock` is not currently supported");
-                        }
-                        Err(err)
-                    }
-                    ret => panic!("Unexpected return value from flock: {ret}"),
-                };
-                interp_ok(res)
+        use FlockOp::*;
+        // We must not block the interpreter loop, so we always `try_lock`.
+        let (res, nonblocking) = match op {
+            SharedLock { nonblocking } => (self.file.try_lock_shared(), nonblocking),
+            ExclusiveLock { nonblocking } => (self.file.try_lock(), nonblocking),
+            Unlock => {
+                return interp_ok(self.file.unlock());
             }
-            target_family = "windows" => {
-                use std::os::windows::io::AsRawHandle;
+        };
 
-                use windows_sys::Win32::Foundation::{
-                    ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, TRUE,
-                };
-                use windows_sys::Win32::Storage::FileSystem::{
-                    LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, UnlockFile,
-                };
-
-                let fh = self.file.as_raw_handle();
-
-                use FlockOp::*;
-                let (ret, lock_nb) = match op {
-                    SharedLock { nonblocking } | ExclusiveLock { nonblocking } => {
-                        // We always use non-blocking call to prevent interpreter from being blocked
-                        let mut flags = LOCKFILE_FAIL_IMMEDIATELY;
-                        if matches!(op, ExclusiveLock { .. }) {
-                            flags |= LOCKFILE_EXCLUSIVE_LOCK;
-                        }
-                        let ret = unsafe { LockFileEx(fh, flags, 0, !0, !0, &mut std::mem::zeroed()) };
-                        (ret, nonblocking)
-                    }
-                    Unlock => {
-                        let ret = unsafe { UnlockFile(fh, 0, 0, !0, !0) };
-                        (ret, false)
-                    }
-                };
-
-                let res = match ret {
-                    TRUE => Ok(()),
-                    FALSE => {
-                        let mut err = io::Error::last_os_error();
-                        // This only runs on Windows hosts so we can use `raw_os_error`.
-                        // We have to be careful not to forward that error code to target code.
-                        let code: u32 = err.raw_os_error().unwrap().try_into().unwrap();
-                        if matches!(code, ERROR_IO_PENDING | ERROR_LOCK_VIOLATION) {
-                            if lock_nb {
-                                // The io error mapping does not know about these error codes,
-                                // so we translate it to `WouldBlock` manually.
-                                let desc = format!("LockFileEx wouldblock error: {err}");
-                                err = io::Error::new(io::ErrorKind::WouldBlock, desc);
-                            } else {
-                                throw_unsup_format!("blocking `flock` is not currently supported");
-                            }
-                        }
-                        Err(err)
-                    }
-                    _ => panic!("Unexpected return value: {ret}"),
-                };
-                interp_ok(res)
-            }
-            _ => {
-                let _ = op;
-                throw_unsup_format!(
-                    "flock is supported only on UNIX (except Solaris) and Windows hosts"
-                );
-            }
+        match res {
+            Ok(()) => interp_ok(Ok(())),
+            Err(TryLockError::Error(err)) => interp_ok(Err(err)),
+            Err(TryLockError::WouldBlock) =>
+                if nonblocking {
+                    interp_ok(Err(ErrorKind::WouldBlock.into()))
+                } else {
+                    throw_unsup_format!("blocking `flock` is not currently supported");
+                },
         }
     }
 }

@@ -16,7 +16,7 @@ use rustc_span::{RealFileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility,
-    TargetTuple, TlsModel, WasmCAbi,
+    TargetTuple, TlsModel,
 };
 
 use crate::config::*;
@@ -289,6 +289,14 @@ macro_rules! top_level_options {
                 })*
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
+            }
+
+            pub fn target_feature_flag_enabled(&self, flag: &str) -> bool {
+                match flag {
+                    "retpoline" => self.unstable_opts.retpoline,
+                    "retpoline-external-thunk" => self.unstable_opts.retpoline_external_thunk,
+                    _ => false,
+                }
             }
         }
     );
@@ -794,7 +802,7 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
     pub(crate) const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
     pub(crate) const parse_function_return: &str = "`keep` or `thunk-extern`";
-    pub(crate) const parse_wasm_c_abi: &str = "`legacy` or `spec`";
+    pub(crate) const parse_wasm_c_abi: &str = "`spec`";
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
@@ -1890,14 +1898,8 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_wasm_c_abi(slot: &mut WasmCAbi, v: Option<&str>) -> bool {
-        match v {
-            Some("spec") => *slot = WasmCAbi::Spec,
-            // Explicitly setting the `-Z` flag suppresses the lint.
-            Some("legacy") => *slot = WasmCAbi::Legacy { with_lint: false },
-            _ => return false,
-        }
-        true
+    pub(crate) fn parse_wasm_c_abi(_slot: &mut (), v: Option<&str>) -> bool {
+        v == Some("spec")
     }
 
     pub(crate) fn parse_mir_include_spans(slot: &mut MirIncludeSpans, v: Option<&str>) -> bool {
@@ -2305,6 +2307,8 @@ options! {
         (space separated)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
         "show macro backtraces (default: no)"),
+    macro_stats: bool = (false, parse_bool, [UNTRACKED],
+        "print some statistics about macro expansions (default: no)"),
     maximal_hir_to_mir_coverage: bool = (false, parse_bool, [TRACKED],
         "save as much information as possible about the correspondence between MIR and HIR \
         as source scopes (default: no)"),
@@ -2446,6 +2450,11 @@ options! {
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),
+    retpoline: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+        "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
+    retpoline_external_thunk: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+        "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
+        target features (default: no)"),
     sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
         "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
@@ -2627,8 +2636,11 @@ written to standard error output)"),
         Requires `-Clto[=[fat,yes]]`"),
     wasi_exec_model: Option<WasiExecModel> = (None, parse_wasi_exec_model, [TRACKED],
         "whether to build a wasi command or reactor"),
-    wasm_c_abi: WasmCAbi = (WasmCAbi::Legacy { with_lint: true }, parse_wasm_c_abi, [TRACKED],
-        "use spec-compliant C ABI for `wasm32-unknown-unknown` (default: legacy)"),
+    // This option only still exists to provide a more gradual transition path for people who need
+    // the spec-complaint C ABI to be used.
+    // FIXME remove this after a couple releases
+    wasm_c_abi: () = ((), parse_wasm_c_abi, [TRACKED],
+        "use spec-compliant C ABI for `wasm32-unknown-unknown` (deprecated, always enabled)"),
     write_long_types_to_disk: bool = (true, parse_bool, [UNTRACKED],
         "whether long type names should be written to files instead of being printed in errors"),
     // tidy-alphabetical-end

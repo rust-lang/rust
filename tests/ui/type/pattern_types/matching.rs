@@ -1,6 +1,7 @@
 #![feature(pattern_types, pattern_type_macro, structural_match)]
 
 //@ check-pass
+//@ compile-flags: -Zvalidate-mir
 
 use std::marker::StructuralPartialEq;
 use std::pat::pattern_type;

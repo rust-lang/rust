@@ -90,11 +90,7 @@ pub(crate) fn synthesize_blanket_impls(
                     stability: None,
                     kind: clean::ImplItem(Box::new(clean::Impl {
                         safety: hir::Safety::Safe,
-                        generics: clean_ty_generics(
-                            cx,
-                            tcx.generics_of(impl_def_id),
-                            tcx.explicit_predicates_of(impl_def_id),
-                        ),
+                        generics: clean_ty_generics(cx, impl_def_id),
                         // FIXME(eddyb) compute both `trait_` and `for_` from
                         // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(clean_trait_ref_with_constraints(

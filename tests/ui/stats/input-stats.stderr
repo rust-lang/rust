@@ -82,10 +82,10 @@ hir-stats - Expr                      32 (NN.N%)             1
 hir-stats - Let                       32 (NN.N%)             1
 hir-stats - Semi                      32 (NN.N%)             1
 hir-stats FnDecl                   120 (NN.N%)             3            40
-hir-stats Attribute                128 (NN.N%)             4            32
 hir-stats FieldDef                 128 (NN.N%)             2            64
 hir-stats GenericArgs              144 (NN.N%)             3            48
 hir-stats Variant                  144 (NN.N%)             2            72
+hir-stats Attribute                160 (NN.N%)             4            40
 hir-stats GenericBound             256 (NN.N%)             4            64
 hir-stats - Trait                    256 (NN.N%)             4
 hir-stats Block                    288 (NN.N%)             6            48
@@ -117,5 +117,5 @@ hir-stats - Use                      352 (NN.N%)             4
 hir-stats Path                   1_040 (NN.N%)            26            40
 hir-stats PathSegment            1_776 (NN.N%)            37            48
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_644                   172
+hir-stats Total                  8_676                   172
 hir-stats

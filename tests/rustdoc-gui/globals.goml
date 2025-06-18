@@ -6,7 +6,6 @@
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=sa'%3Bda'%3Bds"
 wait-for: "#search-tabs"
 assert-window-property-false: {"searchIndex": null}
-assert-window-property: {"srcIndex": null}
 
 // Form input
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
@@ -14,11 +13,9 @@ write-into: (".search-input", "Foo")
 press-key: 'Enter'
 wait-for: "#search-tabs"
 assert-window-property-false: {"searchIndex": null}
-assert-window-property: {"srcIndex": null}
 
 // source sidebar
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 click: "#sidebar-button"
 wait-for: "#src-sidebar details"
-assert-window-property-false: {"srcIndex": null}
 assert-window-property: {"searchIndex": null}

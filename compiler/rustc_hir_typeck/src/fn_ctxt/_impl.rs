@@ -22,8 +22,9 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity, Ty, TyCtxt,
-    TypeFoldable, TypeVisitable, TypeVisitableExt, UserArgs, UserSelfTy,
+    self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity,
+    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, UserArgs,
+    UserSelfTy,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -439,7 +440,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 || {},
             );
             // Sized types have static alignment, and so do slices.
-            if tail.is_trivially_sized(self.tcx) || matches!(tail.kind(), ty::Slice(..)) {
+            if tail.has_trivial_sizedness(self.tcx, SizedTraitKind::Sized)
+                || matches!(tail.kind(), ty::Slice(..))
+            {
                 // Nothing else is required here.
             } else {
                 // We can't be sure, let's required full `Sized`.
@@ -1436,8 +1439,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// in this case.
     #[instrument(level = "debug", skip(self, sp), ret)]
     pub(crate) fn try_structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.resolve_vars_with_obligations(ty);
-
         if self.next_trait_solver()
             && let ty::Alias(..) = ty.kind()
         {
@@ -1455,7 +1456,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         } else {
-            ty
+            self.resolve_vars_with_obligations(ty)
         }
     }
 

@@ -163,6 +163,10 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_bound(tcx, debruijn, var)
     }
 
+    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderConst) -> Self {
+        Const::new_placeholder(tcx, placeholder)
+    }
+
     fn new_unevaluated(interner: TyCtxt<'tcx>, uv: ty::UnevaluatedConst<'tcx>) -> Self {
         Const::new_unevaluated(interner, uv)
     }

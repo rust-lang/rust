@@ -1,4 +1,4 @@
-error[E0045]: C-variadic function must have a compatible calling convention, like `C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`
+error[E0045]: C-variadic functions with the "Rust" calling convention are not supported
   --> $DIR/variadic-ffi-2.rs:3:11
    |
 LL | fn baz(f: extern "Rust" fn(usize, ...)) {

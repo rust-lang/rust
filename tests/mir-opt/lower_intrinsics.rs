@@ -51,7 +51,7 @@ pub fn size_of<T>() -> usize {
 pub fn align_of<T>() -> usize {
     // CHECK-LABEL: fn align_of(
     // CHECK: {{_.*}} = AlignOf(T);
-    core::intrinsics::min_align_of::<T>()
+    core::intrinsics::align_of::<T>()
 }
 
 // EMIT_MIR lower_intrinsics.forget.LowerIntrinsics.diff
