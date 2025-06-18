@@ -1991,6 +1991,15 @@ unsafe extern "C" {
         Block: &'ll BasicBlock,
     ) -> &'ll DbgRecord;
 
+    pub(crate) fn LLVMDIBuilderInsertDbgValueRecordAtEnd<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Val: &'ll Value,
+        VarInfo: &'ll Metadata,
+        Expr: &'ll Metadata,
+        DebugLoc: &'ll Metadata,
+        Block: &'ll BasicBlock,
+    ) -> &'ll DbgRecord;
+
     pub(crate) fn LLVMDIBuilderCreateAutoVariable<'ll>(
         Builder: &DIBuilder<'ll>,
         Scope: &'ll Metadata,
