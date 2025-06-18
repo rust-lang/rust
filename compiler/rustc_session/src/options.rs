@@ -410,6 +410,10 @@ top_level_options!(
         /// by the compiler.
         json_artifact_notifications: bool [TRACKED],
 
+        /// `true` if we're emitting JSON timings with the start and end of
+        /// high-level compilation sections
+        json_timings: bool [UNTRACKED],
+
         /// `true` if we're emitting a JSON blob containing the unused externs
         json_unused_externs: JsonUnusedExterns [UNTRACKED],
 
