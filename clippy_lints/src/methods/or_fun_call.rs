@@ -242,15 +242,23 @@ pub(super) fn check<'tcx>(
         let inner_arg = peel_blocks(arg);
         for_each_expr(cx, inner_arg, |ex| {
             let is_top_most_expr = ex.hir_id == inner_arg.hir_id;
-            if let hir::ExprKind::Call(fun, fun_args) = ex.kind {
-                let fun_span = if fun_args.is_empty() && is_top_most_expr {
-                    Some(fun.span)
-                } else {
-                    None
-                };
-                if check_or_fn_call(cx, name, method_span, receiver, arg, Some(lambda), expr.span, fun_span) {
-                    return ControlFlow::Break(());
-                }
+            match ex.kind {
+                hir::ExprKind::Call(fun, fun_args) => {
+                    let fun_span = if fun_args.is_empty() && is_top_most_expr {
+                        Some(fun.span)
+                    } else {
+                        None
+                    };
+                    if check_or_fn_call(cx, name, method_span, receiver, arg, Some(lambda), expr.span, fun_span) {
+                        return ControlFlow::Break(());
+                    }
+                },
+                hir::ExprKind::MethodCall(..) => {
+                    if check_or_fn_call(cx, name, method_span, receiver, arg, Some(lambda), expr.span, None) {
+                        return ControlFlow::Break(());
+                    }
+                },
+                _ => {},
             }
             ControlFlow::Continue(())
         });
