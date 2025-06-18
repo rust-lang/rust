@@ -1274,6 +1274,10 @@ mod staging {
 /// Renders the executed bootstrap steps for usage in snapshot tests with insta.
 /// Only renders certain important steps.
 /// Each value in `steps` should be a tuple of (Step, step output).
+///
+/// The arrow in the rendered output (`X -> Y`) means `X builds Y`.
+/// This is similar to the output printed by bootstrap to stdout, but here it is
+/// generated purely for the purpose of tests.
 fn render_steps(steps: &[ExecutedStep]) -> String {
     steps
         .iter()
