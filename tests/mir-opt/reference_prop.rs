@@ -14,8 +14,8 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
     {
         // CHECK: bb0: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &[[a]];
-        // CHECK: [[c:_.*]] = copy [[a]];
+        // CHECK-NEXT: DBG: AssignRef([[b:_.*]], [[a]])
+        // CHECK-NEXT: [[c:_.*]] = copy [[a]];
 
         let a = 5_usize;
         let b = &a; // This borrow is only used once.
@@ -135,9 +135,9 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
     {
         // CHECK: bb8: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &[[a]];
-        // CHECK: [[d:_.*]] = &[[b]];
-        // CHECK: [[c:_.*]] = copy [[a]];
+        // CHECK-NEXT: DBG: AssignRef([[b:_.*]], [[a]])
+        // CHECK-NEXT: DBG: AssignRef([[d:_.*]], [[b]])
+        // CHECK-NEXT: [[c:_.*]] = copy [[a]];
 
         let a = 5_usize;
         let b = &a;
@@ -150,10 +150,9 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
     {
         // CHECK: bb9: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &[[a]];
-        // CHECK: [[d:_.*]] = &mut [[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = copy (*[[b]]);
+        // CHECK-NEXT: DBG: AssignRef([[b:_.*]], [[a]])
+        // CHECK-NEXT: DBG: AssignRef([[d:_.*]], [[b]])
+        // CHECK: [[c:_.*]] = copy [[a]];
 
         let a = 5_usize;
         let mut b = &a;
@@ -170,8 +169,8 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
     {
         // CHECK: bb0: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &mut [[a]];
-        // CHECK: [[c:_.*]] = copy [[a]];
+        // CHECK-NEXT: DBG: AssignRef([[b:_.*]], [[a]])
+        // CHECK-NEXT: [[c:_.*]] = copy [[a]];
 
         let mut a = 5_usize;
         let b = &mut a; // This borrow is only used once.
@@ -291,10 +290,9 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
     {
         // CHECK: bb8: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &mut [[a]];
-        // CHECK: [[d:_.*]] = &[[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = copy (*[[b]]);
+        // CHECK-NEXT: DBG: AssignRef([[b:_.*]], [[a]])
+        // CHECK-NEXT: DBG: AssignRef([[d:_.*]], [[b]])
+        // CHECK-NEXT: [[c:_.*]] = copy [[a]];
 
         let mut a = 5_usize;
         let b = &mut a;
@@ -307,10 +305,9 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
     {
         // CHECK: bb9: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &mut [[a]];
-        // CHECK: [[d:_.*]] = &mut [[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = copy (*[[b]]);
+        // CHECK-NEXT: DBG: AssignRef([[b:_.*]], [[a]])
+        // CHECK-NEXT: DBG: AssignRef([[d:_.*]], [[b]])
+        // CHECK-NEXT: [[c:_.*]] = copy [[a]];
 
         let mut a = 5_usize;
         let mut b = &mut a;
@@ -463,9 +460,9 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
     unsafe {
         // CHECK: bb9: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &raw const [[a]];
-        // CHECK: [[d:_.*]] = &[[b]];
-        // CHECK: [[c:_.*]] = copy [[a]];
+        // CHECK-NEXT: [[b:_.*]] = &raw const [[a]];
+        // CHECK-NEXT: DBG: AssignRef([[d:_.*]], [[b]])
+        // CHECK-NEXT: [[c:_.*]] = copy [[a]];
 
         let a = 5_usize;
         let b = &raw const a;
@@ -479,9 +476,8 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         // CHECK: bb10: {
         // CHECK: [[a:_.*]] = const 5_usize;
         // CHECK: [[b:_.*]] = &raw const [[a]];
-        // CHECK: [[d:_.*]] = &mut [[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = copy (*[[b]]);
+        // CHECK-NEXT: DBG: AssignRef([[d:_.*]], [[b]])
+        // CHECK: [[c:_.*]] = copy [[a]];
 
         let a = 5_usize;
         let mut b = &raw const a;
@@ -619,10 +615,9 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
     unsafe {
         // CHECK: bb8: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &raw mut [[a]];
-        // CHECK: [[d:_.*]] = &[[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = copy (*[[b]]);
+        // CHECK-NEXT: [[b:_.*]] = &raw mut [[a]];
+        // CHECK-NEXT: DBG: AssignRef([[d:_.*]], [[b]])
+        // CHECK-NEXT: [[c:_.*]] = copy [[a]];
 
         let mut a = 5_usize;
         let b = &raw mut a;
@@ -635,10 +630,9 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
     unsafe {
         // CHECK: bb9: {
         // CHECK: [[a:_.*]] = const 5_usize;
-        // CHECK: [[b:_.*]] = &raw mut [[a]];
-        // CHECK: [[d:_.*]] = &mut [[b]];
-        // FIXME this could be [[a]]
-        // CHECK: [[c:_.*]] = copy (*[[b]]);
+        // CHECK-NEXT: [[b:_.*]] = &raw mut [[a]];
+        // CHECK-NEXT: DBG: AssignRef([[d:_.*]], [[b]])
+        // CHECK: [[c:_.*]] = copy [[a]];
 
         let mut a = 5_usize;
         let mut b = &raw mut a;

@@ -68,7 +68,6 @@
       }
   
       bb0: {
-          StorageLive(_1);
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_11);
@@ -89,7 +88,6 @@
   
       bb1: {
           StorageDead(_3);
-          StorageDead(_1);
           return;
       }
   
@@ -135,13 +133,11 @@
 +         _5 = *const [()] from (copy _10, const 1_usize);
           StorageDead(_23);
           StorageDead(_6);
-          StorageLive(_7);
           StorageLive(_8);
           _8 = copy _5;
 -         _7 = copy _8 as *mut () (PtrToPtr);
 +         _7 = copy ((_9.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *mut () (Transmute);
           StorageDead(_8);
-          StorageDead(_7);
 -         StorageDead(_5);
 +         nop;
           StorageDead(_4);

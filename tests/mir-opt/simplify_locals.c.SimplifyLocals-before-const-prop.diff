@@ -14,7 +14,7 @@
       }
   
       bb0: {
-          StorageLive(_1);
+-         StorageLive(_1);
           _1 = [const 0_u8; 10];
 -         StorageLive(_2);
 -         StorageLive(_3);
@@ -26,7 +26,7 @@
 -         StorageDead(_4);
 -         StorageDead(_2);
           _0 = const ();
-          StorageDead(_1);
+-         StorageDead(_1);
           return;
       }
   }

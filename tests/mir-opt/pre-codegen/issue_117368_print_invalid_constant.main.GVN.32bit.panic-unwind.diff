@@ -48,7 +48,6 @@
           StorageDead(_5);
           _3 = move _4 as *mut u8 (PtrToPtr);
           StorageDead(_4);
-          StorageDead(_3);
 -         StorageDead(_1);
 +         nop;
           return;
@@ -67,7 +66,6 @@
 +         _1 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(4 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x00000000): std::ptr::alignment::AlignmentEnum) }};
           StorageDead(_10);
           StorageDead(_2);
-          StorageLive(_3);
           StorageLive(_4);
           StorageLive(_5);
           StorageLive(_6);
