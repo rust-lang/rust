@@ -209,10 +209,9 @@ pub fn get_or_default_sysroot() -> PathBuf {
         //
         // use `parent` twice to chop off the file name and then also the
         // directory containing the dll
-        let dir = dll.parent().and_then(|p| p.parent()).ok_or(format!(
-            "Could not move 2 levels upper using `parent()` on {}",
-            dll.display()
-        ))?;
+        let dir = dll.parent().and_then(|p| p.parent()).ok_or_else(|| {
+            format!("Could not move 2 levels upper using `parent()` on {}", dll.display())
+        })?;
 
         // if `dir` points to target's dir, move up to the sysroot
         let mut sysroot_dir = if dir.ends_with(crate::config::host_tuple()) {
@@ -265,5 +264,6 @@ pub fn get_or_default_sysroot() -> PathBuf {
         rustlib_path.exists().then_some(p)
     }
 
-    from_env_args_next().unwrap_or(default_from_rustc_driver_dll().expect("Failed finding sysroot"))
+    from_env_args_next()
+        .unwrap_or_else(|| default_from_rustc_driver_dll().expect("Failed finding sysroot"))
 }

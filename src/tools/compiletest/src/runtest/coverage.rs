@@ -357,9 +357,9 @@ impl<'test> TestCx<'test> {
                 // Add this line to the current subview.
                 subviews
                     .last_mut()
-                    .ok_or(format!(
-                        "unexpected subview line outside of a subview on line {line_num}"
-                    ))?
+                    .ok_or_else(|| {
+                        format!("unexpected subview line outside of a subview on line {line_num}")
+                    })?
                     .push(line);
             } else {
                 // This line is not part of a subview, so sort and print any
