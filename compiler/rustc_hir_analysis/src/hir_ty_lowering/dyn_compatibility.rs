@@ -37,9 +37,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut user_written_bounds = Vec::new();
         let mut potential_assoc_types = Vec::new();
         for poly_trait_ref in hir_bounds.iter() {
-            if let hir::BoundPolarity::Maybe(_) = poly_trait_ref.modifiers.polarity {
-                continue;
-            }
             let result = self.lower_poly_trait_ref(
                 poly_trait_ref,
                 dummy_self,
