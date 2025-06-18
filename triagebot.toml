@@ -1235,7 +1235,6 @@ compiler = [
 libs = [
     "@Mark-Simulacrum",
     "@workingjubilee",
-    "@joboet",
     "@jhpratt",
     "@tgross35",
     "@thomcc",
