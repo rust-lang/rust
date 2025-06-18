@@ -1153,9 +1153,9 @@ fn dyn_trait_super_trait_not_in_scope() {
             51..55 'self': &'? Self
             64..69 '{ 0 }': u32
             66..67 '0': u32
-            176..177 'd': &'? (dyn Trait + 'static)
+            176..177 'd': &'? (dyn Trait + '?)
             191..207 '{     ...o(); }': ()
-            197..198 'd': &'? (dyn Trait + 'static)
+            197..198 'd': &'? (dyn Trait + '?)
             197..204 'd.foo()': u32
         "#]],
     );
@@ -2019,10 +2019,10 @@ impl dyn Error + Send {
     /// Attempts to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
         let err: Box<dyn Error> = self;
-                               // ^^^^ expected Box<dyn Error + 'static>, got Box<dyn Error + Send + 'static>
+                               // ^^^^ expected Box<dyn Error + '?>, got Box<dyn Error + Send + '?>
                                // FIXME, type mismatch should not occur
         <dyn Error>::downcast(err).map_err(|_| loop {})
-      //^^^^^^^^^^^^^^^^^^^^^ type: fn downcast<{unknown}>(Box<dyn Error + 'static>) -> Result<Box<{unknown}>, Box<dyn Error + 'static>>
+      //^^^^^^^^^^^^^^^^^^^^^ type: fn downcast<{unknown}>(Box<dyn Error + '?>) -> Result<Box<{unknown}>, Box<dyn Error + '?>>
     }
 }
 "#,

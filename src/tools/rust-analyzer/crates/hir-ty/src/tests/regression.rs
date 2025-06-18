@@ -629,7 +629,7 @@ fn issue_4053_diesel_where_clauses() {
             488..522 '{     ...     }': ()
             498..502 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
             498..508 'self.order': O
-            498..515 'self.o...into()': dyn QueryFragment<DB> + 'static
+            498..515 'self.o...into()': dyn QueryFragment<DB> + '?
         "#]],
     );
 }
@@ -773,7 +773,7 @@ fn issue_4800() {
         "#,
         expect![[r#"
             379..383 'self': &'? mut PeerSet<D>
-            401..424 '{     ...     }': dyn Future<Output = ()> + 'static
+            401..424 '{     ...     }': dyn Future<Output = ()> + '?
             411..418 'loop {}': !
             416..418 '{}': ()
             575..579 'self': &'? mut Self

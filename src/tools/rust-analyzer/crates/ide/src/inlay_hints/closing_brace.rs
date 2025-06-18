@@ -193,7 +193,7 @@ impl Tr for () {
 //^ impl Tr for ()
 impl dyn Tr {
   }
-//^ impl dyn Tr + 'static
+//^ impl dyn Tr
 
 static S0: () = 0;
 static S1: () = {};
