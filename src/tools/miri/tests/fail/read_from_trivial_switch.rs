@@ -4,6 +4,8 @@
 //
 // See <https://github.com/rust-lang/miri/issues/4237>.
 
+//@ stderr-per-bitwidth
+
 use std::mem::MaybeUninit;
 
 fn main() {

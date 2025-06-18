@@ -33,12 +33,20 @@ error[E0080]: reading memory at ALLOC2[0x0..0x1], but memory is uninitialized at
    |
 LL |         compare_bytes(MaybeUninit::uninit().as_ptr(), [1].as_ptr(), 1)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `main::LHS_UNINIT` failed here
+   |
+   = note: the raw bytes of the constant (size: 1, align: 1) {
+               __                                              │ ░
+           }
 
 error[E0080]: reading memory at ALLOC3[0x0..0x1], but memory is uninitialized at [0x0..0x1], and this operation requires initialized memory
   --> $DIR/const-compare-bytes-ub.rs:33:9
    |
 LL |         compare_bytes([1].as_ptr(), MaybeUninit::uninit().as_ptr(), 1)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `main::RHS_UNINIT` failed here
+   |
+   = note: the raw bytes of the constant (size: 1, align: 1) {
+               __                                              │ ░
+           }
 
 error[E0080]: unable to turn pointer into integer
   --> $DIR/const-compare-bytes-ub.rs:37:9
