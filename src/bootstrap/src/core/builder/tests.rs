@@ -8,6 +8,7 @@ use super::*;
 use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::config::Config;
+use crate::utils::cache::ExecutedStep;
 use crate::utils::tests::git::{GitCtx, git_test};
 
 static TEST_TRIPLE_1: &str = "i686-unknown-haiku";
@@ -1258,31 +1259,24 @@ mod staging {
 /// Renders the executed bootstrap steps for usage in snapshot tests with insta.
 /// Only renders certain important steps.
 /// Each value in `steps` should be a tuple of (Step, step output).
-fn render_steps(steps: &[(Box<dyn Any>, Box<dyn Any>)]) -> String {
+fn render_steps(steps: &[ExecutedStep]) -> String {
     steps
         .iter()
-        .filter_map(|(step, output)| {
-            // FIXME: implement an optional method on Step to produce metadata for test, instead
-            // of this downcasting
-            if let Some((rustc, output)) = downcast_step::<compile::Rustc>(step, output) {
-                Some(format!(
-                    "[build] {} -> {}",
-                    render_compiler(rustc.build_compiler),
-                    // FIXME: return the correct stage from the `Rustc` step, now it behaves weirdly
-                    render_compiler(Compiler::new(rustc.build_compiler.stage + 1, rustc.target)),
-                ))
-            } else if let Some((std, output)) = downcast_step::<compile::Std>(step, output) {
-                Some(format!(
-                    "[build] {} -> std {} <{}>",
-                    render_compiler(std.compiler),
-                    std.compiler.stage,
-                    std.target
-                ))
-            } else if let Some((llvm, output)) = downcast_step::<llvm::Llvm>(step, output) {
-                Some(format!("[build] llvm <{}>", llvm.target))
-            } else {
-                None
+        .filter_map(|step| {
+            use std::fmt::Write;
+
+            let Some(metadata) = &step.metadata else {
+                return None;
+            };
+
+            let mut record = format!("[{}] ", metadata.kind.as_str());
+            if let Some(compiler) = metadata.built_by {
+                write!(record, "{} -> ", render_compiler(compiler));
             }
+            let stage =
+                if let Some(stage) = metadata.stage { format!("{stage} ") } else { "".to_string() };
+            write!(record, "{} {stage}<{}>", metadata.name, metadata.target);
+            Some(record)
         })
         .map(|line| {
             line.replace(TEST_TRIPLE_1, "target1")
@@ -1291,19 +1285,6 @@ fn render_steps(steps: &[(Box<dyn Any>, Box<dyn Any>)]) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
-}
-
-fn downcast_step<'a, S: Step>(
-    step: &'a Box<dyn Any>,
-    output: &'a Box<dyn Any>,
-) -> Option<(&'a S, &'a S::Output)> {
-    let Some(step) = step.downcast_ref::<S>() else {
-        return None;
-    };
-    let Some(output) = output.downcast_ref::<S::Output>() else {
-        return None;
-    };
-    Some((step, output))
 }
 
 fn render_compiler(compiler: Compiler) -> String {
