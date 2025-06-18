@@ -1,5 +1,7 @@
 //@ignore-target: windows # No pthreads on Windows
 //@ignore-target: apple # Our macOS condattr don't have any fields so we do not notice this.
+//@ normalize-stderr-test: "(\n)ALLOC \(.*\) \{\n(.*\n)*\}(\n)" -> "${1}ALLOC DUMP${3}"
+//@ normalize-stderr-test: "\[0x[0-9a-z]..0x[0-9a-z]\]" -> "[0xX..0xY]"
 
 /// Test that destroying a pthread_condattr twice fails, even without a check for number validity
 

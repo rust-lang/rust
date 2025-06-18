@@ -20,6 +20,6 @@ fn partial_init() {
         assert!(*slice_ptr == 0);
         assert!(*slice_ptr.offset(1) == 0);
         // Reading the third is UB!
-        let _val = *slice_ptr.offset(2); //~ ERROR: Undefined Behavior: using uninitialized data
+        let _val = *slice_ptr.offset(2); //~ ERROR: /Undefined Behavior: reading memory.*, but memory is uninitialized/
     }
 }

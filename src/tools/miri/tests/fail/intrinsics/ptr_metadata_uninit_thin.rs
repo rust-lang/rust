@@ -1,4 +1,7 @@
 //@compile-flags: -Zmiri-disable-validation
+//@ normalize-stderr-test: "(\n)ALLOC \(.*\) \{\n(.*\n)*\}(\n)" -> "${1}ALLOC DUMP${3}"
+//@ normalize-stderr-test: "\[0x[0-9a-z]..0x[0-9a-z]\]" -> "[0xX..0xY]"
+
 #![feature(core_intrinsics, custom_mir)]
 use std::intrinsics::mir::*;
 

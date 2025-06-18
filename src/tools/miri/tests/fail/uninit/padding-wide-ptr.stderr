@@ -1,4 +1,4 @@
-error: Undefined Behavior: reading memory at ALLOC[0x8..0x9], but memory is uninitialized at [0x8..0x9], and this operation requires initialized memory
+error: Undefined Behavior: reading memory at ALLOC[0xX..0xY], but memory is uninitialized at [0xX..0xY], and this operation requires initialized memory
   --> tests/fail/uninit/padding-wide-ptr.rs:LL:CC
    |
 LL |         let _val = *c.add(mem::size_of::<*const u8>());
@@ -9,10 +9,8 @@ LL |         let _val = *c.add(mem::size_of::<*const u8>());
    = note: BACKTRACE:
    = note: inside `main` at tests/fail/uninit/padding-wide-ptr.rs:LL:CC
 
-Uninitialized memory occurred at ALLOC[0x8..0x9], in this allocation:
-ALLOC (stack variable, size: 16, align: 8) {
-    00 00 00 00 00 00 00 00 __ __ __ __ __ __ __ __ │ ........░░░░░░░░
-}
+Uninitialized memory occurred at ALLOC[0xX..0xY], in this allocation:
+ALLOC DUMP
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
