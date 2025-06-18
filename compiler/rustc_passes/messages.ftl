@@ -537,10 +537,6 @@ passes_no_mangle_foreign =
     .note = symbol names in extern blocks are not mangled
     .suggestion = remove this attribute
 
-passes_no_sanitize =
-    `#[no_sanitize({$attr_str})]` should be applied to {$accepted_kind}
-    .label = not {$accepted_kind}
-
 passes_non_exhaustive_with_default_field_values =
     `#[non_exhaustive]` can't be used to annotate items with default field values
     .label = this struct has default field values
@@ -553,7 +549,7 @@ passes_object_lifetime_err =
     {$repr}
 
 passes_only_has_effect_on =
-    `#[{$attr_name}]` only has an effect on {$target_name ->
+    `#[{$attr_name}]` only has an effect on {$passes_only_has_effect_on ->
         [function] functions
         [module] modules
         [implementation_block] implementation blocks

@@ -86,7 +86,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
 
     let mut link_ordinal_span = None;
-    let mut no_sanitize_span = None;
     let mut sanitize_span = None;
 
     for attr in attrs.iter() {
@@ -255,37 +254,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     }
                 }
             }
-            sym::no_sanitize => {
-                no_sanitize_span = Some(attr.span());
-                if let Some(list) = attr.meta_item_list() {
-                    for item in list.iter() {
-                        match item.name() {
-                            Some(sym::address) => {
-                                codegen_fn_attrs.no_sanitize |=
-                                    SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS
-                            }
-                            Some(sym::cfi) => codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI,
-                            Some(sym::kcfi) => codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI,
-                            Some(sym::memory) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY
-                            }
-                            Some(sym::memtag) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG
-                            }
-                            Some(sym::shadow_call_stack) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK
-                            }
-                            Some(sym::thread) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD
-                            }
-                            Some(sym::hwaddress) => {
-                                codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS
-                            }
-                            _ => {
-                                tcx.dcx().emit_err(errors::InvalidNoSanitize { span: item.span() });
-                            }
-                        }
-                    }
+            sym::link_ordinal => {
+                link_ordinal_span = Some(attr.span());
+                if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
+                    codegen_fn_attrs.link_ordinal = ordinal;
                 }
             }
             sym::sanitize => sanitize_span = Some(attr.span()),
@@ -455,16 +427,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         tcx.dcx().span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
     }
 
-    if !codegen_fn_attrs.no_sanitize.is_empty()
-        && codegen_fn_attrs.inline.always()
-        && let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span)
-    {
-        let hir_id = tcx.local_def_id_to_hir_id(did);
-        tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, no_sanitize_span, |lint| {
-            lint.primary_message("`no_sanitize` will have no effect after inlining");
-            lint.span_note(inline_span, "inlining requested here");
-        })
-    }
     if !codegen_fn_attrs.no_sanitize.is_empty()
         && codegen_fn_attrs.inline.always()
         && let (Some(sanitize_span), Some(inline_span)) = (sanitize_span, inline_span)
