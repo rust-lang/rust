@@ -33,7 +33,7 @@ use crate::attributes::stability::{
 };
 use crate::attributes::traits::SkipDuringMethodDispatchParser;
 use crate::attributes::transparency::TransparencyParser;
-use crate::attributes::{AttributeParser as _, Combine, Single};
+use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
 use crate::parser::{ArgParser, MetaItemParser, PathParser};
 use crate::session_diagnostics::{AttributeParseError, AttributeParseErrorReason, UnknownMetaItem};
 
@@ -54,6 +54,7 @@ macro_rules! attribute_parsers {
             use super::*;
             type Combine<T> = super::Combine<T, Early>;
             type Single<T> = super::Single<T, Early>;
+            type WithoutArgs<T> = super::WithoutArgs<T, Early>;
 
             attribute_parsers!(@[Early] pub(crate) static $name = [$($names),*];);
         }
@@ -61,6 +62,7 @@ macro_rules! attribute_parsers {
             use super::*;
             type Combine<T> = super::Combine<T, Late>;
             type Single<T> = super::Single<T, Late>;
+            type WithoutArgs<T> = super::WithoutArgs<T, Late>;
 
             attribute_parsers!(@[Late] pub(crate) static $name = [$($names),*];);
         }
@@ -115,25 +117,25 @@ attribute_parsers!(
         // tidy-alphabetical-end
 
         // tidy-alphabetical-start
-        Single<AsPtrParser>,
-        Single<ColdParser>,
-        Single<ConstContinueParser>,
-        Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
         Single<ExportNameParser>,
         Single<InlineParser>,
         Single<LinkNameParser>,
         Single<LinkSectionParser>,
-        Single<LoopMatchParser>,
-        Single<MayDangleParser>,
         Single<MustUseParser>,
-        Single<NoMangleParser>,
         Single<OptimizeParser>,
-        Single<PubTransparentParser>,
         Single<RustcForceInlineParser>,
         Single<SkipDuringMethodDispatchParser>,
-        Single<TrackCallerParser>,
         Single<TransparencyParser>,
+        Single<WithoutArgs<AsPtrParser>>,
+        Single<WithoutArgs<ColdParser>>,
+        Single<WithoutArgs<ConstContinueParser>>,
+        Single<WithoutArgs<ConstStabilityIndirectParser>>,
+        Single<WithoutArgs<LoopMatchParser>>,
+        Single<WithoutArgs<MayDangleParser>>,
+        Single<WithoutArgs<NoMangleParser>>,
+        Single<WithoutArgs<PubTransparentParser>>,
+        Single<WithoutArgs<TrackCallerParser>>,
         // tidy-alphabetical-end
     ];
 );

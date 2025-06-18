@@ -17,7 +17,7 @@
 use std::marker::PhantomData;
 
 use rustc_attr_data_structures::AttributeKind;
-use rustc_feature::AttributeTemplate;
+use rustc_feature::{AttributeTemplate, template};
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
@@ -226,6 +226,41 @@ pub(crate) enum AttributeOrder {
     /// the one that is "used". Ideally these can eventually migrate to
     /// `ErrorPreceding`.
     KeepLast,
+}
+
+/// An even simpler version of [`SingleAttributeParser`]:
+/// now automatically check that there are no arguments provided to the attribute.
+///
+/// [`WithoutArgs<T> where T: NoArgsAttributeParser`](WithoutArgs) implements [`SingleAttributeParser`].
+//
+pub(crate) trait NoArgsAttributeParser<S: Stage>: 'static {
+    const PATH: &[Symbol];
+    const ON_DUPLICATE: OnDuplicate<S>;
+
+    /// Create the [`AttributeKind`] given attribute's [`Span`].
+    fn create(span: Span) -> AttributeKind;
+}
+
+pub(crate) struct WithoutArgs<T: NoArgsAttributeParser<S>, S: Stage>(PhantomData<(S, T)>);
+
+impl<T: NoArgsAttributeParser<S>, S: Stage> Default for WithoutArgs<T, S> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for WithoutArgs<T, S> {
+    const PATH: &[Symbol] = T::PATH;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
+    const ON_DUPLICATE: OnDuplicate<S> = T::ON_DUPLICATE;
+    const TEMPLATE: AttributeTemplate = template!(Word);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
+        }
+        Some(T::create(cx.attr_span))
+    }
 }
 
 type ConvertFn<E> = fn(ThinVec<E>) -> AttributeKind;
