@@ -14,7 +14,7 @@ use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::lints::{
     NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,
-    NonUpperCaseGlobal, NonUpperCaseGlobalSub,
+    NonUpperCaseGlobal, NonUpperCaseGlobalSub, NonUpperCaseGlobalSubTool,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -497,12 +497,10 @@ impl NonUpperCaseGlobals {
 
             // We cannot provide meaningful suggestions
             // if the characters are in the category of "Lowercase Letter".
-            let sub = |span| {
-                if *name != uc {
-                    NonUpperCaseGlobalSub::Suggestion { span, replace: uc.clone() }
-                } else {
-                    NonUpperCaseGlobalSub::Label { span }
-                }
+            let sub = if *name != uc {
+                NonUpperCaseGlobalSub::Suggestion { span: ident.span, replace: uc.clone() }
+            } else {
+                NonUpperCaseGlobalSub::Label { span: ident.span }
             };
 
             struct UsageCollector<'a, 'tcx> {
@@ -531,10 +529,16 @@ impl NonUpperCaseGlobals {
                 }
             }
 
-            let usages = if let Some(did) = did {
+            let usages = if let Some(did) = did
+                && *name != uc
+            {
                 let mut usage_collector = UsageCollector { cx, did, collected: Vec::new() };
                 cx.tcx.hir_walk_toplevel_module(&mut usage_collector);
-                usage_collector.collected.into_iter().map(|span| sub(span)).collect()
+                usage_collector
+                    .collected
+                    .into_iter()
+                    .map(|span| NonUpperCaseGlobalSubTool { span, replace: uc.clone() })
+                    .collect()
             } else {
                 vec![]
             };
@@ -542,7 +546,7 @@ impl NonUpperCaseGlobals {
             cx.emit_span_lint(
                 NON_UPPER_CASE_GLOBALS,
                 ident.span,
-                NonUpperCaseGlobal { sort, name, sub: sub(ident.span), usages },
+                NonUpperCaseGlobal { sort, name, sub, usages },
             );
         }
     }

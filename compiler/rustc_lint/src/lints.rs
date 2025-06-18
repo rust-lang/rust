@@ -1349,7 +1349,7 @@ pub(crate) struct NonUpperCaseGlobal<'a> {
     #[subdiagnostic]
     pub sub: NonUpperCaseGlobalSub,
     #[subdiagnostic]
-    pub usages: Vec<NonUpperCaseGlobalSub>,
+    pub usages: Vec<NonUpperCaseGlobalSubTool>,
 }
 
 #[derive(Subdiagnostic)]
@@ -1365,6 +1365,19 @@ pub(crate) enum NonUpperCaseGlobalSub {
         span: Span,
         replace: String,
     },
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    lint_suggestion,
+    code = "{replace}",
+    applicability = "maybe-incorrect",
+    style = "tool-only"
+)]
+pub(crate) struct NonUpperCaseGlobalSubTool {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) replace: String,
 }
 
 // noop_method_call.rs
