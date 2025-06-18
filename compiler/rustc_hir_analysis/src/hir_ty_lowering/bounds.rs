@@ -482,12 +482,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             match hir_bound {
                 hir::GenericBound::Trait(poly_trait_ref) => {
-                    let hir::TraitBoundModifiers { constness, polarity } = poly_trait_ref.modifiers;
                     let _ = self.lower_poly_trait_ref(
-                        &poly_trait_ref.trait_ref,
-                        poly_trait_ref.span,
-                        constness,
-                        polarity,
+                        poly_trait_ref,
                         param_ty,
                         bounds,
                         predicate_filter,
