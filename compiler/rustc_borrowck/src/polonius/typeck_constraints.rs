@@ -94,8 +94,8 @@ fn localize_statement_constraint<'tcx>(
             // - and that should be impossible in MIR
             //
             // When we have a more complete implementation in the future, tested with crater, etc,
-            // we can relax this to a debug assert instead, or remove it.
-            assert!(
+            // we can remove this assertion. It's a debug assert because it can be expensive.
+            debug_assert!(
                 {
                     let mut lhs_regions = FxHashSet::default();
                     tcx.for_each_free_region(lhs, |region| {
@@ -183,6 +183,7 @@ fn localize_terminator_constraint<'tcx>(
         }
     }
 }
+
 /// For a given outlives constraint and CFG edge, returns the localized constraint with the
 /// appropriate `from`-`to` direction. This is computed according to whether the constraint flows to
 /// or from a free region in the given `value`, some kind of result for an effectful operation, like
