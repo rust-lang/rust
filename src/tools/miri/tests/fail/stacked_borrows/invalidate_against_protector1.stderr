@@ -2,7 +2,7 @@ error: Undefined Behavior: not granting access to tag <TAG> because that would r
   --> tests/fail/stacked_borrows/invalidate_against_protector1.rs:LL:CC
    |
 LL |     let _val = unsafe { *x };
-   |                         ^^ not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected
+   |                         ^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information

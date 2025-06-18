@@ -170,12 +170,12 @@ impl TypoCandidate {
     }
 }
 
-impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
+impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn make_base_error(
         &mut self,
         path: &[Segment],
         span: Span,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         res: Option<Res>,
     ) -> BaseError {
         // Make the base error.
@@ -421,7 +421,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         res: Option<Res>,
         qself: Option<&QSelf>,
     ) -> (Diag<'tcx>, Vec<ImportSuggestion>) {
@@ -539,7 +539,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         res: Option<Res>,
         qself: Option<&QSelf>,
     ) {
@@ -650,7 +650,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn try_lookup_name_relaxed(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
@@ -940,7 +940,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_trait_and_bounds(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         res: Option<Res>,
         span: Span,
         base_error: &BaseError,
@@ -1017,7 +1017,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_typo(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
@@ -1063,7 +1063,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_shadowed(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
@@ -1096,7 +1096,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn err_code_special_cases(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         path: &[Segment],
         span: Span,
     ) {
@@ -1141,7 +1141,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_self_ty(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         path: &[Segment],
         span: Span,
     ) -> bool {
@@ -1164,7 +1164,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_self_value(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         path: &[Segment],
         span: Span,
     ) -> bool {
@@ -1332,7 +1332,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_swapping_misplaced_self_ty_and_trait(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         res: Option<Res>,
         span: Span,
     ) {
@@ -1361,7 +1361,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         &mut self,
         err: &mut Diag<'_>,
         res: Option<Res>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
     ) {
         let PathSource::TupleStruct(_, _) = source else { return };
         let Some(Res::Def(DefKind::Fn, _)) = res else { return };
@@ -1373,7 +1373,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         &mut self,
         err: &mut Diag<'_>,
         res: Option<Res>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         span: Span,
     ) {
         let PathSource::Trait(_) = source else { return };
@@ -1422,7 +1422,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_pattern_match_with_let(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         span: Span,
     ) -> bool {
         if let PathSource::Expr(_) = source
@@ -1448,7 +1448,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn get_single_associated_item(
         &mut self,
         path: &[Segment],
-        source: &PathSource<'_, '_>,
+        source: &PathSource<'_, '_, '_>,
         filter_fn: &impl Fn(Res) -> bool,
     ) -> Option<TypoSuggestion> {
         if let crate::PathSource::TraitItem(_, _) = source {
@@ -1556,7 +1556,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
     /// Check if the source is call expression and the first argument is `self`. If true,
     /// return the span of whole call and the span for all arguments expect the first one (`self`).
-    fn call_has_self_arg(&self, source: PathSource<'_, '_>) -> Option<(Span, Option<Span>)> {
+    fn call_has_self_arg(&self, source: PathSource<'_, '_, '_>) -> Option<(Span, Option<Span>)> {
         let mut has_self_arg = None;
         if let PathSource::Expr(Some(parent)) = source
             && let ExprKind::Call(_, args) = &parent.kind
@@ -1614,7 +1614,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         &mut self,
         err: &mut Diag<'_>,
         span: Span,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         path: &[Segment],
         res: Res,
         path_str: &str,
@@ -1666,7 +1666,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         };
 
-        let find_span = |source: &PathSource<'_, '_>, err: &mut Diag<'_>| {
+        let find_span = |source: &PathSource<'_, '_, '_>, err: &mut Diag<'_>| {
             match source {
                 PathSource::Expr(Some(Expr { span, kind: ExprKind::Call(_, _), .. }))
                 | PathSource::TupleStruct(span, _) => {
@@ -2699,7 +2699,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_using_enum_variant(
         &mut self,
         err: &mut Diag<'_>,
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
         def_id: DefId,
         span: Span,
     ) {
@@ -2877,7 +2877,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     pub(crate) fn suggest_adding_generic_parameter(
         &self,
         path: &[Segment],
-        source: PathSource<'_, '_>,
+        source: PathSource<'_, '_, '_>,
     ) -> Option<(Span, &'static str, String, Applicability)> {
         let (ident, span) = match path {
             [segment]

@@ -2,7 +2,7 @@ error: Undefined Behavior: incorrect number of arguments for `malloc`: got 2, ex
   --> tests/fail/function_calls/check_arg_count_too_many_args.rs:LL:CC
    |
 LL |         let _ = malloc(1, 2);
-   |                 ^^^^^^^^^^^^ incorrect number of arguments for `malloc`: got 2, expected 1
+   |                 ^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

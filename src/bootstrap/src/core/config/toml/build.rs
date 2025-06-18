@@ -6,6 +6,8 @@
 //! various feature flags. These options apply across different stages and components
 //! unless specifically overridden by other configuration sections or command-line flags.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::ReplaceOpt;
@@ -42,6 +44,7 @@ define_config! {
         bootstrap_cache_path: Option<PathBuf> = "bootstrap-cache-path",
         extended: Option<bool> = "extended",
         tools: Option<HashSet<String>> = "tools",
+        tool: Option<HashMap<String, Tool>> = "tool",
         verbose: Option<usize> = "verbose",
         sanitizers: Option<bool> = "sanitizers",
         profiler: Option<bool> = "profiler",
@@ -68,5 +71,13 @@ define_config! {
         compiletest_use_stage0_libtest: Option<bool> = "compiletest-use-stage0-libtest",
         ccache: Option<StringOrBool> = "ccache",
         exclude: Option<Vec<PathBuf>> = "exclude",
+    }
+}
+
+define_config! {
+    /// Configuration specific for some tool, e.g. which features to enable during build.
+    #[derive(Default, Clone)]
+    struct Tool {
+        features: Option<Vec<String>> = "features",
     }
 }

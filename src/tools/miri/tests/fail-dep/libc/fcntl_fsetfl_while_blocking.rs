@@ -1,5 +1,5 @@
 //@ignore-target: windows # Sockets/pipes are not implemented yet
-//~^ ERROR: deadlock: the evaluated program deadlocked
+//~^ ERROR: the evaluated program deadlocked
 //@compile-flags: -Zmiri-deterministic-concurrency
 use std::thread;
 
@@ -16,5 +16,5 @@ fn main() {
     });
     // Main thread will block on read.
     let _res = unsafe { libc::read(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
-    //~^ ERROR: deadlock: the evaluated program deadlocked
+    //~^ ERROR: the evaluated program deadlocked
 }

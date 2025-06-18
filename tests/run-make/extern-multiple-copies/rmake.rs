@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // In this test, the rust library foo1 exists in two different locations, but only one
 // is required by the --extern flag. This test checks that the copy is ignored (as --extern
 // demands fetching only the original instance of foo1) and that no error is emitted, resulting

@@ -122,7 +122,7 @@ libloading = "0.8.8"
 memmap2 = "0.9.5"
 nohash-hasher = "0.2.0"
 oorandom = "11.1.5"
-object = { version = "0.37.1", default-features = false, features = [
+object = { version = "0.36.7", default-features = false, features = [
   "std",
   "read_core",
   "elf",

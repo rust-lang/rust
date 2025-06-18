@@ -20,7 +20,7 @@ use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
-    GenericParamDefKind, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    GenericParamDefKind, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
@@ -853,7 +853,7 @@ pub fn for_each_top_level_late_bound_region<B>(
                 ControlFlow::Continue(())
             }
         }
-        fn visit_binder<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, t: &Binder<'tcx, T>) -> Self::Result {
+        fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &Binder<'tcx, T>) -> Self::Result {
             self.index += 1;
             let res = t.super_visit_with(self);
             self.index -= 1;
@@ -1137,21 +1137,38 @@ impl<'tcx> InteriorMut<'tcx> {
 
     /// Check if given type has interior mutability such as [`std::cell::Cell`] or
     /// [`std::cell::RefCell`] etc. and if it does, returns a chain of types that causes
-    /// this type to be interior mutable
+    /// this type to be interior mutable.  False negatives may be expected for infinitely recursive
+    /// types, and `None` will be returned there.
     pub fn interior_mut_ty_chain(&mut self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx ty::List<Ty<'tcx>>> {
+        self.interior_mut_ty_chain_inner(cx, ty, 0)
+    }
+
+    fn interior_mut_ty_chain_inner(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        ty: Ty<'tcx>,
+        depth: usize,
+    ) -> Option<&'tcx ty::List<Ty<'tcx>>> {
+        if !cx.tcx.recursion_limit().value_within_limit(depth) {
+            return None;
+        }
+
         match self.tys.entry(ty) {
             Entry::Occupied(o) => return *o.get(),
             // Temporarily insert a `None` to break cycles
             Entry::Vacant(v) => v.insert(None),
         };
+        let depth = depth + 1;
 
         let chain = match *ty.kind() {
-            ty::RawPtr(inner_ty, _) if !self.ignore_pointers => self.interior_mut_ty_chain(cx, inner_ty),
-            ty::Ref(_, inner_ty, _) | ty::Slice(inner_ty) => self.interior_mut_ty_chain(cx, inner_ty),
+            ty::RawPtr(inner_ty, _) if !self.ignore_pointers => self.interior_mut_ty_chain_inner(cx, inner_ty, depth),
+            ty::Ref(_, inner_ty, _) | ty::Slice(inner_ty) => self.interior_mut_ty_chain_inner(cx, inner_ty, depth),
             ty::Array(inner_ty, size) if size.try_to_target_usize(cx.tcx) != Some(0) => {
-                self.interior_mut_ty_chain(cx, inner_ty)
+                self.interior_mut_ty_chain_inner(cx, inner_ty, depth)
             },
-            ty::Tuple(fields) => fields.iter().find_map(|ty| self.interior_mut_ty_chain(cx, ty)),
+            ty::Tuple(fields) => fields
+                .iter()
+                .find_map(|ty| self.interior_mut_ty_chain_inner(cx, ty, depth)),
             ty::Adt(def, _) if def.is_unsafe_cell() => Some(ty::List::empty()),
             ty::Adt(def, args) => {
                 let is_std_collection = matches!(
@@ -1171,16 +1188,17 @@ impl<'tcx> InteriorMut<'tcx> {
 
                 if is_std_collection || def.is_box() {
                     // Include the types from std collections that are behind pointers internally
-                    args.types().find_map(|ty| self.interior_mut_ty_chain(cx, ty))
+                    args.types()
+                        .find_map(|ty| self.interior_mut_ty_chain_inner(cx, ty, depth))
                 } else if self.ignored_def_ids.contains(&def.did()) || def.is_phantom_data() {
                     None
                 } else {
                     def.all_fields()
-                        .find_map(|f| self.interior_mut_ty_chain(cx, f.ty(cx.tcx, args)))
+                        .find_map(|f| self.interior_mut_ty_chain_inner(cx, f.ty(cx.tcx, args), depth))
                 }
             },
             ty::Alias(ty::Projection, _) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
-                Ok(normalized_ty) if ty != normalized_ty => self.interior_mut_ty_chain(cx, normalized_ty),
+                Ok(normalized_ty) if ty != normalized_ty => self.interior_mut_ty_chain_inner(cx, normalized_ty, depth),
                 _ => None,
             },
             _ => None,
@@ -1342,7 +1360,8 @@ pub fn has_non_owning_mutable_access<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'
                 mutability.is_mut() || !pointee_ty.is_freeze(cx.tcx, cx.typing_env())
             },
             ty::Closure(_, closure_args) => {
-                matches!(closure_args.types().next_back(), Some(captures) if has_non_owning_mutable_access_inner(cx, phantoms, captures))
+                matches!(closure_args.types().next_back(),
+                         Some(captures) if has_non_owning_mutable_access_inner(cx, phantoms, captures))
             },
             ty::Tuple(tuple_args) => tuple_args
                 .iter()

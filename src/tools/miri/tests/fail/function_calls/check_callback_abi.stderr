@@ -7,7 +7,7 @@ LL | |             std::mem::transmute::<extern "C" fn(*mut u8), _>(try_fn),
 LL | |             std::ptr::null_mut(),
 LL | |             |_, _| unreachable!(),
 LL | |         );
-   | |_________^ calling a function with calling convention "C" using calling convention "Rust"
+   | |_________^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -2,7 +2,7 @@ error: unsupported operation: extern static `FOO` is not supported by Miri
   --> tests/fail/extern_static.rs:LL:CC
    |
 LL |     let _val = std::ptr::addr_of!(FOO);
-   |                                   ^^^ extern static `FOO` is not supported by Miri
+   |                                   ^^^ unsupported operation occurred here
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:

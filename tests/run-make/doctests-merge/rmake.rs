@@ -1,3 +1,4 @@
+//@ needs-target-std
 use std::path::Path;
 
 use run_make_support::{cwd, diff, rustc, rustdoc};

@@ -260,7 +260,7 @@ impl Step for Link {
         }
 
         let stage_path =
-            ["build", config.build.rustc_target_arg(), "stage1"].join(MAIN_SEPARATOR_STR);
+            ["build", config.host_target.rustc_target_arg(), "stage1"].join(MAIN_SEPARATOR_STR);
 
         if stage_dir_exists(&stage_path[..]) && !config.dry_run() {
             attempt_toolchain_link(builder, &stage_path[..]);

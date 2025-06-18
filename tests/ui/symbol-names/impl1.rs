@@ -26,7 +26,7 @@ mod foo {
 }
 
 mod bar {
-    use foo::Foo;
+    use crate::foo::Foo;
 
     impl Foo {
         #[rustc_symbol_name]

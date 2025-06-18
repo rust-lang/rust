@@ -134,6 +134,11 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
 
   CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm}"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
+
+  # Unless explicitly disabled, we want rustc debug assertions on the -alt builds
+  if [ "$DEPLOY_ALT" != "" ] && [ "$NO_DEBUG_ASSERTIONS" = "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
+  fi
 else
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.
@@ -186,9 +191,11 @@ else
   # Download GCC from CI on test builders
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=true"
 
-  if [ "$NO_DOWNLOAD_CI_RUSTC" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
-  fi
+  # download-rustc seems to be broken on CI after the stage0 redesign
+  # Disable it until these issues are debugged and resolved
+#  if [ "$NO_DOWNLOAD_CI_RUSTC" = "" ]; then
+#    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
+#  fi
 fi
 
 if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then

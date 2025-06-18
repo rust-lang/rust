@@ -2,7 +2,7 @@ error: Undefined Behavior: calling a function with return type i32 passing retur
   --> tests/fail/shims/return_type_mismatch.rs:LL:CC
    |
 LL |         close(fd);
-   |         ^^^^^^^^^ calling a function with return type i32 passing return place of type i16
+   |         ^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

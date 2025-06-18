@@ -8,6 +8,7 @@ use std::ops::ControlFlow;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
     self as ty, Interner, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _,
     TypeVisitor, TypingMode, Upcast as _, elaborate,
@@ -203,13 +204,15 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
 
-    /// A type is `Sized` if its tail component is `Sized`.
+    /// A type is `Sized` if its tail component is `Sized` and a type is `MetaSized` if its tail
+    /// component is `MetaSized`.
     ///
     /// These components are given by built-in rules from
-    /// [`structural_traits::instantiate_constituent_tys_for_sized_trait`].
-    fn consider_builtin_sized_candidate(
+    /// [`structural_traits::instantiate_constituent_tys_for_sizedness_trait`].
+    fn consider_builtin_sizedness_candidates(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution>;
 
     /// A type is `Copy` or `Clone` if its components are `Copy` or `Clone`.
@@ -466,7 +469,15 @@ where
             G::consider_trait_alias_candidate(self, goal)
         } else {
             match cx.as_lang_item(trait_def_id) {
-                Some(TraitSolverLangItem::Sized) => G::consider_builtin_sized_candidate(self, goal),
+                Some(TraitSolverLangItem::Sized) => {
+                    G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::Sized)
+                }
+                Some(TraitSolverLangItem::MetaSized) => {
+                    G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::MetaSized)
+                }
+                Some(TraitSolverLangItem::PointeeSized) => {
+                    unreachable!("`PointeeSized` is removed during lowering");
+                }
                 Some(TraitSolverLangItem::Copy | TraitSolverLangItem::Clone) => {
                     G::consider_builtin_copy_clone_candidate(self, goal)
                 }
@@ -1014,7 +1025,11 @@ where
             return Ok(CandidateSource::ParamEnv(ParamEnvSource::NonGlobal));
         }
 
-        match assumption.visit_with(&mut FindParamInClause { ecx: self, param_env }) {
+        match assumption.visit_with(&mut FindParamInClause {
+            ecx: self,
+            param_env,
+            universes: vec![],
+        }) {
             ControlFlow::Break(Err(NoSolution)) => Err(NoSolution),
             ControlFlow::Break(Ok(())) => Ok(CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)),
             ControlFlow::Continue(()) => Ok(CandidateSource::ParamEnv(ParamEnvSource::Global)),
@@ -1025,6 +1040,7 @@ where
 struct FindParamInClause<'a, 'b, D: SolverDelegate<Interner = I>, I: Interner> {
     ecx: &'a mut EvalCtxt<'b, D>,
     param_env: I::ParamEnv,
+    universes: Vec<Option<ty::UniverseIndex>>,
 }
 
 impl<D, I> TypeVisitor<I> for FindParamInClause<'_, '_, D, I>
@@ -1034,31 +1050,42 @@ where
 {
     type Result = ControlFlow<Result<(), NoSolution>>;
 
-    fn visit_binder<T: TypeFoldable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
-        self.ecx.enter_forall(t.clone(), |ecx, v| {
-            v.visit_with(&mut FindParamInClause { ecx, param_env: self.param_env })
-        })
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) -> Self::Result {
+        self.universes.push(None);
+        t.super_visit_with(self)?;
+        self.universes.pop();
+        ControlFlow::Continue(())
     }
 
     fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
+        let ty = self.ecx.replace_bound_vars(ty, &mut self.universes);
         let Ok(ty) = self.ecx.structurally_normalize_ty(self.param_env, ty) else {
             return ControlFlow::Break(Err(NoSolution));
         };
 
-        if let ty::Placeholder(_) = ty.kind() {
-            ControlFlow::Break(Ok(()))
+        if let ty::Placeholder(p) = ty.kind() {
+            if p.universe() == ty::UniverseIndex::ROOT {
+                ControlFlow::Break(Ok(()))
+            } else {
+                ControlFlow::Continue(())
+            }
         } else {
             ty.super_visit_with(self)
         }
     }
 
     fn visit_const(&mut self, ct: I::Const) -> Self::Result {
+        let ct = self.ecx.replace_bound_vars(ct, &mut self.universes);
         let Ok(ct) = self.ecx.structurally_normalize_const(self.param_env, ct) else {
             return ControlFlow::Break(Err(NoSolution));
         };
 
-        if let ty::ConstKind::Placeholder(_) = ct.kind() {
-            ControlFlow::Break(Ok(()))
+        if let ty::ConstKind::Placeholder(p) = ct.kind() {
+            if p.universe() == ty::UniverseIndex::ROOT {
+                ControlFlow::Break(Ok(()))
+            } else {
+                ControlFlow::Continue(())
+            }
         } else {
             ct.super_visit_with(self)
         }
@@ -1066,10 +1093,17 @@ where
 
     fn visit_region(&mut self, r: I::Region) -> Self::Result {
         match self.ecx.eager_resolve_region(r).kind() {
-            ty::ReStatic | ty::ReError(_) => ControlFlow::Continue(()),
-            ty::ReVar(_) | ty::RePlaceholder(_) => ControlFlow::Break(Ok(())),
-            ty::ReErased | ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReBound(..) => {
-                unreachable!()
+            ty::ReStatic | ty::ReError(_) | ty::ReBound(..) => ControlFlow::Continue(()),
+            ty::RePlaceholder(p) => {
+                if p.universe() == ty::UniverseIndex::ROOT {
+                    ControlFlow::Break(Ok(()))
+                } else {
+                    ControlFlow::Continue(())
+                }
+            }
+            ty::ReVar(_) => ControlFlow::Break(Ok(())),
+            ty::ReErased | ty::ReEarlyParam(_) | ty::ReLateParam(_) => {
+                unreachable!("unexpected region in param-env clause")
             }
         }
     }

@@ -201,3 +201,21 @@ impl PartialOrd for K {
         Ordering::Greater.into()
     }
 }
+
+// #14574, check that partial_cmp invokes other.cmp
+
+#[derive(Eq, PartialEq)]
+struct L(u32);
+
+impl Ord for L {
+    fn cmp(&self, other: &Self) -> Ordering {
+        todo!();
+    }
+}
+
+impl PartialOrd for L {
+    //~^ non_canonical_partial_ord_impl
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(other.cmp(self))
+    }
+}

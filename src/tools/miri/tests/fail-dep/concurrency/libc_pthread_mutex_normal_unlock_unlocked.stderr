@@ -2,7 +2,7 @@ error: Undefined Behavior: unlocked a PTHREAD_MUTEX_NORMAL mutex that was not lo
   --> tests/fail-dep/concurrency/libc_pthread_mutex_normal_unlock_unlocked.rs:LL:CC
    |
 LL |         libc::pthread_mutex_unlock(&mut mutex as *mut _);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unlocked a PTHREAD_MUTEX_NORMAL mutex that was not locked by the current thread
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

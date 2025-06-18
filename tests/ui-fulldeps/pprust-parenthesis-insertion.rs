@@ -43,7 +43,6 @@ use std::process::ExitCode;
 use parser::parse_expr;
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::ptr::P;
 use rustc_ast_pretty::pprust;
 use rustc_session::parse::ParseSess;
 
@@ -63,8 +62,8 @@ static EXPRS: &[&str] = &[
     "(2 += 2) += 2",
     // Return has lower precedence than a binary operator.
     "(return 2) + 2",
-    "2 + (return 2)", // FIXME: no parenthesis needed.
-    "(return) + 2",   // FIXME: no parenthesis needed.
+    "2 + return 2",
+    "return + 2",
     // These mean different things.
     "return - 2",
     "(return) - 2",
@@ -88,6 +87,11 @@ static EXPRS: &[&str] = &[
     // expressions.
     "match 2 { _ => 1 - 1 }",
     "match 2 { _ => ({ 1 }) - 1 }",
+    // Expressions with an outer attr have lower precedence than expressions
+    // with an inner attr.
+    "#[attr] loop {}.field",
+    "(#[attr] loop {}).field",
+    "loop { #![attr] }.field",
     // Grammar restriction: break value starting with a labeled loop is not
     // allowed, except if the break is also labeled.
     "break 'outer 'inner: loop {} + 2",
@@ -152,7 +156,7 @@ static EXPRS: &[&str] = &[
 struct Unparenthesize;
 
 impl MutVisitor for Unparenthesize {
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         while let ExprKind::Paren(paren) = &mut e.kind {
             *e = mem::replace(paren, Expr::dummy());
         }

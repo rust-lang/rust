@@ -13,7 +13,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, AmbigArg, LangItem};
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{
     DynCompatibilityViolation, Obligation, ObligationCause, ObligationCauseCode,
@@ -160,17 +160,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             })
             .collect();
 
-        // Ensure `T: Sized` and `T: WF` obligations come last. This lets us display diagnostics
-        // with more relevant type information and hide redundant E0282 errors.
-        errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
-                if self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) =>
-            {
-                1
+        // Ensure `T: Sized`, `T: MetaSized`, `T: PointeeSized` and `T: WF` obligations come last.
+        // This lets us display diagnostics with more relevant type information and hide redundant
+        // E0282 errors.
+        errors.sort_by_key(|e| {
+            let maybe_sizedness_did = match e.obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => Some(pred.def_id()),
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(pred)) => Some(pred.def_id()),
+                _ => None,
+            };
+
+            match e.obligation.predicate.kind().skip_binder() {
+                _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => 1,
+                _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => 2,
+                _ if maybe_sizedness_did == self.tcx.lang_items().pointee_sized_trait() => 3,
+                ty::PredicateKind::Coerce(_) => 4,
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 5,
+                _ => 0,
             }
-            ty::PredicateKind::Coerce(_) => 2,
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
-            _ => 0,
         });
 
         for (index, error) in errors.iter().enumerate() {
@@ -327,19 +334,26 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
     let trait_ref = tcx.impl_trait_ref(impl_def_id)?.instantiate_identity();
     let mut w = "impl".to_owned();
 
-    let args = ty::GenericArgs::identity_for_item(tcx, impl_def_id);
+    #[derive(Debug, Default)]
+    struct SizednessFound {
+        sized: bool,
+        meta_sized: bool,
+    }
 
-    // FIXME: Currently only handles ?Sized.
-    //        Needs to support ?Move and ?DynSized when they are implemented.
-    let mut types_without_default_bounds = FxIndexSet::default();
-    let sized_trait = tcx.lang_items().sized_trait();
+    let mut types_with_sizedness_bounds = FxIndexMap::<_, SizednessFound>::default();
+
+    let args = ty::GenericArgs::identity_for_item(tcx, impl_def_id);
 
     let arg_names = args.iter().map(|k| k.to_string()).filter(|k| k != "'_").collect::<Vec<_>>();
     if !arg_names.is_empty() {
-        types_without_default_bounds.extend(args.types());
         w.push('<');
         w.push_str(&arg_names.join(", "));
         w.push('>');
+
+        for ty in args.types() {
+            // `PointeeSized` params might have no predicates.
+            types_with_sizedness_bounds.insert(ty, SizednessFound::default());
+        }
     }
 
     write!(
@@ -351,24 +365,47 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
     )
     .unwrap();
 
-    // The predicates will contain default bounds like `T: Sized`. We need to
-    // remove these bounds, and add `T: ?Sized` to any untouched type parameters.
     let predicates = tcx.predicates_of(impl_def_id).predicates;
-    let mut pretty_predicates =
-        Vec::with_capacity(predicates.len() + types_without_default_bounds.len());
+    let mut pretty_predicates = Vec::with_capacity(predicates.len());
+
+    let sized_trait = tcx.lang_items().sized_trait();
+    let meta_sized_trait = tcx.lang_items().meta_sized_trait();
 
     for (p, _) in predicates {
-        if let Some(poly_trait_ref) = p.as_trait_clause() {
-            if Some(poly_trait_ref.def_id()) == sized_trait {
-                // FIXME(#120456) - is `swap_remove` correct?
-                types_without_default_bounds.swap_remove(&poly_trait_ref.self_ty().skip_binder());
+        // Accumulate the sizedness bounds for each self ty.
+        if let Some(trait_clause) = p.as_trait_clause() {
+            let self_ty = trait_clause.self_ty().skip_binder();
+            let sizedness_of = types_with_sizedness_bounds.entry(self_ty).or_default();
+            if Some(trait_clause.def_id()) == sized_trait {
+                sizedness_of.sized = true;
+                continue;
+            } else if Some(trait_clause.def_id()) == meta_sized_trait {
+                sizedness_of.meta_sized = true;
                 continue;
             }
         }
+
         pretty_predicates.push(p.to_string());
     }
 
-    pretty_predicates.extend(types_without_default_bounds.iter().map(|ty| format!("{ty}: ?Sized")));
+    for (ty, sizedness) in types_with_sizedness_bounds {
+        if !tcx.features().sized_hierarchy() {
+            if sizedness.sized {
+                // Maybe a default bound, don't write anything.
+            } else {
+                pretty_predicates.push(format!("{ty}: ?Sized"));
+            }
+        } else {
+            if sizedness.sized {
+                // Maybe a default bound, don't write anything.
+                pretty_predicates.push(format!("{ty}: Sized"));
+            } else if sizedness.meta_sized {
+                pretty_predicates.push(format!("{ty}: MetaSized"));
+            } else {
+                pretty_predicates.push(format!("{ty}: PointeeSized"));
+            }
+        }
+    }
 
     if !pretty_predicates.is_empty() {
         write!(w, "\n  where {}", pretty_predicates.join(", ")).unwrap();
@@ -519,7 +556,7 @@ fn attempt_dyn_to_enum_suggestion(
             let Some(impl_type) = tcx.type_of(*impl_id).no_bound_vars() else { return None };
 
             // Obviously unsized impl types won't be usable in an enum.
-            // Note: this doesn't use `Ty::is_trivially_sized` because that function
+            // Note: this doesn't use `Ty::has_trivial_sizedness` because that function
             // defaults to assuming that things are *not* sized, whereas we want to
             // fall back to assuming that things may be sized.
             match impl_type.kind() {

@@ -586,7 +586,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let (size, _align) = crate::unsize::size_and_align_of(fx, layout, meta);
             ret.write_cvalue(fx, CValue::by_val(size, usize_layout));
         }
-        sym::min_align_of_val => {
+        sym::align_of_val => {
             intrinsic_args!(fx, args => (ptr); intrinsic);
 
             let layout = fx.layout_of(generic_args.type_at(0));
@@ -613,7 +613,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             intrinsic_args!(fx, args => (vtable); intrinsic);
             let vtable = vtable.load_scalar(fx);
 
-            let align = crate::vtable::min_align_of_obj(fx, vtable);
+            let align = crate::vtable::align_of_obj(fx, vtable);
             ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
         }
 

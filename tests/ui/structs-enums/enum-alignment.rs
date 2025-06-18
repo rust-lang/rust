@@ -11,7 +11,7 @@ fn addr_of<T>(ptr: &T) -> usize {
 fn is_aligned<T>(ptr: &T) -> bool {
     unsafe {
         let addr: usize = mem::transmute(ptr);
-        (addr % mem::min_align_of::<T>()) == 0
+        (addr % mem::align_of::<T>()) == 0
     }
 }
 

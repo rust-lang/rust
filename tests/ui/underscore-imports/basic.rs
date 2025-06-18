@@ -18,25 +18,25 @@ mod m {
         fn tr2_is_in_scope(&self) {}
     }
 
-    impl Tr1 for ::S {}
-    impl Tr2 for ::S {}
+    impl Tr1 for crate::S {}
+    impl Tr2 for crate::S {}
 }
 
 mod unused {
-    use m::Tr1 as _; //~ WARN unused import
-    use S as _; //~ WARN unused import
+    use crate::m::Tr1 as _; //~ WARN unused import
+    use crate::S as _; //~ WARN unused import
     extern crate core as _; // OK
 }
 
 mod outer {
     mod middle {
-        pub use m::Tr1 as _;
-        pub use m::Tr2 as _; // OK, no name conflict
+        pub use crate::m::Tr1 as _;
+        pub use crate::m::Tr2 as _; // OK, no name conflict
         struct Tr1; // OK, no name conflict
         fn check() {
             // Both traits are in scope
-            ::S.tr1_is_in_scope();
-            ::S.tr2_is_in_scope();
+            crate::S.tr1_is_in_scope();
+            crate::S.tr2_is_in_scope();
         }
 
         mod inner {
@@ -44,8 +44,8 @@ mod outer {
             use super::*;
             fn check() {
                 // Both traits are in scope
-                ::S.tr1_is_in_scope();
-                ::S.tr2_is_in_scope();
+                crate::S.tr1_is_in_scope();
+                crate::S.tr2_is_in_scope();
             }
         }
     }
@@ -54,8 +54,8 @@ mod outer {
     use self::middle::*;
     fn check() {
         // Both traits are in scope
-        ::S.tr1_is_in_scope();
-        ::S.tr2_is_in_scope();
+        crate::S.tr1_is_in_scope();
+        crate::S.tr2_is_in_scope();
     }
 }
 

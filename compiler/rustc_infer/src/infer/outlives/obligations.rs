@@ -198,8 +198,11 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             if !self.tcx.recursion_limit().value_within_limit(iteration) {
+                // This may actually be reachable. If so, we should convert
+                // this to a proper error/consider whether we should detect
+                // this somewhere else.
                 bug!(
-                    "FIXME(-Znext-solver): Overflowed when processing region obligations: {my_region_obligations:#?}"
+                    "unexpected overflowed when processing region obligations: {my_region_obligations:#?}"
                 );
             }
 

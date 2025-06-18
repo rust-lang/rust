@@ -1,0 +1,18 @@
+error: unnecessary trailing semicolon
+  --> $DIR/suggest-remove-semi-in-macro-expansion-issue-142143.rs:6:43
+   |
+LL |     ($stmt:stmt) => { #[allow(bad_style)] $stmt }
+   |                                           ^^^^^
+...
+LL |     m!(;);
+   |     ----- in this macro invocation
+   |
+note: the lint level is defined here
+  --> $DIR/suggest-remove-semi-in-macro-expansion-issue-142143.rs:3:9
+   |
+LL | #![deny(redundant_semicolons)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

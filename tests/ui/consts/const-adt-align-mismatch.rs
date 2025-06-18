@@ -18,5 +18,5 @@ static FOO: Foo = Foo::C;
 fn main() {
     assert_eq!(FOO, Foo::C);
     assert_eq!(mem::size_of::<Foo>(), 12);
-    assert_eq!(mem::min_align_of::<Foo>(), 4);
+    assert_eq!(mem::align_of::<Foo>(), 4);
 }

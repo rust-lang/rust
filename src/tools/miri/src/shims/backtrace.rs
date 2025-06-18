@@ -169,8 +169,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             _ => throw_unsup_format!("unknown `miri_resolve_frame` flags {}", flags),
         }
 
-        this.write_scalar(Scalar::from_u32(lineno), &this.project_field(dest, FieldIdx::from_u32(2))?)?;
-        this.write_scalar(Scalar::from_u32(colno), &this.project_field(dest, FieldIdx::from_u32(3))?)?;
+        this.write_scalar(
+            Scalar::from_u32(lineno),
+            &this.project_field(dest, FieldIdx::from_u32(2))?,
+        )?;
+        this.write_scalar(
+            Scalar::from_u32(colno),
+            &this.project_field(dest, FieldIdx::from_u32(3))?,
+        )?;
 
         // Support a 4-field struct for now - this is deprecated
         // and slated for removal.

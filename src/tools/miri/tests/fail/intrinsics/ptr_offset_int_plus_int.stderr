@@ -2,7 +2,7 @@ error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to of
   --> tests/fail/intrinsics/ptr_offset_int_plus_int.rs:LL:CC
    |
 LL |         let _val = (1 as *mut u8).offset(1);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ in-bounds pointer arithmetic failed: attempting to offset pointer by 1 byte, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

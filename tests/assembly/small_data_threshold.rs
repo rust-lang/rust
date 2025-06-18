@@ -19,8 +19,14 @@
 #![no_core]
 #![crate_type = "lib"]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 
 #[lang = "drop_in_place"]
 fn drop_in_place<T>(_: *mut T) {}

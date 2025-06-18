@@ -1,0 +1,17 @@
+error: looks like a footnote ref, but has no matching footnote
+  --> tests/ui/doc_suspicious_footnotes_include.txt:1:23
+   |
+LL | This is not a footnote[^1].
+   |                       ^^^^
+   |
+   = note: `-D clippy::doc-suspicious-footnotes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_suspicious_footnotes)]`
+help: add footnote definition
+   |
+LL ~ [^2]: hello world
+LL + 
+LL + [^1]: <!-- description -->
+   |
+
+error: aborting due to 1 previous error
+

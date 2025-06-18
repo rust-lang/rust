@@ -71,7 +71,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::box_new
         | sym::breakpoint
         | sym::size_of
-        | sym::min_align_of
+        | sym::align_of
         | sym::needs_drop
         | sym::caller_location
         | sym::add_with_overflow
@@ -200,10 +200,8 @@ pub(crate) fn check_intrinsic_type(
         sym::abort => (0, 0, vec![], tcx.types.never),
         sym::unreachable => (0, 0, vec![], tcx.types.never),
         sym::breakpoint => (0, 0, vec![], tcx.types.unit),
-        sym::size_of | sym::pref_align_of | sym::min_align_of | sym::variant_count => {
-            (1, 0, vec![], tcx.types.usize)
-        }
-        sym::size_of_val | sym::min_align_of_val => {
+        sym::size_of | sym::align_of | sym::variant_count => (1, 0, vec![], tcx.types.usize),
+        sym::size_of_val | sym::align_of_val => {
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], tcx.types.usize)
         }
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),

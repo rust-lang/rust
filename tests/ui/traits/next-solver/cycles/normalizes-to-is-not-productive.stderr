@@ -12,6 +12,13 @@ LL | impl<T: Bound, U> Trait<U> for T {
    |         -----     ^^^^^^^^     ^
    |         |
    |         unsatisfied trait bound introduced here
+note: required by a bound in `Bound`
+  --> $DIR/normalizes-to-is-not-productive.rs:8:1
+   |
+LL | / trait Bound {
+LL | |     fn method();
+LL | | }
+   | |_^ required by this bound in `Bound`
 
 error[E0277]: the trait bound `Foo: Bound` is not satisfied
   --> $DIR/normalizes-to-is-not-productive.rs:47:19
