@@ -557,11 +557,19 @@ trigger_files = [
     "src/doc/unstable-book/src/compiler-flags/sanitizer.md",
     "src/doc/unstable-book/src/language-features/cfg-sanitize.md",
     "src/doc/unstable-book/src/language-features/cfi-encoding.md",
+<<<<<<< HEAD
     "src/doc/unstable-book/src/language-features/no-sanitize.md",
     "tests/codegen-llvm/sanitizer",
     "tests/codegen-llvm/split-lto-unit.rs",
     "tests/codegen-llvm/stack-probes-inline.rs",
     "tests/codegen-llvm/stack-protector.rs",
+=======
+    "src/doc/unstable-book/src/language-features/sanitize.md",
+    "tests/codegen/sanitizer",
+    "tests/codegen/split-lto-unit.rs",
+    "tests/codegen/stack-probes-inline.rs",
+    "tests/codegen/stack-protector.rs",
+>>>>>>> 1b89895c0c2 (Remove the no_sanitize attribute in favor of sanitize)
     "tests/ui/sanitizer",
     "tests/ui/stack-protector"
 ]
@@ -1171,7 +1179,7 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 [mentions."src/doc/unstable-book/src/language-features/cfi-encoding.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."src/doc/unstable-book/src/language-features/no-sanitize.md"]
+[mentions."src/doc/unstable-book/src/language-features/sanitize.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."src/doc/rustc/src/check-cfg.md"]
