@@ -26,7 +26,7 @@ use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
 use rustc_span::hygiene::SyntaxContext;
-use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, sym};
+use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, Symbol, sym};
 use smallvec::SmallVec;
 
 use crate::base::*;
@@ -1778,6 +1778,16 @@ impl InvocationCollectorNode for ast::Ty {
         fragment.make_ty()
     }
     fn walk(&mut self, collector: &mut InvocationCollector<'_, '_>) {
+        // Save the pre-expanded name of this `ImplTrait`, so that later when defining
+        // an APIT we use a name that doesn't have any placeholder fragments in it.
+        if let ast::TyKind::ImplTrait(..) = self.kind {
+            // HACK: pprust breaks strings with newlines when the type
+            // gets too long. We don't want these to show up in compiler
+            // output or built artifacts, so replace them here...
+            // Perhaps we should instead format APITs more robustly.
+            let name = Symbol::intern(&pprust::ty_to_string(self).replace('\n', " "));
+            collector.cx.resolver.insert_impl_trait_name(self.id, name);
+        }
         walk_ty(collector, self)
     }
     fn is_mac_call(&self) -> bool {
