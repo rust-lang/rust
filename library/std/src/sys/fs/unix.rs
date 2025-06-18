@@ -78,6 +78,23 @@ use libc::{
     stat64, unlinkat,
 };
 
+#[cfg(any(target_os = "freebsd", target_os = "aix"))]
+const TRAVERSE_DIRECTORY: i32 = libc::O_EXEC;
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "l4re", target_os = "redox"))]
+const TRAVERSE_DIRECTORY: i32 = libc::O_PATH;
+#[cfg(target_os = "illumos")]
+const TRAVERSE_DIRECTORY: i32 = libc::O_SEARCH;
+#[cfg(not(any(
+    target_os = "aix",
+    target_os = "android",
+    target_os = "freebsd",
+    target_os = "illumos",
+    target_os = "l4re",
+    target_os = "linux",
+    target_os = "redox",
+)))]
+const TRAVERSE_DIRECTORY: i32 = libc::O_RDONLY;
+
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt::{self, Write as _};
 use crate::fs::TryLockError;
@@ -278,11 +295,15 @@ impl Dir {
     pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let mut opts = OpenOptions::new();
         opts.read(true);
-        run_path_with_cstr(path.as_ref(), &|path| Self::open_c_dir(path, &opts))
+        run_path_with_cstr(path.as_ref(), &|path| Self::new_with_c(path, &opts))
     }
 
     pub fn new_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
-        run_path_with_cstr(path.as_ref(), &|path| Self::open_c_dir(path, &opts))
+        run_path_with_cstr(path.as_ref(), &|path| Self::new_with_c(path, opts))
+    }
+
+    pub fn new_for_traversal<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        run_path_with_cstr(path.as_ref(), &|path| Self::new_c(path))
     }
 
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
@@ -297,6 +318,14 @@ impl Dir {
 
     pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         run_path_with_cstr(path.as_ref(), &|path| self.create_dir_c(path))
+    }
+
+    pub fn open_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<Self> {
+        run_path_with_cstr(path.as_ref(), &|path| self.open_c_dir(path, &OpenOptions::new()))
+    }
+
+    pub fn open_dir_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<Self> {
+        run_path_with_cstr(path.as_ref(), &|path| self.open_c_dir(path, opts))
     }
 
     pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
@@ -329,7 +358,25 @@ impl Dir {
         Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }
 
-    pub fn open_c_dir(path: &CStr, opts: &OpenOptions) -> io::Result<Self> {
+    pub fn open_c_dir(&self, path: &CStr, opts: &OpenOptions) -> io::Result<Self> {
+        let flags = libc::O_CLOEXEC
+            | libc::O_DIRECTORY
+            | opts.get_access_mode()?
+            | opts.get_creation_mode()?
+            | (opts.custom_flags as c_int & !libc::O_ACCMODE);
+        let fd = cvt_r(|| unsafe {
+            openat64(self.0.as_raw_fd(), path.as_ptr(), flags, opts.mode as c_int)
+        })?;
+        Ok(Self(unsafe { OwnedFd::from_raw_fd(fd) }))
+    }
+
+    pub fn new_c(path: &CStr) -> io::Result<Self> {
+        let flags = libc::O_CLOEXEC | libc::O_DIRECTORY | TRAVERSE_DIRECTORY;
+        let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, 0) })?;
+        Ok(Self(unsafe { OwnedFd::from_raw_fd(fd) }))
+    }
+
+    pub fn new_with_c(path: &CStr, opts: &OpenOptions) -> io::Result<Self> {
         let flags = libc::O_CLOEXEC
             | libc::O_DIRECTORY
             | opts.get_access_mode()?
@@ -467,6 +514,8 @@ impl fmt::Debug for Dir {
     }
 }
 
+// SAFETY: `int dirfd (DIR *dirstream)` is MT-safe, implying that the pointer
+// may be safely sent among threads.
 unsafe impl Send for DirStream {}
 unsafe impl Sync for DirStream {}
 
