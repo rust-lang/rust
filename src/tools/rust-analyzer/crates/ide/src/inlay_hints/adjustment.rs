@@ -109,50 +109,90 @@ pub(super) fn hints(
         }
         has_adjustments = true;
 
-        // FIXME: Add some nicer tooltips to each of these
-        let (text, coercion) = match kind {
+        let (text, coercion, detailed_tooltip) = match kind {
             Adjust::NeverToAny if config.adjustment_hints == AdjustmentHints::Always => {
                 allow_edit = false;
-                ("<never-to-any>", "never to any")
+                (
+                    "<never-to-any>",
+                    "never to any",
+                    "Coerces the never type `!` into any other type. This happens in code paths that never return, like after `panic!()` or `return`.",
+                )
             }
-            Adjust::Deref(None) => ("*", "dereference"),
-            Adjust::Deref(Some(OverloadedDeref(Mutability::Shared))) => {
-                ("*", "`Deref` dereference")
-            }
-            Adjust::Deref(Some(OverloadedDeref(Mutability::Mut))) => {
-                ("*", "`DerefMut` dereference")
-            }
-            Adjust::Borrow(AutoBorrow::Ref(Mutability::Shared)) => ("&", "borrow"),
-            Adjust::Borrow(AutoBorrow::Ref(Mutability::Mut)) => ("&mut ", "unique borrow"),
-            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Shared)) => {
-                ("&raw const ", "const pointer borrow")
-            }
-            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Mut)) => {
-                ("&raw mut ", "mut pointer borrow")
-            }
+            Adjust::Deref(None) => (
+                "*",
+                "dereference",
+                "Built-in dereference of a reference to access the underlying value. The compiler inserts `*` to get the value from `&T`.",
+            ),
+            Adjust::Deref(Some(OverloadedDeref(Mutability::Shared))) => (
+                "*",
+                "`Deref` dereference",
+                "Dereference via the `Deref` trait. Used for types like `Box<T>` or `Rc<T>` so they act like plain `T`.",
+            ),
+            Adjust::Deref(Some(OverloadedDeref(Mutability::Mut))) => (
+                "*",
+                "`DerefMut` dereference",
+                "Mutable dereference using the `DerefMut` trait. Enables smart pointers to give mutable access to their inner values.",
+            ),
+            Adjust::Borrow(AutoBorrow::Ref(Mutability::Shared)) => (
+                "&",
+                "shared borrow",
+                "Inserts `&` to create a shared reference. Lets you use a value without moving or cloning it.",
+            ),
+            Adjust::Borrow(AutoBorrow::Ref(Mutability::Mut)) => (
+                "&mut ",
+                "mutable borrow",
+                "Inserts `&mut` to create a unique, mutable reference. Lets you modify a value without taking ownership.",
+            ),
+            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Shared)) => (
+                "&raw const ",
+                "const raw pointer",
+                "Converts a reference to a raw const pointer `*const T`. Often used when working with FFI or unsafe code.",
+            ),
+            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Mut)) => (
+                "&raw mut ",
+                "mut raw pointer",
+                "Converts a mutable reference to a raw mutable pointer `*mut T`. Allows mutation in unsafe contexts.",
+            ),
             // some of these could be represented via `as` casts, but that's not too nice and
             // handling everything as a prefix expr makes the `(` and `)` insertion easier
             Adjust::Pointer(cast) if config.adjustment_hints == AdjustmentHints::Always => {
                 allow_edit = false;
                 match cast {
-                    PointerCast::ReifyFnPointer => {
-                        ("<fn-item-to-fn-pointer>", "fn item to fn pointer")
-                    }
+                    PointerCast::ReifyFnPointer => (
+                        "<fn-item-to-fn-pointer>",
+                        "fn item to fn pointer",
+                        "Converts a named function to a function pointer `fn()`. Useful when passing functions as values."
+                    ),
                     PointerCast::UnsafeFnPointer => (
                         "<safe-fn-pointer-to-unsafe-fn-pointer>",
                         "safe fn pointer to unsafe fn pointer",
+                        "Coerces a safe function pointer to an unsafe one. Allows calling it in an unsafe context."
                     ),
-                    PointerCast::ClosureFnPointer(Safety::Unsafe) => {
-                        ("<closure-to-unsafe-fn-pointer>", "closure to unsafe fn pointer")
-                    }
-                    PointerCast::ClosureFnPointer(Safety::Safe) => {
-                        ("<closure-to-fn-pointer>", "closure to fn pointer")
-                    }
-                    PointerCast::MutToConstPointer => {
-                        ("<mut-ptr-to-const-ptr>", "mut ptr to const ptr")
-                    }
-                    PointerCast::ArrayToPointer => ("<array-ptr-to-element-ptr>", ""),
-                    PointerCast::Unsize => ("<unsize>", "unsize"),
+                    PointerCast::ClosureFnPointer(Safety::Unsafe) => (
+                        "<closure-to-unsafe-fn-pointer>",
+                        "closure to unsafe fn pointer",
+                        "Converts a non-capturing closure to an unsafe function pointer. Required for use in `extern` or unsafe APIs."
+                    ),
+                    PointerCast::ClosureFnPointer(Safety::Safe) => (
+                        "<closure-to-fn-pointer>",
+                        "closure to fn pointer",
+                        "Converts a non-capturing closure to a function pointer. Lets closures behave like plain functions."
+                    ),
+                    PointerCast::MutToConstPointer => (
+                        "<mut-ptr-to-const-ptr>",
+                        "mut ptr to const ptr",
+                        "Coerces `*mut T` to `*const T`. Safe because const pointers restrict what you can do."
+                    ),
+                    PointerCast::ArrayToPointer => (
+                        "<array-ptr-to-element-ptr>",
+                        "array to pointer",
+                        "Converts an array to a pointer to its first element. Similar to how arrays decay to pointers in C."
+                    ),
+                    PointerCast::Unsize => (
+                        "<unsize>",
+                        "unsize coercion",
+                        "Converts a sized type to an unsized one. Used for things like turning arrays into slices or concrete types into trait objects."
+                    ),
                 }
             }
             _ => continue,
@@ -162,9 +202,12 @@ pub(super) fn hints(
             linked_location: None,
             tooltip: Some(config.lazy_tooltip(|| {
                 InlayTooltip::Markdown(format!(
-                    "`{}` → `{}` ({coercion} coercion)",
+                    "`{}` → `{}`\n\n**{}**\n\n{}",
                     source.display(sema.db, display_target),
                     target.display(sema.db, display_target),
+                    coercion.chars().next().unwrap().to_uppercase().collect::<String>()
+                        + &coercion[1..],
+                    detailed_tooltip
                 ))
             })),
         };
@@ -175,7 +218,7 @@ pub(super) fn hints(
     }
 
     if !postfix && needs_inner_parens {
-        pre.label.append_str("(");
+        (&mut pre.label).append_str("(");
     }
     if needs_outer_parens || (!postfix && needs_inner_parens) {
         post.label.append_str(")");
