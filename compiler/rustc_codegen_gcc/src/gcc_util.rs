@@ -143,6 +143,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
 // To find a list of GCC's names, check https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
 pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]> {
     let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };
+    // cSpell:disable
     match (arch, s) {
         // FIXME: seems like x87 does not exist?
         ("x86", "x87") => smallvec![],
@@ -181,6 +182,7 @@ pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]>
         ("aarch64", "sve2-bitperm") => smallvec!["sve2-bitperm", "neon"],
         (_, s) => smallvec![s],
     }
+    // cSpell:enable
 }
 
 fn arch_to_gcc(name: &str) -> &str {

@@ -158,6 +158,7 @@ fn create_wrapper_function(
         }
     } else {
         assert!(output.is_none());
+        block.add_eval(None, ret);
         block.end_with_void_return(None);
     }
 
