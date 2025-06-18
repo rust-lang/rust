@@ -1,18 +1,21 @@
 //@ check-pass
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
+
 // Regression test for <https://github.com/rust-lang/rust/issues/123303>.
 // This time EXCEPT without `dyn` builtin bounds :^)
 
 pub trait Trait: Supertrait {}
 
 trait Impossible {}
-impl<F: ?Sized + Impossible> Trait for F {}
+impl<F: Impossible> Trait for F {}
 
 pub trait Supertrait {}
 
-impl<T: ?Sized + Trait + Impossible> Supertrait for T {}
+impl<T: Trait + Impossible> Supertrait for T {}
 
-fn needs_supertrait<T: ?Sized + Supertrait>() {}
-fn needs_trait<T: ?Sized + Trait>() {}
+fn needs_supertrait<T: Supertrait>() {}
+fn needs_trait<T: Trait>() {}
 
 struct A;
 impl Trait for A where A: Supertrait {}

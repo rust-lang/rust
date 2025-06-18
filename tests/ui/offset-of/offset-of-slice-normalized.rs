@@ -4,13 +4,15 @@
 //@ run-pass
 
 #![feature(offset_of_slice)]
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 use std::mem::offset_of;
 
 trait Mirror {
-    type Assoc: ?Sized;
+    type Assoc;
 }
-impl<T: ?Sized> Mirror for T {
+impl<T> Mirror for T {
     type Assoc = T;
 }
 

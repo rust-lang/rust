@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/dst-bad-coerce2.rs:15:33
+  --> $DIR/dst-bad-coerce2.rs:17:33
    |
 LL |     let f3: &mut Fat<[isize]> = f2;
    |             -----------------   ^^ types differ in mutability
@@ -10,7 +10,7 @@ LL |     let f3: &mut Fat<[isize]> = f2;
                       found reference `&Fat<[isize; 3]>`
 
 error[E0308]: mismatched types
-  --> $DIR/dst-bad-coerce2.rs:20:33
+  --> $DIR/dst-bad-coerce2.rs:22:33
    |
 LL |     let f3: &mut Fat<dyn Bar> = f2;
    |             -----------------   ^^ types differ in mutability
@@ -21,7 +21,7 @@ LL |     let f3: &mut Fat<dyn Bar> = f2;
                       found reference `&Fat<Foo>`
 
 error[E0308]: mismatched types
-  --> $DIR/dst-bad-coerce2.rs:25:31
+  --> $DIR/dst-bad-coerce2.rs:27:31
    |
 LL |     let f3: &mut ([isize],) = f2;
    |             ---------------   ^^ types differ in mutability
@@ -32,7 +32,7 @@ LL |     let f3: &mut ([isize],) = f2;
                       found reference `&([isize; 3],)`
 
 error[E0308]: mismatched types
-  --> $DIR/dst-bad-coerce2.rs:30:31
+  --> $DIR/dst-bad-coerce2.rs:32:31
    |
 LL |     let f3: &mut (dyn Bar,) = f2;
    |             ---------------   ^^ types differ in mutability

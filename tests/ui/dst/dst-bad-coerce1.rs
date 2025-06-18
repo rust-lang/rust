@@ -1,6 +1,8 @@
 // Attempt to change the type as well as unsizing.
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
-struct Fat<T: ?Sized> {
+struct Fat<T> {
     ptr: T
 }
 

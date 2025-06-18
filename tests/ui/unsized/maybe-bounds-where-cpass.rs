@@ -1,6 +1,9 @@
 //@ check-pass
 
-struct S<T>(*const T) where T: ?Sized;
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
+
+struct S<T>(*const T);
 
 
 fn main() {

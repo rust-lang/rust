@@ -1,15 +1,17 @@
 // Test that we cannot create objects from unsized types.
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 trait Foo { fn foo(&self) {} }
 impl Foo for str {}
 impl Foo for [u8] {}
 
-fn test1<T: ?Sized + Foo>(t: &T) {
+fn test1<T: Foo>(t: &T) {
     let u: &dyn Foo = t;
     //~^ ERROR the size for values of type
 }
 
-fn test2<T: ?Sized + Foo>(t: &T) {
+fn test2<T: Foo>(t: &T) {
     let v: &dyn Foo = t as &dyn Foo;
     //~^ ERROR the size for values of type
 }

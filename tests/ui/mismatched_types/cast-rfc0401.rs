@@ -1,9 +1,12 @@
-fn illegal_cast<U:?Sized,V:?Sized>(u: *const U) -> *const V
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
+
+fn illegal_cast<U,V>(u: *const U) -> *const V
 {
     u as *const V //~ ERROR is invalid
 }
 
-fn illegal_cast_2<U:?Sized>(u: *const U) -> *const str
+fn illegal_cast_2<U>(u: *const U) -> *const str
 {
     u as *const str //~ ERROR is invalid
 }

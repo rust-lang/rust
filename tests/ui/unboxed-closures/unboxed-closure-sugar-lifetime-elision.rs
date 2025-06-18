@@ -3,7 +3,8 @@
 // angle brackets. This test covers only simple types and in
 // particular doesn't test bound regions.
 
-#![feature(unboxed_closures)]
+#![feature(rustc_attrs, unboxed_closures)]
+#![rustc_no_implicit_bounds]
 #![allow(dead_code)]
 
 use std::marker;
@@ -13,9 +14,9 @@ trait Foo<T> {
     fn dummy(&self, t: T);
 }
 
-trait Eq<X: ?Sized> { }
-impl<X: ?Sized> Eq<X> for X { }
-fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
+trait Eq<X> { }
+impl<X> Eq<X> for X { }
+fn eq<A,B:Eq<A>>() { }
 
 fn main() {
     eq::< dyn for<'a> Foo<(&'a isize,), Output=&'a isize>,

@@ -3,16 +3,18 @@
 
 #![crate_type = "lib"]
 #![feature(lang_items)]
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 #![no_std]
 
-struct NonNull<T: ?Sized>(*const T);
+struct NonNull<T>(*const T);
 
-struct Unique<T: ?Sized>(NonNull<T>);
+struct Unique<T>(NonNull<T>);
 
 #[lang = "owned_box"]
-pub struct Box<T: ?Sized>(Unique<T>);
+pub struct Box<T>(Unique<T>);
 
-impl<T: ?Sized> Drop for Box<T> {
+impl<T> Drop for Box<T> {
     #[inline(always)]
     fn drop(&mut self) {
         dealloc(self.0.0.0)
@@ -20,7 +22,7 @@ impl<T: ?Sized> Drop for Box<T> {
 }
 
 #[inline(never)]
-fn dealloc<T: ?Sized>(_: *const T) {}
+fn dealloc<T>(_: *const T) {}
 
 pub struct Foo<T>(T);
 

@@ -1,7 +1,10 @@
 //@ compile-flags: -Z mir-opt-level=3
 //@ run-pass
 
-struct Baz<T: ?Sized> {
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
+
+struct Baz<T> {
     a: T
 }
 

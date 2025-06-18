@@ -4,6 +4,8 @@
 // particular doesn't test bound regions.
 
 #![feature(unboxed_closures)]
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 #![allow(dead_code)]
 
 trait Foo<T> {
@@ -11,9 +13,9 @@ trait Foo<T> {
     fn dummy(&self, t: T, u: Self::Output);
 }
 
-trait Eq<X: ?Sized> { }
-impl<X: ?Sized> Eq<X> for X { }
-fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
+trait Eq<X> { }
+impl<X> Eq<X> for X { }
+fn eq<A,B: Eq<A>>() { }
 
 fn test<'a,'b>() {
     // No errors expected:

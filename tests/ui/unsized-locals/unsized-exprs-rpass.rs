@@ -1,10 +1,12 @@
 //@ run-pass
 #![allow(internal_features, unused_braces, unused_parens)]
 #![feature(unsized_fn_params)]
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
-struct A<X: ?Sized>(#[allow(dead_code)] X);
+struct A<X>(#[allow(dead_code)] X);
 
-fn udrop<T: ?Sized>(_x: T) {}
+fn udrop<T>(_x: T) {}
 fn foo() -> Box<[u8]> {
     Box::new(*b"foo")
 }

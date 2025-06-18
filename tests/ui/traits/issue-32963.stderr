@@ -1,5 +1,5 @@
 error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/issue-32963.rs:8:31
+  --> $DIR/issue-32963.rs:11:31
    |
 LL |     size_of_copy::<dyn Misc + Copy>();
    |                        ----   ^^^^ additional non-auto trait

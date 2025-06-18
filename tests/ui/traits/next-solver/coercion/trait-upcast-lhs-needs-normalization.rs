@@ -1,13 +1,15 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 pub trait A {}
 pub trait B: A {}
 
 pub trait Mirror {
-    type Assoc: ?Sized;
+    type Assoc;
 }
-impl<T: ?Sized> Mirror for T {
+impl<T> Mirror for T {
     type Assoc = T;
 }
 

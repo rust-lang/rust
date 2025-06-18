@@ -3,7 +3,10 @@
 // because it would require stack allocation of an unsized temporary (*g in the
 // test).
 
-struct Fat<T: ?Sized> {
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
+
+struct Fat<T> {
     ptr: T
 }
 

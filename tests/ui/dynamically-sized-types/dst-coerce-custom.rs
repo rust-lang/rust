@@ -2,15 +2,17 @@
 // Test a very simple custom DST coercion.
 
 #![feature(unsize, coerce_unsized)]
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 use std::ops::CoerceUnsized;
 use std::marker::Unsize;
 
-struct Bar<T: ?Sized> {
+struct Bar<T> {
     x: *const T,
 }
 
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Bar<U>> for Bar<T> {}
+impl<T: Unsize<U>, U> CoerceUnsized<Bar<U>> for Bar<T> {}
 
 trait Baz {
     fn get(&self) -> i32;

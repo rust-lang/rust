@@ -3,6 +3,7 @@
 //@[next] compile-flags: -Znext-solver
 
 #![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 #[rustc_deny_explicit_impl]
 trait NotImplYesObject {}
@@ -23,13 +24,13 @@ impl NotImplYesObject for () {}
 // If there is no automatic impl then we can add a manual impl:
 impl YesImplNotObject2 for dyn YesImplNotObject2 {}
 
-fn test_not_impl_yes_object<T: NotImplYesObject + ?Sized>() {}
+fn test_not_impl_yes_object<T: NotImplYesObject>() {}
 
-fn test_not_impl_not_object<T: NotImplNotObject + ?Sized>() {}
+fn test_not_impl_not_object<T: NotImplNotObject>() {}
 
-fn test_yes_impl_not_object<T: YesImplNotObject + ?Sized>() {}
+fn test_yes_impl_not_object<T: YesImplNotObject>() {}
 
-fn test_yes_impl_not_object2<T: YesImplNotObject2 + ?Sized>() {}
+fn test_yes_impl_not_object2<T: YesImplNotObject2>() {}
 
 fn main() {
     test_not_impl_yes_object::<dyn NotImplYesObject>();

@@ -1,36 +1,38 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 // A minimization of an ambiguity when using typenum. See
 // https://github.com/rust-lang/trait-system-refactor-initiative/issues/55
 // for more details.
 trait Id {
-    type Assoc: ?Sized;
+    type Assoc;
 }
-impl<T: ?Sized> Id for T {
+impl<T> Id for T {
     type Assoc = T;
 }
 
-trait WithAssoc<T: ?Sized> {
-    type Assoc: ?Sized;
+trait WithAssoc<T> {
+    type Assoc;
 }
 
 
 struct Leaf;
-struct Wrapper<U: ?Sized>(U);
+struct Wrapper<U>(U);
 
-impl<U: ?Sized> WithAssoc<U> for Leaf {
+impl<U> WithAssoc<U> for Leaf {
     type Assoc = U;
 }
 
-impl<Ul: ?Sized, Ur: ?Sized> WithAssoc<Wrapper<Ur>> for Wrapper<Ul>
+impl<Ul, Ur> WithAssoc<Wrapper<Ur>> for Wrapper<Ul>
 where
     Ul: WithAssoc<Ur>,
 {
     type Assoc = <<Ul as WithAssoc<Ur>>::Assoc as Id>::Assoc;
 }
 
-fn bound<T: ?Sized, U: ?Sized, V: ?Sized>()
+fn bound<T, U, V>()
 where
     T: WithAssoc<U, Assoc = V>,
 {

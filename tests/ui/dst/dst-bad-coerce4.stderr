@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/dst-bad-coerce4.rs:10:32
+  --> $DIR/dst-bad-coerce4.rs:12:32
    |
 LL |     let f2: &Fat<[isize; 3]> = f1;
    |             ----------------   ^^ expected `&Fat<[isize; 3]>`, found `&Fat<[isize]>`

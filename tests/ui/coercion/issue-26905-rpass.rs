@@ -1,17 +1,19 @@
 //@ run-pass
 #![feature(unsize, coerce_unsized)]
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 // Verfies that PhantomData is ignored for DST coercions
 
 use std::marker::{Unsize, PhantomData};
 use std::ops::CoerceUnsized;
 
-struct MyRc<T: ?Sized> {
+struct MyRc<T> {
     _ptr: *const T,
     _boo: PhantomData<T>,
 }
 
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<MyRc<U>> for MyRc<T>{ }
+impl<T: Unsize<U>, U> CoerceUnsized<MyRc<U>> for MyRc<T>{ }
 
 fn main() {
     let data = [1, 2, 3];
