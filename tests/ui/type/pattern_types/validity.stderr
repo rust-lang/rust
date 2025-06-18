@@ -9,7 +9,7 @@ LL | const BAD: pattern_type!(u32 is 1..) = unsafe { std::mem::transmute(0) };
                HEX_DUMP
            }
 
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC0[0x0..0x4], but memory is uninitialized at [0x0..0x4], and this operation requires initialized memory
   --> $DIR/validity.rs:13:1
    |
 LL | const BAD_UNINIT: pattern_type!(u32 is 1..) =
@@ -46,7 +46,7 @@ LL | const BAD_FOO: Foo = Foo(Bar(unsafe { std::mem::transmute(0) }));
                HEX_DUMP
            }
 
-error[E0080]: using uninitialized data, but this operation requires initialized memory
+error[E0080]: reading memory at ALLOC1[0x0..0x4], but memory is uninitialized at [0x0..0x4], and this operation requires initialized memory
   --> $DIR/validity.rs:29:1
    |
 LL | const CHAR_UNINIT: pattern_type!(char is 'A'..'Z') =
