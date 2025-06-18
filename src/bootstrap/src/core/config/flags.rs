@@ -80,6 +80,7 @@ pub struct Flags {
     /// include default paths in addition to the provided ones
     pub include_default_paths: bool,
 
+    /// rustc error format
     #[arg(global = true, value_hint = clap::ValueHint::Other, long)]
     pub rustc_error_format: Option<String>,
 
@@ -127,9 +128,6 @@ pub struct Flags {
     /// otherwise, use the default configured behaviour
     pub warnings: Warnings,
 
-    #[arg(global = true, value_hint = clap::ValueHint::Other, long, value_name = "FORMAT")]
-    /// rustc error format
-    pub error_format: Option<String>,
     #[arg(global = true, long)]
     /// use message-format=json
     pub json_output: bool,
