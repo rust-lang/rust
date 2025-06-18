@@ -577,6 +577,7 @@ symbols! {
         box_new,
         box_patterns,
         box_syntax,
+        boxed_slice,
         bpf_target_feature,
         braced_empty_structs,
         branch,

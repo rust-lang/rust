@@ -34,6 +34,7 @@ pub(crate) mod deprecation;
 pub(crate) mod inline;
 pub(crate) mod lint_helpers;
 pub(crate) mod repr;
+pub(crate) mod resolution;
 pub(crate) mod semantics;
 pub(crate) mod stability;
 pub(crate) mod transparency;
