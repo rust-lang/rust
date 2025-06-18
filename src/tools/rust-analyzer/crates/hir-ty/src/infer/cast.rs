@@ -43,7 +43,7 @@ impl CastTy {
                 let (AdtId::EnumId(id), _) = t.as_adt()? else {
                     return None;
                 };
-                let enum_data = table.db.enum_variants(id);
+                let enum_data = id.enum_variants(table.db);
                 if enum_data.is_payload_free(table.db) { Some(Self::Int(Int::CEnum)) } else { None }
             }
             TyKind::Raw(m, ty) => Some(Self::Ptr(ty.clone(), *m)),

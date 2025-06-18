@@ -13,13 +13,14 @@ use smallvec::{SmallVec, smallvec};
 use span::Edition;
 use stdx::format_to;
 use syntax::ast;
+use thin_vec::ThinVec;
 
 use crate::{
     AdtId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap, HasModule, ImplId,
     LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
     db::DefDatabase,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
-    visibility::{Visibility, VisibilityExplicitness},
+    visibility::Visibility,
 };
 
 #[derive(Debug, Default)]
@@ -155,22 +156,21 @@ pub struct ItemScope {
 
     /// The defs declared in this scope. Each def has a single scope where it is
     /// declared.
-    declarations: Vec<ModuleDefId>,
+    declarations: ThinVec<ModuleDefId>,
 
-    impls: Vec<ImplId>,
-    #[allow(clippy::box_collection)]
-    extern_blocks: Option<Box<Vec<ExternBlockId>>>,
-    unnamed_consts: Vec<ConstId>,
+    impls: ThinVec<ImplId>,
+    extern_blocks: ThinVec<ExternBlockId>,
+    unnamed_consts: ThinVec<ConstId>,
     /// Traits imported via `use Trait as _;`.
-    unnamed_trait_imports: FxHashMap<TraitId, Item<()>>,
+    unnamed_trait_imports: ThinVec<(TraitId, Item<()>)>,
 
     // the resolutions of the imports of this scope
     use_imports_types: FxHashMap<ImportOrExternCrate, ImportOrDef>,
     use_imports_values: FxHashMap<ImportOrGlob, ImportOrDef>,
     use_imports_macros: FxHashMap<ImportOrExternCrate, ImportOrDef>,
 
-    use_decls: Vec<UseId>,
-    extern_crate_decls: Vec<ExternCrateId>,
+    use_decls: ThinVec<UseId>,
+    extern_crate_decls: ThinVec<ExternCrateId>,
     /// Macros visible in current module in legacy textual scope
     ///
     /// For macros invoked by an unqualified identifier like `bar!()`, `legacy_macros` will be searched in first.
@@ -183,7 +183,7 @@ pub struct ItemScope {
     /// Module scoped macros will be inserted into `items` instead of here.
     // FIXME: Macro shadowing in one module is not properly handled. Non-item place macros will
     // be all resolved to the last one defined if shadowing happens.
-    legacy_macros: FxHashMap<Name, SmallVec<[MacroId; 1]>>,
+    legacy_macros: FxHashMap<Name, SmallVec<[MacroId; 2]>>,
     /// The attribute macro invocations in this scope.
     attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
     /// The macro invocations in this scope.
@@ -198,7 +198,7 @@ struct DeriveMacroInvocation {
     attr_id: AttrId,
     /// The `#[derive]` call
     attr_call_id: MacroCallId,
-    derive_call_ids: SmallVec<[Option<MacroCallId>; 1]>,
+    derive_call_ids: SmallVec<[Option<MacroCallId>; 4]>,
 }
 
 pub(crate) static BUILTIN_SCOPE: LazyLock<FxIndexMap<Name, PerNs>> = LazyLock::new(|| {
@@ -322,7 +322,7 @@ impl ItemScope {
     }
 
     pub fn extern_blocks(&self) -> impl Iterator<Item = ExternBlockId> + '_ {
-        self.extern_blocks.iter().flat_map(|it| it.iter()).copied()
+        self.extern_blocks.iter().copied()
     }
 
     pub fn use_decls(&self) -> impl ExactSizeIterator<Item = UseId> + '_ {
@@ -435,7 +435,7 @@ impl ItemScope {
                 ModuleDefId::TraitId(t) => Some(t),
                 _ => None,
             })
-            .chain(self.unnamed_trait_imports.keys().copied())
+            .chain(self.unnamed_trait_imports.iter().map(|&(t, _)| t))
     }
 
     pub(crate) fn resolutions(&self) -> impl Iterator<Item = (Option<Name>, PerNs)> + '_ {
@@ -476,7 +476,7 @@ impl ItemScope {
     }
 
     pub(crate) fn define_extern_block(&mut self, extern_block: ExternBlockId) {
-        self.extern_blocks.get_or_insert_default().push(extern_block);
+        self.extern_blocks.push(extern_block);
     }
 
     pub(crate) fn define_extern_crate_decl(&mut self, extern_crate: ExternCrateId) {
@@ -564,7 +564,7 @@ impl ItemScope {
 
     // FIXME: This is only used in collection, we should move the relevant parts of it out of ItemScope
     pub(crate) fn unnamed_trait_vis(&self, tr: TraitId) -> Option<Visibility> {
-        self.unnamed_trait_imports.get(&tr).map(|trait_| trait_.vis)
+        self.unnamed_trait_imports.iter().find(|&&(t, _)| t == tr).map(|(_, trait_)| trait_.vis)
     }
 
     pub(crate) fn push_unnamed_trait(
@@ -573,7 +573,7 @@ impl ItemScope {
         vis: Visibility,
         import: Option<ImportId>,
     ) {
-        self.unnamed_trait_imports.insert(tr, Item { def: (), vis, import });
+        self.unnamed_trait_imports.push((tr, Item { def: (), vis, import }));
     }
 
     pub(crate) fn push_res_with_import(
@@ -720,33 +720,19 @@ impl ItemScope {
     }
 
     /// Marks everything that is not a procedural macro as private to `this_module`.
-    pub(crate) fn censor_non_proc_macros(&mut self, this_module: ModuleId) {
+    pub(crate) fn censor_non_proc_macros(&mut self, krate: Crate) {
         self.types
             .values_mut()
             .map(|def| &mut def.vis)
             .chain(self.values.values_mut().map(|def| &mut def.vis))
-            .chain(self.unnamed_trait_imports.values_mut().map(|def| &mut def.vis))
-            .for_each(|vis| match vis {
-                &mut Visibility::Module(_, visibility_explicitness) => {
-                    *vis = Visibility::Module(this_module, visibility_explicitness)
-                }
-                Visibility::Public => {
-                    *vis = Visibility::Module(this_module, VisibilityExplicitness::Implicit)
-                }
-            });
+            .chain(self.unnamed_trait_imports.iter_mut().map(|(_, def)| &mut def.vis))
+            .for_each(|vis| *vis = Visibility::PubCrate(krate));
 
         for mac in self.macros.values_mut() {
             if matches!(mac.def, MacroId::ProcMacroId(_) if mac.import.is_none()) {
                 continue;
             }
-            match mac.vis {
-                Visibility::Module(_, visibility_explicitness) => {
-                    mac.vis = Visibility::Module(this_module, visibility_explicitness)
-                }
-                Visibility::Public => {
-                    mac.vis = Visibility::Module(this_module, VisibilityExplicitness::Implicit)
-                }
-            }
+            mac.vis = Visibility::PubCrate(krate)
         }
     }
 
@@ -817,9 +803,7 @@ impl ItemScope {
             macro_invocations,
             extern_blocks,
         } = self;
-        if let Some(it) = extern_blocks {
-            it.shrink_to_fit();
-        }
+        extern_blocks.shrink_to_fit();
         types.shrink_to_fit();
         values.shrink_to_fit();
         macros.shrink_to_fit();

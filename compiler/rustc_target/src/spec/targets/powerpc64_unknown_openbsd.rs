@@ -10,6 +10,7 @@ pub(crate) fn target() -> Target {
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.max_atomic_width = Some(64);
     base.stack_probes = StackProbeType::Inline;
+    base.llvm_abiname = "elfv2".into();
 
     Target {
         llvm_target: "powerpc64-unknown-openbsd".into(),

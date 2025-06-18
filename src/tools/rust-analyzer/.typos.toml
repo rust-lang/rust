@@ -18,6 +18,7 @@ extend-ignore-re = [
     "INOUT",
     "optin",
     "=Pn",
+    "\\[[0-9A-F]{4},",  # AstId hex hashes
     # ignore `// spellchecker:off` until `// spellchecker:on`
     "(?s)(#|//)\\s*spellchecker:off.*?\\n\\s*(#|//)\\s*spellchecker:on",
 ]

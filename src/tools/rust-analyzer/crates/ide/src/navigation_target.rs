@@ -867,7 +867,7 @@ pub(crate) fn orig_range_with_focus_r(
             }
 
             // def site name
-            // FIXME: This can be de improved
+            // FIXME: This can be improved
             Some((focus_range, _ctxt)) => {
                 match value_range {
                     // but overall node is in macro input

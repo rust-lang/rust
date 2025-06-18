@@ -1,5 +1,43 @@
+error[E0277]: the size for values of type `Device` cannot be known
+  --> $DIR/unsized-extern-derefmove.rs:9:28
+   |
+LL | unsafe fn make_device() -> Box<Device> {
+   |                            ^^^^^^^^^^^ doesn't have a known size
+   |
+   = help: the trait `MetaSized` is not implemented for `Device`
+note: required by a bound in `Box`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+
+error[E0277]: the size for values of type `Device` cannot be known
+  --> $DIR/unsized-extern-derefmove.rs:11:19
+   |
+LL |     Box::from_raw(0 as *mut _)
+   |     ------------- ^^^^^^^^^^^ the trait `MetaSized` is not implemented for `Device`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: the trait bound `Device: MetaSized` is not satisfied
+note: required by a bound in `Box::<T>::from_raw`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+help: consider borrowing here
+   |
+LL |     Box::from_raw(&0 as *mut _)
+   |                   +
+LL |     Box::from_raw(&mut 0 as *mut _)
+   |                   ++++
+
+error[E0277]: the size for values of type `Device` cannot be known
+  --> $DIR/unsized-extern-derefmove.rs:11:5
+   |
+LL |     Box::from_raw(0 as *mut _)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a known size
+   |
+   = help: the trait `MetaSized` is not implemented for `Device`
+note: required by a bound in `Box`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+
 error[E0277]: the size for values of type `Device` cannot be known at compilation time
-  --> $DIR/unsized-extern-derefmove.rs:14:9
+  --> $DIR/unsized-extern-derefmove.rs:17:9
    |
 LL |     let d: Device = unsafe { *make_device() };
    |         ^ doesn't have a size known at compile-time
@@ -11,6 +49,16 @@ help: consider borrowing here
 LL |     let d: &Device = unsafe { *make_device() };
    |            +
 
-error: aborting due to 1 previous error
+error[E0277]: the size for values of type `Device` cannot be known
+  --> $DIR/unsized-extern-derefmove.rs:17:31
+   |
+LL |     let d: Device = unsafe { *make_device() };
+   |                               ^^^^^^^^^^^^^ doesn't have a known size
+   |
+   = help: the trait `MetaSized` is not implemented for `Device`
+note: required by a bound in `Box`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

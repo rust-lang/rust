@@ -492,7 +492,7 @@ impl CargoWorkspace {
             is_virtual_workspace &= manifest != ws_manifest_path;
             let pkg = packages.alloc(PackageData {
                 id: id.repr.clone(),
-                name,
+                name: name.to_string(),
                 version,
                 manifest: manifest.clone(),
                 targets: Vec::new(),
@@ -547,10 +547,12 @@ impl CargoWorkspace {
                 .flat_map(|dep| DepKind::iter(&dep.dep_kinds).map(move |kind| (dep, kind)));
             for (dep_node, kind) in dependencies {
                 let &pkg = pkg_by_id.get(&dep_node.pkg).unwrap();
-                let dep = PackageDependency { name: dep_node.name.clone(), pkg, kind };
+                let dep = PackageDependency { name: dep_node.name.to_string(), pkg, kind };
                 packages[source].dependencies.push(dep);
             }
-            packages[source].active_features.extend(node.features);
+            packages[source]
+                .active_features
+                .extend(node.features.into_iter().map(|it| it.to_string()));
         }
 
         CargoWorkspace {

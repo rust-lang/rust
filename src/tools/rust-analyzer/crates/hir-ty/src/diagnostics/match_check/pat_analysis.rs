@@ -50,7 +50,7 @@ impl EnumVariantContiguousIndex {
     }
 
     fn to_enum_variant_id(self, db: &dyn HirDatabase, eid: EnumId) -> EnumVariantId {
-        db.enum_variants(eid).variants[self.0].0
+        eid.enum_variants(db).variants[self.0].0
     }
 }
 
@@ -458,14 +458,14 @@ impl PatCx for MatchCheckCtx<'_> {
             TyKind::Scalar(Scalar::Int(..) | Scalar::Uint(..)) => unhandled(),
             TyKind::Array(..) | TyKind::Slice(..) => unhandled(),
             &TyKind::Adt(AdtId(adt @ hir_def::AdtId::EnumId(enum_id)), ref subst) => {
-                let enum_data = cx.db.enum_variants(enum_id);
+                let enum_data = enum_id.enum_variants(cx.db);
                 let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive(adt);
 
                 if enum_data.variants.is_empty() && !is_declared_nonexhaustive {
                     ConstructorSet::NoConstructors
                 } else {
                     let mut variants = IndexVec::with_capacity(enum_data.variants.len());
-                    for &(variant, _) in enum_data.variants.iter() {
+                    for &(variant, _, _) in enum_data.variants.iter() {
                         let is_uninhabited = is_enum_variant_uninhabited_from(
                             cx.db,
                             variant,

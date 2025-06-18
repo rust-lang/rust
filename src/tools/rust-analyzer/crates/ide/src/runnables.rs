@@ -5,11 +5,11 @@ use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
     AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, ModPath, Name, PathKind, Semantics,
-    Symbol, db::HirDatabase, sym, symbols::FxIndexSet,
+    Symbol, db::HirDatabase, sym,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
-    FilePosition, FxHashMap, FxIndexMap, RootDatabase, SymbolKind,
+    FilePosition, FxHashMap, FxIndexMap, FxIndexSet, RootDatabase, SymbolKind,
     base_db::RootQueryDb,
     defs::Definition,
     documentation::docs_from_attrs,

@@ -339,7 +339,7 @@ impl Sysroot {
                     Some(_) => {
                         tracing::warn!("unknown rustc-std-workspace-* crate: {}", package.name)
                     }
-                    None => match &*package.name {
+                    None => match &**package.name {
                         "core" => real_core = Some(package.id.clone()),
                         "alloc" => real_alloc = Some(package.id.clone()),
                         "std" => real_std = Some(package.id.clone()),

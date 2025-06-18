@@ -222,6 +222,7 @@ define_symbols! {
     fn_once_output,
     fn_once,
     async_fn_once,
+    async_fn_once_output,
     async_fn_mut,
     async_fn,
     fn_ptr_addr,

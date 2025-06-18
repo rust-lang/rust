@@ -9,4 +9,4 @@ license = "MIT OR Apache-2.0"
 [lib]
 
 [build-dependencies]
-cargo_metadata = "0.19.2"
+cargo_metadata = "0.20.0"

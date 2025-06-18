@@ -137,8 +137,8 @@ use crate::ty::layout::ValidityRequirement;
 use crate::ty::print::{PrintTraitRefExt, describe_as_module};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
-    self, CrateInherentImpls, GenericArg, GenericArgsRef, PseudoCanonicalInput, Ty, TyCtxt,
-    TyCtxtFeed,
+    self, CrateInherentImpls, GenericArg, GenericArgsRef, PseudoCanonicalInput, SizedTraitKind, Ty,
+    TyCtxt, TyCtxtFeed,
 };
 use crate::{dep_graph, mir, thir};
 
@@ -910,9 +910,10 @@ rustc_queries! {
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
-
-    query adt_sized_constraint(key: DefId) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
-        desc { |tcx| "computing the `Sized` constraint for `{}`", tcx.def_path_str(key) }
+    query adt_sizedness_constraint(
+        key: (DefId, SizedTraitKind)
+    ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        desc { |tcx| "computing the sizedness constraint for `{}`", tcx.def_path_str(key.0) }
     }
 
     query adt_dtorck_constraint(

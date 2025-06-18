@@ -224,20 +224,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn visit_struct_field_def(&mut self, field: &'a FieldDef) {
-        if let Some(ref ident) = field.ident
-            && ident.name == kw::Underscore
-        {
-            self.visit_vis(&field.vis);
-            self.visit_ident(ident);
-            self.visit_ty_common(&field.ty);
-            self.walk_ty(&field.ty);
-            walk_list!(self, visit_attribute, &field.attrs);
-        } else {
-            self.visit_field_def(field);
-        }
-    }
-
     fn dcx(&self) -> DiagCtxtHandle<'a> {
         self.sess.dcx()
     }
@@ -1135,8 +1121,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 VariantData::Struct { fields, .. } => {
                     self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                     self.visit_generics(generics);
-                    // Permit `Anon{Struct,Union}` as field type.
-                    walk_list!(self, visit_struct_field_def, fields);
+                    walk_list!(self, visit_field_def, fields);
                 }
                 _ => visit::walk_item(self, item),
             },
@@ -1148,8 +1133,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     VariantData::Struct { fields, .. } => {
                         self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                         self.visit_generics(generics);
-                        // Permit `Anon{Struct,Union}` as field type.
-                        walk_list!(self, visit_struct_field_def, fields);
+                        walk_list!(self, visit_field_def, fields);
                     }
                     _ => visit::walk_item(self, item),
                 }

@@ -96,7 +96,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
     for (_, module_data) in crate_def_map.modules() {
         for impl_def in module_data.scope.impls() {
             lang_items.collect_lang_item(db, impl_def, LangItemTarget::ImplDef);
-            for &(_, assoc) in db.impl_items(impl_def).items.iter() {
+            for &(_, assoc) in impl_def.impl_items(db).items.iter() {
                 match assoc {
                     AssocItemId::FunctionId(f) => {
                         lang_items.collect_lang_item(db, f, LangItemTarget::Function)
@@ -125,7 +125,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     lang_items.collect_lang_item(db, e, LangItemTarget::EnumId);
-                    db.enum_variants(e).variants.iter().for_each(|&(id, _)| {
+                    e.enum_variants(db).variants.iter().for_each(|&(id, _, _)| {
                         lang_items.collect_lang_item(db, id, LangItemTarget::EnumVariant);
                     });
                 }
@@ -377,6 +377,7 @@ language_item_table! {
     AsyncFnMut,              sym::async_fn_mut,        async_fn_mut_trait,         Target::Trait,          GenericRequirement::Exact(1);
     AsyncFnOnce,             sym::async_fn_once,       async_fn_once_trait,        Target::Trait,          GenericRequirement::Exact(1);
 
+    AsyncFnOnceOutput,       sym::async_fn_once_output,async_fn_once_output,       Target::AssocTy,        GenericRequirement::None;
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);

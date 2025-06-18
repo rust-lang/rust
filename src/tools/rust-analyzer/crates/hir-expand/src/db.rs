@@ -13,7 +13,7 @@ use crate::{
     AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
     EagerExpander, EditionedFileId, ExpandError, ExpandResult, ExpandTo, HirFileId, MacroCallId,
     MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
-    attrs::{AttrId, collect_attrs},
+    attrs::{AttrId, AttrInput, RawAttrs, collect_attrs},
     builtin::pseudo_derive_attr_expansion,
     cfg_process,
     declarative::DeclarativeMacroExpander,
@@ -60,6 +60,7 @@ pub trait ExpandDatabase: RootQueryDb {
     fn proc_macros_for_crate(&self, krate: Crate) -> Option<Arc<CrateProcMacros>>;
 
     #[salsa::invoke(ast_id_map)]
+    #[salsa::lru(1024)]
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
     #[salsa::transparent]
@@ -241,30 +242,36 @@ pub fn expand_speculative(
 
     let attr_arg = match loc.kind {
         MacroCallKind::Attr { invoc_attr_index, .. } => {
-            let attr = if loc.def.is_attribute_derive() {
+            if loc.def.is_attribute_derive() {
                 // for pseudo-derive expansion we actually pass the attribute itself only
-                ast::Attr::cast(speculative_args.clone())
+                ast::Attr::cast(speculative_args.clone()).and_then(|attr| attr.token_tree()).map(
+                    |token_tree| {
+                        let mut tree = syntax_node_to_token_tree(
+                            token_tree.syntax(),
+                            span_map,
+                            span,
+                            DocCommentDesugarMode::ProcMacro,
+                        );
+                        *tree.top_subtree_delimiter_mut() = tt::Delimiter::invisible_spanned(span);
+                        tree
+                    },
+                )
             } else {
                 // Attributes may have an input token tree, build the subtree and map for this as well
                 // then try finding a token id for our token if it is inside this input subtree.
                 let item = ast::Item::cast(speculative_args.clone())?;
-                collect_attrs(&item)
-                    .nth(invoc_attr_index.ast_index())
-                    .and_then(|x| Either::left(x.1))
-            }?;
-            match attr.token_tree() {
-                Some(token_tree) => {
-                    let mut tree = syntax_node_to_token_tree(
-                        token_tree.syntax(),
-                        span_map,
-                        span,
-                        DocCommentDesugarMode::ProcMacro,
-                    );
-                    *tree.top_subtree_delimiter_mut() = tt::Delimiter::invisible_spanned(span);
-
-                    Some(tree)
-                }
-                _ => None,
+                let attrs = RawAttrs::new_expanded(db, &item, span_map, loc.krate.cfg_options(db));
+                attrs.iter().find(|attr| attr.id == invoc_attr_index).and_then(|attr| {
+                    match attr.input.as_deref()? {
+                        AttrInput::TokenTree(tt) => {
+                            let mut attr_arg = tt.clone();
+                            attr_arg.top_subtree_delimiter_mut().kind =
+                                tt::DelimiterKind::Invisible;
+                            Some(attr_arg)
+                        }
+                        AttrInput::Literal(_) => None,
+                    }
+                })
             }
         }
         _ => None,
