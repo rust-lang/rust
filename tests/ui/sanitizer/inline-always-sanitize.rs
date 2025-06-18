@@ -1,10 +1,11 @@
 //@ check-pass
 
-#![feature(no_sanitize)]
+#![feature(sanitize)]
+
 #[inline(always)]
 //~^ NOTE inlining requested here
-#[no_sanitize(address)]
-//~^ WARN will have no effect after inlining
+#[sanitize(address = "off")]
+//~^ WARN setting `sanitize` off will have no effect after inlining
 //~| NOTE on by default
 fn x() {
 }

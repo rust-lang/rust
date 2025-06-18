@@ -162,6 +162,7 @@ fn parse_patchable_function_entry(
 struct InterestingAttributeDiagnosticSpans {
     link_ordinal: Option<Span>,
     no_sanitize: Option<Span>,
+    sanitize: Option<Span>,
     inline: Option<Span>,
     no_mangle: Option<Span>,
 }
@@ -335,6 +336,7 @@ fn process_builtin_attrs(
                 codegen_fn_attrs.no_sanitize |=
                     parse_no_sanitize_attr(tcx, attr).unwrap_or_default();
             }
+            sym::sanitize => interesting_spans.sanitize = Some(attr.span()),
             sym::instruction_set => {
                 codegen_fn_attrs.instruction_set = parse_instruction_set_attr(tcx, attr)
             }
@@ -358,6 +360,8 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     codegen_fn_attrs.alignment =
         Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
 
+    // Compute the disabled sanitizers.
+    codegen_fn_attrs.no_sanitize |= tcx.disabled_sanitizers_for(did);
     // On trait methods, inherit the `#[align]` of the trait's method prototype.
     codegen_fn_attrs.alignment = Ord::max(codegen_fn_attrs.alignment, tcx.inherited_align(did));
 
@@ -460,6 +464,17 @@ fn check_result(
         let hir_id = tcx.local_def_id_to_hir_id(did);
         tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, no_sanitize_span, |lint| {
             lint.primary_message("`no_sanitize` will have no effect after inlining");
+            lint.span_note(inline_span, "inlining requested here");
+        })
+    }
+    if !codegen_fn_attrs.no_sanitize.is_empty()
+        && codegen_fn_attrs.inline.always()
+        && let (Some(sanitize_span), Some(inline_span)) =
+            (interesting_spans.sanitize, interesting_spans.inline)
+    {
+        let hir_id = tcx.local_def_id_to_hir_id(did);
+        tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, sanitize_span, |lint| {
+            lint.primary_message("setting `sanitize` off will have no effect after inlining");
             lint.span_note(inline_span, "inlining requested here");
         })
     }
@@ -582,6 +597,84 @@ fn opt_trait_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     match impl_item.container {
         ty::AssocItemContainer::Impl => impl_item.trait_item_def_id,
         _ => None,
+    }
+}
+
+/// For an attr that has the `sanitize` attribute, read the list of
+/// disabled sanitizers.
+fn parse_sanitize_attr(tcx: TyCtxt<'_>, attr: &Attribute) -> SanitizerSet {
+    let mut result = SanitizerSet::empty();
+    if let Some(list) = attr.meta_item_list() {
+        for item in list.iter() {
+            let MetaItemInner::MetaItem(set) = item else {
+                tcx.dcx().emit_err(errors::InvalidSanitize { span: attr.span() });
+                break;
+            };
+            let segments = set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
+            match segments.as_slice() {
+                [sym::address] if set.value_str() == Some(sym::off) => {
+                    result |= SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS
+                }
+                [sym::address] if set.value_str() == Some(sym::on) => {
+                    result &= !SanitizerSet::ADDRESS;
+                    result &= !SanitizerSet::KERNELADDRESS;
+                }
+                [sym::cfi] if set.value_str() == Some(sym::off) => result |= SanitizerSet::CFI,
+                [sym::cfi] if set.value_str() == Some(sym::on) => result &= !SanitizerSet::CFI,
+                [sym::kcfi] if set.value_str() == Some(sym::off) => result |= SanitizerSet::KCFI,
+                [sym::kcfi] if set.value_str() == Some(sym::on) => result &= !SanitizerSet::KCFI,
+                [sym::memory] if set.value_str() == Some(sym::off) => {
+                    result |= SanitizerSet::MEMORY
+                }
+                [sym::memory] if set.value_str() == Some(sym::on) => {
+                    result &= !SanitizerSet::MEMORY
+                }
+                [sym::memtag] if set.value_str() == Some(sym::off) => {
+                    result |= SanitizerSet::MEMTAG
+                }
+                [sym::memtag] if set.value_str() == Some(sym::on) => {
+                    result &= !SanitizerSet::MEMTAG
+                }
+                [sym::shadow_call_stack] if set.value_str() == Some(sym::off) => {
+                    result |= SanitizerSet::SHADOWCALLSTACK
+                }
+                [sym::shadow_call_stack] if set.value_str() == Some(sym::on) => {
+                    result &= !SanitizerSet::SHADOWCALLSTACK
+                }
+                [sym::thread] if set.value_str() == Some(sym::off) => {
+                    result |= SanitizerSet::THREAD
+                }
+                [sym::thread] if set.value_str() == Some(sym::on) => {
+                    result &= !SanitizerSet::THREAD
+                }
+                [sym::hwaddress] if set.value_str() == Some(sym::off) => {
+                    result |= SanitizerSet::HWADDRESS
+                }
+                [sym::hwaddress] if set.value_str() == Some(sym::on) => {
+                    result &= !SanitizerSet::HWADDRESS
+                }
+                _ => {
+                    tcx.dcx().emit_err(errors::InvalidSanitize { span: attr.span() });
+                }
+            }
+        }
+    }
+    result
+}
+
+fn disabled_sanitizers_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerSet {
+    // Check for a sanitize annotation directly on this def.
+    if let Some(attr) = tcx.get_attr(did, sym::sanitize) {
+        return parse_sanitize_attr(tcx, attr);
+    }
+
+    // Otherwise backtrack.
+    match tcx.opt_local_parent(did) {
+        // Check the parent (recursively).
+        Some(parent) => tcx.disabled_sanitizers_for(parent),
+        // We reached the crate root without seeing an attribute, so
+        // there is no sanitizers to exclude.
+        None => SanitizerSet::empty(),
     }
 }
 
@@ -709,6 +802,11 @@ pub fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers =
-        Providers { codegen_fn_attrs, should_inherit_track_caller, inherited_align, ..*providers };
+    *providers = Providers {
+        codegen_fn_attrs,
+        should_inherit_track_caller,
+        inherited_align,
+        disabled_sanitizers_for,
+        ..*providers
+    };
 }
