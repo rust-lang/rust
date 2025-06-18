@@ -196,6 +196,95 @@ fn get_simple_function<'gcc, 'tcx>(
     ))
 }
 
+fn get_simple_function_f128<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    name: Symbol,
+) -> Option<Function<'gcc>> {
+    if !cx.supports_f128_type {
+        return None;
+    }
+
+    let f128_type = cx.type_f128();
+    let func_name = match name {
+        sym::ceilf128 => "ceilf128",
+        sym::floorf128 => "floorf128",
+        sym::truncf128 => "truncf128",
+        sym::roundf128 => "roundf128",
+        sym::round_ties_even_f128 => "roundevenf128",
+        sym::sqrtf128 => "sqrtf128",
+        _ => return None,
+    };
+    Some(cx.context.new_function(
+        None,
+        FunctionType::Extern,
+        f128_type,
+        &[cx.context.new_parameter(None, f128_type, "a")],
+        func_name,
+        false,
+    ))
+}
+
+fn get_simple_function_f128_2args<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    name: Symbol,
+) -> Option<Function<'gcc>> {
+    if !cx.supports_f128_type {
+        return None;
+    }
+
+    let f128_type = cx.type_f128();
+    let func_name = match name {
+        sym::maxnumf128 => "fmaxf128",
+        sym::minnumf128 => "fminf128",
+        _ => return None,
+    };
+    Some(cx.context.new_function(
+        None,
+        FunctionType::Extern,
+        f128_type,
+        &[
+            cx.context.new_parameter(None, f128_type, "a"),
+            cx.context.new_parameter(None, f128_type, "b"),
+        ],
+        func_name,
+        false,
+    ))
+}
+
+fn f16_builtin<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    name: Symbol,
+    args: &[OperandRef<'tcx, RValue<'gcc>>],
+) -> RValue<'gcc> {
+    let f32_type = cx.type_f32();
+    let builtin_name = match name {
+        sym::ceilf16 => "__builtin_ceilf",
+        sym::floorf16 => "__builtin_floorf",
+        sym::fmaf16 => "fmaf",
+        sym::maxnumf16 => "__builtin_fmaxf",
+        sym::minnumf16 => "__builtin_fminf",
+        sym::powf16 => "__builtin_powf",
+        sym::powif16 => {
+            let func = cx.context.get_builtin_function("__builtin_powif");
+            let arg0 = cx.context.new_cast(None, args[0].immediate(), f32_type);
+            let args = [arg0, args[1].immediate()];
+            let result = cx.context.new_call(None, func, &args);
+            return cx.context.new_cast(None, result, cx.type_f16());
+        }
+        sym::roundf16 => "__builtin_roundf",
+        sym::round_ties_even_f16 => "__builtin_rintf",
+        sym::sqrtf16 => "__builtin_sqrtf",
+        sym::truncf16 => "__builtin_truncf",
+        _ => unreachable!(),
+    };
+
+    let func = cx.context.get_builtin_function(builtin_name);
+    let args: Vec<_> =
+        args.iter().map(|arg| cx.context.new_cast(None, arg.immediate(), f32_type)).collect();
+    let result = cx.context.new_call(None, func, &args);
+    cx.context.new_cast(None, result, cx.type_f16())
+}
+
 impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
@@ -211,7 +300,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let fn_args = instance.args;
 
         let simple = get_simple_intrinsic(self, name);
-        let simple_func = get_simple_function(self, name);
+        let simple_func = get_simple_function(self, name)
+            .or_else(|| get_simple_function_f128(self, name))
+            .or_else(|| get_simple_function_f128_2args(self, name));
 
         // FIXME(tempdragon): Re-enable `clippy::suspicious_else_formatting` if the following issue is solved:
         // https://github.com/rust-lang/rust-clippy/issues/12497
@@ -234,17 +325,55 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::fmaf16 => {
-                // TODO(antoyo): use the correct builtin for f16.
-                let func = self.cx.context.get_builtin_function("fmaf");
-                let args: Vec<_> = args
-                    .iter()
-                    .map(|arg| {
-                        self.cx.context.new_cast(self.location, arg.immediate(), self.cx.type_f32())
-                    })
-                    .collect();
-                let result = self.cx.context.new_call(self.location, func, &args);
-                self.cx.context.new_cast(self.location, result, self.cx.type_f16())
+            sym::ceilf16
+            | sym::floorf16
+            | sym::fmaf16
+            | sym::maxnumf16
+            | sym::minnumf16
+            | sym::powf16
+            | sym::powif16
+            | sym::roundf16
+            | sym::round_ties_even_f16
+            | sym::sqrtf16
+            | sym::truncf16 => f16_builtin(self, name, args),
+            sym::fmaf128 => {
+                let f128_type = self.cx.type_f128();
+                let func = self.cx.context.new_function(
+                    None,
+                    FunctionType::Extern,
+                    f128_type,
+                    &[
+                        self.cx.context.new_parameter(None, f128_type, "a"),
+                        self.cx.context.new_parameter(None, f128_type, "b"),
+                        self.cx.context.new_parameter(None, f128_type, "c"),
+                    ],
+                    "fmaf128",
+                    false,
+                );
+                self.cx.context.new_call(
+                    self.location,
+                    func,
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
+            sym::powif128 => {
+                let f128_type = self.cx.type_f128();
+                let func = self.cx.context.new_function(
+                    None,
+                    FunctionType::Extern,
+                    f128_type,
+                    &[
+                        self.cx.context.new_parameter(None, f128_type, "a"),
+                        self.cx.context.new_parameter(None, self.int_type, "b"),
+                    ],
+                    "__powitf2",
+                    false,
+                );
+                self.cx.context.new_call(
+                    self.location,
+                    func,
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
             }
             sym::is_val_statically_known => {
                 let a = args[0].immediate();
@@ -526,7 +655,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
     fn type_checked_load(
         &mut self,
-        _llvtable: Self::Value,
+        _vtable: Self::Value,
         _vtable_byte_offset: u64,
         _typeid: Self::Value,
     ) -> Self::Value {
@@ -622,23 +751,23 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 // We instead thus allocate some scratch space...
                 let scratch_size = cast.size(bx);
                 let scratch_align = cast.align(bx);
-                let llscratch = bx.alloca(scratch_size, scratch_align);
-                bx.lifetime_start(llscratch, scratch_size);
+                let scratch = bx.alloca(scratch_size, scratch_align);
+                bx.lifetime_start(scratch, scratch_size);
 
                 // ... where we first store the value...
-                rustc_codegen_ssa::mir::store_cast(bx, cast, val, llscratch, scratch_align);
+                rustc_codegen_ssa::mir::store_cast(bx, cast, val, scratch, scratch_align);
 
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.val.llval,
                     self.layout.align.abi,
-                    llscratch,
+                    scratch,
                     scratch_align,
                     bx.const_usize(self.layout.size.bytes()),
                     MemFlags::empty(),
                 );
 
-                bx.lifetime_end(llscratch, scratch_size);
+                bx.lifetime_end(scratch, scratch_size);
             }
         } else {
             OperandValue::Immediate(val).store(bx, dst);
