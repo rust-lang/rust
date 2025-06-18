@@ -1,13 +1,17 @@
-use rustc_middle::mir::{self, NonDivergingIntrinsic};
-use rustc_middle::span_bug;
+use rustc_middle::mir::{self, NonDivergingIntrinsic, StmtDebugInfo};
+use rustc_middle::{bug, span_bug};
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
+use crate::common::TypeKind;
+use crate::mir::operand::OperandValue;
+use crate::mir::place::PlaceRef;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "debug", skip(self, bx))]
     pub(crate) fn codegen_statement(&mut self, bx: &mut Bx, statement: &mir::Statement<'tcx>) {
+        self.codegen_stmt_debuginfos(bx, &statement.debuginfos);
         self.set_debug_loc(bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(box (ref place, ref rvalue)) => {
@@ -94,6 +98,68 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             | mir::StatementKind::PlaceMention(..)
             | mir::StatementKind::BackwardIncompatibleDropHint { .. }
             | mir::StatementKind::Nop => {}
+        }
+    }
+
+    pub(crate) fn codegen_stmt_debuginfo(&mut self, bx: &mut Bx, debuginfo: &StmtDebugInfo<'tcx>) {
+        match debuginfo {
+            StmtDebugInfo::AssignRef(dest, place) => {
+                let place_ref = match self.locals[place.local] {
+                    LocalRef::Place(place_ref) | LocalRef::UnsizedPlace(place_ref) => {
+                        Some(place_ref)
+                    }
+                    LocalRef::Operand(operand_ref) => match operand_ref.val {
+                        OperandValue::Immediate(v) => {
+                            Some(PlaceRef::new_sized(v, operand_ref.layout))
+                        }
+                        OperandValue::Ref(_)
+                        | OperandValue::Pair(_, _)
+                        | OperandValue::ZeroSized => None,
+                    },
+                    LocalRef::PendingOperand => None,
+                }
+                .filter(|place_ref| {
+                    // Drop unsupported projections.
+                    // FIXME: Add a test case.
+                    place.projection.iter().all(|p| p.can_use_in_debuginfo()) &&
+                    // Only pointers can calculate addresses.
+                    bx.type_kind(bx.val_ty(place_ref.val.llval)) == TypeKind::Pointer
+                });
+                let (val, layout, projection) =
+                    match (place_ref, place.is_indirect_first_projection()) {
+                        (Some(place_ref), false) => {
+                            (place_ref.val, place_ref.layout, place.projection.as_slice())
+                        }
+                        (Some(place_ref), true) => {
+                            let projected_ty =
+                                place_ref.layout.ty.builtin_deref(true).unwrap_or_else(|| {
+                                    bug!("deref of non-pointer {:?}", place_ref)
+                                });
+                            let layout = bx.cx().layout_of(projected_ty);
+                            (place_ref.val, layout, &place.projection[1..])
+                        }
+                        _ => {
+                            // If the address cannot be computed, use poison to indicate that the value has been optimized out.
+                            let ty = self.monomorphize(self.mir.local_decls[*dest].ty);
+                            let layout = bx.cx().layout_of(ty);
+                            let to_backend_ty = bx.cx().immediate_backend_type(layout);
+                            let place_ref =
+                                PlaceRef::new_sized(bx.cx().const_poison(to_backend_ty), layout);
+                            (place_ref.val, layout, [].as_slice())
+                        }
+                    };
+                self.debug_new_value_to_local(bx, *dest, val, layout, projection);
+            }
+        }
+    }
+
+    pub(crate) fn codegen_stmt_debuginfos(
+        &mut self,
+        bx: &mut Bx,
+        debuginfos: &[StmtDebugInfo<'tcx>],
+    ) {
+        for debuginfo in debuginfos {
+            self.codegen_stmt_debuginfo(bx, debuginfo);
         }
     }
 }
