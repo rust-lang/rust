@@ -1,5 +1,4 @@
 use ast::HasAttrs;
-use ast::ptr::P;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::visit::BoundKind;
 use rustc_ast::{
@@ -378,11 +377,11 @@ struct TypeSubstitution<'a> {
 }
 
 impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
-    fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
+    fn visit_ty(&mut self, ty: &mut ast::Ty) {
         if let Some(name) = ty.kind.is_simple_path()
             && name == self.from_name
         {
-            **ty = self.to_ty.clone();
+            *ty = self.to_ty.clone();
             self.rewritten = true;
         } else {
             ast::mut_visit::walk_ty(self, ty);

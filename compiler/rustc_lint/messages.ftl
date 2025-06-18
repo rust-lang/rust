@@ -738,7 +738,8 @@ lint_redundant_semicolons =
         [true] semicolons
         *[false] semicolon
     }
-    .suggestion = remove {$multiple ->
+
+lint_redundant_semicolons_suggestion = remove {$multiple_semicolons ->
         [true] these semicolons
         *[false] this semicolon
     }
