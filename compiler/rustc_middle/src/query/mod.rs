@@ -1234,6 +1234,7 @@ rustc_queries! {
             "computing (transitive) callees of `{}` that may recurse",
             tcx.def_path_str(key),
         }
+        cache_on_disk_if { true }
     }
 
     /// Obtain all the calls into other local functions
