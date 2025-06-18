@@ -34,6 +34,7 @@ use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
 };
 use crate::styled_buffer::StyledBuffer;
+use crate::timings::TimingRecord;
 use crate::translation::{Translate, to_fluent_args};
 use crate::{
     CodeSuggestion, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle, Level,
@@ -164,11 +165,16 @@ impl Margin {
     }
 }
 
+pub enum TimingEvent {
+    Start,
+    End,
+}
+
 const ANONYMIZED_LINE_NUM: &str = "LL";
 
 pub type DynEmitter = dyn Emitter + DynSend;
 
-/// Emitter trait for emitting errors.
+/// Emitter trait for emitting errors and other structured information.
 pub trait Emitter: Translate {
     /// Emit a structured diagnostic.
     fn emit_diagnostic(&mut self, diag: DiagInner, registry: &Registry);
@@ -176,6 +182,10 @@ pub trait Emitter: Translate {
     /// Emit a notification that an artifact has been output.
     /// Currently only supported for the JSON format.
     fn emit_artifact_notification(&mut self, _path: &Path, _artifact_type: &str) {}
+
+    /// Emit a timestamp with start/end of a timing section.
+    /// Currently only supported for the JSON format.
+    fn emit_timing_section(&mut self, _record: TimingRecord, _event: TimingEvent) {}
 
     /// Emit a report about future breakage.
     /// Currently only supported for the JSON format.

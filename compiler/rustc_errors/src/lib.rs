@@ -7,6 +7,7 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(not(bootstrap), allow(rustc::direct_use_of_rustc_type_ir))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
@@ -74,7 +75,9 @@ pub use snippet::Style;
 pub use termcolor::{Color, ColorSpec, WriteColor};
 use tracing::debug;
 
+use crate::emitter::TimingEvent;
 use crate::registry::Registry;
+use crate::timings::TimingRecord;
 
 pub mod annotate_snippet_emitter_writer;
 pub mod codes;
@@ -90,6 +93,7 @@ mod snippet;
 mod styled_buffer;
 #[cfg(test)]
 mod tests;
+pub mod timings;
 pub mod translation;
 
 pub type PResult<'a, T> = Result<T, Diag<'a>>;
@@ -1154,6 +1158,14 @@ impl<'a> DiagCtxtHandle<'a> {
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
         self.inner.borrow_mut().emitter.emit_artifact_notification(path, artifact_type);
+    }
+
+    pub fn emit_timing_section_start(&self, record: TimingRecord) {
+        self.inner.borrow_mut().emitter.emit_timing_section(record, TimingEvent::Start);
+    }
+
+    pub fn emit_timing_section_end(&self, record: TimingRecord) {
+        self.inner.borrow_mut().emitter.emit_timing_section(record, TimingEvent::End);
     }
 
     pub fn emit_future_breakage_report(&self) {
