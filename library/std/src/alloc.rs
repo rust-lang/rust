@@ -358,9 +358,10 @@ fn default_alloc_error_hook(layout: Layout) {
         // This is the default path taken on OOM, and the only path taken on stable with std.
         // Crucially, it does *not* call any user-defined code, and therefore users do not have to
         // worry about allocation failure causing reentrancy issues. That makes it different from
-        // the default `__rdl_oom` defined in alloc (i.e., the default alloc error handler that is
-        // called when there is no `#[alloc_error_handler]`), which triggers a regular panic and
-        // thus can invoke a user-defined panic hook, executing arbitrary user-defined code.
+        // the default `__rust_alloc_error_handler` defined in alloc (i.e., the default alloc error
+        // handler that is called when there is no `#[alloc_error_handler]`), which triggers a
+        // regular panic and thus can invoke a user-defined panic hook, executing arbitrary
+        // user-defined code.
         rtprintpanic!("memory allocation of {} bytes failed\n", layout.size());
     }
 }
@@ -383,18 +384,17 @@ pub fn rust_oom(layout: Layout) -> ! {
 #[unstable(feature = "alloc_internals", issue = "none")]
 pub mod __default_lib_allocator {
     use super::{GlobalAlloc, Layout, System};
-    // These magic symbol names are used as a fallback for implementing the
-    // `__rust_alloc` etc symbols (see `src/liballoc/alloc.rs`) when there is
-    // no `#[global_allocator]` attribute.
+    // These are used as a fallback for implementing the `__rust_alloc`, etc symbols
+    // (see `src/liballoc/alloc.rs`) when there is no `#[global_allocator]` attribute.
 
-    // for symbol names src/librustc_ast/expand/allocator.rs
-    // for signatures src/librustc_allocator/lib.rs
+    // for symbol names and signatures see compiler/rustc_ast/src/expand/allocator.rs
 
     // linkage directives are provided as part of the current compiler allocator
     // ABI
 
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rdl_alloc(size: usize, align: usize) -> *mut u8 {
+    #[linkage = "weak"]
+    pub unsafe extern "Rust" fn __rust_alloc(size: usize, align: usize) -> *mut u8 {
         // SAFETY: see the guarantees expected by `Layout::from_size_align` and
         // `GlobalAlloc::alloc`.
         unsafe {
@@ -404,14 +404,16 @@ pub mod __default_lib_allocator {
     }
 
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rdl_dealloc(ptr: *mut u8, size: usize, align: usize) {
+    #[linkage = "weak"]
+    pub unsafe extern "Rust" fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize) {
         // SAFETY: see the guarantees expected by `Layout::from_size_align` and
         // `GlobalAlloc::dealloc`.
         unsafe { System.dealloc(ptr, Layout::from_size_align_unchecked(size, align)) }
     }
 
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rdl_realloc(
+    #[linkage = "weak"]
+    pub unsafe extern "Rust" fn __rust_realloc(
         ptr: *mut u8,
         old_size: usize,
         align: usize,
@@ -426,7 +428,8 @@ pub mod __default_lib_allocator {
     }
 
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rdl_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
+    #[linkage = "weak"]
+    pub unsafe extern "Rust" fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
         // SAFETY: see the guarantees expected by `Layout::from_size_align` and
         // `GlobalAlloc::alloc_zeroed`.
         unsafe {

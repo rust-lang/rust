@@ -2257,10 +2257,6 @@ rustc_queries! {
         eval_always
         desc { "getting the allocator kind for the current crate" }
     }
-    query alloc_error_handler_kind(_: ()) -> Option<AllocatorKind> {
-        eval_always
-        desc { "alloc error handler kind for the current crate" }
-    }
 
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }

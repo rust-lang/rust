@@ -898,19 +898,11 @@ fn mono_item_visibility<'tcx>(
         //   Removal of these functions can't be done by LLVM but rather must be
         //   done by the linker as it's a non-local decision.
         //
+        // FIXME update comment
         // * Second is "std internal symbols". Currently this is primarily used
-        //   for allocator symbols. Allocators are a little weird in their
-        //   implementation, but the idea is that the compiler, at the last
-        //   minute, defines an allocator with an injected object file. The
-        //   `alloc` crate references these symbols (`__rust_alloc`) and the
-        //   definition doesn't get hooked up until a linked crate artifact is
-        //   generated.
-        //
-        //   The symbols synthesized by the compiler (`__rust_alloc`) are thin
-        //   veneers around the actual implementation, some other symbol which
-        //   implements the same ABI. These symbols (things like `__rg_alloc`,
-        //   `__rdl_alloc`, `__rde_alloc`, etc), are all tagged with "std
-        //   internal symbols".
+        //   for allocator symbols and the unwinder runtime to allow cyclic
+        //   dependencies between the defining and using crate and to allow
+        //   replacing them.
         //
         //   The std-internal symbols here **should not show up in a dll as an
         //   exported interface**, so they return `false` from

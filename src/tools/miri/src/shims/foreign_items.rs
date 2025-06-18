@@ -1,14 +1,15 @@
 use std::collections::hash_map::Entry;
 use std::io::Write;
+use std::iter;
 use std::path::Path;
 
 use rustc_abi::{Align, AlignFromBytesError, CanonAbi, Size};
 use rustc_apfloat::Float;
-use rustc_ast::expand::allocator::alloc_error_handler_name;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::AllocInit;
+use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
@@ -48,29 +49,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
-
-        // Some shims forward to other MIR bodies.
-        match link_name.as_str() {
-            name if name == this.mangle_internal_symbol("__rust_alloc_error_handler") => {
-                // Forward to the right symbol that implements this function.
-                let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {
-                    // in real code, this symbol does not exist without an allocator
-                    throw_unsup_format!(
-                        "`__rust_alloc_error_handler` cannot be called when no alloc error handler is set"
-                    );
-                };
-                let name = Symbol::intern(
-                    this.mangle_internal_symbol(alloc_error_handler_name(handler_kind)),
-                );
-                let handler =
-                    this.lookup_exported_symbol(name)?.expect("missing alloc error handler symbol");
-                return interp_ok(Some(handler));
-            }
-            _ => {}
-        }
-
-        // FIXME: avoid allocating memory
-        let dest = this.force_allocation(dest)?;
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
         match this.emulate_foreign_item_inner(link_name, abi, args, &dest)? {
@@ -138,55 +116,79 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Entry::Occupied(e) => e.into_mut(),
             Entry::Vacant(e) => {
                 // Find it if it was not cached.
-                let mut instance_and_crate: Option<(ty::Instance<'_>, CrateNum)> = None;
+                let mut instance_and_crate: Option<(ty::Instance<'_>, CrateNum, bool)> = None;
                 helpers::iter_exported_symbols(tcx, |cnum, def_id| {
                     let attrs = tcx.codegen_fn_attrs(def_id);
                     // Skip over imports of items.
                     if tcx.is_foreign_item(def_id) {
                         return interp_ok(());
                     }
-                    // Skip over items without an explicitly defined symbol name.
-                    if !(attrs.export_name.is_some()
-                        || attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
-                        || attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL))
-                    {
-                        return interp_ok(());
-                    }
-
                     let instance = Instance::mono(tcx, def_id);
                     let symbol_name = tcx.symbol_name(instance).name;
-                    if symbol_name == link_name.as_str() {
-                        if let Some((original_instance, original_cnum)) = instance_and_crate {
-                            // Make sure we are consistent wrt what is 'first' and 'second'.
-                            let original_span = tcx.def_span(original_instance.def_id()).data();
-                            let span = tcx.def_span(def_id).data();
-                            if original_span < span {
-                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
-                                    link_name,
-                                    first: original_span,
-                                    first_crate: tcx.crate_name(original_cnum),
-                                    second: span,
-                                    second_crate: tcx.crate_name(cnum),
-                                });
-                            } else {
-                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
-                                    link_name,
-                                    first: span,
-                                    first_crate: tcx.crate_name(cnum),
-                                    second: original_span,
-                                    second_crate: tcx.crate_name(original_cnum),
-                                });
+                    let is_weak =
+                        attrs.linkage.map_or(false, |linkage| linkage == Linkage::WeakAny);
+                    if symbol_name == link_name {
+                        if let Some((original_instance, original_cnum, original_is_weak)) =
+                            instance_and_crate
+                        {
+                            match (is_weak, original_is_weak) {
+                                (false, true) => {
+                                    // Original definition is a weak definition. Override it.
+
+                                    instance_and_crate =
+                                        Some((ty::Instance::mono(tcx, def_id), cnum, is_weak));
+                                }
+                                (true, false) => {
+                                    // Current definition is a weak definition. Keep the original one.
+                                }
+                                (true, true) | (false, false) => {
+                                    // Either both definitions are non-weak or both are weak. In
+                                    // either case return an error. For weak definitions we error
+                                    // because it is undefined which definition would have been
+                                    // picked by the linker.
+
+                                    // Make sure we are consistent wrt what is 'first' and 'second'.
+                                    let original_span =
+                                        tcx.def_span(original_instance.def_id()).data();
+                                    let span = tcx.def_span(def_id).data();
+                                    if original_span < span {
+                                        throw_machine_stop!(
+                                            TerminationInfo::MultipleSymbolDefinitions {
+                                                link_name,
+                                                first: original_span,
+                                                first_crate: tcx.crate_name(original_cnum),
+                                                second: span,
+                                                second_crate: tcx.crate_name(cnum),
+                                            }
+                                        );
+                                    } else {
+                                        throw_machine_stop!(
+                                            TerminationInfo::MultipleSymbolDefinitions {
+                                                link_name,
+                                                first: span,
+                                                first_crate: tcx.crate_name(cnum),
+                                                second: original_span,
+                                                second_crate: tcx.crate_name(original_cnum),
+                                            }
+                                        );
+                                    }
+                                }
                             }
+                        } else {
+                            instance_and_crate =
+                                Some((ty::Instance::mono(tcx, def_id), cnum, is_weak));
                         }
-                        if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-                            throw_ub_format!(
-                                "attempt to call an exported symbol that is not defined as a function"
-                            );
-                        }
-                        instance_and_crate = Some((ty::Instance::mono(tcx, def_id), cnum));
                     }
                     interp_ok(())
                 })?;
+
+                if let Some((instance, _, _)) = instance_and_crate {
+                    if !matches!(tcx.def_kind(instance.def_id()), DefKind::Fn | DefKind::AssocFn) {
+                        throw_ub_format!(
+                            "attempt to call an exported symbol that is not defined as a function"
+                        );
+                    }
+                }
 
                 e.insert(instance_and_crate.map(|ic| ic.0))
             }
@@ -500,19 +502,20 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Rust allocation
-            name if name == this.mangle_internal_symbol("__rust_alloc") || name == "miri_alloc" => {
+            "__rust_alloc" | "miri_alloc" => {
                 let default = |ecx: &mut MiriInterpCx<'tcx>| {
                     // Only call `check_shim` when `#[global_allocator]` isn't used. When that
                     // macro is used, we act like no shim exists, so that the exported function can run.
-                    let [size, align] = ecx.check_shim(abi, CanonAbi::Rust, link_name, args)?;
+                    let [size, align] = ecx.check_shim(abi, Conv::Rust, link_name, args)?;
                     let size = ecx.read_target_usize(size)?;
                     let align = ecx.read_target_usize(align)?;
 
                     ecx.check_rustc_alloc_request(size, align)?;
 
                     let memory_kind = match link_name.as_str() {
+                        "__rust_alloc" => MiriMemoryKind::Rust,
                         "miri_alloc" => MiriMemoryKind::Miri,
-                        _ => MiriMemoryKind::Rust,
+                        _ => unreachable!(),
                     };
 
                     let ptr = ecx.allocate_ptr(
@@ -526,18 +529,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 match link_name.as_str() {
+                    "__rust_alloc" => return this.emulate_allocator(default),
                     "miri_alloc" => {
                         default(this)?;
                         return interp_ok(EmulateItemResult::NeedsReturn);
                     }
-                    _ => return this.emulate_allocator(default),
+                    _ => unreachable!(),
                 }
             }
-            name if name == this.mangle_internal_symbol("__rust_alloc_zeroed") => {
+            "__rust_alloc_zeroed" => {
                 return this.emulate_allocator(|this| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.
-                    let [size, align] = this.check_shim(abi, CanonAbi::Rust, link_name, args)?;
+                    let [size, align] = this.check_shim(abi, Conv::Rust, link_name, args)?;
                     let size = this.read_target_usize(size)?;
                     let align = this.read_target_usize(align)?;
 
@@ -549,24 +553,30 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         MiriMemoryKind::Rust.into(),
                         AllocInit::Zero,
                     )?;
+
+                    // We just allocated this, the access is definitely in-bounds.
+                    this.write_bytes_ptr(
+                        ptr.into(),
+                        iter::repeat(0u8).take(usize::try_from(size).unwrap()),
+                    )
+                    .unwrap();
                     this.write_pointer(ptr, dest)
                 });
             }
-            name if name == this.mangle_internal_symbol("__rust_dealloc")
-                || name == "miri_dealloc" =>
-            {
+            "__rust_dealloc" | "miri_dealloc" => {
                 let default = |ecx: &mut MiriInterpCx<'tcx>| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.
                     let [ptr, old_size, align] =
-                        ecx.check_shim(abi, CanonAbi::Rust, link_name, args)?;
+                        ecx.check_shim(abi, Conv::Rust, link_name, args)?;
                     let ptr = ecx.read_pointer(ptr)?;
                     let old_size = ecx.read_target_usize(old_size)?;
                     let align = ecx.read_target_usize(align)?;
 
                     let memory_kind = match link_name.as_str() {
+                        "__rust_dealloc" => MiriMemoryKind::Rust,
                         "miri_dealloc" => MiriMemoryKind::Miri,
-                        _ => MiriMemoryKind::Rust,
+                        _ => unreachable!(),
                     };
 
                     // No need to check old_size/align; we anyway check that they match the allocation.
@@ -578,19 +588,22 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 match link_name.as_str() {
+                    "__rust_dealloc" => {
+                        return this.emulate_allocator(default);
+                    }
                     "miri_dealloc" => {
                         default(this)?;
                         return interp_ok(EmulateItemResult::NeedsReturn);
                     }
-                    _ => return this.emulate_allocator(default),
+                    _ => unreachable!(),
                 }
             }
-            name if name == this.mangle_internal_symbol("__rust_realloc") => {
+            "__rust_realloc" => {
                 return this.emulate_allocator(|this| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.
                     let [ptr, old_size, align, new_size] =
-                        this.check_shim(abi, CanonAbi::Rust, link_name, args)?;
+                        this.check_shim(abi, Conv::Rust, link_name, args)?;
                     let ptr = this.read_pointer(ptr)?;
                     let old_size = this.read_target_usize(old_size)?;
                     let align = this.read_target_usize(align)?;

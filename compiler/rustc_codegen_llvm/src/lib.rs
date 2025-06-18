@@ -28,7 +28,6 @@ use back::write::{create_informational_target_machine, create_target_machine};
 use context::SimpleCx;
 use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
 use llvm_util::target_config;
-use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
@@ -104,18 +103,12 @@ impl Drop for TimeTraceProfiler {
 }
 
 impl ExtraBackendMethods for LlvmCodegenBackend {
-    fn codegen_allocator<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        module_name: &str,
-        kind: AllocatorKind,
-        alloc_error_handler_kind: AllocatorKind,
-    ) -> ModuleLlvm {
+    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str) -> ModuleLlvm {
         let module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
         let cx =
             SimpleCx::new(module_llvm.llmod(), &module_llvm.llcx, tcx.data_layout.pointer_size);
         unsafe {
-            allocator::codegen(tcx, cx, module_name, kind, alloc_error_handler_kind);
+            allocator::codegen(tcx, cx, module_name);
         }
         module_llvm
     }
