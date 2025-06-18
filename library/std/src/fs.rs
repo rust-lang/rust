@@ -1508,7 +1508,7 @@ impl Dir {
     /// [`new_with`]: Dir::new_with
     #[unstable(feature = "dirfd", issue = "120426")]
     pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        Ok(Self { inner: fs_imp::Dir::new(path)? })
+        fs_imp::Dir::new(path).map(|inner| Self { inner })
     }
 
     /// Attempts to open a directory at `path` with the options specified by `opts`.
@@ -1531,7 +1531,33 @@ impl Dir {
     /// ```
     #[unstable(feature = "dirfd", issue = "120426")]
     pub fn new_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
-        Ok(Self { inner: fs_imp::Dir::new_with(path, &opts.0)? })
+        fs_imp::Dir::new_with(path, &opts.0).map(|inner| Self { inner })
+    }
+
+    /// Attempts to open a directory at `path` with the minimum permissions for traversal.
+    ///
+    /// # Errors
+    ///
+    /// This function may return an error according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir, io::Read};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let foo = Dir::new_for_traversal("foo")?;
+    ///     let foobar = foo.open_dir("bar")?;
+    ///     let mut s = String::new();
+    ///     foobar.open("baz")?.read_to_string(&mut s)?;
+    ///     println!("{s}");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn new_for_traversal<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        fs_imp::Dir::new_for_traversal(path).map(|inner| Self { inner })
     }
 
     /// Attempts to open a file in read-only mode relative to this directory.
@@ -1609,6 +1635,57 @@ impl Dir {
     #[unstable(feature = "dirfd", issue = "120426")]
     pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         self.inner.create_dir(path)
+    }
+
+    /// Attempts to open a directory relative to this directory in read-only mode.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir, io::Read};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let foo = Dir::new("foo")?;
+    ///     let foobar = foo.open_dir("bar")?;
+    ///     let mut s = String::new();
+    ///     foobar.open("baz")?.read_to_string(&mut s)?;
+    ///     println!("{s}");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<Self> {
+        self.inner.open_dir(path).map(|inner| Self { inner })
+    }
+
+    /// Attempts to open a directory relative to this directory in read-only mode.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::{Dir, OpenOptions}, io::Write};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let foo = Dir::new("foo")?;
+    ///     let foobar = foo.open_dir_with("bar", OpenOptions::new().write(true))?;
+    ///     foobar.open("baz")?.write(b"baz")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_dir_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<Self> {
+        self.inner.open_dir_with(path, &opts.0).map(|inner| Self { inner })
     }
 
     /// Attempts to remove a file relative to this directory.
