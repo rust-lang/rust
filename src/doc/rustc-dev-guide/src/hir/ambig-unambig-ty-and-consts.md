@@ -1,11 +1,11 @@
 # Ambig/Unambig Types and Consts
 
-Types and Consts args in the HIR can be in two kinds of positions "ambig" or "unambig". Ambig positions are where
+Types and Consts args in the HIR can be in two kinds of positions ambiguous (ambig) or unambiguous (unambig). Ambig positions are where
 it would be valid to parse either a type or a const, unambig positions are where only one kind would be valid to
 parse.
 
 ```rust
-fn func<T, const N: usize,>(arg: T) {
+fn func<T, const N: usize>(arg: T) {
     //                           ^ Unambig type position
     let a: _ = arg; 
     //     ^ Unambig type position
@@ -21,19 +21,19 @@ fn func<T, const N: usize,>(arg: T) {
 
 ```
 
-Most types/consts in ambig positions are able to be disambiguated as either a type or const during either parsing or ast-lowering.
-Currently the only exception to this is inferred generic arguments in path segments. In `Foo<_>` it is not clear whether the `_` argument is an
-inferred type argument, or an inferred const argument.
+Most types/consts in ambig positions are able to be disambiguated as either a type or const during parsing. Single segment paths are always represented as types in the AST but may get resolved to a const parameter during name resolution, then lowered to a const argument during ast-lowering. The only generic arguments which remain ambiguous after lowering are inferred generic arguments (`_`) in path segments. For example, in `Foo<_>` it is not clear whether the `_` argument is an inferred type argument, or an inferred const argument.
 
 In unambig positions, inferred arguments are represented with [`hir::TyKind::Infer`][ty_infer] or [`hir::ConstArgKind::Infer`][const_infer] depending on whether it is a type or const position respectively.
 In ambig positions, inferred arguments are represented with `hir::GenericArg::Infer`.
 
-A naive implementation of this structure would result in there being potentially 5 places where an inferred type/const could be found in the HIR if you just looked at the types:
-- In unambig type position as a `hir::TyKind::Infer`
-- In unambig const arg position as a `hir::ConstArgKind::Infer`
-- In an ambig position as a [`GenericArg::Type(TyKind::Infer)`][generic_arg_ty]
-- In an ambig position as a [`GenericArg::Const(ConstArgKind::Infer)`][generic_arg_const]
-- In an ambig position as a [`GenericArg::Infer`][generic_arg_infer]
+A naive implementation of this would result in there being potentially 5 places where you might think an inferred type/const could be found in the HIR from looking at the structure of the HIR:
+1. In unambig type position as a `hir::TyKind::Infer`
+2. In unambig const arg position as a `hir::ConstArgKind::Infer`
+3. In an ambig position as a [`GenericArg::Type(TyKind::Infer)`][generic_arg_ty]
+4. In an ambig position as a [`GenericArg::Const(ConstArgKind::Infer)`][generic_arg_const]
+5. In an ambig position as a [`GenericArg::Infer`][generic_arg_infer]
+
+Note that places 3 and 4 would never actually be possible to encounter as we always lower to `GenericArg::Infer` in generic arg position. 
 
 This has a few failure modes:
 - People may write visitors which check for `GenericArg::Infer` but forget to check for `hir::TyKind/ConstArgKind::Infer`, only handling infers in ambig positions by accident.
@@ -45,7 +45,7 @@ To make writing HIR visitors less error prone when caring about inferred types/c
 
 1. We have different types in the compiler for when a type or const is in an unambig or ambig position, `hir::Ty<AmbigArg>` and `hir::Ty<()>`. [`AmbigArg`][ambig_arg] is an uninhabited type which we use in the `Infer` variant of `TyKind` and `ConstArgKind` to selectively "disable" it if we are in an ambig position.
 
-2. The [`visit_ty`][visit_infer] and [`visit_const_arg`][visit_const_arg] methods on HIR visitors only accept the ambig position versions of types/consts. Unambig types/consts are implicitly converted to ambig types/consts during the visiting process, with the `Infer` variant handled by a dedicated [`visit_infer`][visit_infer] method.
+2. The [`visit_ty`][visit_ty] and [`visit_const_arg`][visit_const_arg] methods on HIR visitors only accept the ambig position versions of types/consts. Unambig types/consts are implicitly converted to ambig types/consts during the visiting process, with the `Infer` variant handled by a dedicated [`visit_infer`][visit_infer] method.
 
 This has a number of benefits:
 - It's clear that `GenericArg::Type/Const` cannot represent inferred type/const arguments
