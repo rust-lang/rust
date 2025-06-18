@@ -161,37 +161,37 @@ pub(super) fn hints(
                     PointerCast::ReifyFnPointer => (
                         "<fn-item-to-fn-pointer>",
                         "fn item to fn pointer",
-                        "Converts a named function to a function pointer `fn()`. Useful when passing functions as values."
+                        "Converts a named function to a function pointer `fn()`. Useful when passing functions as values.",
                     ),
                     PointerCast::UnsafeFnPointer => (
                         "<safe-fn-pointer-to-unsafe-fn-pointer>",
                         "safe fn pointer to unsafe fn pointer",
-                        "Coerces a safe function pointer to an unsafe one. Allows calling it in an unsafe context."
+                        "Coerces a safe function pointer to an unsafe one. Allows calling it in an unsafe context.",
                     ),
                     PointerCast::ClosureFnPointer(Safety::Unsafe) => (
                         "<closure-to-unsafe-fn-pointer>",
                         "closure to unsafe fn pointer",
-                        "Converts a non-capturing closure to an unsafe function pointer. Required for use in `extern` or unsafe APIs."
+                        "Converts a non-capturing closure to an unsafe function pointer. Required for use in `extern` or unsafe APIs.",
                     ),
                     PointerCast::ClosureFnPointer(Safety::Safe) => (
                         "<closure-to-fn-pointer>",
                         "closure to fn pointer",
-                        "Converts a non-capturing closure to a function pointer. Lets closures behave like plain functions."
+                        "Converts a non-capturing closure to a function pointer. Lets closures behave like plain functions.",
                     ),
                     PointerCast::MutToConstPointer => (
                         "<mut-ptr-to-const-ptr>",
                         "mut ptr to const ptr",
-                        "Coerces `*mut T` to `*const T`. Safe because const pointers restrict what you can do."
+                        "Coerces `*mut T` to `*const T`. Safe because const pointers restrict what you can do.",
                     ),
                     PointerCast::ArrayToPointer => (
                         "<array-ptr-to-element-ptr>",
                         "array to pointer",
-                        "Converts an array to a pointer to its first element. Similar to how arrays decay to pointers in C."
+                        "Converts an array to a pointer to its first element. Similar to how arrays decay to pointers in C.",
                     ),
                     PointerCast::Unsize => (
                         "<unsize>",
                         "unsize coercion",
-                        "Converts a sized type to an unsized one. Used for things like turning arrays into slices or concrete types into trait objects."
+                        "Converts a sized type to an unsized one. Used for things like turning arrays into slices or concrete types into trait objects.",
                     ),
                 }
             }

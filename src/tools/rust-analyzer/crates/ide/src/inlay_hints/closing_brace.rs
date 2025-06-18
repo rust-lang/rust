@@ -172,12 +172,12 @@ fn format_function_hint(func: &ast::Fn, max_length: usize) -> Option<String> {
                 format!("_: {}", ty)
             } else {
                 let param_source = param.syntax().text().to_string();
-                if param_source.trim() == "..." { "...".to_string() } else { "_".to_string() }
+                if param_source.trim() == "..." { "...".to_owned() } else { "_".to_owned() }
             };
 
             let param_len = param_text.len() + if param_parts.is_empty() { 0 } else { 2 };
             if total_len + param_len > max_param_len {
-                param_parts.push("...".to_string());
+                param_parts.push("...".to_owned());
                 break;
             }
 
@@ -186,12 +186,12 @@ fn format_function_hint(func: &ast::Fn, max_length: usize) -> Option<String> {
         }
 
         if param_parts.is_empty() {
-            "()".to_string()
+            "()".to_owned()
         } else {
             format!("({})", param_parts.join(", "))
         }
     } else {
-        "()".to_string()
+        "()".to_owned()
     };
 
     Some(format!("fn {}{}", name_str, params))
