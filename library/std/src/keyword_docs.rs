@@ -24,6 +24,20 @@
 /// (`u8`, `bool`, `str`, pointers, ...) whereas `From` and `Into`  also works with types like
 /// `String` or `Vec`.
 ///
+/// You'll also find with `From` and `Into`, and indeed all traits, that `as` is used for the
+/// _fully qualified path_, a means of clarifying ambiguous associated items, i.e. functions,
+/// constants, and types.  For example, if you have a type which implements two traits with identical
+/// method names (e.g. `Into::<u32>::into` and `Into::<u64>::into`), you can clarify which method
+/// you'll use with `<MyThing as Into<u32>>::into(my_thing)`[^as-use-from].  This is quite verbose,
+/// but fortunately, Rust's type inference usually saves you from needing this, although it is
+/// occasionally necessary, especially with methods that return a generic type like `Into::into` or
+/// static methods.  It's more common to use in macros where it can provide necessary hygeine.
+///
+/// [^as-use-from]: You should probably never use this syntax with `Into` and instead write
+/// `T::from(my_thing)`.  It just happens that there aren't any great examples for this syntax in
+/// the standard library.  Also, at time of writing, the compiler tends to suggest fully-qualified
+/// paths to fix ambiguous `Into::into` calls, so the example should hopefully be familiar.
+///
 /// `as` can also be used with the `_` placeholder when the destination type can be inferred. Note
 /// that this can cause inference breakage and usually such code should use an explicit type for
 /// both clarity and stability. This is most useful when converting pointers using `as *const _` or
