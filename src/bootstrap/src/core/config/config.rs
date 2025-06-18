@@ -392,27 +392,69 @@ impl Config {
         )
     )]
     pub(crate) fn parse_inner(
-        mut flags: Flags,
+        flags: Flags,
         get_toml: impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
     ) -> Config {
+        // Destructure flags to ensure that we use all its fields
+        // The field variables are prefixed with `flags_` to avoid clashes
+        // with values from TOML config files with same names.
+        let Flags {
+            cmd: flags_cmd,
+            verbose: flags_verbose,
+            incremental: flags_incremental,
+            config: flags_config,
+            build_dir: flags_build_dir,
+            build: flags_build,
+            host: flags_host,
+            target: flags_target,
+            exclude: flags_exclude,
+            skip: flags_skip,
+            include_default_paths: flags_include_default_paths,
+            rustc_error_format: flags_rustc_error_format,
+            on_fail: flags_on_fail,
+            dry_run: flags_dry_run,
+            dump_bootstrap_shims: flags_dump_bootstrap_shims,
+            stage: flags_stage,
+            keep_stage: flags_keep_stage,
+            keep_stage_std: flags_keep_stage_std,
+            src: flags_src,
+            jobs: flags_jobs,
+            warnings: flags_warnings,
+            json_output: flags_json_output,
+            color: flags_color,
+            bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
+            rust_profile_generate: flags_rust_profile_generate,
+            rust_profile_use: flags_rust_profile_use,
+            llvm_profile_use: flags_llvm_profile_use,
+            llvm_profile_generate: flags_llvm_profile_generate,
+            enable_bolt_settings: flags_enable_bolt_settings,
+            skip_stage0_validation: flags_skip_stage0_validation,
+            reproducible_artifact: flags_reproducible_artifact,
+            paths: mut flags_paths,
+            set: flags_set,
+            free_args: mut flags_free_args,
+            ci: flags_ci,
+            skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
+        } = flags;
+
         let mut config = Config::default_opts();
         let mut exec_ctx = ExecutionContext::new();
-        exec_ctx.set_verbose(flags.verbose);
-        exec_ctx.set_fail_fast(flags.cmd.fail_fast());
+        exec_ctx.set_verbose(flags_verbose);
+        exec_ctx.set_fail_fast(flags_cmd.fail_fast());
 
         config.exec_ctx = exec_ctx;
 
         // Set flags.
-        config.paths = std::mem::take(&mut flags.paths);
+        config.paths = std::mem::take(&mut flags_paths);
 
         #[cfg(feature = "tracing")]
         span!(
             target: "CONFIG_HANDLING",
             tracing::Level::TRACE,
             "collecting paths and path exclusions",
-            "flags.paths" = ?flags.paths,
-            "flags.skip" = ?flags.skip,
-            "flags.exclude" = ?flags.exclude
+            "flags.paths" = ?flags_paths,
+            "flags.skip" = ?flags_skip,
+            "flags.exclude" = ?flags_exclude
         );
 
         #[cfg(feature = "tracing")]
@@ -423,28 +465,28 @@ impl Config {
             "config.skip" = ?config.skip,
         );
 
-        config.include_default_paths = flags.include_default_paths;
-        config.rustc_error_format = flags.rustc_error_format;
-        config.json_output = flags.json_output;
-        config.on_fail = flags.on_fail;
-        config.cmd = flags.cmd;
-        config.incremental = flags.incremental;
-        config.set_dry_run(if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled });
-        config.dump_bootstrap_shims = flags.dump_bootstrap_shims;
-        config.keep_stage = flags.keep_stage;
-        config.keep_stage_std = flags.keep_stage_std;
-        config.color = flags.color;
-        config.free_args = std::mem::take(&mut flags.free_args);
-        config.llvm_profile_use = flags.llvm_profile_use;
-        config.llvm_profile_generate = flags.llvm_profile_generate;
-        config.enable_bolt_settings = flags.enable_bolt_settings;
-        config.bypass_bootstrap_lock = flags.bypass_bootstrap_lock;
-        config.is_running_on_ci = flags.ci.unwrap_or(CiEnv::is_ci());
-        config.skip_std_check_if_no_download_rustc = flags.skip_std_check_if_no_download_rustc;
+        config.include_default_paths = flags_include_default_paths;
+        config.rustc_error_format = flags_rustc_error_format;
+        config.json_output = flags_json_output;
+        config.on_fail = flags_on_fail;
+        config.cmd = flags_cmd;
+        config.incremental = flags_incremental;
+        config.set_dry_run(if flags_dry_run { DryRun::UserSelected } else { DryRun::Disabled });
+        config.dump_bootstrap_shims = flags_dump_bootstrap_shims;
+        config.keep_stage = flags_keep_stage;
+        config.keep_stage_std = flags_keep_stage_std;
+        config.color = flags_color;
+        config.free_args = std::mem::take(&mut flags_free_args);
+        config.llvm_profile_use = flags_llvm_profile_use;
+        config.llvm_profile_generate = flags_llvm_profile_generate;
+        config.enable_bolt_settings = flags_enable_bolt_settings;
+        config.bypass_bootstrap_lock = flags_bypass_bootstrap_lock;
+        config.is_running_on_ci = flags_ci.unwrap_or(CiEnv::is_ci());
+        config.skip_std_check_if_no_download_rustc = flags_skip_std_check_if_no_download_rustc;
 
         // Infer the rest of the configuration.
 
-        if let Some(src) = flags.src {
+        if let Some(src) = flags_src {
             config.src = src
         } else {
             // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
@@ -510,8 +552,7 @@ impl Config {
         // 4. `<root>/bootstrap.toml`
         // 5. `./config.toml` (fallback for backward compatibility)
         // 6. `<root>/config.toml`
-        let toml_path = flags
-            .config
+        let toml_path = flags_config
             .clone()
             .or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from));
         let using_default_path = toml_path.is_none();
@@ -610,7 +651,7 @@ impl Config {
         }
 
         let mut override_toml = TomlConfig::default();
-        for option in flags.set.iter() {
+        for option in flags_set.iter() {
             fn get_table(option: &str) -> Result<TomlConfig, toml::de::Error> {
                 toml::from_str(option).and_then(|table: toml::Value| TomlConfig::deserialize(table))
             }
@@ -708,7 +749,7 @@ impl Config {
             exclude,
         } = toml.build.unwrap_or_default();
 
-        let mut paths: Vec<PathBuf> = flags.skip.into_iter().chain(flags.exclude).collect();
+        let mut paths: Vec<PathBuf> = flags_skip.into_iter().chain(flags_exclude).collect();
 
         if let Some(exclude) = exclude {
             paths.extend(exclude);
@@ -728,13 +769,15 @@ impl Config {
             })
             .collect();
 
-        config.jobs = Some(threads_from_config(flags.jobs.unwrap_or(jobs.unwrap_or(0))));
+        config.jobs = Some(threads_from_config(flags_jobs.unwrap_or(jobs.unwrap_or(0))));
 
-        if let Some(file_build) = build {
+        if let Some(flags_build) = flags_build {
+            config.host_target = TargetSelection::from_user(&flags_build);
+        } else if let Some(file_build) = build {
             config.host_target = TargetSelection::from_user(&file_build);
         };
 
-        set(&mut config.out, flags.build_dir.or_else(|| build_dir.map(PathBuf::from)));
+        set(&mut config.out, flags_build_dir.or_else(|| build_dir.map(PathBuf::from)));
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
         if !config.out.is_absolute() {
@@ -749,7 +792,7 @@ impl Config {
         }
 
         config.initial_rustc = if let Some(rustc) = rustc {
-            if !flags.skip_stage0_validation {
+            if !flags_skip_stage0_validation {
                 config.check_stage0_version(&rustc, "rustc");
             }
             rustc
@@ -775,7 +818,7 @@ impl Config {
         config.initial_cargo_clippy = cargo_clippy;
 
         config.initial_cargo = if let Some(cargo) = cargo {
-            if !flags.skip_stage0_validation {
+            if !flags_skip_stage0_validation {
                 config.check_stage0_version(&cargo, "cargo");
             }
             cargo
@@ -791,14 +834,14 @@ impl Config {
             config.out = dir;
         }
 
-        config.hosts = if let Some(TargetSelectionList(arg_host)) = flags.host {
+        config.hosts = if let Some(TargetSelectionList(arg_host)) = flags_host {
             arg_host
         } else if let Some(file_host) = host {
             file_host.iter().map(|h| TargetSelection::from_user(h)).collect()
         } else {
             vec![config.host_target]
         };
-        config.targets = if let Some(TargetSelectionList(arg_target)) = flags.target {
+        config.targets = if let Some(TargetSelectionList(arg_target)) = flags_target {
             arg_target
         } else if let Some(file_target) = target {
             file_target.iter().map(|h| TargetSelection::from_user(h)).collect()
@@ -837,7 +880,7 @@ impl Config {
         set(&mut config.print_step_rusage, print_step_rusage);
         config.patch_binaries_for_nix = patch_binaries_for_nix;
 
-        config.verbose = cmp::max(config.verbose, flags.verbose as usize);
+        config.verbose = cmp::max(config.verbose, flags_verbose as usize);
 
         // Verbose flag is a good default for `rust.verbose-tests`.
         config.verbose_tests = config.is_verbose();
@@ -892,12 +935,12 @@ impl Config {
             config.channel = ci_channel.into();
         }
 
-        config.rust_profile_use = flags.rust_profile_use;
-        config.rust_profile_generate = flags.rust_profile_generate;
+        config.rust_profile_use = flags_rust_profile_use;
+        config.rust_profile_generate = flags_rust_profile_generate;
 
-        config.apply_rust_config(toml.rust, flags.warnings, &mut description);
+        config.apply_rust_config(toml.rust, flags_warnings, &mut description);
 
-        config.reproducible_artifacts = flags.reproducible_artifact;
+        config.reproducible_artifacts = flags_reproducible_artifact;
         config.description = description;
 
         // We need to override `rust.channel` if it's manually specified when using the CI rustc.
@@ -953,7 +996,7 @@ impl Config {
 
         if matches!(config.lld_mode, LldMode::SelfContained)
             && !config.lld_enabled
-            && flags.stage.unwrap_or(0) > 0
+            && flags_stage.unwrap_or(0) > 0
         {
             panic!(
                 "Trying to use self-contained lld as a linker, but LLD is not being added to the sysroot. Enable it with rust.lld = true."
@@ -972,7 +1015,7 @@ impl Config {
         config.compiletest_use_stage0_libtest = compiletest_use_stage0_libtest.unwrap_or(true);
 
         let download_rustc = config.download_rustc_commit.is_some();
-        config.explicit_stage_from_cli = flags.stage.is_some();
+        config.explicit_stage_from_cli = flags_stage.is_some();
         config.explicit_stage_from_config = test_stage.is_some()
             || build_stage.is_some()
             || doc_stage.is_some()
@@ -982,22 +1025,22 @@ impl Config {
             || bench_stage.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {
-            Subcommand::Check { .. } => flags.stage.or(check_stage).unwrap_or(0),
-            Subcommand::Clippy { .. } | Subcommand::Fix => flags.stage.or(check_stage).unwrap_or(1),
+            Subcommand::Check { .. } => flags_stage.or(check_stage).unwrap_or(0),
+            Subcommand::Clippy { .. } | Subcommand::Fix => flags_stage.or(check_stage).unwrap_or(1),
             // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
             Subcommand::Doc { .. } => {
-                flags.stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 1 })
+                flags_stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Build => {
-                flags.stage.or(build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
+                flags_stage.or(build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Test { .. } | Subcommand::Miri { .. } => {
-                flags.stage.or(test_stage).unwrap_or(if download_rustc { 2 } else { 1 })
+                flags_stage.or(test_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
-            Subcommand::Bench { .. } => flags.stage.or(bench_stage).unwrap_or(2),
-            Subcommand::Dist => flags.stage.or(dist_stage).unwrap_or(2),
-            Subcommand::Install => flags.stage.or(install_stage).unwrap_or(2),
-            Subcommand::Perf { .. } => flags.stage.unwrap_or(1),
+            Subcommand::Bench { .. } => flags_stage.or(bench_stage).unwrap_or(2),
+            Subcommand::Dist => flags_stage.or(dist_stage).unwrap_or(2),
+            Subcommand::Install => flags_stage.or(install_stage).unwrap_or(2),
+            Subcommand::Perf { .. } => flags_stage.unwrap_or(1),
             // These are all bootstrap tools, which don't depend on the compiler.
             // The stage we pass shouldn't matter, but use 0 just in case.
             Subcommand::Clean { .. }
@@ -1005,12 +1048,12 @@ impl Config {
             | Subcommand::Setup { .. }
             | Subcommand::Format { .. }
             | Subcommand::Suggest { .. }
-            | Subcommand::Vendor { .. } => flags.stage.unwrap_or(0),
+            | Subcommand::Vendor { .. } => flags_stage.unwrap_or(0),
         };
 
         // CI should always run stage 2 builds, unless it specifically states otherwise
         #[cfg(not(test))]
-        if flags.stage.is_none() && config.is_running_on_ci {
+        if flags_stage.is_none() && config.is_running_on_ci {
             match config.cmd {
                 Subcommand::Test { .. }
                 | Subcommand::Miri { .. }
