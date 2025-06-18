@@ -672,6 +672,12 @@ passes_rustc_unstable_feature_bound =
     attribute should be applied to `impl` or free function outside of any `impl` or trait
     .label = not an `impl` or free function
 
+passes_sanitize_attribute_not_allowed =
+    sanitize attribute not allowed here
+    .not_fn_impl_mod = not a function, impl block, or module
+    .no_body = function has no body
+    .help = sanitize attribute can be applied to a function (with body), impl block, or module
+
 passes_should_be_applied_to_fn =
     attribute should be applied to a function definition
     .label = {$on_crate ->
