@@ -293,7 +293,14 @@ fn self_cmp_call<'tcx>(
         ExprKind::Call(path, [_, _]) => path_res(cx, path)
             .opt_def_id()
             .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::ord_cmp_method, def_id)),
-        ExprKind::MethodCall(_, _, [_other], ..) => {
+        ExprKind::MethodCall(_, recv, [_], ..) => {
+            let ExprKind::Path(path) = recv.kind else {
+                return false;
+            };
+            if last_path_segment(&path).ident.name != kw::SelfLower {
+                return false;
+            }
+
             // We can set this to true here no matter what as if it's a `MethodCall` and goes to the
             // `else` branch, it must be a method named `cmp` that isn't `Ord::cmp`
             *needs_fully_qualified = true;

@@ -69,7 +69,7 @@ LL |     extern "C-cmse-nonsecure-call" fn(WrapperTransparent) -> WrapperTranspa
    = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-error[E0045]: C-variadic function must have a compatible calling convention, like `C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`
+error[E0045]: C-variadic functions with the "C-cmse-nonsecure-call" calling convention are not supported
   --> $DIR/generics.rs:40:20
    |
 LL | type WithVarArgs = extern "C-cmse-nonsecure-call" fn(u32, ...);

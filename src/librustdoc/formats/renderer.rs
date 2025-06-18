@@ -56,7 +56,7 @@ pub(crate) trait FormatRenderer<'tcx>: Sized {
     fn restore_module_data(&mut self, info: Self::ModuleData);
 
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
-    fn item(&mut self, item: clean::Item) -> Result<(), Error>;
+    fn item(&mut self, item: &clean::Item) -> Result<(), Error>;
 
     /// Renders a module (should not handle recursing into children).
     fn mod_item_in(&mut self, item: &clean::Item) -> Result<(), Error>;
@@ -67,14 +67,14 @@ pub(crate) trait FormatRenderer<'tcx>: Sized {
     }
 
     /// Post processing hook for cleanup and dumping output to files.
-    fn after_krate(&mut self) -> Result<(), Error>;
+    fn after_krate(self) -> Result<(), Error>;
 
     fn cache(&self) -> &Cache;
 }
 
 fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
     cx: &mut T,
-    item: clean::Item,
+    item: &clean::Item,
     prof: &SelfProfilerRef,
 ) -> Result<(), Error> {
     if item.is_mod() && T::RUN_ON_MODULE {
@@ -84,12 +84,12 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
             prof.generic_activity_with_arg("render_mod_item", item.name.unwrap().to_string());
 
         cx.mod_item_in(&item)?;
-        let (clean::StrippedItem(box clean::ModuleItem(module)) | clean::ModuleItem(module)) =
-            item.inner.kind
+        let (clean::StrippedItem(box clean::ModuleItem(ref module))
+        | clean::ModuleItem(ref module)) = item.inner.kind
         else {
             unreachable!()
         };
-        for it in module.items {
+        for it in module.items.iter() {
             let info = cx.save_module_data();
             run_format_inner(cx, it, prof)?;
             cx.restore_module_data(info);
@@ -101,7 +101,7 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
     } else if let Some(item_name) = item.name
         && !item.is_extern_crate()
     {
-        prof.generic_activity_with_arg("render_item", item_name.as_str()).run(|| cx.item(item))?;
+        prof.generic_activity_with_arg("render_item", item_name.as_str()).run(|| cx.item(&item))?;
     }
     Ok(())
 }
@@ -125,7 +125,7 @@ pub(crate) fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     }
 
     // Render the crate documentation
-    run_format_inner(&mut format_renderer, krate.module, prof)?;
+    run_format_inner(&mut format_renderer, &krate.module, prof)?;
 
     prof.verbose_generic_activity_with_arg("renderer_after_krate", T::descr())
         .run(|| format_renderer.after_krate())

@@ -239,7 +239,6 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        ///
         #[doc = concat!("let n = -1", stringify!($SelfT), ";")]
         ///
         #[doc = concat!("assert_eq!(n.cast_unsigned(), ", stringify!($UnsignedT), "::MAX);")]

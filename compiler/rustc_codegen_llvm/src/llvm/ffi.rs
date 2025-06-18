@@ -15,6 +15,7 @@
 
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::num::NonZero;
 use std::ptr;
 
 use bitflags::bitflags;
@@ -1077,8 +1078,6 @@ unsafe extern "C" {
 
     // Operations on other types
     pub(crate) fn LLVMVoidTypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMTokenTypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
     pub(crate) fn LLVMTypeOf(Val: &Value) -> &Type;
@@ -1194,6 +1193,15 @@ unsafe extern "C" {
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
+
+    // Operations about llvm intrinsics
+    pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
+    pub(crate) fn LLVMGetIntrinsicDeclaration<'a>(
+        Mod: &'a Module,
+        ID: NonZero<c_uint>,
+        ParamTypes: *const &'a Type,
+        ParamCount: size_t,
+    ) -> &'a Value;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;

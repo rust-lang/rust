@@ -31,7 +31,7 @@ pub(crate) fn size_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -> Val
     )
 }
 
-pub(crate) fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -> Value {
+pub(crate) fn align_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         fx.pointer_type,

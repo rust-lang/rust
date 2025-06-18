@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use std::ffi::{CStr, CString};
+use std::num::NonZero;
 use std::ptr;
 use std::str::FromStr;
 use std::string::FromUtf8Error;
@@ -324,6 +325,28 @@ pub(crate) fn get_value_name(value: &Value) -> &[u8] {
         let mut len = 0;
         let data = LLVMGetValueName2(value, &mut len);
         std::slice::from_raw_parts(data.cast(), len)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct Intrinsic {
+    id: NonZero<c_uint>,
+}
+
+impl Intrinsic {
+    pub(crate) fn lookup(name: &[u8]) -> Option<Self> {
+        let id = unsafe { LLVMLookupIntrinsicID(name.as_c_char_ptr(), name.len()) };
+        NonZero::new(id).map(|id| Self { id })
+    }
+
+    pub(crate) fn get_declaration<'ll>(
+        self,
+        llmod: &'ll Module,
+        type_params: &[&'ll Type],
+    ) -> &'ll Value {
+        unsafe {
+            LLVMGetIntrinsicDeclaration(llmod, self.id, type_params.as_ptr(), type_params.len())
+        }
     }
 }
 

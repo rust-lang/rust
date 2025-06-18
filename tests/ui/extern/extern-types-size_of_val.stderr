@@ -1,0 +1,39 @@
+error[E0277]: the size for values of type `A` cannot be known
+  --> $DIR/extern-types-size_of_val.rs:13:17
+   |
+LL |     size_of_val(x);
+   |     ----------- ^ the trait `MetaSized` is not implemented for `A`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: the trait bound `A: MetaSized` is not satisfied
+note: required by a bound in `std::mem::size_of_val`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: consider borrowing here
+   |
+LL |     size_of_val(&x);
+   |                 +
+LL |     size_of_val(&mut x);
+   |                 ++++
+
+error[E0277]: the size for values of type `A` cannot be known
+  --> $DIR/extern-types-size_of_val.rs:15:18
+   |
+LL |     align_of_val(x);
+   |     ------------ ^ the trait `MetaSized` is not implemented for `A`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: the trait bound `A: MetaSized` is not satisfied
+note: required by a bound in `std::mem::align_of_val`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: consider borrowing here
+   |
+LL |     align_of_val(&x);
+   |                  +
+LL |     align_of_val(&mut x);
+   |                  ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

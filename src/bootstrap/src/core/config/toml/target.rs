@@ -84,7 +84,7 @@ pub struct Target {
 impl Target {
     pub fn from_triple(triple: &str) -> Self {
         let mut target: Self = Default::default();
-        if triple.contains("-none") || triple.contains("nvptx") || triple.contains("switch") {
+        if !build_helper::targets::target_supports_std(triple) {
             target.no_std = true;
         }
         if triple.contains("emscripten") {
@@ -101,7 +101,7 @@ impl Config {
                 let mut target = Target::from_triple(&triple);
 
                 if let Some(ref s) = cfg.llvm_config {
-                    if self.download_rustc_commit.is_some() && triple == *self.build.triple {
+                    if self.download_rustc_commit.is_some() && triple == *self.host_target.triple {
                         panic!(
                             "setting llvm_config for the host is incompatible with download-rustc"
                         );

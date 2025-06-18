@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "avr-unknown-unknown".into(),
         pointer_width: 16,
         options: TargetOptions {
-            c_int_width: "16".into(),
+            c_int_width: 16,
             exe_suffix: ".elf".into(),
             linker: Some("avr-gcc".into()),
             eh_frame_header: false,

@@ -7,23 +7,23 @@ LL | fn weird2() -> impl !Sized {}
    = help: the trait `Sized` is not implemented for `impl !Sized`
    = note: the return type of a function must have a statically known size
 
-error[E0271]: type mismatch resolving `impl !Sized + Sized == ()`
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:15:16
    |
 LL | fn weird0() -> impl Sized + !Sized {}
-   |                ^^^^^^^^^^^^^^^^^^^ types differ
+   |                ^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
-error[E0271]: type mismatch resolving `impl !Sized + Sized == ()`
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:17:16
    |
 LL | fn weird1() -> impl !Sized + Sized {}
-   |                ^^^^^^^^^^^^^^^^^^^ types differ
+   |                ^^^^^^^^^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
-error[E0271]: type mismatch resolving `impl !Sized == ()`
+error[E0277]: the trait bound `(): !Sized` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:19:16
    |
 LL | fn weird2() -> impl !Sized {}
-   |                ^^^^^^^^^^^ types differ
+   |                ^^^^^^^^^^^ the trait bound `(): !Sized` is not satisfied
 
 error[E0277]: the trait bound `impl !Trait: Trait` is not satisfied
   --> $DIR/opaque-type-unsatisfied-bound.rs:12:13
@@ -41,5 +41,4 @@ LL | fn consume(_: impl Trait) {}
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0271, E0277.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0277`.

@@ -44,34 +44,34 @@ note: while trying to match `r#async`
 LL |     (r#async) => (1)
    |      ^^^^^^^
 
-error: macro expansion ends with an incomplete expression: expected one of `move`, `use`, `|`, or `||`
+error: macro expansion ends with an incomplete expression: expected one of `move`, `use`, `{`, `|`, or `||`
   --> $DIR/auxiliary/edition-kw-macro-2018.rs:27:23
    |
 LL |     ($i: ident) => ($i)
-   |                       ^ expected one of `move`, `use`, `|`, or `||`
+   |                       ^ expected one of `move`, `use`, `{`, `|`, or `||`
    |
   ::: $DIR/edition-keywords-2018-2018-parsing.rs:29:8
    |
 LL |     if passes_ident!(async) == 1 {} // FIXME: Edition hygiene bug, async here is 2018 and reserved
    |        -------------------- in this macro invocation
 
-error: macro expansion ends with an incomplete expression: expected one of `move`, `use`, `|`, or `||`
+error: macro expansion ends with an incomplete expression: expected one of `move`, `use`, `{`, `|`, or `||`
   --> $DIR/edition-keywords-2018-2018-parsing.rs:31:24
    |
 LL |     if passes_tt!(async) == 1 {}
-   |                        ^ expected one of `move`, `use`, `|`, or `||`
+   |                        ^ expected one of `move`, `use`, `{`, `|`, or `||`
 
-error: macro expansion ends with an incomplete expression: expected one of `move`, `use`, `|`, or `||`
+error: macro expansion ends with an incomplete expression: expected one of `move`, `use`, `{`, `|`, or `||`
   --> $DIR/edition-keywords-2018-2018-parsing.rs:14:23
    |
 LL |     ($i: ident) => ($i)
-   |                       ^ expected one of `move`, `use`, `|`, or `||`
+   |                       ^ expected one of `move`, `use`, `{`, `|`, or `||`
 
-error: macro expansion ends with an incomplete expression: expected one of `move`, `use`, `|`, or `||`
+error: macro expansion ends with an incomplete expression: expected one of `move`, `use`, `{`, `|`, or `||`
   --> $DIR/edition-keywords-2018-2018-parsing.rs:35:30
    |
 LL |     if local_passes_tt!(async) == 1 {}
-   |                              ^ expected one of `move`, `use`, `|`, or `||`
+   |                              ^ expected one of `move`, `use`, `{`, `|`, or `||`
 
 error[E0308]: mismatched types
   --> $DIR/edition-keywords-2018-2018-parsing.rs:40:33

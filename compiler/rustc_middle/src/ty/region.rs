@@ -148,6 +148,10 @@ impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
         Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon })
     }
 
+    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderRegion) -> Self {
+        Region::new_placeholder(tcx, placeholder)
+    }
+
     fn new_static(tcx: TyCtxt<'tcx>) -> Self {
         tcx.lifetimes.re_static
     }

@@ -11,8 +11,8 @@ Freestanding/bare-metal LoongArch binaries in ELF format: firmware, kernels, etc
 
 ## Target maintainers
 
-- [@heiher](https://github.com/heiher)
-- [@xen0n](https://github.com/xen0n)
+[@heiher](https://github.com/heiher)
+[@xen0n](https://github.com/xen0n)
 
 ## Requirements
 

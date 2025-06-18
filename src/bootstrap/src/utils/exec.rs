@@ -11,7 +11,7 @@ use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio}
 use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
 
-use crate::Build;
+use super::execution_context::ExecutionContext;
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]
@@ -125,7 +125,6 @@ impl BootstrapCommand {
         Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
     }
 
-    #[expect(dead_code)]
     pub fn fail_fast(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::Exit, ..self }
     }
@@ -143,20 +142,20 @@ impl BootstrapCommand {
     /// Run the command, while printing stdout and stderr.
     /// Returns true if the command has succeeded.
     #[track_caller]
-    pub fn run(&mut self, builder: &Build) -> bool {
-        builder.run(self, OutputMode::Print, OutputMode::Print).is_success()
+    pub fn run(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> bool {
+        exec_ctx.as_ref().run(self, OutputMode::Print, OutputMode::Print).is_success()
     }
 
     /// Run the command, while capturing and returning all its output.
     #[track_caller]
-    pub fn run_capture(&mut self, builder: &Build) -> CommandOutput {
-        builder.run(self, OutputMode::Capture, OutputMode::Capture)
+    pub fn run_capture(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
+        exec_ctx.as_ref().run(self, OutputMode::Capture, OutputMode::Capture)
     }
 
     /// Run the command, while capturing and returning stdout, and printing stderr.
     #[track_caller]
-    pub fn run_capture_stdout(&mut self, builder: &Build) -> CommandOutput {
-        builder.run(self, OutputMode::Capture, OutputMode::Print)
+    pub fn run_capture_stdout(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
+        exec_ctx.as_ref().run(self, OutputMode::Capture, OutputMode::Print)
     }
 
     /// Provides access to the stdlib Command inside.
@@ -280,7 +279,6 @@ impl CommandOutput {
         !self.is_success()
     }
 
-    #[expect(dead_code)]
     pub fn status(&self) -> Option<ExitStatus> {
         match self.status {
             CommandStatus::Finished(status) => Some(status),

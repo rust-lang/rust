@@ -44,11 +44,10 @@ pub(super) fn check<'tcx>(
 
             if let ExprKind::MethodCall(name, _, args @ ([] | [_]), _) = parent.kind {
                 let mut app = Applicability::MachineApplicable;
-                let name = name.ident.as_str();
                 let collect_ty = cx.typeck_results().expr_ty(collect_expr);
 
-                let sugg: String = match name {
-                    "len" => {
+                let sugg: String = match name.ident.name {
+                    sym::len => {
                         if let Some(adt) = collect_ty.ty_adt_def()
                             && matches!(
                                 cx.tcx.get_diagnostic_name(adt.did()),
@@ -60,13 +59,13 @@ pub(super) fn check<'tcx>(
                             return;
                         }
                     },
-                    "is_empty"
+                    sym::is_empty
                         if is_is_empty_sig(cx, parent.hir_id)
                             && iterates_same_ty(cx, cx.typeck_results().expr_ty(iter_expr), collect_ty) =>
                     {
                         "next().is_none()".into()
                     },
-                    "contains" => {
+                    sym::contains => {
                         if is_contains_sig(cx, parent.hir_id, iter_expr)
                             && let Some(arg) = args.first()
                         {

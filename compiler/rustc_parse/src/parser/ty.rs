@@ -15,10 +15,11 @@ use thin_vec::{ThinVec, thin_vec};
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 use crate::errors::{
     self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
-    FnPointerCannotBeAsync, FnPointerCannotBeConst, FnPtrWithGenerics, FnPtrWithGenericsSugg,
-    HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
-    NestedCVariadicType, ReturnTypesUseThinArrow,
+    FnPtrWithGenerics, FnPtrWithGenericsSugg, HelpUseLatestEdition, InvalidDynKeyword,
+    LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
+    ReturnTypesUseThinArrow,
 };
+use crate::parser::item::FrontMatterParsingMode;
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
 /// Signals whether parsing a type should allow `+`.
@@ -669,62 +670,16 @@ impl<'a> Parser<'a> {
             tokens: None,
         };
         let span_start = self.token.span;
-        let ast::FnHeader { ext, safety, constness, coroutine_kind } =
-            self.parse_fn_front_matter(&inherited_vis, Case::Sensitive)?;
-        let fn_start_lo = self.prev_token.span.lo();
+        let ast::FnHeader { ext, safety, .. } = self.parse_fn_front_matter(
+            &inherited_vis,
+            Case::Sensitive,
+            FrontMatterParsingMode::FunctionPtrType,
+        )?;
         if self.may_recover() && self.token == TokenKind::Lt {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
         }
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
-        let whole_span = lo.to(self.prev_token.span);
 
-        // Order/parsing of "front matter" follows:
-        // `<constness> <coroutine_kind> <safety> <extern> fn()`
-        //  ^           ^                ^        ^        ^
-        //  |           |                |        |        fn_start_lo
-        //  |           |                |        ext_sp.lo
-        //  |           |                safety_sp.lo
-        //  |           coroutine_sp.lo
-        //  const_sp.lo
-        if let ast::Const::Yes(const_span) = constness {
-            let next_token_lo = if let Some(
-                ast::CoroutineKind::Async { span, .. }
-                | ast::CoroutineKind::Gen { span, .. }
-                | ast::CoroutineKind::AsyncGen { span, .. },
-            ) = coroutine_kind
-            {
-                span.lo()
-            } else if let ast::Safety::Unsafe(span) | ast::Safety::Safe(span) = safety {
-                span.lo()
-            } else if let ast::Extern::Implicit(span) | ast::Extern::Explicit(_, span) = ext {
-                span.lo()
-            } else {
-                fn_start_lo
-            };
-            let sugg_span = const_span.with_hi(next_token_lo);
-            self.dcx().emit_err(FnPointerCannotBeConst {
-                span: whole_span,
-                qualifier: const_span,
-                suggestion: sugg_span,
-            });
-        }
-        if let Some(ast::CoroutineKind::Async { span: async_span, .. }) = coroutine_kind {
-            let next_token_lo = if let ast::Safety::Unsafe(span) | ast::Safety::Safe(span) = safety
-            {
-                span.lo()
-            } else if let ast::Extern::Implicit(span) | ast::Extern::Explicit(_, span) = ext {
-                span.lo()
-            } else {
-                fn_start_lo
-            };
-            let sugg_span = async_span.with_hi(next_token_lo);
-            self.dcx().emit_err(FnPointerCannotBeAsync {
-                span: whole_span,
-                qualifier: async_span,
-                suggestion: sugg_span,
-            });
-        }
-        // FIXME(gen_blocks): emit a similar error for `gen fn()`
         let decl_span = span_start.to(self.prev_token.span);
         Ok(TyKind::BareFn(P(BareFnTy { ext, safety, generic_params: params, decl, decl_span })))
     }

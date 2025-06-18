@@ -198,7 +198,7 @@ enum LitOrArg {
 
 impl FilterFormatString {
     fn parse(input: Symbol) -> Self {
-        let pieces = Parser::new(input.as_str(), None, None, false, ParseMode::Format)
+        let pieces = Parser::new(input.as_str(), None, None, false, ParseMode::Diagnostic)
             .map(|p| match p {
                 Piece::Lit(s) => LitOrArg::Lit(s.to_owned()),
                 // We just ignore formatspecs here

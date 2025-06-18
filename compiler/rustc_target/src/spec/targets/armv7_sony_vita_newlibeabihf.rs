@@ -31,7 +31,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             os: "vita".into(),
             endian: Endian::Little,
-            c_int_width: "32".into(),
+            c_int_width: 32,
             env: "newlib".into(),
             vendor: "sony".into(),
             abi: "eabihf".into(),

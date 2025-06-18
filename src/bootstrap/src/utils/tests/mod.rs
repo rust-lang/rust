@@ -1,2 +1,3 @@
+//! This module contains shared utilities for bootstrap tests.
+
 pub mod git;
-mod shared_helpers_tests;

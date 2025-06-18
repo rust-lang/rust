@@ -38,4 +38,4 @@ type WithTransparentTraitObject =
 //~^ ERROR return value of `"C-cmse-nonsecure-call"` function too large to pass via registers [E0798]
 
 type WithVarArgs = extern "C-cmse-nonsecure-call" fn(u32, ...);
-//~^ ERROR C-variadic function must have a compatible calling convention, like `C`
+//~^ ERROR C-variadic functions with the "C-cmse-nonsecure-call" calling convention are not supported

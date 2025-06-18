@@ -28,6 +28,7 @@ mod fallback;
 mod fn_ctxt;
 mod gather_locals;
 mod intrinsicck;
+mod loops;
 mod method;
 mod naked_functions;
 mod op;
@@ -47,7 +48,7 @@ use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_e
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, HirIdMap, Node};
-use rustc_hir_analysis::check::check_abi;
+use rustc_hir_analysis::check::{check_abi, check_custom_abi};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::query::Providers;
@@ -137,7 +138,7 @@ fn typeck_with_inspect<'tcx>(
         // for visit the asm expr of the body.
         let ty = fcx.check_expr(body.value);
         fcx.write_ty(id, ty);
-    } else if let Some(hir::FnSig { header, decl, .. }) = node.fn_sig() {
+    } else if let Some(hir::FnSig { header, decl, span: fn_sig_span }) = node.fn_sig() {
         let fn_sig = if decl.output.is_suggestable_infer_ty().is_some() {
             // In the case that we're recovering `fn() -> W<_>` or some other return
             // type that has an infer in it, lower the type directly so that it'll
@@ -149,6 +150,9 @@ fn typeck_with_inspect<'tcx>(
         };
 
         check_abi(tcx, id, span, fn_sig.abi());
+        check_custom_abi(tcx, def_id, fn_sig.skip_binder(), *fn_sig_span);
+
+        loops::check(tcx, def_id, body);
 
         // Compute the function signature from point of view of inside the fn.
         let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
@@ -188,6 +192,8 @@ fn typeck_with_inspect<'tcx>(
         } else {
             tcx.type_of(def_id).instantiate_identity()
         };
+
+        loops::check(tcx, def_id, body);
 
         let expected_type = fcx.normalize(body.value.span, expected_type);
 

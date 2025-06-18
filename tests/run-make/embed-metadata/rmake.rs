@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Tests the -Zembed-metadata compiler flag.
 // Tracking issue: https://github.com/rust-lang/rust/issues/139165
 

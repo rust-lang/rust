@@ -278,7 +278,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 {
                     let from_backend_ty = bx.backend_type(operand.layout);
                     let to_backend_ty = bx.backend_type(cast);
-                    Some(OperandValue::Immediate(self.transmute_immediate(
+                    Some(OperandValue::Immediate(transmute_immediate(
                         bx,
                         imm,
                         from_scalar,
@@ -303,8 +303,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let out_a_ibty = bx.scalar_pair_element_backend_type(cast, 0, false);
                     let out_b_ibty = bx.scalar_pair_element_backend_type(cast, 1, false);
                     Some(OperandValue::Pair(
-                        self.transmute_immediate(bx, imm_a, in_a, in_a_ibty, out_a, out_a_ibty),
-                        self.transmute_immediate(bx, imm_b, in_b, in_b_ibty, out_b, out_b_ibty),
+                        transmute_immediate(bx, imm_a, in_a, in_a_ibty, out_a, out_a_ibty),
+                        transmute_immediate(bx, imm_b, in_b, in_b_ibty, out_b, out_b_ibty),
                     ))
                 } else {
                     None
@@ -332,7 +332,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // valid ranges. For example, `char`s are passed as just `i32`, with no
         // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
         // the range of the input value too, not just the output range.
-        self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
+        assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
             (Int(_, is_signed), Int(..)) => bx.intcast(imm, to_backend_ty, is_signed),
@@ -363,98 +363,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => return None,
         };
         Some(imm)
-    }
-
-    /// Transmutes one of the immediates from an [`OperandValue::Immediate`]
-    /// or an [`OperandValue::Pair`] to an immediate of the target type.
-    ///
-    /// `to_backend_ty` must be the *non*-immediate backend type (so it will be
-    /// `i8`, not `i1`, for `bool`-like types.)
-    fn transmute_immediate(
-        &self,
-        bx: &mut Bx,
-        mut imm: Bx::Value,
-        from_scalar: abi::Scalar,
-        from_backend_ty: Bx::Type,
-        to_scalar: abi::Scalar,
-        to_backend_ty: Bx::Type,
-    ) -> Bx::Value {
-        assert_eq!(from_scalar.size(self.cx), to_scalar.size(self.cx));
-
-        // While optimizations will remove no-op transmutes, they might still be
-        // there in debug or things that aren't no-op in MIR because they change
-        // the Rust type but not the underlying layout/niche.
-        if from_scalar == to_scalar && from_backend_ty == to_backend_ty {
-            return imm;
-        }
-
-        use abi::Primitive::*;
-        imm = bx.from_immediate(imm);
-
-        // If we have a scalar, we must already know its range. Either
-        //
-        // 1) It's a parameter with `range` parameter metadata,
-        // 2) It's something we `load`ed with `!range` metadata, or
-        // 3) After a transmute we `assume`d the range (see below).
-        //
-        // That said, last time we tried removing this, it didn't actually help
-        // the rustc-perf results, so might as well keep doing it
-        // <https://github.com/rust-lang/rust/pull/135610#issuecomment-2599275182>
-        self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
-
-        imm = match (from_scalar.primitive(), to_scalar.primitive()) {
-            (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
-            (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
-            (Int(..), Pointer(..)) => bx.ptradd(bx.const_null(bx.type_ptr()), imm),
-            (Pointer(..), Int(..)) => {
-                // FIXME: this exposes the provenance, which shouldn't be necessary.
-                bx.ptrtoint(imm, to_backend_ty)
-            }
-            (Float(_), Pointer(..)) => {
-                let int_imm = bx.bitcast(imm, bx.cx().type_isize());
-                bx.ptradd(bx.const_null(bx.type_ptr()), int_imm)
-            }
-            (Pointer(..), Float(_)) => {
-                // FIXME: this exposes the provenance, which shouldn't be necessary.
-                let int_imm = bx.ptrtoint(imm, bx.cx().type_isize());
-                bx.bitcast(int_imm, to_backend_ty)
-            }
-        };
-
-        // This `assume` remains important for cases like (a conceptual)
-        //    transmute::<u32, NonZeroU32>(x) == 0
-        // since it's never passed to something with parameter metadata (especially
-        // after MIR inlining) so the only way to tell the backend about the
-        // constraint that the `transmute` introduced is to `assume` it.
-        self.assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
-
-        imm = bx.to_immediate_scalar(imm, to_scalar);
-        imm
-    }
-
-    fn assume_scalar_range(
-        &self,
-        bx: &mut Bx,
-        imm: Bx::Value,
-        scalar: abi::Scalar,
-        backend_ty: Bx::Type,
-    ) {
-        if matches!(self.cx.sess().opts.optimize, OptLevel::No) || scalar.is_always_valid(self.cx) {
-            return;
-        }
-
-        match scalar.primitive() {
-            abi::Primitive::Int(..) => {
-                let range = scalar.valid_range(self.cx);
-                bx.assume_integer_range(imm, backend_ty, range);
-            }
-            abi::Primitive::Pointer(abi::AddressSpace::DATA)
-                if !scalar.valid_range(self.cx).contains(0) =>
-            {
-                bx.assume_nonnull(imm);
-            }
-            abi::Primitive::Pointer(..) | abi::Primitive::Float(..) => {}
-        }
     }
 
     pub(crate) fn codegen_rvalue_unsized(
@@ -1229,5 +1137,95 @@ impl OperandValueKind {
             OperandValueKind::Pair(a, b) => [a, b].into(),
             OperandValueKind::Ref => return None,
         })
+    }
+}
+
+/// Transmutes one of the immediates from an [`OperandValue::Immediate`]
+/// or an [`OperandValue::Pair`] to an immediate of the target type.
+///
+/// `to_backend_ty` must be the *non*-immediate backend type (so it will be
+/// `i8`, not `i1`, for `bool`-like types.)
+fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    mut imm: Bx::Value,
+    from_scalar: abi::Scalar,
+    from_backend_ty: Bx::Type,
+    to_scalar: abi::Scalar,
+    to_backend_ty: Bx::Type,
+) -> Bx::Value {
+    assert_eq!(from_scalar.size(bx.cx()), to_scalar.size(bx.cx()));
+
+    // While optimizations will remove no-op transmutes, they might still be
+    // there in debug or things that aren't no-op in MIR because they change
+    // the Rust type but not the underlying layout/niche.
+    if from_scalar == to_scalar && from_backend_ty == to_backend_ty {
+        return imm;
+    }
+
+    use abi::Primitive::*;
+    imm = bx.from_immediate(imm);
+
+    // If we have a scalar, we must already know its range. Either
+    //
+    // 1) It's a parameter with `range` parameter metadata,
+    // 2) It's something we `load`ed with `!range` metadata, or
+    // 3) After a transmute we `assume`d the range (see below).
+    //
+    // That said, last time we tried removing this, it didn't actually help
+    // the rustc-perf results, so might as well keep doing it
+    // <https://github.com/rust-lang/rust/pull/135610#issuecomment-2599275182>
+    assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
+
+    imm = match (from_scalar.primitive(), to_scalar.primitive()) {
+        (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
+        (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
+        (Int(..), Pointer(..)) => bx.ptradd(bx.const_null(bx.type_ptr()), imm),
+        (Pointer(..), Int(..)) => {
+            // FIXME: this exposes the provenance, which shouldn't be necessary.
+            bx.ptrtoint(imm, to_backend_ty)
+        }
+        (Float(_), Pointer(..)) => {
+            let int_imm = bx.bitcast(imm, bx.cx().type_isize());
+            bx.ptradd(bx.const_null(bx.type_ptr()), int_imm)
+        }
+        (Pointer(..), Float(_)) => {
+            // FIXME: this exposes the provenance, which shouldn't be necessary.
+            let int_imm = bx.ptrtoint(imm, bx.cx().type_isize());
+            bx.bitcast(int_imm, to_backend_ty)
+        }
+    };
+
+    // This `assume` remains important for cases like (a conceptual)
+    //    transmute::<u32, NonZeroU32>(x) == 0
+    // since it's never passed to something with parameter metadata (especially
+    // after MIR inlining) so the only way to tell the backend about the
+    // constraint that the `transmute` introduced is to `assume` it.
+    assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
+
+    imm = bx.to_immediate_scalar(imm, to_scalar);
+    imm
+}
+
+fn assume_scalar_range<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    imm: Bx::Value,
+    scalar: abi::Scalar,
+    backend_ty: Bx::Type,
+) {
+    if matches!(bx.cx().sess().opts.optimize, OptLevel::No) || scalar.is_always_valid(bx.cx()) {
+        return;
+    }
+
+    match scalar.primitive() {
+        abi::Primitive::Int(..) => {
+            let range = scalar.valid_range(bx.cx());
+            bx.assume_integer_range(imm, backend_ty, range);
+        }
+        abi::Primitive::Pointer(abi::AddressSpace::DATA)
+            if !scalar.valid_range(bx.cx()).contains(0) =>
+        {
+            bx.assume_nonnull(imm);
+        }
+        abi::Primitive::Pointer(..) | abi::Primitive::Float(..) => {}
     }
 }

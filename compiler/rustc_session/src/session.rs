@@ -215,13 +215,6 @@ pub struct Session {
     pub invocation_temp: Option<String>,
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum MetadataKind {
-    None,
-    Uncompressed,
-    Compressed,
-}
-
 #[derive(Clone, Copy)]
 pub enum CodegenUnits {
     /// Specified by the user. In this case we try fairly hard to produce the

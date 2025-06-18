@@ -1133,6 +1133,7 @@ class RoaringBitmap {
         }
         for (let j = 0; j < size; ++j) {
             if (offsets && offsets[j] !== i) {
+                // eslint-disable-next-line no-console
                 console.log(this.containers);
                 throw new Error(`corrupt bitmap ${j}: ${i} / ${offsets[j]}`);
             }

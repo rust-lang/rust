@@ -1,14 +1,14 @@
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
    |
-   = note: the evaluated program deadlocked
+   = note: this thread got stuck here
    = note: (no span available)
    = note: BACKTRACE on thread `unnamed-ID`:
 
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> tests/fail-dep/libc/fcntl_fsetfl_while_blocking.rs:LL:CC
    |
 LL |     let _res = unsafe { libc::read(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
-   |                                                                                              ^ the evaluated program deadlocked
+   |                                                                                              ^ this thread got stuck here
    |
    = note: BACKTRACE:
    = note: inside `main` at tests/fail-dep/libc/fcntl_fsetfl_while_blocking.rs:LL:CC

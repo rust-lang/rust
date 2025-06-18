@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value: encountered a reference p
   --> tests/fail/validity/ref_to_uninhabited2.rs:LL:CC
    |
 LL |         let _x: &(i32, Void) = transmute(&42);
-   |                                ^^^^^^^^^^^^^^ constructing invalid value: encountered a reference pointing to uninhabited type (i32, Void)
+   |                                ^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -475,3 +475,10 @@ pub(crate) struct UseConstGenericArg {
     #[suggestion_part(code = "{other_args}")]
     pub call_args: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_union_default_field_values)]
+pub(crate) struct UnionWithDefault {
+    #[primary_span]
+    pub span: Span,
+}

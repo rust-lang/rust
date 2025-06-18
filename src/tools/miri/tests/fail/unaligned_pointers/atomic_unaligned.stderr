@@ -2,7 +2,7 @@ error: Undefined Behavior: accessing memory with alignment ALIGN, but alignment 
   --> tests/fail/unaligned_pointers/atomic_unaligned.rs:LL:CC
    |
 LL |         intrinsics::atomic_load::<_, { intrinsics::AtomicOrdering::SeqCst }>(zptr);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing memory with alignment ALIGN, but alignment ALIGN is required
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this usually indicates that your program performed an invalid operation and caused Undefined Behavior
    = help: but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives

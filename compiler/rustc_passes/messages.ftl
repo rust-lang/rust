@@ -56,23 +56,6 @@ passes_autodiff_attr =
 passes_both_ffi_const_and_pure =
     `#[ffi_const]` function cannot be `#[ffi_pure]`
 
-passes_break_inside_closure =
-    `{$name}` inside of a closure
-    .label = cannot `{$name}` inside of a closure
-    .closure_label = enclosing closure
-
-passes_break_inside_coroutine =
-    `{$name}` inside `{$kind}` {$source}
-    .label = cannot `{$name}` inside `{$kind}` {$source}
-    .coroutine_label = enclosing `{$kind}` {$source}
-
-passes_break_non_loop =
-    `break` with value from a `{$kind}` loop
-    .label = can only break with a value inside `loop` or breakable block
-    .label2 = you can't `break` with a value in a `{$kind}` loop
-    .suggestion = use `break` on its own without a value inside this `{$kind}` loop
-    .break_expr_suggestion = alternatively, you might have meant to use the available loop label
-
 passes_cannot_stabilize_deprecated =
     an API can't be stabilized after it is deprecated
     .label = invalid version
@@ -103,10 +86,6 @@ passes_const_stable_not_stable =
     attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
     .label = attribute specified here
 
-passes_continue_labeled_block =
-    `continue` pointing to a labeled block
-    .label = labeled blocks cannot be `continue`'d
-    .block_label = labeled block the `continue` points to
 
 passes_coroutine_on_non_closure =
     attribute should be applied to closures
@@ -310,6 +289,9 @@ passes_duplicate_lang_item_crate_depends =
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
+
+passes_enum_variant_same_name =
+    it is impossible to refer to the {$descr} `{$dead_name}` because it is shadowed by this enum variant with the same name
 
 passes_export_name =
     attribute should be applied to a free function, impl method or static
@@ -574,17 +556,6 @@ passes_optimize_invalid_target =
 passes_outer_crate_level_attr =
     crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
 
-passes_outside_loop =
-    `{$name}` outside of a loop{$is_break ->
-        [true] {" or labeled block"}
-        *[false] {""}
-    }
-    .label = cannot `{$name}` outside of a loop{$is_break ->
-        [true] {" or labeled block"}
-        *[false] {""}
-    }
-
-passes_outside_loop_suggestion = consider labeling this block to be able to break within it
 
 passes_panic_unwind_without_std =
     unwinding panics are not supported without std
@@ -748,17 +719,12 @@ passes_unknown_external_lang_item =
 passes_unknown_feature =
     unknown feature `{$feature}`
 
+passes_unknown_feature_alias =
+    feature `{$alias}` has been renamed to `{$feature}`
+
 passes_unknown_lang_item =
     definition of an unknown lang item: `{$name}`
     .label = definition of unknown lang item `{$name}`
-
-passes_unlabeled_cf_in_while_condition =
-    `break` or `continue` with no label in the condition of a `while` loop
-    .label = unlabeled `{$cf_type}` in the condition of a `while` loop
-
-passes_unlabeled_in_labeled_block =
-    unlabeled `{$cf_type}` inside of a labeled block
-    .label = `{$cf_type}` statements that would diverge to or through a labeled block need to bear a label
 
 passes_unnecessary_partial_stable_feature = the feature `{$feature}` has been partially stabilized since {$since} and is succeeded by the feature `{$implies}`
     .suggestion = if you are using features which are still unstable, change to using `{$implies}`

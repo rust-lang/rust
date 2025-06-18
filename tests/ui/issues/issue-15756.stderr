@@ -6,7 +6,6 @@ LL |     &mut something
    |
    = help: the trait `Sized` is not implemented for `[T]`
    = note: all local variables must have a statically known size
-   = help: unsized locals are gated as an unstable feature
 
 error: aborting due to 1 previous error
 
