@@ -364,8 +364,8 @@ pub trait Visitor<'v>: Sized {
     /// All types are treated as ambiguous types for the purposes of hir visiting in
     /// order to ensure that visitors can handle infer vars without it being too error-prone.
     ///
-    /// See the doc comments on [`Ty`] for an explanation of what it means for a type to be
-    /// ambiguous.
+    /// For an explanation of what it means for a type to be ambig, see the dev-guide:
+    /// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
     ///
     /// The [`Visitor::visit_infer`] method should be overridden in order to handle infer vars.
     fn visit_ty(&mut self, t: &'v Ty<'v, AmbigArg>) -> Self::Result {
@@ -375,8 +375,8 @@ pub trait Visitor<'v>: Sized {
     /// All consts are treated as ambiguous consts for the purposes of hir visiting in
     /// order to ensure that visitors can handle infer vars without it being too error-prone.
     ///
-    /// See the doc comments on [`ConstArg`] for an explanation of what it means for a const to be
-    /// ambiguous.
+    /// For an explanation of what it means for a const arg to be ambig, see the dev-guide:
+    /// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
     ///
     /// The [`Visitor::visit_infer`] method should be overridden in order to handle infer vars.
     fn visit_const_arg(&mut self, c: &'v ConstArg<'v, AmbigArg>) -> Self::Result {
@@ -516,6 +516,9 @@ pub trait VisitorExt<'v>: Visitor<'v> {
     ///
     /// Named `visit_ty_unambig` instead of `visit_unambig_ty` to aid in discovery
     /// by IDes when `v.visit_ty` is written.
+    ///
+    /// For an explanation of what it means for a type to be unambig, see the dev-guide:
+    /// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
     fn visit_ty_unambig(&mut self, t: &'v Ty<'v>) -> Self::Result {
         walk_unambig_ty(self, t)
     }
@@ -524,6 +527,9 @@ pub trait VisitorExt<'v>: Visitor<'v> {
     ///
     /// Named `visit_const_arg_unambig` instead of `visit_unambig_const_arg` to aid in
     /// discovery by IDes when `v.visit_const_arg` is written.
+    ///
+    /// For an explanation of what it means for a const arg to be unambig, see the dev-guide:
+    /// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
     fn visit_const_arg_unambig(&mut self, c: &'v ConstArg<'v>) -> Self::Result {
         walk_unambig_const_arg(self, c)
     }
@@ -975,6 +981,8 @@ pub fn walk_generic_arg<'v, V: Visitor<'v>>(
     }
 }
 
+/// For an explanation of what it means for a type to be unambig, see the dev-guide:
+/// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
 pub fn walk_unambig_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Result {
     match typ.try_as_ambig_ty() {
         Some(ambig_ty) => visitor.visit_ty(ambig_ty),
@@ -985,6 +993,8 @@ pub fn walk_unambig_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> 
     }
 }
 
+/// For an explanation of what it means for a type to be ambig, see the dev-guide:
+/// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -> V::Result {
     let Ty { hir_id, span: _, kind } = typ;
     try_visit!(visitor.visit_id(*hir_id));
@@ -1037,6 +1047,8 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
     V::Result::output()
 }
 
+/// For an explanation of what it means for a const arg to be unambig, see the dev-guide:
+/// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
 pub fn walk_unambig_const_arg<'v, V: Visitor<'v>>(
     visitor: &mut V,
     const_arg: &'v ConstArg<'v>,
@@ -1050,6 +1062,8 @@ pub fn walk_unambig_const_arg<'v, V: Visitor<'v>>(
     }
 }
 
+/// For an explanation of what it means for a const arg to be ambig, see the dev-guide:
+/// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
 pub fn walk_const_arg<'v, V: Visitor<'v>>(
     visitor: &mut V,
     const_arg: &'v ConstArg<'v, AmbigArg>,
