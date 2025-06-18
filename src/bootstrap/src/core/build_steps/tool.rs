@@ -41,7 +41,8 @@ pub enum ToolArtifactKind {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct ToolBuild {
-    compiler: Compiler,
+    /// Compiler that will build this tool.
+    build_compiler: Compiler,
     target: TargetSelection,
     tool: &'static str,
     path: &'static str,
@@ -111,25 +112,25 @@ impl Step for ToolBuild {
         let mut tool = self.tool;
         let path = self.path;
 
-        let target_compiler = self.compiler;
-        self.compiler = if self.mode == Mode::ToolRustc {
-            get_tool_rustc_compiler(builder, self.compiler)
+        let target_compiler = self.build_compiler;
+        self.build_compiler = if self.mode == Mode::ToolRustc {
+            get_tool_rustc_compiler(builder, self.build_compiler)
         } else {
-            self.compiler
+            self.build_compiler
         };
 
         match self.mode {
             Mode::ToolRustc => {
                 // If compiler was forced, its artifacts should have been prepared earlier.
-                if !self.compiler.is_forced_compiler() {
-                    builder.std(self.compiler, self.compiler.host);
-                    builder.ensure(compile::Rustc::new(self.compiler, target));
+                if !self.build_compiler.is_forced_compiler() {
+                    builder.std(self.build_compiler, self.build_compiler.host);
+                    builder.ensure(compile::Rustc::new(self.build_compiler, target));
                 }
             }
             Mode::ToolStd => {
                 // If compiler was forced, its artifacts should have been prepared earlier.
-                if !self.compiler.is_forced_compiler() {
-                    builder.std(self.compiler, target)
+                if !self.build_compiler.is_forced_compiler() {
+                    builder.std(self.build_compiler, target);
                 }
             }
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
@@ -151,7 +152,7 @@ impl Step for ToolBuild {
 
         let mut cargo = prepare_tool_cargo(
             builder,
-            self.compiler,
+            self.build_compiler,
             self.mode,
             target,
             Kind::Build,
@@ -173,7 +174,7 @@ impl Step for ToolBuild {
 
         // Rustc tools (miri, clippy, cargo, rustfmt, rust-analyzer)
         // could use the additional optimizations.
-        if self.mode == Mode::ToolRustc && is_lto_stage(&self.compiler) {
+        if self.mode == Mode::ToolRustc && is_lto_stage(&self.build_compiler) {
             let lto = match builder.config.rust_lto {
                 RustcLto::Off => Some("off"),
                 RustcLto::Thin => Some("thin"),
@@ -195,8 +196,8 @@ impl Step for ToolBuild {
             Kind::Build,
             self.mode,
             self.tool,
-            self.compiler.stage,
-            &self.compiler.host,
+            self.build_compiler.stage,
+            &self.build_compiler.host,
             &self.target,
         );
 
@@ -219,14 +220,14 @@ impl Step for ToolBuild {
             }
             let tool_path = match self.artifact_kind {
                 ToolArtifactKind::Binary => {
-                    copy_link_tool_bin(builder, self.compiler, self.target, self.mode, tool)
+                    copy_link_tool_bin(builder, self.build_compiler, self.target, self.mode, tool)
                 }
                 ToolArtifactKind::Library => builder
-                    .cargo_out(self.compiler, self.mode, self.target)
+                    .cargo_out(self.build_compiler, self.mode, self.target)
                     .join(format!("lib{tool}.rlib")),
             };
 
-            ToolBuildResult { tool_path, build_compiler: self.compiler, target_compiler }
+            ToolBuildResult { tool_path, build_compiler: self.build_compiler, target_compiler }
         }
     }
 }
@@ -450,7 +451,7 @@ macro_rules! bootstrap_tool {
                 let compiletest_wants_stage0 = $tool_name == "compiletest" && builder.config.compiletest_use_stage0_libtest;
 
                 builder.ensure(ToolBuild {
-                    compiler: self.compiler,
+                    build_compiler: self.compiler,
                     target: self.target,
                     tool: $tool_name,
                     mode: if is_unstable && !compiletest_wants_stage0 {
@@ -560,7 +561,7 @@ impl Step for RustcPerf {
         builder.require_submodule("src/tools/rustc-perf", None);
 
         let tool = ToolBuild {
-            compiler: self.compiler,
+            build_compiler: self.compiler,
             target: self.target,
             tool: "collector",
             mode: Mode::ToolBootstrap,
@@ -576,7 +577,7 @@ impl Step for RustcPerf {
         let res = builder.ensure(tool.clone());
         // We also need to symlink the `rustc-fake` binary to the corresponding directory,
         // because `collector` expects it in the same directory.
-        copy_link_tool_bin(builder, tool.compiler, tool.target, tool.mode, "rustc-fake");
+        copy_link_tool_bin(builder, tool.build_compiler, tool.target, tool.mode, "rustc-fake");
 
         res
     }
@@ -620,7 +621,7 @@ impl Step for ErrorIndex {
 
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.ensure(ToolBuild {
-            compiler: self.compiler,
+            build_compiler: self.compiler,
             target: self.compiler.host,
             tool: "error_index_generator",
             mode: Mode::ToolRustc,
@@ -656,7 +657,7 @@ impl Step for RemoteTestServer {
 
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.ensure(ToolBuild {
-            compiler: self.compiler,
+            build_compiler: self.compiler,
             target: self.target,
             tool: "remote-test-server",
             mode: Mode::ToolStd,
@@ -757,7 +758,7 @@ impl Step for Rustdoc {
 
         let ToolBuildResult { tool_path, build_compiler, target_compiler } =
             builder.ensure(ToolBuild {
-                compiler: target_compiler,
+                build_compiler: target_compiler,
                 target,
                 // Cargo adds a number of paths to the dylib search path on windows, which results in
                 // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
@@ -825,7 +826,7 @@ impl Step for Cargo {
         builder.build.require_submodule("src/tools/cargo", None);
 
         builder.ensure(ToolBuild {
-            compiler: self.compiler,
+            build_compiler: self.compiler,
             target: self.target,
             tool: "cargo",
             mode: Mode::ToolRustc,
@@ -873,7 +874,7 @@ impl Step for LldWrapper {
         let target = self.target_compiler.host;
 
         let tool_result = builder.ensure(ToolBuild {
-            compiler: self.build_compiler,
+            build_compiler: self.build_compiler,
             target,
             tool: "lld-wrapper",
             mode: Mode::ToolStd,
@@ -948,7 +949,7 @@ impl Step for RustAnalyzer {
 
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.ensure(ToolBuild {
-            compiler: self.compiler,
+            build_compiler: self.compiler,
             target: self.target,
             tool: "rust-analyzer",
             mode: Mode::ToolRustc,
@@ -993,7 +994,7 @@ impl Step for RustAnalyzerProcMacroSrv {
 
     fn run(self, builder: &Builder<'_>) -> Option<ToolBuildResult> {
         let tool_result = builder.ensure(ToolBuild {
-            compiler: self.compiler,
+            build_compiler: self.compiler,
             target: self.target,
             tool: "rust-analyzer-proc-macro-srv",
             mode: Mode::ToolRustc,
@@ -1051,7 +1052,7 @@ impl Step for LlvmBitcodeLinker {
     )]
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.ensure(ToolBuild {
-            compiler: self.build_compiler,
+            build_compiler: self.build_compiler,
             target: self.target,
             tool: "llvm-bitcode-linker",
             mode: Mode::ToolRustc,
@@ -1235,7 +1236,7 @@ fn run_tool_build_step(
 
     let ToolBuildResult { tool_path, build_compiler, target_compiler } =
         builder.ensure(ToolBuild {
-            compiler,
+            build_compiler: compiler,
             target,
             tool: tool_name,
             mode: Mode::ToolRustc,
@@ -1332,7 +1333,7 @@ impl Step for TestFloatParse {
         let compiler = builder.compiler(builder.top_stage, bootstrap_host);
 
         builder.ensure(ToolBuild {
-            compiler,
+            build_compiler: compiler,
             target: bootstrap_host,
             tool: "test-float-parse",
             mode: Mode::ToolStd,
