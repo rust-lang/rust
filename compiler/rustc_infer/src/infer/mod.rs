@@ -400,7 +400,7 @@ pub enum RegionVariableOrigin {
     /// Region variables created for ill-categorized reasons.
     ///
     /// They mostly indicate places in need of refactoring.
-    MiscVariable(Span),
+    Misc(Span),
 
     /// Regions created by a `&P` or `[...]` pattern.
     PatternRegion(Span),
@@ -1526,7 +1526,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
 impl RegionVariableOrigin {
     pub fn span(&self) -> Span {
         match *self {
-            RegionVariableOrigin::MiscVariable(a)
+            RegionVariableOrigin::Misc(a)
             | RegionVariableOrigin::PatternRegion(a)
             | RegionVariableOrigin::BorrowRegion(a)
             | RegionVariableOrigin::Autoref(a)

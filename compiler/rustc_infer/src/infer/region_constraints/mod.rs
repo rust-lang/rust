@@ -580,7 +580,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         let a_universe = self.universe(a);
         let b_universe = self.universe(b);
         let c_universe = cmp::max(a_universe, b_universe);
-        let c = self.new_region_var(c_universe, RegionVariableOrigin::MiscVariable(origin.span()));
+        let c = self.new_region_var(c_universe, RegionVariableOrigin::Misc(origin.span()));
         self.combine_map(t).insert(vars, c);
         self.undo_log.push(AddCombination(t, vars));
         let new_r = ty::Region::new_var(tcx, c);

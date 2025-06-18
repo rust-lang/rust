@@ -66,10 +66,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 Ty::new_tup(self.tcx(), user_provided_sig.inputs()),
                 args.tupled_upvars_ty(),
                 args.coroutine_captures_by_ref_ty(),
-                self.infcx
-                    .next_region_var(RegionVariableOrigin::MiscVariable(self.body.span), || {
-                        RegionCtxt::Unknown
-                    }),
+                self.infcx.next_region_var(RegionVariableOrigin::Misc(self.body.span), || {
+                    RegionCtxt::Unknown
+                }),
             );
 
             let next_ty_var = || self.infcx.next_ty_var(self.body.span);
