@@ -247,7 +247,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             RegionInferReason::Param(def) => {
                 RegionVariableOrigin::RegionParameterDefinition(span, def.name)
             }
-            _ => RegionVariableOrigin::MiscVariable(span),
+            _ => RegionVariableOrigin::Misc(span),
         };
         self.next_region_var(v)
     }

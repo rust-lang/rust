@@ -1015,7 +1015,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             s
         };
         let var_description = match var_origin {
-            RegionVariableOrigin::MiscVariable(_) => String::new(),
+            RegionVariableOrigin::Misc(_) => String::new(),
             RegionVariableOrigin::PatternRegion(_) => " for pattern".to_string(),
             RegionVariableOrigin::BorrowRegion(_) => " for borrow expression".to_string(),
             RegionVariableOrigin::Autoref(_) => " for autoref".to_string(),
