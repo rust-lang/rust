@@ -1,7 +1,8 @@
-// Verifies that `-Zsanitizer=kernel-address` emits sanitizer instrumentation.
-
+// Verifies that the `#[sanitize(address = "off")]` attribute also turns off
+// the kernel address sanitizer.
+//
 //@ add-core-stubs
-//@ compile-flags: -Zsanitizer=kernel-address -Copt-level=0
+//@ compile-flags: -Zsanitizer=kernel-address -Ctarget-feature=-crt-static -Copt-level=0
 //@ revisions: aarch64 riscv64imac riscv64gc x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-none
 //@[aarch64] needs-llvm-components: aarch64
@@ -19,7 +20,7 @@
 extern crate minicore;
 use minicore::*;
 
-// CHECK-LABEL: ; kasan_emits_instrumentation::unsanitized
+// CHECK-LABEL: ; sanitize_off_asan_kasan::unsanitized
 // CHECK-NEXT:  ; Function Attrs:
 // CHECK-NOT:   sanitize_address
 // CHECK:       start:
@@ -30,7 +31,7 @@ pub fn unsanitized(b: &mut u8) -> u8 {
     *b
 }
 
-// CHECK-LABEL: ; kasan_emits_instrumentation::sanitized
+// CHECK-LABEL: ; sanitize_off_asan_kasan::sanitized
 // CHECK-NEXT:  ; Function Attrs:
 // CHECK:       sanitize_address
 // CHECK:       start:

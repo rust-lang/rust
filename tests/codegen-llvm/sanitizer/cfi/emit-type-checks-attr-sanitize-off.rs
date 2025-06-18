@@ -4,11 +4,11 @@
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Copt-level=0
 
 #![crate_type = "lib"]
-#![feature(no_sanitize)]
+#![feature(sanitize)]
 
-#[no_sanitize(cfi)]
+#[sanitize(cfi = "off")]
 pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {
-    // CHECK-LABEL: emit_type_checks_attr_no_sanitize::foo
+    // CHECK-LABEL: emit_type_checks_attr_sanitize_off::foo
     // CHECK:       Function Attrs: {{.*}}
     // CHECK-LABEL: define{{.*}}foo{{.*}}!type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
     // CHECK:       start:

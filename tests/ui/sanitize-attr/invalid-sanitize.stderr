@@ -68,7 +68,7 @@ error: invalid argument for `sanitize`
 LL | #[sanitize(brontosaurus = "off")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`
+   = note: expected one of: `address`, `kernel_address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow_call_stack`, or `thread`
 
 error: invalid argument for `sanitize`
   --> $DIR/invalid-sanitize.rs:15:1
@@ -76,7 +76,7 @@ error: invalid argument for `sanitize`
 LL | #[sanitize(address = "bogus")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`
+   = note: expected one of: `address`, `kernel_address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow_call_stack`, or `thread`
 
 error: aborting due to 6 previous errors
 

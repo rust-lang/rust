@@ -592,8 +592,6 @@ declare_features! (
     (unstable, new_range, "1.86.0", Some(123741)),
     /// Allows `#![no_core]`.
     (unstable, no_core, "1.3.0", Some(29639)),
-    /// Allows the use of `no_sanitize` attribute.
-    (unstable, no_sanitize, "1.42.0", Some(39699)),
     /// Allows using the `non_exhaustive_omitted_patterns` lint.
     (unstable, non_exhaustive_omitted_patterns_lint, "1.57.0", Some(89554)),
     /// Allows `for<T>` binders in where-clauses
