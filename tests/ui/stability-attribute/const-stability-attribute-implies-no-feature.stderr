@@ -4,10 +4,7 @@ error: `foobar` is not yet stable as a const fn
 LL |     foobar();
    |     ^^^^^^^^
    |
-help: add `#![feature(const_foobar)]` to the crate attributes to enable
-   |
-LL + #![feature(const_foobar)]
-   |
+   = help: add `#![feature(const_foobar)]` to the crate attributes to enable
 
 error: aborting due to 1 previous error
 

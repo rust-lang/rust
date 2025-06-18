@@ -24,10 +24,7 @@ error: `size_of_val` is not yet stable as a const intrinsic
 LL |         unstable_intrinsic::size_of_val(&x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: add `#![feature(unstable)]` to the crate attributes to enable
-   |
-LL + #![feature(unstable)]
-   |
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
 
 error: `align_of_val` is not yet stable as a const intrinsic
   --> $DIR/const-unstable-intrinsic.rs:20:9
@@ -35,10 +32,7 @@ error: `align_of_val` is not yet stable as a const intrinsic
 LL |         unstable_intrinsic::align_of_val(&x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: add `#![feature(unstable)]` to the crate attributes to enable
-   |
-LL + #![feature(unstable)]
-   |
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
 
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
   --> $DIR/const-unstable-intrinsic.rs:24:9

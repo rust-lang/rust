@@ -15,10 +15,7 @@ error: `staged_api::MyTrait` is not yet stable as a const trait
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-help: add `#![feature(unstable)]` to the crate attributes to enable
-   |
-LL + #![feature(unstable)]
-   |
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
