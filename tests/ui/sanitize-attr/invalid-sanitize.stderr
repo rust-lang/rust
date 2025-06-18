@@ -1,0 +1,54 @@
+error: malformed `sanitize` attribute input
+  --> $DIR/invalid-sanitize.rs:18:1
+   |
+LL | #[sanitize = "off"]
+   | ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[sanitize(address = "on|off", cfi = "on|off")]`
+
+error: malformed `sanitize` attribute input
+  --> $DIR/invalid-sanitize.rs:21:1
+   |
+LL | #[sanitize]
+   | ^^^^^^^^^^^ help: must be of the form: `#[sanitize(address = "on|off", cfi = "on|off")]`
+
+error: multiple `sanitize` attributes
+  --> $DIR/invalid-sanitize.rs:7:1
+   |
+LL | #[sanitize(address = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/invalid-sanitize.rs:8:1
+   |
+LL | #[sanitize(address = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple `sanitize` attributes
+  --> $DIR/invalid-sanitize.rs:11:1
+   |
+LL | #[sanitize(address = "on")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/invalid-sanitize.rs:12:1
+   |
+LL | #[sanitize(address = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid argument for `sanitize`
+  --> $DIR/invalid-sanitize.rs:3:1
+   |
+LL | #[sanitize(brontosaurus = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`
+
+error: invalid argument for `sanitize`
+  --> $DIR/invalid-sanitize.rs:15:1
+   |
+LL | #[sanitize(address = "bogus")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`
+
+error: aborting due to 6 previous errors
+

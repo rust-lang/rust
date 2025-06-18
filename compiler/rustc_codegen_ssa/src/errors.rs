@@ -1109,6 +1109,13 @@ pub(crate) struct InvalidNoSanitize {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_sanitize)]
+#[note]
+pub(crate) struct InvalidSanitize {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[diag(codegen_ssa_target_feature_safe_trait)]
 pub(crate) struct TargetFeatureSafeTrait {
     #[primary_span]

@@ -545,6 +545,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, experimental!(no_sanitize)
     ),
     gated!(
+        sanitize, Normal, template!(List: r#"address = "on|off", cfi = "on|off""#), ErrorPreceding,
+        EncodeCrossCrate::No, sanitize, experimental!(sanitize),
+    ),
+    gated!(
         coverage, Normal, template!(OneOf: &[sym::off, sym::on]),
         ErrorPreceding, EncodeCrossCrate::No,
         coverage_attribute, experimental!(coverage)
