@@ -37,7 +37,7 @@ use hir_expand::{
 };
 use hir_ty::{
     Adjustment, AliasTy, InferenceResult, Interner, LifetimeElisionKind, ProjectionTy,
-    Substitution, TraitEnvironment, Ty, TyExt, TyKind, TyLoweringContext,
+    Substitution, ToChalk, TraitEnvironment, Ty, TyExt, TyKind, TyLoweringContext,
     diagnostics::{
         InsideUnsafeBlock, record_literal_missing_fields, record_pattern_missing_fields,
         unsafe_operations,
@@ -829,7 +829,7 @@ impl<'db> SourceAnalyzer<'db> {
                                 handle_variants(id.into(), subst, &mut container)?
                             }
                             AdtId::EnumId(id) => {
-                                let variants = db.enum_variants(id);
+                                let variants = id.enum_variants(db);
                                 let variant = variants.variant(&field_name.as_name())?;
                                 container = Either::Left((variant, subst.clone()));
                                 (Either::Left(Variant { id: variant }), id.into(), subst.clone())
@@ -1169,8 +1169,7 @@ impl<'db> SourceAnalyzer<'db> {
                         )
                     }
                     TyKind::FnDef(fn_id, subst) => {
-                        let fn_id = hir_ty::db::InternedCallableDefId::from(*fn_id);
-                        let fn_id = db.lookup_intern_callable_def(fn_id);
+                        let fn_id = ToChalk::from_chalk(db, *fn_id);
                         let generic_def_id = match fn_id {
                             CallableDefId::StructId(id) => id.into(),
                             CallableDefId::FunctionId(id) => id.into(),

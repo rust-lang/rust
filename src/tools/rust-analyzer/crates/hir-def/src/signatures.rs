@@ -4,21 +4,25 @@ use std::ops::Not as _;
 
 use bitflags::bitflags;
 use cfg::{CfgExpr, CfgOptions};
-use either::Either;
-use hir_expand::{InFile, Intern, Lookup, name::Name};
+use hir_expand::{
+    InFile, Intern, Lookup,
+    name::{AsName, Name},
+};
 use intern::{Symbol, sym};
 use la_arena::{Arena, Idx};
 use rustc_abi::{IntegerType, ReprOptions};
 use syntax::{
-    AstNode, SyntaxNodePtr,
-    ast::{self, HasGenericParams, IsString},
+    NodeOrToken, SyntaxNodePtr, T,
+    ast::{self, HasGenericParams, HasName, HasVisibility, IsString},
 };
 use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{
-    ConstId, EnumId, EnumVariantId, EnumVariantLoc, FunctionId, HasModule, ImplId, ItemContainerId,
-    ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, UnionId, VariantId,
+    ConstId, EnumId, EnumVariantId, EnumVariantLoc, ExternBlockId, FunctionId, HasModule, ImplId,
+    ItemContainerId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, UnionId,
+    VariantId,
+    attr::Attrs,
     db::DefDatabase,
     expr_store::{
         ExpressionStore, ExpressionStoreSourceMap,
@@ -28,14 +32,16 @@ use crate::{
         },
     },
     hir::{ExprId, PatId, generics::GenericParams},
-    item_tree::{
-        AttrOwner, Field, FieldParent, FieldsShape, FileItemTreeId, ItemTree, ItemTreeId, ModItem,
-        RawVisibility, RawVisibilityId,
-    },
+    item_tree::{FieldsShape, RawVisibility, visibility_from_ast},
     lang_item::LangItem,
     src::HasSource,
     type_ref::{TraitRef, TypeBound, TypeRefId},
 };
+
+#[inline]
+fn as_name_opt(name: Option<ast::Name>) -> Name {
+    name.map_or_else(Name::missing, |it| it.as_name())
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct StructSignature {
@@ -70,8 +76,8 @@ bitflags! {
 impl StructSignature {
     pub fn query(db: &dyn DefDatabase, id: StructId) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
         let loc = id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-        let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
+        let InFile { file_id, value: source } = loc.source(db);
+        let attrs = db.attrs(id.into());
 
         let mut flags = StructFlags::empty();
         if attrs.by_key(sym::rustc_has_incoherent_inherent_impls).exists() {
@@ -91,27 +97,36 @@ impl StructSignature {
             }
         }
         let repr = attrs.repr();
+        let shape = adt_shape(source.kind());
 
-        let hir_expand::files::InFileWrapper { file_id, value } = loc.source(db);
         let (store, generic_params, source_map) = lower_generic_params(
             db,
             loc.container,
             id.into(),
             file_id,
-            value.generic_param_list(),
-            value.where_clause(),
+            source.generic_param_list(),
+            source.where_clause(),
         );
         (
             Arc::new(StructSignature {
                 generic_params,
                 store,
                 flags,
-                shape: item_tree[loc.id.value].shape,
-                name: item_tree[loc.id.value].name.clone(),
+                shape,
+                name: as_name_opt(source.name()),
                 repr,
             }),
             Arc::new(source_map),
         )
+    }
+}
+
+#[inline]
+fn adt_shape(adt_kind: ast::StructKind) -> FieldsShape {
+    match adt_kind {
+        ast::StructKind::Record(_) => FieldsShape::Record,
+        ast::StructKind::Tuple(_) => FieldsShape::Tuple,
+        ast::StructKind::Unit => FieldsShape::Unit,
     }
 }
 
@@ -127,9 +142,7 @@ pub struct UnionSignature {
 impl UnionSignature {
     pub fn query(db: &dyn DefDatabase, id: UnionId) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
         let loc = id.lookup(db);
-        let krate = loc.container.krate;
-        let item_tree = loc.id.item_tree(db);
-        let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
+        let attrs = db.attrs(id.into());
         let mut flags = StructFlags::empty();
         if attrs.by_key(sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
@@ -140,14 +153,14 @@ impl UnionSignature {
 
         let repr = attrs.repr();
 
-        let hir_expand::files::InFileWrapper { file_id, value } = loc.source(db);
+        let InFile { file_id, value: source } = loc.source(db);
         let (store, generic_params, source_map) = lower_generic_params(
             db,
             loc.container,
             id.into(),
             file_id,
-            value.generic_param_list(),
-            value.where_clause(),
+            source.generic_param_list(),
+            source.where_clause(),
         );
         (
             Arc::new(UnionSignature {
@@ -155,7 +168,7 @@ impl UnionSignature {
                 store,
                 flags,
                 repr,
-                name: item_tree[loc.id.value].name.clone(),
+                name: as_name_opt(source.name()),
             }),
             Arc::new(source_map),
         )
@@ -181,8 +194,7 @@ pub struct EnumSignature {
 impl EnumSignature {
     pub fn query(db: &dyn DefDatabase, id: EnumId) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
         let loc = id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
-        let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
+        let attrs = db.attrs(id.into());
         let mut flags = EnumFlags::empty();
         if attrs.by_key(sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= EnumFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
@@ -190,14 +202,14 @@ impl EnumSignature {
 
         let repr = attrs.repr();
 
-        let hir_expand::files::InFileWrapper { file_id, value } = loc.source(db);
+        let InFile { file_id, value: source } = loc.source(db);
         let (store, generic_params, source_map) = lower_generic_params(
             db,
             loc.container,
             id.into(),
             file_id,
-            value.generic_param_list(),
-            value.where_clause(),
+            source.generic_param_list(),
+            source.where_clause(),
         );
 
         (
@@ -206,7 +218,7 @@ impl EnumSignature {
                 store,
                 flags,
                 repr,
-                name: item_tree[loc.id.value].name.clone(),
+                name: as_name_opt(source.name()),
             }),
             Arc::new(source_map),
         )
@@ -239,10 +251,9 @@ pub struct ConstSignature {
 impl ConstSignature {
     pub fn query(db: &dyn DefDatabase, id: ConstId) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
         let loc = id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
 
         let module = loc.container.module(db);
-        let attrs = item_tree.attrs(db, module.krate, ModItem::from(loc.id.value).into());
+        let attrs = db.attrs(id.into());
         let mut flags = ConstFlags::empty();
         if attrs.by_key(sym::rustc_allow_incoherent_impl).exists() {
             flags |= ConstFlags::RUSTC_ALLOW_INCOHERENT_IMPL;
@@ -253,14 +264,14 @@ impl ConstSignature {
         }
 
         let (store, source_map, type_ref) =
-            crate::expr_store::lower::lower_type_ref(db, module, source.map(|it| it.ty()));
+            crate::expr_store::lower::lower_type_ref(db, module, source.as_ref().map(|it| it.ty()));
 
         (
             Arc::new(ConstSignature {
                 store: Arc::new(store),
                 type_ref,
                 flags,
-                name: item_tree[loc.id.value].name.clone(),
+                name: source.value.name().map(|it| it.as_name()),
             }),
             Arc::new(source_map),
         )
@@ -295,10 +306,9 @@ pub struct StaticSignature {
 impl StaticSignature {
     pub fn query(db: &dyn DefDatabase, id: StaticId) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
         let loc = id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
 
         let module = loc.container.module(db);
-        let attrs = item_tree.attrs(db, module.krate, ModItem::from(loc.id.value).into());
+        let attrs = db.attrs(id.into());
         let mut flags = StaticFlags::empty();
         if attrs.by_key(sym::rustc_allow_incoherent_impl).exists() {
             flags |= StaticFlags::RUSTC_ALLOW_INCOHERENT_IMPL;
@@ -323,14 +333,14 @@ impl StaticSignature {
         }
 
         let (store, source_map, type_ref) =
-            crate::expr_store::lower::lower_type_ref(db, module, source.map(|it| it.ty()));
+            crate::expr_store::lower::lower_type_ref(db, module, source.as_ref().map(|it| it.ty()));
 
         (
             Arc::new(StaticSignature {
                 store: Arc::new(store),
                 type_ref,
                 flags,
-                name: item_tree[loc.id.value].name.clone(),
+                name: as_name_opt(source.value.name()),
             }),
             Arc::new(source_map),
         )
@@ -407,10 +417,9 @@ pub struct TraitSignature {
 impl TraitSignature {
     pub fn query(db: &dyn DefDatabase, id: TraitId) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
         let loc = id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
 
         let mut flags = TraitFlags::empty();
-        let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
+        let attrs = db.attrs(id.into());
         let source = loc.source(db);
         if source.value.auto_token().is_some() {
             flags.insert(TraitFlags::AUTO);
@@ -446,15 +455,11 @@ impl TraitSignature {
             flags |= TraitFlags::SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH;
         }
 
+        let name = as_name_opt(source.value.name());
         let (store, source_map, generic_params) = lower_trait(db, loc.container, source, id);
 
         (
-            Arc::new(TraitSignature {
-                store: Arc::new(store),
-                generic_params,
-                flags,
-                name: item_tree[loc.id.value].name.clone(),
-            }),
+            Arc::new(TraitSignature { store: Arc::new(store), generic_params, flags, name }),
             Arc::new(source_map),
         )
     }
@@ -473,17 +478,13 @@ impl TraitAliasSignature {
         id: TraitAliasId,
     ) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
         let loc = id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
 
         let source = loc.source(db);
+        let name = as_name_opt(source.value.name());
         let (store, source_map, generic_params) = lower_trait_alias(db, loc.container, source, id);
 
         (
-            Arc::new(TraitAliasSignature {
-                generic_params,
-                store: Arc::new(store),
-                name: item_tree[loc.id.value].name.clone(),
-            }),
+            Arc::new(TraitAliasSignature { generic_params, store: Arc::new(store), name }),
             Arc::new(source_map),
         )
     }
@@ -530,10 +531,9 @@ impl FunctionSignature {
     ) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
         let loc = id.lookup(db);
         let module = loc.container.module(db);
-        let item_tree = loc.id.item_tree(db);
 
         let mut flags = FnFlags::empty();
-        let attrs = item_tree.attrs(db, module.krate, ModItem::from(loc.id.value).into());
+        let attrs = db.attrs(id.into());
         if attrs.by_key(sym::rustc_allow_incoherent_impl).exists() {
             flags.insert(FnFlags::RUSTC_ALLOW_INCOHERENT_IMPL);
         }
@@ -568,6 +568,7 @@ impl FunctionSignature {
             flags.insert(FnFlags::HAS_BODY);
         }
 
+        let name = as_name_opt(source.value.name());
         let abi = source.value.abi().map(|abi| {
             abi.abi_string().map_or_else(|| sym::C, |it| Symbol::intern(it.text_without_quotes()))
         });
@@ -588,7 +589,7 @@ impl FunctionSignature {
                 abi,
                 flags,
                 legacy_const_generics_indices,
-                name: item_tree[loc.id.value].name.clone(),
+                name,
             }),
             Arc::new(source_map),
         )
@@ -662,14 +663,9 @@ impl TypeAliasSignature {
         id: TypeAliasId,
     ) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
         let loc = id.lookup(db);
-        let item_tree = loc.id.item_tree(db);
 
         let mut flags = TypeAliasFlags::empty();
-        let attrs = item_tree.attrs(
-            db,
-            loc.container.module(db).krate(),
-            ModItem::from(loc.id.value).into(),
-        );
+        let attrs = db.attrs(id.into());
         if attrs.by_key(sym::rustc_has_incoherent_inherent_impls).exists() {
             flags.insert(TypeAliasFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPL);
         }
@@ -680,6 +676,7 @@ impl TypeAliasSignature {
             flags.insert(TypeAliasFlags::IS_EXTERN);
         }
         let source = loc.source(db);
+        let name = as_name_opt(source.value.name());
         let (store, source_map, generic_params, bounds, ty) =
             lower_type_alias(db, loc.container.module(db), source, id);
 
@@ -689,7 +686,7 @@ impl TypeAliasSignature {
                 generic_params,
                 flags,
                 bounds,
-                name: item_tree[loc.id.value].name.clone(),
+                name,
                 ty,
             }),
             Arc::new(source_map),
@@ -743,104 +740,41 @@ impl VariantFields {
         let (shape, (fields, store, source_map)) = match id {
             VariantId::EnumVariantId(id) => {
                 let loc = id.lookup(db);
-                let item_tree = loc.id.item_tree(db);
                 let parent = loc.parent.lookup(db);
-                let variant = &item_tree[loc.id.value];
-                (
-                    variant.shape,
-                    lower_fields(
-                        db,
-                        parent.container,
-                        &item_tree,
-                        FieldParent::EnumVariant(loc.id.value),
-                        loc.source(db).map(|src| {
-                            variant.fields.iter().zip(
-                                src.field_list()
-                                    .map(|it| {
-                                        match it {
-                                            ast::FieldList::RecordFieldList(record_field_list) => {
-                                                Either::Left(record_field_list.fields().map(|it| {
-                                                    (SyntaxNodePtr::new(it.syntax()), it.ty())
-                                                }))
-                                            }
-                                            ast::FieldList::TupleFieldList(field_list) => {
-                                                Either::Right(field_list.fields().map(|it| {
-                                                    (SyntaxNodePtr::new(it.syntax()), it.ty())
-                                                }))
-                                            }
-                                        }
-                                        .into_iter()
-                                    })
-                                    .into_iter()
-                                    .flatten(),
-                            )
-                        }),
-                        Some(item_tree[parent.id.value].visibility),
-                    ),
-                )
+                let source = loc.source(db);
+                let shape = adt_shape(source.value.kind());
+                let span_map = db.span_map(source.file_id);
+                let override_visibility = visibility_from_ast(
+                    db,
+                    source.value.parent_enum().visibility(),
+                    &mut |range| span_map.span_for_range(range).ctx,
+                );
+                let fields = lower_field_list(
+                    db,
+                    parent.container,
+                    source.map(|src| src.field_list()),
+                    Some(override_visibility),
+                );
+                (shape, fields)
             }
             VariantId::StructId(id) => {
                 let loc = id.lookup(db);
-                let item_tree = loc.id.item_tree(db);
-                let strukt = &item_tree[loc.id.value];
-                (
-                    strukt.shape,
-                    lower_fields(
-                        db,
-                        loc.container,
-                        &item_tree,
-                        FieldParent::Struct(loc.id.value),
-                        loc.source(db).map(|src| {
-                            strukt.fields.iter().zip(
-                                src.field_list()
-                                    .map(|it| {
-                                        match it {
-                                            ast::FieldList::RecordFieldList(record_field_list) => {
-                                                Either::Left(record_field_list.fields().map(|it| {
-                                                    (SyntaxNodePtr::new(it.syntax()), it.ty())
-                                                }))
-                                            }
-                                            ast::FieldList::TupleFieldList(field_list) => {
-                                                Either::Right(field_list.fields().map(|it| {
-                                                    (SyntaxNodePtr::new(it.syntax()), it.ty())
-                                                }))
-                                            }
-                                        }
-                                        .into_iter()
-                                    })
-                                    .into_iter()
-                                    .flatten(),
-                            )
-                        }),
-                        None,
-                    ),
-                )
+                let source = loc.source(db);
+                let shape = adt_shape(source.value.kind());
+                let fields =
+                    lower_field_list(db, loc.container, source.map(|src| src.field_list()), None);
+                (shape, fields)
             }
             VariantId::UnionId(id) => {
                 let loc = id.lookup(db);
-                let item_tree = loc.id.item_tree(db);
-                let union = &item_tree[loc.id.value];
-                (
-                    FieldsShape::Record,
-                    lower_fields(
-                        db,
-                        loc.container,
-                        &item_tree,
-                        FieldParent::Union(loc.id.value),
-                        loc.source(db).map(|src| {
-                            union.fields.iter().zip(
-                                src.record_field_list()
-                                    .map(|it| {
-                                        it.fields()
-                                            .map(|it| (SyntaxNodePtr::new(it.syntax()), it.ty()))
-                                    })
-                                    .into_iter()
-                                    .flatten(),
-                            )
-                        }),
-                        None,
-                    ),
-                )
+                let source = loc.source(db);
+                let fields = lower_field_list(
+                    db,
+                    loc.container,
+                    source.map(|src| src.record_field_list().map(ast::FieldList::RecordFieldList)),
+                    None,
+                );
+                (FieldsShape::Record, fields)
             }
         };
 
@@ -860,39 +794,81 @@ impl VariantFields {
     }
 }
 
-fn lower_fields<'a>(
+fn lower_field_list(
     db: &dyn DefDatabase,
     module: ModuleId,
-    item_tree: &ItemTree,
-    parent: FieldParent,
-    fields: InFile<impl Iterator<Item = (&'a Field, (SyntaxNodePtr, Option<ast::Type>))>>,
-    override_visibility: Option<RawVisibilityId>,
+    fields: InFile<Option<ast::FieldList>>,
+    override_visibility: Option<RawVisibility>,
+) -> (Arena<FieldData>, ExpressionStore, ExpressionStoreSourceMap) {
+    let file_id = fields.file_id;
+    match fields.value {
+        Some(ast::FieldList::RecordFieldList(fields)) => lower_fields(
+            db,
+            module,
+            InFile::new(file_id, fields.fields().map(|field| (field.ty(), field))),
+            |_, field| as_name_opt(field.name()),
+            override_visibility,
+        ),
+        Some(ast::FieldList::TupleFieldList(fields)) => lower_fields(
+            db,
+            module,
+            InFile::new(file_id, fields.fields().map(|field| (field.ty(), field))),
+            |idx, _| Name::new_tuple_field(idx),
+            override_visibility,
+        ),
+        None => lower_fields(
+            db,
+            module,
+            InFile::new(file_id, std::iter::empty::<(Option<ast::Type>, ast::RecordField)>()),
+            |_, _| Name::missing(),
+            None,
+        ),
+    }
+}
+
+fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
+    db: &dyn DefDatabase,
+    module: ModuleId,
+    fields: InFile<impl Iterator<Item = (Option<ast::Type>, Field)>>,
+    mut field_name: impl FnMut(usize, &Field) -> Name,
+    override_visibility: Option<RawVisibility>,
 ) -> (Arena<FieldData>, ExpressionStore, ExpressionStoreSourceMap) {
     let mut arena = Arena::new();
     let cfg_options = module.krate.cfg_options(db);
     let mut col = ExprCollector::new(db, module, fields.file_id);
-    for (idx, (field, (ptr, ty))) in fields.value.enumerate() {
-        let attr_owner = AttrOwner::make_field_indexed(parent, idx);
-        let attrs = item_tree.attrs(db, module.krate, attr_owner);
-        if attrs.is_cfg_enabled(cfg_options) {
-            arena.alloc(FieldData {
-                name: field.name.clone(),
-                type_ref: col
-                    .lower_type_ref_opt(ty, &mut ExprCollector::impl_trait_error_allocator),
-                visibility: item_tree[override_visibility.unwrap_or(field.visibility)].clone(),
-                is_unsafe: field.is_unsafe,
-            });
-        } else {
-            col.source_map.diagnostics.push(
-                crate::expr_store::ExpressionStoreDiagnostics::InactiveCode {
-                    node: InFile::new(fields.file_id, ptr),
-                    cfg: attrs.cfg().unwrap(),
-                    opts: cfg_options.clone(),
-                },
-            );
+    let mut idx = 0;
+    for (ty, field) in fields.value {
+        match Attrs::is_cfg_enabled_for(db, &field, col.span_map(), cfg_options) {
+            Ok(()) => {
+                let type_ref =
+                    col.lower_type_ref_opt(ty, &mut ExprCollector::impl_trait_error_allocator);
+                let visibility = override_visibility.clone().unwrap_or_else(|| {
+                    visibility_from_ast(db, field.visibility(), &mut |range| {
+                        col.span_map().span_for_range(range).ctx
+                    })
+                });
+                let is_unsafe = field
+                    .syntax()
+                    .children_with_tokens()
+                    .filter_map(NodeOrToken::into_token)
+                    .any(|token| token.kind() == T![unsafe]);
+                let name = field_name(idx, &field);
+                arena.alloc(FieldData { name, type_ref, visibility, is_unsafe });
+                idx += 1;
+            }
+            Err(cfg) => {
+                col.source_map.diagnostics.push(
+                    crate::expr_store::ExpressionStoreDiagnostics::InactiveCode {
+                        node: InFile::new(fields.file_id, SyntaxNodePtr::new(field.syntax())),
+                        cfg,
+                        opts: cfg_options.clone(),
+                    },
+                );
+            }
         }
     }
     let store = col.store.finish();
+    arena.shrink_to_fit();
     (arena, store, col.source_map)
 }
 
@@ -905,56 +881,71 @@ pub struct InactiveEnumVariantCode {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumVariants {
-    pub variants: Box<[(EnumVariantId, Name)]>,
+    pub variants: Box<[(EnumVariantId, Name, FieldsShape)]>,
 }
 
+#[salsa::tracked]
 impl EnumVariants {
-    pub(crate) fn enum_variants_query(
+    #[salsa::tracked(returns(ref))]
+    pub(crate) fn of(
         db: &dyn DefDatabase,
         e: EnumId,
-    ) -> (Arc<EnumVariants>, Option<Arc<ThinVec<InactiveEnumVariantCode>>>) {
+    ) -> (EnumVariants, Option<ThinVec<InactiveEnumVariantCode>>) {
         let loc = e.lookup(db);
-        let item_tree = loc.id.item_tree(db);
+        let source = loc.source(db);
+        let ast_id_map = db.ast_id_map(source.file_id);
+        let span_map = db.span_map(source.file_id);
 
         let mut diagnostics = ThinVec::new();
         let cfg_options = loc.container.krate.cfg_options(db);
         let mut index = 0;
-        let variants = FileItemTreeId::range_iter(item_tree[loc.id.value].variants.clone())
+        let Some(variants) = source.value.variant_list() else {
+            return (EnumVariants { variants: Box::default() }, None);
+        };
+        let variants = variants
+            .variants()
             .filter_map(|variant| {
-                let attrs = item_tree.attrs(db, loc.container.krate, variant.into());
-                if attrs.is_cfg_enabled(cfg_options) {
-                    let enum_variant = EnumVariantLoc {
-                        id: ItemTreeId::new(loc.id.tree_id(), variant),
-                        parent: e,
-                        index,
+                let ast_id = ast_id_map.ast_id(&variant);
+                match Attrs::is_cfg_enabled_for(db, &variant, span_map.as_ref(), cfg_options) {
+                    Ok(()) => {
+                        let enum_variant =
+                            EnumVariantLoc { id: source.with_value(ast_id), parent: e, index }
+                                .intern(db);
+                        index += 1;
+                        let name = as_name_opt(variant.name());
+                        let shape = adt_shape(variant.kind());
+                        Some((enum_variant, name, shape))
                     }
-                    .intern(db);
-                    index += 1;
-                    Some((enum_variant, item_tree[variant].name.clone()))
-                } else {
-                    diagnostics.push(InactiveEnumVariantCode {
-                        ast_id: item_tree[variant].ast_id,
-                        cfg: attrs.cfg().unwrap(),
-                        opts: cfg_options.clone(),
-                    });
-                    None
+                    Err(cfg) => {
+                        diagnostics.push(InactiveEnumVariantCode {
+                            ast_id,
+                            cfg,
+                            opts: cfg_options.clone(),
+                        });
+                        None
+                    }
                 }
             })
             .collect();
 
-        (
-            Arc::new(EnumVariants { variants }),
-            diagnostics.is_empty().not().then(|| Arc::new(diagnostics)),
-        )
+        (EnumVariants { variants }, diagnostics.is_empty().not().then_some(diagnostics))
+    }
+}
+
+impl EnumVariants {
+    pub fn variant(&self, name: &Name) -> Option<EnumVariantId> {
+        self.variants.iter().find_map(|(v, n, _)| if n == name { Some(*v) } else { None })
     }
 
-    pub fn variant(&self, name: &Name) -> Option<EnumVariantId> {
-        self.variants.iter().find_map(|(v, n)| if n == name { Some(*v) } else { None })
+    pub fn variant_name_by_id(&self, variant_id: EnumVariantId) -> Option<Name> {
+        self.variants
+            .iter()
+            .find_map(|(id, name, _)| if *id == variant_id { Some(name.clone()) } else { None })
     }
 
     // [Adopted from rustc](https://github.com/rust-lang/rust/blob/bd53aa3bf7a24a70d763182303bd75e5fc51a9af/compiler/rustc_middle/src/ty/adt.rs#L446-L448)
     pub fn is_payload_free(&self, db: &dyn DefDatabase) -> bool {
-        self.variants.iter().all(|&(v, _)| {
+        self.variants.iter().all(|&(v, _, _)| {
             // The condition check order is slightly modified from rustc
             // to improve performance by early returning with relatively fast checks
             let variant = &db.variant_fields(v.into());
@@ -972,4 +963,18 @@ impl EnumVariants {
             true
         })
     }
+}
+
+pub(crate) fn extern_block_abi(
+    db: &dyn DefDatabase,
+    extern_block: ExternBlockId,
+) -> Option<Symbol> {
+    let source = extern_block.lookup(db).source(db);
+    source.value.abi().map(|abi| {
+        match abi.abi_string() {
+            Some(tok) => Symbol::intern(tok.text_without_quotes()),
+            // `extern` default to be `extern "C"`.
+            _ => sym::C,
+        }
+    })
 }

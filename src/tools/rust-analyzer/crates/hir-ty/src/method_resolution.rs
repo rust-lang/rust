@@ -790,7 +790,7 @@ fn find_matching_impl(
     mut impls: impl Iterator<Item = ImplId>,
     mut table: InferenceTable<'_>,
     actual_trait_ref: TraitRef,
-) -> Option<(Arc<ImplItems>, Substitution)> {
+) -> Option<(&ImplItems, Substitution)> {
     let db = table.db;
     impls.find_map(|impl_| {
         table.run_in_snapshot(|table| {
@@ -811,7 +811,7 @@ fn find_matching_impl(
             let goal = crate::Goal::all(Interner, wcs);
             table.try_obligation(goal.clone())?;
             table.register_obligation(goal);
-            Some((db.impl_items(impl_), table.resolve_completely(impl_substs)))
+            Some((impl_.impl_items(db), table.resolve_completely(impl_substs)))
         })
     })
 }
@@ -875,7 +875,7 @@ fn is_inherent_impl_coherent(
 
             _ => false,
         };
-        let items = db.impl_items(impl_id);
+        let items = impl_id.impl_items(db);
         rustc_has_incoherent_inherent_impls
             && !items.items.is_empty()
             && items.items.iter().all(|&(_, assoc)| match assoc {
@@ -1462,7 +1462,7 @@ fn iterate_inherent_methods(
         callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
     ) -> ControlFlow<()> {
         for &impl_id in impls.for_self_ty(self_ty) {
-            for &(ref item_name, item) in table.db.impl_items(impl_id).items.iter() {
+            for &(ref item_name, item) in impl_id.impl_items(table.db).items.iter() {
                 let visible = match is_valid_impl_method_candidate(
                     table,
                     self_ty,
@@ -1550,7 +1550,7 @@ fn is_valid_impl_method_candidate(
             check_that!(name.is_none_or(|n| n == item_name));
 
             if let Some(from_module) = visible_from_module {
-                if !db.const_visibility(c).is_visible_from(db, from_module) {
+                if !db.assoc_visibility(c.into()).is_visible_from(db, from_module) {
                     cov_mark::hit!(const_candidate_not_visible);
                     return IsValidCandidate::NotVisible;
                 }
@@ -1639,7 +1639,7 @@ fn is_valid_impl_fn_candidate(
     let data = db.function_signature(fn_id);
 
     if let Some(from_module) = visible_from_module {
-        if !db.function_visibility(fn_id).is_visible_from(db, from_module) {
+        if !db.assoc_visibility(fn_id.into()).is_visible_from(db, from_module) {
             cov_mark::hit!(autoderef_candidate_not_visible);
             return IsValidCandidate::NotVisible;
         }

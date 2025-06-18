@@ -22,9 +22,14 @@ pub(super) fn hints(
             let parent = paren.as_ref().and_then(|it| it.parent()).unwrap_or(parent);
             if ast::TypeBound::can_cast(parent.kind())
                 || ast::TypeAnchor::can_cast(parent.kind())
-                || ast::Impl::cast(parent)
-                    .and_then(|it| it.trait_())
-                    .is_some_and(|it| it.syntax() == path.syntax())
+                || ast::Impl::cast(parent).is_some_and(|it| {
+                    it.trait_().map_or(
+                        // only show it for impl type if the impl is not incomplete, otherwise we
+                        // are likely typing a trait impl
+                        it.assoc_item_list().is_none_or(|it| it.l_curly_token().is_none()),
+                        |trait_| trait_.syntax() == path.syntax(),
+                    )
+                })
             {
                 return None;
             }
@@ -85,6 +90,7 @@ impl T {}
   // ^ dyn
 impl T for (T) {}
         // ^^^ dyn
+impl T
 "#,
         );
     }

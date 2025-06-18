@@ -11,7 +11,7 @@ use rustc_ast_ir::Mutability;
 use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
-use crate::solve::AdtDestructorKind;
+use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
 
@@ -571,7 +571,11 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     // FIXME: perhaps use `all_fields` and expose `FieldDef`.
     fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
 
-    fn sized_constraint(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
+    fn sizedness_constraint(
+        self,
+        interner: I,
+        sizedness: SizedTraitKind,
+    ) -> Option<ty::EarlyBinder<I, I::Ty>>;
 
     fn is_fundamental(self) -> bool;
 

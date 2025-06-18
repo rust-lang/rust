@@ -1768,7 +1768,7 @@ impl InvocationCollectorNode for ast::Crate {
     }
 }
 
-impl InvocationCollectorNode for P<ast::Ty> {
+impl InvocationCollectorNode for ast::Ty {
     type OutputTy = P<ast::Ty>;
     const KIND: AstFragmentKind = AstFragmentKind::Ty;
     fn to_annotatable(self) -> Annotatable {
@@ -1791,7 +1791,7 @@ impl InvocationCollectorNode for P<ast::Ty> {
     }
 }
 
-impl InvocationCollectorNode for P<ast::Pat> {
+impl InvocationCollectorNode for ast::Pat {
     type OutputTy = P<ast::Pat>;
     const KIND: AstFragmentKind = AstFragmentKind::Pat;
     fn to_annotatable(self) -> Annotatable {
@@ -1814,11 +1814,11 @@ impl InvocationCollectorNode for P<ast::Pat> {
     }
 }
 
-impl InvocationCollectorNode for P<ast::Expr> {
+impl InvocationCollectorNode for ast::Expr {
     type OutputTy = P<ast::Expr>;
     const KIND: AstFragmentKind = AstFragmentKind::Expr;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Expr(self)
+        Annotatable::Expr(P(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_expr()
@@ -1955,29 +1955,29 @@ impl DummyAstNode for ast::Crate {
     }
 }
 
-impl DummyAstNode for P<ast::Ty> {
+impl DummyAstNode for ast::Ty {
     fn dummy() -> Self {
-        P(ast::Ty {
+        ast::Ty {
             id: DUMMY_NODE_ID,
             kind: TyKind::Dummy,
             span: Default::default(),
             tokens: Default::default(),
-        })
+        }
     }
 }
 
-impl DummyAstNode for P<ast::Pat> {
+impl DummyAstNode for ast::Pat {
     fn dummy() -> Self {
-        P(ast::Pat {
+        ast::Pat {
             id: DUMMY_NODE_ID,
             kind: PatKind::Wild,
             span: Default::default(),
             tokens: Default::default(),
-        })
+        }
     }
 }
 
-impl DummyAstNode for P<ast::Expr> {
+impl DummyAstNode for ast::Expr {
     fn dummy() -> Self {
         ast::Expr::dummy()
     }
@@ -1985,7 +1985,7 @@ impl DummyAstNode for P<ast::Expr> {
 
 impl DummyAstNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag> {
     fn dummy() -> Self {
-        AstNodeWrapper::new(ast::Expr::dummy(), MethodReceiverTag)
+        AstNodeWrapper::new(P(ast::Expr::dummy()), MethodReceiverTag)
     }
 }
 
@@ -2272,7 +2272,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         }
     }
 
-    fn visit_node<Node: InvocationCollectorNode<OutputTy = Node> + DummyAstNode>(
+    fn visit_node<Node: InvocationCollectorNode<OutputTy: Into<Node>> + DummyAstNode>(
         &mut self,
         node: &mut Node,
     ) {
@@ -2297,6 +2297,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         *node = self
                             .collect_attr((attr, pos, derives), n.to_annotatable(), Node::KIND)
                             .make_ast::<Node>()
+                            .into()
                     }
                 },
                 None if node.is_mac_call() => {
@@ -2304,7 +2305,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     let (mac, attrs, _) = n.take_mac_call();
                     self.check_attributes(&attrs, &mac);
 
-                    *node = self.collect_bang(mac, Node::KIND).make_ast::<Node>()
+                    *node = self.collect_bang(mac, Node::KIND).make_ast::<Node>().into()
                 }
                 None if node.delegation().is_some() => unreachable!(),
                 None => {
@@ -2414,15 +2415,15 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.visit_node(node)
     }
 
-    fn visit_ty(&mut self, node: &mut P<ast::Ty>) {
+    fn visit_ty(&mut self, node: &mut ast::Ty) {
         self.visit_node(node)
     }
 
-    fn visit_pat(&mut self, node: &mut P<ast::Pat>) {
+    fn visit_pat(&mut self, node: &mut ast::Pat) {
         self.visit_node(node)
     }
 
-    fn visit_expr(&mut self, node: &mut P<ast::Expr>) {
+    fn visit_expr(&mut self, node: &mut ast::Expr) {
         // FIXME: Feature gating is performed inconsistently between `Expr` and `OptExpr`.
         if let Some(attr) = node.attrs.first() {
             self.cfg().maybe_emit_expr_attr_err(attr);

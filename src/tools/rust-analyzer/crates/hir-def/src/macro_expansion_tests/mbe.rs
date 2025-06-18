@@ -35,9 +35,9 @@ macro_rules! f {
     };
 }
 
-struct#0:1@58..64#14336# MyTraitMap2#0:2@31..42#ROOT2024# {#0:1@72..73#14336#
-    map#0:1@86..89#14336#:#0:1@89..90#14336# #0:1@89..90#14336#::#0:1@91..93#14336#std#0:1@93..96#14336#::#0:1@96..98#14336#collections#0:1@98..109#14336#::#0:1@109..111#14336#HashSet#0:1@111..118#14336#<#0:1@118..119#14336#(#0:1@119..120#14336#)#0:1@120..121#14336#>#0:1@121..122#14336#,#0:1@122..123#14336#
-}#0:1@132..133#14336#
+struct#0:MacroRules[8C8E, 0]@58..64#14336# MyTraitMap2#0:MacroCall[D499, 0]@31..42#ROOT2024# {#0:MacroRules[8C8E, 0]@72..73#14336#
+    map#0:MacroRules[8C8E, 0]@86..89#14336#:#0:MacroRules[8C8E, 0]@89..90#14336# #0:MacroRules[8C8E, 0]@89..90#14336#::#0:MacroRules[8C8E, 0]@91..93#14336#std#0:MacroRules[8C8E, 0]@93..96#14336#::#0:MacroRules[8C8E, 0]@96..98#14336#collections#0:MacroRules[8C8E, 0]@98..109#14336#::#0:MacroRules[8C8E, 0]@109..111#14336#HashSet#0:MacroRules[8C8E, 0]@111..118#14336#<#0:MacroRules[8C8E, 0]@118..119#14336#(#0:MacroRules[8C8E, 0]@119..120#14336#)#0:MacroRules[8C8E, 0]@120..121#14336#>#0:MacroRules[8C8E, 0]@121..122#14336#,#0:MacroRules[8C8E, 0]@122..123#14336#
+}#0:MacroRules[8C8E, 0]@132..133#14336#
 "#]],
     );
 }
@@ -75,12 +75,12 @@ macro_rules! f {
     };
 }
 
-fn#0:2@30..32#ROOT2024# main#0:2@33..37#ROOT2024#(#0:2@37..38#ROOT2024#)#0:2@38..39#ROOT2024# {#0:2@40..41#ROOT2024#
-    1#0:2@50..51#ROOT2024#;#0:2@51..52#ROOT2024#
-    1.0#0:2@61..64#ROOT2024#;#0:2@64..65#ROOT2024#
-    (#0:2@74..75#ROOT2024#(#0:2@75..76#ROOT2024#1#0:2@76..77#ROOT2024#,#0:2@77..78#ROOT2024# )#0:2@78..79#ROOT2024#,#0:2@79..80#ROOT2024# )#0:2@80..81#ROOT2024#.#0:2@81..82#ROOT2024#0#0:2@82..85#ROOT2024#.#0:2@82..85#ROOT2024#0#0:2@82..85#ROOT2024#;#0:2@85..86#ROOT2024#
-    let#0:2@95..98#ROOT2024# x#0:2@99..100#ROOT2024# =#0:2@101..102#ROOT2024# 1#0:2@103..104#ROOT2024#;#0:2@104..105#ROOT2024#
-}#0:2@110..111#ROOT2024#
+fn#0:MacroCall[D499, 0]@30..32#ROOT2024# main#0:MacroCall[D499, 0]@33..37#ROOT2024#(#0:MacroCall[D499, 0]@37..38#ROOT2024#)#0:MacroCall[D499, 0]@38..39#ROOT2024# {#0:MacroCall[D499, 0]@40..41#ROOT2024#
+    1#0:MacroCall[D499, 0]@50..51#ROOT2024#;#0:MacroCall[D499, 0]@51..52#ROOT2024#
+    1.0#0:MacroCall[D499, 0]@61..64#ROOT2024#;#0:MacroCall[D499, 0]@64..65#ROOT2024#
+    (#0:MacroCall[D499, 0]@74..75#ROOT2024#(#0:MacroCall[D499, 0]@75..76#ROOT2024#1#0:MacroCall[D499, 0]@76..77#ROOT2024#,#0:MacroCall[D499, 0]@77..78#ROOT2024# )#0:MacroCall[D499, 0]@78..79#ROOT2024#,#0:MacroCall[D499, 0]@79..80#ROOT2024# )#0:MacroCall[D499, 0]@80..81#ROOT2024#.#0:MacroCall[D499, 0]@81..82#ROOT2024#0#0:MacroCall[D499, 0]@82..85#ROOT2024#.#0:MacroCall[D499, 0]@82..85#ROOT2024#0#0:MacroCall[D499, 0]@82..85#ROOT2024#;#0:MacroCall[D499, 0]@85..86#ROOT2024#
+    let#0:MacroCall[D499, 0]@95..98#ROOT2024# x#0:MacroCall[D499, 0]@99..100#ROOT2024# =#0:MacroCall[D499, 0]@101..102#ROOT2024# 1#0:MacroCall[D499, 0]@103..104#ROOT2024#;#0:MacroCall[D499, 0]@104..105#ROOT2024#
+}#0:MacroCall[D499, 0]@110..111#ROOT2024#
 
 
 "#]],
@@ -171,7 +171,7 @@ fn main(foo: ()) {
     }
 
     fn main(foo: ()) {
-        /* error: unresolved macro unresolved */"helloworld!"#0:3@236..321#ROOT2024#;
+        /* error: unresolved macro unresolved */"helloworld!"#0:Fn[B9C7, 0]@236..321#ROOT2024#;
     }
 }
 
@@ -197,7 +197,7 @@ macro_rules! mk_struct {
 #[macro_use]
 mod foo;
 
-struct#1:1@59..65#14336# Foo#0:2@32..35#ROOT2024#(#1:1@70..71#14336#u32#0:2@41..44#ROOT2024#)#1:1@74..75#14336#;#1:1@75..76#14336#
+struct#1:MacroRules[E572, 0]@59..65#14336# Foo#0:MacroCall[BDD3, 0]@32..35#ROOT2024#(#1:MacroRules[E572, 0]@70..71#14336#u32#0:MacroCall[BDD3, 0]@41..44#ROOT2024#)#1:MacroRules[E572, 0]@74..75#14336#;#1:MacroRules[E572, 0]@75..76#14336#
 "#]],
     );
 }
@@ -2025,6 +2025,28 @@ macro_rules! bug {
 }
 fn f() {
     let _ = true;
+}
+    "#]],
+    );
+}
+
+#[test]
+fn lifetime_repeat() {
+    check(
+        r#"
+macro_rules! m {
+    ($($x:expr)'a*) => (stringify!($($x)'b*));
+}
+fn f() {
+    let _ = m!(0 'a 1 'a 2);
+}
+    "#,
+        expect![[r#"
+macro_rules! m {
+    ($($x:expr)'a*) => (stringify!($($x)'b*));
+}
+fn f() {
+    let _ = stringify!(0 'b 1 'b 2);
 }
     "#]],
     );

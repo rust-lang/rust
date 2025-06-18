@@ -84,5 +84,17 @@ LL -     std::arch::x86_64::_mm_inserti_si64(loop {}, loop {}, || (), 1 + || ())
 LL +     std::arch::x86_64::_mm_inserti_si64::<{ || () }, { 1 + || () }>(loop {}, loop {});
    |
 
-error: aborting due to 7 previous errors
+error: invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
+  --> $DIR/invalid-rustc_legacy_const_generics-issue-123077.rs:36:71
+   |
+LL |     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, Struct { field: || () });
+   |                                                                       ^^^^^
+   |
+help: try using a const generic argument instead
+   |
+LL -     std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, Struct { field: || () });
+LL +     std::arch::x86_64::_mm_blend_ps::<{ Struct { field: || () } }>(loop {}, loop {});
+   |
+
+error: aborting due to 8 previous errors
 

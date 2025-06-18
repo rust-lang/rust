@@ -62,8 +62,8 @@ use std::ops::Deref;
 
 use base_db::Crate;
 use hir_expand::{
-    EditionedFileId, ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId, mod_path::ModPath,
-    name::Name, proc_macro::ProcMacroKind,
+    EditionedFileId, ErasedAstId, HirFileId, InFile, MacroCallId, mod_path::ModPath, name::Name,
+    proc_macro::ProcMacroKind,
 };
 use intern::Symbol;
 use itertools::Itertools;
@@ -80,7 +80,7 @@ use crate::{
     LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
-    item_tree::{ItemTreeId, Mod, TreeId},
+    item_tree::TreeId,
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicitness},
@@ -171,12 +171,10 @@ pub struct DefMap {
     /// ExternCrateId being None implies it being imported from the general prelude import.
     macro_use_prelude: FxHashMap<Name, (MacroId, Option<ExternCrateId>)>,
 
-    // FIXME: AstId's are fairly unstable
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
     // FIXME: Figure out a better way for the IDE layer to resolve these?
     derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<(Name, MacroId, MacroCallId)>>,
-    // FIXME: AstId's are fairly unstable
     /// A mapping from [`hir_expand::MacroDefId`] to [`crate::MacroId`].
     pub macro_def_to_macro_id: FxHashMap<ErasedAstId, MacroId>,
 
@@ -191,7 +189,7 @@ pub struct DefMap {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct DefMapCrateData {
     /// Side table for resolving derive helpers.
-    exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
+    exported_derives: FxHashMap<MacroId, Box<[Name]>>,
     fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
 
     /// Custom attributes registered with `#![register_attr]`.
@@ -291,11 +289,11 @@ pub enum ModuleOrigin {
     File {
         is_mod_rs: bool,
         declaration: FileAstId<ast::Module>,
-        declaration_tree_id: ItemTreeId<Mod>,
+        declaration_tree_id: TreeId,
         definition: EditionedFileId,
     },
     Inline {
-        definition_tree_id: ItemTreeId<Mod>,
+        definition_tree_id: TreeId,
         definition: FileAstId<ast::Module>,
     },
     /// Pseudo-module introduced by a block scope (contains only inner items).

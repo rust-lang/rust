@@ -395,9 +395,9 @@ impl<'a> DeclValidator<'a> {
 
     /// Check incorrect names for enum variants.
     fn validate_enum_variants(&mut self, enum_id: EnumId) {
-        let data = self.db.enum_variants(enum_id);
+        let data = enum_id.enum_variants(self.db);
 
-        for (variant_id, _) in data.variants.iter() {
+        for (variant_id, _, _) in data.variants.iter() {
             self.validate_enum_variant_fields(*variant_id);
         }
 
@@ -405,7 +405,7 @@ impl<'a> DeclValidator<'a> {
         let mut enum_variants_replacements = data
             .variants
             .iter()
-            .filter_map(|(_, name)| {
+            .filter_map(|(_, name, _)| {
                 to_camel_case(&name.display_no_db(edition).to_smolstr()).map(|new_name| {
                     Replacement {
                         current_name: name.clone(),

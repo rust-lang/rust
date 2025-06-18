@@ -229,7 +229,7 @@ impl Generics {
     }
 
     /// Returns a Substitution that replaces each parameter by itself (i.e. `Ty::Param`).
-    pub(crate) fn placeholder_subst(&self, db: &dyn HirDatabase) -> Substitution {
+    pub fn placeholder_subst(&self, db: &dyn HirDatabase) -> Substitution {
         Substitution::from_iter(
             Interner,
             self.iter_id().map(|id| match id {

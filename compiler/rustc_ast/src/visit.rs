@@ -884,7 +884,7 @@ macro_rules! common_visitor_and_walkers {
                 TyKind::BareFn(function_declaration) => {
                     let BareFnTy { safety, ext: _, generic_params, decl, decl_span } =
                         &$($mut)? **function_declaration;
-                    visit_safety(vis, safety);
+                    try_visit!(visit_safety(vis, safety));
                     try_visit!(visit_generic_params(vis, generic_params));
                     try_visit!(vis.visit_fn_decl(decl));
                     try_visit!(visit_span(vis, decl_span));
@@ -1235,7 +1235,7 @@ macro_rules! common_visitor_and_walkers {
                     bounds,
                     bound_generic_params,
                 }) => {
-                    visit_generic_params(vis, bound_generic_params);
+                    try_visit!(visit_generic_params(vis, bound_generic_params));
                     try_visit!(vis.visit_ty(bounded_ty));
                     walk_list!(vis, visit_param_bound, bounds, BoundKind::Bound);
                 }
@@ -1420,7 +1420,7 @@ macro_rules! common_visitor_and_walkers {
                     let StructExpr { qself, path, fields, rest } = &$($mut)?**se;
                     try_visit!(vis.visit_qself(qself));
                     try_visit!(vis.visit_path(path));
-                    visit_expr_fields(vis, fields);
+                    try_visit!(visit_expr_fields(vis, fields));
                     match rest {
                         StructRest::Base(expr) => try_visit!(vis.visit_expr(expr)),
                         StructRest::Rest(_span) => {}

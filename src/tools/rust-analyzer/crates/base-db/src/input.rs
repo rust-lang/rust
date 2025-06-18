@@ -20,11 +20,9 @@ use span::Edition;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, AnchoredPath, FileId, VfsPath, file_set::FileSet};
 
-use crate::{CrateWorkspaceData, EditionedFileId, RootQueryDb};
+use crate::{CrateWorkspaceData, EditionedFileId, FxIndexSet, RootQueryDb};
 
 pub type ProcMacroPaths = FxHashMap<CrateBuilderId, Result<(String, AbsPathBuf), String>>;
-
-type FxIndexSet<T> = indexmap::IndexSet<T, FxBuildHasher>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SourceRootId(pub u32);

@@ -6,10 +6,11 @@
 
 use either::Either;
 use hir_expand::{HirFileId, attrs::collect_attrs};
+use span::AstIdNode;
 use syntax::{AstPtr, ast};
 
 use hir_def::{
-    AdtId, AssocItemId, DefWithBodyId, EnumId, FieldId, GenericDefId, ImplId, ItemTreeLoc,
+    AdtId, AssocItemId, AstIdLoc, DefWithBodyId, EnumId, FieldId, GenericDefId, ImplId,
     LifetimeParamId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, TypeOrConstParamId,
     VariantId,
     db::DefDatabase,
@@ -19,7 +20,6 @@ use hir_def::{
     },
     hir::generics::GenericParams,
     item_scope::ItemScope,
-    item_tree::ItemTreeNode,
     nameres::DefMap,
     src::{HasChildSource, HasSource},
 };
@@ -61,7 +61,7 @@ impl ChildBySource for TraitId {
 
 impl ChildBySource for ImplId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let data = db.impl_items(*self);
+        let data = self.impl_items(db);
         data.macro_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
                 let ptr = ast_id.to_ptr(db);
@@ -113,7 +113,7 @@ impl ChildBySource for ItemScope {
             ids.iter().for_each(|&id| {
                 if let MacroId::MacroRulesId(id) = id {
                     let loc = id.lookup(db);
-                    if loc.id.file_id() == file_id {
+                    if loc.id.file_id == file_id {
                         res[keys::MACRO_RULES].insert(loc.ast_ptr(db).value, id);
                     }
                 }
@@ -199,16 +199,14 @@ impl ChildBySource for VariantId {
 impl ChildBySource for EnumId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let loc = &self.lookup(db);
-        if file_id != loc.id.file_id() {
+        if file_id != loc.id.file_id {
             return;
         }
 
-        let tree = loc.id.item_tree(db);
-        let ast_id_map = db.ast_id_map(loc.id.file_id());
+        let ast_id_map = db.ast_id_map(loc.id.file_id);
 
-        db.enum_variants(*self).variants.iter().for_each(|&(variant, _)| {
-            res[keys::ENUM_VARIANT]
-                .insert(ast_id_map.get(tree[variant.lookup(db).id.value].ast_id), variant);
+        self.enum_variants(db).variants.iter().for_each(|&(variant, _, _)| {
+            res[keys::ENUM_VARIANT].insert(ast_id_map.get(variant.lookup(db).id.value), variant);
         });
         let (_, source_map) = db.enum_signature_with_source_map(*self);
         source_map
@@ -287,15 +285,14 @@ fn insert_item_loc<ID, N, Data>(
     res: &mut DynMap,
     file_id: HirFileId,
     id: ID,
-    key: Key<N::Source, ID>,
+    key: Key<N, ID>,
 ) where
     ID: Lookup<Database = dyn DefDatabase, Data = Data> + 'static,
-    Data: ItemTreeLoc<Id = N>,
-    N: ItemTreeNode,
-    N::Source: 'static,
+    Data: AstIdLoc<Ast = N>,
+    N: AstIdNode + 'static,
 {
     let loc = id.lookup(db);
-    if loc.item_tree_id().file_id() == file_id {
+    if loc.ast_id().file_id == file_id {
         res[key].insert(loc.ast_ptr(db).value, id)
     }
 }

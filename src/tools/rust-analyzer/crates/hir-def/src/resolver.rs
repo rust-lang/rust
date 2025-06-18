@@ -5,21 +5,22 @@ use base_db::Crate;
 use hir_expand::{
     MacroDefId,
     mod_path::{ModPath, PathKind},
-    name::Name,
+    name::{AsName, Name},
 };
 use intern::{Symbol, sym};
 use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
 use smallvec::{SmallVec, smallvec};
 use span::SyntaxContext;
+use syntax::ast::HasName;
 use triomphe::Arc;
 
 use crate::{
-    AdtId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId,
-    ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId, GenericParamId, HasModule,
-    ImplId, ItemContainerId, ItemTreeLoc, LifetimeParamId, LocalModuleId, Lookup, Macro2Id,
-    MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId,
-    TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UseId, VariantId,
+    AdtId, AstIdLoc, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId,
+    EnumVariantId, ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId,
+    GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId, LocalModuleId, Lookup,
+    Macro2Id, MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId,
+    TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UseId, VariantId,
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr_store::{
@@ -32,10 +33,10 @@ use crate::{
         generics::{GenericParams, TypeOrConstParamData},
     },
     item_scope::{BUILTIN_SCOPE, BuiltinShadowMode, ImportOrExternCrate, ImportOrGlob, ItemScope},
-    item_tree::ImportAlias,
     lang_item::LangItemTarget,
     nameres::{DefMap, LocalDefMap, MacroSubNs, ResolvePathResultPrefixInfo, block_def_map},
     per_ns::PerNs,
+    src::HasSource,
     type_ref::LifetimeRef,
     visibility::{RawVisibility, Visibility},
 };
@@ -304,6 +305,10 @@ impl<'db> Resolver<'db> {
                     }),
                 )
             }
+            RawVisibility::PubSelf(explicitness) => {
+                Some(Visibility::Module(self.module(), *explicitness))
+            }
+            RawVisibility::PubCrate => Some(Visibility::PubCrate(self.krate())),
             RawVisibility::Public => Some(Visibility::Public),
         }
     }
@@ -627,14 +632,14 @@ impl<'db> Resolver<'db> {
             .extern_crate_decls()
             .filter_map(|id| {
                 let loc = id.lookup(db);
-                let tree = loc.item_tree_id().item_tree(db);
-                match &tree[loc.id.value].alias {
-                    Some(alias) => match alias {
-                        ImportAlias::Underscore => None,
-                        ImportAlias::Alias(name) => Some(name.clone()),
-                    },
-                    None => Some(tree[loc.id.value].name.clone()),
-                }
+                let extern_crate = loc.source(db);
+                // If there is a rename (`as x`), extract the renamed name, or remove the `extern crate`
+                // if it is an underscore.
+                extern_crate
+                    .value
+                    .rename()
+                    .map(|a| a.name().map(|it| it.as_name()))
+                    .unwrap_or_else(|| extern_crate.value.name_ref().map(|it| it.as_name()))
             })
     }
 
@@ -1471,10 +1476,7 @@ impl HasResolver for MacroRulesId {
 
 fn lookup_resolver(
     db: &dyn DefDatabase,
-    lookup: impl Lookup<
-        Database = dyn DefDatabase,
-        Data = impl ItemTreeLoc<Container = impl HasResolver>,
-    >,
+    lookup: impl Lookup<Database = dyn DefDatabase, Data = impl AstIdLoc<Container = impl HasResolver>>,
 ) -> Resolver<'_> {
     lookup.lookup(db).container().resolver(db)
 }

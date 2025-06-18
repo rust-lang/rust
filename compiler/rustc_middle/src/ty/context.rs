@@ -43,6 +43,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
+use rustc_serialize::PointeeSized;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
@@ -774,7 +775,9 @@ bidirectional_lang_item_map! {
     FutureOutput,
     Iterator,
     Metadata,
+    MetaSized,
     Option,
+    PointeeSized,
     PointeeTrait,
     Poll,
     Sized,
@@ -1616,16 +1619,17 @@ impl<'tcx> TyCtxt<'tcx> {
         self.reserve_and_set_memory_dedup(alloc, salt)
     }
 
+    /// Traits added on all bounds by default, excluding `Sized` which is treated separately.
     pub fn default_traits(self) -> &'static [rustc_hir::LangItem] {
-        match self.sess.opts.unstable_opts.experimental_default_bounds {
-            true => &[
-                LangItem::Sized,
+        if self.sess.opts.unstable_opts.experimental_default_bounds {
+            &[
                 LangItem::DefaultTrait1,
                 LangItem::DefaultTrait2,
                 LangItem::DefaultTrait3,
                 LangItem::DefaultTrait4,
-            ],
-            false => &[LangItem::Sized],
+            ]
+        } else {
+            &[]
         }
     }
 
@@ -2538,17 +2542,17 @@ impl<'tcx> TyCtxt<'tcx> {
 // this type just holds a pointer to it, but it still effectively owns it. It
 // impls `Borrow` so that it can be looked up using the original
 // (non-arena-memory-owning) types.
-struct InternedInSet<'tcx, T: ?Sized>(&'tcx T);
+struct InternedInSet<'tcx, T: ?Sized + PointeeSized>(&'tcx T);
 
-impl<'tcx, T: 'tcx + ?Sized> Clone for InternedInSet<'tcx, T> {
+impl<'tcx, T: 'tcx + ?Sized + PointeeSized> Clone for InternedInSet<'tcx, T> {
     fn clone(&self) -> Self {
         InternedInSet(self.0)
     }
 }
 
-impl<'tcx, T: 'tcx + ?Sized> Copy for InternedInSet<'tcx, T> {}
+impl<'tcx, T: 'tcx + ?Sized + PointeeSized> Copy for InternedInSet<'tcx, T> {}
 
-impl<'tcx, T: 'tcx + ?Sized> IntoPointer for InternedInSet<'tcx, T> {
+impl<'tcx, T: 'tcx + ?Sized + PointeeSized> IntoPointer for InternedInSet<'tcx, T> {
     fn into_pointer(&self) -> *const () {
         self.0 as *const _ as *const ()
     }

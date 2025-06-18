@@ -379,6 +379,24 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             };
             e_flags
         }
+        Architecture::PowerPc64 => {
+            const EF_PPC64_ABI_UNKNOWN: u32 = 0;
+            const EF_PPC64_ABI_ELF_V1: u32 = 1;
+            const EF_PPC64_ABI_ELF_V2: u32 = 2;
+
+            match sess.target.options.llvm_abiname.as_ref() {
+                // If the flags do not correctly indicate the ABI,
+                // linkers such as ld.lld assume that the ppc64 object files are always ELFv2
+                // which leads to broken binaries if ELFv1 is used for the object files.
+                "elfv1" => EF_PPC64_ABI_ELF_V1,
+                "elfv2" => EF_PPC64_ABI_ELF_V2,
+                "" if sess.target.options.binary_format.to_object() == BinaryFormat::Elf => {
+                    bug!("No ABI specified for this PPC64 ELF target");
+                }
+                // Fall back
+                _ => EF_PPC64_ABI_UNKNOWN,
+            }
+        }
         _ => 0,
     }
 }
