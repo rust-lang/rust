@@ -264,14 +264,11 @@ impl Cargo {
             }
         }
 
-        // When determining flags for the host (build scripts/proc macros),
-        // we use the snapshot compiler when building `Mode::Std` tools, and
-        // the current compiler when building anything else.
-        // We need to determine the current stage here to pass proper linker args (e.g. -C vs -Z)
-        // to the compiler used to compile build scripts.
+        // We use the snapshot compiler when building host code (build scripts/proc macros) of
+        // `Mode::Std` tools, so we need to determine the current stage here to pass the proper
+        // linker args (e.g. -C vs -Z).
         // This should stay synchronized with the [cargo] function.
         let host_stage = if mode == Mode::Std { 0 } else { compiler.stage };
-
         for arg in linker_args(builder, compiler.host, LldThreads::Yes, host_stage) {
             self.hostflags.arg(&arg);
         }
