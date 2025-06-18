@@ -122,17 +122,17 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
                 "usage of a legacy numeric constant",
             )
         // `<integer>::xxx_value` check
-        } else if let QPath::TypeRelative(_, last_segment) = qpath
+        } else if let QPath::TypeRelative(mod_path, last_segment) = qpath
             && let Some(def_id) = cx.qpath_res(qpath, expr.hir_id).opt_def_id()
             && let Some(par_expr) = get_parent_expr(cx, expr)
             && let ExprKind::Call(_, []) = par_expr.kind
             && is_integer_method(cx, def_id)
         {
             let name = last_segment.ident.name.as_str();
-
+            let mod_name = clippy_utils::source::snippet(cx, mod_path.span, "_");
             (
-                last_segment.ident.span.with_hi(par_expr.span.hi()),
-                name[..=2].to_ascii_uppercase(),
+                par_expr.span,
+                format!("{}::{}", mod_name, name[..=2].to_ascii_uppercase()),
                 "usage of a legacy numeric method",
             )
         } else {
