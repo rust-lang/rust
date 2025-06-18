@@ -942,23 +942,39 @@ fn run_path_with_utf16<T, P: AsRef<Path>>(
 impl Dir {
     pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let opts = OpenOptions::new();
-        Self::new_native(path.as_ref(), &opts)
+        Self::new_with_native(path.as_ref(), &opts).map(|handle| Self { handle })
     }
 
     pub fn new_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
-        Self::new_native(path.as_ref(), &opts)
+        Self::new_with_native(path.as_ref(), &opts).map(|handle| Self { handle })
+    }
+
+    pub fn new_for_traversal<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        Self::new_native(path.as_ref()).map(|handle| Self { handle })
     }
 
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
         let mut opts = OpenOptions::new();
         let path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
         opts.read(true);
-        Ok(File { handle: self.open_native(&path, &opts)? })
+        self.open_native(&path, &opts).map(|handle| File { handle })
     }
 
     pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
         let path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
-        Ok(File { handle: self.open_native(&path, &opts)? })
+        self.open_native(&path, &opts).map(|handle| File { handle })
+    }
+
+    pub fn open_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<Self> {
+        let mut opts = OpenOptions::new();
+        let path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
+        opts.read(true);
+        self.open_native(&path, &opts).map(|handle| Self { handle })
+    }
+
+    pub fn open_dir_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<Self> {
+        let path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
+        self.open_native(&path, &opts).map(|handle| Self { handle })
     }
 
     pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
@@ -984,9 +1000,14 @@ impl Dir {
         run_path_with_wcstr(to.as_ref(), &|to| self.rename_native(from.as_ref(), to_dir, to))
     }
 
-    fn new_native(path: &Path, opts: &OpenOptions) -> io::Result<Self> {
-        let handle = File::open(path, opts)?.into_inner();
-        Ok(Self { handle })
+    fn new_native(path: &Path) -> io::Result<Handle> {
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::FILE_TRAVERSE);
+        File::open(path, &opts).map(|file| file.into_inner())
+    }
+
+    fn new_with_native(path: &Path, opts: &OpenOptions) -> io::Result<Handle> {
+        File::open(path, opts).map(|file| file.into_inner())
     }
 
     fn open_native(&self, path: &[u16], opts: &OpenOptions) -> io::Result<Handle> {
