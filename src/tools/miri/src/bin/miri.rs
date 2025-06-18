@@ -10,6 +10,8 @@
 
 // Some "regular" crates we want to share with rustc
 extern crate tracing;
+#[cfg(feature = "tracing")]
+extern crate tracing_subscriber;
 
 // The rustc crates we need
 extern crate rustc_abi;
@@ -24,14 +26,16 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 
-use std::env::{self, VarError};
+mod log;
+
+use std::env;
 use std::num::NonZero;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
-use std::sync::{Arc, Once};
 
 use miri::{
     BacktraceStyle, BorrowTrackerMethod, GenmcConfig, GenmcCtx, MiriConfig, MiriEntryFnType,
@@ -52,11 +56,13 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
+use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
-use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
 use rustc_span::def_id::DefId;
 use tracing::debug;
+
+use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 
 struct MiriCompilerCalls {
     miri_config: Option<MiriConfig>,
@@ -154,12 +160,12 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         if tcx.sess.dcx().has_errors_or_delayed_bugs().is_some() {
             tcx.dcx().fatal("miri cannot be run on programs that fail compilation");
         }
-
-        let early_dcx = EarlyDiagCtxt::new(tcx.sess.opts.error_format);
-        init_late_loggers(&early_dcx, tcx);
         if !tcx.crate_types().contains(&CrateType::Executable) {
             tcx.dcx().fatal("miri only makes sense on bin crates");
         }
+
+        let early_dcx = EarlyDiagCtxt::new(tcx.sess.opts.error_format);
+        init_late_loggers(&early_dcx, tcx);
 
         let (entry_def_id, entry_type) = entry_fn(tcx);
         let mut config = self.miri_config.take().expect("after_analysis must only be called once");
@@ -213,7 +219,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     if !many_seeds.keep_going {
                         // `abort_if_errors` would actually not stop, since `par_for_each` waits for the
                         // rest of the to finish, so we just exit immediately.
-                        std::process::exit(return_code);
+                        exit(return_code);
                     }
                     exit_code.store(return_code, Ordering::Relaxed);
                     num_failed.fetch_add(1, Ordering::Relaxed);
@@ -223,7 +229,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             if num_failed > 0 {
                 eprintln!("{num_failed}/{total} SEEDS FAILED", total = many_seeds.seeds.count());
             }
-            std::process::exit(exit_code.0.into_inner());
+            exit(exit_code.0.into_inner());
         } else {
             let return_code = miri::eval_entry(tcx, entry_def_id, entry_type, &config, None)
                 .unwrap_or_else(|| {
@@ -232,7 +238,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     tcx.dcx().abort_if_errors();
                     rustc_driver::EXIT_FAILURE
                 });
-            std::process::exit(return_code);
+            exit(return_code);
         }
 
         // Unreachable.
@@ -327,83 +333,31 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
     }
 }
 
-fn show_error(msg: &impl std::fmt::Display) -> ! {
+fn exit(exit_code: i32) -> ! {
+    // Drop the tracing guard before exiting, so tracing calls are flushed correctly.
+    deinit_loggers();
+    std::process::exit(exit_code);
+}
+
+fn show_error_(msg: &impl std::fmt::Display) -> ! {
     eprintln!("fatal error: {msg}");
-    std::process::exit(1)
+    exit(1)
 }
 
 macro_rules! show_error {
-    ($($tt:tt)*) => { show_error(&format_args!($($tt)*)) };
+    ($($tt:tt)*) => { $crate::show_error_(&format_args!($($tt)*)) };
 }
-
-fn rustc_logger_config() -> rustc_log::LoggerConfig {
-    // Start with the usual env vars.
-    let mut cfg = rustc_log::LoggerConfig::from_env("RUSTC_LOG");
-
-    // Overwrite if MIRI_LOG is set.
-    if let Ok(var) = env::var("MIRI_LOG") {
-        // MIRI_LOG serves as default for RUSTC_LOG, if that is not set.
-        if matches!(cfg.filter, Err(VarError::NotPresent)) {
-            // We try to be a bit clever here: if `MIRI_LOG` is just a single level
-            // used for everything, we only apply it to the parts of rustc that are
-            // CTFE-related. Otherwise, we use it verbatim for `RUSTC_LOG`.
-            // This way, if you set `MIRI_LOG=trace`, you get only the right parts of
-            // rustc traced, but you can also do `MIRI_LOG=miri=trace,rustc_const_eval::interpret=debug`.
-            if tracing::Level::from_str(&var).is_ok() {
-                cfg.filter = Ok(format!(
-                    "rustc_middle::mir::interpret={var},rustc_const_eval::interpret={var},miri={var}"
-                ));
-            } else {
-                cfg.filter = Ok(var);
-            }
-        }
-    }
-
-    cfg
-}
-
-/// The global logger can only be set once per process, so track
-/// whether that already happened.
-static LOGGER_INITED: Once = Once::new();
-
-fn init_early_loggers(early_dcx: &EarlyDiagCtxt) {
-    // We only initialize `rustc` if the env var is set (so the user asked for it).
-    // If it is not set, we avoid initializing now so that we can initialize later with our custom
-    // settings, and *not* log anything for what happens before `miri` starts interpreting.
-    if env::var_os("RUSTC_LOG").is_some() {
-        LOGGER_INITED.call_once(|| {
-            rustc_driver::init_logger(early_dcx, rustc_logger_config());
-        });
-    }
-}
-
-fn init_late_loggers(early_dcx: &EarlyDiagCtxt, tcx: TyCtxt<'_>) {
-    // If the logger is not yet initialized, initialize it.
-    LOGGER_INITED.call_once(|| {
-        rustc_driver::init_logger(early_dcx, rustc_logger_config());
-    });
-
-    // If `MIRI_BACKTRACE` is set and `RUSTC_CTFE_BACKTRACE` is not, set `RUSTC_CTFE_BACKTRACE`.
-    // Do this late, so we ideally only apply this to Miri's errors.
-    if let Some(val) = env::var_os("MIRI_BACKTRACE") {
-        let ctfe_backtrace = match &*val.to_string_lossy() {
-            "immediate" => CtfeBacktrace::Immediate,
-            "0" => CtfeBacktrace::Disabled,
-            _ => CtfeBacktrace::Capture,
-        };
-        *tcx.sess.ctfe_backtrace.borrow_mut() = ctfe_backtrace;
-    }
-}
+use show_error;
 
 /// Execute a compiler with the given CLI arguments and callbacks.
 fn run_compiler_and_exit(
     args: &[String],
     callbacks: &mut (dyn rustc_driver::Callbacks + Send),
 ) -> ! {
-    // Invoke compiler, and handle return code.
+    // Invoke compiler, catch any unwinding panics and handle return code.
     let exit_code =
         rustc_driver::catch_with_exit_code(move || rustc_driver::run_compiler(args, callbacks));
-    std::process::exit(exit_code)
+    exit(exit_code)
 }
 
 /// Parses a comma separated list of `T` from the given string:
