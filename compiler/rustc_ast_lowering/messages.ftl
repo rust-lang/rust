@@ -172,9 +172,6 @@ ast_lowering_template_modifier = template modifier
 
 ast_lowering_this_not_async = this is not `async`
 
-ast_lowering_underscore_array_length_unstable =
-    using `_` for array lengths is unstable
-
 ast_lowering_underscore_expr_lhs_assign =
     in expressions, `_` can only be used on the left-hand side of an assignment
     .label = `_` not allowed here
