@@ -641,10 +641,13 @@ fn parse_sanitize_attr(tcx: TyCtxt<'_>, attr: &Attribute) -> SanitizerSet {
             };
             let segments = set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
             match segments.as_slice() {
-                [sym::address] if set.value_str() == Some(sym::off) => {
+                // Similar to clang, sanitize(address = ..) and
+                // sanitize(kernel_address = ..) control both ASan and KASan
+                // Source: https://reviews.llvm.org/D44981.
+                [sym::address] | [sym::kernel_address] if set.value_str() == Some(sym::off) => {
                     result |= SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS
                 }
-                [sym::address] if set.value_str() == Some(sym::on) => {
+                [sym::address] | [sym::kernel_address] if set.value_str() == Some(sym::on) => {
                     result &= !SanitizerSet::ADDRESS;
                     result &= !SanitizerSet::KERNELADDRESS;
                 }
