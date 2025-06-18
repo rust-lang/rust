@@ -4,9 +4,9 @@ error[E0658]: `?Trait` is not permitted in supertraits
 LL | trait Tr: ?Sized {}
    |           ^^^^^^
    |
-   = note: traits are `?Sized` by default
    = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: traits are `?Sized` by default
 
 error[E0658]: `?Trait` is not permitted in trait object types
   --> $DIR/maybe-trait-bounds-forbidden-locations.rs:13:20
