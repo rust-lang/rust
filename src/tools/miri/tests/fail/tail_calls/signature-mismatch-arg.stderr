@@ -2,7 +2,7 @@ error: Undefined Behavior: calling a function with argument of type i32 passing 
   --> tests/fail/tail_calls/signature-mismatch-arg.rs:LL:CC
    |
 LL |     f(0);
-   |     ^^^^ calling a function with argument of type i32 passing data of type u32
+   |     ^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

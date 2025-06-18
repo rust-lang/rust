@@ -45,17 +45,31 @@ fn pr_jobs() {
     "#);
 }
 
+#[test]
+fn master_jobs() {
+    let stdout = get_matrix("push", "commit", "refs/heads/master");
+    insta::assert_snapshot!(stdout, @r#"
+    jobs=[]
+    run_type=master
+    "#);
+}
+
 fn get_matrix(event_name: &str, commit_msg: &str, branch_ref: &str) -> String {
-    let output = Command::new("cargo")
-        .args(["run", "-q", "calculate-job-matrix", "--jobs-file", TEST_JOBS_YML_PATH])
+    let path = std::env::var("PATH");
+    let mut cmd = Command::new("cargo");
+    cmd.args(["run", "-q", "calculate-job-matrix", "--jobs-file", TEST_JOBS_YML_PATH])
+        .env_clear()
         .env("GITHUB_EVENT_NAME", event_name)
         .env("COMMIT_MESSAGE", commit_msg)
         .env("GITHUB_REF", branch_ref)
         .env("GITHUB_RUN_ID", "123")
         .env("GITHUB_RUN_ATTEMPT", "1")
-        .stdout(Stdio::piped())
-        .output()
-        .expect("Failed to execute command");
+        .stdout(Stdio::piped());
+    if let Ok(path) = path {
+        cmd.env("PATH", path);
+    }
+
+    let output = cmd.output().expect("Failed to execute command");
 
     let stdout = String::from_utf8(output.stdout).unwrap();
     let stderr = String::from_utf8(output.stderr).unwrap();

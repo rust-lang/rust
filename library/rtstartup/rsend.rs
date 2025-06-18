@@ -8,8 +8,21 @@
 #![allow(internal_features)]
 #![warn(unreachable_pub)]
 
+#[cfg(not(bootstrap))]
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[cfg(not(bootstrap))]
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
+#[cfg(bootstrap)]
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized {}
+#[cfg(not(bootstrap))]
+#[lang = "sized"]
+pub trait Sized: MetaSized {}
+
 #[lang = "sync"]
 trait Sync {}
 impl<T> Sync for T {}
@@ -18,12 +31,23 @@ trait Copy {}
 #[lang = "freeze"]
 auto trait Freeze {}
 
+#[cfg(bootstrap)]
 impl<T: ?Sized> Copy for *mut T {}
+#[cfg(not(bootstrap))]
+impl<T: PointeeSized> Copy for *mut T {}
 
+#[cfg(bootstrap)]
 #[lang = "drop_in_place"]
 #[inline]
 #[allow(unconditional_recursion)]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+    drop_in_place(to_drop);
+}
+#[cfg(not(bootstrap))]
+#[lang = "drop_in_place"]
+#[inline]
+#[allow(unconditional_recursion)]
+pub unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T) {
     drop_in_place(to_drop);
 }
 

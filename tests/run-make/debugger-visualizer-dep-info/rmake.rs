@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // This test checks that files referenced via #[debugger_visualizer] are
 // included in `--emit dep-info` output.
 // See https://github.com/rust-lang/rust/pull/111641

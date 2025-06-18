@@ -18,7 +18,7 @@ const B: *mut i32 = &mut 4; //~ ERROR mutable references are not allowed
 const B2: Option<&mut i32> = None;
 
 // Not ok, can't prove that no mutable allocation ends up in final value
-const B3: Option<&mut i32> = Some(&mut 42); //~ ERROR temporary value dropped while borrowed
+const B3: Option<&mut i32> = Some(&mut 42); //~ ERROR mutable references are not allowed
 
 const fn helper(x: &mut i32) -> Option<&mut i32> { Some(x) }
 const B4: Option<&mut i32> = helper(&mut 42); //~ ERROR temporary value dropped while borrowed

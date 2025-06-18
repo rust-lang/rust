@@ -10,7 +10,7 @@
     clippy::unnecessary_wraps,
     dyn_drop,
     clippy::get_first,
-    mismatched_lifetime_syntaxes,
+    mismatched_lifetime_syntaxes
 )]
 
 extern crate proc_macros;

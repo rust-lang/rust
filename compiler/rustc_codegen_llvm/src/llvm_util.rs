@@ -16,6 +16,7 @@ use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_session::config::{PrintKind, PrintRequest};
+use rustc_session::features::{StabilityExt, retpoline_features_by_flags};
 use rustc_span::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy, SmallDataThresholdSupport};
 use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES};
@@ -23,8 +24,7 @@ use smallvec::{SmallVec, smallvec};
 
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
-    FixedX18InvalidArch, ForbiddenCTargetFeature, PossibleFeature, UnknownCTargetFeature,
-    UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
+    FixedX18InvalidArch, PossibleFeature, UnknownCTargetFeature, UnknownCTargetFeaturePrefix,
 };
 use crate::llvm;
 
@@ -707,6 +707,12 @@ pub(crate) fn target_cpu(sess: &Session) -> &str {
     handle_native(cpu_name)
 }
 
+fn llvm_features_by_flags(sess: &Session) -> Vec<&str> {
+    let mut features: Vec<&str> = Vec::new();
+    retpoline_features_by_flags(sess, &mut features);
+    features
+}
+
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
 /// `--target` and similar).
 pub(crate) fn global_llvm_features(
@@ -787,7 +793,7 @@ pub(crate) fn global_llvm_features(
 
         // Compute implied features
         let mut all_rust_features = vec![];
-        for feature in sess.opts.cg.target_feature.split(',') {
+        for feature in sess.opts.cg.target_feature.split(',').chain(llvm_features_by_flags(sess)) {
             if let Some(feature) = feature.strip_prefix('+') {
                 all_rust_features.extend(
                     UnordSet::from(sess.target.implied_target_features(feature))
@@ -840,18 +846,7 @@ pub(crate) fn global_llvm_features(
                         sess.dcx().emit_warn(unknown_feature);
                     }
                     Some((_, stability, _)) => {
-                        if let Err(reason) = stability.toggle_allowed() {
-                            sess.dcx().emit_warn(ForbiddenCTargetFeature {
-                                feature,
-                                enabled: if enable { "enabled" } else { "disabled" },
-                                reason,
-                            });
-                        } else if stability.requires_nightly().is_some() {
-                            // An unstable feature. Warn about using it. It makes little sense
-                            // to hard-error here since we just warn about fully unknown
-                            // features above.
-                            sess.dcx().emit_warn(UnstableCTargetFeature { feature });
-                        }
+                        stability.verify_feature_enabled_by_flag(sess, enable, feature);
                     }
                 }
 

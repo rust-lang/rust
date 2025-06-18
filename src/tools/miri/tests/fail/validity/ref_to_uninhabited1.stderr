@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value: encountered a box pointin
   --> tests/fail/validity/ref_to_uninhabited1.rs:LL:CC
    |
 LL |         let x: Box<!> = transmute(&mut 42);
-   |                         ^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a box pointing to uninhabited type !
+   |                         ^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

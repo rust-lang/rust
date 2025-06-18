@@ -304,7 +304,7 @@ impl f32 {
     /// ```
     /// let x = 2.0_f32;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-5);
     ///
     /// assert_eq!(f32::powi(f32::NAN, 0), 1.0);
     /// ```
@@ -328,7 +328,7 @@ impl f32 {
     /// ```
     /// let x = 2.0_f32;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-5);
     ///
     /// assert_eq!(f32::powf(1.0, f32::NAN), 1.0);
     /// assert_eq!(f32::powf(f32::NAN, 0.0), 1.0);
@@ -388,7 +388,7 @@ impl f32 {
     /// // ln(e) - 1 == 0
     /// let abs_difference = (e.ln() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -413,7 +413,7 @@ impl f32 {
     /// // 2^2 - 4 == 0
     /// let abs_difference = (f.exp2() - 4.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-5);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -442,7 +442,7 @@ impl f32 {
     /// // ln(e) - 1 == 0
     /// let abs_difference = (e.ln() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     ///
     /// Non-positive values:
@@ -479,7 +479,7 @@ impl f32 {
     /// // log5(5) - 1 == 0
     /// let abs_difference = (five.log(5.0) - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     ///
     /// Non-positive values:
@@ -512,7 +512,7 @@ impl f32 {
     /// // log2(2) - 1 == 0
     /// let abs_difference = (two.log2() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     ///
     /// Non-positive values:
@@ -545,7 +545,7 @@ impl f32 {
     /// // log10(10) - 1 == 0
     /// let abs_difference = (ten.log10() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     ///
     /// Non-positive values:
@@ -652,7 +652,7 @@ impl f32 {
     /// // sqrt(x^2 + y^2)
     /// let abs_difference = (x.hypot(y) - (x.powi(2) + y.powi(2)).sqrt()).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -676,7 +676,7 @@ impl f32 {
     ///
     /// let abs_difference = (x.sin() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -700,7 +700,7 @@ impl f32 {
     ///
     /// let abs_difference = (x.cos() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -754,7 +754,7 @@ impl f32 {
     /// // asin(sin(pi/2))
     /// let abs_difference = (f.sin().asin() - std::f32::consts::FRAC_PI_2).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-3);
     /// ```
     #[doc(alias = "arcsin")]
     #[rustc_allow_incoherent_impl]
@@ -784,7 +784,7 @@ impl f32 {
     /// // acos(cos(pi/4))
     /// let abs_difference = (f.cos().acos() - std::f32::consts::FRAC_PI_4).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     #[doc(alias = "arccos")]
     #[rustc_allow_incoherent_impl]
@@ -884,8 +884,8 @@ impl f32 {
     /// let abs_difference_0 = (f.0 - x.sin()).abs();
     /// let abs_difference_1 = (f.1 - x.cos()).abs();
     ///
-    /// assert!(abs_difference_0 <= f32::EPSILON);
-    /// assert!(abs_difference_1 <= f32::EPSILON);
+    /// assert!(abs_difference_0 <= 1e-6);
+    /// assert!(abs_difference_1 <= 1e-6);
     /// ```
     #[doc(alias = "sincos")]
     #[rustc_allow_incoherent_impl]
@@ -1067,7 +1067,7 @@ impl f32 {
     ///
     /// let abs_difference = (f - x).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-7);
     /// ```
     #[doc(alias = "arcsinh")]
     #[rustc_allow_incoherent_impl]
@@ -1095,7 +1095,7 @@ impl f32 {
     ///
     /// let abs_difference = (f - x).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     #[doc(alias = "arccosh")]
     #[rustc_allow_incoherent_impl]

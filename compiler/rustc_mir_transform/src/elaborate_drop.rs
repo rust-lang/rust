@@ -390,6 +390,20 @@ where
             Location { block: self.succ, statement_index: 0 },
             StatementKind::StorageDead(fut.local),
         );
+        // StorageDead(fut) in unwind block (at the begin)
+        if let Unwind::To(block) = unwind {
+            self.elaborator.patch().add_statement(
+                Location { block, statement_index: 0 },
+                StatementKind::StorageDead(fut.local),
+            );
+        }
+        // StorageDead(fut) in dropline block (at the begin)
+        if let Some(block) = dropline {
+            self.elaborator.patch().add_statement(
+                Location { block, statement_index: 0 },
+                StatementKind::StorageDead(fut.local),
+            );
+        }
 
         // #1:pin_obj_bb >>> call Pin<ObjTy>::new_unchecked(&mut obj)
         self.elaborator.patch().patch_terminator(

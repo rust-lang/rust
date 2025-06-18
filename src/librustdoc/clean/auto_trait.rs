@@ -11,7 +11,7 @@ use tracing::{debug, instrument};
 
 use crate::clean::{
     self, Lifetime, clean_generic_param_def, clean_middle_ty, clean_predicate,
-    clean_trait_ref_with_constraints, clean_ty_generics, simplify,
+    clean_trait_ref_with_constraints, clean_ty_generics_inner, simplify,
 };
 use crate::core::DocContext;
 
@@ -101,7 +101,7 @@ fn synthesize_auto_trait_impl<'tcx>(
             // Instead, we generate `impl !Send for Foo<T>`, which better
             // expresses the fact that `Foo<T>` never implements `Send`,
             // regardless of the choice of `T`.
-            let mut generics = clean_ty_generics(
+            let mut generics = clean_ty_generics_inner(
                 cx,
                 tcx.generics_of(item_def_id),
                 ty::GenericPredicates::default(),

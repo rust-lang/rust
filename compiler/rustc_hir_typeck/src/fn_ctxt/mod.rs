@@ -382,7 +382,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         _hir_id: rustc_hir::HirId,
         _hir_ty: Option<&hir::Ty<'_>>,
     ) -> (Vec<Ty<'tcx>>, Ty<'tcx>) {
-        let input_tys = decl.inputs.iter().map(|a| self.lowerer().lower_arg_ty(a, None)).collect();
+        let input_tys = decl.inputs.iter().map(|a| self.lowerer().lower_ty(a)).collect();
 
         let output_ty = match decl.output {
             hir::FnRetTy::Return(output) => self.lowerer().lower_ty(output),
@@ -412,9 +412,10 @@ pub(crate) struct LoweredTy<'tcx> {
 
 impl<'tcx> LoweredTy<'tcx> {
     fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
-        // FIXME(-Znext-solver): We're still figuring out how to best handle
-        // normalization and this doesn't feel too great. We should look at this
-        // code again before stabilizing it.
+        // FIXME(-Znext-solver=no): This is easier than requiring all uses of `LoweredTy`
+        // to call `try_structurally_resolve_type` instead. This seems like a lot of
+        // effort, especially as we're still supporting the old solver. We may revisit
+        // this in the future.
         let normalized = if fcx.next_trait_solver() {
             fcx.try_structurally_resolve_type(span, raw)
         } else {

@@ -1,7 +1,7 @@
 macro_rules! define_struct {
     ($t:ty) => {
         struct S1(pub $t);
-        struct S2(pub (in foo) ());
+        struct S2(pub (in crate::foo) ());
         struct S3(pub $t ());
         //~^ ERROR expected one of `)` or `,`, found `(`
     }

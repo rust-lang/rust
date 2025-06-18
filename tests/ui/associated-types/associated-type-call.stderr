@@ -1,0 +1,15 @@
+error[E0599]: no associated item named `Assoc` found for unit type `()` in the current scope
+  --> $DIR/associated-type-call.rs:17:17
+   |
+LL |         <Self>::Assoc();
+   |                 ^^^^^ associated item not found in `()`
+   |
+help: to construct a value of type `T`, use the explicit path
+   |
+LL -         <Self>::Assoc();
+LL +         T();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

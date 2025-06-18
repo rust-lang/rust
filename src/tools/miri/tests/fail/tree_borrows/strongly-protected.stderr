@@ -2,7 +2,7 @@ error: Undefined Behavior: deallocation through <TAG> at ALLOC[0x0] is forbidden
   --> RUSTLIB/alloc/src/boxed.rs:LL:CC
    |
 LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ deallocation through <TAG> at ALLOC[0x0] is forbidden
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the allocation of the accessed tag <TAG> also contains the strongly protected tag <TAG>

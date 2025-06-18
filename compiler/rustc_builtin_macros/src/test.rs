@@ -118,10 +118,7 @@ pub(crate) fn expand_test_or_bench(
 
     let (item, is_stmt) = match item {
         Annotatable::Item(i) => (i, false),
-        Annotatable::Stmt(stmt) if matches!(stmt.kind, ast::StmtKind::Item(_)) => {
-            // FIXME: Use an 'if let' guard once they are implemented
-            if let ast::StmtKind::Item(i) = stmt.kind { (i, true) } else { unreachable!() }
-        }
+        Annotatable::Stmt(box ast::Stmt { kind: ast::StmtKind::Item(i), .. }) => (i, true),
         other => {
             not_testable_error(cx, attr_sp, None);
             return vec![other];

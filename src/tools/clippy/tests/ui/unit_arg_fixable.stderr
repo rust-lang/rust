@@ -1,0 +1,110 @@
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:16:5
+   |
+LL |     foo({});
+   |     ^^^^--^
+   |         |
+   |         help: use a unit literal instead: `()`
+   |
+   = note: `-D clippy::unit-arg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unit_arg)]`
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:18:5
+   |
+LL |     foo3({}, 2, 2);
+   |     ^^^^^--^^^^^^^
+   |          |
+   |          help: use a unit literal instead: `()`
+
+error: passing unit values to a function
+  --> tests/ui/unit_arg_fixable.rs:20:5
+   |
+LL |     taking_two_units({}, foo(0));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     foo(0);
+LL ~     taking_two_units((), ());
+   |
+
+error: passing unit values to a function
+  --> tests/ui/unit_arg_fixable.rs:22:5
+   |
+LL |     taking_three_units({}, foo(0), foo(1));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expressions in front of the call and replace them with the unit literal `()`
+   |
+LL ~     foo(0);
+LL +     foo(1);
+LL ~     taking_three_units((), (), ());
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:35:5
+   |
+LL |     fn_take_unit(Default::default());
+   |     ^^^^^^^^^^^^^------------------^
+   |                  |
+   |                  help: use a unit literal instead: `()`
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:49:5
+   |
+LL |     fn_take_unit(another_mac!());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     another_mac!();
+LL ~     fn_take_unit(());
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:51:5
+   |
+LL |     fn_take_unit(another_mac!(1));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     another_mac!(1);
+LL ~     fn_take_unit(());
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:60:5
+   |
+LL |     fn_take_unit(mac!(nondef Default::default()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^------------------^^
+   |                              |
+   |                              help: use a unit literal instead: `()`
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:62:5
+   |
+LL |     fn_take_unit(mac!(empty_block));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     mac!(empty_block);
+LL ~     fn_take_unit(());
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg_fixable.rs:69:5
+   |
+LL |     fn_take_unit(def());
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expression in front of the call and replace it with the unit literal `()`
+   |
+LL ~     let _: () = def();
+LL ~     fn_take_unit(());
+   |
+
+error: aborting due to 10 previous errors
+

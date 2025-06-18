@@ -1,8 +1,8 @@
-error: deadlock: the evaluated program deadlocked
+error: the evaluated program deadlocked
   --> tests/fail-dep/concurrency/libc_pthread_mutex_normal_reentrant.rs:LL:CC
    |
 LL |         libc::pthread_mutex_lock(&mut mutex as *mut _);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program deadlocked
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this thread got stuck here
    |
    = note: BACKTRACE:
    = note: inside `main` at tests/fail-dep/concurrency/libc_pthread_mutex_normal_reentrant.rs:LL:CC

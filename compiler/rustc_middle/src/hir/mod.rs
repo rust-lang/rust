@@ -12,6 +12,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
+use rustc_hir::lints::DelayedLint;
 use rustc_hir::*;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId, Span};
@@ -31,6 +32,8 @@ pub struct ModuleItems {
     opaques: Box<[LocalDefId]>,
     body_owners: Box<[LocalDefId]>,
     nested_bodies: Box<[LocalDefId]>,
+    // only filled with hir_crate_items, not with hir_module_items
+    delayed_lint_items: Box<[OwnerId]>,
 }
 
 impl ModuleItems {
@@ -46,6 +49,10 @@ impl ModuleItems {
 
     pub fn trait_items(&self) -> impl Iterator<Item = TraitItemId> {
         self.trait_items.iter().copied()
+    }
+
+    pub fn delayed_lint_items(&self) -> impl Iterator<Item = OwnerId> {
+        self.delayed_lint_items.iter().copied()
     }
 
     /// Returns all items that are associated with some `impl` block (both inherent and trait impl
@@ -161,8 +168,9 @@ impl<'tcx> TyCtxt<'tcx> {
         node: OwnerNode<'_>,
         bodies: &SortedMap<ItemLocalId, &Body<'_>>,
         attrs: &SortedMap<ItemLocalId, &[Attribute]>,
+        delayed_lints: &[DelayedLint],
         define_opaque: Option<&[(Span, LocalDefId)]>,
-    ) -> (Option<Fingerprint>, Option<Fingerprint>) {
+    ) -> (Option<Fingerprint>, Option<Fingerprint>, Option<Fingerprint>) {
         if self.needs_crate_hash() {
             self.with_stable_hashing_context(|mut hcx| {
                 let mut stable_hasher = StableHasher::new();
@@ -178,10 +186,16 @@ impl<'tcx> TyCtxt<'tcx> {
                 define_opaque.hash_stable(&mut hcx, &mut stable_hasher);
 
                 let h2 = stable_hasher.finish();
-                (Some(h1), Some(h2))
+
+                // hash lints emitted during ast lowering
+                let mut stable_hasher = StableHasher::new();
+                delayed_lints.hash_stable(&mut hcx, &mut stable_hasher);
+                let h3 = stable_hasher.finish();
+
+                (Some(h1), Some(h2), Some(h3))
             })
         } else {
-            (None, None)
+            (None, None, None)
         }
     }
 }
@@ -214,6 +228,8 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_attr_map = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
+    providers.opt_ast_lowering_delayed_lints =
+        |tcx, id| tcx.hir_crate(()).owners[id.def_id].as_owner().map(|o| &o.delayed_lints);
     providers.def_span = |tcx, def_id| tcx.hir_span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);

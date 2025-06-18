@@ -142,7 +142,8 @@ The most common cause is that you rebased after a change and ran `git add .` wit
 `x` to update the submodules.  Alternatively, you might have run `cargo fmt` instead of `x fmt`
 and modified files in a submodule, then committed the changes.
 
-To fix it, do the following things:
+To fix it, do the following things (if you changed a submodule other than cargo,
+replace `src/tools/cargo` with the path to that submodule):
 
 1. See which commit has the accidental changes: `git log --stat -n1 src/tools/cargo`
 2. Revert the changes to that commit: `git checkout <my-commit>~ src/tools/cargo`. Type `~`

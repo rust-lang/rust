@@ -34,6 +34,9 @@ pub enum Stability {
     /// particular for features are actually ABI configuration flags (not all targets are as nice as
     /// RISC-V and have an explicit way to set the ABI separate from target features).
     Forbidden { reason: &'static str },
+    /// This feature can not be set via `-Ctarget-feature` or `#[target_feature]`, it can only be set
+    /// by target modifier flag. Target modifier flags are tracked to be consistent in linked modules.
+    TargetModifierOnly { reason: &'static str, flag: &'static str },
 }
 use Stability::*;
 
@@ -49,6 +52,7 @@ impl<CTX> HashStable<CTX> for Stability {
             Stability::Forbidden { reason } => {
                 reason.hash_stable(hcx, hasher);
             }
+            Stability::TargetModifierOnly { .. } => {}
         }
     }
 }
@@ -74,16 +78,7 @@ impl Stability {
             Stability::Unstable(nightly_feature) => Some(nightly_feature),
             Stability::Stable { .. } => None,
             Stability::Forbidden { .. } => panic!("forbidden features should not reach this far"),
-        }
-    }
-
-    /// Returns whether the feature may be toggled via `#[target_feature]` or `-Ctarget-feature`.
-    /// (It might still be nightly-only even if this returns `true`, so make sure to also check
-    /// `requires_nightly`.)
-    pub fn toggle_allowed(&self) -> Result<(), &'static str> {
-        match self {
-            Stability::Forbidden { reason } => Err(reason),
-            _ => Ok(()),
+            Stability::TargetModifierOnly { .. } => None,
         }
     }
 }
@@ -443,7 +438,7 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("fma", Stable, &["avx"]),
     ("fxsr", Stable, &[]),
     ("gfni", Stable, &["sse2"]),
-    ("kl", Unstable(sym::keylocker_x86), &["sse2"]),
+    ("kl", Stable, &["sse2"]),
     ("lahfsahf", Unstable(sym::lahfsahf_target_feature), &[]),
     ("lzcnt", Stable, &[]),
     ("movbe", Stable, &[]),
@@ -453,11 +448,35 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("prfchw", Unstable(sym::prfchw_target_feature), &[]),
     ("rdrand", Stable, &[]),
     ("rdseed", Stable, &[]),
+    (
+        "retpoline-external-thunk",
+        Stability::TargetModifierOnly {
+            reason: "use `retpoline-external-thunk` target modifier flag instead",
+            flag: "retpoline-external-thunk",
+        },
+        &[],
+    ),
+    (
+        "retpoline-indirect-branches",
+        Stability::TargetModifierOnly {
+            reason: "use `retpoline` target modifier flag instead",
+            flag: "retpoline",
+        },
+        &[],
+    ),
+    (
+        "retpoline-indirect-calls",
+        Stability::TargetModifierOnly {
+            reason: "use `retpoline` target modifier flag instead",
+            flag: "retpoline",
+        },
+        &[],
+    ),
     ("rtm", Unstable(sym::rtm_target_feature), &[]),
     ("sha", Stable, &["sse2"]),
-    ("sha512", Unstable(sym::sha512_sm_x86), &["avx2"]),
-    ("sm3", Unstable(sym::sha512_sm_x86), &["avx"]),
-    ("sm4", Unstable(sym::sha512_sm_x86), &["avx2"]),
+    ("sha512", Stable, &["avx2"]),
+    ("sm3", Stable, &["avx"]),
+    ("sm4", Stable, &["avx2"]),
     // This cannot actually be toggled, the ABI always fixes it, so it'd make little sense to
     // stabilize. It must be in this list for the ABI check to be able to use it.
     ("soft-float", Stability::Unstable(sym::x87_target_feature), &[]),
@@ -471,7 +490,7 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("tbm", Unstable(sym::tbm_target_feature), &[]),
     ("vaes", Stable, &["avx2", "aes"]),
     ("vpclmulqdq", Stable, &["avx", "pclmulqdq"]),
-    ("widekl", Unstable(sym::keylocker_x86), &["kl"]),
+    ("widekl", Stable, &["kl"]),
     ("x87", Unstable(sym::x87_target_feature), &[]),
     ("xop", Unstable(sym::xop_target_feature), &[/*"fma4", */ "avx", "sse4a"]),
     ("xsave", Stable, &[]),

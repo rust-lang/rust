@@ -1,8 +1,8 @@
-error: Undefined Behavior: Data race detected between (1) creating a new allocation on thread `unnamed-ID` and (2) non-atomic write on thread `unnamed-ID` at ALLOC. (2) just happened here
+error: Undefined Behavior: Data race detected between (1) creating a new allocation on thread `unnamed-ID` and (2) non-atomic write on thread `unnamed-ID` at ALLOC
   --> tests/fail/data_race/alloc_write_race.rs:LL:CC
    |
-LL |             *pointer.load(Ordering::Relaxed) = 2;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between (1) creating a new allocation on thread `unnamed-ID` and (2) non-atomic write on thread `unnamed-ID` at ALLOC. (2) just happened here
+LL | ...   *pointer.load(Ordering::Relaxed) = 2;
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (2) just happened here
    |
 help: and (1) occurred earlier here
   --> tests/fail/data_race/alloc_write_race.rs:LL:CC

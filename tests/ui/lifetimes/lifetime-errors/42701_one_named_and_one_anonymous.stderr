@@ -1,11 +1,13 @@
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/42701_one_named_and_one_anonymous.rs:10:9
    |
-LL | fn foo2<'a>(a: &'a Foo, x: &i32) -> &'a i32 {
-   |                            ---- help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
-...
 LL |         &*x
    |         ^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `x`
+   |
+LL | fn foo2<'a>(a: &'a Foo, x: &'a i32) -> &'a i32 {
+   |                             ++
 
 error: aborting due to 1 previous error
 

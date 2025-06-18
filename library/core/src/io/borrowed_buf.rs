@@ -281,10 +281,10 @@ impl<'a> BorrowedCursor<'a> {
     /// Panics if there are less than `n` bytes initialized.
     #[inline]
     pub fn advance(&mut self, n: usize) -> &mut Self {
-        let filled = self.buf.filled.strict_add(n);
-        assert!(filled <= self.buf.init);
+        // The substraction cannot underflow by invariant of this type.
+        assert!(n <= self.buf.init - self.buf.filled);
 
-        self.buf.filled = filled;
+        self.buf.filled += n;
         self
     }
 

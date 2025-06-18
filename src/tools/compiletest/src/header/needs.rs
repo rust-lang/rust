@@ -174,6 +174,11 @@ pub(super) fn handle_needs(
             condition: config.with_std_debug_assertions,
             ignore_reason: "ignored if std wasn't built with debug assertions",
         },
+        Need {
+            name: "needs-target-std",
+            condition: build_helper::targets::target_supports_std(&config.target),
+            ignore_reason: "ignored if target does not support std",
+        },
     ];
 
     let (name, rest) = match ln.split_once([':', ' ']) {

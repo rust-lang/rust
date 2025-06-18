@@ -39,9 +39,9 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
-use rustc_hir::PredicateOrigin;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
+use rustc_hir::{LangItem, PredicateOrigin};
 use rustc_hir_analysis::hir_ty_lowering::FeedConstTy;
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::metadata::Reexport;
@@ -793,7 +793,11 @@ pub(crate) fn clean_generics<'tcx>(
     }
 }
 
-fn clean_ty_generics<'tcx>(
+fn clean_ty_generics<'tcx>(cx: &mut DocContext<'tcx>, def_id: DefId) -> Generics {
+    clean_ty_generics_inner(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id))
+}
+
+fn clean_ty_generics_inner<'tcx>(
     cx: &mut DocContext<'tcx>,
     gens: &ty::Generics,
     preds: ty::GenericPredicates<'tcx>,
@@ -881,6 +885,10 @@ fn clean_ty_generics<'tcx>(
         bounds.retain(|b| {
             if b.is_sized_bound(cx) {
                 has_sized = true;
+                false
+            } else if b.is_meta_sized_bound(cx) {
+                // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
+                // is shown and none of the new sizedness traits leak into documentation.
                 false
             } else {
                 true
@@ -1297,11 +1305,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 None,
             );
 
-            let mut generics = clean_ty_generics(
-                cx,
-                tcx.generics_of(assoc_item.def_id),
-                tcx.explicit_predicates_of(assoc_item.def_id),
-            );
+            let mut generics = clean_ty_generics(cx, assoc_item.def_id);
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
             match assoc_item.container {
@@ -1389,7 +1393,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 let bounds = tcx.explicit_item_bounds(assoc_item.def_id).iter_identity_copied();
                 predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
             }
-            let mut generics = clean_ty_generics(
+            let mut generics = clean_ty_generics_inner(
                 cx,
                 tcx.generics_of(assoc_item.def_id),
                 ty::GenericPredicates { parent: None, predicates },
@@ -1448,6 +1452,13 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     }
                     _ => true,
                 });
+
+                bounds.retain(|b| {
+                    // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
+                    // is shown and none of the new sizedness traits leak into documentation.
+                    !b.is_meta_sized_bound(cx)
+                });
+
                 // Our Sized/?Sized bound didn't get handled when creating the generics
                 // because we didn't actually get our whole set of bounds until just now
                 // (some of them may have come from the trait). If we do have a sized
@@ -2275,6 +2286,12 @@ fn clean_middle_opaque_bounds<'tcx>(
                 }
                 _ => return None,
             };
+
+            // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
+            // is shown and none of the new sizedness traits leak into documentation.
+            if cx.tcx.is_lang_item(trait_ref.def_id(), LangItem::MetaSized) {
+                return None;
+            }
 
             if let Some(sized) = cx.tcx.lang_items().sized_trait()
                 && trait_ref.def_id() == sized

@@ -36,6 +36,16 @@ macro_rules! gate_alt {
             feature_err(&$visitor.sess, $name, $span, $explain).emit();
         }
     }};
+    ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr, $notes: expr) => {{
+        if !$has_feature && !$span.allows_unstable($name) {
+            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
+            let mut diag = feature_err(&$visitor.sess, $name, $span, $explain);
+            for note in $notes {
+                diag.note(*note);
+            }
+            diag.emit();
+        }
+    }};
 }
 
 /// The case involving a multispan.
@@ -154,11 +164,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         let attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
         // Check feature gates for built-in attributes.
         if let Some(BuiltinAttribute {
-            gate: AttributeGate::Gated(_, name, descr, has_feature),
+            gate: AttributeGate::Gated { feature, message, check, notes, .. },
             ..
         }) = attr_info
         {
-            gate_alt!(self, has_feature(self.features), *name, attr.span, *descr);
+            gate_alt!(self, check(self.features), *feature, attr.span, *message, *notes);
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {

@@ -7,9 +7,6 @@
 //! Rust ABIs (e.g., stage0/bin/rustc vs stage1/bin/rustc during bootstrap).
 
 #![deny(unsafe_code)]
-// proc_macros anyway don't work on wasm hosts so while both sides of this bridge can
-// be built with different versions of rustc, the wasm ABI changes don't really matter.
-#![allow(wasm_c_abi)]
 
 use std::hash::Hash;
 use std::ops::{Bound, Range};

@@ -85,7 +85,8 @@
 
 #[macro_use]
 mod attributes;
-mod context;
+pub(crate) mod context;
+mod lints;
 pub mod parser;
 mod session_diagnostics;
 
@@ -93,6 +94,7 @@ pub use attributes::cfg::*;
 pub use attributes::util::{
     find_crate_name, is_builtin_attr, is_doc_alias_attrs_contain_symbol, parse_version,
 };
-pub use context::{AttributeParser, OmitDoc};
+pub use context::{AttributeParser, Early, Late, OmitDoc};
+pub use lints::emit_attribute_lint;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

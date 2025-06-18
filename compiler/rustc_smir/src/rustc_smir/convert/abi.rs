@@ -6,9 +6,9 @@ use rustc_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 use rustc_middle::ty;
 use rustc_target::callconv;
 use stable_mir::abi::{
-    AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IntegerLength, Layout,
-    LayoutShape, PassMode, Primitive, Scalar, TagEncoding, TyAndLayout, ValueAbi, VariantsShape,
-    WrappingRange,
+    AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IntegerLength,
+    IntegerType, Layout, LayoutShape, PassMode, Primitive, ReprFlags, ReprOptions, Scalar,
+    TagEncoding, TyAndLayout, ValueAbi, VariantsShape, WrappingRange,
 };
 use stable_mir::opaque;
 use stable_mir::target::MachineSize as Size;
@@ -101,6 +101,7 @@ impl<'tcx> Stable<'tcx> for CanonAbi {
             CanonAbi::C => CallConvention::C,
             CanonAbi::Rust => CallConvention::Rust,
             CanonAbi::RustCold => CallConvention::Cold,
+            CanonAbi::Custom => CallConvention::Custom,
             CanonAbi::Arm(arm_call) => match arm_call {
                 ArmCall::Aapcs => CallConvention::ArmAapcs,
                 ArmCall::CCmseNonSecureCall => CallConvention::CCmseNonSecureCall,
@@ -308,5 +309,44 @@ impl<'tcx> Stable<'tcx> for rustc_abi::WrappingRange {
 
     fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         WrappingRange { start: self.start, end: self.end }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_abi::ReprFlags {
+    type T = ReprFlags;
+
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
+        ReprFlags {
+            is_simd: self.intersects(Self::IS_SIMD),
+            is_c: self.intersects(Self::IS_C),
+            is_transparent: self.intersects(Self::IS_TRANSPARENT),
+            is_linear: self.intersects(Self::IS_LINEAR),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_abi::IntegerType {
+    type T = IntegerType;
+
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        match self {
+            rustc_abi::IntegerType::Pointer(signed) => IntegerType::Pointer { is_signed: *signed },
+            rustc_abi::IntegerType::Fixed(integer, signed) => {
+                IntegerType::Fixed { length: integer.stable(tables), is_signed: *signed }
+            }
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_abi::ReprOptions {
+    type T = ReprOptions;
+
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        ReprOptions {
+            int: self.int.map(|int| int.stable(tables)),
+            align: self.align.map(|align| align.stable(tables)),
+            pack: self.pack.map(|pack| pack.stable(tables)),
+            flags: self.flags.stable(tables),
+        }
     }
 }

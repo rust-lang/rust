@@ -972,7 +972,7 @@ fn report<'tcx>(
                 "&"
             };
 
-            let expr_str = if !expr_is_macro_call && is_ufcs && expr.precedence() < ExprPrecedence::Prefix {
+            let expr_str = if !expr_is_macro_call && is_ufcs && cx.precedence(expr) < ExprPrecedence::Prefix {
                 Cow::Owned(format!("({expr_str})"))
             } else {
                 expr_str
@@ -1015,10 +1015,10 @@ fn report<'tcx>(
                         Node::Expr(e) => match e.kind {
                             ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => false,
                             ExprKind::Call(..) => {
-                                expr.precedence() < ExprPrecedence::Unambiguous
+                                cx.precedence(expr) < ExprPrecedence::Unambiguous
                                     || matches!(expr.kind, ExprKind::Field(..))
                             },
-                            _ => expr.precedence() < e.precedence(),
+                            _ => cx.precedence(expr) < cx.precedence(e),
                         },
                         _ => false,
                     };
@@ -1066,7 +1066,7 @@ fn report<'tcx>(
                         Mutability::Not => "&",
                         Mutability::Mut => "&mut ",
                     };
-                    (prefix, expr.precedence() < ExprPrecedence::Prefix)
+                    (prefix, cx.precedence(expr) < ExprPrecedence::Prefix)
                 },
                 None if !ty.is_ref() && data.adjusted_ty.is_ref() => ("&", false),
                 _ => ("", false),
@@ -1172,7 +1172,7 @@ impl<'tcx> Dereferencing<'tcx> {
                 },
                 Some(parent) if !parent.span.from_expansion() => {
                     // Double reference might be needed at this point.
-                    if parent.precedence() == ExprPrecedence::Unambiguous {
+                    if cx.precedence(parent) == ExprPrecedence::Unambiguous {
                         // Parentheses would be needed here, don't lint.
                         *outer_pat = None;
                     } else {
