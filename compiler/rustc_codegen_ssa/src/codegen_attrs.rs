@@ -254,12 +254,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     }
                 }
             }
-            sym::link_ordinal => {
-                link_ordinal_span = Some(attr.span());
-                if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
-                    codegen_fn_attrs.link_ordinal = ordinal;
-                }
-            }
             sym::sanitize => sanitize_span = Some(attr.span()),
             sym::instruction_set => {
                 codegen_fn_attrs.instruction_set =
@@ -541,10 +535,13 @@ fn parse_sanitize_attr(tcx: TyCtxt<'_>, attr: &Attribute) -> SanitizerSet {
             };
             let segments = set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
             match segments.as_slice() {
-                [sym::address] if set.value_str() == Some(sym::off) => {
+                // Similar to clang, sanitize(address = ..) and
+                // sanitize(kernel_address = ..) control both ASan and KASan
+                // Source: https://reviews.llvm.org/D44981.
+                [sym::address] | [sym::kernel_address] if set.value_str() == Some(sym::off) => {
                     result |= SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS
                 }
-                [sym::address] if set.value_str() == Some(sym::on) => {
+                [sym::address] | [sym::kernel_address] if set.value_str() == Some(sym::on) => {
                     result &= !SanitizerSet::ADDRESS;
                     result &= !SanitizerSet::KERNELADDRESS;
                 }

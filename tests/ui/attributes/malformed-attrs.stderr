@@ -53,11 +53,11 @@ LL | #[coverage(off)]
 LL | #[coverage(on)]
    |           ++++
 
-error: malformed `no_sanitize` attribute input
+error: malformed `sanitize` attribute input
   --> $DIR/malformed-attrs.rs:92:1
    |
-LL | #[no_sanitize]
-   | ^^^^^^^^^^^^^^ help: must be of the form: `#[no_sanitize(address, kcfi, memory, thread)]`
+LL | #[sanitize]
+   | ^^^^^^^^^^^ help: must be of the form: `#[sanitize(address = "on|off", cfi = "on|off")]`
 
 error: malformed `proc_macro` attribute input
   --> $DIR/malformed-attrs.rs:99:1
