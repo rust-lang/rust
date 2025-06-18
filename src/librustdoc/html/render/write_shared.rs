@@ -733,7 +733,7 @@ impl TraitAliasPart {
                 },
             };
 
-            let implementors = imps
+            let mut implementors = imps
                 .iter()
                 .filter_map(|imp| {
                     // If the trait and implementation are in the same crate, then
@@ -755,12 +755,12 @@ impl TraitAliasPart {
                         })
                     }
                 })
-                .collect::<Vec<_>>();
+                .peekable();
 
             // Only create a js file if we have impls to add to it. If the trait is
             // documented locally though we always create the file to avoid dead
             // links.
-            if implementors.is_empty() && !cache.paths.contains_key(&did) {
+            if implementors.peek().is_none() && !cache.paths.contains_key(&did) {
                 continue;
             }
 
@@ -771,11 +771,7 @@ impl TraitAliasPart {
             path.push(format!("{remote_item_type}.{}.js", remote_path[remote_path.len() - 1]));
 
             let part = OrderedJson::array_sorted(
-                implementors
-                    .iter()
-                    .map(OrderedJson::serialize)
-                    .collect::<Result<Vec<_>, _>>()
-                    .unwrap(),
+                implementors.map(|implementor| OrderedJson::serialize(implementor).unwrap()),
             );
             path_parts.push(path, OrderedJson::array_unsorted([crate_name_json, &part]));
         }
