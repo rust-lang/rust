@@ -26,11 +26,12 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::StableHash;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
-    self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
+    self, AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, FreezeReadGuard, Lock, RwLock,
+    WorkerLocal,
 };
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, StableCrateIdMap};
 use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
@@ -938,7 +939,7 @@ impl<'tcx> TyCtxt<'tcx> {
         stable_crate_id: StableCrateId,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
-        untracked: Untracked,
+        cstore: Box<CrateStoreDyn>,
         dep_graph: DepGraph,
         dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
         query_system: QuerySystem<'tcx>,
@@ -947,6 +948,17 @@ impl<'tcx> TyCtxt<'tcx> {
         jobserver_proxy: Arc<Proxy>,
         f: impl FnOnce(TyCtxt<'tcx>) -> T,
     ) -> T {
+        let cstore = FreezeLock::new(cstore);
+        let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
+
+        let stable_crate_ids = FreezeLock::new(StableCrateIdMap::default());
+        let untracked = Untracked {
+            cstore,
+            source_span: AppendOnlyIndexVec::new(),
+            definitions,
+            stable_crate_ids,
+        };
+
         let data_layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
             sess.dcx().emit_fatal(err);
         });
