@@ -383,7 +383,7 @@ impl Step for RustAnalyzer {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
-        let compiler = tool::get_tool_rustc_compiler(builder, compiler);
+        let compiler = tool::get_tool_rustc_build_compiler(builder, compiler);
 
         // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
         // but we do need the standard library to be present.

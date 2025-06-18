@@ -115,7 +115,7 @@ impl Step for ToolBuild {
 
         let target_compiler = self.build_compiler;
         self.build_compiler = if self.mode == Mode::ToolRustc {
-            get_tool_rustc_compiler(builder, self.build_compiler)
+            get_tool_rustc_build_compiler(builder, self.build_compiler)
         } else {
             self.build_compiler
         };
@@ -347,7 +347,7 @@ pub fn prepare_tool_cargo(
 }
 
 /// Handle stage-off logic for `ToolRustc` tools when necessary.
-pub(crate) fn get_tool_rustc_compiler(
+pub(crate) fn get_tool_rustc_build_compiler(
     builder: &Builder<'_>,
     target_compiler: Compiler,
 ) -> Compiler {
@@ -1302,7 +1302,9 @@ impl Step for LibcxxVersionTool {
     }
 }
 
-macro_rules! tool_extended {
+/// Creates a step that builds an extended `Mode::ToolRustc` tool
+/// and installs it into the sysroot of a corresponding compiler.
+macro_rules! tool_rustc_extended {
     (
         $name:ident {
             path: $path:expr,
@@ -1326,7 +1328,7 @@ macro_rules! tool_extended {
             const ONLY_HOSTS: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                should_run_tool_build_step(
+                should_run_extended_rustc_tool(
                     run,
                     $tool_name,
                     $path,
@@ -1343,7 +1345,7 @@ macro_rules! tool_extended {
 
             fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
                 let Self { compiler, target } = self;
-                run_tool_build_step(
+                build_extended_rustc_tool(
                     builder,
                     compiler,
                     target,
@@ -1367,7 +1369,7 @@ macro_rules! tool_extended {
     }
 }
 
-fn should_run_tool_build_step<'a>(
+fn should_run_extended_rustc_tool<'a>(
     run: ShouldRun<'a>,
     tool_name: &'static str,
     path: &'static str,
@@ -1392,7 +1394,7 @@ fn should_run_tool_build_step<'a>(
 }
 
 #[expect(clippy::too_many_arguments)] // silence overeager clippy lint
-fn run_tool_build_step(
+fn build_extended_rustc_tool(
     builder: &Builder<'_>,
     compiler: Compiler,
     target: TargetSelection,
@@ -1441,19 +1443,19 @@ fn run_tool_build_step(
     }
 }
 
-tool_extended!(Cargofmt {
+tool_rustc_extended!(Cargofmt {
     path: "src/tools/rustfmt",
     tool_name: "cargo-fmt",
     stable: true,
     add_bins_to_sysroot: ["cargo-fmt"]
 });
-tool_extended!(CargoClippy {
+tool_rustc_extended!(CargoClippy {
     path: "src/tools/clippy",
     tool_name: "cargo-clippy",
     stable: true,
     add_bins_to_sysroot: ["cargo-clippy"]
 });
-tool_extended!(Clippy {
+tool_rustc_extended!(Clippy {
     path: "src/tools/clippy",
     tool_name: "clippy-driver",
     stable: true,
@@ -1464,7 +1466,7 @@ tool_extended!(Clippy {
         }
     }
 });
-tool_extended!(Miri {
+tool_rustc_extended!(Miri {
     path: "src/tools/miri",
     tool_name: "miri",
     stable: false,
@@ -1472,13 +1474,13 @@ tool_extended!(Miri {
     // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.
     cargo_args: &["--all-targets"],
 });
-tool_extended!(CargoMiri {
+tool_rustc_extended!(CargoMiri {
     path: "src/tools/miri/cargo-miri",
     tool_name: "cargo-miri",
     stable: false,
     add_bins_to_sysroot: ["cargo-miri"]
 });
-tool_extended!(Rustfmt {
+tool_rustc_extended!(Rustfmt {
     path: "src/tools/rustfmt",
     tool_name: "rustfmt",
     stable: true,
