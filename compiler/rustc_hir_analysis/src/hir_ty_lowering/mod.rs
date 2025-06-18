@@ -747,17 +747,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// If for example you had `for<'a> Foo<'a>: Bar<'a>`, then the `self_ty` would be `Foo<'a>`
     /// where `'a` is a bound region at depth 0. Similarly, the `trait_ref` would be `Bar<'a>`.
     /// The lowered poly-trait-ref will track this binder explicitly, however.
-    #[instrument(level = "debug", skip(self, span, constness, bounds))]
+    #[instrument(level = "debug", skip(self, bounds))]
     pub(crate) fn lower_poly_trait_ref(
         &self,
-        trait_ref: &hir::TraitRef<'tcx>,
-        span: Span,
-        constness: hir::BoundConstness,
-        polarity: hir::BoundPolarity,
+        poly_trait_ref: &hir::PolyTraitRef<'tcx>,
         self_ty: Ty<'tcx>,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         predicate_filter: PredicateFilter,
     ) -> GenericArgCountResult {
+        // We use the *resolved* bound vars later instead of the HIR ones since the former
+        // also include the bound vars of the overarching predicate if applicable.
+        let hir::PolyTraitRef { bound_generic_params: _, modifiers, ref trait_ref, span } =
+            *poly_trait_ref;
+        let hir::TraitBoundModifiers { constness, polarity } = modifiers;
+
         let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
         let trait_segment = trait_ref.path.segments.last().unwrap();
 

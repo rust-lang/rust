@@ -18,9 +18,7 @@ use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
 use crate::errors::SelfInTypeAlias;
-use crate::hir_ty_lowering::{
-    GenericArgCountMismatch, GenericArgCountResult, PredicateFilter, RegionInferReason,
-};
+use crate::hir_ty_lowering::{GenericArgCountMismatch, PredicateFilter, RegionInferReason};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Lower a trait object type from the HIR to our internal notion of a type.
@@ -38,24 +36,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut user_written_bounds = Vec::new();
         let mut potential_assoc_types = Vec::new();
-        for trait_bound in hir_bounds.iter() {
-            if let hir::BoundPolarity::Maybe(_) = trait_bound.modifiers.polarity {
+        for poly_trait_ref in hir_bounds.iter() {
+            if let hir::BoundPolarity::Maybe(_) = poly_trait_ref.modifiers.polarity {
                 continue;
             }
-            if let GenericArgCountResult {
-                correct:
-                    Err(GenericArgCountMismatch { invalid_args: cur_potential_assoc_types, .. }),
-                ..
-            } = self.lower_poly_trait_ref(
-                &trait_bound.trait_ref,
-                trait_bound.span,
-                trait_bound.modifiers.constness,
-                hir::BoundPolarity::Positive,
+            let result = self.lower_poly_trait_ref(
+                poly_trait_ref,
                 dummy_self,
                 &mut user_written_bounds,
                 PredicateFilter::SelfOnly,
-            ) {
-                potential_assoc_types.extend(cur_potential_assoc_types);
+            );
+            if let Err(GenericArgCountMismatch { invalid_args, .. }) = result.correct {
+                potential_assoc_types.extend(invalid_args);
             }
         }
 
