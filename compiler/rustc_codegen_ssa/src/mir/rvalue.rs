@@ -1,7 +1,6 @@
 use std::assert_matches::assert_matches;
 
-use arrayvec::ArrayVec;
-use rustc_abi::{self as abi, FIRST_VARIANT, FieldIdx};
+use rustc_abi::{self as abi, FIRST_VARIANT};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
@@ -708,38 +707,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 // `rvalue_creates_operand` has arranged that we only get here if
                 // we can build the aggregate immediate from the field immediates.
-                let mut inputs = ArrayVec::<Bx::Value, 2>::new();
-                let mut input_scalars = ArrayVec::<abi::Scalar, 2>::new();
-                for field_idx in layout.fields.index_by_increasing_offset() {
-                    let field_idx = FieldIdx::from_usize(field_idx);
-                    let op = self.codegen_operand(bx, &fields[field_idx]);
-                    let values = op.val.immediates_or_place().left_or_else(|p| {
-                        bug!("Field {field_idx:?} is {p:?} making {layout:?}");
-                    });
-                    let scalars = self.value_kind(op.layout).scalars().unwrap();
-                    assert_eq!(values.len(), scalars.len());
-                    inputs.extend(values);
-                    input_scalars.extend(scalars);
+                let Some(mut builder) = OperandRef::builder(layout) else {
+                    bug!("Cannot use type in operand builder: {layout:?}")
+                };
+                for (field_idx, field) in fields.iter_enumerated() {
+                    let op = self.codegen_operand(bx, field);
+                    builder.insert_field(bx, FIRST_VARIANT, field_idx, op);
                 }
 
-                let output_scalars = self.value_kind(layout).scalars().unwrap();
-                itertools::izip!(&mut inputs, input_scalars, output_scalars).for_each(
-                    |(v, in_s, out_s)| {
-                        if in_s != out_s {
-                            // We have to be really careful about bool here, because
-                            // `(bool,)` stays i1 but `Cell<bool>` becomes i8.
-                            *v = bx.from_immediate(*v);
-                            *v = bx.to_immediate_scalar(*v, out_s);
-                        }
-                    },
-                );
-
-                let val = OperandValue::from_immediates(inputs);
-                assert!(
-                    val.is_expected_variant_for_type(self.cx, layout),
-                    "Made wrong variant {val:?} for type {layout:?}",
-                );
-                OperandRef { val, layout }
+                builder.build()
             }
             mir::Rvalue::ShallowInitBox(ref operand, content_ty) => {
                 let operand = self.codegen_operand(bx, operand);
@@ -1082,10 +1058,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::AggregateKind::Coroutine(..) | mir::AggregateKind::CoroutineClosure(..) => false,
                 };
                 allowed_kind && {
-                let ty = rvalue.ty(self.mir, self.cx.tcx());
-                let ty = self.monomorphize(ty);
+                    let ty = rvalue.ty(self.mir, self.cx.tcx());
+                    let ty = self.monomorphize(ty);
                     let layout = self.cx.spanned_layout_of(ty, span);
-                    !self.cx.is_backend_ref(layout)
+                    OperandRef::<Bx::Value>::builder(layout).is_some()
                 }
             }
         }
@@ -1129,23 +1105,12 @@ enum OperandValueKind {
     ZeroSized,
 }
 
-impl OperandValueKind {
-    fn scalars(self) -> Option<ArrayVec<abi::Scalar, 2>> {
-        Some(match self {
-            OperandValueKind::ZeroSized => ArrayVec::new(),
-            OperandValueKind::Immediate(a) => ArrayVec::from_iter([a]),
-            OperandValueKind::Pair(a, b) => [a, b].into(),
-            OperandValueKind::Ref => return None,
-        })
-    }
-}
-
 /// Transmutes one of the immediates from an [`OperandValue::Immediate`]
 /// or an [`OperandValue::Pair`] to an immediate of the target type.
 ///
 /// `to_backend_ty` must be the *non*-immediate backend type (so it will be
 /// `i8`, not `i1`, for `bool`-like types.)
-fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(super) fn transmute_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     mut imm: Bx::Value,
     from_scalar: abi::Scalar,
