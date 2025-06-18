@@ -26,16 +26,10 @@ impl<'tcx> Statement<'tcx> {
         }
         let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop);
         if !drop_debuginfo {
-            match replaced_stmt {
-                StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
-                    if let Some(local) = place.as_local() =>
-                {
-                    self.debuginfos.push(StmtDebugInfo::AssignRef(local, ref_place));
-                }
-                _ => {
-                    bug!("debuginfo is not yet supported.")
-                }
-            }
+            let Some(debuginfo) = replaced_stmt.as_debuginfo() else {
+                bug!("debuginfo is not yet supported.")
+            };
+            self.debuginfos.push(debuginfo);
         }
     }
 
@@ -75,6 +69,17 @@ impl<'tcx> StatementKind<'tcx> {
     pub fn as_assign(&self) -> Option<&(Place<'tcx>, Rvalue<'tcx>)> {
         match self {
             StatementKind::Assign(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    pub fn as_debuginfo(&self) -> Option<StmtDebugInfo<'tcx>> {
+        match self {
+            StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
+                if let Some(local) = place.as_local() =>
+            {
+                Some(StmtDebugInfo::AssignRef(local, *ref_place))
+            }
             _ => None,
         }
     }
