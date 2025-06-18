@@ -1,16 +1,16 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/candidate-with-alias-2.rs:20:23
+  --> $DIR/candidate-with-alias-2.rs:23:23
    |
 LL |     field: <Foo<u8>>::Inherent,
    |                       ^^^^^^^^ multiple `Inherent` found
    |
 note: candidate #1 is defined in an impl for the type `Foo<<u8 as Identity>::Assoc>`
-  --> $DIR/candidate-with-alias-2.rs:13:5
+  --> $DIR/candidate-with-alias-2.rs:16:5
    |
 LL |     type Inherent = u8;
    |     ^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl for the type `Foo<<u16 as Identity>::Assoc>`
-  --> $DIR/candidate-with-alias-2.rs:16:5
+  --> $DIR/candidate-with-alias-2.rs:19:5
    |
 LL |     type Inherent = u32;
    |     ^^^^^^^^^^^^^

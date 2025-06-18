@@ -1,6 +1,9 @@
 #![feature(inherent_associated_types)]
 #![expect(incomplete_features)]
 
+// A behaviour test showcasing that we do not normalize associated types in
+// the impl self ty when assembling IAT candidates
+
 trait Identity {
     type Assoc;
 }

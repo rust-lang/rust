@@ -1,8 +1,8 @@
 #![feature(non_lifetime_binders, inherent_associated_types)]
 #![expect(incomplete_features)]
 
-// Test that we can resolve to the right IAT when the self type
-// contains a bound type.
+// Test whether we can resolve to the right IAT when the self type
+// contains a bound type. This should ideally use the second impl.
 
 struct Foo<T: ?Sized>(T);
 

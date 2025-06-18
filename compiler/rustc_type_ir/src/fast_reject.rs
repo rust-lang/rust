@@ -241,9 +241,6 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
     }
 
     pub fn types_may_unify_with_depth(self, lhs: I::Ty, rhs: I::Ty, depth_limit: usize) -> bool {
-        if lhs == rhs {
-            return true;
-        }
         self.types_may_unify_inner(lhs, rhs, depth_limit)
     }
 
