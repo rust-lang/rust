@@ -4,16 +4,6 @@ error[E0658]: `?Trait` is not permitted in supertraits
 LL | trait Trait3: ?Trait1 {}
    |               ^^^^^^^
    |
-   = note: traits are `?Trait1` by default
-   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `?Trait` is not permitted in trait object types
-  --> $DIR/feature-gate-more-maybe-bounds.rs:10:28
-   |
-LL | fn foo(_: Box<dyn Trait1 + ?Trait2>) {}
-   |                            ^^^^^^^
-   |
    = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -22,6 +12,15 @@ error[E0658]: `?Trait` bounds are only permitted at the point where a type param
    |
 LL | trait Trait4 where Self: ?Trait1 {}
    |                          ^^^^^^^
+   |
+   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `?Trait` is not permitted in trait object types
+  --> $DIR/feature-gate-more-maybe-bounds.rs:10:28
+   |
+LL | fn foo(_: Box<dyn Trait1 + ?Trait2>) {}
+   |                            ^^^^^^^
    |
    = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
