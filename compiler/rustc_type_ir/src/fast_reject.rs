@@ -240,6 +240,10 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         self.types_may_unify_inner(lhs, rhs, Self::STARTING_DEPTH)
     }
 
+    pub fn types_may_unify_with_depth(self, lhs: I::Ty, rhs: I::Ty, depth_limit: usize) -> bool {
+        self.types_may_unify_inner(lhs, rhs, depth_limit)
+    }
+
     fn args_may_unify_inner(
         self,
         obligation_args: I::GenericArgs,
