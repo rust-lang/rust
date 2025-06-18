@@ -1,3 +1,6 @@
+// Test that relaxed bounds can only be placed on type parameters defined by the closest item
+// (ignoring relaxed bounds inside `impl Trait` and in associated type defs here).
+
 struct S1<T>(T) where (T): ?Sized;
 //~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
 
