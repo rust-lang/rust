@@ -1576,7 +1576,7 @@ rustc_queries! {
     query vtable_allocation(key: (Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>)) -> mir::interpret::AllocId {
         desc { |tcx| "vtable const allocation for <{} as {}>",
             key.0,
-            key.1.map(|trait_ref| format!("{trait_ref}")).unwrap_or("_".to_owned())
+            key.1.map(|trait_ref| format!("{trait_ref}")).unwrap_or_else(|| "_".to_owned())
         }
     }
 
