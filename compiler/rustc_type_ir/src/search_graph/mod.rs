@@ -597,7 +597,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         input: X::Input,
         step_kind_from_parent: PathKind,
         inspect: &mut D::ProofTreeBuilder,
-        mut evaluate_goal: impl FnMut(&mut Self, &mut D::ProofTreeBuilder) -> X::Result,
+        evaluate_goal: impl Fn(&mut Self, X, X::Input, &mut D::ProofTreeBuilder) -> X::Result + Copy,
     ) -> X::Result {
         let Some(available_depth) =
             AvailableDepth::allowed_depth_for_nested::<D>(self.root_depth, &self.stack)
@@ -665,9 +665,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         // not tracked by the cache key and from outside of this anon task, it
         // must not be added to the global cache. Notably, this is the case for
         // trait solver cycles participants.
-        let (evaluation_result, dep_node) = cx.with_cached_task(|| {
-            self.evaluate_goal_in_task(cx, input, inspect, &mut evaluate_goal)
-        });
+        let (evaluation_result, dep_node) =
+            cx.with_cached_task(|| self.evaluate_goal_in_task(cx, input, inspect, evaluate_goal));
 
         // We've finished computing the goal and have popped it from the stack,
         // lazily update its parent goal.
@@ -1065,7 +1064,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         cx: X,
         input: X::Input,
         inspect: &mut D::ProofTreeBuilder,
-        mut evaluate_goal: impl FnMut(&mut Self, &mut D::ProofTreeBuilder) -> X::Result,
+        evaluate_goal: impl Fn(&mut Self, X, X::Input, &mut D::ProofTreeBuilder) -> X::Result + Copy,
     ) -> EvaluationResult<X> {
         // We reset `encountered_overflow` each time we rerun this goal
         // but need to make sure we currently propagate it to the global
@@ -1074,7 +1073,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         let mut encountered_overflow = false;
         let mut i = 0;
         loop {
-            let result = evaluate_goal(self, inspect);
+            let result = evaluate_goal(self, cx, input, inspect);
             let stack_entry = self.stack.pop();
             encountered_overflow |= stack_entry.encountered_overflow;
             debug_assert_eq!(stack_entry.input, input);
