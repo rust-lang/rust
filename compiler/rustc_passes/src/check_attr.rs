@@ -161,9 +161,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::inline, ..] => self.check_inline(hir_id, attr, span, target),
                         [sym::coverage, ..] => self.check_coverage(attr, span, target),
                         [sym::optimize, ..] => self.check_optimize(hir_id, attr, span, target),
-                        [sym::no_sanitize, ..] => {
-                            self.check_no_sanitize(attr, span, target)
-                        }
                         [sym::sanitize, ..] => {
                             self.check_sanitize(attr, span, target)
                         }
@@ -534,42 +531,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 defn_span: span,
                 on_crate: hir_id == CRATE_HIR_ID,
             });
-        }
-    }
-
-    fn check_no_sanitize(&self, attr: &Attribute, span: Span, target: Target) {
-        if let Some(list) = attr.meta_item_list() {
-            for item in list.iter() {
-                let sym = item.name();
-                match sym {
-                    Some(s @ sym::address | s @ sym::hwaddress) => {
-                        let is_valid =
-                            matches!(target, Target::Fn | Target::Method(..) | Target::Static);
-                        if !is_valid {
-                            self.dcx().emit_err(errors::NoSanitize {
-                                attr_span: item.span(),
-                                defn_span: span,
-                                accepted_kind: "a function or static",
-                                attr_str: s.as_str(),
-                            });
-                        }
-                    }
-                    _ => {
-                        let is_valid = matches!(target, Target::Fn | Target::Method(..));
-                        if !is_valid {
-                            self.dcx().emit_err(errors::NoSanitize {
-                                attr_span: item.span(),
-                                defn_span: span,
-                                accepted_kind: "a function",
-                                attr_str: &match sym {
-                                    Some(name) => name.to_string(),
-                                    None => "...".to_string(),
-                                },
-                            });
-                        }
-                    }
-                }
-            }
         }
     }
 

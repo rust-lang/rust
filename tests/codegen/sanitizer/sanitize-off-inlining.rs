@@ -1,4 +1,4 @@
-// Verifies that no_sanitize attribute prevents inlining when
+// Verifies that sanitize(xyz = "off") attribute prevents inlining when
 // given sanitizer is enabled, but has no effect on inlining otherwise.
 //
 //@ needs-sanitizer-address
@@ -9,7 +9,7 @@
 //@[LSAN] compile-flags: -Zsanitizer=leak
 
 #![crate_type = "lib"]
-#![feature(no_sanitize)]
+#![feature(sanitize)]
 
 // ASAN-LABEL: define void @test
 // ASAN:         call {{.*}} @random_inline
@@ -23,7 +23,7 @@ pub fn test(n: &mut u32) {
     random_inline(n);
 }
 
-#[no_sanitize(address)]
+#[sanitize(address = "off")]
 #[inline]
 #[no_mangle]
 pub fn random_inline(n: &mut u32) {
