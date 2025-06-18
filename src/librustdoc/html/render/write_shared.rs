@@ -866,9 +866,8 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
             let impl_ = cache
                 .impls
                 .get(&target_did)
-                .map(|v| &v[..])
-                .unwrap_or_default()
-                .iter()
+                .into_iter()
+                .flatten()
                 .map(|impl_| {
                     (impl_.impl_item.item_id, AliasedTypeImpl { impl_, type_aliases: Vec::new() })
                 })
@@ -883,14 +882,8 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
         // Exclude impls that are directly on this type. They're already in the HTML.
         // Some inlining scenarios can cause there to be two versions of the same
         // impl: one on the type alias and one on the underlying target type.
-        let mut seen_impls: FxHashSet<ItemId> = cache
-            .impls
-            .get(&self_did)
-            .map(|s| &s[..])
-            .unwrap_or_default()
-            .iter()
-            .map(|i| i.impl_item.item_id)
-            .collect();
+        let mut seen_impls: FxHashSet<ItemId> =
+            cache.impls.get(&self_did).into_iter().flatten().map(|i| i.impl_item.item_id).collect();
         for (impl_item_id, aliased_type_impl) in &mut aliased_type.impl_ {
             // Only include this impl if it actually unifies with this alias.
             // Synthetic impls are not included; those are also included in the HTML.
