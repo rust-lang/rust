@@ -95,7 +95,7 @@ fn localize_statement_constraint<'tcx>(
             //
             // When we have a more complete implementation in the future, tested with crater, etc,
             // we can relax this to a debug assert instead, or remove it.
-            assert!(
+            debug_assert!(
                 {
                     let mut lhs_regions = FxHashSet::default();
                     tcx.for_each_free_region(lhs, |region| {
