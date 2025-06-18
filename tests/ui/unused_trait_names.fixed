@@ -200,11 +200,11 @@ fn msrv_1_33() {
     MyStruct.do_things();
 }
 
+// Linting inside macro expansion is no longer supported
 mod lint_inside_macro_expansion_bad {
     macro_rules! foo {
         () => {
-            use std::any::Any as _;
-            //~^ unused_trait_names
+            use std::any::Any;
             fn bar() {
                 "bar".type_id();
             }
@@ -294,22 +294,3 @@ mod allow_lint_import {
 //         "foo".type_id();
 //     }
 // }
-
-mod issue14924 {
-    mod m {
-        pub trait Tr {
-            fn method(&self) {}
-        }
-
-        impl Tr for u8 {}
-    }
-
-    macro gen_import($Br: ident) {
-        use m::Tr as $Br;
-    }
-    gen_import!(Br);
-
-    fn do_something() {
-        0u8.method();
-    }
-}

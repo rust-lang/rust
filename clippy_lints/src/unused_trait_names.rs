@@ -6,7 +6,7 @@ use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind, UseKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Visibility;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
@@ -59,7 +59,7 @@ impl_lint_pass!(UnusedTraitNames => [UNUSED_TRAIT_NAMES]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedTraitNames {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if !item.span.in_external_macro(cx.sess().source_map())
+        if !item.span.from_expansion()
             && let ItemKind::Use(path, UseKind::Single(ident)) = item.kind
             // Ignore imports that already use Underscore
             && ident.name != kw::Underscore
@@ -73,7 +73,6 @@ impl<'tcx> LateLintPass<'tcx> for UnusedTraitNames {
             && let Some(snip) = snippet_opt(cx, last_segment.ident.span)
             && self.msrv.meets(cx, msrvs::UNDERSCORE_IMPORTS)
             && !is_from_proc_macro(cx, &last_segment.ident)
-            && (!last_segment.ident.span.from_expansion() || ident.span.from_expansion())
         {
             let complete_span = last_segment.ident.span.to(ident.span);
             span_lint_and_sugg(
