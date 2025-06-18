@@ -1240,18 +1240,140 @@ mod staging {
     };
 
     #[test]
-    fn build_compiler_stage_1() {
-        let mut cache = run_build(
-            &["compiler".into()],
-            configure_with_args(&["build", "--stage", "1"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
-        );
-        let steps = cache.into_executed_steps();
-        insta::assert_snapshot!(render_steps(&steps), @r"
-        [build] rustc 0 <target1> -> std 0 <target1>
+    fn build_compiler_no_stage() {
+        insta::assert_snapshot!(get_steps("compiler", "build", None), @r"
         [build] llvm <target1>
         [build] rustc 0 <target1> -> rustc 1 <target1>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_compiler_stage_0() {
+        insta::assert_snapshot!(get_steps("compiler", "build", Some(0)), @"");
+    }
+
+    #[test]
+    fn build_compiler_stage_1() {
+        insta::assert_snapshot!(get_steps("compiler", "build", Some(1)), @r"
+        [build] llvm <target1>
         [build] rustc 0 <target1> -> rustc 1 <target1>
         ");
+    }
+
+    #[test]
+    fn build_compiler_stage_2() {
+        insta::assert_snapshot!(get_steps("compiler", "build", Some(2)), @r"
+        [build] llvm <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        [build] rustc 1 <target1> -> std 1 <target1>
+        [build] rustc 1 <target1> -> rustc 2 <target1>
+        ");
+    }
+
+    #[test]
+    fn build_library_no_stage() {
+        insta::assert_snapshot!(get_steps("library", "build", None), @r"
+        [build] llvm <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        [build] rustc 1 <target1> -> std 1 <target1>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_library_stage_0() {
+        insta::assert_snapshot!(get_steps("library", "build", Some(0)), @"");
+    }
+
+    #[test]
+    fn build_library_stage_1() {
+        insta::assert_snapshot!(get_steps("library", "build", Some(1)), @r"
+        [build] llvm <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        [build] rustc 1 <target1> -> std 1 <target1>
+        ");
+    }
+
+    #[test]
+    fn build_library_stage_2() {
+        insta::assert_snapshot!(get_steps("library", "build", Some(2)), @r"
+        [build] llvm <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        [build] rustc 1 <target1> -> std 1 <target1>
+        [build] rustc 1 <target1> -> rustc 2 <target1>
+        [build] rustc 2 <target1> -> std 2 <target1>
+        ");
+    }
+
+    #[test]
+    fn build_miri_no_stage() {
+        insta::assert_snapshot!(get_steps("miri", "build", None), @r"
+        [build] llvm <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        [build] rustc 1 <target1> -> miri 1 <target1>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_miri_stage_0() {
+        insta::assert_snapshot!(get_steps("miri", "build", Some(0)), @"");
+    }
+
+    #[test]
+    fn build_miri_stage_1() {
+        insta::assert_snapshot!(get_steps("miri", "build", Some(1)), @r"
+        [build] llvm <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        [build] rustc 1 <target1> -> miri 1 <target1>
+        ");
+    }
+
+    #[test]
+    fn build_miri_stage_2() {
+        insta::assert_snapshot!(get_steps("miri", "build", Some(2)), @r"
+        [build] llvm <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        [build] rustc 1 <target1> -> std 1 <target1>
+        [build] rustc 1 <target1> -> rustc 2 <target1>
+        [build] rustc 2 <target1> -> miri 2 <target1>
+        ");
+    }
+
+    #[test]
+    fn build_bootstrap_tool_no_stage() {
+        insta::assert_snapshot!(get_steps("opt-dist", "build", None), @"[build] rustc 0 <target1> -> opt-dist 0 <target1>");
+    }
+
+    #[test]
+    #[should_panic]
+    fn build_bootstrap_tool_stage_0() {
+        insta::assert_snapshot!(get_steps("opt-dist", "build", Some(0)), @"");
+    }
+
+    #[test]
+    fn build_bootstrap_tool_stage_1() {
+        insta::assert_snapshot!(get_steps("opt-dist", "build", Some(1)), @"[build] rustc 0 <target1> -> opt-dist 0 <target1>");
+    }
+
+    #[test]
+    fn build_bootstrap_tool_stage_2() {
+        insta::assert_snapshot!(get_steps("opt-dist", "build", Some(2)), @"[build] rustc 0 <target1> -> opt-dist 0 <target1>");
+    }
+
+    fn get_steps(path: &str, kind: &str, stage: Option<u32>) -> String {
+        let mut args = vec![kind, path];
+        let stage_str = stage.map(|v| v.to_string()).unwrap_or_default();
+        if let Some(stage) = stage {
+            args.push("--stage");
+            args.push(&stage_str);
+        }
+        let mut cache = run_build(
+            &[path.into()],
+            configure_with_args(&args, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
+        );
+        render_steps(&cache.into_executed_steps())
     }
 }
 
@@ -1277,6 +1399,21 @@ fn render_steps(steps: &[(Box<dyn Any>, Box<dyn Any>)]) -> String {
                     render_compiler(std.compiler),
                     std.compiler.stage,
                     std.target
+                ))
+            } else if let Some((miri, output)) = downcast_step::<tool::Miri>(step, output) {
+                Some(format!(
+                    "[build] {} -> miri {} <{}>",
+                    render_compiler(miri.compiler),
+                    miri.compiler.stage,
+                    miri.target
+                ))
+            } else if let Some((tool, output)) = downcast_step::<tool::OptimizedDist>(step, output)
+            {
+                Some(format!(
+                    "[build] {} -> opt-dist {} <{}>",
+                    render_compiler(tool.compiler),
+                    tool.compiler.stage,
+                    tool.target
                 ))
             } else if let Some((llvm, output)) = downcast_step::<llvm::Llvm>(step, output) {
                 Some(format!("[build] llvm <{}>", llvm.target))

@@ -1,7 +1,6 @@
 # These defaults are meant for contributors to the standard library and documentation.
 [build]
 bench-stage = 1
-build-stage = 1
 check-stage = 1
 test-stage = 1
 

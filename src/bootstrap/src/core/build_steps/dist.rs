@@ -711,7 +711,7 @@ impl Step for Std {
             return None;
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
+        builder.std(compiler, target);
 
         let mut tarball = Tarball::new(builder, "rust-std", &target.triple);
         tarball.include_target_in_component_name(true);

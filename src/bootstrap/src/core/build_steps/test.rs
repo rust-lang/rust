@@ -10,7 +10,7 @@ use std::{env, fs, iter};
 
 use clap_complete::shells;
 
-use crate::core::build_steps::compile::run_cargo;
+use crate::core::build_steps::compile::{Std, run_cargo};
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
@@ -544,7 +544,7 @@ impl Step for Miri {
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.
         let miri_sysroot = Miri::build_miri_sysroot(builder, target_compiler, target);
-        builder.ensure(compile::Std::new(target_compiler, host));
+        builder.std(target_compiler, host);
         let host_sysroot = builder.sysroot(target_compiler);
 
         // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared when
@@ -709,7 +709,7 @@ impl Step for CompiletestTest {
 
         // We need `ToolStd` for the locally-built sysroot because
         // compiletest uses unstable features of the `test` crate.
-        builder.ensure(compile::Std::new(compiler, host));
+        builder.std(compiler, host);
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -1009,7 +1009,7 @@ impl Step for RustdocGUI {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(compile::Std::new(self.compiler, self.target));
+        builder.std(self.compiler, self.target);
 
         let mut cmd = builder.tool_cmd(Tool::RustdocGUITest);
 
@@ -1634,7 +1634,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if suite == "mir-opt" {
             builder.ensure(compile::Std::new(compiler, compiler.host).is_for_mir_opt_tests(true));
         } else {
-            builder.ensure(compile::Std::new(compiler, compiler.host));
+            builder.std(compiler, compiler.host);
         }
 
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
@@ -1642,7 +1642,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if suite == "mir-opt" {
             builder.ensure(compile::Std::new(compiler, target).is_for_mir_opt_tests(true));
         } else {
-            builder.ensure(compile::Std::new(compiler, target));
+            builder.std(compiler, target);
         }
 
         builder.ensure(RemoteCopyLibs { compiler, target });
@@ -2177,7 +2177,7 @@ impl BookTest {
     fn run_ext_doc(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
 
-        builder.ensure(compile::Std::new(compiler, compiler.host));
+        builder.std(compiler, compiler.host);
 
         // mdbook just executes a binary named "rustdoc", so we need to update
         // PATH so that it points to our rustdoc.
@@ -2263,7 +2263,7 @@ impl BookTest {
         let compiler = self.compiler;
         let host = self.compiler.host;
 
-        builder.ensure(compile::Std::new(compiler, host));
+        builder.std(compiler, host);
 
         let _guard =
             builder.msg(Kind::Test, compiler.stage, format!("book {}", self.name), host, host);
@@ -2410,7 +2410,7 @@ impl Step for ErrorIndex {
         drop(guard);
         // The tests themselves need to link to std, so make sure it is
         // available.
-        builder.ensure(compile::Std::new(compiler, compiler.host));
+        builder.std(compiler, compiler.host);
         markdown_test(builder, compiler, &output);
     }
 }
@@ -2473,7 +2473,7 @@ impl Step for CrateLibrustc {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(compile::Std::new(self.compiler, self.target));
+        builder.std(self.compiler, self.target);
 
         // To actually run the tests, delegate to a copy of the `Crate` step.
         builder.ensure(Crate {
@@ -2641,7 +2641,7 @@ impl Step for Crate {
 
         // Prepare sysroot
         // See [field@compile::Std::force_recompile].
-        builder.ensure(compile::Std::new(compiler, compiler.host).force_recompile(true));
+        builder.ensure(Std::new(compiler, compiler.host).force_recompile(true));
 
         // If we're not doing a full bootstrap but we're testing a stage2
         // version of libstd, then what we're actually testing is the libstd
@@ -2767,7 +2767,7 @@ impl Step for CrateRustdoc {
         // using `download-rustc`, the rustc_private artifacts may be in a *different sysroot* from
         // the target rustdoc (`ci-rustc-sysroot` vs `stage2`). In that case, we need to ensure this
         // explicitly to make sure it ends up in the stage2 sysroot.
-        builder.ensure(compile::Std::new(compiler, target));
+        builder.std(compiler, target);
         builder.ensure(compile::Rustc::new(compiler, target));
 
         let mut cargo = tool::prepare_tool_cargo(
@@ -2911,7 +2911,7 @@ impl Step for RemoteCopyLibs {
             return;
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
+        builder.std(compiler, target);
 
         builder.info(&format!("REMOTE copy libs to emulator ({target})"));
 
@@ -3101,7 +3101,7 @@ impl Step for TierCheck {
 
     /// Tests the Platform Support page in the rustc book.
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
+        builder.std(self.compiler, self.compiler.host);
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             self.compiler,
@@ -3334,7 +3334,7 @@ impl Step for CodegenCranelift {
         let compiler = self.compiler;
         let target = self.target;
 
-        builder.ensure(compile::Std::new(compiler, target));
+        builder.std(compiler, target);
 
         // If we're not doing a full bootstrap but we're testing a stage2
         // version of libstd, then what we're actually testing is the libstd
