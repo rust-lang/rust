@@ -61,7 +61,7 @@
 /// Dropping HasDrop!
 /// ```
 ///
-/// Even if we remove the implementation of `Drop` for `HasTwoDrop`, the destructors of its fields are still called.
+/// Even if we remove the implementation of `Drop` for `HasTwoDrops`, the destructors of its fields are still called.
 /// This would result in
 ///
 /// ```test
