@@ -1,4 +1,4 @@
-error[E0764]: mutable references are not allowed in the final value of statics
+error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a static are not allowed
   --> $DIR/write_to_static_via_mut_ref.rs:1:26
    |
 LL | static OH_NO: &mut i32 = &mut 42;

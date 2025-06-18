@@ -150,8 +150,8 @@ pub(crate) struct UnmarkedIntrinsicExposed {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_mutable_ref_escaping, code = E0764)]
-pub(crate) struct MutableRefEscaping {
+#[diag(const_eval_mutable_borrow_escaping, code = E0764)]
+pub(crate) struct MutableBorrowEscaping {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
@@ -159,15 +159,6 @@ pub(crate) struct MutableRefEscaping {
     pub teach: bool,
 }
 
-#[derive(Diagnostic)]
-#[diag(const_eval_mutable_raw_escaping, code = E0764)]
-pub(crate) struct MutableRawEscaping {
-    #[primary_span]
-    pub span: Span,
-    pub kind: ConstContext,
-    #[note(const_eval_teach_note)]
-    pub teach: bool,
-}
 #[derive(Diagnostic)]
 #[diag(const_eval_non_const_fmt_macro_call, code = E0015)]
 pub(crate) struct NonConstFmtMacroCall {
@@ -225,8 +216,8 @@ pub(crate) struct UnallowedInlineAsm {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_interior_mutable_ref_escaping, code = E0492)]
-pub(crate) struct InteriorMutableRefEscaping {
+#[diag(const_eval_interior_mutable_borrow_escaping, code = E0492)]
+pub(crate) struct InteriorMutableBorrowEscaping {
     #[primary_span]
     #[label]
     pub span: Span,
