@@ -218,7 +218,7 @@ pub(super) fn hints(
     }
 
     if !postfix && needs_inner_parens {
-        (&mut pre.label).append_str("(");
+        pre.label.append_str("(");
     }
     if needs_outer_parens || (!postfix && needs_inner_parens) {
         post.label.append_str(")");
