@@ -116,3 +116,23 @@ pub fn expose_trait(b: &mut u8) -> u8 {
     <() as MyTrait>::unsanitized_default(&(), b);
     <() as MyTrait>::sanitized_default(&(), b)
 }
+
+#[sanitize(address = "off")]
+pub mod outer {
+    #[sanitize(thread = "off")]
+    pub mod inner {
+        // CHECK-LABEL: ; sanitize_off::outer::inner::unsanitized
+        // CHECK-NEXT:  ; Function Attrs:
+        // CHECK-NOT:   sanitize_address
+        // CHECK:       start:
+        // CHECK-NOT:   call void @__asan_report_load
+        // CHECK:       }
+        pub fn unsanitized() {
+            let xs = [0, 1, 2, 3];
+            // Avoid optimizing everything out.
+            let xs = std::hint::black_box(xs.as_ptr());
+            let code = unsafe { *xs.offset(4) };
+            std::process::exit(code);
+        }
+    }
+}
