@@ -1,4 +1,4 @@
-error: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+error: Undefined Behavior: reading memory at ALLOC[0x8..0x9], but memory is uninitialized at [0x8..0x9], and this operation requires initialized memory
   --> tests/fail/uninit/padding-enum.rs:LL:CC
    |
 LL |         let _val = *c.add(padding_offset);
@@ -8,6 +8,12 @@ LL |         let _val = *c.add(padding_offset);
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `main` at tests/fail/uninit/padding-enum.rs:LL:CC
+
+Uninitialized memory occurred at ALLOC[0x8..0x9], in this allocation:
+ALLOC (stack variable, size: 24, align: 8) {
+    0x00 │ 00 00 00 00 00 00 00 00 __ __ __ __ __ __ __ __ │ ........░░░░░░░░
+    0x10 │ __ __ __ __ __ __ __ __                         │ ░░░░░░░░
+}
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

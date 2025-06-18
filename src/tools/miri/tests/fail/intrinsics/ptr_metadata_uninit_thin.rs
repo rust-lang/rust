@@ -9,7 +9,7 @@ use std::intrinsics::mir::*;
 pub unsafe fn deref_meta(p: *const *const i32) -> () {
     mir! {
         {
-            RET = PtrMetadata(*p); //~ ERROR: Undefined Behavior: using uninitialized data
+            RET = PtrMetadata(*p); //~ ERROR: /Undefined Behavior: .*, but memory is uninitialized/
             Return()
         }
     }
