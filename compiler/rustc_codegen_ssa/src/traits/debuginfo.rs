@@ -71,7 +71,8 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
         &mut self,
         dbg_var: Self::DIVariable,
         dbg_loc: Self::DILocation,
-        variable_alloca: Self::Value,
+        is_declared: bool,
+        val: Self::Value,
         direct_offset: Size,
         // NB: each offset implies a deref (i.e. they're steps in a pointer chain).
         indirect_offsets: &[Size],
