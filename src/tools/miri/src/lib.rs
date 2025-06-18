@@ -99,6 +99,9 @@ pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
 use rustc_middle::{bug, span_bug};
 use tracing::{info, trace};
 
+#[cfg(target_os = "linux")]
+pub use crate::shims::trace::{init_sv, register_retcode_sv};
+
 // Type aliases that set the provenance parameter.
 pub type Pointer = interpret::Pointer<Option<machine::Provenance>>;
 pub type StrictPointer = interpret::Pointer<machine::Provenance>;
