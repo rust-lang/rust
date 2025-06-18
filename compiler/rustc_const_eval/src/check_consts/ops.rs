@@ -1,8 +1,8 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::{ConstContext, LangItem};
+use rustc_errors::Diag;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -384,7 +384,6 @@ pub(crate) struct CallUnstable {
     /// expose on stable.
     pub feature_enabled: bool,
     pub safe_to_expose_on_stable: bool,
-    pub suggestion_span: Option<Span>,
     /// true if `def_id` is the function we are calling, false if `def_id` is an unstable trait.
     pub is_function_call: bool,
 }
@@ -412,20 +411,7 @@ impl<'tcx> NonConstOp<'tcx> for CallUnstable {
                 def_path: ccx.tcx.def_path_str(self.def_id),
             })
         };
-        // FIXME: make this translatable
-        let msg = format!("add `#![feature({})]` to the crate attributes to enable", self.feature);
-        #[allow(rustc::untranslatable_diagnostic)]
-        if let Some(span) = self.suggestion_span {
-            err.span_suggestion_verbose(
-                span,
-                msg,
-                format!("#![feature({})]\n", self.feature),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            err.help(msg);
-        }
-
+        ccx.tcx.disabled_nightly_features(&mut err, [(String::new(), self.feature)]);
         err
     }
 }
@@ -452,7 +438,6 @@ pub(crate) struct IntrinsicUnstable {
     pub name: Symbol,
     pub feature: Symbol,
     pub const_stable_indirect: bool,
-    pub suggestion: Option<Span>,
 }
 
 impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
@@ -472,8 +457,7 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
             span,
             name: self.name,
             feature: self.feature,
-            suggestion: self.suggestion,
-            help: self.suggestion.is_none(),
+            suggestion: ccx.tcx.crate_level_attribute_injection_span(),
         })
     }
 }

@@ -1064,7 +1064,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                     Ok(..) => Some(vec![(adt_const_params_feature_string, sym::adt_const_params)]),
                 };
                 if let Some(features) = may_suggest_feature {
-                    tcx.disabled_nightly_features(&mut diag, Some(param.hir_id), features);
+                    tcx.disabled_nightly_features(&mut diag, features);
                 }
 
                 Err(diag.emit())

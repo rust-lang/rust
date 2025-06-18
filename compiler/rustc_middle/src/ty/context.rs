@@ -3165,42 +3165,33 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_level(self.sess, lint, level, Some(span.into()), decorate);
     }
 
-    /// Find the crate root and the appropriate span where `use` and outer attributes can be
-    /// inserted at.
-    pub fn crate_level_attribute_injection_span(self, hir_id: HirId) -> Option<Span> {
-        for (_hir_id, node) in self.hir_parent_iter(hir_id) {
-            if let hir::Node::Crate(m) = node {
-                return Some(m.spans.inject_use_span.shrink_to_lo());
-            }
-        }
-        None
+    /// Find the appropriate span where `use` and outer attributes can be inserted at.
+    pub fn crate_level_attribute_injection_span(self) -> Span {
+        let node = self.hir_node(hir::CRATE_HIR_ID);
+        let hir::Node::Crate(m) = node else { bug!() };
+        m.spans.inject_use_span.shrink_to_lo()
     }
 
     pub fn disabled_nightly_features<E: rustc_errors::EmissionGuarantee>(
         self,
         diag: &mut Diag<'_, E>,
-        hir_id: Option<HirId>,
         features: impl IntoIterator<Item = (String, Symbol)>,
     ) {
         if !self.sess.is_nightly_build() {
             return;
         }
 
-        let span = hir_id.and_then(|id| self.crate_level_attribute_injection_span(id));
+        let span = self.crate_level_attribute_injection_span();
         for (desc, feature) in features {
             // FIXME: make this string translatable
             let msg =
                 format!("add `#![feature({feature})]` to the crate attributes to enable{desc}");
-            if let Some(span) = span {
-                diag.span_suggestion_verbose(
-                    span,
-                    msg,
-                    format!("#![feature({feature})]\n"),
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                diag.help(msg);
-            }
+            diag.span_suggestion_verbose(
+                span,
+                msg,
+                format!("#![feature({feature})]\n"),
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 
