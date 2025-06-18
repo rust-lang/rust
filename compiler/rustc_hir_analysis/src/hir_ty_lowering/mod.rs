@@ -56,6 +56,19 @@ use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
 
+/// The context in which an implied bound is being added to a item being lowered (i.e. a sizedness
+/// trait or a default trait)
+#[derive(Clone, Copy)]
+pub(crate) enum ImpliedBoundsContext<'tcx> {
+    /// An implied bound is added to a trait definition (i.e. a new supertrait), used when adding
+    /// a default `MetaSized` supertrait
+    TraitDef(LocalDefId),
+    /// An implied bound is added to a type parameter
+    TyParam(LocalDefId, &'tcx [hir::WherePredicate<'tcx>]),
+    /// An implied bound being added in any other context
+    AssociatedTypeOrImplTrait,
+}
+
 /// A path segment that is semantically allowed to have generic arguments.
 #[derive(Debug)]
 pub struct GenericPathSegment(pub DefId, pub usize);
@@ -2513,12 +2526,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     PredicateFilter::All,
                     OverlappingAsssocItemConstraints::Allowed,
                 );
-                self.add_sizedness_bounds(
+                self.add_implicit_sizedness_bounds(
                     &mut bounds,
                     self_ty,
                     hir_bounds,
-                    None,
-                    None,
+                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     hir_ty.span,
                 );
                 self.register_trait_ascription_bounds(bounds, hir_ty.hir_id, hir_ty.span);
