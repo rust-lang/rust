@@ -215,14 +215,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             && !collected.meta_sized.any()
             && !collected.pointee_sized.any()
         {
-            // `?Sized` is equivalent to `MetaSized` (but only add the bound if there aren't any
-            // other explicit ones) - this can happen for trait aliases as well as bounds.
-            add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
-        } else if !collected.any() {
-            if trait_did.is_some() {
-                // If there are no explicit sizedness bounds on a trait then add a default
-                // `MetaSized` supertrait.
+            if trait_did.map(|did| !tcx.is_trait_alias(did.to_def_id())).unwrap_or(true) {
+                // `?Sized` is equivalent to `MetaSized` (but only add the bound if there aren't any
+                // other explicit ones and it isn't a trait alias).
                 add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
+            }
+        } else if !collected.any() {
+            if let Some(trait_did) = trait_did {
+                if !tcx.is_trait_alias(trait_did.to_def_id()) {
+                    // If there are no explicit sizedness bounds on a trait and it is not a trait
+                    // alias then add a default `MetaSized` supertrait.
+                    add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
+                }
             } else {
                 // If there are no explicit sizedness bounds on a parameter then add a default
                 // `Sized` bound.
