@@ -220,4 +220,23 @@ fn test() {
             "#,
         )
     }
+
+    #[test]
+    fn regression_18201() {
+        check_diagnostics(
+            r#"
+//- minicore: copy
+struct NotCopy;
+struct S(NotCopy);
+impl S {
+    fn f(&mut self) {
+        || {
+            if let ref mut _cb = self.0 {
+            }
+        };
+    }
+}
+"#,
+        )
+    }
 }
