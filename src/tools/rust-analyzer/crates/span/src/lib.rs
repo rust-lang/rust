@@ -6,7 +6,10 @@ mod hygiene;
 mod map;
 
 pub use self::{
-    ast_id::{AstIdMap, AstIdNode, ErasedFileAstId, FileAstId},
+    ast_id::{
+        AstIdMap, AstIdNode, ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, FileAstId,
+        ROOT_ERASED_FILE_AST_ID,
+    },
     hygiene::{SyntaxContext, Transparency},
     map::{RealSpanMap, SpanMap},
 };
@@ -14,19 +17,6 @@ pub use self::{
 pub use syntax::Edition;
 pub use text_size::{TextRange, TextSize};
 pub use vfs::FileId;
-
-// The first index is always the root node's AstId
-/// The root ast id always points to the encompassing file, using this in spans is discouraged as
-/// any range relative to it will be effectively absolute, ruining the entire point of anchored
-/// relative text ranges.
-pub const ROOT_ERASED_FILE_AST_ID: ErasedFileAstId = ErasedFileAstId::from_raw(0);
-
-/// FileId used as the span for syntax node fixups. Any Span containing this file id is to be
-/// considered fake.
-pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
-    // we pick the second to last for this in case we ever consider making this a NonMaxU32, this
-    // is required to be stable for the proc-macro-server
-    ErasedFileAstId::from_raw(!0 - 1);
 
 pub type Span = SpanData<SyntaxContext>;
 
@@ -60,7 +50,7 @@ impl<Ctx: fmt::Debug> fmt::Debug for SpanData<Ctx> {
         if f.alternate() {
             fmt::Debug::fmt(&self.anchor.file_id.file_id().index(), f)?;
             f.write_char(':')?;
-            fmt::Debug::fmt(&self.anchor.ast_id.into_raw(), f)?;
+            write!(f, "{:#?}", self.anchor.ast_id)?;
             f.write_char('@')?;
             fmt::Debug::fmt(&self.range, f)?;
             f.write_char('#')?;
@@ -85,7 +75,7 @@ impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.anchor.file_id.file_id().index(), f)?;
         f.write_char(':')?;
-        fmt::Debug::fmt(&self.anchor.ast_id.into_raw(), f)?;
+        write!(f, "{:#?}", self.anchor.ast_id)?;
         f.write_char('@')?;
         fmt::Debug::fmt(&self.range, f)?;
         f.write_char('#')?;
@@ -101,7 +91,7 @@ pub struct SpanAnchor {
 
 impl fmt::Debug for SpanAnchor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("SpanAnchor").field(&self.file_id).field(&self.ast_id.into_raw()).finish()
+        f.debug_tuple("SpanAnchor").field(&self.file_id).field(&self.ast_id).finish()
     }
 }
 

@@ -16,7 +16,7 @@ use crate::{
     PlaceholderIndex, chalk_db, db::HirDatabase,
 };
 
-pub(crate) trait ToChalk {
+pub trait ToChalk {
     type Chalk;
     fn to_chalk(self, db: &dyn HirDatabase) -> Self::Chalk;
     fn from_chalk(db: &dyn HirDatabase, chalk: Self::Chalk) -> Self;
@@ -44,12 +44,12 @@ impl ToChalk for hir_def::ImplId {
 impl ToChalk for CallableDefId {
     type Chalk = FnDefId;
 
-    fn to_chalk(self, db: &dyn HirDatabase) -> FnDefId {
-        db.intern_callable_def(self).into()
+    fn to_chalk(self, _db: &dyn HirDatabase) -> FnDefId {
+        chalk_ir::FnDefId(salsa::plumbing::AsId::as_id(&self))
     }
 
     fn from_chalk(db: &dyn HirDatabase, fn_def_id: FnDefId) -> CallableDefId {
-        db.lookup_intern_callable_def(fn_def_id.into())
+        salsa::plumbing::FromIdWithDb::from_id(fn_def_id.0, db.zalsa())
     }
 }
 
@@ -67,18 +67,6 @@ impl ToChalk for TypeAliasAsValue {
         assoc_ty_value_id: chalk_db::AssociatedTyValueId,
     ) -> TypeAliasAsValue {
         TypeAliasAsValue(TypeAliasId::from_id(assoc_ty_value_id.0))
-    }
-}
-
-impl From<FnDefId> for crate::db::InternedCallableDefId {
-    fn from(fn_def_id: FnDefId) -> Self {
-        Self::from_id(fn_def_id.0)
-    }
-}
-
-impl From<crate::db::InternedCallableDefId> for FnDefId {
-    fn from(callable_def_id: crate::db::InternedCallableDefId) -> Self {
-        chalk_ir::FnDefId(callable_def_id.as_id())
     }
 }
 

@@ -150,12 +150,12 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         });
                         terminator.kind = TerminatorKind::Goto { target };
                     }
-                    sym::size_of | sym::min_align_of => {
+                    sym::size_of | sym::align_of => {
                         let target = target.unwrap();
                         let tp_ty = generic_args.type_at(0);
                         let null_op = match intrinsic.name {
                             sym::size_of => NullOp::SizeOf,
-                            sym::min_align_of => NullOp::AlignOf,
+                            sym::align_of => NullOp::AlignOf,
                             _ => bug!("unexpected intrinsic"),
                         };
                         block.statements.push(Statement {

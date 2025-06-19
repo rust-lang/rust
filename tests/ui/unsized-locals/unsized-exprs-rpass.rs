@@ -1,6 +1,6 @@
 //@ run-pass
-#![allow(incomplete_features, unused_braces, unused_parens)]
-#![feature(unsized_locals, unsized_fn_params)]
+#![allow(internal_features, unused_braces, unused_parens)]
+#![feature(unsized_fn_params)]
 
 struct A<X: ?Sized>(#[allow(dead_code)] X);
 

@@ -2,7 +2,7 @@ error: unsupported operation: cannot close stdout
   --> tests/fail-dep/libc/fs/close_stdout.rs:LL:CC
    |
 LL |         libc::close(1);
-   |         ^^^^^^^^^^^^^^ cannot close stdout
+   |         ^^^^^^^^^^^^^^ unsupported operation occurred here
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:

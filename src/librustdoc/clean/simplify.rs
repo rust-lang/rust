@@ -135,10 +135,16 @@ pub(crate) fn sized_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generi
     // don't actually know the set of associated types right here so that
     // should be handled when cleaning associated types.
     generics.where_predicates.retain(|pred| {
-        if let WP::BoundPredicate { ty: clean::Generic(param), bounds, .. } = pred
-            && bounds.iter().any(|b| b.is_sized_bound(cx))
-        {
+        let WP::BoundPredicate { ty: clean::Generic(param), bounds, .. } = pred else {
+            return true;
+        };
+
+        if bounds.iter().any(|b| b.is_sized_bound(cx)) {
             sized_params.insert(*param);
+            false
+        } else if bounds.iter().any(|b| b.is_meta_sized_bound(cx)) {
+            // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
+            // is shown and none of the new sizedness traits leak into documentation.
             false
         } else {
             true

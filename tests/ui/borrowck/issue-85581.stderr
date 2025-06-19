@@ -10,7 +10,7 @@ LL |         Some(_) => { heap.pop(); },
    |                      ^^^^ second mutable borrow occurs here
 ...
 LL | }
-   | - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<PeekMut<'_, i32>>`
+   | - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<std::collections::binary_heap::PeekMut<'_, i32>>`
 
 error: aborting due to 1 previous error
 

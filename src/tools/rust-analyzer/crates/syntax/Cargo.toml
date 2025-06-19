@@ -27,7 +27,7 @@ stdx.workspace = true
 [dev-dependencies]
 rayon.workspace = true
 expect-test = "1.5.1"
-rustc_apfloat = "0.2.2"
+rustc_apfloat = "0.2.3"
 
 test-utils.workspace = true
 

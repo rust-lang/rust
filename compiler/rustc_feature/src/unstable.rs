@@ -237,6 +237,8 @@ declare_features! (
     (internal, profiler_runtime, "1.18.0", None),
     /// Allows using `rustc_*` attributes (RFC 572).
     (internal, rustc_attrs, "1.0.0", None),
+    /// Introduces a hierarchy of `Sized` traits (RFC 3729).
+    (unstable, sized_hierarchy, "CURRENT_RUSTC_VERSION", None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
     /// Added for testing unstable lints; perma-unstable.
@@ -353,6 +355,8 @@ declare_features! (
     (unstable, abi_avr_interrupt, "1.45.0", Some(69664)),
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (unstable, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391)),
+    /// Allows `extern "custom" fn()`.
+    (unstable, abi_custom, "CURRENT_RUSTC_VERSION", Some(140829)),
     /// Allows `extern "gpu-kernel" fn()`.
     (unstable, abi_gpu_kernel, "1.86.0", Some(135467)),
     /// Allows `extern "msp430-interrupt" fn()`.
@@ -516,8 +520,6 @@ declare_features! (
     (unstable, frontmatter, "1.88.0", Some(136889)),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
-    /// Infer generic args for both consts and types.
-    (unstable, generic_arg_infer, "1.55.0", Some(85077)),
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
     /// Allows generic parameters and where-clauses on free & associated const items.
@@ -665,8 +667,6 @@ declare_features! (
     (incomplete, unsized_const_params, "1.82.0", Some(95174)),
     /// Allows unsized fn parameters.
     (internal, unsized_fn_params, "1.49.0", Some(48055)),
-    /// Allows unsized rvalues at arguments and parameters.
-    (incomplete, unsized_locals, "1.30.0", Some(48055)),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
     /// Allows use of attributes in `where` clauses.

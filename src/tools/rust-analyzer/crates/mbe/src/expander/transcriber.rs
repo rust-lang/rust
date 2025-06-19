@@ -497,6 +497,10 @@ fn expand_repeat(
                         builder.push(tt::Leaf::from(punct));
                     }
                 }
+                Separator::Lifetime(punct, ident) => {
+                    builder.push(tt::Leaf::from(*punct));
+                    builder.push(tt::Leaf::from(ident.clone()));
+                }
             };
         }
 

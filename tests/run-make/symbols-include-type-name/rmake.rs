@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Method names used to be obfuscated when exported into symbols,
 // leaving only an obscure `<impl>`. After the fix in #30328,
 // this test checks that method names are successfully saved in the symbol list.

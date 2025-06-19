@@ -17,6 +17,7 @@ use tracing::instrument;
 
 use super::errors::{
     InvalidAbi, InvalidAbiSuggestion, MisplacedRelaxTraitBound, TupleStructWithDefault,
+    UnionWithDefault,
 };
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
@@ -63,7 +64,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 
         for (def_id, info) in lctx.children {
             let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-            debug_assert!(
+            assert!(
                 matches!(owner, hir::MaybeOwner::Phantom),
                 "duplicate copy of {def_id:?} in lctx.children"
             );
@@ -78,7 +79,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             match node {
                 AstOwner::NonOwner => {}
                 AstOwner::Crate(c) => {
-                    debug_assert_eq!(self.resolver.node_id_to_def_id[&CRATE_NODE_ID], CRATE_DEF_ID);
+                    assert_eq!(self.resolver.node_id_to_def_id[&CRATE_NODE_ID], CRATE_DEF_ID);
                     self.with_lctx(CRATE_NODE_ID, |lctx| {
                         let module = lctx.lower_mod(&c.items, &c.spans);
                         // FIXME(jdonszelman): is dummy span ever a problem here?
@@ -145,6 +146,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind,
             vis_span,
             span: self.lower_span(i.span),
+            has_delayed_lints: !self.delayed_lints.is_empty(),
         };
         self.arena.alloc(item)
     }
@@ -315,7 +317,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         this.arena.alloc_from_iter(
-                            enum_definition.variants.iter().map(|x| this.lower_variant(x)),
+                            enum_definition.variants.iter().map(|x| this.lower_variant(i, x)),
                         )
                     },
                 );
@@ -327,7 +329,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    |this| this.lower_variant_data(hir_id, struct_def),
+                    |this| this.lower_variant_data(hir_id, i, struct_def),
                 );
                 hir::ItemKind::Struct(ident, generics, struct_def)
             }
@@ -337,7 +339,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    |this| this.lower_variant_data(hir_id, vdata),
+                    |this| this.lower_variant_data(hir_id, i, vdata),
                 );
                 hir::ItemKind::Union(ident, generics, vdata)
             }
@@ -599,6 +601,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             kind,
                             vis_span,
                             span: this.lower_span(use_tree.span),
+                            has_delayed_lints: !this.delayed_lints.is_empty(),
                         };
                         hir::OwnerNode::Item(this.arena.alloc(item))
                     });
@@ -697,6 +700,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind,
             vis_span: self.lower_span(i.vis.span),
             span: self.lower_span(i.span),
+            has_delayed_lints: !self.delayed_lints.is_empty(),
         };
         self.arena.alloc(item)
     }
@@ -711,13 +715,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_variant(&mut self, v: &Variant) -> hir::Variant<'hir> {
+    fn lower_variant(&mut self, item_kind: &ItemKind, v: &Variant) -> hir::Variant<'hir> {
         let hir_id = self.lower_node_id(v.id);
         self.lower_attrs(hir_id, &v.attrs, v.span);
         hir::Variant {
             hir_id,
             def_id: self.local_def_id(v.id),
-            data: self.lower_variant_data(hir_id, &v.data),
+            data: self.lower_variant_data(hir_id, item_kind, &v.data),
             disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const_to_anon_const(e)),
             ident: self.lower_ident(v.ident),
             span: self.lower_span(v.span),
@@ -727,15 +731,36 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_variant_data(
         &mut self,
         parent_id: hir::HirId,
+        item_kind: &ItemKind,
         vdata: &VariantData,
     ) -> hir::VariantData<'hir> {
         match vdata {
-            VariantData::Struct { fields, recovered } => hir::VariantData::Struct {
-                fields: self
+            VariantData::Struct { fields, recovered } => {
+                let fields = self
                     .arena
-                    .alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_field_def(f))),
-                recovered: *recovered,
-            },
+                    .alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_field_def(f)));
+
+                if let ItemKind::Union(..) = item_kind {
+                    for field in &fields[..] {
+                        if let Some(default) = field.default {
+                            // Unions cannot derive `Default`, and it's not clear how to use default
+                            // field values of unions if that was supported. Therefore, blanket reject
+                            // trying to use field values with unions.
+                            if self.tcx.features().default_field_values() {
+                                self.dcx().emit_err(UnionWithDefault { span: default.span });
+                            } else {
+                                let _ = self.dcx().span_delayed_bug(
+                                default.span,
+                                "expected union default field values feature gate error but none \
+                                was produced",
+                            );
+                            }
+                        }
+                    }
+                }
+
+                hir::VariantData::Struct { fields, recovered: *recovered }
+            }
             VariantData::Tuple(fields, id) => {
                 let ctor_id = self.lower_node_id(*id);
                 self.alias_attrs(ctor_id, parent_id);
@@ -941,6 +966,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind,
             span: self.lower_span(i.span),
             defaultness: hir::Defaultness::Default { has_value: has_default },
+            has_delayed_lints: !self.delayed_lints.is_empty(),
         };
         self.arena.alloc(item)
     }
@@ -1100,6 +1126,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             vis_span: self.lower_span(i.vis.span),
             span: self.lower_span(i.span),
             defaultness,
+            has_delayed_lints: !self.delayed_lints.is_empty(),
         };
         self.arena.alloc(item)
     }
@@ -1160,7 +1187,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::BodyId {
         let body = hir::Body { params, value: self.arena.alloc(value) };
         let id = body.id();
-        debug_assert_eq!(id.hir_id.owner, self.current_hir_id_owner);
+        assert_eq!(id.hir_id.owner, self.current_hir_id_owner);
         self.bodies.push((id.hir_id.local_id, self.arena.alloc(body)));
         id
     }
@@ -1673,8 +1700,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         itctx: ImplTraitContext,
         f: impl FnOnce(&mut Self) -> T,
     ) -> (&'hir hir::Generics<'hir>, T) {
-        debug_assert!(self.impl_trait_defs.is_empty());
-        debug_assert!(self.impl_trait_bounds.is_empty());
+        assert!(self.impl_trait_defs.is_empty());
+        assert!(self.impl_trait_bounds.is_empty());
 
         // Error if `?Trait` bounds in where clauses don't refer directly to type parameters.
         // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering

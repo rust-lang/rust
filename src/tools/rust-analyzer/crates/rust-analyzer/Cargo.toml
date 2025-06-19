@@ -29,7 +29,7 @@ indexmap.workspace = true
 itertools.workspace = true
 scip = "0.5.2"
 lsp-types = { version = "=0.95.0", features = ["proposed"] }
-parking_lot = "0.12.3"
+parking_lot = "0.12.4"
 xflags = "0.3.2"
 oorandom = "11.1.5"
 rayon.workspace = true
@@ -37,19 +37,19 @@ rustc-hash.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 serde.workspace = true
 serde_derive.workspace = true
-tenthash = "1.0.0"
-num_cpus = "1.16.0"
-mimalloc = { version = "0.1.44", default-features = false, optional = true }
+tenthash = "1.1.0"
+num_cpus = "1.17.0"
+mimalloc = { version = "0.1.46", default-features = false, optional = true }
 lsp-server.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 triomphe.workspace = true
-toml = "0.8.20"
+toml = "0.8.23"
 nohash-hasher.workspace = true
 walkdir = "2.5.0"
 semver.workspace = true
-memchr = "2.7.4"
+memchr = "2.7.5"
 cargo_metadata.workspace = true
 process-wrap.workspace = true
 
@@ -75,7 +75,7 @@ vfs.workspace = true
 paths.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = [
+windows-sys = { version = "0.60", features = [
   "Win32_System_Diagnostics_Debug",
   "Win32_System_Threading",
 ] }

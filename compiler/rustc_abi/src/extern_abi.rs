@@ -40,6 +40,11 @@ pub enum ExternAbi {
     /// Even normally-compatible Rust types can become ABI-incompatible with this ABI!
     Unadjusted,
 
+    /// An ABI that rustc does not know how to call or define. Functions with this ABI can
+    /// only be created using `#[naked]` functions or `extern "custom"` blocks, and can only
+    /// be called from inline assembly.
+    Custom,
+
     /// UEFI ABI, usually an alias of C, but sometimes an arch-specific alias
     /// and only valid on platforms that have a UEFI standard
     EfiApi,
@@ -141,6 +146,7 @@ abi_impls! {
             AvrNonBlockingInterrupt =><= "avr-non-blocking-interrupt",
             Cdecl { unwind: false } =><= "cdecl",
             Cdecl { unwind: true } =><= "cdecl-unwind",
+            Custom =><= "custom",
             EfiApi =><= "efiapi",
             Fastcall { unwind: false } =><= "fastcall",
             Fastcall { unwind: true } =><= "fastcall-unwind",

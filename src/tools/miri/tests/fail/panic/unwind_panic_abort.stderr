@@ -2,7 +2,7 @@ error: Undefined Behavior: unwinding past a stack frame that does not allow unwi
   --> tests/fail/panic/unwind_panic_abort.rs:LL:CC
    |
 LL |         miri_start_unwind(&mut 0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ unwinding past a stack frame that does not allow unwinding
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

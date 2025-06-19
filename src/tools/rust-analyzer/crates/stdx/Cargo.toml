@@ -12,7 +12,7 @@ rust-version.workspace = true
 [lib]
 
 [dependencies]
-backtrace = { version = "0.3.74", optional = true }
+backtrace = { version = "0.3.75", optional = true }
 jod-thread = "1.0.0"
 crossbeam-channel.workspace = true
 itertools.workspace = true
@@ -25,7 +25,7 @@ libc.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 miow = "0.6.0"
-windows-sys = { version = "0.59", features = ["Win32_Foundation"] }
+windows-sys = { version = "0.60", features = ["Win32_Foundation"] }
 
 [features]
 # Uncomment to enable for the whole crate graph

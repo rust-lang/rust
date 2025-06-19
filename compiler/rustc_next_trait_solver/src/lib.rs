@@ -7,10 +7,12 @@
 // tidy-alphabetical-start
 #![allow(rustc::usage_of_type_ir_inherent)]
 #![allow(rustc::usage_of_type_ir_traits)]
+#![cfg_attr(not(bootstrap), allow(rustc::direct_use_of_rustc_type_ir))]
 // tidy-alphabetical-end
 
 pub mod canonicalizer;
 pub mod coherence;
 pub mod delegate;
+pub mod placeholder;
 pub mod resolve;
 pub mod solve;

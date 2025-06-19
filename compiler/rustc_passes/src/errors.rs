@@ -1435,6 +1435,15 @@ pub(crate) struct UnknownFeature {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_unknown_feature_alias, code = E0635)]
+pub(crate) struct RenamedFeature {
+    #[primary_span]
+    pub span: Span,
+    pub feature: Symbol,
+    pub alias: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_implied_feature_not_exist)]
 pub(crate) struct ImpliedFeatureNotExist {
     #[primary_span]
@@ -1478,6 +1487,9 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
         participle: &'tcx str,
         name_list: DiagSymbolList,
         #[subdiagnostic]
+        // only on DeadCodes since it's never a problem for tuple struct fields
+        enum_variants_with_same_name: Vec<EnumVariantSameName<'tcx>>,
+        #[subdiagnostic]
         parent_info: Option<ParentInfo<'tcx>>,
         #[subdiagnostic]
         ignored_derived_impls: Option<IgnoredDerivedImpls>,
@@ -1496,6 +1508,15 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
         #[subdiagnostic]
         ignored_derived_impls: Option<IgnoredDerivedImpls>,
     },
+}
+
+#[derive(Subdiagnostic)]
+#[note(passes_enum_variant_same_name)]
+pub(crate) struct EnumVariantSameName<'tcx> {
+    #[primary_span]
+    pub variant_span: Span,
+    pub dead_name: Symbol,
+    pub descr: &'tcx str,
 }
 
 #[derive(Subdiagnostic)]

@@ -328,6 +328,14 @@ impl Key for (DefId, SimplifiedType) {
     }
 }
 
+impl Key for (DefId, ty::SizedTraitKind) {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
+    }
+}
+
 impl<'tcx> Key for GenericArgsRef<'tcx> {
     type Cache<V> = DefaultCache<Self, V>;
 

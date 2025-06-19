@@ -174,7 +174,6 @@ early_lint_methods!(
             AnonymousParameters: AnonymousParameters,
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
             NonCamelCaseTypes: NonCamelCaseTypes,
-            DeprecatedAttr: DeprecatedAttr::default(),
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
             IncompleteInternalFeatures: IncompleteInternalFeatures,
@@ -619,6 +618,12 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, \
          see <https://github.com/rust-lang/rust/issues/116558> for more information",
     );
+    store.register_removed(
+        "missing_fragment_specifier",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/40107> for more information",
+    );
+    store.register_removed("wasm_c_abi", "the wasm C ABI has been fixed");
 }
 
 fn register_internals(store: &mut LintStore) {
@@ -663,6 +668,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(USAGE_OF_TYPE_IR_TRAITS),
             LintId::of(BAD_OPT_ACCESS),
             LintId::of(SPAN_USE_EQ_CTXT),
+            LintId::of(DIRECT_USE_OF_RUSTC_TYPE_IR),
         ],
     );
 }

@@ -4,7 +4,9 @@ use rustc_abi::ExternAbi;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_attr_data_structures::ReprAttr::ReprAlign;
-use rustc_attr_data_structures::{AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_attr_data_structures::{
+    AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr, find_attr,
+};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -21,7 +23,6 @@ use rustc_session::parse::feature_err;
 use rustc_session::{Session, lint};
 use rustc_span::{Ident, Span, sym};
 use rustc_target::spec::SanitizerSet;
-use tracing::debug;
 
 use crate::errors;
 use crate::target_features::{check_target_feature_trait_unsafe, from_target_feature_attr};
@@ -83,7 +84,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
     let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
 
-    let mut inline_span = None;
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
     let mut mixed_export_name_no_mangle_lint_state = MixedExportNameAndNoMangleState::default();
@@ -449,48 +449,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
     mixed_export_name_no_mangle_lint_state.lint_if_mixed(tcx);
 
-    codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
-        if !attr.has_name(sym::inline) {
-            return ia;
-        }
-
-        if attr.is_word() {
-            return InlineAttr::Hint;
-        }
-        let Some(ref items) = attr.meta_item_list() else {
-            return ia;
-        };
-        inline_span = Some(attr.span());
-
-        let [item] = &items[..] else {
-            tcx.dcx().emit_err(errors::ExpectedOneArgument { span: attr.span() });
-            return InlineAttr::None;
-        };
-
-        if item.has_name(sym::always) {
-            InlineAttr::Always
-        } else if item.has_name(sym::never) {
-            InlineAttr::Never
-        } else {
-            tcx.dcx().emit_err(errors::InvalidArgument { span: items[0].span() });
-
-            InlineAttr::None
-        }
-    });
-    codegen_fn_attrs.inline = attrs.iter().fold(codegen_fn_attrs.inline, |ia, attr| {
-        if !attr.has_name(sym::rustc_force_inline) || !tcx.features().rustc_attrs() {
-            return ia;
-        }
-
-        if attr.is_word() {
-            InlineAttr::Force { attr_span: attr.span(), reason: None }
-        } else if let Some(val) = attr.value_str() {
-            InlineAttr::Force { attr_span: attr.span(), reason: Some(val) }
-        } else {
-            debug!("`rustc_force_inline` not checked by attribute validation");
-            ia
-        }
-    });
+    let inline_span;
+    (codegen_fn_attrs.inline, inline_span) = if let Some((inline_attr, span)) =
+        find_attr!(attrs, AttributeKind::Inline(i, span) => (*i, *span))
+    {
+        (inline_attr, Some(span))
+    } else {
+        (InlineAttr::None, None)
+    };
 
     // naked function MUST NOT be inlined! This attribute is required for the rust compiler itself,
     // but not for the code generation backend because at that point the naked function will just be
@@ -511,7 +477,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             return OptimizeAttr::Default;
         };
 
-        inline_span = Some(attr.span());
         let [item] = &items[..] else {
             tcx.dcx().emit_err(errors::ExpectedOneArgumentOptimize { span: attr.span() });
             return OptimizeAttr::Default;

@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
         arch: "msp430".into(),
 
         options: TargetOptions {
-            c_int_width: "16".into(),
+            c_int_width: 16,
 
             // The LLVM backend currently can't generate object files. To
             // workaround this LLVM generates assembly files which then we feed

@@ -14,6 +14,7 @@ use intern::{Symbol, sym};
 use la_arena::{ArenaMap, Idx, RawIdx};
 use mbe::DelimiterKind;
 use rustc_abi::ReprOptions;
+use span::AstIdNode;
 use syntax::{
     AstPtr,
     ast::{self, HasAttrs},
@@ -22,10 +23,10 @@ use triomphe::Arc;
 use tt::iter::{TtElement, TtIter};
 
 use crate::{
-    AdtId, AttrDefId, GenericParamId, HasModule, ItemTreeLoc, LocalFieldId, Lookup, MacroId,
+    AdtId, AstIdLoc, AttrDefId, GenericParamId, HasModule, LocalFieldId, Lookup, MacroId,
     VariantId,
     db::DefDatabase,
-    item_tree::{AttrOwner, FieldParent, ItemTreeNode},
+    item_tree::block_item_tree_query,
     lang_item::LangItem,
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource},
@@ -42,6 +43,15 @@ pub struct AttrsWithOwner {
 }
 
 impl Attrs {
+    pub fn new(
+        db: &dyn DefDatabase,
+        owner: &dyn ast::HasAttrs,
+        span_map: SpanMapRef<'_>,
+        cfg_options: &CfgOptions,
+    ) -> Self {
+        Attrs(RawAttrs::new_expanded(db, owner, span_map, cfg_options))
+    }
+
     pub fn get(&self, id: AttrId) -> Option<&Attr> {
         (**self).iter().find(|attr| attr.id == id)
     }
@@ -94,44 +104,64 @@ impl Attrs {
         v: VariantId,
     ) -> Arc<ArenaMap<LocalFieldId, Attrs>> {
         let _p = tracing::info_span!("fields_attrs_query").entered();
-        // FIXME: There should be some proper form of mapping between item tree field ids and hir field ids
         let mut res = ArenaMap::default();
-        let item_tree;
-        let (parent, fields, krate) = match v {
+        let (fields, file_id, krate) = match v {
             VariantId::EnumVariantId(it) => {
                 let loc = it.lookup(db);
                 let krate = loc.parent.lookup(db).container.krate;
-                item_tree = loc.id.item_tree(db);
-                let variant = &item_tree[loc.id.value];
-                (FieldParent::EnumVariant(loc.id.value), &variant.fields, krate)
+                let source = loc.source(db);
+                (source.value.field_list(), source.file_id, krate)
             }
             VariantId::StructId(it) => {
                 let loc = it.lookup(db);
                 let krate = loc.container.krate;
-                item_tree = loc.id.item_tree(db);
-                let struct_ = &item_tree[loc.id.value];
-                (FieldParent::Struct(loc.id.value), &struct_.fields, krate)
+                let source = loc.source(db);
+                (source.value.field_list(), source.file_id, krate)
             }
             VariantId::UnionId(it) => {
                 let loc = it.lookup(db);
                 let krate = loc.container.krate;
-                item_tree = loc.id.item_tree(db);
-                let union_ = &item_tree[loc.id.value];
-                (FieldParent::Union(loc.id.value), &union_.fields, krate)
+                let source = loc.source(db);
+                (
+                    source.value.record_field_list().map(ast::FieldList::RecordFieldList),
+                    source.file_id,
+                    krate,
+                )
             }
+        };
+        let Some(fields) = fields else {
+            return Arc::new(res);
         };
 
         let cfg_options = krate.cfg_options(db);
+        let span_map = db.span_map(file_id);
 
-        let mut idx = 0;
-        for (id, _field) in fields.iter().enumerate() {
-            let attrs = item_tree.attrs(db, krate, AttrOwner::make_field_indexed(parent, id));
-            if attrs.is_cfg_enabled(cfg_options) {
-                res.insert(Idx::from_raw(RawIdx::from(idx)), attrs);
-                idx += 1;
+        match fields {
+            ast::FieldList::RecordFieldList(fields) => {
+                let mut idx = 0;
+                for field in fields.fields() {
+                    let attrs =
+                        Attrs(RawAttrs::new_expanded(db, &field, span_map.as_ref(), cfg_options));
+                    if attrs.is_cfg_enabled(cfg_options).is_ok() {
+                        res.insert(Idx::from_raw(RawIdx::from(idx)), attrs);
+                        idx += 1;
+                    }
+                }
+            }
+            ast::FieldList::TupleFieldList(fields) => {
+                let mut idx = 0;
+                for field in fields.fields() {
+                    let attrs =
+                        Attrs(RawAttrs::new_expanded(db, &field, span_map.as_ref(), cfg_options));
+                    if attrs.is_cfg_enabled(cfg_options).is_ok() {
+                        res.insert(Idx::from_raw(RawIdx::from(idx)), attrs);
+                        idx += 1;
+                    }
+                }
             }
         }
 
+        res.shrink_to_fit();
         Arc::new(res)
     }
 }
@@ -167,11 +197,10 @@ impl Attrs {
     }
 
     #[inline]
-    pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
-        match self.cfg() {
-            None => true,
-            Some(cfg) => cfg_options.check(&cfg) != Some(false),
-        }
+    pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> Result<(), CfgExpr> {
+        self.cfgs().try_for_each(|cfg| {
+            if cfg_options.check(&cfg) != Some(false) { Ok(()) } else { Err(cfg) }
+        })
     }
 
     #[inline]
@@ -488,61 +517,59 @@ impl AttrsWithOwner {
     pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Attrs {
         let _p = tracing::info_span!("attrs_query").entered();
         // FIXME: this should use `Trace` to avoid duplication in `source_map` below
-        let raw_attrs = match def {
+        match def {
             AttrDefId::ModuleId(module) => {
                 let def_map = module.def_map(db);
                 let mod_data = &def_map[module.local_id];
 
-                match mod_data.origin {
-                    ModuleOrigin::File { definition, declaration_tree_id, .. } => {
+                let raw_attrs = match mod_data.origin {
+                    ModuleOrigin::File { definition, declaration_tree_id, declaration, .. } => {
                         let decl_attrs = declaration_tree_id
                             .item_tree(db)
-                            .raw_attrs(AttrOwner::ModItem(declaration_tree_id.value.into()))
+                            .raw_attrs(declaration.upcast())
                             .clone();
                         let tree = db.file_item_tree(definition.into());
-                        let def_attrs = tree.raw_attrs(AttrOwner::TopLevel).clone();
+                        let def_attrs = tree.top_level_raw_attrs().clone();
                         decl_attrs.merge(def_attrs)
                     }
                     ModuleOrigin::CrateRoot { definition } => {
                         let tree = db.file_item_tree(definition.into());
-                        tree.raw_attrs(AttrOwner::TopLevel).clone()
+                        tree.top_level_raw_attrs().clone()
                     }
-                    ModuleOrigin::Inline { definition_tree_id, .. } => definition_tree_id
-                        .item_tree(db)
-                        .raw_attrs(AttrOwner::ModItem(definition_tree_id.value.into()))
-                        .clone(),
+                    ModuleOrigin::Inline { definition_tree_id, definition } => {
+                        definition_tree_id.item_tree(db).raw_attrs(definition.upcast()).clone()
+                    }
                     ModuleOrigin::BlockExpr { id, .. } => {
-                        let tree = db.block_item_tree(id);
-                        tree.raw_attrs(AttrOwner::TopLevel).clone()
+                        let tree = block_item_tree_query(db, id);
+                        tree.top_level_raw_attrs().clone()
                     }
-                }
+                };
+                Attrs::expand_cfg_attr(db, module.krate, raw_attrs)
             }
-            AttrDefId::FieldId(it) => {
-                return db.fields_attrs(it.parent)[it.local_id].clone();
-            }
-            AttrDefId::EnumVariantId(it) => attrs_from_item_tree_loc(db, it),
+            AttrDefId::FieldId(it) => db.fields_attrs(it.parent)[it.local_id].clone(),
+            AttrDefId::EnumVariantId(it) => attrs_from_ast_id_loc(db, it),
             AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => attrs_from_item_tree_loc(db, it),
-                AdtId::EnumId(it) => attrs_from_item_tree_loc(db, it),
-                AdtId::UnionId(it) => attrs_from_item_tree_loc(db, it),
+                AdtId::StructId(it) => attrs_from_ast_id_loc(db, it),
+                AdtId::EnumId(it) => attrs_from_ast_id_loc(db, it),
+                AdtId::UnionId(it) => attrs_from_ast_id_loc(db, it),
             },
-            AttrDefId::TraitId(it) => attrs_from_item_tree_loc(db, it),
-            AttrDefId::TraitAliasId(it) => attrs_from_item_tree_loc(db, it),
+            AttrDefId::TraitId(it) => attrs_from_ast_id_loc(db, it),
+            AttrDefId::TraitAliasId(it) => attrs_from_ast_id_loc(db, it),
             AttrDefId::MacroId(it) => match it {
-                MacroId::Macro2Id(it) => attrs_from_item_tree_loc(db, it),
-                MacroId::MacroRulesId(it) => attrs_from_item_tree_loc(db, it),
-                MacroId::ProcMacroId(it) => attrs_from_item_tree_loc(db, it),
+                MacroId::Macro2Id(it) => attrs_from_ast_id_loc(db, it),
+                MacroId::MacroRulesId(it) => attrs_from_ast_id_loc(db, it),
+                MacroId::ProcMacroId(it) => attrs_from_ast_id_loc(db, it),
             },
-            AttrDefId::ImplId(it) => attrs_from_item_tree_loc(db, it),
-            AttrDefId::ConstId(it) => attrs_from_item_tree_loc(db, it),
-            AttrDefId::StaticId(it) => attrs_from_item_tree_loc(db, it),
-            AttrDefId::FunctionId(it) => attrs_from_item_tree_loc(db, it),
-            AttrDefId::TypeAliasId(it) => attrs_from_item_tree_loc(db, it),
+            AttrDefId::ImplId(it) => attrs_from_ast_id_loc(db, it),
+            AttrDefId::ConstId(it) => attrs_from_ast_id_loc(db, it),
+            AttrDefId::StaticId(it) => attrs_from_ast_id_loc(db, it),
+            AttrDefId::FunctionId(it) => attrs_from_ast_id_loc(db, it),
+            AttrDefId::TypeAliasId(it) => attrs_from_ast_id_loc(db, it),
             AttrDefId::GenericParamId(it) => match it {
                 GenericParamId::ConstParamId(it) => {
                     let src = it.parent().child_source(db);
                     // FIXME: We should be never getting `None` here.
-                    return Attrs(match src.value.get(it.local_id()) {
+                    Attrs(match src.value.get(it.local_id()) {
                         Some(val) => RawAttrs::new_expanded(
                             db,
                             val,
@@ -550,12 +577,12 @@ impl AttrsWithOwner {
                             def.krate(db).cfg_options(db),
                         ),
                         None => RawAttrs::EMPTY,
-                    });
+                    })
                 }
                 GenericParamId::TypeParamId(it) => {
                     let src = it.parent().child_source(db);
                     // FIXME: We should be never getting `None` here.
-                    return Attrs(match src.value.get(it.local_id()) {
+                    Attrs(match src.value.get(it.local_id()) {
                         Some(val) => RawAttrs::new_expanded(
                             db,
                             val,
@@ -563,12 +590,12 @@ impl AttrsWithOwner {
                             def.krate(db).cfg_options(db),
                         ),
                         None => RawAttrs::EMPTY,
-                    });
+                    })
                 }
                 GenericParamId::LifetimeParamId(it) => {
                     let src = it.parent.child_source(db);
                     // FIXME: We should be never getting `None` here.
-                    return Attrs(match src.value.get(it.local_id) {
+                    Attrs(match src.value.get(it.local_id) {
                         Some(val) => RawAttrs::new_expanded(
                             db,
                             val,
@@ -576,16 +603,13 @@ impl AttrsWithOwner {
                             def.krate(db).cfg_options(db),
                         ),
                         None => RawAttrs::EMPTY,
-                    });
+                    })
                 }
             },
-            AttrDefId::ExternBlockId(it) => attrs_from_item_tree_loc(db, it),
-            AttrDefId::ExternCrateId(it) => attrs_from_item_tree_loc(db, it),
-            AttrDefId::UseId(it) => attrs_from_item_tree_loc(db, it),
-        };
-
-        let attrs = raw_attrs.expand_cfg_attr(db, def.krate(db));
-        Attrs(attrs)
+            AttrDefId::ExternBlockId(it) => attrs_from_ast_id_loc(db, it),
+            AttrDefId::ExternCrateId(it) => attrs_from_ast_id_loc(db, it),
+            AttrDefId::UseId(it) => attrs_from_ast_id_loc(db, it),
+        }
     }
 
     pub fn source_map(&self, db: &dyn DefDatabase) -> AttrSourceMap {
@@ -787,14 +811,15 @@ fn any_has_attrs<'db>(
     id.lookup(db).source(db).map(ast::AnyHasAttrs::new)
 }
 
-fn attrs_from_item_tree_loc<'db, N: ItemTreeNode>(
+fn attrs_from_ast_id_loc<'db, N: AstIdNode + HasAttrs>(
     db: &(dyn DefDatabase + 'db),
-    lookup: impl Lookup<Database = dyn DefDatabase, Data = impl ItemTreeLoc<Id = N>>,
-) -> RawAttrs {
-    let id = lookup.lookup(db).item_tree_id();
-    let tree = id.item_tree(db);
-    let attr_owner = N::attr_owner(id.value);
-    tree.raw_attrs(attr_owner).clone()
+    lookup: impl Lookup<Database = dyn DefDatabase, Data = impl AstIdLoc<Ast = N> + HasModule>,
+) -> Attrs {
+    let loc = lookup.lookup(db);
+    let source = loc.source(db);
+    let span_map = db.span_map(source.file_id);
+    let cfg_options = loc.krate(db).cfg_options(db);
+    Attrs(RawAttrs::new_expanded(db, &source.value, span_map.as_ref(), cfg_options))
 }
 
 pub(crate) fn fields_attrs_source_map(

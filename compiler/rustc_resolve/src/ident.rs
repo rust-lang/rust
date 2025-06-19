@@ -460,6 +460,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 true,
                                 force,
                                 ignore_import,
+                                None,
                             ) {
                                 Ok((Some(ext), _)) => {
                                     if ext.helper_attrs.contains(&ident.name) {

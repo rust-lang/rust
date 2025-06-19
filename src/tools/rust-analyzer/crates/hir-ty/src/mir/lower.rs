@@ -1922,11 +1922,14 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 let edition = self.edition();
                 let db = self.db;
                 let loc = variant.lookup(db);
-                let enum_loc = loc.parent.lookup(db);
                 let name = format!(
                     "{}::{}",
-                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db, edition),
-                    loc.id.item_tree(db)[loc.id.value].name.display(db, edition),
+                    self.db.enum_signature(loc.parent).name.display(db, edition),
+                    loc.parent
+                        .enum_variants(self.db)
+                        .variant_name_by_id(variant)
+                        .unwrap()
+                        .display(db, edition),
                 );
                 Err(MirLowerError::ConstEvalError(name.into(), Box::new(e)))
             }
@@ -2152,7 +2155,7 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
             .to_string(),
         DefWithBodyId::VariantId(it) => {
             let loc = it.lookup(db);
-            db.enum_variants(loc.parent).variants[loc.index as usize]
+            loc.parent.enum_variants(db).variants[loc.index as usize]
                 .1
                 .display(db, edition)
                 .to_string()

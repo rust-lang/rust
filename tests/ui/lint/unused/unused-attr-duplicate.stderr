@@ -103,19 +103,6 @@ LL | #[automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:74:1
-   |
-LL | #[inline(never)]
-   | ^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:73:1
-   |
-LL | #[inline(always)]
-   | ^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:77:1
    |
 LL | #[cold]
@@ -288,6 +275,19 @@ note: attribute also specified here
    |
 LL |     #[macro_export]
    |     ^^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:74:1
+   |
+LL | #[inline(never)]
+   | ^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:73:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 23 previous errors
 

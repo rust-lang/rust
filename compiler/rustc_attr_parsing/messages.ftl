@@ -23,8 +23,10 @@ attr_parsing_expects_feature_list =
 attr_parsing_expects_features =
     `{$name}` expects feature names
 
-attr_parsing_incorrect_meta_item = expected a quoted string literal
-attr_parsing_incorrect_meta_item_suggestion = consider surrounding this with quotes
+attr_parsing_ill_formed_attribute_input = {$num_suggestions ->
+        [1] attribute must be of the form {$suggestions}
+        *[other] valid forms for the attribute are {$suggestions}
+    }
 
 attr_parsing_incorrect_repr_format_align_one_arg =
     incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
@@ -81,9 +83,6 @@ attr_parsing_missing_note =
 attr_parsing_missing_since =
     missing 'since'
 
-attr_parsing_multiple_item =
-    multiple '{$item}' items
-
 attr_parsing_multiple_stability_levels =
     multiple stability levels
 
@@ -122,16 +121,21 @@ attr_parsing_unsupported_literal_cfg_boolean =
     literal in `cfg` predicate value must be a boolean
 attr_parsing_unsupported_literal_cfg_string =
     literal in `cfg` predicate value must be a string
-attr_parsing_unsupported_literal_deprecated_kv_pair =
-    item in `deprecated` must be a key/value pair
-attr_parsing_unsupported_literal_deprecated_string =
-    literal in `deprecated` value must be a string
 attr_parsing_unsupported_literal_generic =
     unsupported literal
 attr_parsing_unsupported_literal_suggestion =
     consider removing the prefix
 
+attr_parsing_unused_duplicate =
+    unused attribute
+    .suggestion = remove this attribute
+    .note = attribute also specified here
+    .warn = {-passes_previously_accepted}
+
 attr_parsing_unused_multiple =
     multiple `{$name}` attributes
     .suggestion = remove this attribute
     .note = attribute also specified here
+
+-attr_parsing_perviously_accepted =
+    this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

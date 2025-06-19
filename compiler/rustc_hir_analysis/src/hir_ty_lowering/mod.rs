@@ -2708,16 +2708,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    pub fn lower_arg_ty(&self, ty: &hir::Ty<'tcx>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
-        match ty.kind {
-            hir::TyKind::Infer(()) if let Some(expected_ty) = expected_ty => {
-                self.record_ty(ty.hir_id, expected_ty, ty.span);
-                expected_ty
-            }
-            _ => self.lower_ty(ty),
-        }
-    }
-
     /// Lower a function type from the HIR to our internal notion of a function signature.
     #[instrument(level = "debug", skip(self, hir_id, safety, abi, decl, generics, hir_ty), ret)]
     pub fn lower_fn_ty(

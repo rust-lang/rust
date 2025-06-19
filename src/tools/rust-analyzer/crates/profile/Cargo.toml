@@ -12,7 +12,7 @@ rust-version.workspace = true
 [lib]
 
 [dependencies]
-cfg-if = "1.0.0"
+cfg-if = "1.0.1"
 jemalloc-ctl = { version = "0.5.4", package = "tikv-jemalloc-ctl", optional = true }
 
 [target.'cfg(all(target_os = "linux", not(target_env = "ohos")))'.dependencies]
@@ -22,7 +22,7 @@ perf-event = "=0.4.7"
 libc.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = [
+windows-sys = { version = "0.60", features = [
     "Win32_System_Threading",
     "Win32_System_ProcessStatus",
 ] }

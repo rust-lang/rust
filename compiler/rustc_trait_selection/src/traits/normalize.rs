@@ -224,7 +224,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             )
             .ok()
             .flatten()
-            .unwrap_or(proj.to_term(infcx.tcx));
+            .unwrap_or_else(|| proj.to_term(infcx.tcx));
 
             PlaceholderReplacer::replace_placeholders(
                 infcx,

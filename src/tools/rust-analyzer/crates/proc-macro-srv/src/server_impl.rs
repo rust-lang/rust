@@ -199,37 +199,29 @@ pub(super) fn from_token_tree<Span: Copy>(
         }
 
         bridge::TokenTree::Literal(literal) => {
-            let token_trees =
-                if let Some((_minus, symbol)) = literal.symbol.as_str().split_once('-') {
-                    let punct = tt::Punct {
-                        spacing: tt::Spacing::Alone,
-                        span: literal.span,
-                        char: '-' as char,
-                    };
-                    let leaf: tt::Leaf<Span> = tt::Leaf::from(punct);
-                    let minus_tree = tt::TokenTree::from(leaf);
-
-                    let literal = tt::Literal {
-                        symbol: Symbol::intern(symbol),
-                        suffix: literal.suffix,
-                        span: literal.span,
-                        kind: literal_kind_to_internal(literal.kind),
-                    };
-                    let leaf: tt::Leaf<Span> = tt::Leaf::from(literal);
-                    let tree = tt::TokenTree::from(leaf);
-                    vec![minus_tree, tree]
-                } else {
-                    let literal = tt::Literal {
-                        symbol: literal.symbol,
-                        suffix: literal.suffix,
-                        span: literal.span,
-                        kind: literal_kind_to_internal(literal.kind),
-                    };
-
-                    let leaf: tt::Leaf<Span> = tt::Leaf::from(literal);
-                    let tree = tt::TokenTree::from(leaf);
-                    vec![tree]
-                };
+            let mut token_trees = Vec::new();
+            let mut symbol = literal.symbol;
+            if matches!(
+                literal.kind,
+                proc_macro::bridge::LitKind::Integer | proc_macro::bridge::LitKind::Float
+            ) && symbol.as_str().starts_with('-')
+            {
+                token_trees.push(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
+                    spacing: tt::Spacing::Alone,
+                    span: literal.span,
+                    char: '-' as char,
+                })));
+                symbol = Symbol::intern(&symbol.as_str()[1..]);
+            }
+            let literal = tt::Literal {
+                symbol,
+                suffix: literal.suffix,
+                span: literal.span,
+                kind: literal_kind_to_internal(literal.kind),
+            };
+            let leaf: tt::Leaf<Span> = tt::Leaf::from(literal);
+            let tree = tt::TokenTree::from(leaf);
+            token_trees.push(tree);
             TokenStream { token_trees }
         }
 

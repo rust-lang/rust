@@ -72,7 +72,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Functions with no declared return type (i.e., the default return)
             // have the output_type `Tuple([])`.
-            ty::Tuple(t_list) if t_list.is_empty() => {
+            ty::Tuple(t_list) if (*t_list).deref().is_empty() => {
                 unsafe { ffi::call::<()>(ptr, libffi_args.as_slice()) };
                 return interp_ok(ImmTy::uninit(dest.layout));
             }

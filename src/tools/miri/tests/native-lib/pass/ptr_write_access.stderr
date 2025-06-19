@@ -1,8 +1,8 @@
-warning: sharing memory with a native function
+warning: sharing memory with a native function called via FFI
   --> tests/native-lib/pass/ptr_write_access.rs:LL:CC
    |
 LL |     unsafe { increment_int(&mut x) };
-   |              ^^^^^^^^^^^^^^^^^^^^^ sharing memory with a native function called via FFI
+   |              ^^^^^^^^^^^^^^^^^^^^^ sharing memory with a native function
    |
    = help: when memory is shared with a native function call, Miri stops tracking initialization and provenance for that memory
    = help: in particular, Miri assumes that the native call initializes all memory it has access to

@@ -32,7 +32,7 @@ use triomphe::Arc;
 
 use crate::{
     CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, FnDefId, Interner,
-    MemoryMap, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    MemoryMap, Substitution, ToChalk, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
     consteval::{ConstEvalError, intern_const_scalar, try_const_usize},
     db::{HirDatabase, InternedClosure},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
@@ -1631,7 +1631,7 @@ impl Evaluator<'_> {
             Variants::Empty => unreachable!(),
             Variants::Single { index } => {
                 let r =
-                    self.const_eval_discriminant(self.db.enum_variants(e).variants[index.0].0)?;
+                    self.const_eval_discriminant(e.enum_variants(self.db).variants[index.0].0)?;
                 Ok(r)
             }
             Variants::Multiple { tag, tag_encoding, variants, .. } => {
@@ -1656,7 +1656,7 @@ impl Evaluator<'_> {
                             .unwrap_or(*untagged_variant)
                             .0;
                         let result =
-                            self.const_eval_discriminant(self.db.enum_variants(e).variants[idx].0)?;
+                            self.const_eval_discriminant(e.enum_variants(self.db).variants[idx].0)?;
                         Ok(result)
                     }
                 }
@@ -2771,12 +2771,15 @@ impl Evaluator<'_> {
             Err(e) => {
                 let db = self.db;
                 let loc = variant.lookup(db);
-                let enum_loc = loc.parent.lookup(db);
                 let edition = self.crate_id.data(self.db).edition;
                 let name = format!(
                     "{}::{}",
-                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db, edition),
-                    loc.id.item_tree(db)[loc.id.value].name.display(db, edition),
+                    self.db.enum_signature(loc.parent).name.display(db, edition),
+                    loc.parent
+                        .enum_variants(self.db)
+                        .variant_name_by_id(variant)
+                        .unwrap()
+                        .display(db, edition),
                 );
                 Err(MirEvalError::ConstEvalError(name, Box::new(e)))
             }
@@ -2927,7 +2930,7 @@ pub fn render_const_using_debug_impl(
     let a2 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size())?;
     evaluator.write_memory(a2, &data.addr.to_bytes())?;
     let debug_fmt_fn_ptr = evaluator.vtable_map.id(TyKind::FnDef(
-        db.intern_callable_def(debug_fmt_fn.into()).into(),
+        CallableDefId::FunctionId(debug_fmt_fn).to_chalk(db),
         Substitution::from1(Interner, c.data(Interner).ty.clone()),
     )
     .intern(Interner));

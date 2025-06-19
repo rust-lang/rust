@@ -421,4 +421,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Added new bootstrap flag `--skip-std-check-if-no-download-rustc` that skips std checks when download-rustc is unavailable. Mainly intended for developers to reduce RA overhead.",
     },
+    ChangeInfo {
+        change_id: 142379,
+        severity: ChangeSeverity::Info,
+        summary: "Added new option `tool.TOOL_NAME.features` to specify the features to compile a tool with",
+    },
 ];

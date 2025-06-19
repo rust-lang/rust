@@ -10,8 +10,12 @@
 #![feature(abi_ptx, lang_items, no_core)]
 #![no_core]
 
+#[lang = "pointee_sized"]
+trait PointeeSized {}
+#[lang = "meta_sized"]
+trait MetaSized: PointeeSized {}
 #[lang = "sized"]
-trait Sized {}
+trait Sized: MetaSized {}
 #[lang = "copy"]
 trait Copy {}
 

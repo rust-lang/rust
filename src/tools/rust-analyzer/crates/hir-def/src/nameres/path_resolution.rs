@@ -12,7 +12,6 @@
 
 use either::Either;
 use hir_expand::{
-    Lookup,
     mod_path::{ModPath, PathKind},
     name::Name,
 };
@@ -107,7 +106,7 @@ impl DefMap {
         visibility: &RawVisibility,
         within_impl: bool,
     ) -> Option<Visibility> {
-        let mut vis = match visibility {
+        let vis = match visibility {
             RawVisibility::Module(path, explicitness) => {
                 let (result, remaining) = self.resolve_path(
                     local_def_map,
@@ -121,29 +120,36 @@ impl DefMap {
                     return None;
                 }
                 let types = result.take_types()?;
-                match types {
+                let mut vis = match types {
                     ModuleDefId::ModuleId(m) => Visibility::Module(m, *explicitness),
                     // error: visibility needs to refer to module
                     _ => {
                         return None;
                     }
+                };
+
+                // In block expressions, `self` normally refers to the containing non-block module, and
+                // `super` to its parent (etc.). However, visibilities must only refer to a module in the
+                // DefMap they're written in, so we restrict them when that happens.
+                if let Visibility::Module(m, mv) = vis {
+                    // ...unless we're resolving visibility for an associated item in an impl.
+                    if self.block_id() != m.block && !within_impl {
+                        vis = Visibility::Module(self.module_id(Self::ROOT), mv);
+                        tracing::debug!(
+                            "visibility {:?} points outside DefMap, adjusting to {:?}",
+                            m,
+                            vis
+                        );
+                    }
                 }
+                vis
+            }
+            RawVisibility::PubSelf(explicitness) => {
+                Visibility::Module(self.module_id(original_module), *explicitness)
             }
             RawVisibility::Public => Visibility::Public,
+            RawVisibility::PubCrate => Visibility::PubCrate(self.krate),
         };
-
-        // In block expressions, `self` normally refers to the containing non-block module, and
-        // `super` to its parent (etc.). However, visibilities must only refer to a module in the
-        // DefMap they're written in, so we restrict them when that happens.
-        if let Visibility::Module(m, mv) = vis {
-            // ...unless we're resolving visibility for an associated item in an impl.
-            if self.block_id() != m.block && !within_impl {
-                cov_mark::hit!(adjust_vis_in_block_def_map);
-                vis = Visibility::Module(self.module_id(Self::ROOT), mv);
-                tracing::debug!("visibility {:?} points outside DefMap, adjusting to {:?}", m, vis);
-            }
-        }
-
         Some(vis)
     }
 
@@ -529,23 +535,22 @@ impl DefMap {
                     // enum variant
                     cov_mark::hit!(can_import_enum_variant);
 
-                    let res =
-                        db.enum_variants(e).variants.iter().find(|(_, name)| name == segment).map(
-                            |&(variant, _)| {
-                                let item_tree_id = variant.lookup(db).id;
-                                match item_tree_id.item_tree(db)[item_tree_id.value].shape {
-                                    FieldsShape::Record => {
-                                        PerNs::types(variant.into(), Visibility::Public, None)
-                                    }
-                                    FieldsShape::Tuple | FieldsShape::Unit => PerNs::both(
-                                        variant.into(),
-                                        variant.into(),
-                                        Visibility::Public,
-                                        None,
-                                    ),
-                                }
-                            },
-                        );
+                    let res = e
+                        .enum_variants(db)
+                        .variants
+                        .iter()
+                        .find(|(_, name, _)| name == segment)
+                        .map(|&(variant, _, shape)| match shape {
+                            FieldsShape::Record => {
+                                PerNs::types(variant.into(), Visibility::Public, None)
+                            }
+                            FieldsShape::Tuple | FieldsShape::Unit => PerNs::both(
+                                variant.into(),
+                                variant.into(),
+                                Visibility::Public,
+                                None,
+                            ),
+                        });
                     // FIXME: Need to filter visibility here and below? Not sure.
                     return match res {
                         Some(res) => {

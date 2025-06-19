@@ -22,9 +22,10 @@ pub const HAS_GLOBAL_SPANS: u32 = 3;
 pub const RUST_ANALYZER_SPAN_SUPPORT: u32 = 4;
 /// Whether literals encode their kind as an additional u32 field and idents their rawness as a u32 field.
 pub const EXTENDED_LEAF_DATA: u32 = 5;
+pub const HASHED_AST_ID: u32 = 6;
 
 /// Current API version of the proc-macro protocol.
-pub const CURRENT_API_VERSION: u32 = EXTENDED_LEAF_DATA;
+pub const CURRENT_API_VERSION: u32 = HASHED_AST_ID;
 
 /// Represents requests sent from the client to the proc-macro-srv.
 #[derive(Debug, Serialize, Deserialize)]
@@ -201,7 +202,9 @@ type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) 
 #[cfg(test)]
 mod tests {
     use intern::{Symbol, sym};
-    use span::{Edition, ErasedFileAstId, Span, SpanAnchor, SyntaxContext, TextRange, TextSize};
+    use span::{
+        Edition, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TextRange, TextSize,
+    };
     use tt::{
         Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, TopSubtree,
         TopSubtreeBuilder,
@@ -215,7 +218,7 @@ mod tests {
                 span::FileId::from_raw(0xe4e4e),
                 span::Edition::CURRENT,
             ),
-            ast_id: ErasedFileAstId::from_raw(0),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
         };
 
         let mut builder = TopSubtreeBuilder::new(Delimiter {

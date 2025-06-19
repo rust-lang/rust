@@ -29,7 +29,7 @@ use rustc_errors::LintDiagnostic;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
+use rustc_index::bit_set::MixedBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
@@ -1151,11 +1151,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         &self,
         location: Location,
         state: &'s BorrowckDomain,
-    ) -> Cow<'s, DenseBitSet<BorrowIndex>> {
+    ) -> Cow<'s, MixedBitSet<BorrowIndex>> {
         if let Some(polonius) = &self.polonius_output {
             // Use polonius output if it has been enabled.
             let location = self.location_table.start_index(location);
-            let mut polonius_output = DenseBitSet::new_empty(self.borrow_set.len());
+            let mut polonius_output = MixedBitSet::new_empty(self.borrow_set.len());
             for &idx in polonius.errors_at(location) {
                 polonius_output.insert(idx);
             }

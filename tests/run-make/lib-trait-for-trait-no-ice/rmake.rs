@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Inside a library, implementing a trait for another trait
 // with a lifetime used to cause an internal compiler error (ICE).
 // This test checks that this bug does not make a resurgence -

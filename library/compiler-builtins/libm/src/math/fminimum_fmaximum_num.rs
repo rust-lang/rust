@@ -74,24 +74,77 @@ mod tests {
     fn fminimum_num_spec_test<F: Float>(f: impl Fn(F, F) -> F) {
         let cases = [
             (F::ZERO, F::ZERO, F::ZERO),
-            (F::ONE, F::ONE, F::ONE),
-            (F::ZERO, F::ONE, F::ZERO),
-            (F::ONE, F::ZERO, F::ZERO),
-            (F::ZERO, F::NEG_ONE, F::NEG_ONE),
-            (F::NEG_ONE, F::ZERO, F::NEG_ONE),
-            (F::INFINITY, F::ZERO, F::ZERO),
-            (F::NEG_INFINITY, F::ZERO, F::NEG_INFINITY),
-            (F::NAN, F::ZERO, F::ZERO),
-            (F::ZERO, F::NAN, F::ZERO),
-            (F::NAN, F::NAN, F::NAN),
             (F::ZERO, F::NEG_ZERO, F::NEG_ZERO),
+            (F::ZERO, F::ONE, F::ZERO),
+            (F::ZERO, F::NEG_ONE, F::NEG_ONE),
+            (F::ZERO, F::INFINITY, F::ZERO),
+            (F::ZERO, F::NEG_INFINITY, F::NEG_INFINITY),
+            (F::ZERO, F::NAN, F::ZERO),
+            (F::ZERO, F::NEG_NAN, F::ZERO),
             (F::NEG_ZERO, F::ZERO, F::NEG_ZERO),
+            (F::NEG_ZERO, F::NEG_ZERO, F::NEG_ZERO),
+            (F::NEG_ZERO, F::ONE, F::NEG_ZERO),
+            (F::NEG_ZERO, F::NEG_ONE, F::NEG_ONE),
+            (F::NEG_ZERO, F::INFINITY, F::NEG_ZERO),
+            (F::NEG_ZERO, F::NEG_INFINITY, F::NEG_INFINITY),
+            (F::NEG_ZERO, F::NAN, F::NEG_ZERO),
+            (F::NEG_ZERO, F::NEG_NAN, F::NEG_ZERO),
+            (F::ONE, F::ZERO, F::ZERO),
+            (F::ONE, F::NEG_ZERO, F::NEG_ZERO),
+            (F::ONE, F::ONE, F::ONE),
+            (F::ONE, F::NEG_ONE, F::NEG_ONE),
+            (F::ONE, F::INFINITY, F::ONE),
+            (F::ONE, F::NEG_INFINITY, F::NEG_INFINITY),
+            (F::ONE, F::NAN, F::ONE),
+            (F::ONE, F::NEG_NAN, F::ONE),
+            (F::NEG_ONE, F::ZERO, F::NEG_ONE),
+            (F::NEG_ONE, F::NEG_ZERO, F::NEG_ONE),
+            (F::NEG_ONE, F::ONE, F::NEG_ONE),
+            (F::NEG_ONE, F::NEG_ONE, F::NEG_ONE),
+            (F::NEG_ONE, F::INFINITY, F::NEG_ONE),
+            (F::NEG_ONE, F::NEG_INFINITY, F::NEG_INFINITY),
+            (F::NEG_ONE, F::NAN, F::NEG_ONE),
+            (F::NEG_ONE, F::NEG_NAN, F::NEG_ONE),
+            (F::INFINITY, F::ZERO, F::ZERO),
+            (F::INFINITY, F::NEG_ZERO, F::NEG_ZERO),
+            (F::INFINITY, F::ONE, F::ONE),
+            (F::INFINITY, F::NEG_ONE, F::NEG_ONE),
+            (F::INFINITY, F::INFINITY, F::INFINITY),
+            (F::INFINITY, F::NEG_INFINITY, F::NEG_INFINITY),
+            (F::INFINITY, F::NAN, F::INFINITY),
+            (F::INFINITY, F::NEG_NAN, F::INFINITY),
+            (F::NEG_INFINITY, F::ZERO, F::NEG_INFINITY),
+            (F::NEG_INFINITY, F::NEG_ZERO, F::NEG_INFINITY),
+            (F::NEG_INFINITY, F::ONE, F::NEG_INFINITY),
+            (F::NEG_INFINITY, F::NEG_ONE, F::NEG_INFINITY),
+            (F::NEG_INFINITY, F::INFINITY, F::NEG_INFINITY),
+            (F::NEG_INFINITY, F::NEG_INFINITY, F::NEG_INFINITY),
+            (F::NEG_INFINITY, F::NAN, F::NEG_INFINITY),
+            (F::NEG_INFINITY, F::NEG_NAN, F::NEG_INFINITY),
+            (F::NAN, F::ZERO, F::ZERO),
+            (F::NAN, F::NEG_ZERO, F::NEG_ZERO),
+            (F::NAN, F::ONE, F::ONE),
+            (F::NAN, F::NEG_ONE, F::NEG_ONE),
+            (F::NAN, F::INFINITY, F::INFINITY),
+            (F::NAN, F::NEG_INFINITY, F::NEG_INFINITY),
+            (F::NAN, F::NAN, F::NAN),
+            (F::NEG_NAN, F::ZERO, F::ZERO),
+            (F::NEG_NAN, F::NEG_ZERO, F::NEG_ZERO),
+            (F::NEG_NAN, F::ONE, F::ONE),
+            (F::NEG_NAN, F::NEG_ONE, F::NEG_ONE),
+            (F::NEG_NAN, F::INFINITY, F::INFINITY),
+            (F::NEG_NAN, F::NEG_INFINITY, F::NEG_INFINITY),
         ];
 
-        for (x, y, res) in cases {
-            let val = f(x, y);
-            assert_biteq!(val, res, "fminimum_num({}, {})", Hexf(x), Hexf(y));
+        for (x, y, expected) in cases {
+            let actual = f(x, y);
+            assert_biteq!(actual, expected, "fminimum_num({}, {})", Hexf(x), Hexf(y));
         }
+
+        // Ordering between NaNs does not matter
+        assert!(f(F::NAN, F::NEG_NAN).is_nan());
+        assert!(f(F::NEG_NAN, F::NAN).is_nan());
+        assert!(f(F::NEG_NAN, F::NEG_NAN).is_nan());
     }
 
     #[test]
@@ -119,24 +172,77 @@ mod tests {
     fn fmaximum_num_spec_test<F: Float>(f: impl Fn(F, F) -> F) {
         let cases = [
             (F::ZERO, F::ZERO, F::ZERO),
-            (F::ONE, F::ONE, F::ONE),
-            (F::ZERO, F::ONE, F::ONE),
-            (F::ONE, F::ZERO, F::ONE),
-            (F::ZERO, F::NEG_ONE, F::ZERO),
-            (F::NEG_ONE, F::ZERO, F::ZERO),
-            (F::INFINITY, F::ZERO, F::INFINITY),
-            (F::NEG_INFINITY, F::ZERO, F::ZERO),
-            (F::NAN, F::ZERO, F::ZERO),
-            (F::ZERO, F::NAN, F::ZERO),
-            (F::NAN, F::NAN, F::NAN),
             (F::ZERO, F::NEG_ZERO, F::ZERO),
+            (F::ZERO, F::ONE, F::ONE),
+            (F::ZERO, F::NEG_ONE, F::ZERO),
+            (F::ZERO, F::INFINITY, F::INFINITY),
+            (F::ZERO, F::NEG_INFINITY, F::ZERO),
+            (F::ZERO, F::NAN, F::ZERO),
+            (F::ZERO, F::NEG_NAN, F::ZERO),
             (F::NEG_ZERO, F::ZERO, F::ZERO),
+            (F::NEG_ZERO, F::NEG_ZERO, F::NEG_ZERO),
+            (F::NEG_ZERO, F::ONE, F::ONE),
+            (F::NEG_ZERO, F::NEG_ONE, F::NEG_ZERO),
+            (F::NEG_ZERO, F::INFINITY, F::INFINITY),
+            (F::NEG_ZERO, F::NEG_INFINITY, F::NEG_ZERO),
+            (F::NEG_ZERO, F::NAN, F::NEG_ZERO),
+            (F::NEG_ZERO, F::NEG_NAN, F::NEG_ZERO),
+            (F::ONE, F::ZERO, F::ONE),
+            (F::ONE, F::NEG_ZERO, F::ONE),
+            (F::ONE, F::ONE, F::ONE),
+            (F::ONE, F::NEG_ONE, F::ONE),
+            (F::ONE, F::INFINITY, F::INFINITY),
+            (F::ONE, F::NEG_INFINITY, F::ONE),
+            (F::ONE, F::NAN, F::ONE),
+            (F::ONE, F::NEG_NAN, F::ONE),
+            (F::NEG_ONE, F::ZERO, F::ZERO),
+            (F::NEG_ONE, F::NEG_ZERO, F::NEG_ZERO),
+            (F::NEG_ONE, F::ONE, F::ONE),
+            (F::NEG_ONE, F::NEG_ONE, F::NEG_ONE),
+            (F::NEG_ONE, F::INFINITY, F::INFINITY),
+            (F::NEG_ONE, F::NEG_INFINITY, F::NEG_ONE),
+            (F::NEG_ONE, F::NAN, F::NEG_ONE),
+            (F::NEG_ONE, F::NEG_NAN, F::NEG_ONE),
+            (F::INFINITY, F::ZERO, F::INFINITY),
+            (F::INFINITY, F::NEG_ZERO, F::INFINITY),
+            (F::INFINITY, F::ONE, F::INFINITY),
+            (F::INFINITY, F::NEG_ONE, F::INFINITY),
+            (F::INFINITY, F::INFINITY, F::INFINITY),
+            (F::INFINITY, F::NEG_INFINITY, F::INFINITY),
+            (F::INFINITY, F::NAN, F::INFINITY),
+            (F::INFINITY, F::NEG_NAN, F::INFINITY),
+            (F::NEG_INFINITY, F::ZERO, F::ZERO),
+            (F::NEG_INFINITY, F::NEG_ZERO, F::NEG_ZERO),
+            (F::NEG_INFINITY, F::ONE, F::ONE),
+            (F::NEG_INFINITY, F::NEG_ONE, F::NEG_ONE),
+            (F::NEG_INFINITY, F::INFINITY, F::INFINITY),
+            (F::NEG_INFINITY, F::NEG_INFINITY, F::NEG_INFINITY),
+            (F::NEG_INFINITY, F::NAN, F::NEG_INFINITY),
+            (F::NEG_INFINITY, F::NEG_NAN, F::NEG_INFINITY),
+            (F::NAN, F::ZERO, F::ZERO),
+            (F::NAN, F::NEG_ZERO, F::NEG_ZERO),
+            (F::NAN, F::ONE, F::ONE),
+            (F::NAN, F::NEG_ONE, F::NEG_ONE),
+            (F::NAN, F::INFINITY, F::INFINITY),
+            (F::NAN, F::NEG_INFINITY, F::NEG_INFINITY),
+            (F::NAN, F::NAN, F::NAN),
+            (F::NEG_NAN, F::ZERO, F::ZERO),
+            (F::NEG_NAN, F::NEG_ZERO, F::NEG_ZERO),
+            (F::NEG_NAN, F::ONE, F::ONE),
+            (F::NEG_NAN, F::NEG_ONE, F::NEG_ONE),
+            (F::NEG_NAN, F::INFINITY, F::INFINITY),
+            (F::NEG_NAN, F::NEG_INFINITY, F::NEG_INFINITY),
         ];
 
-        for (x, y, res) in cases {
-            let val = f(x, y);
-            assert_biteq!(val, res, "fmaximum_num({}, {})", Hexf(x), Hexf(y));
+        for (x, y, expected) in cases {
+            let actual = f(x, y);
+            assert_biteq!(actual, expected, "fmaximum_num({}, {})", Hexf(x), Hexf(y));
         }
+
+        // Ordering between NaNs does not matter
+        assert!(f(F::NAN, F::NEG_NAN).is_nan());
+        assert!(f(F::NEG_NAN, F::NAN).is_nan());
+        assert!(f(F::NEG_NAN, F::NEG_NAN).is_nan());
     }
 
     #[test]

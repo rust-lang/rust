@@ -47,7 +47,7 @@ impl EarlyLintPass for MultipleBoundLocations {
 
             for param in &generics.params {
                 if !param.bounds.is_empty() {
-                    generic_params_with_bounds.insert(param.ident.name.as_str(), param.ident.span);
+                    generic_params_with_bounds.insert(param.ident.as_str(), param.ident.span);
                 }
             }
             for clause in &generics.where_clause.predicates {
@@ -64,7 +64,7 @@ impl EarlyLintPass for MultipleBoundLocations {
                     },
                     WherePredicateKind::RegionPredicate(pred) => {
                         if !pred.bounds.is_empty()
-                            && let Some(bound_span) = generic_params_with_bounds.get(&pred.lifetime.ident.name.as_str())
+                            && let Some(bound_span) = generic_params_with_bounds.get(&pred.lifetime.ident.as_str())
                         {
                             emit_lint(cx, *bound_span, pred.lifetime.ident.span);
                         }

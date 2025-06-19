@@ -109,9 +109,9 @@ pub fn check(build: &mut Build) {
 
     // Ensure that a compatible version of libstdc++ is available on the system when using `llvm.download-ci-llvm`.
     #[cfg(not(test))]
-    if !build.config.dry_run() && !build.build.is_msvc() && build.config.llvm_from_ci {
+    if !build.config.dry_run() && !build.host_target.is_msvc() && build.config.llvm_from_ci {
         let builder = Builder::new(build);
-        let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.build });
+        let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.host_target });
 
         match libcxx_version {
             tool::LibcxxVersion::Gnu(version) => {
@@ -200,12 +200,14 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("reuse"));
 
-    let stage0_supported_target_list: HashSet<String> = crate::utils::helpers::output(
-        command(&build.config.initial_rustc).args(["--print", "target-list"]).as_command_mut(),
-    )
-    .lines()
-    .map(|s| s.to_string())
-    .collect();
+    let stage0_supported_target_list: HashSet<String> = command(&build.config.initial_rustc)
+        .args(["--print", "target-list"])
+        .run_always()
+        .run_capture_stdout(&build)
+        .stdout()
+        .lines()
+        .map(|s| s.to_string())
+        .collect();
 
     // Compiler tools like `cc` and `ar` are not configured for cross-targets on certain subcommands
     // because they are not needed.
@@ -237,7 +239,7 @@ than building it.
         }
 
         // skip check for cross-targets
-        if skip_target_sanity && target != &build.build {
+        if skip_target_sanity && target != &build.host_target {
             continue;
         }
 
@@ -308,7 +310,7 @@ than building it.
 
             if build.config.llvm_enabled(*host) {
                 // Externally configured LLVM requires FileCheck to exist
-                let filecheck = build.llvm_filecheck(build.build);
+                let filecheck = build.llvm_filecheck(build.host_target);
                 if !filecheck.starts_with(&build.out)
                     && !filecheck.exists()
                     && build.config.codegen_tests
@@ -333,7 +335,7 @@ than building it.
         }
 
         // skip check for cross-targets
-        if skip_target_sanity && target != &build.build {
+        if skip_target_sanity && target != &build.host_target {
             continue;
         }
 

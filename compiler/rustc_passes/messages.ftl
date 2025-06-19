@@ -290,6 +290,9 @@ passes_duplicate_lang_item_crate_depends =
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
+passes_enum_variant_same_name =
+    it is impossible to refer to the {$descr} `{$dead_name}` because it is shadowed by this enum variant with the same name
+
 passes_export_name =
     attribute should be applied to a free function, impl method or static
     .label = not a free function, impl method or static
@@ -715,6 +718,9 @@ passes_unknown_external_lang_item =
 
 passes_unknown_feature =
     unknown feature `{$feature}`
+
+passes_unknown_feature_alias =
+    feature `{$alias}` has been renamed to `{$feature}`
 
 passes_unknown_lang_item =
     definition of an unknown lang item: `{$name}`

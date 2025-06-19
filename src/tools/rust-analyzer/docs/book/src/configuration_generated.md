@@ -1531,6 +1531,13 @@ buck2's `rust-project` will likely be useful:
 https://github.com/facebook/buck2/tree/main/integrations/rust-project.
 
 
+## rust-analyzer.workspace.symbol.search.excludeImports {#workspace.symbol.search.excludeImports}
+
+Default: `false`
+
+Exclude imports from symbol search.
+
+
 ## rust-analyzer.workspace.symbol.search.kind {#workspace.symbol.search.kind}
 
 Default: `"only_types"`

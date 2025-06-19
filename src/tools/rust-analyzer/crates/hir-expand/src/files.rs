@@ -106,7 +106,7 @@ impl FileRange {
 /// It is stable across reparses, and can be used as salsa key/value.
 pub type AstId<N> = crate::InFile<FileAstId<N>>;
 
-impl<N: AstIdNode> AstId<N> {
+impl<N: AstNode> AstId<N> {
     pub fn to_node(&self, db: &dyn ExpandDatabase) -> N {
         self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
     }
@@ -121,6 +121,13 @@ impl<N: AstIdNode> AstId<N> {
     }
     pub fn erase(&self) -> ErasedAstId {
         crate::InFile::new(self.file_id, self.value.erase())
+    }
+    #[inline]
+    pub fn upcast<M: AstIdNode>(self) -> AstId<M>
+    where
+        N: Into<M>,
+    {
+        self.map(|it| it.upcast())
     }
 }
 

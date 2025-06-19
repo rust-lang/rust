@@ -109,6 +109,11 @@ mod in_place_collect;
 
 mod partial_eq;
 
+#[unstable(feature = "vec_peek_mut", issue = "122742")]
+pub use self::peek_mut::PeekMut;
+
+mod peek_mut;
+
 #[cfg(not(no_global_oom_handling))]
 use self::spec_from_elem::SpecFromElem;
 
@@ -728,6 +733,33 @@ impl<T> Vec<T> {
     #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
     pub unsafe fn from_parts(ptr: NonNull<T>, length: usize, capacity: usize) -> Self {
         unsafe { Self::from_parts_in(ptr, length, capacity, Global) }
+    }
+
+    /// Returns a mutable reference to the last item in the vector, or
+    /// `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(vec_peek_mut)]
+    /// let mut vec = Vec::new();
+    /// assert!(vec.peek_mut().is_none());
+    ///
+    /// vec.push(1);
+    /// vec.push(5);
+    /// vec.push(2);
+    /// assert_eq!(vec.last(), Some(&2));
+    /// if let Some(mut val) = vec.peek_mut() {
+    ///     *val = 0;
+    /// }
+    /// assert_eq!(vec.last(), Some(&0));
+    /// ```
+    #[inline]
+    #[unstable(feature = "vec_peek_mut", issue = "122742")]
+    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
+        PeekMut::new(self)
     }
 }
 

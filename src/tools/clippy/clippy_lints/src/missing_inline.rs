@@ -1,10 +1,11 @@
 use clippy_utils::diagnostics::span_lint;
+use rustc_attr_data_structures::{find_attr, AttributeKind};
 use rustc_hir as hir;
 use rustc_hir::Attribute;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::AssocItemContainer;
 use rustc_session::declare_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -64,8 +65,7 @@ declare_clippy_lint! {
 }
 
 fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[Attribute], sp: Span, desc: &'static str) {
-    let has_inline = attrs.iter().any(|a| a.has_name(sym::inline));
-    if !has_inline {
+    if !find_attr!(attrs, AttributeKind::Inline(..)) {
         span_lint(
             cx,
             MISSING_INLINE_IN_PUBLIC_ITEMS,

@@ -12,6 +12,7 @@ pub(crate) fn target() -> Target {
     base.stack_probes = StackProbeType::Inline;
     // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
     base.crt_static_default = true;
+    base.llvm_abiname = "elfv2".into();
 
     Target {
         llvm_target: "powerpc64-unknown-linux-musl".into(),

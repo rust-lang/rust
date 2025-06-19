@@ -128,7 +128,6 @@ impl [u8] {
     /// # Examples
     ///
     /// ```
-    ///
     /// let s = b"0\t\r\n'\"\\\x9d";
     /// let escaped = s.escape_ascii().to_string();
     /// assert_eq!(escaped, "0\\t\\r\\n\\'\\\"\\\\\\x9d");
@@ -309,7 +308,7 @@ impl<'a> fmt::Display for EscapeAscii<'a> {
 
             if let Some(&b) = bytes.first() {
                 // guaranteed to be non-empty, better to write it as a str
-                f.write_str(ascii::escape_default(b).as_str())?;
+                fmt::Display::fmt(&ascii::escape_default(b), f)?;
                 bytes = &bytes[1..];
             }
         }
