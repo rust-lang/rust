@@ -3,16 +3,39 @@
 
 use std::process::Command;
 
+use build_helper::ci::CiEnv;
+use build_helper::git::{GitConfig, get_closest_upstream_commit};
+use build_helper::stage0_parser::parse_stage0_file;
+
 fn git_diff(base_commit: &str, extra_arg: &str) -> Option<String> {
     let output = Command::new("git").arg("diff").arg(base_commit).arg(extra_arg).output().ok()?;
     Some(String::from_utf8_lossy(&output.stdout).into())
 }
 
 pub fn check(bad: &mut bool) {
-    let Ok(base_commit) = std::env::var("BASE_COMMIT") else {
-        // Not in CI so nothing we can check here.
-        println!("not checking rustdoc JSON `FORMAT_VERSION` update");
-        return;
+    println!("Checking tidy rustdoc_json...");
+    let stage0 = parse_stage0_file();
+    let base_commit = match get_closest_upstream_commit(
+        None,
+        &GitConfig {
+            nightly_branch: &stage0.config.nightly_branch,
+            git_merge_commit_email: &stage0.config.git_merge_commit_email,
+        },
+        CiEnv::current(),
+    ) {
+        Ok(Some(commit)) => commit,
+        Ok(None) => {
+            *bad = true;
+            eprintln!("No base commit found, skipping rustdoc_json check");
+            return;
+        }
+        Err(error) => {
+            *bad = true;
+            eprintln!(
+                "Failed to retrieve base commit for rustdoc_json check because of `{error}`, skipping it"
+            );
+            return;
+        }
     };
 
     // First we check that `src/rustdoc-json-types` was modified.
