@@ -2028,10 +2028,6 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 
 /// Performs a volatile read of the value from `src` without moving it.
 ///
-/// Rust does not currently have a rigorously and formally defined memory model, so the precise
-/// semantics of what "volatile" means here is subject to change over time. That being said, the
-/// semantics will almost always end up pretty similar to [C11's definition of volatile][c11].
-///
 /// Volatile operations are intended to act on I/O memory. As such, they are considered externally
 /// observable events (just like syscalls, but less opaque), and are guaranteed to not be elided or
 /// reordered by the compiler across other externally observable events. With this in mind, there
