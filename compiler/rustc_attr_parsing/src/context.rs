@@ -420,19 +420,13 @@ impl<'sess> AttributeParser<'sess, Early> {
 
         parsed.pop()
     }
-
-    pub fn new_early(sess: &'sess Session, features: &'sess Features, tools: Vec<Symbol>) -> Self {
-        Self { features: Some(features), tools, parse_only: None, sess, stage: PhantomData }
-    }
-}
-
-impl<'sess> AttributeParser<'sess, Late> {
-    pub fn new(sess: &'sess Session, features: &'sess Features, tools: Vec<Symbol>) -> Self {
-        Self { features: Some(features), tools, parse_only: None, sess, stage: PhantomData }
-    }
 }
 
 impl<'sess, S: Stage> AttributeParser<'sess, S> {
+    pub fn new(sess: &'sess Session, features: &'sess Features, tools: Vec<Symbol>) -> Self {
+        Self { features: Some(features), tools, parse_only: None, sess, stage: PhantomData }
+    }
+
     pub(crate) fn sess(&self) -> &'sess Session {
         &self.sess
     }
