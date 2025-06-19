@@ -1,7 +1,6 @@
 #![allow(internal_features)]
 //~^ ERROR:  module has missing stability attribute
 #![feature(staged_api)]
-#![feature(impl_stability)]
 #![allow(dead_code)]
 
 /// If #[unstable(..)] and #[unstable_feature_name(..)] have the same feature name,

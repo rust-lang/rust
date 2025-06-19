@@ -1,11 +1,11 @@
 error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_moo``
-  --> $DIR/unstable-feature-exact-symbol.rs:38:5
+  --> $DIR/unstable-feature-exact-symbol.rs:37:5
    |
 LL |     Bar::moo();
    |     ^^^ cannot satisfy `unstable feature: `feat_moo``
    |
 note: required for `Bar` to implement `Moo`
-  --> $DIR/unstable-feature-exact-symbol.rs:30:6
+  --> $DIR/unstable-feature-exact-symbol.rs:29:6
    |
 LL | #[unstable_feature_bound(feat_moo)]
    | ----------------------------------- unsatisfied trait bound introduced here

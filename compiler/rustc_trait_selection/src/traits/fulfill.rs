@@ -774,7 +774,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         }
                     }
 
-                    if self.selcx.tcx().features().impl_stability() {
+                    if self.selcx.tcx().features().staged_api() {
                         // If we are in std/core, and the feature is not enabled through #[unstable_feature_bound(..)].
                         return ProcessResult::Unchanged;
                     } else {

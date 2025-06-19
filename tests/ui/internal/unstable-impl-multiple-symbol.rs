@@ -2,7 +2,6 @@
 
 #![allow(internal_features)]
 #![feature(staged_api)]
-#![feature(impl_stability)]
 #![allow(dead_code)]
 #![unstable(feature = "feat_foo", issue = "none" )]
 

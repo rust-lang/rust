@@ -653,6 +653,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes
     ),
     ungated!(
+        unstable_feature_bound, Normal, template!(Word, List: "feat1, feat2, ..."),
+        DuplicatesOk, EncodeCrossCrate::No,
+    ),
+    ungated!(
         rustc_const_unstable, Normal, template!(List: r#"feature = "name""#),
         DuplicatesOk, EncodeCrossCrate::Yes
     ),
@@ -669,11 +673,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         allow_internal_unstable, Normal, template!(Word, List: "feat1, feat2, ..."),
         DuplicatesOk, EncodeCrossCrate::Yes,
         "allow_internal_unstable side-steps feature gating and stability checks",
-    ),
-    gated!(
-        unstable_feature_bound, Normal, template!(Word, List: "feat1, feat2, ..."),
-        DuplicatesOk, EncodeCrossCrate::No, impl_stability,
-        "used internally to mark impl as unstable",
     ),
     gated!(
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,

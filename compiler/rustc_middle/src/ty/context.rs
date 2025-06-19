@@ -833,8 +833,8 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         self.associated_const_equality()
     }
 
-    fn impl_stability(self) -> bool {
-        self.impl_stability()
+    fn staged_api(self) -> bool {
+        self.staged_api()
     }
 
     fn enabled(self, symbol: <TyCtxt<'tcx> as Interner>::Symbol) -> bool {

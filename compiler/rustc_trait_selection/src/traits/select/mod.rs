@@ -848,7 +848,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
 
-                    if self.tcx().features().impl_stability() {
+                    if self.tcx().features().staged_api() {
                         // If we are in std/core, and the feature is not enabled through #[unstable_feature_bound(..)].
                         return Ok(EvaluatedToAmbig);
                     } else {

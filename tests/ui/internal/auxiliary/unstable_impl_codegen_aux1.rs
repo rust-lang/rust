@@ -1,6 +1,5 @@
 #![allow(internal_features)]
 #![feature(staged_api)]
-#![feature(impl_stability)]
 #![stable(feature = "a", since = "1.1.1" )]
 
 /// Aux crate for unstable impl codegen test.

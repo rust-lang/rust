@@ -1,5 +1,5 @@
 error: an `#[unstable]` annotation here has no effect
-  --> $DIR/unstable-feature-bound-no-effect.rs:23:1
+  --> $DIR/unstable-feature-bound-no-effect.rs:22:1
    |
 LL | #[unstable(feature = "feat_moo", issue = "none" )]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ error: module has missing stability attribute
 LL | / #![allow(internal_features)]
 LL | |
 LL | | #![feature(staged_api)]
-LL | | #![feature(impl_stability)]
+LL | | #![allow(dead_code)]
 ...  |
 LL | | fn main() {}
    | |____________^

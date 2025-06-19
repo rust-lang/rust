@@ -1,5 +1,5 @@
 error: attribute should be applied to `impl` or free function outside of any `impl` or trait
-  --> $DIR/unstable_inherent_method.rs:12:5
+  --> $DIR/unstable_inherent_method.rs:11:5
    |
 LL |     #[unstable_feature_bound(foo)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     fn foo();
    |     --------- not an `impl` or free function
 
 error: attribute should be applied to `impl` or free function outside of any `impl` or trait
-  --> $DIR/unstable_inherent_method.rs:19:5
+  --> $DIR/unstable_inherent_method.rs:18:5
    |
 LL |     #[unstable_feature_bound(foo)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

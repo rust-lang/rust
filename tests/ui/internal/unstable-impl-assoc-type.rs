@@ -3,7 +3,6 @@
 
 #![allow(internal_features)]
 #![feature(staged_api)]
-#![feature(impl_stability)]
 #![unstable(feature = "feat_foo", issue = "none" )]
 
 /// Test that you can't leak unstable impls through item bounds on associated types.

@@ -34,6 +34,9 @@ impl<S: Stage> CombineAttributeParser<S> for AllowUnstableFeatureParser {
         cx: &'c mut AcceptContext<'_, '_, S>,
         args: &'c ArgParser<'_>,
     ) -> impl IntoIterator<Item = Self::Item> {
+        if !cx.features().staged_api() {
+            cx.emit_err(session_diagnostics::StabilityOutsideStd { span: cx.attr_span });
+        }
         parse_unstable(cx, args, <Self as CombineAttributeParser<S>>::PATH[0])
             .into_iter()
             .zip(iter::repeat(cx.attr_span))
