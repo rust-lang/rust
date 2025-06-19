@@ -189,14 +189,8 @@ impl<S: Stage> OnDuplicate<S> {
         unused: Span,
     ) {
         match self {
-            OnDuplicate::Warn => cx.emit_lint(
-                AttributeLintKind::UnusedDuplicate { this: unused, other: used, warning: false },
-                unused,
-            ),
-            OnDuplicate::WarnButFutureError => cx.emit_lint(
-                AttributeLintKind::UnusedDuplicate { this: unused, other: used, warning: true },
-                unused,
-            ),
+            OnDuplicate::Warn => cx.warn_unused_duplicate(used, unused),
+            OnDuplicate::WarnButFutureError => cx.warn_unused_duplicate_future_error(used, unused),
             OnDuplicate::Error => {
                 cx.emit_err(UnusedMultiple {
                     this: used,

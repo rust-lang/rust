@@ -201,6 +201,32 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         (self.emit_lint)(AttributeLint { id, span, kind: lint });
     }
 
+    pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
+        self.emit_lint(
+            AttributeLintKind::UnusedDuplicate {
+                this: unused_span,
+                other: used_span,
+                warning: false,
+            },
+            unused_span,
+        )
+    }
+
+    pub(crate) fn warn_unused_duplicate_future_error(
+        &mut self,
+        used_span: Span,
+        unused_span: Span,
+    ) {
+        self.emit_lint(
+            AttributeLintKind::UnusedDuplicate {
+                this: unused_span,
+                other: used_span,
+                warning: true,
+            },
+            unused_span,
+        )
+    }
+
     pub(crate) fn unknown_key(
         &self,
         span: Span,
