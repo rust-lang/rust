@@ -1119,18 +1119,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _,
             hir::Path { res: hir::def::Res::Local(bind_hir_id), .. },
         )) = expr.kind
-        {
-            let bind = self.tcx.hir_node(*bind_hir_id);
-            let parent = self.tcx.parent_hir_node(*bind_hir_id);
-            if let hir::Node::Pat(hir::Pat {
+            && let bind = self.tcx.hir_node(*bind_hir_id)
+            && let parent = self.tcx.parent_hir_node(*bind_hir_id)
+            && let hir::Node::Pat(hir::Pat {
                 kind: hir::PatKind::Binding(_, _hir_id, _, _), ..
             }) = bind
-                && let hir::Node::Pat(hir::Pat { default_binding_modes: false, .. }) = parent
-            {
-                return true;
-            }
+            && let hir::Node::Pat(hir::Pat { default_binding_modes: false, .. }) = parent
+        {
+            true
+        } else {
+            false
         }
-        false
     }
 
     fn explain_self_literal(
