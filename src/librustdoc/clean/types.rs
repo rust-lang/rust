@@ -764,7 +764,7 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    pub(crate) fn attributes_without_repr(&self, tcx: TyCtxt<'_>, is_json: bool) -> Vec<String> {
+    fn attributes_without_repr(&self, tcx: TyCtxt<'_>, is_json: bool) -> Vec<String> {
         const ALLOWED_ATTRIBUTES: &[Symbol] =
             &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
 
@@ -799,6 +799,7 @@ impl Item {
             .collect()
     }
 
+    /// Get a list of attributes to display.
     pub(crate) fn attributes_and_repr(
         &self,
         tcx: TyCtxt<'_>,
@@ -813,8 +814,8 @@ impl Item {
         attrs
     }
 
-    /// Returns a stringified `#[repr(...)]` attribute.
-    pub(crate) fn repr(&self, tcx: TyCtxt<'_>, cache: &Cache, is_json: bool) -> Option<String> {
+    /// Returns a stringified `#[repr(...)]` attribute, if present.
+    fn repr(&self, tcx: TyCtxt<'_>, cache: &Cache, is_json: bool) -> Option<String> {
         repr_attributes(tcx, cache, self.def_id()?, self.type_(), is_json)
     }
 
