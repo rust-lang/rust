@@ -1110,10 +1110,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    // Returns whether the given expression is a destruct assignment desugaring.
-    // For example, `(a, b) = (1, &2);`
-    // Here we try to find the pattern binding of the expression,
-    // `default_binding_modes` is false only for destruct assignment desugaring.
+    /// Returns whether the given expression is a destruct assignment desugaring.
+    /// For example, `(a, b) = (1, &2);`
+    /// Here we try to find the pattern binding of the expression,
+    /// `default_binding_modes` is false only for destruct assignment desugaring.
     pub(crate) fn is_destruct_assignment_desugaring(&self, expr: &hir::Expr<'_>) -> bool {
         if let hir::ExprKind::Path(hir::QPath::Resolved(
             _,
