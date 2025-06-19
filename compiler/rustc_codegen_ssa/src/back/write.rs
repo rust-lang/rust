@@ -14,10 +14,10 @@ use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_errors::emitter::Emitter;
-use rustc_errors::translation::Translate;
+use rustc_errors::translation::Translator;
 use rustc_errors::{
-    Diag, DiagArgMap, DiagCtxt, DiagMessage, ErrCode, FatalError, FluentBundle, Level, MultiSpan,
-    Style, Suggestions,
+    Diag, DiagArgMap, DiagCtxt, DiagMessage, ErrCode, FatalError, Level, MultiSpan, Style,
+    Suggestions,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -1889,16 +1889,6 @@ impl SharedEmitter {
     }
 }
 
-impl Translate for SharedEmitter {
-    fn fluent_bundle(&self) -> Option<&FluentBundle> {
-        None
-    }
-
-    fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        panic!("shared emitter attempted to translate a diagnostic");
-    }
-}
-
 impl Emitter for SharedEmitter {
     fn emit_diagnostic(
         &mut self,
@@ -1931,6 +1921,10 @@ impl Emitter for SharedEmitter {
 
     fn source_map(&self) -> Option<&SourceMap> {
         None
+    }
+
+    fn translator(&self) -> &Translator {
+        panic!("shared emitter attempted to translate a diagnostic");
     }
 }
 

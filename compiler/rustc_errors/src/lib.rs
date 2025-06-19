@@ -761,14 +761,8 @@ impl DiagCtxt {
             fn source_map(&self) -> Option<&SourceMap> {
                 unimplemented!("false emitter must only used during `make_silent`")
             }
-        }
 
-        impl translation::Translate for FalseEmitter {
-            fn fluent_bundle(&self) -> Option<&FluentBundle> {
-                unimplemented!("false emitter must only used during `make_silent`")
-            }
-
-            fn fallback_fluent_bundle(&self) -> &FluentBundle {
+            fn translator(&self) -> &translation::Translator {
                 unimplemented!("false emitter must only used during `make_silent`")
             }
         }
@@ -1771,7 +1765,12 @@ impl DiagCtxtInner {
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
         let args = crate::translation::to_fluent_args(args);
-        self.emitter.translate_message(&message, &args).map_err(Report::new).unwrap().to_string()
+        self.emitter
+            .translator()
+            .translate_message(&message, &args)
+            .map_err(Report::new)
+            .unwrap()
+            .to_string()
     }
 
     fn eagerly_translate_for_subdiag(

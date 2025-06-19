@@ -19,9 +19,10 @@ use rustc_errors::emitter::{
 };
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
+use rustc_errors::translation::Translator;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
-    FluentBundle, LazyFallbackBundle, TerminalUrl, fallback_fluent_bundle,
+    TerminalUrl, fallback_fluent_bundle,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -948,8 +949,7 @@ impl Session {
 fn default_emitter(
     sopts: &config::Options,
     source_map: Arc<SourceMap>,
-    bundle: Option<Arc<FluentBundle>>,
-    fallback_bundle: LazyFallbackBundle,
+    translator: Translator,
 ) -> Box<DynEmitter> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
     let track_diagnostics = sopts.unstable_opts.track_diagnostics;
@@ -974,17 +974,11 @@ fn default_emitter(
             let short = kind.short();
 
             if let HumanReadableErrorType::AnnotateSnippet = kind {
-                let emitter = AnnotateSnippetEmitter::new(
-                    source_map,
-                    bundle,
-                    fallback_bundle,
-                    short,
-                    macro_backtrace,
-                );
+                let emitter =
+                    AnnotateSnippetEmitter::new(source_map, translator, short, macro_backtrace);
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
-                let emitter = HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
-                    .fluent_bundle(bundle)
+                let emitter = HumanEmitter::new(stderr_destination(color_config), translator)
                     .sm(source_map)
                     .short_message(short)
                     .diagnostic_width(sopts.diagnostic_width)
@@ -1006,12 +1000,11 @@ fn default_emitter(
             JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 source_map,
-                fallback_bundle,
+                translator,
                 pretty,
                 json_rendered,
                 color_config,
             )
-            .fluent_bundle(bundle)
             .ui_testing(sopts.unstable_opts.ui_testing)
             .ignored_directories_in_source_blocks(
                 sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
@@ -1030,7 +1023,7 @@ fn default_emitter(
 pub fn build_session(
     sopts: config::Options,
     io: CompilerIO,
-    bundle: Option<Arc<rustc_errors::FluentBundle>>,
+    fluent_bundle: Option<Arc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
     fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -1052,12 +1045,15 @@ pub fn build_session(
     let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
-    let fallback_bundle = fallback_fluent_bundle(
-        fluent_resources,
-        sopts.unstable_opts.translate_directionality_markers,
-    );
+    let translator = Translator {
+        fluent_bundle,
+        fallback_fluent_bundle: fallback_fluent_bundle(
+            fluent_resources,
+            sopts.unstable_opts.translate_directionality_markers,
+        ),
+    };
     let source_map = rustc_span::source_map::get_source_map().unwrap();
-    let emitter = default_emitter(&sopts, Arc::clone(&source_map), bundle, fallback_bundle);
+    let emitter = default_emitter(&sopts, Arc::clone(&source_map), translator);
 
     let mut dcx = DiagCtxt::new(emitter)
         .with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings))
@@ -1500,13 +1496,13 @@ impl EarlyDiagCtxt {
 fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     // FIXME(#100717): early errors aren't translated at the moment, so this is fine, but it will
     // need to reference every crate that might emit an early error for translation to work.
-    let fallback_bundle =
-        fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
+    let translator =
+        Translator::with_fallback_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
             Box::new(
-                HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
+                HumanEmitter::new(stderr_destination(color_config), translator)
                     .theme(if let HumanReadableErrorType::Unicode = kind {
                         OutputTheme::Unicode
                     } else {
@@ -1519,7 +1515,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
             Box::new(JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 Some(Arc::new(SourceMap::new(FilePathMapping::empty()))),
-                fallback_bundle,
+                translator,
                 pretty,
                 json_rendered,
                 color_config,
