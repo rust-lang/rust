@@ -104,6 +104,8 @@ builtin_macros_concat_bytes_bad_repeat = repeat count is not a positive number
 builtin_macros_concat_bytes_invalid = cannot concatenate {$lit_kind} literals
     .byte_char = try using a byte character
     .byte_str = try using a byte string
+    .c_str = try using a null-terminated byte string
+    .c_str_note = concatenating C strings is ambiguous about including the '\0'
     .number_array = try wrapping the number in an array
 
 builtin_macros_concat_bytes_missing_literal = expected a byte literal

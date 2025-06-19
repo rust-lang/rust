@@ -215,6 +215,8 @@ pub(crate) struct ConcatBytesInvalid {
     pub(crate) lit_kind: &'static str,
     #[subdiagnostic]
     pub(crate) sugg: Option<ConcatBytesInvalidSuggestion>,
+    #[note(builtin_macros_c_str_note)]
+    pub(crate) cs_note: Option<()>,
 }
 
 #[derive(Subdiagnostic)]
@@ -238,6 +240,13 @@ pub(crate) enum ConcatBytesInvalidSuggestion {
         #[primary_span]
         span: Span,
         snippet: String,
+    },
+    #[note(builtin_macros_c_str_note)]
+    #[suggestion(builtin_macros_c_str, code = "{as_bstr}", applicability = "machine-applicable")]
+    CStrLit {
+        #[primary_span]
+        span: Span,
+        as_bstr: String,
     },
     #[suggestion(
         builtin_macros_number_array,

@@ -15,9 +15,10 @@ fn main() {
     //~^ SUGGESTION br"tnrsi"
     concat_bytes!(r#"tnrsi"#, r###"tnri"###); //~ ERROR cannot concatenate string literals
     //~^ SUGGESTION br#"tnrsi"#
-    concat_bytes!(c"tnrsi", c"tnri"); //~ ERROR  cannot concatenate a C string literal
-    concat_bytes!(cr"tnrsi", cr"tnri"); //~ ERROR  cannot concatenate a C string literal
-    concat_bytes!(cr#"tnrsi"#, cr###"tnri"###); //~ ERROR  cannot concatenate a C string literal
+    concat_bytes!(c"tnrsi", c"tnri"); //~ ERROR cannot concatenate C string literals
+    //~^ SUGGESTION b"tnrsi\0"
+    concat_bytes!(cr"tnrsi", cr"tnri"); //~ ERROR cannot concatenate C string literals
+    concat_bytes!(cr#"tnrsi"#, cr###"tnri"###); //~ ERROR cannot concatenate C string literals
 
     // Other literals
     concat_bytes!(2.8); //~ ERROR cannot concatenate float literals
