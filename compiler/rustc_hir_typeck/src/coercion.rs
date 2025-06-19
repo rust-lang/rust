@@ -597,6 +597,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
+        let obligation = Obligation::new(
+            self.tcx,
+            cause,
+            self.fcx.param_env,
+            ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target]),
+        );
+        if self.predicate_must_hold_modulo_regions(&obligation) {
+            coercion.obligations.push(obligation);
+            return Ok(coercion);
+        }
 
         // Use a FIFO queue for this custom fulfillment procedure.
         //
@@ -605,12 +615,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // and almost never more than 3. By using a SmallVec we avoid an
         // allocation, at the (very small) cost of (occasionally) having to
         // shift subsequent elements down when removing the front element.
-        let mut queue: SmallVec<[PredicateObligation<'tcx>; 4]> = smallvec![Obligation::new(
-            self.tcx,
-            cause,
-            self.fcx.param_env,
-            ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target])
-        )];
+        let mut queue: SmallVec<[PredicateObligation<'tcx>; 4]> = smallvec![obligation];
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
