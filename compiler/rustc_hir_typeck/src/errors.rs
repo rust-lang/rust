@@ -30,8 +30,6 @@ pub(crate) struct BaseExpressionDoubleDot {
     )]
     pub default_field_values_suggestion: Option<Span>,
     #[subdiagnostic]
-    pub default_field_values_help: Option<BaseExpressionDoubleDotEnableDefaultFieldValues>,
-    #[subdiagnostic]
     pub add_expr: Option<BaseExpressionDoubleDotAddExpr>,
     #[subdiagnostic]
     pub remove_dots: Option<BaseExpressionDoubleDotRemove>,
@@ -60,10 +58,6 @@ pub(crate) struct BaseExpressionDoubleDotAddExpr {
     #[primary_span]
     pub span: Span,
 }
-
-#[derive(Subdiagnostic)]
-#[help(hir_typeck_base_expression_double_dot_enable_default_field_values)]
-pub(crate) struct BaseExpressionDoubleDotEnableDefaultFieldValues;
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_field_multiply_specified_in_initializer, code = E0062)]
