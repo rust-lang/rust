@@ -1020,12 +1020,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Also expose the provenance of the interpreter-level allocation, so it can
             // be read by FFI. The `black_box` is defensive programming as LLVM likes
             // to (incorrectly) optimize away ptr2int casts whose result is unused.
-            if paranoid {
-                std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
-                // Prepare for possible write from native code if mutable.
-                if info.mutbl.is_mut() {
-                    self.get_alloc_raw_mut(id)?.0.prepare_for_native_write();
-                }
+            std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
+            // Prepare for possible write from native code if mutable.
+            if info.mutbl.is_mut() {
+                self.get_alloc_raw_mut(id)?.0.prepare_for_native_write(paranoid);
             }
         }
         interp_ok(())
@@ -1041,15 +1039,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn apply_accesses(
         &mut self,
         mut ids: Vec<AllocId>,
-        reads: Vec<std::ops::Range<u64>>,
-        writes: Vec<std::ops::Range<u64>>,
+        reads: Vec<std::ops::Range<usize>>,
+        writes: Vec<std::ops::Range<usize>>,
     ) -> InterpResult<'tcx> {
         /// Helper function to avoid some code duplication over range overlaps.
         fn get_start_size(
-            rg: std::ops::Range<u64>,
-            alloc_base: u64,
-            alloc_size: u64,
-        ) -> Option<(u64, u64)> {
+            rg: std::ops::Range<usize>,
+            alloc_base: usize,
+            alloc_size: usize,
+        ) -> Option<(usize, usize)> {
             // A bunch of range bounds nonsense that effectively simplifies to
             // "get the starting point of the overlap and the length from there".
             // Needs to also account for the allocation being in the middle of the
@@ -1061,7 +1059,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             } else {
                 rg.end - rg.start
             };
-            let start: u64 = signed_start.try_into().unwrap_or(0);
+            let start: usize = signed_start.try_into().unwrap_or(0);
             let size = std::cmp::min(size_uncapped, alloc_size - start);
             Some((start, size))
         }
@@ -1078,13 +1076,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 continue;
             }
 
-            let alloc_base: u64 = {
+            let alloc_base: usize = {
                 // Keep the alloc here so the borrow checker is happy
                 let alloc = self.get_alloc_raw(id)?;
                 // No need for black_box trickery since we actually use the address
-                alloc.get_bytes_unchecked_raw().expose_provenance().try_into().unwrap()
+                alloc.get_bytes_unchecked_raw().expose_provenance()
             };
-            let alloc_size = info.size.bytes();
+            let alloc_size = info.size.bytes().try_into().unwrap();
 
             // Find reads which overlap with the current allocation
             for rg in &reads {
