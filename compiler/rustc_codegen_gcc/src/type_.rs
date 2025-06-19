@@ -302,13 +302,13 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
     #[cfg_attr(feature = "master", allow(unused_mut))]
     fn type_array(&self, ty: Type<'gcc>, mut len: u64) -> Type<'gcc> {
         #[cfg(not(feature = "master"))]
-        if let Some(struct_type) = ty.is_struct() {
-            if struct_type.get_field_count() == 0 {
-                // NOTE: since gccjit only supports i32 for the array size and libcore's tests uses a
-                // size of usize::MAX in test_binary_search, we workaround this by setting the size to
-                // zero for ZSTs.
-                len = 0;
-            }
+        if let Some(struct_type) = ty.is_struct()
+            && struct_type.get_field_count() == 0
+        {
+            // NOTE: since gccjit only supports i32 for the array size and libcore's tests uses a
+            // size of usize::MAX in test_binary_search, we workaround this by setting the size to
+            // zero for ZSTs.
+            len = 0;
         }
 
         self.context.new_array_type(None, ty, len)

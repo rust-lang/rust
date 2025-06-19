@@ -45,10 +45,6 @@ impl<'tcx> MiriMachine<'tcx> {
 
     /// Sets up the "extern statics" for this machine.
     pub fn init_extern_statics(ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx> {
-        // "__rust_no_alloc_shim_is_unstable"
-        let val = ImmTy::from_int(0, ecx.machine.layouts.u8); // always 0, value does not matter
-        Self::alloc_extern_static(ecx, "__rust_no_alloc_shim_is_unstable", val)?;
-
         // "__rust_alloc_error_handler_should_panic"
         let val = ecx.tcx.sess.opts.unstable_opts.oom.should_panic();
         let val = ImmTy::from_int(val, ecx.machine.layouts.u8);

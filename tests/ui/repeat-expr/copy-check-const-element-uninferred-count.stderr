@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed for `[String; _]`
-  --> $DIR/copy-check-const-element-uninferred-count.rs:64:9
+  --> $DIR/copy-check-const-element-uninferred-count.rs:62:9
    |
 LL |     let a = [const { String::new() }; _];
    |         ^   ---------------------------- type must be known at this point

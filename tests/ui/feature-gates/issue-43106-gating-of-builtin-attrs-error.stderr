@@ -8,16 +8,6 @@ LL | #![rustc_main]
    = note: the `#[rustc_main]` attribute is an internal implementation detail that will never be stable
    = note: the `#[rustc_main]` attribute is used internally to specify test entry point function
 
-error: valid forms for the attribute are `#[inline]` and `#[inline(always|never)]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:46:5
-   |
-LL |     #[inline = "2100"] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
-
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:32:1
    |
@@ -313,6 +303,16 @@ error[E0517]: attribute should be applied to a struct, enum, or union
    |
 LL |     #[repr(Rust)] impl S { }
    |            ^^^^   ---------- not a struct, enum, or union
+
+error: valid forms for the attribute are `#[inline(always|never)]` and `#[inline]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:46:5
+   |
+LL |     #[inline = "2100"] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` on by default
 
 error: aborting due to 38 previous errors
 

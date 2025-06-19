@@ -31,7 +31,7 @@ gccjit = "2.7"
 [dev-dependencies]
 boml = "0.3.1"
 lang_tester = "0.8.0"
-tempfile = "3.7.1"
+tempfile = "3.20"
 
 [profile.dev]
 # By compiling dependencies with optimizations, performing tests gets much faster.

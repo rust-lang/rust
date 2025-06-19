@@ -896,10 +896,9 @@ fn variant_info_for_coroutine<'tcx>(
                     variant_size = variant_size.max(offset + field_layout.size);
                     FieldInfo {
                         kind: FieldKind::CoroutineLocal,
-                        name: field_name.unwrap_or(Symbol::intern(&format!(
-                            ".coroutine_field{}",
-                            local.as_usize()
-                        ))),
+                        name: field_name.unwrap_or_else(|| {
+                            Symbol::intern(&format!(".coroutine_field{}", local.as_usize()))
+                        }),
                         offset: offset.bytes(),
                         size: field_layout.size.bytes(),
                         align: field_layout.align.abi.bytes(),
