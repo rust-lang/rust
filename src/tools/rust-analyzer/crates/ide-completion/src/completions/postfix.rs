@@ -283,16 +283,12 @@ pub(crate) fn complete_postfix(
         let (open_brace, close_brace) =
             if block_should_be_wrapped { ("{ ", " }") } else { ("", "") };
         let (open_paren, close_paren) = if is_in_cond { ("(", ")") } else { ("", "") };
-        let unsafe_completion_string = format!(
-            "{}unsafe {}{receiver_text}{}{}",
-            open_paren, open_brace, close_brace, close_paren
-        );
+        let unsafe_completion_string =
+            format!("{open_paren}unsafe {open_brace}{receiver_text}{close_brace}{close_paren}");
         postfix_snippet("unsafe", "unsafe {}", &unsafe_completion_string).add_to(acc, ctx.db);
 
-        let const_completion_string = format!(
-            "{}const {}{receiver_text}{}{}",
-            open_paren, open_brace, close_brace, close_paren
-        );
+        let const_completion_string =
+            format!("{open_paren}const {open_brace}{receiver_text}{close_brace}{close_paren}");
         postfix_snippet("const", "const {}", &const_completion_string).add_to(acc, ctx.db);
     }
 
