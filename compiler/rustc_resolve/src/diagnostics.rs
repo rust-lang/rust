@@ -2430,7 +2430,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // FIXME: add case where non parent using undeclared module (hard?)
                     && let Some(dir) = src.parent()
                     && let Some(src) = src.with_extension("").file_name().and_then(|x| x.to_str())
-                    && [
+                    && let Some(m) = [
                         // …/x.rs
                         dir.join(i).with_extension("rs"),
                         // …/x/mod.rs
@@ -2452,14 +2452,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             .iter()
                             .flatten(),
                     )
-                    .any(|x| x.exists())
+                    .find(|x| x.exists())
                 {
                     Some((
                         // FIXME: add suggestion
                         vec![],
                         format!(
-                            "you may have forgotten to declare module `{ident}`. \
-                             use `mod {ident}` in this file to declare this module.",
+                            "to make use of source file {}, use `mod {ident}` \
+                             in this file to declare the module",
+                            m.display()
                         ),
                         Applicability::MaybeIncorrect,
                     ))
