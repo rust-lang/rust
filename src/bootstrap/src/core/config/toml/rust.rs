@@ -621,13 +621,13 @@ impl Config {
         //   thus, disabled
         // - similarly, lld will not be built nor used by default when explicitly asked not to, e.g.
         //   when the config sets `rust.lld = false`
-        if self.build.triple == "x86_64-unknown-linux-gnu"
-            && self.hosts == [self.build]
+        if self.host_target.triple == "x86_64-unknown-linux-gnu"
+            && self.hosts == [self.host_target]
             && (self.channel == "dev" || self.channel == "nightly")
         {
             let no_llvm_config = self
                 .target_config
-                .get(&self.build)
+                .get(&self.host_target)
                 .is_some_and(|target_config| target_config.llvm_config.is_none());
             let enable_lld = self.llvm_from_ci || no_llvm_config;
             // Prefer the config setting in case an explicit opt-out is needed.

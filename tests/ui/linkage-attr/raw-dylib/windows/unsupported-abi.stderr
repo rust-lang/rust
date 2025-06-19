@@ -1,5 +1,5 @@
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported-abi.rs:5:1
+  --> $DIR/unsupported-abi.rs:13:1
    |
 LL | / extern "stdcall" {
 LL | |
@@ -15,27 +15,10 @@ LL | | }
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
 error: ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
-  --> $DIR/unsupported-abi.rs:8:5
+  --> $DIR/unsupported-abi.rs:16:5
    |
 LL |     fn f(x: i32);
    |     ^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error; 1 warning emitted
-
-Future incompatibility report: Future breakage diagnostic:
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported-abi.rs:5:1
-   |
-LL | / extern "stdcall" {
-LL | |
-LL | |
-LL | |     fn f(x: i32);
-LL | |
-LL | | }
-   | |_^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
-   = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
-   = note: `#[warn(unsupported_calling_conventions)]` on by default
 

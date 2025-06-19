@@ -128,7 +128,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 // FIXME(jdonszelmann) make one of these in the resolver?
                 // FIXME(jdonszelmann) don't care about tools here maybe? Just parse what we can.
                 // Does that prevents errors from happening? maybe
-                let parser = AttributeParser::new(
+                let mut parser = AttributeParser::new_early(
                     &self.resolver.tcx.sess,
                     self.resolver.tcx.features(),
                     Vec::new(),
@@ -136,8 +136,14 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 let attrs = parser.parse_attribute_list(
                     &i.attrs,
                     i.span,
+                    i.id,
                     OmitDoc::Skip,
                     std::convert::identity,
+                    |_l| {
+                        // FIXME(jdonszelmann): emit lints here properly
+                        // NOTE that before new attribute parsing, they didn't happen either
+                        // but it would be nice if we could change that.
+                    },
                 );
 
                 let macro_data =

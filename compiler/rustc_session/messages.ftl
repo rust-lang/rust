@@ -40,6 +40,11 @@ session_file_is_not_writeable = output file {$file} is not writeable -- check it
 
 session_file_write_fail = failed to write `{$path}` due to error `{$err}`
 
+session_forbidden_ctarget_feature =
+    target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}
+    .note = this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+session_forbidden_ctarget_feature_issue = for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>
+
 session_function_return_requires_x86_or_x86_64 = `-Zfunction-return` (except `keep`) is only supported on x86 and x86_64
 
 session_function_return_thunk_extern_requires_non_large_code_model = `-Zfunction-return=thunk-extern` is only supported on non-large code models
@@ -132,6 +137,9 @@ session_target_stack_protector_not_supported = `-Z stack-protector={$stack_prote
 session_unleashed_feature_help_named = skipping check for `{$gate}` feature
 session_unleashed_feature_help_unnamed = skipping check that does not even have a feature gate
 
+session_unstable_ctarget_feature =
+    unstable feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = this feature is not stably supported; its behavior can change in the future
 session_unstable_virtual_function_elimination = `-Zvirtual-function-elimination` requires `-Clto`
 
 session_unsupported_crate_type_for_target =

@@ -1,6 +1,0 @@
-warning: cannot output linkage information without staticlib crate-type
-
-note: consider `--crate-type staticlib` to print linkage information
-
-warning: 1 warning emitted
-

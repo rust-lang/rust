@@ -686,23 +686,34 @@ impl<'a> Parser<'a> {
         }
 
         if let token::DocComment(kind, style, _) = self.token.kind {
-            // We have something like `expr //!val` where the user likely meant `expr // !val`
-            let pos = self.token.span.lo() + BytePos(2);
-            let span = self.token.span.with_lo(pos).with_hi(pos);
-            err.span_suggestion_verbose(
-                span,
-                format!(
-                    "add a space before {} to write a regular comment",
-                    match (kind, style) {
-                        (token::CommentKind::Line, ast::AttrStyle::Inner) => "`!`",
-                        (token::CommentKind::Block, ast::AttrStyle::Inner) => "`!`",
-                        (token::CommentKind::Line, ast::AttrStyle::Outer) => "the last `/`",
-                        (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
-                    },
-                ),
-                " ".to_string(),
-                Applicability::MachineApplicable,
-            );
+            // This is to avoid suggesting converting a doc comment to a regular comment
+            // when missing a comma before the doc comment in lists (#142311):
+            //
+            // ```
+            // enum Foo{
+            //     A /// xxxxxxx
+            //     B,
+            // }
+            // ```
+            if !expected.contains(&TokenType::Comma) {
+                // We have something like `expr //!val` where the user likely meant `expr // !val`
+                let pos = self.token.span.lo() + BytePos(2);
+                let span = self.token.span.with_lo(pos).with_hi(pos);
+                err.span_suggestion_verbose(
+                    span,
+                    format!(
+                        "add a space before {} to write a regular comment",
+                        match (kind, style) {
+                            (token::CommentKind::Line, ast::AttrStyle::Inner) => "`!`",
+                            (token::CommentKind::Block, ast::AttrStyle::Inner) => "`!`",
+                            (token::CommentKind::Line, ast::AttrStyle::Outer) => "the last `/`",
+                            (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
+                        },
+                    ),
+                    " ".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
 
         let sp = if self.token == token::Eof {
@@ -2273,23 +2284,18 @@ impl<'a> Parser<'a> {
                     ),
                     // Also catches `fn foo(&a)`.
                     PatKind::Ref(ref inner_pat, mutab)
-                        if matches!(inner_pat.clone().kind, PatKind::Ident(..)) =>
+                        if let PatKind::Ident(_, ident, _) = inner_pat.clone().kind =>
                     {
-                        match inner_pat.clone().kind {
-                            PatKind::Ident(_, ident, _) => {
-                                let mutab = mutab.prefix_str();
-                                (
-                                    ident,
-                                    "self: ",
-                                    format!("{ident}: &{mutab}TypeName"),
-                                    "_: ",
-                                    pat.span.shrink_to_lo(),
-                                    pat.span,
-                                    pat.span.shrink_to_lo(),
-                                )
-                            }
-                            _ => unreachable!(),
-                        }
+                        let mutab = mutab.prefix_str();
+                        (
+                            ident,
+                            "self: ",
+                            format!("{ident}: &{mutab}TypeName"),
+                            "_: ",
+                            pat.span.shrink_to_lo(),
+                            pat.span,
+                            pat.span.shrink_to_lo(),
+                        )
                     }
                     _ => {
                         // Otherwise, try to get a type and emit a suggestion.

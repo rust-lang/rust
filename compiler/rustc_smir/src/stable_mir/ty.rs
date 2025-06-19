@@ -743,9 +743,23 @@ crate_def! {
     pub ClosureDef;
 }
 
+impl ClosureDef {
+    /// Retrieves the body of the closure definition. Returns None if the body
+    /// isn't available.
+    pub fn body(&self) -> Option<Body> {
+        with(|ctx| ctx.has_body(self.0).then(|| ctx.mir_body(self.0)))
+    }
+}
+
 crate_def! {
     #[derive(Serialize)]
     pub CoroutineDef;
+}
+
+impl CoroutineDef {
+    pub fn discriminant_for_variant(&self, args: &GenericArgs, idx: VariantIdx) -> Discr {
+        with(|cx| cx.coroutine_discr_for_variant(*self, args, idx))
+    }
 }
 
 crate_def! {
@@ -823,6 +837,15 @@ impl AdtDef {
     pub fn repr(&self) -> ReprOptions {
         with(|cx| cx.adt_repr(*self))
     }
+
+    pub fn discriminant_for_variant(&self, idx: VariantIdx) -> Discr {
+        with(|cx| cx.adt_discr_for_variant(*self, idx))
+    }
+}
+
+pub struct Discr {
+    pub val: u128,
+    pub ty: Ty,
 }
 
 /// Definition of a variant, which can be either a struct / union field or an enum variant.
@@ -1103,6 +1126,7 @@ pub enum Abi {
     RustCold,
     RiscvInterruptM,
     RiscvInterruptS,
+    Custom,
 }
 
 /// A binder represents a possibly generic type and its bound vars.

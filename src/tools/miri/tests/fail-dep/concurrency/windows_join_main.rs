@@ -18,7 +18,7 @@ const MAIN_THREAD: HANDLE = (2i32 << 29) as HANDLE;
 fn main() {
     thread::spawn(|| {
         unsafe {
-            assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_OBJECT_0); //~ ERROR: deadlock: the evaluated program deadlocked
+            assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_OBJECT_0); //~ ERROR: deadlock
         }
     })
     .join()

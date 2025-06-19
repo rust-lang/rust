@@ -4,8 +4,12 @@
 #![crate_type = "lib"]
 
 // This is needed because of #![no_core]:
+#[lang = "pointee_sized"]
+trait PointeeSized {}
+#[lang = "meta_sized"]
+trait MetaSized: PointeeSized {}
 #[lang = "sized"]
-trait Sized {}
+trait Sized: MetaSized {}
 
 #[link(name = "extern_1", kind = "raw-dylib")]
 extern "C" {

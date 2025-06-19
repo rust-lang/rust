@@ -879,6 +879,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
             ExternAbi::RustCold => Abi::RustCold,
             ExternAbi::RiscvInterruptM => Abi::RiscvInterruptM,
             ExternAbi::RiscvInterruptS => Abi::RiscvInterruptS,
+            ExternAbi::Custom => Abi::Custom,
         }
     }
 }
@@ -957,5 +958,13 @@ impl<'tcx> Stable<'tcx> for ty::ImplTraitInTraitData {
                 ImplTraitInTraitData::Impl { fn_def_id: tables.fn_def(*fn_def_id) }
             }
         }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_middle::ty::util::Discr<'tcx> {
+    type T = stable_mir::ty::Discr;
+
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        stable_mir::ty::Discr { val: self.val, ty: self.ty.stable(tables) }
     }
 }

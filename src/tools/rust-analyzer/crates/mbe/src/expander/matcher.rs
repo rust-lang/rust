@@ -823,7 +823,7 @@ fn match_meta_var<'t>(
                         "expected token tree",
                     )
                 }),
-                MetaVarKind::Lifetime => expect_lifetime(input).map_err(|()| {
+                MetaVarKind::Lifetime => expect_lifetime(input).map(drop).map_err(|()| {
                     ExpandError::binding_error(
                         span.unwrap_or(delim_span.close),
                         "expected lifetime",
@@ -963,6 +963,10 @@ fn expect_separator<S: Copy>(iter: &mut TtIter<'_, S>, separator: &Separator) ->
             }
             Err(_) => false,
         },
+        Separator::Lifetime(_punct, ident) => match expect_lifetime(&mut fork) {
+            Ok(lifetime) => lifetime.sym == ident.sym,
+            Err(_) => false,
+        },
     };
     if ok {
         *iter = fork;
@@ -983,13 +987,12 @@ fn expect_tt<S: Copy>(iter: &mut TtIter<'_, S>) -> Result<(), ()> {
     Ok(())
 }
 
-fn expect_lifetime<S: Copy>(iter: &mut TtIter<'_, S>) -> Result<(), ()> {
+fn expect_lifetime<'a, S: Copy>(iter: &mut TtIter<'a, S>) -> Result<&'a tt::Ident<S>, ()> {
     let punct = iter.expect_single_punct()?;
     if punct.char != '\'' {
         return Err(());
     }
-    iter.expect_ident_or_underscore()?;
-    Ok(())
+    iter.expect_ident_or_underscore()
 }
 
 fn eat_char<S: Copy>(iter: &mut TtIter<'_, S>, c: char) {

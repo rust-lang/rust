@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Dynamic libraries on Rust used to export a very high amount of symbols,
 // going as far as filling the output with mangled names and generic function
 // names. After the rework of #38117, this test checks that no mangled Rust symbols

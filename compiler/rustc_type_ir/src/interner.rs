@@ -103,9 +103,9 @@ pub trait Interner:
     type Ty: Ty<Self>;
     type Tys: Tys<Self>;
     type FnInputTys: Copy + Debug + Hash + Eq + SliceLike<Item = Self::Ty> + TypeVisitable<Self>;
-    type ParamTy: Copy + Debug + Hash + Eq + ParamLike;
-    type BoundTy: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
-    type PlaceholderTy: PlaceholderLike;
+    type ParamTy: ParamLike;
+    type BoundTy: BoundVarLike<Self>;
+    type PlaceholderTy: PlaceholderLike<Self, Bound = Self::BoundTy>;
 
     // Things stored inside of tys
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
@@ -131,19 +131,19 @@ pub trait Interner:
 
     // Kinds of consts
     type Const: Const<Self>;
-    type PlaceholderConst: PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
-    type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
+    type BoundConst: BoundVarLike<Self>;
+    type PlaceholderConst: PlaceholderLike<Self, Bound = Self::BoundConst>;
     type ValueConst: ValueConst<Self>;
     type ExprConst: ExprConst<Self>;
     type ValTree: Copy + Debug + Hash + Eq;
 
     // Kinds of regions
     type Region: Region<Self>;
-    type EarlyParamRegion: Copy + Debug + Hash + Eq + ParamLike;
+    type EarlyParamRegion: ParamLike;
     type LateParamRegion: Copy + Debug + Hash + Eq;
-    type BoundRegion: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
-    type PlaceholderRegion: PlaceholderLike;
+    type BoundRegion: BoundVarLike<Self>;
+    type PlaceholderRegion: PlaceholderLike<Self, Bound = Self::BoundRegion>;
 
     // Predicates
     type ParamEnv: ParamEnv<Self>;

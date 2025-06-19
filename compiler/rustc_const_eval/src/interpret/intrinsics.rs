@@ -120,7 +120,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.copy_op(&val, dest)?;
             }
 
-            sym::min_align_of_val | sym::size_of_val => {
+            sym::align_of_val | sym::size_of_val => {
                 // Avoid `deref_pointer` -- this is not a deref, the ptr does not have to be
                 // dereferenceable!
                 let place = self.ref_to_mplace(&self.read_immediate(&args[0])?)?;
@@ -129,7 +129,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     .ok_or_else(|| err_unsup_format!("`extern type` does not have known layout"))?;
 
                 let result = match intrinsic_name {
-                    sym::min_align_of_val => align.bytes(),
+                    sym::align_of_val => align.bytes(),
                     sym::size_of_val => size.bytes(),
                     _ => bug!(),
                 };
@@ -139,13 +139,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             sym::needs_drop | sym::type_id | sym::type_name | sym::variant_count => {
                 let gid = GlobalId { instance, promoted: None };
-                let ty = match intrinsic_name {
-                    sym::variant_count => self.tcx.types.usize,
-                    sym::needs_drop => self.tcx.types.bool,
-                    sym::type_id => self.tcx.types.u128,
-                    sym::type_name => Ty::new_static_str(self.tcx.tcx),
-                    _ => bug!(),
-                };
+                let ty = self
+                    .tcx
+                    .fn_sig(instance.def_id())
+                    .instantiate(self.tcx.tcx, instance.args)
+                    .output()
+                    .no_bound_vars()
+                    .unwrap();
                 let val = self
                     .ctfe_query(|tcx| tcx.const_eval_global_id(self.typing_env, gid, tcx.span))?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;

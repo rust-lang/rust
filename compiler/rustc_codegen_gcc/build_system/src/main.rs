@@ -5,6 +5,7 @@ mod clean;
 mod clone_gcc;
 mod config;
 mod fmt;
+mod fuzz;
 mod info;
 mod prepare;
 mod rust_tools;
@@ -42,7 +43,8 @@ Commands:
         test      : Runs tests for the project.
         info      : Displays information about the build environment and project configuration.
         clone-gcc : Clones the GCC compiler from a specified source.
-        fmt       : Runs rustfmt"
+        fmt       : Runs rustfmt
+        fuzz      : Fuzzes `cg_gcc` using rustlantis"
     );
 }
 
@@ -56,6 +58,7 @@ pub enum Command {
     Test,
     Info,
     Fmt,
+    Fuzz,
 }
 
 fn main() {
@@ -75,6 +78,7 @@ fn main() {
         Some("info") => Command::Info,
         Some("clone-gcc") => Command::CloneGcc,
         Some("fmt") => Command::Fmt,
+        Some("fuzz") => Command::Fuzz,
         Some("--help") => {
             usage();
             process::exit(0);
@@ -97,6 +101,7 @@ fn main() {
         Command::Info => info::run(),
         Command::CloneGcc => clone_gcc::run(),
         Command::Fmt => fmt::run(),
+        Command::Fuzz => fuzz::run(),
     } {
         eprintln!("Command failed to run: {e}");
         process::exit(1);

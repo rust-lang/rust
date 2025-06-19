@@ -10,6 +10,7 @@ use crate::{
     NavigationTarget, RunnableKind,
     annotations::fn_references::find_all_methods,
     goto_implementation::goto_implementation,
+    navigation_target,
     references::find_all_refs,
     runnables::{Runnable, runnables},
 };
@@ -148,15 +149,32 @@ pub(crate) fn annotations(
             node: InFile<T>,
             source_file_id: FileId,
         ) -> Option<(TextRange, Option<TextRange>)> {
-            if let Some(InRealFile { file_id, value }) = node.original_ast_node_rooted(db) {
-                if file_id.file_id(db) == source_file_id {
-                    return Some((
-                        value.syntax().text_range(),
-                        value.name().map(|name| name.syntax().text_range()),
-                    ));
+            if let Some(name) = node.value.name().map(|name| name.syntax().text_range()) {
+                // if we have a name, try mapping that out of the macro expansion as we can put the
+                // annotation on that name token
+                // See `test_no_annotations_macro_struct_def` vs `test_annotations_macro_struct_def_call_site`
+                let res = navigation_target::orig_range_with_focus_r(
+                    db,
+                    node.file_id,
+                    node.value.syntax().text_range(),
+                    Some(name),
+                );
+                if res.call_site.0.file_id == source_file_id {
+                    if let Some(name_range) = res.call_site.1 {
+                        return Some((res.call_site.0.range, Some(name_range)));
+                    }
                 }
+            };
+            // otherwise try upmapping the entire node out of attributes
+            let InRealFile { file_id, value } = node.original_ast_node_rooted(db)?;
+            if file_id.file_id(db) == source_file_id {
+                Some((
+                    value.syntax().text_range(),
+                    value.name().map(|name| name.syntax().text_range()),
+                ))
+            } else {
+                None
             }
-            None
         }
     });
 
@@ -909,6 +927,56 @@ m!();
 "#,
             expect![[r#"
                 []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_annotations_macro_struct_def_call_site() {
+        check(
+            r#"
+//- /lib.rs
+macro_rules! m {
+    ($name:ident) => {
+        struct $name {}
+    };
+}
+
+m! {
+    Name
+};
+"#,
+            expect![[r#"
+                [
+                    Annotation {
+                        range: 83..87,
+                        kind: HasImpls {
+                            pos: FilePositionWrapper {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 83,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 83..87,
+                        kind: HasReferences {
+                            pos: FilePositionWrapper {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 83,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                ]
             "#]],
         );
     }

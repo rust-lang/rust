@@ -22,7 +22,7 @@ pub fn call_other_fn() -> u8 {
 // CHECK-LABEL: other_fn:
 // External functions are still called through GOT, since we don't know if the symbol
 // is defined in the binary or in the shared library.
-// CHECK:       callq *foreign_fn@GOTPCREL(%rip)
+// CHECK:       {{(jmpq|callq)}} *foreign_fn@GOTPCREL(%rip)
 #[no_mangle]
 #[inline(never)]
 pub fn other_fn() -> u8 {

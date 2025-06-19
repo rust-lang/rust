@@ -70,7 +70,7 @@ pub(crate) fn goto_type_definition(
     }
 
     let range = token.text_range();
-    sema.descend_into_macros_no_opaque(token)
+    sema.descend_into_macros_no_opaque(token,false)
         .into_iter()
         .filter_map(|token| {
             sema

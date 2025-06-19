@@ -8,6 +8,7 @@ use super::*;
 use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::config::Config;
+use crate::utils::cache::ExecutedStep;
 use crate::utils::tests::git::{GitCtx, git_test};
 
 static TEST_TRIPLE_1: &str = "i686-unknown-haiku";
@@ -15,11 +16,12 @@ static TEST_TRIPLE_2: &str = "i686-unknown-hurd-gnu";
 static TEST_TRIPLE_3: &str = "i686-unknown-netbsd";
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
-    configure_with_args(&[cmd.to_owned()], host, target)
+    configure_with_args(&[cmd], host, target)
 }
 
-fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config {
-    let mut config = Config::parse(Flags::parse(cmd));
+fn configure_with_args(cmd: &[&str], host: &[&str], target: &[&str]) -> Config {
+    let cmd = cmd.iter().copied().map(String::from).collect::<Vec<_>>();
+    let mut config = Config::parse(Flags::parse(&cmd));
     // don't save toolstates
     config.save_toolstates = None;
     config.set_dry_run(DryRun::SelfCheck);
@@ -46,7 +48,7 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
         .join(&thread::current().name().unwrap_or("unknown").replace(":", "-"));
     t!(fs::create_dir_all(&dir));
     config.out = dir;
-    config.build = TargetSelection::from_user(TEST_TRIPLE_1);
+    config.host_target = TargetSelection::from_user(TEST_TRIPLE_1);
     config.hosts = host.iter().map(|s| TargetSelection::from_user(s)).collect();
     config.targets = target.iter().map(|s| TargetSelection::from_user(s)).collect();
     config
@@ -67,7 +69,7 @@ fn run_build(paths: &[PathBuf], config: Config) -> Cache {
 fn check_cli<const N: usize>(paths: [&str; N]) {
     run_build(
         &paths.map(PathBuf::from),
-        configure_with_args(&paths.map(String::from), &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
+        configure_with_args(&paths, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
     );
 }
 
@@ -1000,8 +1002,7 @@ mod sysroot_target_dirs {
 /// cg_gcc tests instead.
 #[test]
 fn test_test_compiler() {
-    let cmd = &["test", "compiler"].map(str::to_owned);
-    let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+    let config = configure_with_args(&["test", "compiler"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
     let cache = run_build(&config.paths.clone(), config);
 
     let compiler = cache.contains::<test::CrateLibrustc>();
@@ -1034,8 +1035,7 @@ fn test_test_coverage() {
         // Print each test case so that if one fails, the most recently printed
         // case is the one that failed.
         println!("Testing case: {cmd:?}");
-        let cmd = cmd.iter().copied().map(str::to_owned).collect::<Vec<_>>();
-        let config = configure_with_args(&cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+        let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
         let mut cache = run_build(&config.paths.clone(), config);
 
         let modes =
@@ -1102,7 +1102,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let actual = drop_win_disk_prefix_if_present(actual);
     assert_eq!(expected, actual);
 
-    let actual = prebuilt_llvm_config(&builder, builder.config.build, false)
+    let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
         .llvm_result()
         .llvm_config
         .clone();
@@ -1120,15 +1120,15 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let build = Build::new(config.clone());
     let builder = Builder::new(&build);
 
-    let actual = prebuilt_llvm_config(&builder, builder.config.build, false)
+    let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
         .llvm_result()
         .llvm_config
         .clone();
     let expected = builder
         .out
-        .join(builder.config.build)
+        .join(builder.config.host_target)
         .join("llvm/bin")
-        .join(exe("llvm-config", builder.config.build));
+        .join(exe("llvm-config", builder.config.host_target));
     assert_eq!(expected, actual);
 
     let config = configure(
@@ -1143,15 +1143,15 @@ fn test_prebuilt_llvm_config_path_resolution() {
         let build = Build::new(config.clone());
         let builder = Builder::new(&build);
 
-        let actual = prebuilt_llvm_config(&builder, builder.config.build, false)
+        let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
             .llvm_result()
             .llvm_config
             .clone();
         let expected = builder
             .out
-            .join(builder.config.build)
+            .join(builder.config.host_target)
             .join("ci-llvm/bin")
-            .join(exe("llvm-config", builder.config.build));
+            .join(exe("llvm-config", builder.config.host_target));
         assert_eq!(expected, actual);
     }
 }
@@ -1163,7 +1163,7 @@ fn test_is_builder_target() {
 
     for (target1, target2) in [(target1, target2), (target2, target1)] {
         let mut config = configure("build", &[], &[]);
-        config.build = target1;
+        config.host_target = target1;
         let build = Build::new(config);
         let builder = Builder::new(&build);
 
@@ -1207,8 +1207,7 @@ fn test_get_tool_rustc_compiler() {
 /// of `Any { .. }`.
 #[test]
 fn step_cycle_debug() {
-    let cmd = ["run", "cyclic-step"].map(str::to_owned);
-    let config = configure_with_args(&cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+    let config = configure_with_args(&["run", "cyclic-step"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
 
     let err = panic::catch_unwind(|| run_build(&config.paths.clone(), config)).unwrap_err();
     let err = err.downcast_ref::<String>().unwrap().as_str();
@@ -1232,4 +1231,62 @@ fn any_debug() {
     assert_eq!(format!("{x:?}"), format!("{:?}", MyStruct { x: 7 }));
     // Downcasting to the underlying type should succeed.
     assert_eq!(x.downcast_ref::<MyStruct>(), Some(&MyStruct { x: 7 }));
+}
+
+/// The staging tests use insta for snapshot testing.
+/// See bootstrap's README on how to bless the snapshots.
+mod staging {
+    use crate::core::builder::tests::{
+        TEST_TRIPLE_1, configure, configure_with_args, render_steps, run_build,
+    };
+
+    #[test]
+    fn build_compiler_stage_1() {
+        let mut cache = run_build(
+            &["compiler".into()],
+            configure_with_args(&["build", "--stage", "1"], &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
+        );
+        let steps = cache.into_executed_steps();
+        insta::assert_snapshot!(render_steps(&steps), @r"
+        [build] rustc 0 <target1> -> std 0 <target1>
+        [build] llvm <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        [build] rustc 0 <target1> -> rustc 1 <target1>
+        ");
+    }
+}
+
+/// Renders the executed bootstrap steps for usage in snapshot tests with insta.
+/// Only renders certain important steps.
+/// Each value in `steps` should be a tuple of (Step, step output).
+fn render_steps(steps: &[ExecutedStep]) -> String {
+    steps
+        .iter()
+        .filter_map(|step| {
+            use std::fmt::Write;
+
+            let Some(metadata) = &step.metadata else {
+                return None;
+            };
+
+            let mut record = format!("[{}] ", metadata.kind.as_str());
+            if let Some(compiler) = metadata.built_by {
+                write!(record, "{} -> ", render_compiler(compiler));
+            }
+            let stage =
+                if let Some(stage) = metadata.stage { format!("{stage} ") } else { "".to_string() };
+            write!(record, "{} {stage}<{}>", metadata.name, metadata.target);
+            Some(record)
+        })
+        .map(|line| {
+            line.replace(TEST_TRIPLE_1, "target1")
+                .replace(TEST_TRIPLE_2, "target2")
+                .replace(TEST_TRIPLE_3, "target3")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn render_compiler(compiler: Compiler) -> String {
+    format!("rustc {} <{}>", compiler.stage, compiler.host)
 }

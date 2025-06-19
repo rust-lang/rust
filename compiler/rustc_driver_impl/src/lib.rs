@@ -557,27 +557,34 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
         let rlink_data = fs::read(file).unwrap_or_else(|err| {
             dcx.emit_fatal(RlinkUnableToRead { err });
         });
-        let (codegen_results, outputs) = match CodegenResults::deserialize_rlink(sess, rlink_data) {
-            Ok((codegen, outputs)) => (codegen, outputs),
-            Err(err) => {
-                match err {
-                    CodegenErrors::WrongFileType => dcx.emit_fatal(RLinkWrongFileType),
-                    CodegenErrors::EmptyVersionNumber => dcx.emit_fatal(RLinkEmptyVersionNumber),
-                    CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => dcx
-                        .emit_fatal(RLinkEncodingVersionMismatch { version_array, rlink_version }),
-                    CodegenErrors::RustcVersionMismatch { rustc_version } => {
-                        dcx.emit_fatal(RLinkRustcVersionMismatch {
-                            rustc_version,
-                            current_version: sess.cfg_version,
-                        })
-                    }
-                    CodegenErrors::CorruptFile => {
-                        dcx.emit_fatal(RlinkCorruptFile { file });
-                    }
-                };
-            }
-        };
-        compiler.codegen_backend.link(sess, codegen_results, &outputs);
+        let (codegen_results, metadata, outputs) =
+            match CodegenResults::deserialize_rlink(sess, rlink_data) {
+                Ok((codegen, metadata, outputs)) => (codegen, metadata, outputs),
+                Err(err) => {
+                    match err {
+                        CodegenErrors::WrongFileType => dcx.emit_fatal(RLinkWrongFileType),
+                        CodegenErrors::EmptyVersionNumber => {
+                            dcx.emit_fatal(RLinkEmptyVersionNumber)
+                        }
+                        CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => {
+                            dcx.emit_fatal(RLinkEncodingVersionMismatch {
+                                version_array,
+                                rlink_version,
+                            })
+                        }
+                        CodegenErrors::RustcVersionMismatch { rustc_version } => {
+                            dcx.emit_fatal(RLinkRustcVersionMismatch {
+                                rustc_version,
+                                current_version: sess.cfg_version,
+                            })
+                        }
+                        CodegenErrors::CorruptFile => {
+                            dcx.emit_fatal(RlinkCorruptFile { file });
+                        }
+                    };
+                }
+            };
+        compiler.codegen_backend.link(sess, codegen_results, metadata, &outputs);
     } else {
         dcx.emit_fatal(RlinkNotAFile {});
     }
@@ -1500,9 +1507,27 @@ pub fn init_rustc_env_logger(early_dcx: &EarlyDiagCtxt) {
 
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version. In contrast to `init_rustc_env_logger` it allows you to choose
-/// the values directly rather than having to set an environment variable.
+/// the logger config directly rather than having to set an environment variable.
 pub fn init_logger(early_dcx: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
     if let Err(error) = rustc_log::init_logger(cfg) {
+        early_dcx.early_fatal(error.to_string());
+    }
+}
+
+/// This allows tools to enable rust logging without having to magically match rustc's
+/// tracing crate version. In contrast to `init_rustc_env_logger`, it allows you to
+/// choose the logger config directly rather than having to set an environment variable.
+/// Moreover, in contrast to `init_logger`, it allows you to add a custom tracing layer
+/// via `build_subscriber`, for example `|| Registry::default().with(custom_layer)`.
+pub fn init_logger_with_additional_layer<F, T>(
+    early_dcx: &EarlyDiagCtxt,
+    cfg: rustc_log::LoggerConfig,
+    build_subscriber: F,
+) where
+    F: FnOnce() -> T,
+    T: rustc_log::BuildSubscriberRet,
+{
+    if let Err(error) = rustc_log::init_logger_with_additional_layer(cfg, build_subscriber) {
         early_dcx.early_fatal(error.to_string());
     }
 }

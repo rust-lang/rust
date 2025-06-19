@@ -1,6 +1,8 @@
+use std::collections::hash_map::Entry;
+
 use arrayvec::ArrayVec;
 use clippy_config::Conf;
-use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::{
     FormatArgsStorage, FormatParamUsage, MacroCall, find_format_arg_expr, format_arg_removal_span,
     format_placeholder_format_span, is_assert_macro, is_format_macro, is_panic, matching_root_macro_call,
@@ -9,7 +11,7 @@ use clippy_utils::macros::{
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
-use clippy_utils::{is_diag_trait_item, is_from_proc_macro, is_in_test};
+use clippy_utils::{is_diag_trait_item, is_from_proc_macro, is_in_test, trait_ref_of_method};
 use itertools::Itertools;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
@@ -22,10 +24,12 @@ use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
-use rustc_middle::ty::{List, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Upcast};
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition::Edition2021;
 use rustc_span::{Span, Symbol, sym};
+use rustc_trait_selection::infer::TyCtxtInferExt;
+use rustc_trait_selection::traits::{Obligation, ObligationCause, Selection, SelectionContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -194,12 +198,41 @@ declare_clippy_lint! {
     "use of a format specifier that has no effect"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects [pointer format] as well as `Debug` formatting of raw pointers or function pointers
+    /// or any types that have a derived `Debug` impl that recursively contains them.
+    ///
+    /// ### Why restrict this?
+    /// The addresses are only useful in very specific contexts, and certain projects may want to keep addresses of
+    /// certain data structures or functions from prying hacker eyes as an additional line of security.
+    ///
+    /// ### Known problems
+    /// The lint currently only looks through derived `Debug` implementations. Checking whether a manual
+    /// implementation prints an address is left as an exercise to the next lint implementer.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let foo = &0_u32;
+    /// fn bar() {}
+    /// println!("{:p}", foo);
+    /// let _ = format!("{:?}", &(bar as fn()));
+    /// ```
+    ///
+    /// [pointer format]: https://doc.rust-lang.org/std/fmt/index.html#formatting-traits
+    #[clippy::version = "1.88.0"]
+    pub POINTER_FORMAT,
+    restriction,
+    "formatting a pointer"
+}
+
 impl_lint_pass!(FormatArgs<'_> => [
     FORMAT_IN_FORMAT_ARGS,
     TO_STRING_IN_FORMAT_ARGS,
     UNINLINED_FORMAT_ARGS,
     UNNECESSARY_DEBUG_FORMATTING,
     UNUSED_FORMAT_SPECS,
+    POINTER_FORMAT,
 ]);
 
 #[allow(clippy::struct_field_names)]
@@ -208,6 +241,8 @@ pub struct FormatArgs<'tcx> {
     msrv: Msrv,
     ignore_mixed: bool,
     ty_msrv_map: FxHashMap<Ty<'tcx>, Option<RustcVersion>>,
+    has_derived_debug: FxHashMap<Ty<'tcx>, bool>,
+    has_pointer_format: FxHashMap<Ty<'tcx>, bool>,
 }
 
 impl<'tcx> FormatArgs<'tcx> {
@@ -218,6 +253,8 @@ impl<'tcx> FormatArgs<'tcx> {
             msrv: conf.msrv,
             ignore_mixed: conf.allow_mixed_uninlined_format_args,
             ty_msrv_map,
+            has_derived_debug: FxHashMap::default(),
+            has_pointer_format: FxHashMap::default(),
         }
     }
 }
@@ -228,7 +265,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs<'tcx> {
             && is_format_macro(cx, macro_call.def_id)
             && let Some(format_args) = self.format_args.get(cx, expr, macro_call.expn)
         {
-            let linter = FormatArgsExpr {
+            let mut linter = FormatArgsExpr {
                 cx,
                 expr,
                 macro_call: &macro_call,
@@ -236,6 +273,8 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs<'tcx> {
                 ignore_mixed: self.ignore_mixed,
                 msrv: &self.msrv,
                 ty_msrv_map: &self.ty_msrv_map,
+                has_derived_debug: &mut self.has_derived_debug,
+                has_pointer_format: &mut self.has_pointer_format,
             };
 
             linter.check_templates();
@@ -255,10 +294,12 @@ struct FormatArgsExpr<'a, 'tcx> {
     ignore_mixed: bool,
     msrv: &'a Msrv,
     ty_msrv_map: &'a FxHashMap<Ty<'tcx>, Option<RustcVersion>>,
+    has_derived_debug: &'a mut FxHashMap<Ty<'tcx>, bool>,
+    has_pointer_format: &'a mut FxHashMap<Ty<'tcx>, bool>,
 }
 
 impl<'tcx> FormatArgsExpr<'_, 'tcx> {
-    fn check_templates(&self) {
+    fn check_templates(&mut self) {
         for piece in &self.format_args.template {
             if let FormatArgsPiece::Placeholder(placeholder) = piece
                 && let Ok(index) = placeholder.argument.index
@@ -279,6 +320,17 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 if placeholder.format_trait == FormatTrait::Debug {
                     let name = self.cx.tcx.item_name(self.macro_call.def_id);
                     self.check_unnecessary_debug_formatting(name, arg_expr);
+                    if let Some(span) = placeholder.span
+                        && self.has_pointer_debug(self.cx.typeck_results().expr_ty(arg_expr), 0)
+                    {
+                        span_lint(self.cx, POINTER_FORMAT, span, "pointer formatting detected");
+                    }
+                }
+
+                if placeholder.format_trait == FormatTrait::Pointer
+                    && let Some(span) = placeholder.span
+                {
+                    span_lint(self.cx, POINTER_FORMAT, span, "pointer formatting detected");
                 }
             }
         }
@@ -490,6 +542,16 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
             && let ty = cx.typeck_results().expr_ty(value)
             && self.can_display_format(ty)
         {
+            // If the parent function is a method of `Debug`, we don't want to lint
+            // because it is likely that the user wants to use `Debug` formatting.
+            let parent_fn = cx.tcx.hir_get_parent_item(value.hir_id);
+            if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn)
+                && let Some(trait_def_id) = trait_ref.trait_def_id()
+                && cx.tcx.is_diagnostic_item(sym::Debug, trait_def_id)
+            {
+                return;
+            }
+
             let snippet = snippet(cx.sess(), value.span, "..");
             span_lint_and_then(
                 cx,
@@ -558,6 +620,58 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         }
 
         false
+    }
+
+    fn has_pointer_debug(&mut self, ty: Ty<'tcx>, depth: usize) -> bool {
+        let cx = self.cx;
+        let tcx = cx.tcx;
+        if !tcx.recursion_limit().value_within_limit(depth) {
+            return false;
+        }
+        let depth = depth + 1;
+        let typing_env = cx.typing_env();
+        let ty = tcx.normalize_erasing_regions(typing_env, ty);
+        match ty.kind() {
+            ty::RawPtr(..) | ty::FnPtr(..) | ty::FnDef(..) => true,
+            ty::Ref(_, t, _) | ty::Slice(t) | ty::Array(t, _) => self.has_pointer_debug(*t, depth),
+            ty::Tuple(ts) => ts.iter().any(|t| self.has_pointer_debug(t, depth)),
+            ty::Adt(adt, args) => {
+                match self.has_pointer_format.entry(ty) {
+                    Entry::Occupied(o) => return *o.get(),
+                    Entry::Vacant(v) => v.insert(false),
+                };
+                let derived_debug = if let Some(&known) = self.has_derived_debug.get(&ty) {
+                    known
+                } else {
+                    let Some(trait_id) = tcx.get_diagnostic_item(sym::Debug) else {
+                        return false;
+                    };
+                    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+                    let trait_ref = TraitRef::new(tcx, trait_id, [GenericArg::from(ty)]);
+                    let obligation = Obligation {
+                        cause: ObligationCause::dummy(),
+                        param_env,
+                        recursion_depth: 0,
+                        predicate: trait_ref.upcast(tcx),
+                    };
+                    let selection = SelectionContext::new(&infcx).select(&obligation);
+                    let derived = if let Ok(Some(Selection::UserDefined(data))) = selection {
+                        tcx.has_attr(data.impl_def_id, sym::automatically_derived)
+                    } else {
+                        false
+                    };
+                    self.has_derived_debug.insert(ty, derived);
+                    derived
+                };
+                let pointer_debug = derived_debug
+                    && adt.all_fields().any(|f| {
+                        self.has_pointer_debug(tcx.normalize_erasing_regions(typing_env, f.ty(tcx, args)), depth)
+                    });
+                self.has_pointer_format.insert(ty, pointer_debug);
+                pointer_debug
+            },
+            _ => false,
+        }
     }
 }
 

@@ -46,7 +46,7 @@ pub(super) fn check<'tcx>(
 
         if let ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) = body_expr.kind
             && let [local_ident] = path.segments
-            && local_ident.ident.as_str() == bound_ident.as_str()
+            && local_ident.ident.name == bound_ident.name
         {
             span_lint_and_sugg(
                 cx,

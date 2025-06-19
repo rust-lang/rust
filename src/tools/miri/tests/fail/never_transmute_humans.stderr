@@ -2,7 +2,7 @@ error: Undefined Behavior: entering unreachable code
   --> tests/fail/never_transmute_humans.rs:LL:CC
    |
 LL |         std::mem::transmute::<Human, !>(Human)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ entering unreachable code
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

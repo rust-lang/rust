@@ -224,6 +224,13 @@ impl<T, const N: usize> IntoIter<T, N> {
     }
 }
 
+#[stable(feature = "array_value_iter_default", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> Default for IntoIter<T, N> {
+    fn default() -> Self {
+        IntoIter::empty()
+    }
+}
+
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> Iterator for IntoIter<T, N> {
     type Item = T;

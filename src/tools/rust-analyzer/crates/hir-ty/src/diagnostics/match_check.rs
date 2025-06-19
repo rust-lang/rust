@@ -328,7 +328,7 @@ impl HirDisplay for Pat {
                             write!(
                                 f,
                                 "{}",
-                                f.db.enum_variants(loc.parent).variants[loc.index as usize]
+                                loc.parent.enum_variants(f.db).variants[loc.index as usize]
                                     .1
                                     .display(f.db, f.edition())
                             )?;

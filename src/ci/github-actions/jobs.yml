@@ -237,6 +237,12 @@ auto:
   - name: dist-s390x-linux
     <<: *job-linux-4c
 
+  - name: dist-aarch64-windows-gnullvm
+    <<: *job-linux-4c
+
+  - name: dist-x86_64-windows-gnullvm
+    <<: *job-linux-4c
+
   - name: dist-various-1
     <<: *job-linux-4c
 
@@ -256,7 +262,7 @@ auto:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist-alt.sh
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-8c
 
   - name: dist-x86_64-musl
     env:
@@ -300,7 +306,7 @@ auto:
     env:
       IMAGE: i686-gnu-nopt
       DOCKER_SCRIPT: >-
-        python3 ../x.py test --stage 1 --config /config/nopt-std-config.toml library/std &&
+        python3 ../x.py test --stage 1 --set rust.optimize=false library/std &&
         /scripts/stage_2_test_set2.sh
     <<: *job-linux-4c
 

@@ -471,6 +471,9 @@ to customize the output:
 - `future-incompat` - includes a JSON message that contains a report if the
   crate contains any code that may fail to compile in the future.
 
+- `timings` - output a JSON message when a certain compilation "section"
+  (such as frontend analysis, code generation, linking) begins or ends.
+
 Note that it is invalid to combine the `--json` argument with the
 [`--color`](#option-color) argument, and it is required to combine `--json`
 with `--error-format=json`.

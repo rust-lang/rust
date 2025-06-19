@@ -1,3 +1,4 @@
+//@ edition: 2015
 //@ proc-macro: issue-61963.rs
 //@ proc-macro: issue-61963-1.rs
 #![deny(bare_trait_objects)]

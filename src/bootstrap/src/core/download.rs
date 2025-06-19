@@ -9,8 +9,8 @@ use xz2::bufread::XzDecoder;
 
 use crate::core::config::BUILDER_CONFIG_FILENAME;
 use crate::utils::build_stamp::BuildStamp;
-use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{check_run, exe, hex_encode, move_file};
+use crate::utils::exec::command;
+use crate::utils::helpers::{exe, hex_encode, move_file};
 use crate::{Config, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
@@ -63,17 +63,6 @@ impl Config {
         let tmp = self.out.join("tmp");
         t!(fs::create_dir_all(&tmp));
         tmp
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    /// Returns false if do not execute at all, otherwise returns its
-    /// `status.success()`.
-    pub(crate) fn check_run(&self, cmd: &mut BootstrapCommand) -> bool {
-        if self.dry_run() && !cmd.run_always {
-            return true;
-        }
-        self.verbose(|| println!("running: {cmd:?}"));
-        check_run(cmd, self.is_verbose())
     }
 
     /// Whether or not `fix_bin_or_dylib` needs to be run; can only be true
@@ -214,7 +203,7 @@ impl Config {
         // options should be kept in sync with
         // src/bootstrap/src/core/download.rs
         // for consistency
-        let mut curl = command("curl");
+        let mut curl = command("curl").allow_failure();
         curl.args([
             // follow redirect
             "--location",
@@ -255,8 +244,8 @@ impl Config {
             curl.arg("--retry-all-errors");
         }
         curl.arg(url);
-        if !self.check_run(&mut curl) {
-            if self.build.contains("windows-msvc") {
+        if !curl.run(self) {
+            if self.host_target.contains("windows-msvc") {
                 eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {
                     let powershell = command("PowerShell.exe").allow_failure().args([
@@ -411,7 +400,7 @@ impl Config {
 
         let date = &self.stage0_metadata.compiler.date;
         let version = &self.stage0_metadata.compiler.version;
-        let host = self.build;
+        let host = self.host_target;
 
         let clippy_stamp =
             BuildStamp::new(&self.initial_sysroot).with_prefix("clippy").add_stamp(date);
@@ -449,7 +438,7 @@ impl Config {
         let VersionMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
         let channel = format!("{version}-{date}");
 
-        let host = self.build;
+        let host = self.host_target;
         let bin_root = self.out.join(host).join("rustfmt");
         let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
         let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt").add_stamp(channel);
@@ -557,11 +546,11 @@ impl Config {
         extra_components: &[&str],
         download_component: fn(&Config, String, &str, &str),
     ) {
-        let host = self.build.triple;
+        let host = self.host_target.triple;
         let bin_root = self.out.join(host).join(sysroot);
         let rustc_stamp = BuildStamp::new(&bin_root).with_prefix("rustc").add_stamp(stamp_key);
 
-        if !bin_root.join("bin").join(exe("rustc", self.build)).exists()
+        if !bin_root.join("bin").join(exe("rustc", self.host_target)).exists()
             || !rustc_stamp.is_up_to_date()
         {
             if bin_root.exists() {
@@ -630,7 +619,7 @@ impl Config {
             t!(fs::create_dir_all(&cache_dir));
         }
 
-        let bin_root = self.out.join(self.build).join(destination);
+        let bin_root = self.out.join(self.host_target).join(destination);
         let tarball = cache_dir.join(&filename);
         let (base_url, url, should_verify) = match mode {
             DownloadSource::CI => {
@@ -759,7 +748,7 @@ download-rustc = false
             let now = std::time::SystemTime::now();
             let file_times = fs::FileTimes::new().set_accessed(now).set_modified(now);
 
-            let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.build));
+            let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.host_target));
             t!(crate::utils::helpers::set_file_times(llvm_config, file_times));
 
             if self.should_fix_bins_and_dylibs() {
@@ -814,7 +803,7 @@ download-rustc = false
             &self.stage0_metadata.config.artifacts_server
         };
         let version = self.artifact_version_part(llvm_sha);
-        let filename = format!("rust-dev-{}-{}.tar.xz", version, self.build.triple);
+        let filename = format!("rust-dev-{}-{}.tar.xz", version, self.host_target.triple);
         let tarball = rustc_cache.join(&filename);
         if !tarball.exists() {
             let help_on_error = "ERROR: failed to download llvm from ci
@@ -844,7 +833,7 @@ download-rustc = false
         }
         let base = &self.stage0_metadata.config.artifacts_server;
         let version = self.artifact_version_part(gcc_sha);
-        let filename = format!("gcc-{version}-{}.tar.xz", self.build.triple);
+        let filename = format!("gcc-{version}-{}.tar.xz", self.host_target.triple);
         let tarball = gcc_cache.join(&filename);
         if !tarball.exists() {
             let help_on_error = "ERROR: failed to download gcc from ci

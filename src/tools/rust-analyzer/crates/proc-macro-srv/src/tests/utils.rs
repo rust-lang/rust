@@ -1,7 +1,9 @@
 //! utils used in proc-macro tests
 
 use expect_test::Expect;
-use span::{EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContext, TokenId};
+use span::{
+    EditionedFileId, FileId, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TokenId,
+};
 use tt::TextRange;
 
 use crate::{EnvSnapshot, ProcMacroSrv, dylib, proc_macro_test_dylib_path};
@@ -76,7 +78,7 @@ fn assert_expand_impl(
         range: TextRange::new(0.into(), 150.into()),
         anchor: SpanAnchor {
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
-            ast_id: ErasedFileAstId::from_raw(1),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
         },
         ctx: SyntaxContext::root(span::Edition::CURRENT),
     };
@@ -84,7 +86,7 @@ fn assert_expand_impl(
         range: TextRange::new(0.into(), 100.into()),
         anchor: SpanAnchor {
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
-            ast_id: ErasedFileAstId::from_raw(2),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
         },
         ctx: SyntaxContext::root(span::Edition::CURRENT),
     };

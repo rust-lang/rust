@@ -1,3 +1,4 @@
+//@ needs-target-std
 //! If `-o -` or `--emit KIND=-` is provided, output should be written to stdout
 //! instead. Binary output (`obj`, `llvm-bc`, `link` and `metadata`)
 //! being written this way will result in an error if stdout is a tty.

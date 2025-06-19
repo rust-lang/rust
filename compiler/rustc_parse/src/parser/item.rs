@@ -23,7 +23,7 @@ use super::{
     AttrWrapper, ExpKeywordPair, ExpTokenPair, FollowedByType, ForceCollect, Parser, PathStyle,
     Recovered, Trailing, UsePreAttrPos,
 };
-use crate::errors::{self, MacroExpandsToAdtField};
+use crate::errors::{self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField};
 use crate::{exp, fluent_generated as fluent};
 
 impl<'a> Parser<'a> {
@@ -2402,7 +2402,7 @@ impl<'a> Parser<'a> {
         case: Case,
     ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<FnContract>>, Option<P<Block>>)> {
         let fn_span = self.token.span;
-        let header = self.parse_fn_front_matter(vis, case)?; // `const ... fn`
+        let header = self.parse_fn_front_matter(vis, case, FrontMatterParsingMode::Function)?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
         let mut generics = self.parse_generics()?; // `<'a, T, ...>`
         let decl = match self.parse_fn_decl(
@@ -2658,16 +2658,37 @@ impl<'a> Parser<'a> {
     ///
     /// `vis` represents the visibility that was already parsed, if any. Use
     /// `Visibility::Inherited` when no visibility is known.
+    ///
+    /// If `parsing_mode` is `FrontMatterParsingMode::FunctionPtrType`, we error on `const` and `async` qualifiers,
+    /// which are not allowed in function pointer types.
     pub(super) fn parse_fn_front_matter(
         &mut self,
         orig_vis: &Visibility,
         case: Case,
+        parsing_mode: FrontMatterParsingMode,
     ) -> PResult<'a, FnHeader> {
         let sp_start = self.token.span;
         let constness = self.parse_constness(case);
+        if parsing_mode == FrontMatterParsingMode::FunctionPtrType
+            && let Const::Yes(const_span) = constness
+        {
+            self.dcx().emit_err(FnPointerCannotBeConst {
+                span: const_span,
+                suggestion: const_span.until(self.token.span),
+            });
+        }
 
         let async_start_sp = self.token.span;
         let coroutine_kind = self.parse_coroutine_kind(case);
+        if parsing_mode == FrontMatterParsingMode::FunctionPtrType
+            && let Some(ast::CoroutineKind::Async { span: async_span, .. }) = coroutine_kind
+        {
+            self.dcx().emit_err(FnPointerCannotBeAsync {
+                span: async_span,
+                suggestion: async_span.until(self.token.span),
+            });
+        }
+        // FIXME(gen_blocks): emit a similar error for `gen fn()`
 
         let unsafe_start_sp = self.token.span;
         let safety = self.parse_safety(case);
@@ -2703,6 +2724,11 @@ impl<'a> Parser<'a> {
                     enum WrongKw {
                         Duplicated(Span),
                         Misplaced(Span),
+                        /// `MisplacedDisallowedQualifier` is only used instead of `Misplaced`,
+                        /// when the misplaced keyword is disallowed by the current `FrontMatterParsingMode`.
+                        /// In this case, we avoid generating the suggestion to swap around the keywords,
+                        /// as we already generated a suggestion to remove the keyword earlier.
+                        MisplacedDisallowedQualifier,
                     }
 
                     // We may be able to recover
@@ -2716,7 +2742,21 @@ impl<'a> Parser<'a> {
                             Const::Yes(sp) => Some(WrongKw::Duplicated(sp)),
                             Const::No => {
                                 recover_constness = Const::Yes(self.token.span);
-                                Some(WrongKw::Misplaced(async_start_sp))
+                                match parsing_mode {
+                                    FrontMatterParsingMode::Function => {
+                                        Some(WrongKw::Misplaced(async_start_sp))
+                                    }
+                                    FrontMatterParsingMode::FunctionPtrType => {
+                                        self.dcx().emit_err(FnPointerCannotBeConst {
+                                            span: self.token.span,
+                                            suggestion: self
+                                                .token
+                                                .span
+                                                .with_lo(self.prev_token.span.hi()),
+                                        });
+                                        Some(WrongKw::MisplacedDisallowedQualifier)
+                                    }
+                                }
                             }
                         }
                     } else if self.check_keyword(exp!(Async)) {
@@ -2742,7 +2782,21 @@ impl<'a> Parser<'a> {
                                     closure_id: DUMMY_NODE_ID,
                                     return_impl_trait_id: DUMMY_NODE_ID,
                                 });
-                                Some(WrongKw::Misplaced(unsafe_start_sp))
+                                match parsing_mode {
+                                    FrontMatterParsingMode::Function => {
+                                        Some(WrongKw::Misplaced(async_start_sp))
+                                    }
+                                    FrontMatterParsingMode::FunctionPtrType => {
+                                        self.dcx().emit_err(FnPointerCannotBeAsync {
+                                            span: self.token.span,
+                                            suggestion: self
+                                                .token
+                                                .span
+                                                .with_lo(self.prev_token.span.hi()),
+                                        });
+                                        Some(WrongKw::MisplacedDisallowedQualifier)
+                                    }
+                                }
                             }
                         }
                     } else if self.check_keyword(exp!(Unsafe)) {
@@ -2840,14 +2894,20 @@ impl<'a> Parser<'a> {
 
                     // FIXME(gen_blocks): add keyword recovery logic for genness
 
-                    if wrong_kw.is_some()
+                    if let Some(wrong_kw) = wrong_kw
                         && self.may_recover()
                         && self.look_ahead(1, |tok| tok.is_keyword_case(kw::Fn, case))
                     {
                         // Advance past the misplaced keyword and `fn`
                         self.bump();
                         self.bump();
-                        err.emit();
+                        // When we recover from a `MisplacedDisallowedQualifier`, we already emitted an error for the disallowed qualifier
+                        // So we don't emit another error that the qualifier is unexpected.
+                        if matches!(wrong_kw, WrongKw::MisplacedDisallowedQualifier) {
+                            err.cancel();
+                        } else {
+                            err.emit();
+                        }
                         return Ok(FnHeader {
                             constness: recover_constness,
                             safety: recover_safety,
@@ -3193,4 +3253,13 @@ impl<'a> Parser<'a> {
 enum IsMacroRulesItem {
     Yes { has_bang: bool },
     No,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub(super) enum FrontMatterParsingMode {
+    /// Parse the front matter of a function declaration
+    Function,
+    /// Parse the front matter of a function pointet type.
+    /// For function pointer types, the `const` and `async` keywords are not permitted.
+    FunctionPtrType,
 }

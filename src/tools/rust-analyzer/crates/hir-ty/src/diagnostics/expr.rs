@@ -642,7 +642,7 @@ fn missing_match_arms<'p>(
     }
 
     let non_empty_enum = match scrut_ty.as_adt() {
-        Some((AdtId::EnumId(e), _)) => !cx.db.enum_variants(e).variants.is_empty(),
+        Some((AdtId::EnumId(e), _)) => !e.enum_variants(cx.db).variants.is_empty(),
         _ => false,
     };
     let display_target = DisplayTarget::from_crate(cx.db, krate);

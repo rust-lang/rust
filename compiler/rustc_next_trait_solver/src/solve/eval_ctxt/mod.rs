@@ -19,6 +19,7 @@ use tracing::{debug, instrument, trace};
 use super::has_only_region_constraints;
 use crate::coherence;
 use crate::delegate::SolverDelegate;
+use crate::placeholder::BoundVarReplacer;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
@@ -1231,6 +1232,14 @@ where
         assume: I::Const,
     ) -> Result<Certainty, NoSolution> {
         self.delegate.is_transmutable(dst, src, assume)
+    }
+
+    pub(super) fn replace_bound_vars<T: TypeFoldable<I>>(
+        &self,
+        t: T,
+        universes: &mut Vec<Option<ty::UniverseIndex>>,
+    ) -> T {
+        BoundVarReplacer::replace_bound_vars(&**self.delegate, universes, t).0
     }
 }
 

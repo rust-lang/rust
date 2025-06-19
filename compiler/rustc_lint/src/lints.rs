@@ -199,32 +199,6 @@ pub(crate) struct BuiltinAnonymousParams<'a> {
     pub ty_snip: &'a str,
 }
 
-// FIXME(davidtwco) translatable deprecated attr
-#[derive(LintDiagnostic)]
-#[diag(lint_builtin_deprecated_attr_link)]
-pub(crate) struct BuiltinDeprecatedAttrLink<'a> {
-    pub name: Symbol,
-    pub reason: &'a str,
-    pub link: &'a str,
-    #[subdiagnostic]
-    pub suggestion: BuiltinDeprecatedAttrLinkSuggestion<'a>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum BuiltinDeprecatedAttrLinkSuggestion<'a> {
-    #[suggestion(lint_msg_suggestion, code = "", applicability = "machine-applicable")]
-    Msg {
-        #[primary_span]
-        suggestion: Span,
-        msg: &'a str,
-    },
-    #[suggestion(lint_default_suggestion, code = "", applicability = "machine-applicable")]
-    Default {
-        #[primary_span]
-        suggestion: Span,
-    },
-}
-
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_unused_doc_comment)]
 pub(crate) struct BuiltinUnusedDocComment<'a> {
@@ -996,6 +970,11 @@ pub(crate) struct TypeIrInherentUsage;
 pub(crate) struct TypeIrTraitUsage;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_type_ir_direct_use)]
+#[note]
+pub(crate) struct TypeIrDirectUse;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_non_glob_import_type_ir_inherent)]
 pub(crate) struct NonGlobImportTypeIrInherent {
     #[suggestion(code = "{snippet}", applicability = "maybe-incorrect")]
@@ -1564,8 +1543,16 @@ pub(crate) struct PassByValueDiag {
 #[diag(lint_redundant_semicolons)]
 pub(crate) struct RedundantSemicolonsDiag {
     pub multiple: bool,
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
-    pub suggestion: Span,
+    #[subdiagnostic]
+    pub suggestion: Option<RedundantSemicolonsSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(lint_redundant_semicolons_suggestion, code = "", applicability = "maybe-incorrect")]
+pub(crate) struct RedundantSemicolonsSuggestion {
+    pub multiple_semicolons: bool,
+    #[primary_span]
+    pub span: Span,
 }
 
 // traits.rs
@@ -2617,10 +2604,6 @@ pub(crate) struct DuplicateMacroAttribute;
 pub(crate) struct CfgAttrNoAttributes;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_missing_fragment_specifier)]
-pub(crate) struct MissingFragmentSpecifier;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_metavariable_still_repeating)]
 pub(crate) struct MetaVariableStillRepeating {
     pub name: MacroRulesNormalizedIdent,
@@ -2648,6 +2631,7 @@ pub(crate) struct UnusedCrateDependency {
     pub local_crate: Symbol,
 }
 
+// FIXME(jdonszelmann): duplicated in rustc_attr_parsing, should be moved there completely.
 #[derive(LintDiagnostic)]
 #[diag(lint_ill_formed_attribute_input)]
 pub(crate) struct IllFormedAttributeInput {

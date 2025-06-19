@@ -34,6 +34,9 @@ pub enum Stability {
     /// particular for features are actually ABI configuration flags (not all targets are as nice as
     /// RISC-V and have an explicit way to set the ABI separate from target features).
     Forbidden { reason: &'static str },
+    /// This feature can not be set via `-Ctarget-feature` or `#[target_feature]`, it can only be set
+    /// by target modifier flag. Target modifier flags are tracked to be consistent in linked modules.
+    TargetModifierOnly { reason: &'static str, flag: &'static str },
 }
 use Stability::*;
 
@@ -49,6 +52,7 @@ impl<CTX> HashStable<CTX> for Stability {
             Stability::Forbidden { reason } => {
                 reason.hash_stable(hcx, hasher);
             }
+            Stability::TargetModifierOnly { .. } => {}
         }
     }
 }
@@ -74,16 +78,7 @@ impl Stability {
             Stability::Unstable(nightly_feature) => Some(nightly_feature),
             Stability::Stable { .. } => None,
             Stability::Forbidden { .. } => panic!("forbidden features should not reach this far"),
-        }
-    }
-
-    /// Returns whether the feature may be toggled via `#[target_feature]` or `-Ctarget-feature`.
-    /// (It might still be nightly-only even if this returns `true`, so make sure to also check
-    /// `requires_nightly`.)
-    pub fn toggle_allowed(&self) -> Result<(), &'static str> {
-        match self {
-            Stability::Forbidden { reason } => Err(reason),
-            _ => Ok(()),
+            Stability::TargetModifierOnly { .. } => None,
         }
     }
 }
@@ -453,6 +448,30 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("prfchw", Unstable(sym::prfchw_target_feature), &[]),
     ("rdrand", Stable, &[]),
     ("rdseed", Stable, &[]),
+    (
+        "retpoline-external-thunk",
+        Stability::TargetModifierOnly {
+            reason: "use `retpoline-external-thunk` target modifier flag instead",
+            flag: "retpoline-external-thunk",
+        },
+        &[],
+    ),
+    (
+        "retpoline-indirect-branches",
+        Stability::TargetModifierOnly {
+            reason: "use `retpoline` target modifier flag instead",
+            flag: "retpoline",
+        },
+        &[],
+    ),
+    (
+        "retpoline-indirect-calls",
+        Stability::TargetModifierOnly {
+            reason: "use `retpoline` target modifier flag instead",
+            flag: "retpoline",
+        },
+        &[],
+    ),
     ("rtm", Unstable(sym::rtm_target_feature), &[]),
     ("sha", Stable, &["sse2"]),
     ("sha512", Stable, &["avx2"]),

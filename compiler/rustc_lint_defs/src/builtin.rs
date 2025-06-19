@@ -65,7 +65,6 @@ declare_lint_pass! {
         MACRO_USE_EXTERN_CRATE,
         META_VARIABLE_MISUSE,
         MISSING_ABI,
-        MISSING_FRAGMENT_SPECIFIER,
         MISSING_UNSAFE_ON_EXTERN,
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
@@ -141,7 +140,6 @@ declare_lint_pass! {
         UNUSED_VARIABLES,
         USELESS_DEPRECATED,
         WARNINGS,
-        WASM_C_ABI,
         // tidy-alphabetical-end
     ]
 }
@@ -1414,51 +1412,6 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
-    };
-}
-
-declare_lint! {
-    /// The `missing_fragment_specifier` lint is issued when an unused pattern in a
-    /// `macro_rules!` macro definition has a meta-variable (e.g. `$e`) that is not
-    /// followed by a fragment specifier (e.g. `:expr`).
-    ///
-    /// This warning can always be fixed by removing the unused pattern in the
-    /// `macro_rules!` macro definition.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail,edition2021
-    /// macro_rules! foo {
-    ///    () => {};
-    ///    ($name) => { };
-    /// }
-    ///
-    /// fn main() {
-    ///    foo!();
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// To fix this, remove the unused pattern from the `macro_rules!` macro definition:
-    ///
-    /// ```rust
-    /// macro_rules! foo {
-    ///     () => {};
-    /// }
-    /// fn main() {
-    ///     foo!();
-    /// }
-    /// ```
-    pub MISSING_FRAGMENT_SPECIFIER,
-    Deny,
-    "detects missing fragment specifiers in unused `macro_rules!` patterns",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseError,
-        reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
-        report_in_deps: true,
     };
 }
 
@@ -3664,7 +3617,7 @@ declare_lint! {
     "use of unsupported calling convention",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
-        report_in_deps: true,
+        report_in_deps: false,
         reference: "issue #137018 <https://github.com/rust-lang/rust/issues/137018>",
     };
 }
@@ -4146,6 +4099,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(Edition::Edition2024),
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>",
+        report_in_deps: true,
     };
     @edition Edition2024 => Deny;
     report_in_external_macro
@@ -4200,6 +4154,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionAndFutureReleaseError(Edition::Edition2024),
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>",
+        report_in_deps: true,
     };
     report_in_external_macro
 }
@@ -5024,50 +4979,6 @@ declare_lint! {
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>",
     };
     crate_level_only
-}
-
-declare_lint! {
-    /// The `wasm_c_abi` lint detects usage of the `extern "C"` ABI of wasm that is affected
-    /// by a planned ABI change that has the goal of aligning Rust with the standard C ABI
-    /// of this target.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (needs wasm32-unknown-unknown)
-    /// #[repr(C)]
-    /// struct MyType(i32, i32);
-    ///
-    /// extern "C" my_fun(x: MyType) {}
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// error: this function function definition is affected by the wasm ABI transition: it passes an argument of non-scalar type `MyType`
-    ///   --> $DIR/wasm_c_abi_transition.rs:17:1
-    ///    |
-    ///    | pub extern "C" fn my_fun(_x: MyType) {}
-    ///    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ///    |
-    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///    = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
-    ///    = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// Rust has historically implemented a non-spec-compliant C ABI on wasm32-unknown-unknown. This
-    /// has caused incompatibilities with other compilers and Wasm targets. In a future version
-    /// of Rust, this will be fixed, and therefore code relying on the non-spec-compliant C ABI will
-    /// stop functioning.
-    pub WASM_C_ABI,
-    Warn,
-    "detects code relying on rustc's non-spec-compliant wasm C ABI",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseError,
-        reference: "issue #138762 <https://github.com/rust-lang/rust/issues/138762>",
-        report_in_deps: true,
-    };
 }
 
 declare_lint! {

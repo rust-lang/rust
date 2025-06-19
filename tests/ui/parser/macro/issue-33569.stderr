@@ -5,7 +5,7 @@ LL |     { $+ } => {
    |        ^
 
 error: expected one of: `*`, `+`, or `?`
-  --> $DIR/issue-33569.rs:6:13
+  --> $DIR/issue-33569.rs:5:13
    |
 LL |         $(x)(y)
    |             ^^^
@@ -15,27 +15,19 @@ error: missing fragment specifier
    |
 LL |     { $+ } => {
    |        ^
+   |
+   = note: fragment specifiers must be provided
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+help: try adding a specifier here
+   |
+LL |     { $+:spec } => {
+   |         +++++
 
 error: missing fragment specifier
   --> $DIR/issue-33569.rs:2:8
    |
 LL |     { $+ } => {
    |        ^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
-   = note: `#[deny(missing_fragment_specifier)]` on by default
 
 error: aborting due to 4 previous errors
-
-Future incompatibility report: Future breakage diagnostic:
-error: missing fragment specifier
-  --> $DIR/issue-33569.rs:2:8
-   |
-LL |     { $+ } => {
-   |        ^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
-   = note: `#[deny(missing_fragment_specifier)]` on by default
 

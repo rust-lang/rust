@@ -8,6 +8,7 @@ use derive_where::derive_where;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
+use crate::lang_items::TraitSolverLangItem;
 use crate::search_graph::PathKind;
 use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
 
@@ -236,6 +237,14 @@ pub struct ExternalConstraintsData<I: Interner> {
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 
+impl<I: Interner> ExternalConstraintsData<I> {
+    pub fn is_empty(&self) -> bool {
+        self.region_constraints.is_empty()
+            && self.opaque_types.is_empty()
+            && self.normalization_nested_goals.is_empty()
+    }
+}
+
 #[derive_where(Clone, Hash, PartialEq, Eq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
@@ -357,4 +366,25 @@ impl MaybeCause {
 pub enum AdtDestructorKind {
     NotConst,
     Const,
+}
+
+/// Which sizedness trait - `Sized`, `MetaSized`? `PointeeSized` is omitted as it is removed during
+/// lowering.
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub enum SizedTraitKind {
+    /// `Sized` trait
+    Sized,
+    /// `MetaSized` trait
+    MetaSized,
+}
+
+impl SizedTraitKind {
+    /// Returns `DefId` of corresponding language item.
+    pub fn require_lang_item<I: Interner>(self, cx: I) -> I::DefId {
+        cx.require_lang_item(match self {
+            SizedTraitKind::Sized => TraitSolverLangItem::Sized,
+            SizedTraitKind::MetaSized => TraitSolverLangItem::MetaSized,
+        })
+    }
 }

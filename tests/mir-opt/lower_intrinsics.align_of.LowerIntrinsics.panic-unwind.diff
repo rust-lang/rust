@@ -5,7 +5,7 @@
       let mut _0: usize;
   
       bb0: {
--         _0 = std::intrinsics::min_align_of::<T>() -> [return: bb1, unwind unreachable];
+-         _0 = std::intrinsics::align_of::<T>() -> [return: bb1, unwind unreachable];
 +         _0 = AlignOf(T);
 +         goto -> bb1;
       }

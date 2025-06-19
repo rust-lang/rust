@@ -12,6 +12,7 @@
 #![allow(rustc::potential_query_instability)]
 #![cfg_attr(bootstrap, feature(cfg_match))]
 #![cfg_attr(not(bootstrap), feature(cfg_select))]
+#![cfg_attr(not(bootstrap), feature(sized_hierarchy))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
@@ -43,6 +44,9 @@ use std::fmt;
 pub use atomic_ref::AtomicRef;
 pub use ena::{snapshot_vec, undo_log, unify};
 pub use rustc_index::static_assert_size;
+// re-exported for `rustc_smir`
+// FIXME(sized_hierarchy): remove with `cfg(bootstrap)`, see `rustc_serialize/src/lib.rs`
+pub use rustc_serialize::PointeeSized;
 
 pub mod aligned;
 pub mod base_n;

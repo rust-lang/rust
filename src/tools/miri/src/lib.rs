@@ -16,7 +16,7 @@
 #![feature(unqualified_local_imports)]
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
-#![feature(file_lock)]
+#![cfg_attr(bootstrap, feature(file_lock))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -124,7 +124,7 @@ pub use crate::concurrency::data_race::{
 };
 pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceId};
 pub use crate::concurrency::sync::{
-    CondvarId, EvalContextExt as _, MutexRef, RwLockId, SynchronizationObjects,
+    CondvarId, EvalContextExt as _, MutexRef, RwLockRef, SynchronizationObjects,
 };
 pub use crate::concurrency::thread::{
     BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,

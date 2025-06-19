@@ -190,6 +190,15 @@ pub trait Float:
             Self::ONE.copysign(self)
         }
     }
+
+    /// Make a best-effort attempt to canonicalize the number. Note that this is allowed
+    /// to be a nop and does not always quiet sNaNs.
+    fn canonicalize(self) -> Self {
+        // FIXME: LLVM often removes this. We should determine whether we can remove the operation,
+        // or switch to something based on `llvm.canonicalize` (which has crashes,
+        // <https://github.com/llvm/llvm-project/issues/32650>).
+        self * Self::ONE
+    }
 }
 
 /// Access the associated `Int` type from a float (helper to avoid ambiguous associated types).

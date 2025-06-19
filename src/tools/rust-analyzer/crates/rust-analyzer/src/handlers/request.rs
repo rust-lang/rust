@@ -658,6 +658,9 @@ pub(crate) fn handle_workspace_symbol(
         if libs {
             q.libs();
         }
+        if config.search_exclude_imports {
+            q.exclude_imports();
+        }
         q
     };
     let mut res = exec_query(&snap, query, config.search_limit)?;

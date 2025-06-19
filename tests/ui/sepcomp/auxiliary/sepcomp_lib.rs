@@ -13,8 +13,8 @@ pub mod b {
 }
 
 pub mod c {
-    use a::one;
-    use b::two;
+    use crate::a::one;
+    use crate::b::two;
     pub fn three() -> usize {
         one() + two()
     }

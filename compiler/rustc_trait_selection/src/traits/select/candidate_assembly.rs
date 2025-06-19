@@ -14,7 +14,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode, elaborate};
+use rustc_middle::ty::{self, SizedTraitKind, Ty, TypeVisitableExt, TypingMode, elaborate};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument, trace};
 
@@ -87,7 +87,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     candidates.vec.push(BuiltinCandidate { has_nested: false });
                 }
                 Some(LangItem::Sized) => {
-                    self.assemble_builtin_sized_candidate(obligation, &mut candidates);
+                    self.assemble_builtin_sized_candidate(
+                        obligation,
+                        &mut candidates,
+                        SizedTraitKind::Sized,
+                    );
+                }
+                Some(LangItem::MetaSized) => {
+                    self.assemble_builtin_sized_candidate(
+                        obligation,
+                        &mut candidates,
+                        SizedTraitKind::MetaSized,
+                    );
+                }
+                Some(LangItem::PointeeSized) => {
+                    bug!("`PointeeSized` is removed during lowering");
                 }
                 Some(LangItem::Unsize) => {
                     self.assemble_candidates_for_unsizing(obligation, &mut candidates);
@@ -201,6 +215,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     selcx.infcx.probe(|_| {
+                        let bound = util::lazily_elaborate_sizedness_candidate(
+                            selcx.infcx,
+                            obligation,
+                            bound,
+                        );
+
                         // We checked the polarity already
                         match selcx.match_normalize_trait_ref(
                             obligation,
@@ -245,14 +265,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .caller_bounds()
             .iter()
             .filter_map(|p| p.as_trait_clause())
-            // Micro-optimization: filter out predicates relating to different traits.
-            .filter(|p| p.def_id() == stack.obligation.predicate.def_id())
+            // Micro-optimization: filter out predicates with different polarities.
             .filter(|p| p.polarity() == stack.obligation.predicate.polarity());
 
         let drcx = DeepRejectCtxt::relate_rigid_rigid(self.tcx());
         let obligation_args = stack.obligation.predicate.skip_binder().trait_ref.args;
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         for bound in bounds {
+            let bound =
+                util::lazily_elaborate_sizedness_candidate(self.infcx, stack.obligation, bound);
+
+            // Micro-optimization: filter out predicates relating to different traits.
+            if bound.def_id() != stack.obligation.predicate.def_id() {
+                continue;
+            }
+
             let bound_trait_ref = bound.map_bound(|t| t.trait_ref);
             if !drcx.args_may_unify(obligation_args, bound_trait_ref.skip_binder().args) {
                 continue;
@@ -1086,15 +1113,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    /// Assembles the trait which are built-in to the language itself:
-    /// `Copy`, `Clone` and `Sized`.
+    /// Assembles the `Sized` and `MetaSized` traits which are built-in to the language itself.
     #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_builtin_sized_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
+        sizedness: SizedTraitKind,
     ) {
-        match self.sized_conditions(obligation) {
+        match self.sizedness_conditions(obligation, sizedness) {
             BuiltinImplConditions::Where(nested) => {
                 candidates
                     .vec

@@ -2,7 +2,7 @@ error: Undefined Behavior: bad declaration of miri_resolve_frame - should return
   --> tests/fail/shims/backtrace/bad-backtrace-decl.rs:LL:CC
    |
 LL | ...   miri_resolve_frame(*frame, 0);
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad declaration of miri_resolve_frame - should return a struct with 5 fields
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

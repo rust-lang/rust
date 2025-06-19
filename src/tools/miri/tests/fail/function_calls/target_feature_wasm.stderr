@@ -2,7 +2,7 @@ error: abnormal termination: calling a function that requires unavailable target
   --> tests/fail/function_calls/target_feature_wasm.rs:LL:CC
    |
 LL |     simd128_fn();
-   |     ^^^^^^^^^^^^ calling a function that requires unavailable target features: simd128
+   |     ^^^^^^^^^^^^ abnormal termination occurred here
    |
    = note: BACKTRACE:
    = note: inside `main` at tests/fail/function_calls/target_feature_wasm.rs:LL:CC

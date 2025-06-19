@@ -273,10 +273,10 @@ fn run_ui_cargo(cx: &TestContext) {
     config.program.input_file_flag = CommandBuilder::cargo().input_file_flag;
     config.program.out_dir_flag = CommandBuilder::cargo().out_dir_flag;
     config.program.args = vec!["clippy".into(), "--color".into(), "never".into(), "--quiet".into()];
-    config
-        .program
-        .envs
-        .push(("RUSTFLAGS".into(), Some("-Dwarnings".into())));
+    config.program.envs.extend([
+        ("RUSTFLAGS".into(), Some("-Dwarnings".into())),
+        ("CARGO_INCREMENTAL".into(), Some("0".into())),
+    ]);
     // We need to do this while we still have a rustc in the `program` field.
     config.fill_host_and_target().unwrap();
     config.program.program.set_file_name(if cfg!(windows) {

@@ -583,18 +583,32 @@ error: cannot find attribute `multipart_suggestion` in this scope
    |
 LL | #[multipart_suggestion(no_crate_suggestion)]
    |   ^^^^^^^^^^^^^^^^^^^^
+   |
+help: `multipart_suggestion` is an attribute that can be used by the derive macro `Subdiagnostic`, you might be missing a `derive` attribute
+   |
+LL + #[derive(Subdiagnostic)]
+LL | struct MultipartSuggestion {
+   |
 
 error: cannot find attribute `multipart_suggestion` in this scope
   --> $DIR/diagnostic-derive.rs:647:3
    |
 LL | #[multipart_suggestion()]
    |   ^^^^^^^^^^^^^^^^^^^^
+   |
+help: `multipart_suggestion` is an attribute that can be used by the derive macro `Subdiagnostic`, you might be missing a `derive` attribute
+   |
+LL + #[derive(Subdiagnostic)]
+LL | struct MultipartSuggestion {
+   |
 
 error: cannot find attribute `multipart_suggestion` in this scope
   --> $DIR/diagnostic-derive.rs:651:7
    |
 LL |     #[multipart_suggestion(no_crate_suggestion)]
    |       ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `multipart_suggestion` is an attribute that can be used by the derive macro `Subdiagnostic`, you might be missing a `derive` attribute
 
 error[E0425]: cannot find value `nonsense` in module `crate::fluent_generated`
   --> $DIR/diagnostic-derive.rs:75:8

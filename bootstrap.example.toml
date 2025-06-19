@@ -381,6 +381,15 @@
 #    "miri", "cargo-miri" # for dev/nightly channels
 #]
 
+# Specify build configuration specific for some tool, such as enabled features.
+# This option has no effect on which tools are enabled: refer to the `tools` option for that.
+#
+# For example, to build Miri with tracing support, use `tool.miri.features = ["tracing"]`
+#
+# The default value for the `features` array is `[]`. However, please note that other flags in
+# `bootstrap.toml` might influence the features enabled for some tools.
+#tool.TOOL_NAME.features = [FEATURE1, FEATURE2]
+
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose, 3 == print environment variables on each rustc invocation
 #verbose = 0
 
