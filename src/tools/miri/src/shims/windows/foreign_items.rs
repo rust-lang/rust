@@ -573,8 +573,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "WaitForSingleObject" => {
                 let [handle, timeout] = this.check_shim(abi, sys_conv, link_name, args)?;
 
-                let ret = this.WaitForSingleObject(handle, timeout)?;
-                this.write_scalar(ret, dest)?;
+                this.WaitForSingleObject(handle, timeout, dest)?;
             }
             "GetCurrentProcess" => {
                 let [] = this.check_shim(abi, sys_conv, link_name, args)?;
