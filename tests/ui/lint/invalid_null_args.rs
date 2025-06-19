@@ -58,6 +58,10 @@ unsafe fn null_ptr() {
     let _a: A = ptr::read_unaligned(ptr::null_mut());
     //~^ ERROR calling this function with a null pointer is undefined behavior
 
+    // These two should *not* fire the lint.
+    let _a: A = ptr::read_volatile(ptr::null());
+    let _a: A = ptr::read_volatile(ptr::null_mut());
+
     let _a: A = ptr::replace(ptr::null_mut(), v);
     //~^ ERROR calling this function with a null pointer is undefined behavior
 
@@ -75,6 +79,12 @@ unsafe fn null_ptr() {
     //~^ ERROR calling this function with a null pointer is undefined behavior
 
     ptr::write_unaligned(ptr::null_mut(), v);
+    //~^ ERROR calling this function with a null pointer is undefined behavior
+
+    // This one should *not* fire the lint.
+    ptr::write_volatile(ptr::null_mut(), v);
+
+    ptr::write_bytes::<usize>(ptr::null_mut(), 42, 0);
     //~^ ERROR calling this function with a null pointer is undefined behavior
 
     // with indirections
