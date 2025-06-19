@@ -555,7 +555,7 @@ fn handle_segfault(
         // - Continue
 
         // Ensure the stack is properly zeroed out!
-        for a in (ch_stack..ch_stack.strict_add(page_size)).step_by(ARCH_WORD_SIZE) {
+        for a in (ch_stack..ch_stack.strict_add(FAKE_STACK_SIZE)).step_by(ARCH_WORD_SIZE) {
             ptrace::write(pid, std::ptr::with_exposed_provenance_mut(a), 0).unwrap();
         }
 
@@ -600,6 +600,11 @@ fn handle_segfault(
         // for any uncertainty + we don't want it `cont()`ing randomly by accident
         // Also, don't let it continue with unprotected memory if something errors!
         let _ = wait::waitid(wait::Id::Pid(pid), WAIT_FLAGS).map_err(|_| ExecError::Died(None))?;
+
+        // Zero out again to be safe
+        for a in (ch_stack..ch_stack.strict_add(FAKE_STACK_SIZE)).step_by(ARCH_WORD_SIZE) {
+            ptrace::write(pid, std::ptr::with_exposed_provenance_mut(a), 0).unwrap();
+        }
 
         // Save registers and grab the bytes that were executed. This would
         // be really nasty if it was a jump or similar but those thankfully
