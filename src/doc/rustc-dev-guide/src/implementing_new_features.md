@@ -209,19 +209,39 @@ tests/ui/feature-gates/ --bless`.
 
 ## Call for testing
 
-Once the implementation is complete, the feature will be available to nightly users, but not yet part of stable Rust. This is a good time to write a blog post on [one of the Rust blogs](https://github.com/rust-lang/blog.rust-lang.org/) and issue a call for testing (here are three [example](https://blog.rust-lang.org/2021/08/03/GATs-stabilization-push.html) [blog](https://blog.rust-lang.org/inside-rust/2024/08/09/async-closures-call-for-testing.html) [posts](https://blog.rust-lang.org/2024/09/05/impl-trait-capture-rules.html) to give you the idea). The post should highlight how the feature works, what areas you'd like people to play with, and how they can supply feedback.
+Once the implementation is complete, the feature will be available to nightly users, but not yet part of stable Rust. This is a good time to write a blog post on [the main Rust blog][rust-blog] and issue a **Call for Testing**.
+
+Some example Call for Testing blog posts:
+
+1. [The push for GATs stabilization](https://blog.rust-lang.org/2021/08/03/GATs-stabilization-push/)
+2. [Changes to `impl Trait` in Rust 2024](https://blog.rust-lang.org/2024/09/05/impl-trait-capture-rules.html)
+3. [Async Closures MVP: Call for Testing!](https://blog.rust-lang.org/inside-rust/2024/08/09/async-closures-call-for-testing/)
+
+Alternatively, [*This Week in Rust*][twir] has a [call-for-testing section][twir-cft]. Example:
+
+- [Call for testing on boolean literals as cfg predicates](https://github.com/rust-lang/rust/issues/131204#issuecomment-2569314526).
+
+Which option to choose might depend on how significant the language change is, though note that [*This Week in Rust*][twir]'s Call for Testing section might be less visible than a dedicated post on the main Rust blog.
 
 ## Affiliated work
 
-Once the feature is supported by rustc, there is other associated work that needs to be done to give users a complete experience:
+Once the feature is supported by rustc, there is other associated work that needs to be done to give users a complete experience. Think of it as the *language toolchain* developer experience, which doesn't only comprise of the language or compiler in isolation.
 
-* Extending rustfmt to format any new syntax;
-* Extending rust-analyzer;
-* Documenting the feature in the Rust reference;
-* ...
+- Documenting the language feature in the [Rust Reference][reference].
+- (If applicable) Extending [`rustfmt`] to format any new syntax.
+- (If applicable) Extending [`rust-analyzer`]. This can depend on the nature of the language feature, as some features don't need to be blocked on *full* support.
+   - A blocking concern is when a language feature degrades the user experience simply by existing before its support is implemented in [`rust-analyzer`].
+   - Example blocking concern: new syntax that [`rust-analyzer`] can't parse -> bogus diagnostics, type inference changes -> bogus diagnostics.
 
 ## Stabilization
 
 The final step in the feature lifecycle is [stabilization][stab], which is when the feature becomes available to all Rust users. At this point, backwards incompatible changes are no longer permitted (modulo soundness bugs and inference changes; see the lang team's [defined semver policies](https://rust-lang.github.io/rfcs/1122-language-semver.html) for full details). To learn more about stabilization, see the [stabilization guide][stab].
 
+
 [stab]: ./stabilization_guide.md
+[rust-blog]: https://github.com/rust-lang/blog.rust-lang.org/
+[twir]: https://github.com/rust-lang/this-week-in-rust
+[twir-cft]: https://this-week-in-rust.org/blog/2025/01/22/this-week-in-rust-583/#calls-for-testing
+[`rustfmt`]: https://github.com/rust-lang/rustfmt
+[`rust-analyzer`]: https://github.com/rust-lang/rust-analyzer
+[reference]: https://github.com/rust-lang/reference
