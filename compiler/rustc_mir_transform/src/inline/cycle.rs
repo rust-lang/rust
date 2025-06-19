@@ -8,6 +8,7 @@ use rustc_session::Limit;
 use rustc_span::sym;
 use tracing::{instrument, trace};
 
+#[instrument(level = "debug", skip(tcx), ret)]
 fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
     match callee.def {
         // If there is no MIR available (either because it was not in metadata or
@@ -64,7 +65,7 @@ fn process<'tcx>(
     caller: ty::Instance<'tcx>,
     target: LocalDefId,
     seen: &mut FxHashSet<ty::Instance<'tcx>>,
-    involved: &mut FxHashSet<ty::Instance<'tcx>>,
+    involved: &mut FxHashSet<LocalDefId>,
     recursion_limiter: &mut FxHashMap<DefId, usize>,
     recursion_limit: Limit,
 ) -> bool {
@@ -122,7 +123,10 @@ fn process<'tcx>(
                 true
             };
             if found_recursion {
-                involved.insert(callee);
+                if let Some(callee) = callee.def_id().as_local() {
+                    // Calling `optimized_mir` of a non-local definition cannot cycle.
+                    involved.insert(callee);
+                }
                 cycle_found = true;
             }
         }
@@ -135,7 +139,7 @@ fn process<'tcx>(
 pub(crate) fn mir_callgraph_cyclic<'tcx>(
     tcx: TyCtxt<'tcx>,
     root: LocalDefId,
-) -> UnordSet<ty::Instance<'tcx>> {
+) -> UnordSet<LocalDefId> {
     assert!(
         !tcx.is_constructor(root.to_def_id()),
         "you should not call `mir_callgraph_reachable` on enum/struct constructor functions"
