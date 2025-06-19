@@ -450,6 +450,102 @@ pub(super) fn transcribe<'a>(
     }
 }
 
+fn transcribe_metavar_expr<'a>(
+    dcx: DiagCtxtHandle<'a>,
+    expr: &MetaVarExpr,
+    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    marker: &mut Marker,
+    repeats: &[(usize, usize)],
+    result: &mut Vec<TokenTree>,
+    sp: &DelimSpan,
+    symbol_gallery: &SymbolGallery,
+) -> PResult<'a, ()> {
+    let mut visited_span = || {
+        let mut span = sp.entire();
+        marker.mark_span(&mut span);
+        span
+    };
+    match *expr {
+        MetaVarExpr::Concat(ref elements) => {
+            let mut concatenated = String::new();
+            for element in elements.into_iter() {
+                let symbol = match element {
+                    MetaVarExprConcatElem::Ident(elem) => elem.name,
+                    MetaVarExprConcatElem::Literal(elem) => *elem,
+                    MetaVarExprConcatElem::Var(ident) => {
+                        match matched_from_ident(dcx, *ident, interp)? {
+                            NamedMatch::MatchedSeq(named_matches) => {
+                                let Some((curr_idx, _)) = repeats.last() else {
+                                    return Err(dcx.struct_span_err(sp.entire(), "invalid syntax"));
+                                };
+                                match &named_matches[*curr_idx] {
+                                    // FIXME(c410-f3r) Nested repetitions are unimplemented
+                                    MatchedSeq(_) => unimplemented!(),
+                                    MatchedSingle(pnr) => {
+                                        extract_symbol_from_pnr(dcx, pnr, ident.span)?
+                                    }
+                                }
+                            }
+                            NamedMatch::MatchedSingle(pnr) => {
+                                extract_symbol_from_pnr(dcx, pnr, ident.span)?
+                            }
+                        }
+                    }
+                };
+                concatenated.push_str(symbol.as_str());
+            }
+            let symbol = nfc_normalize(&concatenated);
+            let concatenated_span = visited_span();
+            if !rustc_lexer::is_ident(symbol.as_str()) {
+                return Err(dcx.struct_span_err(
+                    concatenated_span,
+                    "`${concat(..)}` is not generating a valid identifier",
+                ));
+            }
+            symbol_gallery.insert(symbol, concatenated_span);
+            // The current implementation marks the span as coming from the macro regardless of
+            // contexts of the concatenated identifiers but this behavior may change in the
+            // future.
+            result.push(TokenTree::Token(
+                Token::from_ast_ident(Ident::new(symbol, concatenated_span)),
+                Spacing::Alone,
+            ));
+        }
+        MetaVarExpr::Count(original_ident, depth) => {
+            let matched = matched_from_ident(dcx, original_ident, interp)?;
+            let count = count_repetitions(dcx, depth, matched, repeats, sp)?;
+            let tt = TokenTree::token_alone(
+                TokenKind::lit(token::Integer, sym::integer(count), None),
+                visited_span(),
+            );
+            result.push(tt);
+        }
+        MetaVarExpr::Ignore(original_ident) => {
+            // Used to ensure that `original_ident` is present in the LHS
+            let _ = matched_from_ident(dcx, original_ident, interp)?;
+        }
+        MetaVarExpr::Index(depth) => match repeats.iter().nth_back(depth) {
+            Some((index, _)) => {
+                result.push(TokenTree::token_alone(
+                    TokenKind::lit(token::Integer, sym::integer(*index), None),
+                    visited_span(),
+                ));
+            }
+            None => return Err(out_of_bounds_err(dcx, repeats.len(), sp.entire(), "index")),
+        },
+        MetaVarExpr::Len(depth) => match repeats.iter().nth_back(depth) {
+            Some((_, length)) => {
+                result.push(TokenTree::token_alone(
+                    TokenKind::lit(token::Integer, sym::integer(*length), None),
+                    visited_span(),
+                ));
+            }
+            None => return Err(out_of_bounds_err(dcx, repeats.len(), sp.entire(), "len")),
+        },
+    }
+    Ok(())
+}
+
 /// Store the metavariable span for this original span into a side table.
 /// FIXME: Try to put the metavariable span into `SpanData` instead of a side table (#118517).
 /// An optimal encoding for inlined spans will need to be selected to minimize regressions.
@@ -760,102 +856,6 @@ fn out_of_bounds_err<'a>(dcx: DiagCtxtHandle<'a>, max: usize, span: Span, ty: &s
         )
     };
     dcx.struct_span_err(span, msg)
-}
-
-fn transcribe_metavar_expr<'a>(
-    dcx: DiagCtxtHandle<'a>,
-    expr: &MetaVarExpr,
-    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
-    marker: &mut Marker,
-    repeats: &[(usize, usize)],
-    result: &mut Vec<TokenTree>,
-    sp: &DelimSpan,
-    symbol_gallery: &SymbolGallery,
-) -> PResult<'a, ()> {
-    let mut visited_span = || {
-        let mut span = sp.entire();
-        marker.mark_span(&mut span);
-        span
-    };
-    match *expr {
-        MetaVarExpr::Concat(ref elements) => {
-            let mut concatenated = String::new();
-            for element in elements.into_iter() {
-                let symbol = match element {
-                    MetaVarExprConcatElem::Ident(elem) => elem.name,
-                    MetaVarExprConcatElem::Literal(elem) => *elem,
-                    MetaVarExprConcatElem::Var(ident) => {
-                        match matched_from_ident(dcx, *ident, interp)? {
-                            NamedMatch::MatchedSeq(named_matches) => {
-                                let Some((curr_idx, _)) = repeats.last() else {
-                                    return Err(dcx.struct_span_err(sp.entire(), "invalid syntax"));
-                                };
-                                match &named_matches[*curr_idx] {
-                                    // FIXME(c410-f3r) Nested repetitions are unimplemented
-                                    MatchedSeq(_) => unimplemented!(),
-                                    MatchedSingle(pnr) => {
-                                        extract_symbol_from_pnr(dcx, pnr, ident.span)?
-                                    }
-                                }
-                            }
-                            NamedMatch::MatchedSingle(pnr) => {
-                                extract_symbol_from_pnr(dcx, pnr, ident.span)?
-                            }
-                        }
-                    }
-                };
-                concatenated.push_str(symbol.as_str());
-            }
-            let symbol = nfc_normalize(&concatenated);
-            let concatenated_span = visited_span();
-            if !rustc_lexer::is_ident(symbol.as_str()) {
-                return Err(dcx.struct_span_err(
-                    concatenated_span,
-                    "`${concat(..)}` is not generating a valid identifier",
-                ));
-            }
-            symbol_gallery.insert(symbol, concatenated_span);
-            // The current implementation marks the span as coming from the macro regardless of
-            // contexts of the concatenated identifiers but this behavior may change in the
-            // future.
-            result.push(TokenTree::Token(
-                Token::from_ast_ident(Ident::new(symbol, concatenated_span)),
-                Spacing::Alone,
-            ));
-        }
-        MetaVarExpr::Count(original_ident, depth) => {
-            let matched = matched_from_ident(dcx, original_ident, interp)?;
-            let count = count_repetitions(dcx, depth, matched, repeats, sp)?;
-            let tt = TokenTree::token_alone(
-                TokenKind::lit(token::Integer, sym::integer(count), None),
-                visited_span(),
-            );
-            result.push(tt);
-        }
-        MetaVarExpr::Ignore(original_ident) => {
-            // Used to ensure that `original_ident` is present in the LHS
-            let _ = matched_from_ident(dcx, original_ident, interp)?;
-        }
-        MetaVarExpr::Index(depth) => match repeats.iter().nth_back(depth) {
-            Some((index, _)) => {
-                result.push(TokenTree::token_alone(
-                    TokenKind::lit(token::Integer, sym::integer(*index), None),
-                    visited_span(),
-                ));
-            }
-            None => return Err(out_of_bounds_err(dcx, repeats.len(), sp.entire(), "index")),
-        },
-        MetaVarExpr::Len(depth) => match repeats.iter().nth_back(depth) {
-            Some((_, length)) => {
-                result.push(TokenTree::token_alone(
-                    TokenKind::lit(token::Integer, sym::integer(*length), None),
-                    visited_span(),
-                ));
-            }
-            None => return Err(out_of_bounds_err(dcx, repeats.len(), sp.entire(), "len")),
-        },
-    }
-    Ok(())
 }
 
 /// Extracts an metavariable symbol that can be an identifier, a token tree or a literal.
