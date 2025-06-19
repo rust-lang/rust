@@ -31,7 +31,6 @@
     rtm_target_feature,
     allow_internal_unstable,
     decl_macro,
-    generic_arg_infer,
     asm_experimental_arch,
     x86_amx_intrinsics,
     f16,
