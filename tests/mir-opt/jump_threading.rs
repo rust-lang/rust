@@ -88,7 +88,7 @@ fn two_reads() -> i32 {
     // CHECK:     [[c]] = copy [[a]];
     // CHECK:     [[tmp:_.*]] = copy [[c]];
     // CHECK:     [[eq:_.*]] = Eq(move [[tmp]], const 2_i32);
-    // CHECK:     switchInt(move [[eq]]) -> [0: bb2, otherwise: bb1];
+    // CHECK:     goto -> bb1;
     // CHECK: bb1: {
     // CHECK:     _0 = const 0_i32;
     // CHECK:     goto -> bb3;
