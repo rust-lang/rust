@@ -21,8 +21,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Attribute, ExprKind, HirId, QPath};
 use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
-use rustc_infer::infer;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -704,7 +703,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this time with enough precision to check that the value
                 // whose address was taken can actually be made to live as long
                 // as it needs to live.
-                let region = self.next_region_var(infer::BorrowRegion(expr.span));
+                let region = self.next_region_var(RegionVariableOrigin::BorrowRegion(expr.span));
                 Ty::new_ref(self.tcx, region, ty, mutbl)
             }
         }

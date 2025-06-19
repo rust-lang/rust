@@ -1,9 +1,6 @@
 use std::cell::{Cell, RefCell};
 use std::fmt;
 
-pub use BoundRegionConversionTime::*;
-pub use RegionVariableOrigin::*;
-pub use SubregionOrigin::*;
 pub use at::DefineOpaqueTypes;
 use free_regions::RegionRelations;
 pub use freshen::TypeFreshener;
@@ -403,7 +400,7 @@ pub enum RegionVariableOrigin {
     /// Region variables created for ill-categorized reasons.
     ///
     /// They mostly indicate places in need of refactoring.
-    MiscVariable(Span),
+    Misc(Span),
 
     /// Regions created by a `&P` or `[...]` pattern.
     PatternRegion(Span),
@@ -467,21 +464,19 @@ pub struct FixupError {
 
 impl fmt::Display for FixupError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use TyOrConstInferVar::*;
-
         match self.unresolved {
-            TyInt(_) => write!(
+            TyOrConstInferVar::TyInt(_) => write!(
                 f,
                 "cannot determine the type of this integer; \
                  add a suffix to specify the type explicitly"
             ),
-            TyFloat(_) => write!(
+            TyOrConstInferVar::TyFloat(_) => write!(
                 f,
                 "cannot determine the type of this number; \
                  add a suffix to specify the type explicitly"
             ),
-            Ty(_) => write!(f, "unconstrained type"),
-            Const(_) => write!(f, "unconstrained const value"),
+            TyOrConstInferVar::Ty(_) => write!(f, "unconstrained type"),
+            TyOrConstInferVar::Const(_) => write!(f, "unconstrained const value"),
         }
     }
 }
@@ -865,7 +860,10 @@ impl<'tcx> InferCtxt<'tcx> {
             GenericParamDefKind::Lifetime => {
                 // Create a region inference variable for the given
                 // region parameter definition.
-                self.next_region_var(RegionParameterDefinition(span, param.name)).into()
+                self.next_region_var(RegionVariableOrigin::RegionParameterDefinition(
+                    span, param.name,
+                ))
+                .into()
             }
             GenericParamDefKind::Type { .. } => {
                 // Create a type inference variable for the given
@@ -1172,7 +1170,7 @@ impl<'tcx> InferCtxt<'tcx> {
             let arg: ty::GenericArg<'_> = match bound_var_kind {
                 ty::BoundVariableKind::Ty(_) => self.next_ty_var(span).into(),
                 ty::BoundVariableKind::Region(br) => {
-                    self.next_region_var(BoundRegion(span, br, lbrct)).into()
+                    self.next_region_var(RegionVariableOrigin::BoundRegion(span, br, lbrct)).into()
                 }
                 ty::BoundVariableKind::Const => self.next_const_var(span).into(),
             };
@@ -1472,15 +1470,15 @@ impl<'tcx> TypeTrace<'tcx> {
 impl<'tcx> SubregionOrigin<'tcx> {
     pub fn span(&self) -> Span {
         match *self {
-            Subtype(ref a) => a.span(),
-            RelateObjectBound(a) => a,
-            RelateParamBound(a, ..) => a,
-            RelateRegionParamBound(a, _) => a,
-            Reborrow(a) => a,
-            ReferenceOutlivesReferent(_, a) => a,
-            CompareImplItemObligation { span, .. } => span,
-            AscribeUserTypeProvePredicate(span) => span,
-            CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
+            SubregionOrigin::Subtype(ref a) => a.span(),
+            SubregionOrigin::RelateObjectBound(a) => a,
+            SubregionOrigin::RelateParamBound(a, ..) => a,
+            SubregionOrigin::RelateRegionParamBound(a, _) => a,
+            SubregionOrigin::Reborrow(a) => a,
+            SubregionOrigin::ReferenceOutlivesReferent(_, a) => a,
+            SubregionOrigin::CompareImplItemObligation { span, .. } => span,
+            SubregionOrigin::AscribeUserTypeProvePredicate(span) => span,
+            SubregionOrigin::CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
         }
     }
 
@@ -1528,15 +1526,15 @@ impl<'tcx> SubregionOrigin<'tcx> {
 impl RegionVariableOrigin {
     pub fn span(&self) -> Span {
         match *self {
-            MiscVariable(a)
-            | PatternRegion(a)
-            | BorrowRegion(a)
-            | Autoref(a)
-            | Coercion(a)
-            | RegionParameterDefinition(a, ..)
-            | BoundRegion(a, ..)
-            | UpvarRegion(_, a) => a,
-            Nll(..) => bug!("NLL variable used with `span`"),
+            RegionVariableOrigin::Misc(a)
+            | RegionVariableOrigin::PatternRegion(a)
+            | RegionVariableOrigin::BorrowRegion(a)
+            | RegionVariableOrigin::Autoref(a)
+            | RegionVariableOrigin::Coercion(a)
+            | RegionVariableOrigin::RegionParameterDefinition(a, ..)
+            | RegionVariableOrigin::BoundRegion(a, ..)
+            | RegionVariableOrigin::UpvarRegion(_, a) => a,
+            RegionVariableOrigin::Nll(..) => bug!("NLL variable used with `span`"),
         }
     }
 }

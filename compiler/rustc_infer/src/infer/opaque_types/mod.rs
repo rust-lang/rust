@@ -262,9 +262,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         .type_of_opaque_hir_typeck(opaque_type_key.def_id)
                         .instantiate(self.tcx, opaque_type_key.args);
                     let actual = ty::fold_regions(tcx, actual, |re, _dbi| match re.kind() {
-                        ty::ReErased => {
-                            self.next_region_var(RegionVariableOrigin::MiscVariable(span))
-                        }
+                        ty::ReErased => self.next_region_var(RegionVariableOrigin::Misc(span)),
                         _ => re,
                     });
                     actual

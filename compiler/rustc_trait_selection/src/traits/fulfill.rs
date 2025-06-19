@@ -20,7 +20,7 @@ use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
 use super::{
     EvaluationResult, FulfillmentError, FulfillmentErrorCode, PredicateObligation,
-    ScrubbedTraitError, Unimplemented, const_evaluatable, wf,
+    ScrubbedTraitError, const_evaluatable, wf,
 };
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};
@@ -456,7 +456,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                 ty::PredicateKind::DynCompatible(trait_def_id) => {
                     if !self.selcx.tcx().is_dyn_compatible(trait_def_id) {
-                        ProcessResult::Error(FulfillmentErrorCode::Select(Unimplemented))
+                        ProcessResult::Error(FulfillmentErrorCode::Select(
+                            SelectionError::Unimplemented,
+                        ))
                     } else {
                         ProcessResult::Changed(Default::default())
                     }

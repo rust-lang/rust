@@ -603,10 +603,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             }
         }
 
-        Ok(self.infcx.next_region_var_in_universe(
-            RegionVariableOrigin::MiscVariable(self.span),
-            self.for_universe,
-        ))
+        Ok(self
+            .infcx
+            .next_region_var_in_universe(RegionVariableOrigin::Misc(self.span), self.for_universe))
     }
 
     #[instrument(level = "debug", skip(self, c2), ret)]

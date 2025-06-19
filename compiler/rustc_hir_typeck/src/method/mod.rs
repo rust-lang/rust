@@ -11,7 +11,7 @@ use rustc_errors::{Applicability, Diag, SubdiagMessage};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{self, InferOk};
+use rustc_infer::infer::{BoundRegionConversionTime, InferOk};
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
@@ -400,8 +400,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // function signature so that normalization does not need to deal
         // with bound regions.
         let fn_sig = tcx.fn_sig(def_id).instantiate(self.tcx, args);
-        let fn_sig =
-            self.instantiate_binder_with_fresh_vars(obligation.cause.span, infer::FnCall, fn_sig);
+        let fn_sig = self.instantiate_binder_with_fresh_vars(
+            obligation.cause.span,
+            BoundRegionConversionTime::FnCall,
+            fn_sig,
+        );
 
         let InferOk { value: fn_sig, obligations: o } =
             self.at(&obligation.cause, self.param_env).normalize(fn_sig);

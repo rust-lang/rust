@@ -11,7 +11,7 @@ use rustc_hir::{ExprKind, HirId, LangItem, Node, QPath};
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, PermitVariants};
 use rustc_index::IndexVec;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TypeTrace};
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
@@ -30,7 +30,6 @@ use crate::TupleArgumentsFlag::*;
 use crate::coercion::CoerceMany;
 use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
-use crate::fn_ctxt::infer::FnCall;
 use crate::gather_locals::Declaration;
 use crate::inline_asm::InlineAsmCtxt;
 use crate::method::probe::IsSuggestion;
@@ -657,7 +656,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let args = self.infcx.fresh_args_for_item(call_name.span, assoc.def_id);
                 let fn_sig = tcx.fn_sig(assoc.def_id).instantiate(tcx, args);
 
-                self.instantiate_binder_with_fresh_vars(call_name.span, FnCall, fn_sig);
+                self.instantiate_binder_with_fresh_vars(
+                    call_name.span,
+                    BoundRegionConversionTime::FnCall,
+                    fn_sig,
+                );
             }
             None
         };

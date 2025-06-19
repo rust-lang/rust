@@ -13,7 +13,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, ItemLocalMap};
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
-use rustc_infer::infer;
+use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
@@ -240,8 +240,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
         let v = match reason {
-            RegionInferReason::Param(def) => infer::RegionParameterDefinition(span, def.name),
-            _ => infer::MiscVariable(span),
+            RegionInferReason::Param(def) => {
+                RegionVariableOrigin::RegionParameterDefinition(span, def.name)
+            }
+            _ => RegionVariableOrigin::Misc(span),
         };
         self.next_region_var(v)
     }
