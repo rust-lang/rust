@@ -36,7 +36,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::marker::PointeeSized;
+use crate::marker::{Destruct, PointeeSized};
 
 mod uninit;
 
@@ -157,6 +157,8 @@ mod uninit;
 #[lang = "clone"]
 #[rustc_diagnostic_item = "Clone"]
 #[rustc_trivial_field_reads]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+#[const_trait]
 pub trait Clone: Sized {
     /// Returns a duplicate of the value.
     ///
@@ -208,7 +210,10 @@ pub trait Clone: Sized {
     /// allocations.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn clone_from(&mut self, source: &Self) {
+    fn clone_from(&mut self, source: &Self)
+    where
+        Self: ~const Destruct,
+    {
         *self = source.clone()
     }
 }
