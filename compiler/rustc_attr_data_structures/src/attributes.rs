@@ -38,7 +38,8 @@ pub enum InstructionSetAttr {
     ArmT32,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, PrintAttribute)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum OptimizeAttr {
     /// No `#[optimize(..)]` attribute
     #[default]
@@ -229,7 +230,8 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
-
+    /// Represents `#[optimize(size|speed)]`
+    Optimize(OptimizeAttr, Span),
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr(ThinVec<(ReprAttr, Span)>),
 
