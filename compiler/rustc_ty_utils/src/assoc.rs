@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
-use rustc_hir::definitions::{DefPathData, DisambiguatorState};
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::query::Providers;
@@ -246,13 +246,8 @@ fn associated_type_for_impl_trait_in_trait(
     let trait_def_id = tcx.local_parent(fn_def_id);
     assert_eq!(tcx.def_kind(trait_def_id), DefKind::Trait);
 
-    // Collect all opaque types in return position for the method and use
-    // the index as the disambiguator to make an unique def path.
-    let mut visitor = RPITVisitor { rpits: FxIndexSet::default() };
-    visitor.visit_fn_ret_ty(tcx.hir_get_fn_output(fn_def_id).unwrap());
-    let disambiguator = visitor.rpits.get_index_of(&opaque_ty_def_id).unwrap().try_into().unwrap();
-
     let span = tcx.def_span(opaque_ty_def_id);
+
     // Also use the method name to create an unique def path.
     let data = DefPathData::AnonAssocTy(tcx.item_name(fn_def_id.to_def_id()));
     let trait_assoc_ty = tcx.at(span).create_def(
@@ -261,7 +256,6 @@ fn associated_type_for_impl_trait_in_trait(
         None,
         DefKind::AssocTy,
         Some(data),
-        &mut DisambiguatorState::with(trait_def_id, data, disambiguator),
     );
 
     let local_def_id = trait_assoc_ty.def_id();
@@ -314,12 +308,12 @@ fn associated_type_for_impl_trait_in_impl(
         hir::FnRetTy::Return(ty) => ty.span,
     };
 
-    // Use the same disambiguator and method name as the anon associated type in the trait.
+    // Use the same method name as the anon associated type in the trait.
     let disambiguated_data = tcx.def_key(trait_assoc_def_id).disambiguated_data;
-    let DefPathData::AnonAssocTy(name) = disambiguated_data.data else {
+    let DefPathData::AnonAssocTy(method_name) = disambiguated_data.data else {
         bug!("expected anon associated type")
     };
-    let data = DefPathData::AnonAssocTy(name);
+    let data = DefPathData::AnonAssocTy(method_name);
 
     let impl_assoc_ty = tcx.at(span).create_def(
         impl_local_def_id,
@@ -327,7 +321,6 @@ fn associated_type_for_impl_trait_in_impl(
         None,
         DefKind::AssocTy,
         Some(data),
-        &mut DisambiguatorState::with(impl_local_def_id, data, disambiguated_data.disambiguator),
     );
 
     let local_def_id = impl_assoc_ty.def_id();

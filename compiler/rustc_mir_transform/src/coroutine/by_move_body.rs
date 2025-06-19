@@ -73,7 +73,6 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::definitions::DisambiguatorState;
 use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
@@ -216,13 +215,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
 
     // This path is unique since we're in a query so we'll only be called once with `parent_def_id`
     // and this is the only location creating `SyntheticCoroutineBody`.
-    let body_def = tcx.create_def(
-        parent_def_id,
-        None,
-        DefKind::SyntheticCoroutineBody,
-        None,
-        &mut DisambiguatorState::new(),
-    );
+    let body_def = tcx.create_def(parent_def_id, None, DefKind::SyntheticCoroutineBody, None);
     by_move_body.source =
         mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
     dump_mir(tcx, false, "built", &"after", &by_move_body, |_, _| Ok(()));

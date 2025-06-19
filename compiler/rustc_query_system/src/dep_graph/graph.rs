@@ -350,8 +350,8 @@ impl<D: Deps> DepGraphData<D> {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {
             let task_deps = Lock::new(TaskDeps {
-                #[cfg(debug_assertions)]
-                node: Some(key),
+                current_dep_node: Some(key),
+                local_index: 0,
                 reads: EdgesVec::new(),
                 read_set: Default::default(),
                 phantom_data: PhantomData,
@@ -498,7 +498,7 @@ impl<D: Deps> DepGraph<D> {
 
                     #[cfg(debug_assertions)]
                     {
-                        if let Some(target) = task_deps.node {
+                        if let Some(target) = task_deps.current_dep_node {
                             if let Some(ref forbidden_edge) = data.current.forbidden_edge {
                                 let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
                                 if forbidden_edge.test(&src, &target) {
@@ -1297,8 +1297,9 @@ pub enum TaskDepsRef<'a> {
 
 #[derive(Debug)]
 pub struct TaskDeps {
-    #[cfg(debug_assertions)]
-    node: Option<DepNode>,
+    current_dep_node: Option<DepNode>,
+    /// Counter inside this query.
+    local_index: usize,
     reads: EdgesVec,
     read_set: FxHashSet<DepNodeIndex>,
     phantom_data: PhantomData<DepNode>,
@@ -1307,14 +1308,24 @@ pub struct TaskDeps {
 impl Default for TaskDeps {
     fn default() -> Self {
         Self {
-            #[cfg(debug_assertions)]
-            node: None,
+            current_dep_node: None,
+            local_index: 0,
             reads: EdgesVec::new(),
             read_set: FxHashSet::with_capacity_and_hasher(128, Default::default()),
             phantom_data: PhantomData,
         }
     }
 }
+
+impl TaskDeps {
+    pub fn next_query_local_index(&mut self) -> Option<(DepNode, usize)> {
+        let node = self.current_dep_node?;
+        let index = self.local_index;
+        self.local_index = index + 1;
+        Some((node, index))
+    }
+}
+
 // A data structure that stores Option<DepNodeColor> values as a contiguous
 // array, using one u32 per entry.
 pub(super) struct DepNodeColorMap {

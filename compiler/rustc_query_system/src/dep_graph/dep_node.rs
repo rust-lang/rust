@@ -73,6 +73,14 @@ pub struct DepKind {
     variant: u16,
 }
 
+impl<HCX> HashStable<HCX> for DepKind {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+        let DepKind { variant } = self;
+        variant.hash_stable(hcx, hasher)
+    }
+}
+
 impl DepKind {
     #[inline]
     pub const fn new(variant: u16) -> Self {
@@ -107,6 +115,15 @@ impl fmt::Debug for DepKind {
 pub struct DepNode {
     pub kind: DepKind,
     pub hash: PackedFingerprint,
+}
+
+impl<HCX> HashStable<HCX> for DepNode {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+        let DepNode { kind, hash } = *self;
+        kind.hash_stable(hcx, hasher);
+        Fingerprint::from(hash).hash_stable(hcx, hasher);
+    }
 }
 
 impl DepNode {

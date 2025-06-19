@@ -14,7 +14,7 @@ use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::definitions::{DefPathData, DisambiguatorState};
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
 use rustc_hir::{
     self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, LifetimeKind, Node,
@@ -64,7 +64,6 @@ impl ResolvedArg {
 struct BoundVarContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     rbv: &'a mut ResolveBoundVars,
-    disambiguator: &'a mut DisambiguatorState,
     scope: ScopeRef<'a>,
 }
 
@@ -247,12 +246,8 @@ pub(crate) fn provide(providers: &mut Providers) {
 #[instrument(level = "debug", skip(tcx))]
 fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBoundVars {
     let mut rbv = ResolveBoundVars::default();
-    let mut visitor = BoundVarContext {
-        tcx,
-        rbv: &mut rbv,
-        scope: &Scope::Root { opt_parent_item: None },
-        disambiguator: &mut DisambiguatorState::new(),
-    };
+    let mut visitor =
+        BoundVarContext { tcx, rbv: &mut rbv, scope: &Scope::Root { opt_parent_item: None } };
     match tcx.hir_owner_node(local_def_id) {
         hir::OwnerNode::Item(item) => visitor.visit_item(item),
         hir::OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
@@ -1098,8 +1093,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     where
         F: for<'b> FnOnce(&mut BoundVarContext<'b, 'tcx>),
     {
-        let BoundVarContext { tcx, rbv, disambiguator, .. } = self;
-        let mut this = BoundVarContext { tcx: *tcx, rbv, disambiguator, scope: &wrap_scope };
+        let BoundVarContext { tcx, rbv, .. } = self;
+        let mut this = BoundVarContext { tcx: *tcx, rbv, scope: &wrap_scope };
         let span = debug_span!("scope", scope = ?this.scope.debug_truncated());
         {
             let _enter = span.enter();
@@ -1472,13 +1467,12 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 // `opaque_def_id` is unique to the `BoundVarContext` pass which is executed once
                 // per `resolve_bound_vars` query. This is the only location that creates
                 // `OpaqueLifetime` paths. `<opaque_def_id>::OpaqueLifetime(..)` is thus unique
-                // to this query and duplicates within the query are handled by `self.disambiguator`.
+                // to this query.
                 let feed = self.tcx.create_def(
                     opaque_def_id,
                     None,
                     DefKind::LifetimeParam,
                     Some(DefPathData::OpaqueLifetime(ident.name)),
-                    &mut self.disambiguator,
                 );
                 feed.def_span(ident.span);
                 feed.def_ident_span(Some(ident.span));
