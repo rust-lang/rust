@@ -85,17 +85,17 @@ fn search_bounds_for<'tcx>(
     }
 }
 
-fn collect_unbounds<'tcx>(
+fn collect_relaxed_bounds<'tcx>(
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
     self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
 ) -> SmallVec<[&'tcx PolyTraitRef<'tcx>; 1]> {
-    let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
+    let mut relaxed_bounds: SmallVec<[_; 1]> = SmallVec::new();
     search_bounds_for(hir_bounds, self_ty_where_predicates, |ptr| {
         if matches!(ptr.modifiers.polarity, hir::BoundPolarity::Maybe(_)) {
-            unbounds.push(ptr);
+            relaxed_bounds.push(ptr);
         }
     });
-    unbounds
+    relaxed_bounds
 }
 
 fn collect_bounds<'a, 'tcx>(
@@ -204,9 +204,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 return;
             }
         } else {
-            // Report invalid unbounds on sizedness-bounded generic parameters.
-            let unbounds = collect_unbounds(hir_bounds, self_ty_where_predicates);
-            self.check_and_report_invalid_unbounds_on_param(unbounds);
+            // Report invalid relaxed bounds.
+            // FIXME(more_maybe_bounds): This validation function is only called in contexts where
+            // we perform "sized elaboration". This means, it doesn't get called for e.g.,
+            // trait object types or supertrait bounds!
+            // Ideally, we would do these checks in `Self::lower_poly_trait_ref`!
+            let bounds = collect_relaxed_bounds(hir_bounds, self_ty_where_predicates);
+            self.check_and_report_invalid_relaxed_bounds(bounds);
         }
 
         let collected = collect_sizedness_bounds(tcx, hir_bounds, self_ty_where_predicates, span);

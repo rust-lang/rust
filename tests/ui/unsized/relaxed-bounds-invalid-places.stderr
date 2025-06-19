@@ -48,7 +48,7 @@ LL |     fn f() where T: ?Sized {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
 
-error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: bound modifier `?` can only be applied to `Sized`
   --> $DIR/relaxed-bounds-invalid-places.rs:12:34
    |
 LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
@@ -63,7 +63,7 @@ LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: bound modifier `?` can only be applied to `Sized`
   --> $DIR/relaxed-bounds-invalid-places.rs:16:33
    |
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
