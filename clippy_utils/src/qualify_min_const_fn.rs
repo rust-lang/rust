@@ -32,6 +32,19 @@ pub fn is_min_const_fn<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, msrv: Ms
     for local in &body.local_decls {
         check_ty(cx, local.ty, local.source_info.span, msrv)?;
     }
+    if !msrv.meets(cx, msrvs::CONST_FN_TRAIT_BOUND)
+        && let Some(sized_did) = cx.tcx.lang_items().sized_trait()
+        && cx.tcx.param_env(def_id).caller_bounds().iter().any(|bound| {
+            bound
+                .as_trait_clause()
+                .is_some_and(|clause| clause.def_id() != sized_did)
+        })
+    {
+        return Err((
+            body.span,
+            "non-`Sized` trait clause before `const_fn_trait_bound` is stabilized".into(),
+        ));
+    }
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         cx,
