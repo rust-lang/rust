@@ -29,7 +29,8 @@
           StorageLive(_5);
           _5 = copy _3;
           _4 = Eq(move _5, const 2_i32);
-          switchInt(move _4) -> [0: bb2, otherwise: bb1];
+-         switchInt(move _4) -> [0: bb2, otherwise: bb1];
++         goto -> bb1;
       }
   
       bb1: {
