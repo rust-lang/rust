@@ -716,7 +716,7 @@ impl Step for Rustdoc {
             && target_compiler.stage > 0
             && builder.rust_info().is_managed_git_subrepository()
         {
-            let files_to_track = &["src/librustdoc", "src/tools/rustdoc"];
+            let files_to_track = &["src/librustdoc", "src/tools/rustdoc", "src/rustdoc-json-types"];
 
             // Check if unchanged
             if !builder.config.has_changes_from_upstream(files_to_track) {
