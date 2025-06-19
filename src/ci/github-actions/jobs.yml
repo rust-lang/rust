@@ -237,6 +237,12 @@ auto:
   - name: dist-s390x-linux
     <<: *job-linux-4c
 
+  - name: dist-aarch64-windows-gnullvm
+    <<: *job-linux-4c
+
+  - name: dist-x86_64-windows-gnullvm
+    <<: *job-linux-4c
+
   - name: dist-various-1
     <<: *job-linux-4c
 
