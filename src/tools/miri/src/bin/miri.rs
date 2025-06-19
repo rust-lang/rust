@@ -23,6 +23,7 @@ extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_ty_utils;
 
 use std::env::{self, VarError};
 use std::num::NonZero;
@@ -50,7 +51,8 @@ use rustc_middle::middle::exported_symbols::{
 };
 use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
+use rustc_middle::ty::{self, PseudoCanonicalInput, Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
@@ -142,6 +144,13 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 // there's no rlib provided, so setting a dummy path here to workaround those errors.
                 Arc::make_mut(&mut crate_source).rlib = Some((PathBuf::new(), PathKind::All));
                 crate_source
+            };
+
+            assert!(std::ptr::fn_addr_eq(providers.layout_of, rustc_ty_utils::layout_of as
+                for<'tcx> fn(TyCtxt<'tcx>, PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>>));
+            providers.layout_of = |tcx, query| {
+                let _span = tracing::info_span!("tcx.layout_of", "query = {:?}", query.value.kind()).entered();
+                rustc_ty_utils::layout_of(tcx, query)
             };
         });
     }
