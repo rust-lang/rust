@@ -13,13 +13,16 @@ fn show_usage() {
 
 pub fn run() -> Result<(), String> {
     let mut args = std::env::args().skip(2);
+    // FractalFir: In the future, I'd like to add some more subcommands / options.
+    // So, this loop ought to stay for that purpose. It should also stay as a while loop(to parse args)
+    #[allow(clippy::never_loop, clippy::while_let_on_iterator)]
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--help" => {
                 show_usage();
                 return Ok(());
             }
-            _ => return Err(format!("Unknown option {}", arg)),
+            _ => return Err(format!("Unknown option {arg:?}")),
         }
     }
     // Ensure that we have a cloned version of abi-cafe on hand.
@@ -56,7 +59,7 @@ pub fn run() -> Result<(), String> {
         &"c_calls_cg_gcc",
     ];
     // Run ABI cafe.
-    run_command_with_output(cmd, Some(&Path::new("clones/abi-cafe")))?;
+    run_command_with_output(cmd, Some(Path::new("clones/abi-cafe")))?;
 
     Ok(())
 }
