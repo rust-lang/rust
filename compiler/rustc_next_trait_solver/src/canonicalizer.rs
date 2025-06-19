@@ -407,11 +407,18 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         "ty vid should have been resolved fully before canonicalization"
                     );
 
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::General(
-                        self.delegate
-                            .universe_of_ty(vid)
-                            .unwrap_or_else(|| panic!("ty var should have been resolved: {t:?}")),
-                    ))
+                    match self.canonicalize_mode {
+                        CanonicalizeMode::Input { .. } => CanonicalVarKind::Ty(
+                            CanonicalTyVarKind::General(ty::UniverseIndex::ROOT),
+                        ),
+                        CanonicalizeMode::Response { .. } => {
+                            CanonicalVarKind::Ty(CanonicalTyVarKind::General(
+                                self.delegate.universe_of_ty(vid).unwrap_or_else(|| {
+                                    panic!("ty var should have been resolved: {t:?}")
+                                }),
+                            ))
+                        }
+                    }
                 }
                 ty::IntVar(vid) => {
                     debug_assert_eq!(
@@ -435,7 +442,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             },
             ty::Placeholder(placeholder) => match self.canonicalize_mode {
                 CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderTy(
-                    PlaceholderLike::new_anon(placeholder.universe(), self.variables.len().into()),
+                    PlaceholderLike::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
                 ),
                 CanonicalizeMode::Response { .. } => CanonicalVarKind::PlaceholderTy(placeholder),
             },
@@ -588,13 +595,21 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                         c,
                         "const vid should have been resolved fully before canonicalization"
                     );
-                    CanonicalVarKind::Const(self.delegate.universe_of_ct(vid).unwrap())
+
+                    match self.canonicalize_mode {
+                        CanonicalizeMode::Input { .. } => {
+                            CanonicalVarKind::Const(ty::UniverseIndex::ROOT)
+                        }
+                        CanonicalizeMode::Response { .. } => {
+                            CanonicalVarKind::Const(self.delegate.universe_of_ct(vid).unwrap())
+                        }
+                    }
                 }
                 ty::InferConst::Fresh(_) => todo!(),
             },
             ty::ConstKind::Placeholder(placeholder) => match self.canonicalize_mode {
                 CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderConst(
-                    PlaceholderLike::new_anon(placeholder.universe(), self.variables.len().into()),
+                    PlaceholderLike::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
                 ),
                 CanonicalizeMode::Response { .. } => {
                     CanonicalVarKind::PlaceholderConst(placeholder)
