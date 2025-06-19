@@ -11,4 +11,5 @@ pub struct AttributeLint<Id> {
 #[derive(Clone, Debug, HashStable_Generic)]
 pub enum AttributeLintKind {
     UnusedDuplicate { this: Span, other: Span, warning: bool },
+    IllFormedAttributeInput { suggestions: Vec<String> },
 }

@@ -1,14 +1,16 @@
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 
 use gccjit::{
     Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, Location, RValue, Type,
 };
-use rustc_abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
+use rustc_abi::{Align, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, MiscCodegenMethods};
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{
@@ -28,6 +30,8 @@ use crate::common::SignType;
 
 #[cfg_attr(not(feature = "master"), allow(dead_code))]
 pub struct CodegenCx<'gcc, 'tcx> {
+    /// A cache of converted ConstAllocs
+    pub const_cache: RefCell<HashMap<Allocation, RValue<'gcc>>>,
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
     pub context: &'gcc Context<'gcc>,
 
@@ -129,6 +133,9 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     #[cfg(feature = "master")]
     pub cleanup_blocks: RefCell<FxHashSet<Block<'gcc>>>,
+    /// The alignment of a u128/i128 type.
+    // We cache this, since it is needed for alignment checks during loads.
+    pub int128_align: Align,
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -220,6 +227,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
 
         let mut cx = Self {
+            int128_align: tcx
+                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tcx.types.i128))
+                .expect("Can't get the layout of `i128`")
+                .align
+                .abi,
+            const_cache: Default::default(),
             codegen_unit,
             context,
             current_func: RefCell::new(None),
@@ -428,8 +441,8 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // `rust_eh_personality` function, but rather we wired it up to the
         // CRT's custom personality function, which forces LLVM to consider
         // landing pads as "landing pads for SEH".
-        if let Some(llpersonality) = self.eh_personality.get() {
-            return llpersonality;
+        if let Some(personality_func) = self.eh_personality.get() {
+            return personality_func;
         }
         let tcx = self.tcx;
         let func = match tcx.lang_items().eh_personality() {

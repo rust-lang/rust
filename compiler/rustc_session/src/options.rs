@@ -395,20 +395,34 @@ top_level_options!(
 
         /// Remap source path prefixes in all output (messages, object files, debug, etc.).
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [TRACKED_NO_CRATE_HASH],
-        /// Base directory containing the `src/` for the Rust standard library, and
-        /// potentially `rustc` as well, if we can find it. Right now it's always
-        /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
+
+        /// Base directory containing the `library/` directory for the Rust standard library.
+        /// Right now it's always `$sysroot/lib/rustlib/src/rust`
+        /// (i.e. the `rustup` `rust-src` component).
         ///
         /// This directory is what the virtual `/rustc/$hash` is translated back to,
         /// if Rust was built with path remapping to `/rustc/$hash` enabled
         /// (the `rust.remap-debuginfo` option in `bootstrap.toml`).
         real_rust_source_base_dir: Option<PathBuf> [TRACKED_NO_CRATE_HASH],
 
+        /// Base directory containing the `compiler/` directory for the rustc sources.
+        /// Right now it's always `$sysroot/lib/rustlib/rustc-src/rust`
+        /// (i.e. the `rustup` `rustc-dev` component).
+        ///
+        /// This directory is what the virtual `/rustc-dev/$hash` is translated back to,
+        /// if Rust was built with path remapping to `/rustc/$hash` enabled
+        /// (the `rust.remap-debuginfo` option in `bootstrap.toml`).
+        real_rustc_dev_source_base_dir: Option<PathBuf> [TRACKED_NO_CRATE_HASH],
+
         edition: Edition [TRACKED],
 
         /// `true` if we're emitting JSON blobs about each artifact produced
         /// by the compiler.
         json_artifact_notifications: bool [TRACKED],
+
+        /// `true` if we're emitting JSON timings with the start and end of
+        /// high-level compilation sections
+        json_timings: bool [UNTRACKED],
 
         /// `true` if we're emitting a JSON blob containing the unused externs
         json_unused_externs: JsonUnusedExterns [UNTRACKED],
@@ -2235,6 +2249,8 @@ options! {
         environment variable `RUSTC_GRAPHVIZ_FONT` (default: `Courier, monospace`)"),
     has_thread_local: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(target_thread_local)` directive"),
+    hint_mostly_unused: bool = (false, parse_bool, [TRACKED],
+        "hint that most of this crate will go unused, to minimize work for uncalled functions"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],
         "generate human-readable, predictable names for codegen units (default: no)"),
     identify_regions: bool = (false, parse_bool, [UNTRACKED],

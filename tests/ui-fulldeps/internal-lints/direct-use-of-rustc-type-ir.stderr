@@ -1,0 +1,39 @@
+error: do not use `rustc_type_ir` unless you are implementing type system internals
+  --> $DIR/direct-use-of-rustc-type-ir.rs:13:5
+   |
+LL | use rustc_type_ir::*;
+   |     ^^^^^^^^^^^^^
+   |
+   = note: use `rustc_middle::ty` instead
+note: the lint level is defined here
+  --> $DIR/direct-use-of-rustc-type-ir.rs:5:9
+   |
+LL | #![deny(rustc::direct_use_of_rustc_type_ir)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: do not use `rustc_type_ir` unless you are implementing type system internals
+  --> $DIR/direct-use-of-rustc-type-ir.rs:17:11
+   |
+LL | fn foo<I: rustc_type_ir::Interner>(cx: I, did: I::DefId) {
+   |           ^^^^^^^^^^^^^
+   |
+   = note: use `rustc_middle::ty` instead
+
+error: do not use `rustc_type_ir` unless you are implementing type system internals
+  --> $DIR/direct-use-of-rustc-type-ir.rs:22:13
+   |
+LL |     let _ = rustc_type_ir::InferConst::Fresh(42);
+   |             ^^^^^^^^^^^^^
+   |
+   = note: use `rustc_middle::ty` instead
+
+error: do not use `rustc_type_ir` unless you are implementing type system internals
+  --> $DIR/direct-use-of-rustc-type-ir.rs:24:12
+   |
+LL |     let _: rustc_type_ir::InferConst;
+   |            ^^^^^^^^^^^^^
+   |
+   = note: use `rustc_middle::ty` instead
+
+error: aborting due to 4 previous errors
+

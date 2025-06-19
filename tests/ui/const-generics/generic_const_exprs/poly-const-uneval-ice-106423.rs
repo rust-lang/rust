@@ -3,7 +3,7 @@
 //@ edition:2021
 //@ check-pass
 
-#![feature(generic_const_exprs, generic_arg_infer)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 #![allow(unused)]
 
@@ -41,17 +41,13 @@ where
     DigitalFilter::Ba(zpk)
 }
 
-pub fn zpk2tf_st<const N: usize>(
-    _z: &Arr<f32, N>,
-    _p: &Arr<f32, N>,
-) -> BaFormatFilter<{ N + 1 }>
+pub fn zpk2tf_st<const N: usize>(_z: &Arr<f32, N>, _p: &Arr<f32, N>) -> BaFormatFilter<{ N + 1 }>
 where
     [(); N + 1]: Sized,
 {
     BaFormatFilter {}
 }
 
-
 fn main() {
-    iirfilter_st_copy::<4, 2>([10., 50.,]);
+    iirfilter_st_copy::<4, 2>([10., 50.]);
 }

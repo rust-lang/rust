@@ -3,10 +3,12 @@
  * TODO(antoyo): support #[inline] attributes.
  * TODO(antoyo): support LTO (gcc's equivalent to Full LTO is -flto -flto-partition=one — https://documentation.suse.com/sbp/all/html/SBP-GCC-10/index.html).
  * For Thin LTO, this might be helpful:
+// cspell:disable-next-line
  * In gcc 4.6 -fwhopr was removed and became default with -flto. The non-whopr path can still be executed via -flto-partition=none.
  * Or the new incremental LTO (https://www.phoronix.com/news/GCC-Incremental-LTO-Patches)?
  *
- * Maybe some missing optizations enabled by rustc's LTO is in there: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
+ * Maybe some missing optimizations enabled by rustc's LTO is in there: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
+// cspell:disable-next-line
  * Like -fipa-icf (should be already enabled) and maybe -fdevirtualize-at-ltrans.
  * TODO: disable debug info always being emitted. Perhaps this slows down things?
  *
@@ -206,7 +208,7 @@ impl CodegenBackend for GccCodegenBackend {
         #[cfg(not(feature = "master"))]
         {
             let temp_dir = TempDir::new().expect("cannot create temporary directory");
-            let temp_file = temp_dir.into_path().join("result.asm");
+            let temp_file = temp_dir.keep().join("result.asm");
             let check_context = Context::default();
             check_context.set_print_errors_to_stderr(false);
             let _int128_ty = check_context.new_c_type(CType::UInt128t);
@@ -430,10 +432,11 @@ impl WriteBackendMethods for GccCodegenBackend {
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, dcx, modules)
     }
+
     fn autodiff(
         _cgcx: &CodegenContext<Self>,
         _module: &ModuleCodegen<Self::Module>,
-        _diff_fncs: Vec<AutoDiffItem>,
+        _diff_functions: Vec<AutoDiffItem>,
         _config: &ModuleConfig,
     ) -> Result<(), FatalError> {
         unimplemented!()
@@ -494,12 +497,14 @@ fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig
                     return false;
                 }
                 target_info.cpu_supports(feature)
+                // cSpell:disable
                 /*
                   adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
                   avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
                   bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
                   sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
                 */
+                // cSpell:enable
             })
             .map(Symbol::intern)
             .collect()
@@ -508,13 +513,16 @@ fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig
     let target_features = f(false);
     let unstable_target_features = f(true);
 
+    let has_reliable_f16 = target_info.supports_target_dependent_type(CType::Float16);
+    let has_reliable_f128 = target_info.supports_target_dependent_type(CType::Float128);
+
     TargetConfig {
         target_features,
         unstable_target_features,
         // There are no known bugs with GCC support for f16 or f128
-        has_reliable_f16: true,
-        has_reliable_f16_math: true,
-        has_reliable_f128: true,
-        has_reliable_f128_math: true,
+        has_reliable_f16,
+        has_reliable_f16_math: has_reliable_f16,
+        has_reliable_f128,
+        has_reliable_f128_math: has_reliable_f128,
     }
 }

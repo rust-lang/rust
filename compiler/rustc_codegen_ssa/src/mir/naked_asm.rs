@@ -205,7 +205,7 @@ fn prefix_and_suffix<'tcx>(
     let mut end = String::new();
     match asm_binary_format {
         BinaryFormat::Elf => {
-            let section = link_section.unwrap_or(format!(".text.{asm_name}"));
+            let section = link_section.unwrap_or_else(|| format!(".text.{asm_name}"));
 
             let progbits = match is_arm {
                 true => "%progbits",
@@ -239,7 +239,7 @@ fn prefix_and_suffix<'tcx>(
             }
         }
         BinaryFormat::MachO => {
-            let section = link_section.unwrap_or("__TEXT,__text".to_string());
+            let section = link_section.unwrap_or_else(|| "__TEXT,__text".to_string());
             writeln!(begin, ".pushsection {},regular,pure_instructions", section).unwrap();
             writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
@@ -256,7 +256,7 @@ fn prefix_and_suffix<'tcx>(
             }
         }
         BinaryFormat::Coff => {
-            let section = link_section.unwrap_or(format!(".text.{asm_name}"));
+            let section = link_section.unwrap_or_else(|| format!(".text.{asm_name}"));
             writeln!(begin, ".pushsection {},\"xr\"", section).unwrap();
             writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
@@ -273,7 +273,7 @@ fn prefix_and_suffix<'tcx>(
             }
         }
         BinaryFormat::Wasm => {
-            let section = link_section.unwrap_or(format!(".text.{asm_name}"));
+            let section = link_section.unwrap_or_else(|| format!(".text.{asm_name}"));
 
             writeln!(begin, ".section {section},\"\",@").unwrap();
             // wasm functions cannot be aligned, so skip

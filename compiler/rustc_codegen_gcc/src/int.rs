@@ -2,6 +2,8 @@
 //! This module exists because some integer types are not supported on some gcc platforms, e.g.
 //! 128-bit integers on 32-bit platforms and thus require to be handled manually.
 
+// cSpell:words cmpti divti modti mulodi muloti udivti umodti
+
 use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp};
 use rustc_abi::{CanonAbi, Endian, ExternAbi};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -913,9 +915,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         debug_assert!(value_type.dyncast_array().is_some());
         let name_suffix = match self.type_kind(dest_typ) {
+            // cSpell:disable
             TypeKind::Float => "tisf",
             TypeKind::Double => "tidf",
-            TypeKind::FP128 => "tixf",
+            TypeKind::FP128 => "titf",
+            // cSpell:enable
             kind => panic!("cannot cast a non-native integer to type {:?}", kind),
         };
         let sign = if signed { "" } else { "un" };
@@ -957,8 +961,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         debug_assert!(dest_typ.dyncast_array().is_some());
         let name_suffix = match self.type_kind(value_type) {
+            // cSpell:disable
             TypeKind::Float => "sfti",
             TypeKind::Double => "dfti",
+            // cSpell:enable
             kind => panic!("cannot cast a {:?} to non-native integer", kind),
         };
         let sign = if signed { "" } else { "uns" };

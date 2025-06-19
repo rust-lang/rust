@@ -56,14 +56,14 @@ fn ice() {
     let arr = [0; 5];
     //~^ ERROR requires `copy` lang_item
     let _ = arr[2];
-    //~^ ERROR cannot index into a value of type `[{integer}; 5]`
+    //~^ ERROR: cannot index into a value of type `[{integer}; 5]`
 
     // Use phantomdata
     let _ = MyPhantomData::<(), i32>;
 
     // Use Foo
     let _: () = Foo;
-    //~^ ERROR mismatched types
+    //~^ ERROR: mismatched types
 }
 
 // use `start`

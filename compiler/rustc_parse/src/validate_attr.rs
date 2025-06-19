@@ -282,11 +282,22 @@ fn emit_malformed_attribute(
     name: Symbol,
     template: AttributeTemplate,
 ) {
+    // attrs with new parsers are locally validated so excluded here
+    if matches!(
+        name,
+        sym::inline
+            | sym::rustc_force_inline
+            | sym::rustc_confusables
+            | sym::repr
+            | sym::deprecated
+    ) {
+        return;
+    }
+
     // Some of previously accepted forms were used in practice,
     // report them as warnings for now.
-    let should_warn = |name| {
-        matches!(name, sym::doc | sym::ignore | sym::inline | sym::link | sym::test | sym::bench)
-    };
+    let should_warn =
+        |name| matches!(name, sym::doc | sym::ignore | sym::link | sym::test | sym::bench);
 
     let error_msg = format!("malformed `{name}` attribute input");
     let mut suggestions = vec![];

@@ -18,7 +18,7 @@ use build_helper::git::PathFreshness;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
@@ -581,6 +581,10 @@ impl Step for Llvm {
         t!(stamp.write());
 
         res
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("llvm", self.target))
     }
 }
 
