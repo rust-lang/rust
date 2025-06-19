@@ -23,7 +23,7 @@ LL |     x.push(1);
    |     ^^^^^^^^^ mutable borrow occurs here
 ...
 LL |     println!("{a}");
-   |               --- immutable borrow later used here
+   |                - immutable borrow later used here
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
   --> $DIR/migration-note.rs:16:13
@@ -99,7 +99,7 @@ LL |     x.push(1);
    |     ^ second mutable borrow occurs here
 ...
 LL |     println!("{a}");
-   |               --- first borrow later used here
+   |                - first borrow later used here
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
   --> $DIR/migration-note.rs:63:13
@@ -175,7 +175,7 @@ LL |     s.f = 1;
    |     ^^^^^^^ `s.f` is assigned to here but it was already borrowed
 ...
 LL |     println!("{a}");
-   |               --- borrow later used here
+   |                - borrow later used here
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
   --> $DIR/migration-note.rs:112:13
@@ -197,7 +197,7 @@ LL |     s.f = 1;
    |     ^^^^^^^ `s.f` is assigned to here but it was already borrowed
 ...
 LL |     println!("{a}");
-   |               --- borrow later used here
+   |                - borrow later used here
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
   --> $DIR/migration-note.rs:128:13
@@ -219,7 +219,7 @@ LL |     s.f;
    |     ^^^ use of borrowed `s.f`
 ...
 LL |     println!("{a}");
-   |               --- borrow later used here
+   |                - borrow later used here
    |
 note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
   --> $DIR/migration-note.rs:140:13
