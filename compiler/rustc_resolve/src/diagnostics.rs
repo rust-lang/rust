@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
@@ -2423,6 +2425,44 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else {
                 let suggestion = if suggestion.is_some() {
                     suggestion
+                } else if let Some(src) = self.tcx.sess.source_map().span_to_filename(ident.span).into_local_path()
+                    && let i = ident.as_str()
+                    // FIXME: add case where non parent using undeclared module (hard?)
+                    && let Some(dir) = src.parent()
+                    && let Some(src) = src.with_extension("").file_name().and_then(|x| x.to_str())
+                    && [
+                        // …/x.rs
+                        dir.join(i).with_extension("rs"),
+                        // …/x/mod.rs
+                        dir.join(i).join("mod.rs"),
+                    ]
+                    .iter()
+                    .chain(
+                        // in …/x.rs
+                        matches!(src, "main" | "lib" | "mod")
+                            .not()
+                            .then(|| {
+                                [
+                                    // …/x/y.rs
+                                    dir.join(src).join(i).with_extension("rs"),
+                                    // …/x/y/mod.rs
+                                    dir.join(src).join(i).join("mod.rs"),
+                                ]
+                            })
+                            .iter()
+                            .flatten(),
+                    )
+                    .any(|x| x.exists())
+                {
+                    Some((
+                        // FIXME: add suggestion
+                        vec![],
+                        format!(
+                            "you may have forgotten to declare module `{ident}`. \
+                             use `mod {ident}` in this file to declare this module.",
+                        ),
+                        Applicability::MaybeIncorrect,
+                    ))
                 } else if was_invoked_from_cargo() {
                     Some((
                         vec![],
