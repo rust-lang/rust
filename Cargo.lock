@@ -4251,7 +4251,6 @@ dependencies = [
  "hashbrown",
  "itertools",
  "rustc_abi",
- "rustc_arena",
  "rustc_ast",
  "rustc_const_eval",
  "rustc_data_structures",

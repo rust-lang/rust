@@ -9,7 +9,6 @@ either = "1"
 hashbrown = "0.15"
 itertools = "0.12"
 rustc_abi = { path = "../rustc_abi" }
-rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_data_structures = { path = "../rustc_data_structures" }
