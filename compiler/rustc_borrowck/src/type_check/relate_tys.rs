@@ -167,7 +167,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
             let infcx = self.type_checker.infcx;
             let mut lazy_universe = None;
             let delegate = FnMutDelegate {
-                regions: &mut |br: ty::BoundRegion| {
+                regions: |br: ty::BoundRegion| {
                     // The first time this closure is called, create a
                     // new universe for the placeholders we will make
                     // from here out.
@@ -184,10 +184,10 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
 
                     placeholder_reg
                 },
-                types: &mut |_bound_ty: ty::BoundTy| {
+                types: |_bound_ty: ty::BoundTy| {
                     unreachable!("we only replace regions in nll_relate, not types")
                 },
-                consts: &mut |_bound_var: ty::BoundVar| {
+                consts: |_bound_var: ty::BoundVar| {
                     unreachable!("we only replace regions in nll_relate, not consts")
                 },
             };
@@ -211,7 +211,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         let infcx = self.type_checker.infcx;
         let mut reg_map = FxHashMap::default();
         let delegate = FnMutDelegate {
-            regions: &mut |br: ty::BoundRegion| {
+            regions: |br: ty::BoundRegion| {
                 if let Some(ex_reg_var) = reg_map.get(&br) {
                     *ex_reg_var
                 } else {
@@ -222,10 +222,10 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
                     ex_reg_var
                 }
             },
-            types: &mut |_bound_ty: ty::BoundTy| {
+            types: |_bound_ty: ty::BoundTy| {
                 unreachable!("we only replace regions in nll_relate, not types")
             },
-            consts: &mut |_bound_var: ty::BoundVar| {
+            consts: |_bound_var: ty::BoundVar| {
                 unreachable!("we only replace regions in nll_relate, not consts")
             },
         };

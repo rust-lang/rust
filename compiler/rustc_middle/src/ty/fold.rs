@@ -66,13 +66,18 @@ pub trait BoundVarReplacerDelegate<'tcx> {
 /// A simple delegate taking 3 mutable functions. The used functions must
 /// always return the same result for each bound variable, no matter how
 /// frequently they are called.
-pub struct FnMutDelegate<'a, 'tcx> {
-    pub regions: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
-    pub types: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
-    pub consts: &'a mut (dyn FnMut(ty::BoundVar) -> ty::Const<'tcx> + 'a),
+pub struct FnMutDelegate<R, T, C> {
+    pub regions: R,
+    pub types: T,
+    pub consts: C,
 }
 
-impl<'a, 'tcx> BoundVarReplacerDelegate<'tcx> for FnMutDelegate<'a, 'tcx> {
+impl<'tcx, R, T, C> BoundVarReplacerDelegate<'tcx> for FnMutDelegate<R, T, C>
+where
+    R: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
+    T: FnMut(ty::BoundTy) -> Ty<'tcx>,
+    C: FnMut(ty::BoundVar) -> ty::Const<'tcx>,
+{
     fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx> {
         (self.regions)(br)
     }
@@ -215,7 +220,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn instantiate_bound_regions_uncached<T, F>(
         self,
         value: Binder<'tcx, T>,
-        mut replace_regions: F,
+        replace_regions: F,
     ) -> T
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
@@ -226,9 +231,9 @@ impl<'tcx> TyCtxt<'tcx> {
             value
         } else {
             let delegate = FnMutDelegate {
-                regions: &mut replace_regions,
-                types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),
-                consts: &mut |b| bug!("unexpected bound ct in binder: {b:?}"),
+                regions: replace_regions,
+                types: |b| bug!("unexpected bound ty in binder: {b:?}"),
+                consts: |b| bug!("unexpected bound ct in binder: {b:?}"),
             };
             let mut replacer = BoundVarReplacer::new(self, delegate);
             value.fold_with(&mut replacer)
@@ -286,21 +291,21 @@ impl<'tcx> TyCtxt<'tcx> {
         self.replace_escaping_bound_vars_uncached(
             value,
             FnMutDelegate {
-                regions: &mut |r: ty::BoundRegion| {
+                regions: |r: ty::BoundRegion| {
                     ty::Region::new_bound(
                         self,
                         ty::INNERMOST,
                         ty::BoundRegion { var: shift_bv(r.var), kind: r.kind },
                     )
                 },
-                types: &mut |t: ty::BoundTy| {
+                types: |t: ty::BoundTy| {
                     Ty::new_bound(
                         self,
                         ty::INNERMOST,
                         ty::BoundTy { var: shift_bv(t.var), kind: t.kind },
                     )
                 },
-                consts: &mut |c| ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c)),
+                consts: |c| ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c)),
             },
         )
     }
