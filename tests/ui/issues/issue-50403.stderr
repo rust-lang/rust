@@ -1,8 +1,19 @@
-error: `concat_idents!()` takes 1 or more arguments
-  --> $DIR/issue-50403.rs:5:13
+error: expected identifier or string literal
+  --> $DIR/issue-50403.rs:6:14
    |
-LL |     let x = concat_idents!();
-   |             ^^^^^^^^^^^^^^^^
+LL |     () => { ${concat()} }
+   |              ^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: expected expression, found `$`
+  --> $DIR/issue-50403.rs:6:13
+   |
+LL |     () => { ${concat()} }
+   |             ^ expected expression
+...
+LL |     let x = empty!();
+   |             -------- in this macro invocation
+   |
+   = note: this error originates in the macro `empty` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
 

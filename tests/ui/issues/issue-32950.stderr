@@ -1,15 +1,30 @@
 error: `derive` cannot be used on items with type macros
-  --> $DIR/issue-32950.rs:6:5
+  --> $DIR/issue-32950.rs:7:22
    |
-LL |     concat_idents!(Foo, Bar)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     should_be_vec_t: vec![T],
+   |                      ^^^^^^^
 
-error[E0412]: cannot find type `FooBar` in this scope
-  --> $DIR/issue-32950.rs:6:5
+error: expected type, found `expr` metavariable
+  --> $DIR/issue-32950.rs:7:22
    |
-LL |     concat_idents!(Foo, Bar)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+LL |     should_be_vec_t: vec![T],
+   |                      ^^^^^^^
+   |                      |
+   |                      expected type
+   |                      in this macro invocation
+   |                      this macro call doesn't expand to a type
+   |
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors
+error[E0392]: type parameter `T` is never used
+  --> $DIR/issue-32950.rs:5:17
+   |
+LL | struct Nonsense<T> {
+   |                 ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
-For more information about this error, try `rustc --explain E0412`.
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0392`.
