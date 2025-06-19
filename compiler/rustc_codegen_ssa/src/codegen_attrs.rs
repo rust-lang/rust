@@ -3,7 +3,6 @@ use std::str::FromStr;
 use rustc_abi::ExternAbi;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
-use rustc_attr_data_structures::ReprAttr::ReprAlign;
 use rustc_attr_data_structures::{
     AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr, find_attr,
 };
@@ -110,17 +109,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
         };
 
-        if let hir::Attribute::Parsed(p) = attr {
-            match p {
-                AttributeKind::Repr(reprs) => {
-                    codegen_fn_attrs.alignment = reprs
-                        .iter()
-                        .filter_map(|(r, _)| if let ReprAlign(x) = r { Some(*x) } else { None })
-                        .max();
-                }
-
-                _ => {}
-            }
+        if let hir::Attribute::Parsed(AttributeKind::Align { align, .. }) = attr {
+            codegen_fn_attrs.alignment = Some(*align);
         }
 
         let Some(Ident { name, .. }) = attr.ident() else {
