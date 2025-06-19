@@ -377,8 +377,4 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             self.serialize_and_write(output_crate, BufWriter::new(stdout().lock()), "<stdout>")
         }
     }
-
-    fn cache(&self) -> &Cache {
-        &self.cache
-    }
 }
