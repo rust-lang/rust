@@ -31,7 +31,7 @@ enum CanonicalizeMode {
     /// When canonicalizing the `param_env`, we keep `'static` as merging
     /// trait candidates relies on it when deciding whether a where-bound
     /// is trivial.
-    Input { keep_static: bool },
+    Input { keep_regions: bool },
     /// FIXME: We currently return region constraints referring to
     /// placeholders and inference variables from a binder instantiated
     /// inside of the query.
@@ -124,7 +124,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     let mut variables = Vec::new();
                     let mut env_canonicalizer = Canonicalizer {
                         delegate,
-                        canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
+                        canonicalize_mode: CanonicalizeMode::Input { keep_regions: true },
 
                         variables: &mut variables,
                         variable_lookup_table: Default::default(),
@@ -156,7 +156,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         } else {
             let mut env_canonicalizer = Canonicalizer {
                 delegate,
-                canonicalize_mode: CanonicalizeMode::Input { keep_static: true },
+                canonicalize_mode: CanonicalizeMode::Input { keep_regions: true },
 
                 variables,
                 variable_lookup_table: Default::default(),
@@ -191,7 +191,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         // while *mostly* reusing the canonicalizer from above.
         let mut rest_canonicalizer = Canonicalizer {
             delegate,
-            canonicalize_mode: CanonicalizeMode::Input { keep_static: false },
+            canonicalize_mode: CanonicalizeMode::Input { keep_regions: false },
 
             variables,
             variable_lookup_table,
@@ -504,33 +504,19 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
         let kind = match r.kind() {
             ty::ReBound(..) => return r,
 
-            // We don't canonicalize `ReStatic` in the `param_env` as we use it
-            // when checking whether a `ParamEnv` candidate is global.
-            ty::ReStatic => match self.canonicalize_mode {
-                CanonicalizeMode::Input { keep_static: false } => {
+            // We don't canonicalize free regions in the param-env as an optimization,
+            // and because we use `'static` when checking whether a `ParamEnv` candidate
+            // is global, which affect candidate assembly.
+            ty::ReStatic
+            | ty::ReErased
+            | ty::ReError(_)
+            | ty::ReEarlyParam(_)
+            | ty::ReLateParam(_) => match self.canonicalize_mode {
+                CanonicalizeMode::Input { keep_regions: false } => {
                     CanonicalVarKind::Region(ty::UniverseIndex::ROOT)
                 }
-                CanonicalizeMode::Input { keep_static: true }
+                CanonicalizeMode::Input { keep_regions: true }
                 | CanonicalizeMode::Response { .. } => return r,
-            },
-
-            // `ReErased` should only be encountered in the hidden
-            // type of an opaque for regions that are ignored for the purposes of
-            // captures.
-            //
-            // FIXME: We should investigate the perf implications of not uniquifying
-            // `ReErased`. We may be able to short-circuit registering region
-            // obligations if we encounter a `ReErased` on one side, for example.
-            ty::ReErased | ty::ReError(_) => match self.canonicalize_mode {
-                CanonicalizeMode::Input { .. } => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
-                CanonicalizeMode::Response { .. } => return r,
-            },
-
-            ty::ReEarlyParam(_) | ty::ReLateParam(_) => match self.canonicalize_mode {
-                CanonicalizeMode::Input { .. } => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
-                CanonicalizeMode::Response { .. } => {
-                    panic!("unexpected region in response: {r:?}")
-                }
             },
 
             ty::RePlaceholder(placeholder) => match self.canonicalize_mode {
@@ -553,7 +539,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                     "region vid should have been resolved fully before canonicalization"
                 );
                 match self.canonicalize_mode {
-                    CanonicalizeMode::Input { keep_static: _ } => {
+                    CanonicalizeMode::Input { keep_regions: _ } => {
                         CanonicalVarKind::Region(ty::UniverseIndex::ROOT)
                     }
                     CanonicalizeMode::Response { .. } => {
@@ -627,9 +613,9 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
 
     fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
         match self.canonicalize_mode {
-            CanonicalizeMode::Input { keep_static: true }
+            CanonicalizeMode::Input { keep_regions: true }
             | CanonicalizeMode::Response { max_input_universe: _ } => {}
-            CanonicalizeMode::Input { keep_static: false } => {
+            CanonicalizeMode::Input { keep_regions: false } => {
                 panic!("erasing 'static in env")
             }
         }

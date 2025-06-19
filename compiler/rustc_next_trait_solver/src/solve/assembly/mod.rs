@@ -1101,9 +1101,8 @@ where
                     ControlFlow::Continue(())
                 }
             }
-            ty::ReVar(_) => ControlFlow::Break(Ok(())),
-            ty::ReErased | ty::ReEarlyParam(_) | ty::ReLateParam(_) => {
-                unreachable!("unexpected region in param-env clause")
+            ty::ReVar(_) | ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReErased => {
+                ControlFlow::Break(Ok(()))
             }
         }
     }
