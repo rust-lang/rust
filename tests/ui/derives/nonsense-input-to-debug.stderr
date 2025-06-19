@@ -1,11 +1,11 @@
 error: `derive` cannot be used on items with type macros
-  --> $DIR/issue-32950.rs:7:22
+  --> $DIR/nonsense-input-to-debug.rs:7:22
    |
 LL |     should_be_vec_t: vec![T],
    |                      ^^^^^^^
 
 error: expected type, found `expr` metavariable
-  --> $DIR/issue-32950.rs:7:22
+  --> $DIR/nonsense-input-to-debug.rs:7:22
    |
 LL |     should_be_vec_t: vec![T],
    |                      ^^^^^^^
@@ -17,7 +17,7 @@ LL |     should_be_vec_t: vec![T],
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/issue-32950.rs:5:17
+  --> $DIR/nonsense-input-to-debug.rs:5:17
    |
 LL | struct Nonsense<T> {
    |                 ^ unused type parameter

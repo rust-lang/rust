@@ -1,11 +1,11 @@
 error: expected identifier or string literal
-  --> $DIR/issue-50403.rs:6:14
+  --> $DIR/empty-input.rs:6:14
    |
 LL |     () => { ${concat()} }
    |              ^^^^^^^^^^
 
 error: expected expression, found `$`
-  --> $DIR/issue-50403.rs:6:13
+  --> $DIR/empty-input.rs:6:13
    |
 LL |     () => { ${concat()} }
    |             ^ expected expression
