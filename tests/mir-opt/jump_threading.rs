@@ -244,7 +244,7 @@ fn duplicate_chain(x: bool) -> u8 {
         bb2 = {
             // CHECK: bb2: {
             // CHECK:     [[a]] = const 5_u8;
-            // CHECK:     goto -> bb3;
+            // CHECK:     goto -> bb7;
             a = 5;
             Goto(bb3)
         }
@@ -277,6 +277,12 @@ fn duplicate_chain(x: bool) -> u8 {
             RET = 9;
             Return()
         }
+        // CHECK: bb7: {
+        // CHECK-NEXT:     {{_.*}} = const 13_i32;
+        // CHECK-NEXT: goto -> bb8;
+        // CHECK: bb8: {
+        // CHECK-NEXT:     {{_.*}} = const 15_i32;
+        // CHECK-NEXT: goto -> bb5;
     }
 }
 
@@ -422,7 +428,7 @@ fn disappearing_bb(x: u8) -> u8 {
         }
         bb3 = {
             // CHECK: bb3: {
-            // CHECK: goto -> bb10;
+            // CHECK: goto -> bb4;
             a = false;
             Goto(bb4)
         }
@@ -442,9 +448,21 @@ fn disappearing_bb(x: u8) -> u8 {
             Goto(bb6)
         }
         // CHECK: bb9: {
-        // CHECK: goto -> bb5;
+        // CHECK-NEXT: goto -> bb5;
         // CHECK: bb10: {
-        // CHECK: goto -> bb6;
+        // CHECK-NEXT: goto -> bb6;
+        // CHECK: bb11: {
+        // CHECK-NEXT: goto -> bb6;
+        // CHECK: bb12: {
+        // CHECK-NEXT: _2 = const false;
+        // CHECK-NEXT: goto -> bb13;
+        // CHECK: bb13: {
+        // CHECK-NEXT: goto -> bb7;
+        // CHECK: bb14: {
+        // CHECK-NEXT: _2 = const false;
+        // CHECK-NEXT: goto -> bb15;
+        // CHECK: bb15: {
+        // CHECK-NEXT: goto -> bb7;
     }
 }
 
