@@ -113,6 +113,7 @@ pub trait HirTyCtxt<'hir> {
     /// Retrieves the `Node` corresponding to `id`.
     fn hir_node(&self, hir_id: HirId) -> Node<'hir>;
     fn hir_body(&self, id: BodyId) -> &'hir Body<'hir>;
+    fn hir_body_owner(&self, id: BodyId) -> HirId;
     fn hir_item(&self, id: ItemId) -> &'hir Item<'hir>;
     fn hir_trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
     fn hir_impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir>;
@@ -125,6 +126,9 @@ impl<'hir> HirTyCtxt<'hir> for ! {
         unreachable!();
     }
     fn hir_body(&self, _: BodyId) -> &'hir Body<'hir> {
+        unreachable!();
+    }
+    fn hir_body_owner(&self, _: BodyId) -> HirId {
         unreachable!();
     }
     fn hir_item(&self, _: ItemId) -> &'hir Item<'hir> {

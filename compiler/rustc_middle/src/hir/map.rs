@@ -1095,6 +1095,10 @@ impl<'tcx> intravisit::HirTyCtxt<'tcx> for TyCtxt<'tcx> {
         (*self).hir_body(id)
     }
 
+    fn hir_body_owner(&self, id: BodyId) -> HirId {
+        (*self).hir_body_owner(id)
+    }
+
     fn hir_item(&self, id: ItemId) -> &'tcx Item<'tcx> {
         (*self).hir_item(id)
     }

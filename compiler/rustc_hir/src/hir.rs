@@ -1350,7 +1350,42 @@ impl AttributeExt for Attribute {
         match &self {
             Attribute::Unparsed(u) => u.style,
             Attribute::Parsed(AttributeKind::DocComment { style, .. }) => *style,
-            _ => panic!(),
+            // The following HIR attributes may originally have been parsed from
+            // an outer or inner AST attribute, or indeed both. For example, the
+            // two AST attributes on this function:
+            //
+            //     #[rustc_allow_const_fn_unstable(const_eval_select)]
+            //     const fn f() {
+            //         #![rustc_allow_const_fn_unstable(const_precise_live_drops)]
+            //         ...
+            //     }
+            //
+            // will be parsed to a single HIR attribute containing both symbols.
+            //
+            // Regardless of where they came from, for the purpose of HIR, we
+            // consider all of these to be outer attributes and rustc_hir_pretty
+            // will render them as such.
+            //
+            //     #[attr = AllowConstFnUnstable(["const_eval_select", "const_precise_live_drops"])]
+            //     const fn f() {
+            //         ...
+            //     }
+            //
+            Attribute::Parsed(
+                AttributeKind::Align { .. }
+                | AttributeKind::AllowConstFnUnstable { .. }
+                | AttributeKind::AllowInternalUnstable { .. }
+                | AttributeKind::AsPtr { .. }
+                | AttributeKind::BodyStability { .. }
+                | AttributeKind::Confusables { .. }
+                | AttributeKind::ConstStability { .. }
+                | AttributeKind::ConstStabilityIndirect { .. }
+                | AttributeKind::Deprecation { .. }
+                | AttributeKind::Inline { .. }
+                | AttributeKind::MacroTransparency { .. }
+                | AttributeKind::Repr { .. }
+                | AttributeKind::Stability { .. },
+            ) => AttrStyle::Outer,
         }
     }
 }
