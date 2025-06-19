@@ -1109,45 +1109,6 @@ pub(crate) mod builtin {
         ($name:expr $(,)?) => {{ /* compiler built-in */ }};
     }
 
-    /// Concatenates identifiers into one identifier.
-    ///
-    /// This macro takes any number of comma-separated identifiers, and
-    /// concatenates them all into one, yielding an expression which is a new
-    /// identifier. Note that hygiene makes it such that this macro cannot
-    /// capture local variables. Also, as a general rule, macros are only
-    /// allowed in item, statement or expression position. That means while
-    /// you may use this macro for referring to existing variables, functions or
-    /// modules etc, you cannot define a new one with it.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(concat_idents)]
-    ///
-    /// # fn main() {
-    /// fn foobar() -> u32 { 23 }
-    ///
-    /// let f = concat_idents!(foo, bar);
-    /// println!("{}", f());
-    ///
-    /// // fn concat_idents!(new, fun, name) { } // not usable in this way!
-    /// # }
-    /// ```
-    #[unstable(
-        feature = "concat_idents",
-        issue = "29599",
-        reason = "`concat_idents` is not stable enough for use and is subject to change"
-    )]
-    #[deprecated(
-        since = "1.88.0",
-        note = "use `${concat(...)}` with the `macro_metavar_expr_concat` feature instead"
-    )]
-    #[rustc_builtin_macro]
-    #[macro_export]
-    macro_rules! concat_idents {
-        ($($e:ident),+ $(,)?) => {{ /* compiler built-in */ }};
-    }
-
     /// Concatenates literals into a byte slice.
     ///
     /// This macro takes any number of comma-separated literals, and concatenates them all into
