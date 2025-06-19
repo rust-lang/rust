@@ -1,5 +1,5 @@
-//@ needs-target-std
-//
+//@ ignore-cross-compile
+
 // The byte positions in json format error logging used to have a small, difficult
 // to predict offset. This was changed to be the top of the file every time in #42973,
 // and this test checks that the measurements appearing in the standard error are correct.

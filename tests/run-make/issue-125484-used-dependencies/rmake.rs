@@ -1,5 +1,5 @@
-//@ needs-target-std
-//
+//@ ignore-cross-compile
+
 // Non-regression test for issues #125474, #125484, #125646, with the repro taken from #125484. Some
 // queries use "used dependencies" while others use "speculatively loaded dependencies", and an
 // indexing ICE appeared in some cases when these were unexpectedly used in the same context.

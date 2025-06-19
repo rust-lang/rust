@@ -1,4 +1,5 @@
-//@ needs-target-std
+//@ ignore-cross-compile (needs to run doctests)
+
 use std::path::Path;
 
 use run_make_support::{cwd, diff, rustc, rustdoc};

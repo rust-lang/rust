@@ -1,5 +1,5 @@
-//@ needs-target-std
-//
+//@ ignore-cross-compile (needs to run host tool binary)
+
 // Tests behavior of rustdoc `--test-runtool`.
 
 use std::path::PathBuf;
