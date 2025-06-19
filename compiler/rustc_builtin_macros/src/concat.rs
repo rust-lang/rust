@@ -24,6 +24,8 @@ pub(crate) fn expand_concat(
     let mut guar = None;
     for e in es {
         match e.kind {
+            // For consistent user experience, please keep this in sync with the handling of
+            // literals in `rustc_expand::mbe::metavar_expr` `${concat()}`!
             ExprKind::Lit(token_lit) => match LitKind::from_token_lit(token_lit) {
                 Ok(LitKind::Str(s, _) | LitKind::Float(s, _)) => {
                     accumulator.push_str(s.as_str());

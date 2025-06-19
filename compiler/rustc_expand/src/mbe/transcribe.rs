@@ -545,9 +545,10 @@ fn metavar_expr_concat<'tx>(
     let dcx = tscx.psess.dcx();
     let mut concatenated = String::new();
     for element in elements.into_iter() {
-        let symbol = match element {
-            MetaVarExprConcatElem::Ident(elem) => elem.name,
-            MetaVarExprConcatElem::Literal(elem) => *elem,
+        let tmp_sym;
+        let sym_str = match element {
+            MetaVarExprConcatElem::Ident(elem) => elem.as_str(),
+            MetaVarExprConcatElem::Literal(elem) => elem.as_str(),
             MetaVarExprConcatElem::Var(ident) => {
                 match matched_from_ident(dcx, *ident, tscx.interp)? {
                     NamedMatch::MatchedSeq(named_matches) => {
@@ -557,16 +558,20 @@ fn metavar_expr_concat<'tx>(
                         match &named_matches[*curr_idx] {
                             // FIXME(c410-f3r) Nested repetitions are unimplemented
                             MatchedSeq(_) => unimplemented!(),
-                            MatchedSingle(pnr) => extract_symbol_from_pnr(dcx, pnr, ident.span)?,
+                            MatchedSingle(pnr) => {
+                                tmp_sym = extract_symbol_from_pnr(tscx, pnr, ident.span)?;
+                                tmp_sym.as_str()
+                            }
                         }
                     }
                     NamedMatch::MatchedSingle(pnr) => {
-                        extract_symbol_from_pnr(dcx, pnr, ident.span)?
+                        tmp_sym = extract_symbol_from_pnr(tscx, pnr, ident.span)?;
+                        tmp_sym.as_str()
                     }
                 }
             }
         };
-        concatenated.push_str(symbol.as_str());
+        concatenated.push_str(sym_str);
     }
     let symbol = nfc_normalize(&concatenated);
     let concatenated_span = tscx.visited_dspan(dspan);
@@ -900,11 +905,13 @@ fn out_of_bounds_err<'a>(dcx: DiagCtxtHandle<'a>, max: usize, span: Span, ty: &s
 }
 
 /// Extracts an metavariable symbol that can be an identifier, a token tree or a literal.
-fn extract_symbol_from_pnr<'a>(
-    dcx: DiagCtxtHandle<'a>,
+// TODO: use the same logic as for metavar_expr
+fn extract_symbol_from_pnr<'tx>(
+    tscx: &mut TranscrCtx<'tx, '_>,
     pnr: &ParseNtResult,
     span_err: Span,
-) -> PResult<'a, Symbol> {
+) -> PResult<'tx, Symbol> {
+    let dcx = tscx.psess.dcx();
     match pnr {
         ParseNtResult::Ident(nt_ident, is_raw) => {
             if let IdentIsRaw::Yes = is_raw {

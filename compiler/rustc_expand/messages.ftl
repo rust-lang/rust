@@ -133,6 +133,21 @@ expand_module_multiple_candidates =
 expand_must_repeat_once =
     this must repeat at least once
 
+expand_mve_concat_invalid =
+    invalid item within a `{"${concat(...)}"}` expression
+    .expr_ident = expanding this `concat(...)` expression
+    .invalid_ident = this literal produced an invalid identifier
+    .float_lit = float literals cannot be concatenated
+    .c_str_lit = C string literals cannot be concatenated
+    .b_str_lit = byte literals cannot be concatenated
+    .raw_ident = raw identifiers cannot be concatenated
+    .unsupported = unsupported input for `concat(...)`
+    .valid_types = `concat` can join {$valid}
+    .expected_metavar = expected an identifier; got `{$found}`
+    .expected_metavar_dollar = todo
+    .unexpected_group = todo
+    .hi_label = todo
+
 expand_mve_expected_ident =
     expected an identifier
     .not_ident = not a valid identifier

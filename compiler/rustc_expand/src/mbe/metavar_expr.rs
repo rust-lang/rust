@@ -1,16 +1,19 @@
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
-use rustc_ast::{LitIntType, LitKind};
+use rustc_ast::{self as ast, LitIntType, LitKind};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::PResult;
+use rustc_lexer::is_id_continue;
 use rustc_macros::{Decodable, Encodable};
+use rustc_session::errors::create_lit_error;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, Symbol};
 
-use crate::errors::{self, MveExpectedIdentContext};
+use crate::errors::{self, MveConcatInvalidReason, MveExpectedIdentContext};
 
 pub(crate) const RAW_IDENT_ERR: &str = "`${concat(..)}` currently does not support raw identifiers";
-pub(crate) const UNSUPPORTED_CONCAT_ELEM_ERR: &str = "expected identifier or string literal";
+pub(crate) const VALID_EXPR_CONCAT_TYPES: &str =
+    "metavariables, identifiers, string literals, and integer literals";
 
 /// Argument specification for a metavariable expression
 #[derive(Clone, Copy)]
@@ -190,7 +193,7 @@ fn iter_span(iter: &TokenStreamIter<'_>) -> Option<Span> {
 pub(crate) enum MetaVarExprConcatElem {
     /// Identifier WITHOUT a preceding dollar sign, which means that this identifier should be
     /// interpreted as a literal.
-    Ident(Ident),
+    Ident(String),
     /// For example, a number or a string.
     Literal(Symbol),
     /// Identifier WITH a preceding dollar sign, which means that this identifier should be
@@ -206,30 +209,92 @@ fn parse_concat<'psess>(
     expr_ident_span: Span,
 ) -> PResult<'psess, MetaVarExpr> {
     let mut result = Vec::new();
+    let dcx = psess.dcx();
     loop {
-        let is_var = try_eat_dollar(iter);
-        let token = parse_token(iter, psess, outer_span)?;
-        let element = if is_var {
-            MetaVarExprConcatElem::Var(parse_ident_from_token(psess, token)?)
-        } else if let TokenKind::Literal(Lit { kind: token::LitKind::Str, symbol, suffix: None }) =
-            token.kind
-        {
-            MetaVarExprConcatElem::Literal(symbol)
-        } else {
-            match parse_ident_from_token(psess, token) {
-                Err(err) => {
-                    err.cancel();
-                    return Err(psess
-                        .dcx()
-                        .struct_span_err(token.span, UNSUPPORTED_CONCAT_ELEM_ERR));
-                }
-                Ok(elem) => MetaVarExprConcatElem::Ident(elem),
+        let dollar = try_eat_dollar(iter);
+        let Some(tt) = iter.next() else {
+            // May be hit only with the first iteration (peek is otherwise checked at the end).
+            break;
+        };
+
+        let make_err = |reason| {
+            let err = errors::MveConcatInvalid {
+                span: tt.span(),
+                ident_span: expr_ident_span,
+                reason,
+                valid: VALID_EXPR_CONCAT_TYPES,
+            };
+            Err(dcx.create_err(err))
+        };
+
+        let token = match tt {
+            TokenTree::Token(token, _) => token,
+            TokenTree::Delimited(..) => {
+                return make_err(MveConcatInvalidReason::UnexpectedGroup);
             }
         };
+
+        let element = if let Some(dollar) = dollar {
+            // Expecting a metavar
+            let Some((ident, _)) = token.ident() else {
+                return make_err(MveConcatInvalidReason::ExpectedMetavarIdent {
+                    found: pprust::token_to_string(token).into_owned(),
+                    dollar,
+                });
+            };
+
+            // Variables get passed untouched
+            MetaVarExprConcatElem::Var(ident)
+        } else if let TokenKind::Literal(lit) = token.kind {
+            // Preprocess with `from_token_lit` to handle unescaping, float / int literal suffix
+            // stripping.
+            //
+            // For consistent user experience, please keep this in sync with the handling of
+            // literals in `rustc_builtin_macros::concat`!
+            let s = match ast::LitKind::from_token_lit(lit.clone()) {
+                Ok(ast::LitKind::Str(s, _)) => s.to_string(),
+                Ok(ast::LitKind::Float(..)) => {
+                    return make_err(MveConcatInvalidReason::FloatLit);
+                }
+                Ok(ast::LitKind::Char(c)) => c.to_string(),
+                Ok(ast::LitKind::Int(i, _)) => i.to_string(),
+                Ok(ast::LitKind::Bool(b)) => b.to_string(),
+                Ok(ast::LitKind::CStr(..)) => return make_err(MveConcatInvalidReason::CStrLit),
+                Ok(ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..)) => {
+                    return make_err(MveConcatInvalidReason::ByteStrLit);
+                }
+                Ok(ast::LitKind::Err(_guarantee)) => {
+                    // REVIEW: a diagnostic was already emitted, should we just break?
+                    return make_err(MveConcatInvalidReason::InvalidLiteral);
+                }
+                Err(err) => return Err(create_lit_error(psess, err, lit, token.span)),
+            };
+
+            if !s.chars().all(|ch| is_id_continue(ch)) {
+                // Check that all characters are valid in the middle of an identifier. This doesn't
+                // guarantee that the final identifier is valid (we still need to check it later),
+                // but it allows us to catch errors with specific arguments before expansion time;
+                // for example, string literal "foo.bar" gets flagged before the macro is invoked.
+                return make_err(MveConcatInvalidReason::InvalidIdent);
+            }
+
+            MetaVarExprConcatElem::Ident(s)
+        } else if let Some((elem, is_raw)) = token.ident() {
+            if is_raw == IdentIsRaw::Yes {
+                return make_err(MveConcatInvalidReason::RawIdentifier);
+            }
+            MetaVarExprConcatElem::Ident(elem.as_str().to_string())
+        } else {
+            return make_err(MveConcatInvalidReason::UnsupportedInput);
+        };
+
         result.push(element);
+
         if iter.peek().is_none() {
+            // break before trying to eat the comma
             break;
         }
+
         if !try_eat_comma(iter) {
             return Err(psess.dcx().struct_span_err(outer_span, "expected comma"));
         }
@@ -315,43 +380,6 @@ fn parse_ident<'psess>(
     Ok(elem)
 }
 
-fn parse_ident_from_token<'psess>(
-    psess: &'psess ParseSess,
-    token: &Token,
-) -> PResult<'psess, Ident> {
-    if let Some((elem, is_raw)) = token.ident() {
-        if let IdentIsRaw::Yes = is_raw {
-            return Err(psess.dcx().struct_span_err(elem.span, RAW_IDENT_ERR));
-        }
-        return Ok(elem);
-    }
-    let token_str = pprust::token_to_string(token);
-    let mut err = psess
-        .dcx()
-        .struct_span_err(token.span, format!("expected identifier, found `{token_str}`"));
-    err.span_suggestion(
-        token.span,
-        format!("try removing `{token_str}`"),
-        "",
-        Applicability::MaybeIncorrect,
-    );
-    Err(err)
-}
-
-fn parse_token<'psess, 't>(
-    iter: &mut TokenStreamIter<'t>,
-    psess: &'psess ParseSess,
-    fallback_span: Span,
-) -> PResult<'psess, &'t Token> {
-    let Some(tt) = iter.next() else {
-        return Err(psess.dcx().struct_span_err(fallback_span, UNSUPPORTED_CONCAT_ELEM_ERR));
-    };
-    let TokenTree::Token(token, _) = tt else {
-        return Err(psess.dcx().struct_span_err(tt.span(), UNSUPPORTED_CONCAT_ELEM_ERR));
-    };
-    Ok(token)
-}
-
 /// Tries to move the iterator forward returning `true` if there is a comma. If not, then the
 /// iterator is not modified and the result is `false`.
 fn try_eat_comma(iter: &mut TokenStreamIter<'_>) -> bool {
@@ -362,14 +390,14 @@ fn try_eat_comma(iter: &mut TokenStreamIter<'_>) -> bool {
     false
 }
 
-/// Tries to move the iterator forward returning `true` if there is a dollar sign. If not, then the
-/// iterator is not modified and the result is `false`.
-fn try_eat_dollar(iter: &mut TokenStreamIter<'_>) -> bool {
-    if let Some(TokenTree::Token(Token { kind: token::Dollar, .. }, _)) = iter.peek() {
+/// Tries to move the iterator forward returning `Some(dollar_span)` if there is a dollar sign. If
+/// not, then the iterator is not modified and the result is `None`.
+fn try_eat_dollar(iter: &mut TokenStreamIter<'_>) -> Option<Span> {
+    if let Some(TokenTree::Token(Token { kind: token::Dollar, span }, _)) = iter.peek() {
         let _ = iter.next();
-        return true;
+        return Some(*span);
     }
-    false
+    None
 }
 
 /// Expects that the next item is a dollar sign.
@@ -378,7 +406,7 @@ fn eat_dollar<'psess>(
     psess: &'psess ParseSess,
     span: Span,
 ) -> PResult<'psess, ()> {
-    if try_eat_dollar(iter) {
+    if try_eat_dollar(iter).is_some() {
         return Ok(());
     }
     Err(psess.dcx().struct_span_err(

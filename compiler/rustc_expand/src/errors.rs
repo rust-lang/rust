@@ -541,6 +541,49 @@ mod metavar_exprs {
     }
 
     #[derive(Diagnostic)]
+    #[diag(expand_mve_concat_invalid)]
+    pub(crate) struct MveConcatInvalid {
+        #[primary_span]
+        pub span: Span,
+        #[subdiagnostic]
+        pub reason: MveConcatInvalidReason,
+        #[help(expand_expr_ident)]
+        pub ident_span: Span,
+        pub valid: &'static str,
+    }
+
+    // TODO: can these be labels rather than notes?
+    #[derive(Subdiagnostic)]
+    pub(crate) enum MveConcatInvalidReason {
+        #[note(expand_invalid_ident)]
+        InvalidIdent,
+        #[note(expand_float_lit)]
+        #[help(expand_valid_types)]
+        FloatLit,
+        #[note(expand_c_str_lit)]
+        #[help(expand_valid_types)]
+        CStrLit,
+        #[note(expand_b_str_lit)]
+        #[help(expand_valid_types)]
+        ByteStrLit,
+        #[note(expand_expected_metavar)]
+        #[label(expand_expected_metavar_dollar)]
+        ExpectedMetavarIdent {
+            found: String,
+            #[primary_span]
+            dollar: Span,
+        },
+        #[note(expand_raw_ident)]
+        RawIdentifier,
+        #[note(expand_unsupported)]
+        #[help(expand_valid_types)]
+        UnsupportedInput,
+        #[note(expand_unexpected_group)]
+        UnexpectedGroup,
+        InvalidLiteral,
+    }
+
+    #[derive(Diagnostic)]
     #[diag(expand_mve_expected_ident)]
     pub(crate) struct MveExpectedIdent {
         #[primary_span]
