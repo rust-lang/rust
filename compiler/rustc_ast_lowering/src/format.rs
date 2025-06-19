@@ -551,8 +551,7 @@ fn expand_format_args<'hir>(
 
     // Generate:
     //     &args
-    let args =
-        ctx.expr(macsp, hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, args));
+    let args = ctx.expr_ref(macsp, args);
 
     let call = if let Some(format_options) = format_options {
         // Generate:
