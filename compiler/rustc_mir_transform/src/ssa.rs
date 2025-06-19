@@ -228,6 +228,11 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_, 'tcx> {
         match ctxt {
             PlaceContext::MutatingUse(MutatingUseContext::Projection)
             | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => bug!(),
+            // Count drops as moves.
+            PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
+                self.check_dominates(local, loc);
+                self.direct_uses[local] += 1;
+            }
             // Anything can happen with raw pointers, so remove them.
             PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow)
             | PlaceContext::MutatingUse(_) => {
