@@ -101,6 +101,8 @@
 	- [The `rustdoc` test suite](./rustdoc-internals/rustdoc-test-suite.md)
 	- [The `rustdoc-gui` test suite](./rustdoc-internals/rustdoc-gui-test-suite.md)
 	- [The `rustdoc-json` test suite](./rustdoc-internals/rustdoc-json-test-suite.md)
+- [GPU offload internals](./offload/internals.md)
+    - [Installation](./offload/installation.md)
 - [Autodiff internals](./autodiff/internals.md)
     - [Installation](./autodiff/installation.md)
     - [How to debug](./autodiff/debugging.md)
