@@ -1,20 +1,41 @@
-error: expected identifier or string literal
+error: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-raw-identifiers.rs:28:22
    |
 LL |         let ${concat(r#abc, abc)}: () = ();
    |                      ^^^^^
+   |
+   = note: raw identifiers cannot be concatenated
+help: expanding this `concat(...)` expression
+  --> $DIR/concat-raw-identifiers.rs:28:15
+   |
+LL |         let ${concat(r#abc, abc)}: () = ();
+   |               ^^^^^^
 
-error: expected identifier or string literal
+error: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-raw-identifiers.rs:32:27
    |
 LL |         let ${concat(abc, r#abc)}: () = ();
    |                           ^^^^^
+   |
+   = note: raw identifiers cannot be concatenated
+help: expanding this `concat(...)` expression
+  --> $DIR/concat-raw-identifiers.rs:32:15
+   |
+LL |         let ${concat(abc, r#abc)}: () = ();
+   |               ^^^^^^
 
-error: expected identifier or string literal
+error: invalid item within a `${concat(...)}` expression
   --> $DIR/concat-raw-identifiers.rs:35:22
    |
 LL |         let ${concat(r#abc, r#abc)}: () = ();
    |                      ^^^^^
+   |
+   = note: raw identifiers cannot be concatenated
+help: expanding this `concat(...)` expression
+  --> $DIR/concat-raw-identifiers.rs:35:15
+   |
+LL |         let ${concat(r#abc, r#abc)}: () = ();
+   |               ^^^^^^
 
 error: `${concat(..)}` currently does not support raw identifiers
   --> $DIR/concat-raw-identifiers.rs:5:28

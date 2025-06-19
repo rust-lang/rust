@@ -18,12 +18,7 @@ macro_rules! metavar_in_the_lhs {
     };
 }
 
-macro_rules! metavar_token_without_ident {
-    ( $( $i:ident ),* ) => { ${ ignore() } };
-    //~^ ERROR meta-variable expressions must be referenced using a dollar sign
-}
-
-macro_rules! metavar_with_literal_suffix {
+macro_rules! mve_with_literal_suffix {
     ( $( $i:ident ),* ) => { ${ index(1u32) } };
     //~^ ERROR only unsuffixes integer literals are supported in meta-variable expressions
 }
@@ -44,6 +39,16 @@ macro_rules! open_brackets_with_lit {
      () => { ${ "hi" } };
      //~^ ERROR expected an identifier
  }
+
+macro_rules! mve_wrong_delim {
+    ( $( $i:ident ),* ) => { ${ count{i} } };
+    //~^ ERROR expected `(`
+}
+
+macro_rules! invalid_metavar {
+    () => { ${ignore($123)} }
+    //~^ ERROR expected an identifier
+}
 
 macro_rules! mve_wrong_delim {
     ( $( $i:ident ),* ) => { ${ count{i} } };
@@ -107,6 +112,11 @@ macro_rules! unknown_ignore_ident {
         ${ignore(bar)}
         //~^ ERROR meta-variable expressions must be referenced using a dollar sign
     };
+}
+
+macro_rules! ignore_no_ident {
+    ( $( $i:ident ),* ) => { ${ ignore() } };
+    //~^ ERROR meta-variable expressions must be referenced using a dollar sign
 }
 
 macro_rules! unknown_metavar {
