@@ -431,6 +431,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
         value: SwitchTargetValue,
+        mut otherwise_state: Option<&mut Self::Domain>,
     ) {
         if let SwitchTargetValue::Normal(value) = value {
             // Kill all move paths that correspond to variants we know to be inactive along this
@@ -440,6 +441,9 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
                 data.enum_place,
                 data.next_discr(value),
                 |mpi| state.kill(mpi),
+                move |mpi| {
+                    otherwise_state.as_mut().map(|state| state.kill(mpi));
+                },
             );
         }
     }
@@ -544,6 +548,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
         value: SwitchTargetValue,
+        mut otherwise_state: Option<&mut Self::Domain>,
     ) {
         if let SwitchTargetValue::Normal(value) = value {
             // Mark all move paths that correspond to variants other than this one as maybe
@@ -553,6 +558,9 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
                 data.enum_place,
                 data.next_discr(value),
                 |mpi| state.gen_(mpi),
+                |mpi| {
+                    otherwise_state.as_mut().map(|state| state.gen_(mpi));
+                },
             );
         }
     }

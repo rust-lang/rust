@@ -224,6 +224,7 @@ pub trait Analysis<'tcx> {
         _data: &mut Self::SwitchIntData,
         _state: &mut Self::Domain,
         _value: SwitchTargetValue,
+        _otherwise_state: Option<&mut Self::Domain>,
     ) {
         unreachable!();
     }
