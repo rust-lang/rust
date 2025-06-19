@@ -1380,6 +1380,17 @@ pub trait Iterator {
     /// assert_eq!(of_rust, vec!["of", "Rust"]);
     /// ```
     ///
+    /// `take` would not call underlying iterator more than `n` times.
+    ///
+    /// ```
+    /// let mut numbers = [1, 2, 3, 4, 5, 6, 7];
+    /// let mut inner = numbers.into_iter();
+    /// let a: Vec<_> = (&mut inner).take(3).collect();
+    /// let b: Vec<_> = inner.collect();
+    /// assert_eq!(a, [1, 2, 3]);
+    /// assert_eq!(a, [4, 5, 6, 7]);
+    /// ```
+    ///
     /// [`by_ref`]: Iterator::by_ref
     #[doc(alias = "limit")]
     #[inline]
