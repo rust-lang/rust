@@ -1,11 +1,11 @@
 error: unused import: `std::fs`
-  --> $DIR/unused-import-issue-87973.rs:9:5
+  --> $DIR/unused-import.rs:9:5
    |
 LL | use std::fs;
    |     ^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/unused-import-issue-87973.rs:2:9
+  --> $DIR/unused-import.rs:2:9
    |
 LL | #![deny(unused_imports)]
    |         ^^^^^^^^^^^^^^

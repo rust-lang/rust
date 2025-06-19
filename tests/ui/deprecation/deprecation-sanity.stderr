@@ -155,7 +155,7 @@ LL | #[deprecated = "hello"]
    = note: `#[deny(useless_deprecated)]` on by default
 
 error: this `#[deprecated]` annotation has no effect
-  --> $DIR/deprecation-sanity.rs:46:1
+  --> $DIR/deprecation-sanity.rs:48:1
    |
 LL | #[deprecated]
    | ^^^^^^^^^^^^^ help: remove the unnecessary deprecation attribute

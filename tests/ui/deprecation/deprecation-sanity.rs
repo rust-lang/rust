@@ -43,6 +43,8 @@ mod inner {
     pub struct Y;
 }
 
+// Deprecation does not work on re-exports, so let's be clear about that.
+// https://github.com/rust-lang/rust/issues/142436
 #[deprecated] //~ ERROR this `#[deprecated]` annotation has no effect
 pub use inner::Y;
 
