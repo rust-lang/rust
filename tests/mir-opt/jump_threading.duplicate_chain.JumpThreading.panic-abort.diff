@@ -13,12 +13,14 @@
   
       bb1: {
           _2 = const 5_u8;
-          goto -> bb3;
+-         goto -> bb3;
++         goto -> bb7;
       }
   
       bb2: {
           _2 = const 5_u8;
-          goto -> bb3;
+-         goto -> bb3;
++         goto -> bb7;
       }
   
       bb3: {
@@ -28,8 +30,7 @@
   
       bb4: {
           _4 = const 15_i32;
--         switchInt(copy _2) -> [5: bb5, otherwise: bb6];
-+         goto -> bb5;
+          switchInt(copy _2) -> [5: bb5, otherwise: bb6];
       }
   
       bb5: {
@@ -40,6 +41,16 @@
       bb6: {
           _0 = const 9_u8;
           return;
++     }
++ 
++     bb7: {
++         _3 = const 13_i32;
++         goto -> bb8;
++     }
++ 
++     bb8: {
++         _4 = const 15_i32;
++         goto -> bb5;
       }
   }
   
