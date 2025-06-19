@@ -47,8 +47,7 @@ pub struct CodegenFnAttrs {
     /// be generated against a specific instruction set. Only usable on architectures which allow
     /// switching between multiple instruction sets.
     pub instruction_set: Option<InstructionSetAttr>,
-    /// The `#[repr(align(...))]` attribute. Indicates the value of which the function should be
-    /// aligned to.
+    /// The `#[align(...)]` attribute. Determines the alignment of the function body.
     pub alignment: Option<Align>,
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.

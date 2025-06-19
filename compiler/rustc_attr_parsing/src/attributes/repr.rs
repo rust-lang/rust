@@ -4,7 +4,7 @@ use rustc_attr_data_structures::{AttributeKind, IntType, ReprAttr};
 use rustc_feature::{AttributeTemplate, template};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
-use super::{CombineAttributeParser, ConvertFn};
+use super::{AcceptMapping, AttributeParser, CombineAttributeParser, ConvertFn, FinalizeContext};
 use crate::context::{AcceptContext, Stage};
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemParser};
 use crate::session_diagnostics;
@@ -203,7 +203,7 @@ fn parse_repr_align<S: Stage>(
                 });
             }
             Align => {
-                cx.dcx().emit_err(session_diagnostics::IncorrectReprFormatAlignOneArg {
+                cx.emit_err(session_diagnostics::IncorrectReprFormatAlignOneArg {
                     span: param_span,
                 });
             }
@@ -264,5 +264,59 @@ fn parse_alignment(node: &LitKind) -> Result<Align, &'static str> {
         }
     } else {
         Err("not an unsuffixed integer")
+    }
+}
+
+/// Parse #[align(N)].
+#[derive(Default)]
+pub(crate) struct AlignParser(Option<(Align, Span)>);
+
+impl AlignParser {
+    const PATH: &'static [Symbol] = &[sym::align];
+    const TEMPLATE: AttributeTemplate = template!(Word, List: "<alignment in bytes>");
+
+    fn parse<'c, S: Stage>(
+        &mut self,
+        cx: &'c mut AcceptContext<'_, '_, S>,
+        args: &'c ArgParser<'_>,
+    ) {
+        match args {
+            ArgParser::NoArgs | ArgParser::NameValue(_) => {
+                cx.expected_list(cx.attr_span);
+            }
+            ArgParser::List(list) => {
+                let Some(align) = list.single() else {
+                    cx.expected_single_argument(list.span);
+                    return;
+                };
+
+                let Some(lit) = align.lit() else {
+                    cx.emit_err(session_diagnostics::IncorrectReprFormatExpectInteger {
+                        span: align.span(),
+                    });
+
+                    return;
+                };
+
+                match parse_alignment(&lit.kind) {
+                    Ok(literal) => self.0 = Ord::max(self.0, Some((literal, cx.attr_span))),
+                    Err(message) => {
+                        cx.emit_err(session_diagnostics::InvalidAlignmentValue {
+                            span: lit.span,
+                            error_part: message,
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<S: Stage> AttributeParser<S> for AlignParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
+
+    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+        let (align, span) = self.0?;
+        Some(AttributeKind::Align { align, span })
     }
 }

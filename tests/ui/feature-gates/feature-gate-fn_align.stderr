@@ -1,20 +1,35 @@
-error[E0589]: invalid `repr(align)` attribute: `align` needs an argument
-  --> $DIR/feature-gate-fn_align.rs:7:12
+error[E0658]: the `#[align]` attribute is an experimental feature
+  --> $DIR/feature-gate-fn_align.rs:3:1
    |
-LL |     #[repr(align)]
-   |            ^^^^^ help: supply an argument here: `align(...)`
-
-error[E0658]: `repr(align)` attributes on functions are unstable
-  --> $DIR/feature-gate-fn_align.rs:3:8
-   |
-LL | #[repr(align(16))]
-   |        ^^^^^^^^^
+LL | #[align(16)]
+   | ^^^^^^^^^^^^
    |
    = note: see issue #82232 <https://github.com/rust-lang/rust/issues/82232> for more information
    = help: add `#![feature(fn_align)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 2 previous errors
+error[E0658]: the `#[align]` attribute is an experimental feature
+  --> $DIR/feature-gate-fn_align.rs:8:5
+   |
+LL |     #[align]
+   |     ^^^^^^^^
+   |
+   = note: see issue #82232 <https://github.com/rust-lang/rust/issues/82232> for more information
+   = help: add `#![feature(fn_align)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-Some errors have detailed explanations: E0589, E0658.
-For more information about an error, try `rustc --explain E0589`.
+error[E0539]: malformed `align` attribute input
+  --> $DIR/feature-gate-fn_align.rs:8:5
+   |
+LL |     #[align]
+   |     ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[align(<alignment in bytes>)]
+   |            ++++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0539, E0658.
+For more information about an error, try `rustc --explain E0539`.

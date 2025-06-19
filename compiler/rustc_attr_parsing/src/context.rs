@@ -19,7 +19,7 @@ use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
 use crate::attributes::lint_helpers::AsPtrParser;
-use crate::attributes::repr::ReprParser;
+use crate::attributes::repr::{AlignParser, ReprParser};
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
@@ -90,6 +90,7 @@ macro_rules! attribute_parsers {
 attribute_parsers!(
     pub(crate) static ATTRIBUTE_PARSERS = [
         // tidy-alphabetical-start
+        AlignParser,
         BodyStabilityParser,
         ConfusablesParser,
         ConstStabilityParser,
