@@ -272,19 +272,23 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         StructFieldItem(f) => ItemEnum::StructField(f.into_json(renderer)),
         EnumItem(e) => ItemEnum::Enum(e.into_json(renderer)),
         VariantItem(v) => ItemEnum::Variant(v.into_json(renderer)),
-        FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), renderer)),
+        FunctionItem(f) => {
+            ItemEnum::Function(from_clean_function(f, true, header.unwrap(), renderer))
+        }
         ForeignFunctionItem(f, _) => {
-            ItemEnum::Function(from_function(f, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_clean_function(f, false, header.unwrap(), renderer))
         }
         TraitItem(t) => ItemEnum::Trait(t.into_json(renderer)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
-        MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), renderer)),
+        MethodItem(m, _) => {
+            ItemEnum::Function(from_clean_function(m, true, header.unwrap(), renderer))
+        }
         RequiredMethodItem(m) => {
-            ItemEnum::Function(from_function(m, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_clean_function(m, false, header.unwrap(), renderer))
         }
         ImplItem(i) => ItemEnum::Impl(i.into_json(renderer)),
-        StaticItem(s) => ItemEnum::Static(convert_static(s, rustc_hir::Safety::Safe, renderer)),
-        ForeignStaticItem(s, safety) => ItemEnum::Static(convert_static(s, *safety, renderer)),
+        StaticItem(s) => ItemEnum::Static(from_clean_static(s, rustc_hir::Safety::Safe, renderer)),
+        ForeignStaticItem(s, safety) => ItemEnum::Static(from_clean_static(s, *safety, renderer)),
         ForeignTypeItem => ItemEnum::ExternType,
         TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_json(renderer)),
         // FIXME(generic_const_items): Add support for generic free consts
@@ -710,7 +714,7 @@ impl FromClean<clean::Impl> for Impl {
     }
 }
 
-pub(crate) fn from_function(
+pub(crate) fn from_clean_function(
     clean::Function { decl, generics }: &clean::Function,
     has_body: bool,
     header: rustc_hir::FnHeader,
@@ -812,7 +816,7 @@ impl FromClean<clean::TypeAlias> for TypeAlias {
     }
 }
 
-fn convert_static(
+fn from_clean_static(
     stat: &clean::Static,
     safety: rustc_hir::Safety,
     renderer: &JsonRenderer<'_>,
