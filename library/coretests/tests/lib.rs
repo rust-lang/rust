@@ -11,6 +11,7 @@
 #![feature(async_iter_from_iter)]
 #![feature(async_iterator)]
 #![feature(bigint_helper_methods)]
+#![feature(bool_to_result)]
 #![feature(bstr)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_max_len)]
