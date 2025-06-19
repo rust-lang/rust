@@ -275,12 +275,7 @@ impl ParseSess {
         }
     }
 
-    pub fn with_fatal_emitter(
-        locale_resources: Vec<&'static str>,
-        fatal_note: String,
-
-        emit_fatal_diagnostic: bool,
-    ) -> Self {
+    pub fn with_fatal_emitter(locale_resources: Vec<&'static str>, fatal_note: String) -> Self {
         let translator = Translator::with_fallback_bundle(locale_resources, false);
         let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
         let fatal_emitter =
@@ -288,7 +283,6 @@ impl ParseSess {
         let dcx = DiagCtxt::new(Box::new(FatalOnlyEmitter {
             fatal_emitter,
             fatal_note: Some(fatal_note),
-            emit_fatal_diagnostic,
         }))
         .disable_warnings();
         ParseSess::with_dcx(dcx, sm)

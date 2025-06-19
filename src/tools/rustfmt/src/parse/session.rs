@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_data_structures::sync::IntoDynSyncSend;
-use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter, FatalOnlyEmitter, stderr_destination};
+use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter, SilentEmitter, stderr_destination};
 use rustc_errors::registry::Registry;
 use rustc_errors::translation::Translator;
 use rustc_errors::{ColorConfig, Diag, DiagCtxt, DiagInner, Level as DiagnosticLevel};
@@ -105,19 +105,14 @@ fn default_dcx(
     };
 
     let translator = rustc_driver::default_translator();
-    let emitter = Box::new(
-        HumanEmitter::new(stderr_destination(emit_color), translator)
-            .sm(Some(source_map.clone())),
-    );
 
-    let emitter: Box<DynEmitter> = if !show_parse_errors {
-        Box::new(FatalOnlyEmitter {
-            fatal_emitter: emitter,
-            fatal_note: None,
-            emit_fatal_diagnostic: false,
-        })
+    let emitter: Box<DynEmitter> = if show_parse_errors {
+        Box::new(
+            HumanEmitter::new(stderr_destination(emit_color), translator)
+                .sm(Some(source_map.clone())),
+        )
     } else {
-        emitter
+        Box::new(SilentEmitter { translator })
     };
     DiagCtxt::new(Box::new(SilentOnIgnoredFilesEmitter {
         has_non_ignorable_parser_errors: false,
@@ -196,7 +191,7 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        self.raw_psess.dcx().make_silent(None, false);
+        self.raw_psess.dcx().make_silent();
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {

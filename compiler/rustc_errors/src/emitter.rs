@@ -546,7 +546,6 @@ impl Emitter for HumanEmitter {
 pub struct FatalOnlyEmitter {
     pub fatal_emitter: Box<dyn Emitter + DynSend>,
     pub fatal_note: Option<String>,
-    pub emit_fatal_diagnostic: bool,
 }
 
 impl Emitter for FatalOnlyEmitter {
@@ -555,7 +554,7 @@ impl Emitter for FatalOnlyEmitter {
     }
 
     fn emit_diagnostic(&mut self, mut diag: DiagInner, registry: &Registry) {
-        if self.emit_fatal_diagnostic && diag.level == Level::Fatal {
+        if diag.level == Level::Fatal {
             if let Some(fatal_note) = &self.fatal_note {
                 diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
             }
@@ -565,6 +564,22 @@ impl Emitter for FatalOnlyEmitter {
 
     fn translator(&self) -> &Translator {
         self.fatal_emitter.translator()
+    }
+}
+
+pub struct SilentEmitter {
+    pub translator: Translator,
+}
+
+impl Emitter for SilentEmitter {
+    fn source_map(&self) -> Option<&SourceMap> {
+        None
+    }
+
+    fn emit_diagnostic(&mut self, _diag: DiagInner, _registry: &Registry) {}
+
+    fn translator(&self) -> &Translator {
+        &self.translator
     }
 }
 
