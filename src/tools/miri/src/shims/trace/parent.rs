@@ -566,11 +566,12 @@ fn handle_segfault(
 
         // Check if we also own the next page, and if so unprotect it in case
         // the access spans the page boundary.
-        if ch_pages.contains(&page_addr.strict_add(page_size)) {
-            ptrace::write(pid, (&raw const PAGE_COUNT).cast_mut().cast(), 2).unwrap();
+        let flag = if ch_pages.contains(&page_addr.strict_add(page_size)) {
+            2
         } else {
-            ptrace::write(pid, (&raw const PAGE_COUNT).cast_mut().cast(), 1).unwrap();
-        }
+            1
+        };
+        ptrace::write(pid, (&raw const PAGE_COUNT).cast_mut().cast(), flag).unwrap();
 
         ptrace::setregs(pid, new_regs).unwrap();
 
