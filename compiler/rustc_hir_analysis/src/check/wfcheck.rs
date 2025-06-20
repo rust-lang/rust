@@ -2365,12 +2365,14 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         let implied_obligations = traits::elaborate(tcx, predicates_with_span);
 
         for (pred, obligation_span) in implied_obligations {
-            // We lower empty bounds like `Vec<dyn Copy>:` as
-            // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
-            // regular WF checking
 
             match pred.kind().skip_binder() {
-                ty::ClauseKind::WellFormed(..) | ty::ClauseKind::UnstableFeature(..) => continue,
+                // We lower empty bounds like `Vec<dyn Copy>:` as
+                // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
+                // regular WF checking
+                ty::ClauseKind::WellFormed(..)
+                // Unstable feature goals cannot be proven in an empty environment so skip them
+                | ty::ClauseKind::UnstableFeature(..) => continue,
                 _ => {}
             }
 
