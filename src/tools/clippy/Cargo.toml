@@ -58,6 +58,7 @@ rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 [features]
 integration = ["dep:tempfile"]
 internal = ["dep:clippy_lints_internal", "dep:tempfile"]
+jemalloc = []
 
 [package.metadata.rust-analyzer]
 # This package uses #[feature(rustc_private)]
