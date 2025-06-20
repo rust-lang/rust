@@ -206,6 +206,18 @@ impl AttributeExt for Attribute {
         }
     }
 
+    fn doc_resolution_scope(&self) -> Option<AttrStyle> {
+        match &self.kind {
+            AttrKind::DocComment(..) => Some(self.style),
+            AttrKind::Normal(normal)
+                if normal.item.path == sym::doc && normal.item.value_str().is_some() =>
+            {
+                Some(self.style)
+            }
+            _ => None,
+        }
+    }
+
     fn style(&self) -> AttrStyle {
         self.style
     }
@@ -805,6 +817,15 @@ pub trait AttributeExt: Debug {
     /// * `#[doc = "doc"]` returns `Some(("doc", CommentKind::Line))`.
     /// * `#[doc(...)]` returns `None`.
     fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)>;
+
+    /// Returns outer or inner if this is a doc attribute or a sugared doc
+    /// comment, otherwise None.
+    ///
+    /// This is used in the case of doc comments on modules, to decide whether
+    /// to resolve intra-doc links against the symbols in scope within the
+    /// commented module (for inner doc) vs within its parent module (for outer
+    /// doc).
+    fn doc_resolution_scope(&self) -> Option<AttrStyle>;
 
     fn style(&self) -> AttrStyle;
 }

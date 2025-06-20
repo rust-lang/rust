@@ -1346,6 +1346,16 @@ impl AttributeExt for Attribute {
         }
     }
 
+    fn doc_resolution_scope(&self) -> Option<AttrStyle> {
+        match self {
+            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => Some(*style),
+            Attribute::Unparsed(attr) if self.has_name(sym::doc) && self.value_str().is_some() => {
+                Some(attr.style)
+            }
+            _ => None,
+        }
+    }
+
     #[inline]
     fn style(&self) -> AttrStyle {
         match &self {
