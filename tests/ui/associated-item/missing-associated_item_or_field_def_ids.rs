@@ -2,6 +2,6 @@
 
 fn main() -> dyn Iterator + ?Iterator::advance_by(usize) {
     //~^ ERROR expected trait, found associated function `Iterator::advance_by`
-    //~| ERROR `?Trait` is not permitted in trait object types
+    //~| ERROR relaxed bounds are not permitted in trait object types
     todo!()
 }

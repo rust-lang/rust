@@ -60,7 +60,7 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
-use rustc_session::parse::{add_feature_diagnostics, feature_err};
+use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
 use smallvec::SmallVec;
@@ -2071,7 +2071,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         rbp: RelaxedBoundPolicy<'_>,
     ) {
-        let err = |message| feature_err(&self.tcx.sess, sym::more_maybe_bounds, span, message);
+        // Even though feature `more_maybe_bounds` bypasses the given policy and (currently) enables
+        // relaxed bounds in every conceivable position[^1], we don't want to advertise it to the user
+        // (via a feature gate) since it's super internal. Besides this, it'd be quite distracting.
+        //
+        // [^1]: Strictly speaking, this is incorrect (at the very least for `Sized`) because it's
+        //       no longer fully consistent with default trait elaboration in HIR ty lowering.
 
         match rbp {
             RelaxedBoundPolicy::Allowed => return,
@@ -2093,11 +2098,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 match reason {
                     RelaxedBoundForbiddenReason::TraitObjectTy => {
-                        err("`?Trait` is not permitted in trait object types").emit();
+                        self.dcx().span_err(
+                            span,
+                            "relaxed bounds are not permitted in trait object types",
+                        );
                         return;
                     }
                     RelaxedBoundForbiddenReason::SuperTrait => {
-                        let mut diag = err("`?Trait` is not permitted in supertraits");
+                        let mut diag = self.dcx().struct_span_err(
+                            span,
+                            "relaxed bounds are not permitted in supertrait bounds",
+                        );
                         if let Some(def_id) = trait_ref.trait_def_id()
                             && self.tcx.is_lang_item(def_id, hir::LangItem::Sized)
                         {
@@ -2111,7 +2122,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        err("`?Trait` bounds are only permitted at the point where a type parameter is declared")
+        self.dcx()
+            .struct_span_err(span, "this relaxed bound is not permitted here")
+            .with_note(
+                "in this context, relaxed bounds are only allowed on \
+                 type parameters defined by the closest item",
+            )
             .emit();
     }
 

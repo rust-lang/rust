@@ -1,19 +1,18 @@
-// Test that relaxed bounds can only be placed on type parameters defined by the closest item
-// (ignoring relaxed bounds inside `impl Trait` and in associated type defs here).
+// Test various places where relaxed bounds are not permitted.
+//
+// Relaxed bounds are only permitted inside impl-Trait, assoc ty item bounds and
+// on type params defined by the closest item.
 
-struct S1<T>(T) where (T): ?Sized;
-//~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
+struct S1<T>(T) where (T): ?Sized; //~ ERROR this relaxed bound is not permitted here
 
-struct S2<T>(T) where u8: ?Sized;
-//~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
+struct S2<T>(T) where u8: ?Sized; //~ ERROR this relaxed bound is not permitted here
 
-struct S3<T>(T) where &'static T: ?Sized;
-//~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
+struct S3<T>(T) where &'static T: ?Sized; //~ ERROR this relaxed bound is not permitted here
 
 trait Trait<'a> {}
 
 struct S4<T>(T) where for<'a> T: ?Trait<'a>;
-//~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
+//~^ ERROR this relaxed bound is not permitted here
 //~| ERROR relaxing a default bound only does something for `?Sized`
 
 struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
@@ -21,11 +20,17 @@ struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
 //~| ERROR relaxing a default bound only does something for `?Sized`
 
 impl<T> S1<T> {
-    fn f() where T: ?Sized {}
-    //~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
+    fn f() where T: ?Sized {} //~ ERROR this relaxed bound is not permitted here
 }
 
-fn main() {
-    let u = vec![1, 2, 3];
-    let _s: S5<[u8]> = S5(&u[..]); // OK
-}
+trait Tr: ?Sized {} //~ ERROR relaxed bounds are not permitted in supertrait bounds
+
+// Test that relaxed `Sized` bounds are rejected in trait object types:
+
+type O1 = dyn Tr + ?Sized; //~ ERROR relaxed bounds are not permitted in trait object types
+type O2 = dyn ?Sized + ?Sized + Tr;
+//~^ ERROR relaxed bounds are not permitted in trait object types
+//~| ERROR relaxed bounds are not permitted in trait object types
+
+fn main() {}
+

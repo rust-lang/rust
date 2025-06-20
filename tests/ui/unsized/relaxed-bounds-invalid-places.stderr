@@ -1,56 +1,77 @@
-error[E0658]: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/relaxed-bounds-invalid-places.rs:4:28
+error: this relaxed bound is not permitted here
+  --> $DIR/relaxed-bounds-invalid-places.rs:6:28
    |
 LL | struct S1<T>(T) where (T): ?Sized;
    |                            ^^^^^^
    |
-   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
 
-error[E0658]: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/relaxed-bounds-invalid-places.rs:7:27
+error: this relaxed bound is not permitted here
+  --> $DIR/relaxed-bounds-invalid-places.rs:8:27
    |
 LL | struct S2<T>(T) where u8: ?Sized;
    |                           ^^^^^^
    |
-   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
 
-error[E0658]: `?Trait` bounds are only permitted at the point where a type parameter is declared
+error: this relaxed bound is not permitted here
   --> $DIR/relaxed-bounds-invalid-places.rs:10:35
    |
 LL | struct S3<T>(T) where &'static T: ?Sized;
    |                                   ^^^^^^
    |
-   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
 
-error[E0658]: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/relaxed-bounds-invalid-places.rs:15:34
+error: this relaxed bound is not permitted here
+  --> $DIR/relaxed-bounds-invalid-places.rs:14:34
    |
 LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
    |                                  ^^^^^^^^^^
    |
-   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
 
-error[E0658]: `?Trait` bounds are only permitted at the point where a type parameter is declared
-  --> $DIR/relaxed-bounds-invalid-places.rs:24:21
+error: this relaxed bound is not permitted here
+  --> $DIR/relaxed-bounds-invalid-places.rs:23:21
    |
 LL |     fn f() where T: ?Sized {}
    |                     ^^^^^^
    |
-   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
+
+error: relaxed bounds are not permitted in supertrait bounds
+  --> $DIR/relaxed-bounds-invalid-places.rs:26:11
+   |
+LL | trait Tr: ?Sized {}
+   |           ^^^^^^
+   |
+   = note: traits are `?Sized` by default
+
+error: relaxed bounds are not permitted in trait object types
+  --> $DIR/relaxed-bounds-invalid-places.rs:30:20
+   |
+LL | type O1 = dyn Tr + ?Sized;
+   |                    ^^^^^^
+
+error: relaxed bounds are not permitted in trait object types
+  --> $DIR/relaxed-bounds-invalid-places.rs:31:15
+   |
+LL | type O2 = dyn ?Sized + ?Sized + Tr;
+   |               ^^^^^^
+
+error: relaxed bounds are not permitted in trait object types
+  --> $DIR/relaxed-bounds-invalid-places.rs:31:24
+   |
+LL | type O2 = dyn ?Sized + ?Sized + Tr;
+   |                        ^^^^^^
 
 error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
-  --> $DIR/relaxed-bounds-invalid-places.rs:15:34
+  --> $DIR/relaxed-bounds-invalid-places.rs:14:34
    |
 LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
    |                                  ^^^^^^^^^^
 
 error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/relaxed-bounds-invalid-places.rs:19:33
+  --> $DIR/relaxed-bounds-invalid-places.rs:18:33
    |
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    |                                 ^^^^^^^^^^^^^^^   ^^^^^^
@@ -59,12 +80,11 @@ LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
-  --> $DIR/relaxed-bounds-invalid-places.rs:19:33
+  --> $DIR/relaxed-bounds-invalid-places.rs:18:33
    |
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    |                                 ^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 12 previous errors
 
-Some errors have detailed explanations: E0203, E0658.
-For more information about an error, try `rustc --explain E0203`.
+For more information about this error, try `rustc --explain E0203`.
