@@ -204,7 +204,7 @@ pub unsafe fn init_sv() -> Result<(), SvInitError> {
                             let code = sv_loop(listener, child, event_tx, confirm_tx).unwrap_err();
                             // If a return code of 0 is not explicitly given, assume something went
                             // wrong and return 1.
-                            std::process::exit(code.unwrap_or(1))
+                            std::process::exit(code.0.unwrap_or(1))
                         }
                         // Ptrace does not work and we failed to catch that.
                         Err(_) => {

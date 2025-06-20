@@ -222,13 +222,9 @@ impl Iterator for ChildListener {
 }
 
 /// An error came up while waiting on the child process to do something.
+/// It likely died, with this return code if we have one.
 #[derive(Debug)]
-enum ExecError {
-    /// The child process died with this return code, if we have one.
-    Died(Option<i32>),
-    /// Something errored, but we should ignore it and proceed.
-    Shrug,
-}
+pub struct ExecEnd(pub Option<i32>);
 
 /// This is the main loop of the supervisor process. It runs in a separate
 /// process from the rest of Miri (but because we fork, addresses for anything
@@ -238,7 +234,7 @@ pub fn sv_loop(
     init_pid: unistd::Pid,
     event_tx: ipc::IpcSender<MemEvents>,
     confirm_tx: ipc::IpcSender<Confirmation>,
-) -> Result<!, Option<i32>> {
+) -> Result<!, ExecEnd> {
     // Get the pagesize set and make sure it isn't still on the zero sentinel value!
     let page_size = PAGE_SIZE.load(std::sync::atomic::Ordering::Relaxed);
     assert_ne!(page_size, 0);
@@ -258,12 +254,7 @@ pub fn sv_loop(
     let mut curr_pid = init_pid;
 
     // There's an initial sigstop we need to deal with.
-    wait_for_signal(Some(curr_pid), signal::SIGSTOP, false).map_err(|e| {
-        match e {
-            ExecError::Died(code) => code,
-            ExecError::Shrug => None,
-        }
-    })?;
+    wait_for_signal(Some(curr_pid), signal::SIGSTOP, false)?;
     ptrace::cont(curr_pid, None).unwrap();
 
     for evt in listener {
@@ -303,21 +294,14 @@ pub fn sv_loop(
                     // If it was a segfault, check if it was an artificial one
                     // caused by it trying to access the MiriMachine memory.
                     signal::SIGSEGV =>
-                        match handle_segfault(
+                        handle_segfault(
                             pid,
                             &ch_pages,
                             ch_stack.unwrap(),
                             page_size,
                             &cs,
                             &mut acc_events,
-                        ) {
-                            Err(e) =>
-                                match e {
-                                    ExecError::Died(code) => return Err(code),
-                                    ExecError::Shrug => continue,
-                                },
-                            _ => (),
-                        },
+                        )?,
                     // Something weird happened.
                     _ => {
                         eprintln!("Process unexpectedly got {signal}; continuing...");
@@ -335,7 +319,7 @@ pub fn sv_loop(
                 ptrace::syscall(pid, None).unwrap();
             }
             ExecEvent::Died(code) => {
-                return Err(code);
+                return Err(ExecEnd(code));
             }
         }
     }
@@ -375,7 +359,7 @@ fn wait_for_signal(
     pid: Option<unistd::Pid>,
     wait_signal: signal::Signal,
     init_cont: bool,
-) -> Result<unistd::Pid, ExecError> {
+) -> Result<unistd::Pid, ExecEnd> {
     if init_cont {
         ptrace::cont(pid.unwrap(), None).unwrap();
     }
@@ -385,13 +369,13 @@ fn wait_for_signal(
             Some(pid) => wait::Id::Pid(pid),
             None => wait::Id::All,
         };
-        let stat = wait::waitid(wait_id, WAIT_FLAGS).map_err(|_| ExecError::Died(None))?;
+        let stat = wait::waitid(wait_id, WAIT_FLAGS).map_err(|_| ExecEnd(None))?;
         let (signal, pid) = match stat {
             // Report the cause of death, if we know it.
             wait::WaitStatus::Exited(_, code) => {
-                return Err(ExecError::Died(Some(code)));
+                return Err(ExecEnd(Some(code)));
             }
-            wait::WaitStatus::Signaled(_, _, _) => return Err(ExecError::Died(None)),
+            wait::WaitStatus::Signaled(_, _, _) => return Err(ExecEnd(None)),
             wait::WaitStatus::Stopped(pid, signal) => (signal, pid),
             wait::WaitStatus::PtraceEvent(pid, signal, _) => (signal, pid),
             // This covers PtraceSyscall and variants that are impossible with
@@ -404,7 +388,7 @@ fn wait_for_signal(
         if signal == wait_signal {
             return Ok(pid);
         } else {
-            ptrace::cont(pid, signal).map_err(|_| ExecError::Died(None))?;
+            ptrace::cont(pid, signal).map_err(|_| ExecEnd(None))?;
         }
     }
 }
@@ -418,7 +402,7 @@ fn handle_segfault(
     page_size: usize,
     cs: &capstone::Capstone,
     acc_events: &mut Vec<AccessEvent>,
-) -> Result<(), ExecError> {
+) -> Result<(), ExecEnd> {
     /// This is just here to not pollute the main namespace with `capstone::prelude::*`.
     #[inline]
     fn capstone_disassemble(
@@ -538,7 +522,7 @@ fn handle_segfault(
 
     // Get information on what caused the segfault. This contains the address
     // that triggered it.
-    let siginfo = ptrace::getsiginfo(pid).map_err(|_| ExecError::Shrug)?;
+    let siginfo = ptrace::getsiginfo(pid).unwrap();
     // All x86, ARM, etc. instructions only have at most one memory operand
     // (thankfully!)
     // SAFETY: si_addr is safe to call.
@@ -599,7 +583,7 @@ fn handle_segfault(
         // Don't use wait_for_signal here since 1 instruction doesn't give room
         // for any uncertainty + we don't want it `cont()`ing randomly by accident
         // Also, don't let it continue with unprotected memory if something errors!
-        let _ = wait::waitid(wait::Id::Pid(pid), WAIT_FLAGS).map_err(|_| ExecError::Died(None))?;
+        let _ = wait::waitid(wait::Id::Pid(pid), WAIT_FLAGS).map_err(|_| ExecEnd(None))?;
 
         // Zero out again to be safe
         for a in (ch_stack..ch_stack.strict_add(FAKE_STACK_SIZE)).step_by(ARCH_WORD_SIZE) {
@@ -651,7 +635,7 @@ fn handle_segfault(
         eprintln!("Expected access on pages: {ch_pages:#018x?}");
         eprintln!("Register dump: {regs:#x?}");
         ptrace::kill(pid).unwrap();
-        Err(ExecError::Died(None))
+        Err(ExecEnd(None))
     }
 }
 
