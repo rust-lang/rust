@@ -362,12 +362,13 @@ impl<'tcx> Map<'tcx> {
     /// chosen is an implementation detail and may not be relied upon (other than that their type
     /// are scalars).
     pub fn new(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, value_limit: Option<usize>) -> Self {
+        let capacity = 4 * body.local_decls.len() + value_limit.unwrap_or(body.local_decls.len());
         let mut map = Self {
             locals: IndexVec::from_elem(None, &body.local_decls),
             projections: FxHashMap::default(),
-            places: IndexVec::new(),
+            places: IndexVec::with_capacity(capacity),
             value_count: 0,
-            inner_values: IndexVec::new(),
+            inner_values: IndexVec::with_capacity(capacity),
             inner_values_buffer: Vec::new(),
         };
         map.register_locals(tcx, body);
