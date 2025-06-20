@@ -290,14 +290,6 @@ macro_rules! top_level_options {
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
             }
-
-            pub fn target_feature_flag_enabled(&self, flag: &str) -> bool {
-                match flag {
-                    "retpoline" => self.unstable_opts.retpoline,
-                    "retpoline-external-thunk" => self.unstable_opts.retpoline_external_thunk,
-                    _ => false,
-                }
-            }
         }
     );
 }
