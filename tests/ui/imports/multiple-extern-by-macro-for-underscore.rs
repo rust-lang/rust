@@ -15,6 +15,6 @@ macro_rules! m {
 m!();
 
 fn main() {
-    use ::_; //[ed2015]~ ERROR: unresolved import `_`
+    use ::_;
     //~^ ERROR: expected identifier, found reserved identifier `_`
 }
