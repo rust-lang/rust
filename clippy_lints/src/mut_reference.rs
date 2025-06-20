@@ -79,7 +79,7 @@ fn check_arguments<'tcx>(
     name: &str,
     fn_kind: &str,
 ) {
-    if let ty::FnDef(..) | ty::FnPtr(..) = type_definition.kind() {
+    if type_definition.is_fn() {
         let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
         for (argument, parameter) in iter::zip(arguments, parameters) {
             if let ty::Ref(_, _, Mutability::Not) | ty::RawPtr(_, Mutability::Not) = parameter.kind()
