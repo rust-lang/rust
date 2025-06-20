@@ -8,6 +8,14 @@
 # `bootstrap.toml` in the current directory of a build for build configuration, but
 # a custom configuration file can also be specified with `--config` to the build
 # system.
+#
+# Note that the following are equivelent, for more details see <https://toml.io/en/v1.0.0>.
+#
+#     build.verbose = 1
+#
+#     [build]
+#     verbose = 1
+
 
 # =============================================================================
 # Global Settings
