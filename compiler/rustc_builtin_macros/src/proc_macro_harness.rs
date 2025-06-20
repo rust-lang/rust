@@ -56,7 +56,7 @@ pub fn inject(
     is_test_crate: bool,
     dcx: DiagCtxtHandle<'_>,
 ) {
-    let ecfg = ExpansionConfig::default("proc_macro".to_string(), features);
+    let ecfg = ExpansionConfig::default(sym::proc_macro, features);
     let mut cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
     let mut collect = CollectProcMacros {

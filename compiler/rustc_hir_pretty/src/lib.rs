@@ -22,7 +22,7 @@ use rustc_hir::{
     TyPatKind,
 };
 use rustc_span::source_map::SourceMap;
-use rustc_span::{FileName, Ident, Span, Symbol, kw};
+use rustc_span::{FileName, Ident, Span, Symbol, kw, sym};
 use {rustc_ast as ast, rustc_hir as hir};
 
 pub fn id_to_string(cx: &dyn rustc_hir::intravisit::HirTyCtxt<'_>, hir_id: HirId) -> String {
@@ -1517,7 +1517,7 @@ impl<'a> State<'a> {
                 self.bopen(ib);
 
                 // Print `let _t = $init;`:
-                let temp = Ident::from_str("_t");
+                let temp = Ident::with_dummy_span(sym::_t);
                 self.print_local(false, Some(init), None, |this| this.print_ident(temp));
                 self.word(";");
 

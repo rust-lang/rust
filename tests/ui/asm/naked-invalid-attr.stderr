@@ -37,7 +37,7 @@ error[E0736]: attribute incompatible with `#[unsafe(naked)]`
   --> $DIR/naked-invalid-attr.rs:56:1
    |
 LL | #[::a]
-   | ^^^^^^ the `{{root}}::a` attribute is incompatible with `#[unsafe(naked)]`
+   | ^^^^^^ the `::a` attribute is incompatible with `#[unsafe(naked)]`
 ...
 LL | #[unsafe(naked)]
    | ---------------- function marked with `#[unsafe(naked)]` here
