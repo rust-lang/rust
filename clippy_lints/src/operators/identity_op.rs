@@ -1,4 +1,4 @@
-use clippy_utils::consts::{ConstEvalCtxt, Constant, FullInt};
+use clippy_utils::consts::{ConstEvalCtxt, Constant, FullInt, integer_const, is_zero_integer_const};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{ExprUseNode, clip, expr_use_ctxt, peel_hir_expr_refs, unsext};
@@ -186,9 +186,7 @@ fn is_allowed<'tcx>(
     cx.typeck_results().expr_ty(left).peel_refs().is_integral()
         && cx.typeck_results().expr_ty(right).peel_refs().is_integral()
         // `1 << 0` is a common pattern in bit manipulation code
-        && !(cmp == BinOpKind::Shl
-            && ConstEvalCtxt::new(cx).eval_simple(right) == Some(Constant::Int(0))
-            && ConstEvalCtxt::new(cx).eval_simple(left) == Some(Constant::Int(1)))
+        && !(cmp == BinOpKind::Shl && is_zero_integer_const(cx, right) && integer_const(cx, left) == Some(1))
 }
 
 fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span: Span, arg: Span) {

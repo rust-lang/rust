@@ -958,3 +958,18 @@ fn field_of_struct<'tcx>(
         None
     }
 }
+
+/// If `expr` evaluates to an integer constant, return its value.
+pub fn integer_const(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
+    if let Some(Constant::Int(value)) = ConstEvalCtxt::new(cx).eval_simple(expr) {
+        Some(value)
+    } else {
+        None
+    }
+}
+
+/// Check if `expr` evaluates to an integer constant of 0.
+#[inline]
+pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    integer_const(cx, expr) == Some(0)
+}
