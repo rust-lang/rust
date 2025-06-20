@@ -1,9 +1,10 @@
 #![allow(dead_code)] // not used on all platforms
 
 use crate::fmt;
-use crate::fs::{self, File, OpenOptions, create_dir, remove_dir, remove_file, rename};
+use crate::fs::{self, create_dir, remove_dir, remove_file, rename};
 use crate::io::{self, Error, ErrorKind};
 use crate::path::{Path, PathBuf};
+use crate::sys::fs::{File, OpenOptions};
 use crate::sys_common::ignore_notfound;
 
 pub(crate) const NOT_FILE_ERROR: Error = io::const_error!(
@@ -73,16 +74,30 @@ impl Dir {
         Ok(Self { path: path.as_ref().to_path_buf() })
     }
 
+    pub fn new_for_traversal<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        Ok(Self { path: path.as_ref().to_path_buf() })
+    }
+
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
-        File::open(self.path.join(path))
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        File::open(&self.path.join(path), &opts)
     }
 
     pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
-        opts.open(self.path.join(path))
+        File::open(&self.path.join(path), opts)
     }
 
     pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         create_dir(self.path.join(path))
+    }
+
+    pub fn open_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<Self> {
+        Self::new(self.path.join(path))
+    }
+
+    pub fn open_dir_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<Self> {
+        Self::new_with(self.path.join(path), opts)
     }
 
     pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
