@@ -1,8 +1,8 @@
-use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{Target, TargetMetadata, TargetOptions};
+use crate::spec::base::apple::{TargetAbi, base};
+use crate::spec::{Aarch64Ver, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("watchos", Arch::Arm64, TargetAbi::Simulator);
+    let (opts, llvm_target, arch) = base("watchos", Aarch64Ver::V8A.into(), TargetAbi::Simulator);
     Target {
         llvm_target,
         metadata: TargetMetadata {
