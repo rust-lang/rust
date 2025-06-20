@@ -40,7 +40,11 @@ impl Process {
         0
     }
 
-    pub fn kill(&mut self) -> io::Result<()> {
+    pub fn kill(&self) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn send_signal(&self, _signal: i32) -> io::Result<()> {
         unsupported()
     }
 
