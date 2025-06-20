@@ -40,6 +40,7 @@ pub(crate) mod crate_level;
 pub(crate) mod debugger;
 pub(crate) mod deprecation;
 pub(crate) mod dummy;
+pub(crate) mod doc;
 pub(crate) mod inline;
 pub(crate) mod link_attrs;
 pub(crate) mod lint_helpers;

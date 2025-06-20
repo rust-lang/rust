@@ -10,7 +10,7 @@ use rustc_ast::{
     Item, ItemKind, MethodCall, NodeId, Path, PathSegment, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
-use rustc_attr_parsing::is_doc_alias_attrs_contain_symbol;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -903,7 +903,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     // confused by them.
                     continue;
                 }
-                if is_doc_alias_attrs_contain_symbol(r.tcx.get_attrs(did, sym::doc), item_name) {
+                if let Some(d) = find_attr!(r.tcx.get_all_attrs(did), AttributeKind::Doc(d) => d)
+                    && d.aliases.contains_key(&item_name)
+                {
                     return Some(did);
                 }
             }

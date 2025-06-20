@@ -106,17 +106,8 @@ passes_diagnostic_diagnostic_on_unimplemented_only_for_traits =
 passes_diagnostic_item_first_defined =
     the diagnostic item is first defined here
 
-passes_doc_alias_bad_char =
-    {$char_} character isn't allowed in {$attr_str}
-
 passes_doc_alias_bad_location =
     {$attr_str} isn't allowed on {$location}
-
-passes_doc_alias_duplicated = doc alias is duplicated
-    .label = first defined here
-
-passes_doc_alias_empty =
-    {$attr_str} attribute cannot have empty value
 
 passes_doc_alias_malformed =
     doc alias attribute expects a string `#[doc(alias = "a")]` or a list of strings `#[doc(alias("a", "b"))]`
@@ -126,17 +117,6 @@ passes_doc_alias_not_an_alias =
 
 passes_doc_alias_not_string_literal =
     `#[doc(alias("a"))]` expects string literals
-
-passes_doc_alias_start_end =
-    {$attr_str} cannot start or end with ' '
-
-passes_doc_attr_expects_no_value =
-    `doc({$attr_name})` does not accept a value
-    .suggestion = use `doc({$attr_name})`
-
-passes_doc_attr_expects_string =
-    `doc({$attr_name})` expects a string value
-    .suggestion = use `doc({$attr_name} = "...")`
 
 passes_doc_attr_not_crate_level =
     `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
@@ -163,15 +143,7 @@ passes_doc_expect_str =
 passes_doc_fake_variadic_not_valid =
     `#[doc(fake_variadic)]` must be used on the first of a set of tuple or fn pointer trait impls with varying arity
 
-passes_doc_inline_conflict =
-    conflicting doc inlining attributes
-    .help = remove one of the conflicting attributes
 
-passes_doc_inline_conflict_first =
-    this attribute...
-
-passes_doc_inline_conflict_second =
-    {"."}..conflicts with this attribute
 
 passes_doc_inline_only_use =
     this attribute can only be applied to a `use` item
@@ -187,10 +159,6 @@ passes_doc_keyword_attribute_empty_mod =
 
 passes_doc_keyword_attribute_not_mod =
     `#[doc({$attr_name} = "...")]` should be used on modules
-
-passes_doc_keyword_not_keyword =
-    nonexistent keyword `{$keyword}` used in `#[doc(keyword = "...")]`
-    .help = only existing keywords are allowed in core/std
 
 passes_doc_keyword_only_impl =
     `#[doc(keyword = "...")]` should be used on impl blocks

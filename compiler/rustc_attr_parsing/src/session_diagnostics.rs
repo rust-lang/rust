@@ -4,6 +4,7 @@ use rustc_ast::{self as ast};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
+    MultiSpan,
 };
 use rustc_feature::AttributeTemplate;
 use rustc_hir::AttrPath;
@@ -32,6 +33,40 @@ pub(crate) struct InvalidPredicate {
     pub span: Span,
 
     pub predicate: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_empty)]
+pub(crate) struct DocAliasEmpty<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_bad_char)]
+pub(crate) struct DocAliasBadChar<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+    pub char_: char,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_start_end)]
+pub(crate) struct DocAliasStartEnd<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_keyword_not_keyword)]
+#[help]
+pub(crate) struct DocKeywordNotKeyword {
+    #[primary_span]
+    pub span: Span,
+    pub keyword: Symbol,
 }
 
 /// Error code: E0541
@@ -537,6 +572,38 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
     pub naked_span: Span,
     pub attr: String,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(attr_parsing_doc_alias_duplicated)]
+pub(crate) struct DocAliasDuplicated {
+    #[label]
+    pub first_defn: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_inline_conflict)]
+#[help]
+pub(crate) struct DocKeywordConflict {
+    #[primary_span]
+    pub spans: MultiSpan,
+}
+
+ #[derive(Subdiagnostic)]
+ pub(crate) enum UnusedNote {
+     #[note(attr_parsing_unused_empty_lints_note)]
+     EmptyList { name: Symbol },
+     #[note(attr_parsing_unused_no_lints_note)]
+     NoLints { name: Symbol },
+ }
+
+ #[derive(LintDiagnostic)]
+ #[diag(attr_parsing_unused)]
+ pub(crate) struct Unused {
+     #[suggestion(code = "", applicability = "machine-applicable")]
+     pub attr_span: Span,
+     #[subdiagnostic]
+     pub note: UnusedNote,
+ }
 
 #[derive(Diagnostic)]
 #[diag(attr_parsing_link_ordinal_out_of_range)]

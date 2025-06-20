@@ -233,5 +233,34 @@ attr_parsing_unused_multiple =
     .suggestion = remove this attribute
     .note = attribute also specified here
 
+attr_parsing_doc_alias_duplicated = doc alias is duplicated
+    .label = first defined here
+
 attr_parsing_whole_archive_needs_static =
     linking modifier `whole-archive` is only compatible with `static` linking kind
+
+attr_parsing_unused_no_lints_note =
+    attribute `{$name}` without any lints has no effect
+
+attr_parsing_doc_alias_empty =
+    {$attr_str} attribute cannot have empty value
+
+attr_parsing_doc_alias_bad_char =
+    {$char_} character isn't allowed in {$attr_str}
+
+attr_parsing_doc_alias_start_end =
+    {$attr_str} cannot start or end with ' '
+
+attr_parsing_doc_keyword_not_keyword =
+    nonexistent keyword `{$keyword}` used in `#[doc(keyword = "...")]`
+    .help = only existing keywords are allowed in core/std
+
+attr_parsing_doc_inline_conflict =
+    conflicting doc inlining attributes
+    .help = remove one of the conflicting attributes
+
+attr_parsing_doc_inline_conflict_first =
+    this attribute...
+
+attr_parsing_doc_inline_conflict_second =
+    {"."}..conflicts with this attribute
