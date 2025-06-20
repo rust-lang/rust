@@ -164,7 +164,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
             // Conservatively remove all storage statements for reused locals.
             state.reused_locals.clone()
         };
-        
+
         debug!(?storage_to_remove);
 
         StorageRemover { tcx, reused_locals: state.reused_locals, storage_to_remove }
