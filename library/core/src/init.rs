@@ -26,9 +26,9 @@ use crate::ptr::Pointee;
 /// If initialization was successful, then [`Self::init`] returns the metadata that combined with
 /// the pointer to the given to [`Self::init`] yields a valid pointer to `T`.
 ///
-/// ```
+/// ``` ignore (illustrative)
 /// use std::alloc::alloc;
-/// fn init_unsized<T: ?Sized + Pointee, I: Init<T>>(init: I) -> Result<Box<T>, I::Error> {
+/// fn init_boxed<T: ?Sized + Pointee, I: Init<T>>(init: I) -> Result<Box<T>, I::Error> {
 ///     let layout = init.layout();
 ///     let memory = alloc(layout).cast::<()>();
 ///     let meta = init.init(memory)?;
@@ -64,6 +64,9 @@ pub unsafe trait Init<T: ?Sized + Pointee> {
     type Error;
 
     /// The layout needed by this initializer.
+    /// This method must return a layout that precisely matches
+    /// with `T`.
+    /// Namely the size and the alignment must be equal.
     #[lang = "init_layout"]
     fn layout(&self) -> crate::alloc::Layout;
 
