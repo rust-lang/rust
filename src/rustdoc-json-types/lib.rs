@@ -37,8 +37,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Pretty printing of inline attributes changed
-pub const FORMAT_VERSION: u32 = 48;
+// Latest feature: Pretty printing of optimize attributes changed
+pub const FORMAT_VERSION: u32 = 49;
 
 /// The root of the emitted JSON blob.
 ///
