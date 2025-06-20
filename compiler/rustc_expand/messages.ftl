@@ -133,6 +133,14 @@ expand_module_multiple_candidates =
 expand_must_repeat_once =
     this must repeat at least once
 
+expand_mve_expected_ident =
+    expected an identifier
+    .not_ident = not a valid identifier
+    .expr_name = expected a metavariable expression name: `{"${expr( /* ... */ )}"}`
+    .expr_name_note = valid metavariable expressions are {$valid_expr_list}
+    .ignore_expr_note = `ignore` takes a metavariable argument
+    .count_expr_note = `count` takes a metavariable argument
+
 expand_mve_extra_tokens =
     unexpected trailing tokens
     .label = for this metavariable expression

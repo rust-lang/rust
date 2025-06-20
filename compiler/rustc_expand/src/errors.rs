@@ -541,6 +541,30 @@ mod metavar_exprs {
     }
 
     #[derive(Diagnostic)]
+    #[diag(expand_mve_expected_ident)]
+    pub(crate) struct MveExpectedIdent {
+        #[primary_span]
+        pub span: Span,
+        #[label(expand_not_ident)]
+        pub not_ident_label: Option<Span>,
+        /// This error is reused a handful of places, the context here tells us how to customize
+        /// the message.
+        #[subdiagnostic]
+        pub context: MveExpectedIdentContext,
+    }
+
+    #[derive(Subdiagnostic)]
+    pub(crate) enum MveExpectedIdentContext {
+        #[note(expand_expr_name)]
+        #[note(expand_expr_name_note)]
+        ExprName { valid_expr_list: &'static str },
+        #[note(expand_ignore_expr_note)]
+        Ignore,
+        #[note(expand_count_expr_note)]
+        Count,
+    }
+
+    #[derive(Diagnostic)]
     #[diag(expand_mve_unrecognized_var)]
     pub(crate) struct MveUnrecognizedVar {
         #[primary_span]
