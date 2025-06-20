@@ -39,7 +39,7 @@ LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
    = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
 
 error[E0658]: this relaxed bound is not permitted here
-  --> $DIR/relaxed-bounds-invalid-places.rs:21:21
+  --> $DIR/relaxed-bounds-invalid-places.rs:20:21
    |
 LL |     fn f() where T: ?Sized {}
    |                     ^^^^^^
@@ -54,22 +54,12 @@ error: bound modifier `?` can only be applied to `Sized`
 LL | struct S4<T>(T) where for<'a> T: ?Trait<'a>;
    |                                  ^^^^^^^^^^
 
-error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/relaxed-bounds-invalid-places.rs:16:33
-   |
-LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
-   |                                 ^^^^^^^^^^^^^^^   ^^^^^^
-   |
-   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error: bound modifier `?` can only be applied to `Sized`
   --> $DIR/relaxed-bounds-invalid-places.rs:16:33
    |
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    |                                 ^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0203, E0658.
-For more information about an error, try `rustc --explain E0203`.
+For more information about this error, try `rustc --explain E0658`.
