@@ -11,6 +11,7 @@ use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::api::SetFileInformation;
+use crate::sys::fs::{remove_dir, remove_file};
 use crate::sys::handle::Handle;
 use crate::sys::pal::api::{self, WinError, set_file_information_by_handle};
 use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s, truncate_utf16_at_nul};
@@ -189,6 +190,32 @@ impl DirEntry {
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
         Ok(self.data.into())
+    }
+
+    pub fn open_file(&self) -> io::Result<File> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        File::open(&self.path(), &opts)
+    }
+
+    pub fn open_file_with(&self, opts: &OpenOptions) -> io::Result<File> {
+        File::open(&self.path(), opts)
+    }
+
+    pub fn open_dir(&self) -> io::Result<Dir> {
+        Dir::new(&self.path())
+    }
+
+    pub fn open_dir_with(&self, opts: &OpenOptions) -> io::Result<Dir> {
+        Dir::new_with(&self.path(), opts)
+    }
+
+    pub fn remove_file(&self) -> io::Result<()> {
+        remove_file(&self.path())
+    }
+
+    pub fn remove_dir(&self) -> io::Result<()> {
+        remove_dir(&self.path())
     }
 }
 
