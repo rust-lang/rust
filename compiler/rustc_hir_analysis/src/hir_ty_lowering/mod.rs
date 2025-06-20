@@ -758,6 +758,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         predicate_filter: PredicateFilter,
     ) -> GenericArgCountResult {
+        let tcx = self.tcx();
+
         // We use the *resolved* bound vars later instead of the HIR ones since the former
         // also include the bound vars of the overarching predicate if applicable.
         let hir::PolyTraitRef { bound_generic_params: _, modifiers, ref trait_ref, span } =
@@ -765,6 +767,27 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let hir::TraitBoundModifiers { constness, polarity } = modifiers;
 
         let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
+
+        let (polarity, bounds) = match polarity {
+            rustc_ast::BoundPolarity::Positive
+                if tcx.is_lang_item(trait_def_id, hir::LangItem::PointeeSized) =>
+            {
+                // Skip `PointeeSized` bounds.
+                //
+                // `PointeeSized` is a "fake bound" insofar as anywhere a `PointeeSized` bound exists, there
+                // is actually the absence of any bounds. This avoids limitations around non-global where
+                // clauses being preferred over item bounds (where `PointeeSized` bounds would be
+                // proven) - which can result in errors when a `PointeeSized` supertrait/bound/predicate is
+                // added to some items.
+                (ty::PredicatePolarity::Positive, &mut Vec::new())
+            }
+            rustc_ast::BoundPolarity::Positive => (ty::PredicatePolarity::Positive, bounds),
+            rustc_ast::BoundPolarity::Negative(_) => (ty::PredicatePolarity::Negative, bounds),
+            rustc_ast::BoundPolarity::Maybe(_) => {
+                (ty::PredicatePolarity::Positive, &mut Vec::new())
+            }
+        };
+
         let trait_segment = trait_ref.path.segments.last().unwrap();
 
         let _ = self.prohibit_generic_args(
@@ -781,7 +804,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(self_ty),
         );
 
-        let tcx = self.tcx();
         let bound_vars = tcx.late_bound_vars(trait_ref.hir_ref_id);
         debug!(?bound_vars);
 
@@ -791,27 +813,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         );
 
         debug!(?poly_trait_ref);
-
-        let polarity = match polarity {
-            rustc_ast::BoundPolarity::Positive => ty::PredicatePolarity::Positive,
-            rustc_ast::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
-            rustc_ast::BoundPolarity::Maybe(_) => {
-                // Validate associated type at least. We may want to reject these
-                // outright in the future...
-                for constraint in trait_segment.args().constraints {
-                    let _ = self.lower_assoc_item_constraint(
-                        trait_ref.hir_ref_id,
-                        poly_trait_ref,
-                        constraint,
-                        &mut Default::default(),
-                        &mut Default::default(),
-                        constraint.span,
-                        predicate_filter,
-                    );
-                }
-                return arg_count;
-            }
-        };
 
         // We deal with const conditions later.
         match predicate_filter {
@@ -915,7 +916,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Don't register any associated item constraints for negative bounds,
             // since we should have emitted an error for them earlier, and they
             // would not be well-formed!
-            if polarity != ty::PredicatePolarity::Positive {
+            if polarity == ty::PredicatePolarity::Negative {
                 self.dcx().span_delayed_bug(
                     constraint.span,
                     "negative trait bounds should not have assoc item constraints",
