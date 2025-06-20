@@ -992,6 +992,10 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         // people working on rust can build with or without debuginfo while
         // still getting consistent results from the mir-opt tests.
         caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
+    } else {
+        for bb in callee_body.basic_blocks_mut() {
+            bb.drop_debuginfo();
+        }
     }
     caller_body.basic_blocks_mut().append(callee_body.basic_blocks_mut());
 
