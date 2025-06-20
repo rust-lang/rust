@@ -141,3 +141,39 @@ fn issue14239() {
     };
     //~^^^^^ manual_ok_err
 }
+
+mod issue15051 {
+    struct Container {
+        field: Result<bool, ()>,
+    }
+
+    #[allow(clippy::needless_borrow)]
+    fn with_addr_of(x: &Container) -> Option<&bool> {
+        match &x.field {
+            //~^ manual_ok_err
+            Ok(panel) => Some(panel),
+            Err(_) => None,
+        }
+    }
+
+    fn from_fn(x: &Container) -> Option<&bool> {
+        let result_with_ref = || &x.field;
+        match result_with_ref() {
+            //~^ manual_ok_err
+            Ok(panel) => Some(panel),
+            Err(_) => None,
+        }
+    }
+
+    fn result_with_ref_mut(x: &mut Container) -> &mut Result<bool, ()> {
+        &mut x.field
+    }
+
+    fn from_fn_mut(x: &mut Container) -> Option<&mut bool> {
+        match result_with_ref_mut(x) {
+            //~^ manual_ok_err
+            Ok(panel) => Some(panel),
+            Err(_) => None,
+        }
+    }
+}
