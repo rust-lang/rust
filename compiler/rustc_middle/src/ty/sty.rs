@@ -346,7 +346,7 @@ impl ParamConst {
     }
 
     #[instrument(level = "debug")]
-    pub fn find_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
+    pub fn find_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Option<Ty<'tcx>> {
         let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {
@@ -362,9 +362,9 @@ impl ParamConst {
             }
         });
 
-        let ty = candidates.next().unwrap();
+        let ty = candidates.next()?;
         assert!(candidates.next().is_none());
-        ty
+        Some(ty)
     }
 }
 
