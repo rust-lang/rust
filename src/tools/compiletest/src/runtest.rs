@@ -753,7 +753,14 @@ impl<'test> TestCx<'test> {
         }
 
         if !unexpected.is_empty() || !not_found.is_empty() {
-            // Show relative path for brevity, and normalize path separators to `/`.
+            self.error(&format!(
+                "{} unexpected diagnostics reported, {} expected diagnostics not reported",
+                unexpected.len(),
+                not_found.len()
+            ));
+
+            // Emit locations in a format that is short (relative paths) but "clickable" in editors.
+            // Also normalize path separators to `/`.
             let file_name = self
                 .testpaths
                 .file
@@ -761,21 +768,16 @@ impl<'test> TestCx<'test> {
                 .unwrap_or(&self.testpaths.file)
                 .to_string()
                 .replace(r"\", "/");
-
-            self.error(&format!(
-                "{} unexpected diagnostics reported, {} expected diagnostics not reported",
-                unexpected.len(),
-                not_found.len()
-            ));
-            let print = |e: &Error| {
+            let line_str = |e: &Error| {
                 let line_num = e.line_num.map_or("?".to_string(), |line_num| line_num.to_string());
                 // `file:?:NUM` may be confusing to editors and unclickable.
                 let opt_col_num = match e.column_num {
-                    Some(col_num) if line_num != "?" => format!("{col_num}:"),
+                    Some(col_num) if line_num != "?" => format!(":{col_num}"),
                     _ => "".to_string(),
                 };
-                println!("{file_name}:{line_num}:{opt_col_num} {}: {}", e.kind, e.msg.cyan())
+                format!("{file_name}:{line_num}{opt_col_num}")
             };
+            let print = |e: &Error| println!("{}: {}: {}", line_str(e), e.kind, e.msg.cyan());
             // Fuzzy matching quality:
             // - message and line / message and kind - great, suggested
             // - only message - good, suggested
@@ -788,19 +790,40 @@ impl<'test> TestCx<'test> {
                     print(error);
                     for candidate in &not_found {
                         if error.msg.contains(&candidate.msg) {
-                            let prefix = if candidate.line_num != error.line_num {
-                                "expected on a different line"
+                            let line_mismatch = candidate.line_num != error.line_num;
+                            let kind_mismatch = candidate.kind != error.kind;
+                            if kind_mismatch && line_mismatch {
+                                println!(
+                                    "  {} {} {} {}",
+                                    "expected with kind".red(),
+                                    candidate.kind,
+                                    "on line".red(),
+                                    line_str(candidate)
+                                );
+                            } else if kind_mismatch {
+                                println!("  {} {}", "expected with kind".red(), candidate.kind);
                             } else {
-                                "expected with a different kind"
+                                println!("  {} {}", "expected on line".red(), line_str(candidate));
                             }
-                            .red();
-                            print!("  {prefix}: ");
-                            print(candidate);
                         } else if candidate.line_num.is_some()
                             && candidate.line_num == error.line_num
                         {
-                            print!("  {}: ", "expected with a different message".red());
-                            print(candidate);
+                            let kind_mismatch = candidate.kind != error.kind;
+                            if kind_mismatch {
+                                println!(
+                                    "  {} {} {} {}",
+                                    "expected with kind".red(),
+                                    candidate.kind,
+                                    "with message".red(),
+                                    candidate.msg.cyan()
+                                );
+                            } else {
+                                println!(
+                                    "  {} {}",
+                                    "expected with message".red(),
+                                    candidate.msg.cyan()
+                                );
+                            }
                         }
                     }
                 }
@@ -812,19 +835,44 @@ impl<'test> TestCx<'test> {
                     print(error);
                     for candidate in unexpected.iter().chain(&unimportant) {
                         if candidate.msg.contains(&error.msg) {
-                            let prefix = if candidate.line_num != error.line_num {
-                                "reported on a different line"
+                            let line_mismatch = candidate.line_num != error.line_num;
+                            let kind_mismatch = candidate.kind != error.kind;
+                            if kind_mismatch && line_mismatch {
+                                println!(
+                                    "  {} {} {} {}",
+                                    "reported with kind".green(),
+                                    candidate.kind,
+                                    "on line".green(),
+                                    line_str(candidate)
+                                );
+                            } else if kind_mismatch {
+                                println!("  {} {}", "reported with kind".green(), candidate.kind);
                             } else {
-                                "reported with a different kind"
+                                println!(
+                                    "  {} {}",
+                                    "reported on line".green(),
+                                    line_str(candidate)
+                                );
                             }
-                            .green();
-                            print!("  {prefix}: ");
-                            print(candidate);
                         } else if candidate.line_num.is_some()
                             && candidate.line_num == error.line_num
                         {
-                            print!("  {}: ", "reported with a different message".green());
-                            print(candidate);
+                            let kind_mismatch = candidate.kind != error.kind;
+                            if kind_mismatch {
+                                println!(
+                                    "  {} {} {} {}",
+                                    "reported with kind".green(),
+                                    candidate.kind,
+                                    "with message".green(),
+                                    candidate.msg.cyan()
+                                );
+                            } else {
+                                println!(
+                                    "  {} {}",
+                                    "reported with message".green(),
+                                    candidate.msg.cyan()
+                                );
+                            }
                         }
                     }
                 }
