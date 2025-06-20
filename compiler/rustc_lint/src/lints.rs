@@ -1359,7 +1359,7 @@ pub(crate) enum NonUpperCaseGlobalSub {
         #[primary_span]
         span: Span,
     },
-    #[suggestion(lint_suggestion, code = "{replace}", applicability = "maybe-incorrect")]
+    #[suggestion(lint_suggestion, code = "{replace}", applicability = "machine-applicable")]
     Suggestion {
         #[primary_span]
         span: Span,
@@ -1371,7 +1371,7 @@ pub(crate) enum NonUpperCaseGlobalSub {
 #[suggestion(
     lint_suggestion,
     code = "{replace}",
-    applicability = "maybe-incorrect",
+    applicability = "machine-applicable",
     style = "tool-only"
 )]
 pub(crate) struct NonUpperCaseGlobalSubTool {
