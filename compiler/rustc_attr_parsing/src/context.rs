@@ -16,7 +16,7 @@ use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{
-    AllowConstFnUnstableParser, AllowInternalUnstableParser, AllowUnstableFeatureParser,
+    AllowConstFnUnstableParser, AllowInternalUnstableParser, UnstableFeatureBoundParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
@@ -100,7 +100,7 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Combine<AllowConstFnUnstableParser>,
         Combine<AllowInternalUnstableParser>,
-        Combine<AllowUnstableFeatureParser>,
+        Combine<UnstableFeatureBoundParser>,
         Combine<ReprParser>,
         // tidy-alphabetical-end
 
