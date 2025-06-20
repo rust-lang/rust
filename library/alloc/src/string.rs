@@ -2841,7 +2841,7 @@ macro_rules! impl_to_string {
         impl SpecToString for $signed {
             #[inline]
             fn spec_to_string(&self) -> String {
-                const SIZE: usize = $signed::MAX.ilog(10) as usize + 1;
+                const SIZE: usize = $signed::MAX.ilog10() as usize + 1;
                 let mut buf = [core::mem::MaybeUninit::<u8>::uninit(); SIZE];
                 // Only difference between signed and unsigned are these 8 lines.
                 let mut out;
@@ -2861,7 +2861,7 @@ macro_rules! impl_to_string {
         impl SpecToString for $unsigned {
             #[inline]
             fn spec_to_string(&self) -> String {
-                const SIZE: usize = $unsigned::MAX.ilog(10) as usize + 1;
+                const SIZE: usize = $unsigned::MAX.ilog10() as usize + 1;
                 let mut buf = [core::mem::MaybeUninit::<u8>::uninit(); SIZE];
 
                 self._fmt(&mut buf).to_string()
