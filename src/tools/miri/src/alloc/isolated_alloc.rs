@@ -1,4 +1,4 @@
-use std::alloc::Layout;
+use std::{alloc::Layout, ptr::NonNull};
 
 use nix::sys::mman;
 use rustc_index::bit_set::DenseBitSet;
@@ -13,7 +13,7 @@ pub struct IsolatedAlloc {
     /// Pointers to page-aligned memory that has been claimed by the allocator.
     /// Every pointer here must point to a page-sized allocation claimed via
     /// mmap. These pointers are used for "small" allocations.
-    page_ptrs: Vec<*mut u8>,
+    page_ptrs: Vec<NonNull<u8>>,
     /// Metadata about which bytes have been allocated on each page. The length
     /// of this vector must be the same as that of `page_ptrs`, and the domain
     /// size of the bitset must be exactly `page_size / COMPRESSION_FACTOR`.
@@ -25,7 +25,7 @@ pub struct IsolatedAlloc {
     page_infos: Vec<DenseBitSet<usize>>,
     /// Pointers to multiple-page-sized allocations. These must also be page-aligned,
     /// with their size stored as the second element of the vector.
-    huge_ptrs: Vec<(*mut u8, usize)>,
+    huge_ptrs: Vec<(NonNull<u8>, usize)>,
     /// The host (not emulated) page size.
     page_size: usize,
 }
@@ -138,7 +138,7 @@ impl IsolatedAlloc {
     unsafe fn alloc_small(
         page_size: usize,
         layout: Layout,
-        page: *mut u8,
+        page: NonNull<u8>,
         pinfo: &mut DenseBitSet<usize>,
         zeroed: bool,
     ) -> Option<*mut u8> {
@@ -165,7 +165,7 @@ impl IsolatedAlloc {
                         // zero out, even if we allocated more
                         ptr.write_bytes(0, layout.size());
                     }
-                    return Some(ptr);
+                    return Some(ptr.as_ptr());
                 }
             }
         }
@@ -173,7 +173,7 @@ impl IsolatedAlloc {
     }
 
     /// Expands the available memory pool by adding one page.
-    fn add_page(&mut self) -> (*mut u8, &mut DenseBitSet<usize>) {
+    fn add_page(&mut self) -> (NonNull<u8>, &mut DenseBitSet<usize>) {
         // SAFETY: mmap is always safe to call when requesting anonymous memory
         let page_ptr = unsafe {
             libc::mmap(
@@ -190,8 +190,8 @@ impl IsolatedAlloc {
         // `page_infos` has to have one bit for each `COMPRESSION_FACTOR`-sized chunk of bytes in the page.
         assert!(self.page_size % COMPRESSION_FACTOR == 0);
         self.page_infos.push(DenseBitSet::new_empty(self.page_size / COMPRESSION_FACTOR));
-        self.page_ptrs.push(page_ptr);
-        (page_ptr, self.page_infos.last_mut().unwrap())
+        self.page_ptrs.push(NonNull::new(page_ptr).unwrap());
+        (NonNull::new(page_ptr).unwrap(), self.page_infos.last_mut().unwrap())
     }
 
     /// Allocates in multiples of one page on the host system.
@@ -213,7 +213,7 @@ impl IsolatedAlloc {
             .cast::<u8>()
         };
         assert_ne!(ret.addr(), usize::MAX, "mmap failed");
-        self.huge_ptrs.push((ret, size));
+        self.huge_ptrs.push((NonNull::new(ret).unwrap(), size));
         // huge_normalized_layout ensures that we've overallocated enough space
         // for this to be valid.
         ret.map_addr(|a| a.next_multiple_of(layout.align()))
@@ -247,7 +247,7 @@ impl IsolatedAlloc {
                 // from us pointing to this page, and we know it was allocated
                 // in add_page as exactly a single page.
                 unsafe {
-                    assert_eq!(libc::munmap(page_ptr.cast(), self.page_size), 0);
+                    assert_eq!(libc::munmap(page_ptr.as_ptr().cast(), self.page_size), 0);
                 }
             }
         }
@@ -266,7 +266,7 @@ impl IsolatedAlloc {
         // This could be made faster if the list was sorted -- the allocator isn't fully optimized at the moment.
         let pinfo = std::iter::zip(&mut self.page_ptrs, &mut self.page_infos)
             .enumerate()
-            .find(|(_, (page, _))| page.addr() == page_addr);
+            .find(|(_, (page, _))| page.addr().get() == page_addr);
         let Some((idx_of_pinfo, (_, pinfo))) = pinfo else {
             panic!("Freeing in an unallocated page: {ptr:?}\nHolding pages {:?}", self.page_ptrs)
         };
@@ -288,7 +288,7 @@ impl IsolatedAlloc {
             .huge_ptrs
             .iter()
             .position(|&(pg, size)| {
-                pg.addr() <= ptr.addr() && ptr.addr() < pg.addr().strict_add(size)
+                pg.addr().get() <= ptr.addr() && ptr.addr() < pg.addr().get().strict_add(size)
             })
             .expect("Freeing unallocated pages");
         // And kick it from the list
@@ -296,18 +296,18 @@ impl IsolatedAlloc {
         assert_eq!(size, size2, "got wrong layout in dealloc");
         // SAFETY: huge_ptrs contains allocations made with mmap with the size recorded there.
         unsafe {
-            let ret = libc::munmap(un_offset_ptr.cast(), size);
+            let ret = libc::munmap(un_offset_ptr.as_ptr().cast(), size);
             assert_eq!(ret, 0);
         }
     }
 
     /// Returns a vector of page addresses managed by the allocator.
     pub fn pages(&self) -> Vec<usize> {
-        let mut pages: Vec<_> =
-            self.page_ptrs.clone().into_iter().map(|p| p.expose_provenance()).collect();
+        let mut pages: Vec<usize> =
+            self.page_ptrs.clone().into_iter().map(|p| p.expose_provenance().get()).collect();
         self.huge_ptrs.iter().for_each(|(ptr, size)| {
             for i in 0..size / self.page_size {
-                pages.push(ptr.expose_provenance().strict_add(i * self.page_size));
+                pages.push(ptr.expose_provenance().get().strict_add(i * self.page_size));
             }
         });
         pages
@@ -339,16 +339,12 @@ impl IsolatedAlloc {
     unsafe fn mprotect(&mut self, prot: mman::ProtFlags) -> Result<(), nix::errno::Errno> {
         for &pg in &self.page_ptrs {
             unsafe {
-                // We already know only non-null ptrs are pushed to self.pages
-                let addr: std::ptr::NonNull<std::ffi::c_void> =
-                    std::ptr::NonNull::new_unchecked(pg.cast());
-                mman::mprotect(addr, self.page_size, prot)?;
+                mman::mprotect(pg.cast(), self.page_size, prot)?;
             }
         }
         for &(hpg, size) in &self.huge_ptrs {
             unsafe {
-                let addr = std::ptr::NonNull::new_unchecked(hpg.cast());
-                mman::mprotect(addr, size.next_multiple_of(self.page_size), prot)?;
+                mman::mprotect(hpg.cast(), size.next_multiple_of(self.page_size), prot)?;
             }
         }
         Ok(())
