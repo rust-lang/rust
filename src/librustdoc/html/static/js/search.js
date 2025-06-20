@@ -5394,43 +5394,6 @@ function updateCrate(ev) {
     search(true);
 }
 
-// @ts-expect-error
-function initSearch(searchIndx) {
-    rawSearchIndex = searchIndx;
-    if (typeof window !== "undefined") {
-        // @ts-expect-error
-        docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
-        registerSearchEvents();
-        // If there's a search term in the URL, execute the search now.
-        if (window.searchState.getQueryStringParams().search) {
-            search();
-        }
-    } else if (typeof exports !== "undefined") {
-        // @ts-expect-error
-        docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
-        exports.docSearch = docSearch;
-        exports.parseQuery = DocSearch.parseQuery;
-    }
-}
-
-if (typeof exports !== "undefined") {
-    exports.initSearch = initSearch;
-}
-
-if (typeof window !== "undefined") {
-    // @ts-expect-error
-    window.initSearch = initSearch;
-    // @ts-expect-error
-    if (window.searchIndex !== undefined) {
-        // @ts-expect-error
-        initSearch(window.searchIndex);
-    }
-} else {
-    // Running in Node, not a browser. Run initSearch just to produce the
-    // exports.
-    initSearch(new Map());
-}
-
 // Parts of this code are based on Lucene, which is licensed under the
 // Apache/2.0 license.
 // More information found here:
@@ -5909,3 +5872,44 @@ Lev1TParametricDescription.prototype.toStates3 = /*3 bits per value */ new Int32
 Lev1TParametricDescription.prototype.offsetIncrs3 = /*2 bits per value */ new Int32Array([
     0xa0fc0000,0x5555ba08,0x55555555,
 ]);
+
+// ====================
+// WARNING: Nothing should be added below this comment: we need the `initSearch` function to
+// be called ONLY when the whole file has been parsed and loaded.
+
+// @ts-expect-error
+function initSearch(searchIndx) {
+    rawSearchIndex = searchIndx;
+    if (typeof window !== "undefined") {
+        // @ts-expect-error
+        docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
+        registerSearchEvents();
+        // If there's a search term in the URL, execute the search now.
+        if (window.searchState.getQueryStringParams().search) {
+            search();
+        }
+    } else if (typeof exports !== "undefined") {
+        // @ts-expect-error
+        docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
+        exports.docSearch = docSearch;
+        exports.parseQuery = DocSearch.parseQuery;
+    }
+}
+
+if (typeof exports !== "undefined") {
+    exports.initSearch = initSearch;
+}
+
+if (typeof window !== "undefined") {
+    // @ts-expect-error
+    window.initSearch = initSearch;
+    // @ts-expect-error
+    if (window.searchIndex !== undefined) {
+        // @ts-expect-error
+        initSearch(window.searchIndex);
+    }
+} else {
+    // Running in Node, not a browser. Run initSearch just to produce the
+    // exports.
+    initSearch(new Map());
+}
