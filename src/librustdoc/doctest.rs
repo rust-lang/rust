@@ -514,8 +514,9 @@ fn run_test(
 
     compiler_args.push(format!("@{}", doctest.global_opts.args_file.display()));
 
-    if let Some(sysroot) = &rustdoc_options.maybe_sysroot {
-        compiler_args.push(format!("--sysroot={}", sysroot.display()));
+    let sysroot = &rustdoc_options.sysroot;
+    if let Some(explicit_sysroot) = &sysroot.explicit {
+        compiler_args.push(format!("--sysroot={}", explicit_sysroot.display()));
     }
 
     compiler_args.extend_from_slice(&["--edition".to_owned(), doctest.edition.to_string()]);
@@ -574,7 +575,7 @@ fn run_test(
     let rustc_binary = rustdoc_options
         .test_builder
         .as_deref()
-        .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
+        .unwrap_or_else(|| rustc_interface::util::rustc_path(sysroot).expect("found rustc"));
     let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
     compiler.args(&compiler_args);
