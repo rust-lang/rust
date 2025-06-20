@@ -16,8 +16,7 @@ struct S4<T>(T) where for<'a> T: ?Trait<'a>;
 //~| ERROR bound modifier `?` can only be applied to `Sized`
 
 struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
-//~^ ERROR type parameter has more than one relaxed default bound
-//~| ERROR bound modifier `?` can only be applied to `Sized`
+//~^ ERROR bound modifier `?` can only be applied to `Sized`
 
 impl<T> S1<T> {
     fn f() where T: ?Sized {} //~ ERROR this relaxed bound is not permitted here
@@ -33,4 +32,3 @@ type O2 = dyn ?Sized + ?Sized + Tr;
 //~| ERROR relaxed bounds are not permitted in trait object types
 
 fn main() {}
-

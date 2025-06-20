@@ -1,6 +1,6 @@
 // FIXME(more_maybe_bounds): Even under `more_maybe_bounds` / `-Zexperimental-default-bounds`,
 // trying to relax non-default bounds should still be an error in all contexts! As you can see
-// there are placed like supertrait bounds and trait object types where we currently don't perform
+// there are places like supertrait bounds and trait object types where we currently don't perform
 // this check.
 #![feature(auto_traits, more_maybe_bounds, negative_impls)]
 
