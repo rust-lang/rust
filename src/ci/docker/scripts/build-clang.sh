@@ -2,10 +2,11 @@
 
 set -ex
 
+source versions.sh
 source shared.sh
 
-# Try to keep the LLVM version here in sync with src/ci/scripts/install-clang.sh
-LLVM=llvmorg-21.1.0-rc2
+# Should be in sync with src/ci/scripts/install-clang.sh
+LLVM=llvmorg-$LLVM_VERSION
 
 mkdir llvm-project
 cd llvm-project
