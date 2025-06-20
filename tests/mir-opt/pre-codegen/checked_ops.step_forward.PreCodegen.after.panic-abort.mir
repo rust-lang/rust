@@ -34,6 +34,8 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     }
 
     bb0: {
+        StorageLive(_9);
+        StorageLive(_10);
         StorageLive(_4);
         StorageLive(_3);
         _3 = Gt(copy _2, const 65535_usize);
@@ -84,6 +86,8 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
         _0 = Add(copy _1, copy _8);
         StorageDead(_8);
         StorageDead(_4);
+        StorageDead(_10);
+        StorageDead(_9);
         return;
     }
 }

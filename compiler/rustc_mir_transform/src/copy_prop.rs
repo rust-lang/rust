@@ -53,7 +53,7 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         .visit_body_preserves_cfg(body);
 
         if any_replacement {
-            crate::simplify::remove_unused_definitions(body);
+            crate::simplify::remove_unused_definitions(body, false);
         }
     }
 
