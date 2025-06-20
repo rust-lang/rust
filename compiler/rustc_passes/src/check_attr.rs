@@ -35,7 +35,7 @@ use rustc_session::lint::builtin::{
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -724,7 +724,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         && !matches!(other_attr.path().as_slice(), [sym::rustfmt, ..])
                     {
                         let path = other_attr.path();
-                        let path: Vec<_> = path.iter().map(|s| s.as_str()).collect();
+                        let path: Vec<_> = path
+                            .iter()
+                            .map(|s| if *s == kw::PathRoot { "" } else { s.as_str() })
+                            .collect();
                         let other_attr_name = path.join("::");
 
                         self.dcx().emit_err(errors::NakedFunctionIncompatibleAttribute {

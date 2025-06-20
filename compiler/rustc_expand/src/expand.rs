@@ -26,7 +26,7 @@ use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
 use rustc_span::hygiene::SyntaxContext;
-use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, sym};
+use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, Symbol, sym};
 use smallvec::SmallVec;
 
 use crate::base::*;
@@ -473,7 +473,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
         self.cx.root_path = dir_path.clone();
         self.cx.current_expansion.module = Rc::new(ModuleData {
-            mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
+            mod_path: vec![Ident::with_dummy_span(self.cx.ecfg.crate_name)],
             file_path_stack: vec![file_path],
             dir_path,
         });
@@ -689,7 +689,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             span: expn_data.call_site,
             descr: expn_data.kind.descr(),
             suggested_limit,
-            crate_name: &self.cx.ecfg.crate_name,
+            crate_name: self.cx.ecfg.crate_name,
         });
 
         self.cx.trace_macros_diag();
@@ -2458,7 +2458,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 }
 
 pub struct ExpansionConfig<'feat> {
-    pub crate_name: String,
+    pub crate_name: Symbol,
     pub features: &'feat Features,
     pub recursion_limit: Limit,
     pub trace_mac: bool,
@@ -2471,7 +2471,7 @@ pub struct ExpansionConfig<'feat> {
 }
 
 impl ExpansionConfig<'_> {
-    pub fn default(crate_name: String, features: &Features) -> ExpansionConfig<'_> {
+    pub fn default(crate_name: Symbol, features: &Features) -> ExpansionConfig<'_> {
         ExpansionConfig {
             crate_name,
             features,

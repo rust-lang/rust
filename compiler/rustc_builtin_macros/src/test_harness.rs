@@ -227,7 +227,7 @@ fn generate_test_harness(
     panic_strategy: PanicStrategy,
     test_runner: Option<ast::Path>,
 ) {
-    let econfig = ExpansionConfig::default("test".to_string(), features);
+    let econfig = ExpansionConfig::default(sym::test, features);
     let ext_cx = ExtCtxt::new(sess, econfig, resolver, None);
 
     let expn_id = ext_cx.resolver.expansion_for_ast_pass(
