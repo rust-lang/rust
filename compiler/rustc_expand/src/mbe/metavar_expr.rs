@@ -7,8 +7,12 @@ use rustc_macros::{Decodable, Encodable};
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, Symbol};
 
+use crate::errors::{self, MveExpectedIdentContext};
+
 pub(crate) const RAW_IDENT_ERR: &str = "`${concat(..)}` currently does not support raw identifiers";
 pub(crate) const UNSUPPORTED_CONCAT_ELEM_ERR: &str = "expected identifier or string literal";
+
+const VALID_METAVAR_EXPR_NAMES: &str = "`count`, `ignore`, `index`, `len`, and `concat`";
 
 /// A meta-variable expression, for expansions based on properties of meta-variables.
 #[derive(Debug, PartialEq, Encodable, Decodable)]
@@ -39,7 +43,12 @@ impl MetaVarExpr {
         psess: &'psess ParseSess,
     ) -> PResult<'psess, MetaVarExpr> {
         let mut iter = input.iter();
-        let ident = parse_ident(&mut iter, psess, outer_span)?;
+        let ident = parse_ident(
+            &mut iter,
+            psess,
+            outer_span,
+            MveExpectedIdentContext::ExprName { valid_expr_list: VALID_METAVAR_EXPR_NAMES },
+        )?;
         let Some(TokenTree::Delimited(.., Delimiter::Parenthesis, args)) = iter.next() else {
             let msg = "meta-variable expression parameter must be wrapped in parentheses";
             return Err(psess.dcx().struct_span_err(ident.span, msg));
@@ -51,7 +60,9 @@ impl MetaVarExpr {
             "count" => parse_count(&mut iter, psess, ident.span)?,
             "ignore" => {
                 eat_dollar(&mut iter, psess, ident.span)?;
-                MetaVarExpr::Ignore(parse_ident(&mut iter, psess, ident.span)?)
+                let ident =
+                    parse_ident(&mut iter, psess, outer_span, MveExpectedIdentContext::Ignore)?;
+                MetaVarExpr::Ignore(ident)
             }
             "index" => MetaVarExpr::Index(parse_depth(&mut iter, psess, ident.span)?),
             "len" => MetaVarExpr::Len(parse_depth(&mut iter, psess, ident.span)?),
@@ -168,7 +179,7 @@ fn parse_count<'psess>(
     span: Span,
 ) -> PResult<'psess, MetaVarExpr> {
     eat_dollar(iter, psess, span)?;
-    let ident = parse_ident(iter, psess, span)?;
+    let ident = parse_ident(iter, psess, span, MveExpectedIdentContext::Count)?;
     let depth = if try_eat_comma(iter) {
         if iter.peek().is_none() {
             return Err(psess.dcx().struct_span_err(
@@ -206,14 +217,32 @@ fn parse_depth<'psess>(
     }
 }
 
-/// Parses an generic ident
+/// Tries to parse a generic ident. If this fails, create a missing identifier diagnostic with
+/// `context` explanation.
 fn parse_ident<'psess>(
     iter: &mut TokenStreamIter<'_>,
     psess: &'psess ParseSess,
     fallback_span: Span,
+    context: MveExpectedIdentContext,
 ) -> PResult<'psess, Ident> {
-    let token = parse_token(iter, psess, fallback_span)?;
-    parse_ident_from_token(psess, token)
+    let Some(tt) = iter.next() else {
+        let err = errors::MveExpectedIdent { span: fallback_span, not_ident_label: None, context };
+        return Err(psess.dcx().create_err(err));
+    };
+
+    let TokenTree::Token(token, _) = tt else {
+        let span = tt.span();
+        let err = errors::MveExpectedIdent { span, not_ident_label: Some(span), context };
+        return Err(psess.dcx().create_err(err));
+    };
+
+    let Some((elem, _)) = token.ident() else {
+        let span = token.span;
+        let err = errors::MveExpectedIdent { span, not_ident_label: Some(span), context };
+        return Err(psess.dcx().create_err(err));
+    };
+
+    Ok(elem)
 }
 
 fn parse_ident_from_token<'psess>(

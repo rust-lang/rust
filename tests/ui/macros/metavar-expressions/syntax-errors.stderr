@@ -41,10 +41,10 @@ LL |     ( $( $i:ident ),* ) => { ${ index(1u32) } };
    |                                 ^^^^^
 
 error: meta-variable expression parameter must be wrapped in parentheses
-  --> $DIR/syntax-errors.rs:32:34
+  --> $DIR/syntax-errors.rs:32:33
    |
-LL |      ( $( $i:ident ),* ) => { ${ count } };
-   |                                  ^^^^^
+LL |     ( $( $i:ident ),* ) => { ${ count } };
+   |                                 ^^^^^
 
 error: meta-variable expression parameter must be wrapped in parentheses
   --> $DIR/syntax-errors.rs:49:33
@@ -52,101 +52,85 @@ error: meta-variable expression parameter must be wrapped in parentheses
 LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
    |                                 ^^^^^
 
+error: expected an identifier
+  --> $DIR/syntax-errors.rs:54:23
+   |
+LL |     () => { ${ignore($123)} }
+   |                       ^^^ not a valid identifier
+   |
+   = note: `ignore` takes a metavariable argument
+
 error: unexpected token: a
-  --> $DIR/syntax-errors.rs:61:19
+  --> $DIR/syntax-errors.rs:66:19
    |
 LL |         ${count() a b c}
    |                   ^
    |
 note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:61:19
+  --> $DIR/syntax-errors.rs:66:19
    |
 LL |         ${count() a b c}
    |                   ^
 
 error: unexpected token: a
-  --> $DIR/syntax-errors.rs:63:20
+  --> $DIR/syntax-errors.rs:68:20
    |
 LL |         ${count($i a b c)}
    |                    ^
    |
 note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:63:20
+  --> $DIR/syntax-errors.rs:68:20
    |
 LL |         ${count($i a b c)}
    |                    ^
 
 error: unexpected token: a
-  --> $DIR/syntax-errors.rs:65:23
+  --> $DIR/syntax-errors.rs:70:23
    |
 LL |         ${count($i, 1 a b c)}
    |                       ^
    |
 note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:65:23
+  --> $DIR/syntax-errors.rs:70:23
    |
 LL |         ${count($i, 1 a b c)}
    |                       ^
 
 error: unexpected token: a
-  --> $DIR/syntax-errors.rs:67:21
+  --> $DIR/syntax-errors.rs:72:21
    |
 LL |         ${count($i) a b c}
    |                     ^
    |
 note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:67:21
+  --> $DIR/syntax-errors.rs:72:21
    |
 LL |         ${count($i) a b c}
    |                     ^
 
 error: unexpected token: a
-  --> $DIR/syntax-errors.rs:70:22
+  --> $DIR/syntax-errors.rs:75:22
    |
 LL |         ${ignore($i) a b c}
    |                      ^
    |
 note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:70:22
+  --> $DIR/syntax-errors.rs:75:22
    |
 LL |         ${ignore($i) a b c}
    |                      ^
 
 error: unexpected token: a
-  --> $DIR/syntax-errors.rs:72:21
+  --> $DIR/syntax-errors.rs:77:21
    |
 LL |         ${ignore($i a b c)}
    |                     ^
    |
 note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:72:21
+  --> $DIR/syntax-errors.rs:77:21
    |
 LL |         ${ignore($i a b c)}
    |                     ^
-
-error: unexpected token: a
-  --> $DIR/syntax-errors.rs:75:19
-   |
-LL |         ${index() a b c}
-   |                   ^
-   |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:75:19
-   |
-LL |         ${index() a b c}
-   |                   ^
-
-error: unexpected token: a
-  --> $DIR/syntax-errors.rs:77:19
-   |
-LL |         ${index(1 a b c)}
-   |                   ^
-   |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:77:19
-   |
-LL |         ${index(1 a b c)}
-   |                   ^
 
 error: unexpected token: a
   --> $DIR/syntax-errors.rs:80:19
@@ -168,51 +152,84 @@ LL |         ${index(1 a b c)}
    |
 note: meta-variable expression must not have trailing tokens
   --> $DIR/syntax-errors.rs:82:19
+   |
+LL |         ${index(1 a b c)}
+   |                   ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:85:19
+   |
+LL |         ${index() a b c}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:85:19
+   |
+LL |         ${index() a b c}
+   |                   ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:87:19
+   |
+LL |         ${index(1 a b c)}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:87:19
    |
 LL |         ${index(1 a b c)}
    |                   ^
 
 error: meta-variable expression depth must be a literal
-  --> $DIR/syntax-errors.rs:89:33
+  --> $DIR/syntax-errors.rs:94:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ index(IDX) } };
    |                                 ^^^^^
 
 error: meta-variables within meta-variable expressions must be referenced using a dollar sign
-  --> $DIR/syntax-errors.rs:95:11
+  --> $DIR/syntax-errors.rs:100:11
    |
 LL |         ${count(foo)}
    |           ^^^^^
 
 error: meta-variables within meta-variable expressions must be referenced using a dollar sign
-  --> $DIR/syntax-errors.rs:102:11
+  --> $DIR/syntax-errors.rs:107:11
    |
 LL |         ${ignore(bar)}
    |           ^^^^^^
 
 error: unrecognized meta-variable expression
-  --> $DIR/syntax-errors.rs:108:33
+  --> $DIR/syntax-errors.rs:113:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
    |                                 ^^^^^^^^^^^^^^ help: supported expressions are count, ignore, index and len
 
-error: expected identifier or string literal
-  --> $DIR/syntax-errors.rs:38:15
+error: expected an identifier
+  --> $DIR/syntax-errors.rs:38:14
    |
-LL |      () => { ${} };
-   |               ^^
+LL |     () => { ${} };
+   |              ^^
+   |
+   = note: expected a metavariable expression name: `${expr( /* ... */ )}`
+   = note: valid metavariable expressions are `count`, `ignore`, `index`, `len`, and `concat`
 
-error: expected identifier, found `"hi"`
+error: expected an identifier
   --> $DIR/syntax-errors.rs:44:17
    |
 LL |      () => { ${ "hi" } };
-   |                 ^^^^ help: try removing `"hi"`
+   |                 ^^^^ not a valid identifier
+   |
+   = note: expected a metavariable expression name: `${expr( /* ... */ )}`
+   = note: valid metavariable expressions are `count`, `ignore`, `index`, `len`, and `concat`
 
-error: expected identifier or string literal
-  --> $DIR/syntax-errors.rs:55:33
+error: expected an identifier
+  --> $DIR/syntax-errors.rs:60:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ {} } };
-   |                                 ^^
+   |                                 ^^ not a valid identifier
+   |
+   = note: expected a metavariable expression name: `${expr( /* ... */ )}`
+   = note: valid metavariable expressions are `count`, `ignore`, `index`, `len`, and `concat`
 
-error: aborting due to 24 previous errors
+error: aborting due to 25 previous errors
 

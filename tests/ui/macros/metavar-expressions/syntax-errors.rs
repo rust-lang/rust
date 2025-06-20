@@ -36,13 +36,13 @@ macro_rules! mve_without_parens {
 #[rustfmt::skip]
 macro_rules! empty_expression {
     () => { ${} };
-    //~^ ERROR expected identifier or string literal
+    //~^ ERROR expected an identifier
 }
 
 #[rustfmt::skip]
 macro_rules! open_brackets_with_lit {
      () => { ${ "hi" } };
-     //~^ ERROR expected identifier
+     //~^ ERROR expected an identifier
  }
 
 macro_rules! mve_wrong_delim {
@@ -52,12 +52,13 @@ macro_rules! mve_wrong_delim {
 
 macro_rules! invalid_metavar {
     () => { ${ignore($123)} }
+    //~^ ERROR expected an identifier
 }
 
 #[rustfmt::skip]
 macro_rules! open_brackets_with_group {
     ( $( $i:ident ),* ) => { ${ {} } };
-    //~^ ERROR expected identifier
+    //~^ ERROR expected an identifier
 }
 
 macro_rules! extra_garbage_after_metavar {
