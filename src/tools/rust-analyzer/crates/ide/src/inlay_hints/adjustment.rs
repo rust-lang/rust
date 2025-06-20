@@ -205,8 +205,7 @@ pub(super) fn hints(
                     "`{}` → `{}`\n\n**{}**\n\n{}",
                     source.display(sema.db, display_target),
                     target.display(sema.db, display_target),
-                    coercion.chars().next().unwrap().to_uppercase().collect::<String>()
-                        + &coercion[1..],
+                    coercion,
                     detailed_tooltip
                 ))
             })),

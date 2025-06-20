@@ -91,9 +91,7 @@ pub(super) fn hints(
         match_ast! {
             match parent {
                 ast::Fn(it) => {
-                    let hint_text = format_function_hint(&it, config.max_length?)
-                        .unwrap_or_else(|| format!("fn {}", it.name().map(|n| n.to_string()).unwrap_or_default()));
-                    (hint_text, it.name().map(name))
+                    (format!("fn {}", it.name()?), it.name().map(name))
                 },
                 ast::Static(it) => (format!("static {}", it.name()?), it.name().map(name)),
                 ast::Const(it) => {
@@ -156,47 +154,6 @@ pub(super) fn hints(
     None
 }
 
-fn format_function_hint(func: &ast::Fn, max_length: usize) -> Option<String> {
-    let name = func.name()?;
-    let name_str = name.to_string();
-
-    let params = if let Some(param_list) = func.param_list() {
-        let mut param_parts = Vec::new();
-        let mut total_len = 0;
-        let max_param_len = max_length.saturating_sub(name_str.len() + 4);
-
-        for param in param_list.params() {
-            let param_text = if let Some(pat) = param.pat() {
-                if let Some(ty) = param.ty() { format!("{}: {}", pat, ty) } else { pat.to_string() }
-            } else if let Some(ty) = param.ty() {
-                format!("_: {}", ty)
-            } else {
-                let param_source = param.syntax().text().to_string();
-                if param_source.trim() == "..." { "...".to_owned() } else { "_".to_owned() }
-            };
-
-            let param_len = param_text.len() + if param_parts.is_empty() { 0 } else { 2 };
-            if total_len + param_len > max_param_len {
-                param_parts.push("...".to_owned());
-                break;
-            }
-
-            total_len += param_len;
-            param_parts.push(param_text);
-        }
-
-        if param_parts.is_empty() {
-            "()".to_owned()
-        } else {
-            format!("({})", param_parts.join(", "))
-        }
-    } else {
-        "()".to_owned()
-    };
-
-    Some(format!("fn {}{}", name_str, params))
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -207,11 +164,7 @@ mod tests {
     #[test]
     fn hints_closing_brace() {
         check_with_config(
-            InlayHintsConfig {
-                closing_brace_hints_min_lines: Some(2),
-                max_length: Some(30),
-                ..DISABLED_CONFIG
-            },
+            InlayHintsConfig { closing_brace_hints_min_lines: Some(2), ..DISABLED_CONFIG },
             r#"
 fn a() {}
 
@@ -220,17 +173,17 @@ fn f() {
 
 fn g() {
   }
-//^ fn g()
+//^ fn g
 
 fn h<T>(with: T, arguments: u8, ...) {
   }
-//^ fn h(with: T, arguments: u8, ...)
+//^ fn h
 
 trait Tr {
     fn f();
     fn g() {
     }
-  //^ fn g()
+  //^ fn g
   }
 //^ trait Tr
 impl Tr for () {
@@ -267,7 +220,7 @@ fn f() {
     let v = vec![
     ];
   }
-//^ fn f()
+//^ fn f
 "#,
         );
     }
@@ -275,11 +228,7 @@ fn f() {
     #[test]
     fn hints_closing_brace_for_block_expr() {
         check_with_config(
-            InlayHintsConfig {
-                closing_brace_hints_min_lines: Some(2),
-                max_length: Some(10),
-                ..DISABLED_CONFIG
-            },
+            InlayHintsConfig { closing_brace_hints_min_lines: Some(2), ..DISABLED_CONFIG },
             r#"
 fn test() {
     'end: {
@@ -307,40 +256,7 @@ fn test() {
   //^ 'a
 
   }
-//^ fn test()
-"#,
-        );
-    }
-
-    #[test]
-    fn hints_closing_brace_function_parameters() {
-        check_with_config(
-            InlayHintsConfig {
-                closing_brace_hints_min_lines: Some(1),
-                max_length: Some(50),
-                ..DISABLED_CONFIG
-            },
-            r#"
-fn simple() {
-    let v = vec![
-    ];
-  }
-//^ fn simple()
-
-fn with_params(x: i32, y: String) {
-
-  }
-//^ fn with_params(x: i32, y: String)
-
-fn long_params(very_long_parameter_name: ComplexType, another: AnotherType) {
-
-  }
-//^ fn long_params(...)
-
-fn many_params(a: i32, b: i32, c: i32, d: i32, e: i32) {
-
-  }
-//^ fn many_params(a: i32, b: i32, c: i32, d: i32, ...)
+//^ fn test
 "#,
         );
     }
