@@ -191,6 +191,7 @@ where
         goal: Goal<I, (I::Const, I::Ty)>,
     ) -> QueryResult<I> {
         let (ct, ty) = goal.predicate;
+        let ct = self.structurally_normalize_const(goal.param_env, ct)?;
 
         let ct_ty = match ct.kind() {
             ty::ConstKind::Infer(_) => {
