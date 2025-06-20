@@ -228,24 +228,20 @@ fn static_init() {
 }
 
 #[test]
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#[allow(static_mut_refs)]
 fn atomic_access_bool() {
-    static mut ATOMIC: AtomicBool = AtomicBool::new(false);
+    let mut atom = AtomicBool::new(false);
 
-    unsafe {
-        assert_eq!(*ATOMIC.get_mut(), false);
-        ATOMIC.store(true, SeqCst);
-        assert_eq!(*ATOMIC.get_mut(), true);
-        ATOMIC.fetch_or(false, SeqCst);
-        assert_eq!(*ATOMIC.get_mut(), true);
-        ATOMIC.fetch_and(false, SeqCst);
-        assert_eq!(*ATOMIC.get_mut(), false);
-        ATOMIC.fetch_nand(true, SeqCst);
-        assert_eq!(*ATOMIC.get_mut(), true);
-        ATOMIC.fetch_xor(true, SeqCst);
-        assert_eq!(*ATOMIC.get_mut(), false);
-    }
+    assert_eq!(*atom.get_mut(), false);
+    atom.store(true, SeqCst);
+    assert_eq!(*atom.get_mut(), true);
+    atom.fetch_or(false, SeqCst);
+    assert_eq!(*atom.get_mut(), true);
+    atom.fetch_and(false, SeqCst);
+    assert_eq!(*atom.get_mut(), false);
+    atom.fetch_nand(true, SeqCst);
+    assert_eq!(*atom.get_mut(), true);
+    atom.fetch_xor(true, SeqCst);
+    assert_eq!(*atom.get_mut(), false);
 }
 
 #[test]

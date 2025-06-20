@@ -1,6 +1,4 @@
 #![deny(warnings)]
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#![allow(static_mut_refs)]
 #![allow(unnecessary_transmutes)]
 
 use std::cell::RefCell;
@@ -285,19 +283,32 @@ fn test_format_args() {
     t!(s, "args were: hello world");
 }
 
+macro_rules! counter_fn {
+    ($name:ident) => {
+        fn $name() -> u32 {
+            thread_local! {static COUNTER: ::core::cell::Cell<u32> = ::core::cell::Cell::new(0);}
+
+            COUNTER.set(COUNTER.get() + 1);
+            COUNTER.get()
+        }
+    };
+}
+
 #[test]
 fn test_order() {
-    // Make sure format!() arguments are always evaluated in a left-to-right
-    // ordering
-    fn foo() -> isize {
-        static mut FOO: isize = 0;
-        unsafe {
-            FOO += 1;
-            FOO
-        }
-    }
+    // Make sure format!() arguments are always evaluated in a left-to-right ordering
+    counter_fn!(count);
+
     assert_eq!(
-        format!("{} {} {a} {b} {} {c}", foo(), foo(), foo(), a = foo(), b = foo(), c = foo()),
+        format!(
+            "{} {} {a} {b} {} {c}",
+            count(),
+            count(),
+            count(),
+            a = count(),
+            b = count(),
+            c = count()
+        ),
         "1 2 4 5 3 6".to_string()
     );
 }
@@ -306,14 +317,9 @@ fn test_order() {
 fn test_once() {
     // Make sure each argument are evaluated only once even though it may be
     // formatted multiple times
-    fn foo() -> isize {
-        static mut FOO: isize = 0;
-        unsafe {
-            FOO += 1;
-            FOO
-        }
-    }
-    assert_eq!(format!("{0} {0} {0} {a} {a} {a}", foo(), a = foo()), "1 1 1 2 2 2".to_string());
+    counter_fn!(count);
+
+    assert_eq!(format!("{0} {0} {0} {a} {a} {a}", count(), a = count()), "1 1 1 2 2 2".to_string());
 }
 
 #[test]

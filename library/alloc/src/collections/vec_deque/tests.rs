@@ -1,9 +1,7 @@
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#![allow(static_mut_refs)]
-
 use core::iter::TrustedLen;
 
 use super::*;
+use crate::testing::macros::struct_with_counted_drop;
 
 #[bench]
 fn bench_push_back_100(b: &mut test::Bencher) {
@@ -1086,36 +1084,24 @@ fn test_clone_from() {
 
 #[test]
 fn test_vec_deque_truncate_drop() {
-    static mut DROPS: u32 = 0;
-    #[derive(Clone)]
-    struct Elem(#[allow(dead_code)] i32);
-    impl Drop for Elem {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-        }
-    }
+    struct_with_counted_drop!(Elem, DROPS);
 
-    let v = vec![Elem(1), Elem(2), Elem(3), Elem(4), Elem(5)];
-    for push_front in 0..=v.len() {
-        let v = v.clone();
-        let mut tester = VecDeque::with_capacity(5);
-        for (index, elem) in v.into_iter().enumerate() {
+    const LEN: usize = 5;
+    for push_front in 0..=LEN {
+        let mut tester = VecDeque::with_capacity(LEN);
+        for index in 0..LEN {
             if index < push_front {
-                tester.push_front(elem);
+                tester.push_front(Elem);
             } else {
-                tester.push_back(elem);
+                tester.push_back(Elem);
             }
         }
-        assert_eq!(unsafe { DROPS }, 0);
+        assert_eq!(DROPS.get(), 0);
         tester.truncate(3);
-        assert_eq!(unsafe { DROPS }, 2);
+        assert_eq!(DROPS.get(), 2);
         tester.truncate(0);
-        assert_eq!(unsafe { DROPS }, 5);
-        unsafe {
-            DROPS = 0;
-        }
+        assert_eq!(DROPS.get(), 5);
+        DROPS.set(0);
     }
 }
 
