@@ -1916,11 +1916,7 @@ impl<'a> Parser<'a> {
         safety: Safety,
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
-        let mut seen_comma: bool = false;
         let a_var = self.parse_name_and_ty(adt_ty, lo, vis, safety, attrs)?;
-        if self.token == token::Comma {
-            seen_comma = true;
-        }
         if self.eat(exp!(Semi)) {
             let sp = self.prev_token.span;
             let mut err =
@@ -1945,19 +1941,11 @@ impl<'a> Parser<'a> {
                     missing_comma: None,
                 };
                 self.bump(); // consume the doc comment
-                let comma_after_doc_seen = self.eat(exp!(Comma));
-                // `seen_comma` is always false, because we are inside doc block
-                // condition is here to make code more readable
-                if !seen_comma && comma_after_doc_seen {
-                    seen_comma = true;
-                }
-                if comma_after_doc_seen || self.token == token::CloseBrace {
+                if self.eat(exp!(Comma)) || self.token == token::CloseBrace {
                     self.dcx().emit_err(err);
                 } else {
-                    if !seen_comma {
-                        let sp = previous_span.shrink_to_hi();
-                        err.missing_comma = Some(sp);
-                    }
+                    let sp = previous_span.shrink_to_hi();
+                    err.missing_comma = Some(sp);
                     return Err(self.dcx().create_err(err));
                 }
             }
