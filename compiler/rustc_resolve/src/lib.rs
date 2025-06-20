@@ -1224,6 +1224,11 @@ pub struct Resolver<'ra, 'tcx> {
     current_crate_outer_attr_insert_span: Span,
 
     mods_with_parse_errors: FxHashSet<DefId>,
+
+    // Stores pre-expansion and pre-placeholder-fragment-insertion names for `impl Trait` types
+    // that were encountered during resolution. These names are used to generate item names
+    // for APITs, so we don't want to leak details of resolution into these names.
+    impl_trait_names: FxHashMap<NodeId, Symbol>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1579,6 +1584,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             impl_binding_keys: Default::default(),
             current_crate_outer_attr_insert_span,
             mods_with_parse_errors: Default::default(),
+            impl_trait_names: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
