@@ -416,7 +416,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
         trace!("running SimplifyLocals on {:?}", body.source);
 
         // First, we're going to get a count of *actual* uses for every `Local`.
-        let mut used_locals = UsedLocals::new(body);
+        let mut used_locals = UsedLocals::new(body, false);
 
         // Next, we're going to remove any `Local` with zero actual uses. When we remove those
         // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
@@ -444,9 +444,9 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
     }
 }
 
-pub(super) fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
+pub(super) fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>, allow_debuginfo: bool) {
     // First, we're going to get a count of *actual* uses for every `Local`.
-    let mut used_locals = UsedLocals::new(body);
+    let mut used_locals = UsedLocals::new(body, allow_debuginfo);
 
     // Next, we're going to remove any `Local` with zero actual uses. When we remove those
     // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
@@ -486,16 +486,18 @@ struct UsedLocals {
     arg_count: u32,
     use_count: IndexVec<Local, u32>,
     debuginfo_use: IndexVec<Local, bool>,
+    allow_debuginfo: bool,
 }
 
 impl UsedLocals {
     /// Determines which locals are used & unused in the given body.
-    fn new(body: &Body<'_>) -> Self {
+    fn new(body: &Body<'_>, allow_debuginfo: bool) -> Self {
         let mut this = Self {
             increment: true,
             arg_count: body.arg_count.try_into().unwrap(),
             use_count: IndexVec::from_elem(0, &body.local_decls),
             debuginfo_use: IndexVec::from_elem(false, &body.local_decls),
+            allow_debuginfo,
         };
         this.visit_body(body);
         this
@@ -513,7 +515,10 @@ impl UsedLocals {
     }
 
     fn is_only_debuginfo_used(&self, local: Local) -> bool {
-        local.as_u32() > self.arg_count && self.use_count[local] == 0 && self.debuginfo_use[local]
+        self.allow_debuginfo
+            && local.as_u32() > self.arg_count
+            && self.use_count[local] == 0
+            && self.debuginfo_use[local]
     }
 
     fn is_debuginfo_used(&self, local: Local) -> bool {
