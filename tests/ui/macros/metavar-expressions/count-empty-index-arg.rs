@@ -1,3 +1,6 @@
+// Issue: https://github.com/rust-lang/rust/issues/111904
+// Ensure that a trailing `,` is not interpreted as a `0`.
+
 #![feature(macro_metavar_expr)]
 
 macro_rules! foo {
@@ -10,5 +13,4 @@ fn test() {
     foo!(a, a; b, b);
 }
 
-fn main() {
-}
+fn main() {}
