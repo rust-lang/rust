@@ -565,123 +565,134 @@ mod imp {
 }
 impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
+const U128_MAX_DEC_N: usize = u128::MAX.ilog(10) as usize + 1;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for u128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_u128(*self, true, f)
+        let mut buf = [MaybeUninit::<u8>::uninit(); U128_MAX_DEC_N];
+
+        f.pad_integral(true, "", self._fmt(&mut buf))
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for i128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_u128(self.unsigned_abs(), *self >= 0, f)
+        // This is not a typo, we use the maximum number of digits of `u128`, hence why we use
+        // `U128_MAX_DEC_N`.
+        let mut buf = [MaybeUninit::<u8>::uninit(); U128_MAX_DEC_N];
+
+        let is_nonnegative = *self >= 0;
+        f.pad_integral(is_nonnegative, "", self.unsigned_abs()._fmt(&mut buf))
     }
 }
 
-/// Format optimized for u128. Computation of 128 bits is limited by proccessing
-/// in batches of 16 decimals at a time.
-fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    // Optimize common-case zero, which would also need special treatment due to
-    // its "leading" zero.
-    if n == 0 {
-        return f.pad_integral(true, "", "0");
-    }
-
-    // U128::MAX has 39 significant-decimals.
-    const MAX_DEC_N: usize = u128::MAX.ilog(10) as usize + 1;
-    // Buffer decimals with right alignment.
-    let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
-
-    // Take the 16 least-significant decimals.
-    let (quot_1e16, mod_1e16) = div_rem_1e16(n);
-    let (mut remain, mut offset) = if quot_1e16 == 0 {
-        (mod_1e16, MAX_DEC_N)
-    } else {
-        // Write digits at buf[23..39].
-        enc_16lsd::<{ MAX_DEC_N - 16 }>(&mut buf, mod_1e16);
-
-        // Take another 16 decimals.
-        let (quot2, mod2) = div_rem_1e16(quot_1e16);
-        if quot2 == 0 {
-            (mod2, MAX_DEC_N - 16)
-        } else {
-            // Write digits at buf[7..23].
-            enc_16lsd::<{ MAX_DEC_N - 32 }>(&mut buf, mod2);
-            // Quot2 has at most 7 decimals remaining after two 1e16 divisions.
-            (quot2 as u64, MAX_DEC_N - 32)
+impl u128 {
+    /// Format optimized for u128. Computation of 128 bits is limited by proccessing
+    /// in batches of 16 decimals at a time.
+    #[doc(hidden)]
+    #[unstable(
+        feature = "fmt_internals",
+        reason = "specialized method meant to only be used by `SpecToString` implementation",
+        issue = "none"
+    )]
+    pub fn _fmt<'a>(self, buf: &'a mut [MaybeUninit<u8>]) -> &'a str {
+        // Optimize common-case zero, which would also need special treatment due to
+        // its "leading" zero.
+        if self == 0 {
+            return "0";
         }
-    };
 
-    // Format per four digits from the lookup table.
-    while remain > 999 {
-        // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
-        // and the while condition ensures at least 4 more decimals.
-        unsafe { core::hint::assert_unchecked(offset >= 4) }
-        // SAFETY: The offset counts down from its initial buf.len()
-        // without underflow due to the previous precondition.
-        unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
-        offset -= 4;
+        // Take the 16 least-significant decimals.
+        let (quot_1e16, mod_1e16) = div_rem_1e16(self);
+        let (mut remain, mut offset) = if quot_1e16 == 0 {
+            (mod_1e16, U128_MAX_DEC_N)
+        } else {
+            // Write digits at buf[23..39].
+            enc_16lsd::<{ U128_MAX_DEC_N - 16 }>(buf, mod_1e16);
 
-        // pull two pairs
-        let quad = remain % 1_00_00;
-        remain /= 1_00_00;
-        let pair1 = (quad / 100) as usize;
-        let pair2 = (quad % 100) as usize;
-        buf[offset + 0].write(DEC_DIGITS_LUT[pair1 * 2 + 0]);
-        buf[offset + 1].write(DEC_DIGITS_LUT[pair1 * 2 + 1]);
-        buf[offset + 2].write(DEC_DIGITS_LUT[pair2 * 2 + 0]);
-        buf[offset + 3].write(DEC_DIGITS_LUT[pair2 * 2 + 1]);
+            // Take another 16 decimals.
+            let (quot2, mod2) = div_rem_1e16(quot_1e16);
+            if quot2 == 0 {
+                (mod2, U128_MAX_DEC_N - 16)
+            } else {
+                // Write digits at buf[7..23].
+                enc_16lsd::<{ U128_MAX_DEC_N - 32 }>(buf, mod2);
+                // Quot2 has at most 7 decimals remaining after two 1e16 divisions.
+                (quot2 as u64, U128_MAX_DEC_N - 32)
+            }
+        };
+
+        // Format per four digits from the lookup table.
+        while remain > 999 {
+            // SAFETY: All of the decimals fit in buf due to U128_MAX_DEC_N
+            // and the while condition ensures at least 4 more decimals.
+            unsafe { core::hint::assert_unchecked(offset >= 4) }
+            // SAFETY: The offset counts down from its initial buf.len()
+            // without underflow due to the previous precondition.
+            unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
+            offset -= 4;
+
+            // pull two pairs
+            let quad = remain % 1_00_00;
+            remain /= 1_00_00;
+            let pair1 = (quad / 100) as usize;
+            let pair2 = (quad % 100) as usize;
+            buf[offset + 0].write(DEC_DIGITS_LUT[pair1 * 2 + 0]);
+            buf[offset + 1].write(DEC_DIGITS_LUT[pair1 * 2 + 1]);
+            buf[offset + 2].write(DEC_DIGITS_LUT[pair2 * 2 + 0]);
+            buf[offset + 3].write(DEC_DIGITS_LUT[pair2 * 2 + 1]);
+        }
+
+        // Format per two digits from the lookup table.
+        if remain > 9 {
+            // SAFETY: All of the decimals fit in buf due to U128_MAX_DEC_N
+            // and the if condition ensures at least 2 more decimals.
+            unsafe { core::hint::assert_unchecked(offset >= 2) }
+            // SAFETY: The offset counts down from its initial buf.len()
+            // without underflow due to the previous precondition.
+            unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
+            offset -= 2;
+
+            let pair = (remain % 100) as usize;
+            remain /= 100;
+            buf[offset + 0].write(DEC_DIGITS_LUT[pair * 2 + 0]);
+            buf[offset + 1].write(DEC_DIGITS_LUT[pair * 2 + 1]);
+        }
+
+        // Format the last remaining digit, if any.
+        if remain != 0 {
+            // SAFETY: All of the decimals fit in buf due to U128_MAX_DEC_N
+            // and the if condition ensures (at least) 1 more decimals.
+            unsafe { core::hint::assert_unchecked(offset >= 1) }
+            // SAFETY: The offset counts down from its initial buf.len()
+            // without underflow due to the previous precondition.
+            unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
+            offset -= 1;
+
+            // Either the compiler sees that remain < 10, or it prevents
+            // a boundary check up next.
+            let last = (remain & 15) as usize;
+            buf[offset].write(DEC_DIGITS_LUT[last * 2 + 1]);
+            // not used: remain = 0;
+        }
+
+        // SAFETY: All buf content since offset is set.
+        let written = unsafe { buf.get_unchecked(offset..) };
+        // SAFETY: Writes use ASCII from the lookup table exclusively.
+        unsafe {
+            str::from_utf8_unchecked(slice::from_raw_parts(
+                MaybeUninit::slice_as_ptr(written),
+                written.len(),
+            ))
+        }
     }
-
-    // Format per two digits from the lookup table.
-    if remain > 9 {
-        // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
-        // and the if condition ensures at least 2 more decimals.
-        unsafe { core::hint::assert_unchecked(offset >= 2) }
-        // SAFETY: The offset counts down from its initial buf.len()
-        // without underflow due to the previous precondition.
-        unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
-        offset -= 2;
-
-        let pair = (remain % 100) as usize;
-        remain /= 100;
-        buf[offset + 0].write(DEC_DIGITS_LUT[pair * 2 + 0]);
-        buf[offset + 1].write(DEC_DIGITS_LUT[pair * 2 + 1]);
-    }
-
-    // Format the last remaining digit, if any.
-    if remain != 0 {
-        // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
-        // and the if condition ensures (at least) 1 more decimals.
-        unsafe { core::hint::assert_unchecked(offset >= 1) }
-        // SAFETY: The offset counts down from its initial buf.len()
-        // without underflow due to the previous precondition.
-        unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
-        offset -= 1;
-
-        // Either the compiler sees that remain < 10, or it prevents
-        // a boundary check up next.
-        let last = (remain & 15) as usize;
-        buf[offset].write(DEC_DIGITS_LUT[last * 2 + 1]);
-        // not used: remain = 0;
-    }
-
-    // SAFETY: All buf content since offset is set.
-    let written = unsafe { buf.get_unchecked(offset..) };
-    // SAFETY: Writes use ASCII from the lookup table exclusively.
-    let as_str = unsafe {
-        str::from_utf8_unchecked(slice::from_raw_parts(
-            MaybeUninit::slice_as_ptr(written),
-            written.len(),
-        ))
-    };
-    f.pad_integral(is_nonnegative, "", as_str)
 }
 
 /// Encodes the 16 least-significant decimals of n into `buf[OFFSET .. OFFSET +
 /// 16 ]`.
-fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>; 39], n: u64) {
+fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
     // Consume the least-significant decimals from a working copy.
     let mut remain = n;
 
