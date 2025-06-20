@@ -22,12 +22,10 @@ error[E0539]: malformed `align` attribute input
   --> $DIR/feature-gate-fn_align.rs:8:5
    |
 LL |     #[align]
-   |     ^^^^^^^^ expected this to be a list
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL |     #[align(<alignment in bytes>)]
-   |            ++++++++++++++++++++++
+   |     ^^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[align(<alignment in bytes>)]`
 
 error: aborting due to 3 previous errors
 
