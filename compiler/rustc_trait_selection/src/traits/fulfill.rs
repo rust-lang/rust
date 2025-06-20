@@ -778,9 +778,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                      // monomorphizing a body from an upstream crate which had an unstable feature
                      // enabled that we do not.
                      //
-                     // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
+                     // Note: we don't consider a feature to be enabled
                      // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
-                     if self.selcx.tcx().features().feature_bound_holds_in_crate(symbol)
+                     if (!self.selcx.tcx().features().staged_api() && self.selcx.tcx().features().enabled(symbol))
                          || (self.selcx.infcx.typing_mode() == TypingMode::PostAnalysis) {
                          return ProcessResult::Changed(Default::default());
                      } else {
