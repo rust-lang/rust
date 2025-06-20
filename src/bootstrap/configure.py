@@ -591,7 +591,7 @@ def parse_example_config(known_args, config):
     with open(rust_dir + "/bootstrap.example.toml") as example_config:
         example_lines = example_config.read().split("\n")
     for line in example_lines:
-        if line.count("=") == 1 and not line.startswith("# "):
+        if line.count("=") >= 1 and not line.startswith("# "):
             key = line.split("=")[0]
             key = key.strip(" #")
             parts = key.split(".")
