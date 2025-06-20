@@ -198,3 +198,13 @@ pub fn issue12594() {
         returns_result(res).unwrap();
     }
 }
+
+fn issue15061() {
+    fn return_unit() {}
+    fn do_something(x: ()) {}
+
+    let res = return_unit();
+    //~^ let_unit_value
+    do_something(res);
+    println!("{res:?}");
+}
