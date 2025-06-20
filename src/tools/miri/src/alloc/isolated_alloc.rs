@@ -1,4 +1,5 @@
-use std::{alloc::Layout, ptr::NonNull};
+use std::alloc::Layout;
+use std::ptr::NonNull;
 
 use nix::sys::mman;
 use rustc_index::bit_set::DenseBitSet;

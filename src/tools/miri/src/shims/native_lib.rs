@@ -232,7 +232,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (ret, maybe_memevents) =
             this.call_native_with_args(link_name, dest, code_ptr, libffi_args)?;
 
-        if cfg!(target_os = "linux") && let Some(events) = maybe_memevents {
+        if cfg!(target_os = "linux")
+            && let Some(events) = maybe_memevents
+        {
             trace!("Registered FFI events:\n{events:#0x?}");
         }
 
