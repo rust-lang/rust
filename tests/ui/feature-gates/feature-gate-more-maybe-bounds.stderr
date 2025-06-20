@@ -26,15 +26,6 @@ LL | fn foo(_: Box<dyn Trait1 + ?Trait2>) {}
    = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/feature-gate-more-maybe-bounds.rs:10:11
-   |
-LL | fn bar<T: ?Trait1 + ?Trait2>(_: T) {}
-   |           ^^^^^^^   ^^^^^^^
-   |
-   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error: bound modifier `?` can only be applied to `Sized`
   --> $DIR/feature-gate-more-maybe-bounds.rs:10:11
    |
@@ -47,25 +38,6 @@ error: bound modifier `?` can only be applied to `Sized`
 LL | fn bar<T: ?Trait1 + ?Trait2>(_: T) {}
    |                     ^^^^^^^
 
-error[E0203]: type parameter has more than one relaxed default bound, only one is supported
-  --> $DIR/feature-gate-more-maybe-bounds.rs:17:11
-   |
-LL | fn baz<T: ?Trait + ?Trait>(_ : T) {}
-   |           ^^^^^^   ^^^^^^
+error: aborting due to 5 previous errors
 
-error: bound modifier `?` can only be applied to `Sized`
-  --> $DIR/feature-gate-more-maybe-bounds.rs:17:11
-   |
-LL | fn baz<T: ?Trait + ?Trait>(_ : T) {}
-   |           ^^^^^^
-
-error: bound modifier `?` can only be applied to `Sized`
-  --> $DIR/feature-gate-more-maybe-bounds.rs:17:20
-   |
-LL | fn baz<T: ?Trait + ?Trait>(_ : T) {}
-   |                    ^^^^^^
-
-error: aborting due to 9 previous errors
-
-Some errors have detailed explanations: E0203, E0658.
-For more information about an error, try `rustc --explain E0203`.
+For more information about this error, try `rustc --explain E0658`.
