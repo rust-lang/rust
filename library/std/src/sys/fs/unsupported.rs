@@ -158,7 +158,11 @@ impl Dir {
         unsupported()
     }
 
-    pub fn new_with<P: AsRef<Path>>(_path: P, opts: &OpenOptions) -> io::Result<Self> {
+    pub fn new_with<P: AsRef<Path>>(_path: P, _opts: &OpenOptions) -> io::Result<Self> {
+        unsupported()
+    }
+
+    pub fn new_for_traversal<P: AsRef<Path>>(_path: P) -> io::Result<Self> {
         unsupported()
     }
 
@@ -166,11 +170,19 @@ impl Dir {
         self.0
     }
 
-    pub fn open_with<P: AsRef<Path>>(&self, _path: P, opts: &OpenOptions) -> io::Result<File> {
+    pub fn open_with<P: AsRef<Path>>(&self, _path: P, _opts: &OpenOptions) -> io::Result<File> {
         self.0
     }
 
     pub fn create_dir<P: AsRef<Path>>(&self, _path: P) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn open_dir<P: AsRef<Path>>(&self, _path: P) -> io::Result<Self> {
+        self.0
+    }
+
+    pub fn open_dir_with<P: AsRef<Path>>(&self, _path: P, _opts: &OpenOptions) -> io::Result<Self> {
         self.0
     }
 
@@ -212,6 +224,30 @@ impl DirEntry {
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
+        self.0
+    }
+
+    pub fn open_file(&self) -> io::Result<File> {
+        self.0
+    }
+
+    pub fn open_file_with(&self, _opts: &OpenOptions) -> io::Result<File> {
+        self.0
+    }
+
+    pub fn open_dir(&self) -> io::Result<Dir> {
+        self.0
+    }
+
+    pub fn open_dir_with(&self, _opts: &OpenOptions) -> io::Result<Dir> {
+        self.0
+    }
+
+    pub fn remove_file(&self) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn remove_dir(&self) -> io::Result<()> {
         self.0
     }
 }

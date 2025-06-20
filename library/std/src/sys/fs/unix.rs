@@ -288,8 +288,37 @@ impl ReadDir {
 
 struct DirStream(*mut libc::DIR);
 
+#[cfg(any(
+    target_os = "redox",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vita",
+    target_os = "nto",
+    target_os = "vxworks",
+    miri
+))]
+pub use crate::sys::fs::common::Dir;
+
+#[cfg(not(any(
+    target_os = "redox",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vita",
+    target_os = "nto",
+    target_os = "vxworks",
+    miri
+)))]
 pub struct Dir(OwnedFd);
 
+#[cfg(not(any(
+    target_os = "redox",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vita",
+    target_os = "nto",
+    target_os = "vxworks",
+    miri
+)))]
 impl Dir {
     pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let mut opts = OpenOptions::new();
@@ -485,6 +514,15 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
     get_path(fd)
 }
 
+#[cfg(not(any(
+    target_os = "redox",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vita",
+    target_os = "nto",
+    target_os = "vxworks",
+    miri
+)))]
 impl fmt::Debug for Dir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn get_mode(fd: c_int) -> Option<(bool, bool)> {
@@ -1319,6 +1357,171 @@ impl DirEntry {
 
     pub fn file_name_os_str(&self) -> &OsStr {
         OsStr::from_bytes(self.name_bytes())
+    }
+
+    #[cfg(not(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    )))]
+    pub fn open_file(&self) -> io::Result<File> {
+        Dir(unsafe { OwnedFd::from_raw_fd(libc::dirfd(self.dir.dirp.0)) }).open(self.file_name())
+    }
+
+    #[cfg(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    ))]
+    pub fn open_file(&self) -> io::Result<File> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        File::open(&self.path(), &opts)
+    }
+
+    #[cfg(not(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    )))]
+    pub fn open_file_with(&self, opts: &OpenOptions) -> io::Result<File> {
+        Dir(unsafe { OwnedFd::from_raw_fd(libc::dirfd(self.dir.dirp.0)) })
+            .open_with(self.file_name(), opts)
+    }
+
+    #[cfg(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    ))]
+    pub fn open_file_with(&self, opts: &OpenOptions) -> io::Result<File> {
+        File::open(&self.path(), &opts)
+    }
+
+    #[cfg(not(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    )))]
+    pub fn open_dir(&self) -> io::Result<Dir> {
+        Dir(unsafe { OwnedFd::from_raw_fd(libc::dirfd(self.dir.dirp.0)) })
+            .open_dir(self.file_name())
+    }
+
+    #[cfg(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    ))]
+    pub fn open_dir(&self) -> io::Result<Dir> {
+        Dir::new(self.path())
+    }
+
+    #[cfg(not(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    )))]
+    pub fn open_dir_with(&self, opts: &OpenOptions) -> io::Result<Dir> {
+        Dir(unsafe { OwnedFd::from_raw_fd(libc::dirfd(self.dir.dirp.0)) })
+            .open_dir_with(self.file_name(), opts)
+    }
+
+    #[cfg(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    ))]
+    pub fn open_dir_with(&self, opts: &OpenOptions) -> io::Result<Dir> {
+        Dir::new_with(self.path(), opts)
+    }
+
+    #[cfg(not(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    )))]
+    pub fn remove_file(&self) -> io::Result<()> {
+        Dir(unsafe { OwnedFd::from_raw_fd(libc::dirfd(self.dir.dirp.0)) })
+            .remove_file(self.file_name())
+    }
+
+    #[cfg(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    ))]
+    pub fn remove_file(&self) -> io::Result<()> {
+        use crate::sys::fs::remove_file;
+        remove_file(&self.path())
+    }
+
+    #[cfg(not(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    )))]
+    pub fn remove_dir(&self) -> io::Result<()> {
+        Dir(unsafe { OwnedFd::from_raw_fd(libc::dirfd(self.dir.dirp.0)) })
+            .remove_dir(self.file_name())
+    }
+
+    #[cfg(any(
+        target_os = "redox",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "nto",
+        target_os = "vxworks",
+        miri
+    ))]
+    pub fn remove_dir(&self) -> io::Result<()> {
+        use crate::sys::fs::remove_dir;
+        remove_dir(&self.path())
     }
 }
 
