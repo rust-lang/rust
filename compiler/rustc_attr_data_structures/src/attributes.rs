@@ -157,8 +157,6 @@ pub enum AttributeKind {
 
     /// Represents `#[allow_internal_unstable]`.
     AllowInternalUnstable(ThinVec<(Symbol, Span)>),
-    /// Represents `#[unstable_feature_bound]`.
-    UnstableFeatureBound(ThinVec<(Symbol, Span)>),
     /// Represents `#[rustc_default_body_unstable]`.
     BodyStability {
         stability: DefaultBodyStability,
@@ -201,5 +199,7 @@ pub enum AttributeKind {
         /// Span of the attribute.
         span: Span,
     },
+    /// Represents `#[unstable_feature_bound]`.
+    UnstableFeatureBound(ThinVec<(Symbol, Span)>),
     // tidy-alphabetical-end
 }
