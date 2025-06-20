@@ -4150,6 +4150,10 @@ impl TypeParam {
         self.merge().name(db)
     }
 
+    pub fn parent(self, _db: &dyn HirDatabase) -> GenericDef {
+        self.id.parent().into()
+    }
+
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.id.parent().module(db).into()
     }
