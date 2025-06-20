@@ -2425,7 +2425,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else {
                 let suggestion = if suggestion.is_some() {
                     suggestion
-                } else if let Some(src) = self.tcx.sess.source_map().span_to_filename(ident.span).into_local_path()
+                } else if let map = self.tcx.sess.source_map()
+                    && let Some(src) = map.span_to_filename(ident.span).into_local_path()
                     && let i = ident.as_str()
                     // FIXME: add case where non parent using undeclared module (hard?)
                     && let Some(dir) = src.parent()
@@ -2454,9 +2455,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     )
                     .find(|x| x.exists())
                 {
+                    let sp = map
+                        .span_extend_to_prev_char(
+                            map.span_extend_to_prev_char(ident.span, '\n', true),
+                            '\n',
+                            true,
+                        )
+                        .shrink_to_lo();
                     Some((
-                        // FIXME: add suggestion
-                        vec![],
+                        vec![(sp, format!("mod {ident}\n"))],
                         format!(
                             "to make use of source file {}, use `mod {ident}` \
                              in this file to declare the module",
