@@ -48,6 +48,7 @@ impl Linker {
         let (codegen_results, work_products) = sess.time("finish_ongoing_codegen", || {
             codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)
         });
+        sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
 
         sess.dcx().abort_if_errors();
 
@@ -89,7 +90,7 @@ impl Linker {
         }
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
-        let _timing = sess.timings.start_section(sess.dcx(), TimingSection::Linking);
+        let _timing = sess.timings.section_guard(sess.dcx(), TimingSection::Linking);
         codegen_backend.link(sess, codegen_results, self.metadata, &self.output_filenames)
     }
 }
