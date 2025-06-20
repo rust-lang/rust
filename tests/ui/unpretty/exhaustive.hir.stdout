@@ -50,20 +50,14 @@ mod prelude {
     }
 }
 
-//! inner single-line doc comment
-/*!
+/// inner single-line doc comment
+/**
      * inner multi-line doc comment
      */
 #[doc = "inner doc attribute"]
 #[allow(dead_code, unused_variables)]
 #[no_std]
-mod attributes {//! inner single-line doc comment
-    /*!
-     * inner multi-line doc comment
-     */
-    #![doc = "inner doc attribute"]
-    #![allow(dead_code, unused_variables)]
-    #![no_std]
+mod attributes {
 
     /// outer single-line doc comment
     /**
@@ -413,25 +407,25 @@ mod expressions {
 }
 mod items {
     /// ItemKind::ExternCrate
-    mod item_extern_crate {/// ItemKind::ExternCrate
+    mod item_extern_crate {
         extern crate core;
         extern crate self as unpretty;
         extern crate core as _;
     }
     /// ItemKind::Use
-    mod item_use {/// ItemKind::Use
+    mod item_use {
         use ::{};
         use crate::expressions;
         use crate::items::item_use;
         use core::*;
     }
     /// ItemKind::Static
-    mod item_static {/// ItemKind::Static
+    mod item_static {
         static A: () = { };
         static mut B: () = { };
     }
     /// ItemKind::Const
-    mod item_const {/// ItemKind::Const
+    mod item_const {
         const A: () = { };
         trait TraitItems {
             const
@@ -445,7 +439,7 @@ mod items {
         }
     }
     /// ItemKind::Fn
-    mod item_fn {/// ItemKind::Fn
+    mod item_fn {
         const unsafe extern "C" fn f() { }
         async unsafe extern "C" fn g()
             ->
@@ -460,21 +454,19 @@ mod items {
         }
     }
     /// ItemKind::Mod
-    mod item_mod {/// ItemKind::Mod
-    }
+    mod item_mod { }
     /// ItemKind::ForeignMod
-    mod item_foreign_mod {/// ItemKind::ForeignMod
+    mod item_foreign_mod {
         extern "Rust" { }
         extern "C" { }
     }
     /// ItemKind::GlobalAsm: see exhaustive-asm.rs
     /// ItemKind::TyAlias
-    mod item_ty_alias {/// ItemKind::GlobalAsm: see exhaustive-asm.rs
-        /// ItemKind::TyAlias
+    mod item_ty_alias {
         type Type<'a> where T: 'a = T;
     }
     /// ItemKind::Enum
-    mod item_enum {/// ItemKind::Enum
+    mod item_enum {
         enum Void { }
         enum Empty {
             Unit,
@@ -490,7 +482,7 @@ mod items {
         }
     }
     /// ItemKind::Struct
-    mod item_struct {/// ItemKind::Struct
+    mod item_struct {
         struct Unit;
         struct Tuple();
         struct Newtype(Unit);
@@ -501,45 +493,40 @@ mod items {
         }
     }
     /// ItemKind::Union
-    mod item_union {/// ItemKind::Union
+    mod item_union {
         union Generic<'a, T> where T: 'a {
             t: T,
         }
     }
     /// ItemKind::Trait
-    mod item_trait {/// ItemKind::Trait
+    mod item_trait {
         auto unsafe trait Send { }
         trait Trait<'a>: Sized where Self: 'a { }
     }
     /// ItemKind::TraitAlias
-    mod item_trait_alias {/// ItemKind::TraitAlias
+    mod item_trait_alias {
         trait Trait<T> = Sized where for<'a> T: 'a;
     }
     /// ItemKind::Impl
-    mod item_impl {/// ItemKind::Impl
+    mod item_impl {
         impl () { }
         impl <T> () { }
         impl Default for () { }
         impl const <T> Default for () { }
     }
     /// ItemKind::MacCall
-    mod item_mac_call {/// ItemKind::MacCall
-    }
+    mod item_mac_call { }
     /// ItemKind::MacroDef
-    mod item_macro_def {/// ItemKind::MacroDef
+    mod item_macro_def {
         macro_rules! mac { () => {...}; }
         macro stringify { () => {} }
     }
     /// ItemKind::Delegation
-    /*! FIXME: todo */
-    mod item_delegation {/// ItemKind::Delegation
-        /*! FIXME: todo */
-    }
+    /** FIXME: todo */
+    mod item_delegation { }
     /// ItemKind::DelegationMac
-    /*! FIXME: todo */
-    mod item_delegation_mac {/// ItemKind::DelegationMac
-        /*! FIXME: todo */
-    }
+    /** FIXME: todo */
+    mod item_delegation_mac { }
 }
 mod patterns {
     /// PatKind::Missing
@@ -690,29 +677,29 @@ mod types {
     /// TyKind::Paren
     fn ty_paren() { let _: T; }
     /// TyKind::Typeof
-    /*! unused for now */
+    /** unused for now */
     fn ty_typeof() { }
     /// TyKind::Infer
     fn ty_infer() { let _: _; }
     /// TyKind::ImplicitSelf
-    /*! there is no syntax for this */
+    /** there is no syntax for this */
     fn ty_implicit_self() { }
     /// TyKind::MacCall
     #[expect(deprecated)]
     fn ty_mac_call() { let _: T; let _: T; let _: T; }
     /// TyKind::CVarArgs
-    /*! FIXME: todo */
+    /** FIXME: todo */
     fn ty_c_var_args() { }
     /// TyKind::Pat
     fn ty_pat() { let _: u32 is 1..=RangeMax; }
 }
 mod visibilities {
     /// VisibilityKind::Public
-    mod visibility_public {/// VisibilityKind::Public
+    mod visibility_public {
         struct Pub;
     }
     /// VisibilityKind::Restricted
-    mod visibility_restricted {/// VisibilityKind::Restricted
+    mod visibility_restricted {
         struct PubCrate;
         struct PubSelf;
         struct PubSuper;

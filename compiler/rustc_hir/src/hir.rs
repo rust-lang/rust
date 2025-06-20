@@ -1207,14 +1207,6 @@ pub enum Attribute {
 }
 
 impl Attribute {
-    pub fn style(&self) -> AttrStyle {
-        match &self {
-            Attribute::Unparsed(u) => u.style,
-            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => *style,
-            _ => panic!(),
-        }
-    }
-
     pub fn get_normal_item(&self) -> &AttrItem {
         match &self {
             Attribute::Unparsed(normal) => &normal,
@@ -2290,16 +2282,9 @@ pub struct Expr<'hir> {
 }
 
 impl Expr<'_> {
-    pub fn precedence(
-        &self,
-        for_each_attr: &dyn Fn(HirId, &mut dyn FnMut(&Attribute)),
-    ) -> ExprPrecedence {
+    pub fn precedence(&self, has_attr: &dyn Fn(HirId) -> bool) -> ExprPrecedence {
         let prefix_attrs_precedence = || -> ExprPrecedence {
-            let mut has_outer_attr = false;
-            for_each_attr(self.hir_id, &mut |attr: &Attribute| {
-                has_outer_attr |= matches!(attr.style(), AttrStyle::Outer)
-            });
-            if has_outer_attr { ExprPrecedence::Prefix } else { ExprPrecedence::Unambiguous }
+            if has_attr(self.hir_id) { ExprPrecedence::Prefix } else { ExprPrecedence::Unambiguous }
         };
 
         match &self.kind {
@@ -2355,7 +2340,7 @@ impl Expr<'_> {
             | ExprKind::Use(..)
             | ExprKind::Err(_) => prefix_attrs_precedence(),
 
-            ExprKind::DropTemps(expr, ..) => expr.precedence(for_each_attr),
+            ExprKind::DropTemps(expr, ..) => expr.precedence(has_attr),
         }
     }
 
