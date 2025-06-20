@@ -32,11 +32,8 @@ use crate::emitter::{
 };
 use crate::registry::Registry;
 use crate::timings::{TimingRecord, TimingSection};
-use crate::translation::{Translate, to_fluent_args};
-use crate::{
-    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, Subdiag, Suggestions,
-    TerminalUrl,
-};
+use crate::translation::{Translator, to_fluent_args};
+use crate::{CodeSuggestion, MultiSpan, SpanLabel, Subdiag, Suggestions, TerminalUrl};
 
 #[cfg(test)]
 mod tests;
@@ -47,9 +44,8 @@ pub struct JsonEmitter {
     dst: IntoDynSyncSend<Box<dyn Write + Send>>,
     #[setters(skip)]
     sm: Option<Arc<SourceMap>>,
-    fluent_bundle: Option<Arc<FluentBundle>>,
     #[setters(skip)]
-    fallback_bundle: LazyFallbackBundle,
+    translator: Translator,
     #[setters(skip)]
     pretty: bool,
     ui_testing: bool,
@@ -67,7 +63,7 @@ impl JsonEmitter {
     pub fn new(
         dst: Box<dyn Write + Send>,
         sm: Option<Arc<SourceMap>>,
-        fallback_bundle: LazyFallbackBundle,
+        translator: Translator,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
         color_config: ColorConfig,
@@ -75,8 +71,7 @@ impl JsonEmitter {
         JsonEmitter {
             dst: IntoDynSyncSend(dst),
             sm,
-            fluent_bundle: None,
-            fallback_bundle,
+            translator,
             pretty,
             ui_testing: false,
             ignored_directories_in_source_blocks: Vec::new(),
@@ -108,16 +103,6 @@ enum EmitTyped<'a> {
     SectionTiming(SectionTimestamp<'a>),
     FutureIncompat(FutureIncompatReport<'a>),
     UnusedExtern(UnusedExterns<'a>),
-}
-
-impl Translate for JsonEmitter {
-    fn fluent_bundle(&self) -> Option<&FluentBundle> {
-        self.fluent_bundle.as_deref()
-    }
-
-    fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &self.fallback_bundle
-    }
 }
 
 impl Emitter for JsonEmitter {
@@ -193,6 +178,10 @@ impl Emitter for JsonEmitter {
 
     fn should_show_explain(&self) -> bool {
         !self.json_rendered.short()
+    }
+
+    fn translator(&self) -> &Translator {
+        &self.translator
     }
 }
 
@@ -324,7 +313,7 @@ impl Diagnostic {
         let args = to_fluent_args(diag.args.iter());
         let sugg_to_diag = |sugg: &CodeSuggestion| {
             let translated_message =
-                je.translate_message(&sugg.msg, &args).map_err(Report::new).unwrap();
+                je.translator.translate_message(&sugg.msg, &args).map_err(Report::new).unwrap();
             Diagnostic {
                 message: translated_message.to_string(),
                 code: None,
@@ -368,7 +357,7 @@ impl Diagnostic {
             }
         }
 
-        let translated_message = je.translate_messages(&diag.messages, &args);
+        let translated_message = je.translator.translate_messages(&diag.messages, &args);
 
         let code = if let Some(code) = diag.code {
             Some(DiagnosticCode {
@@ -396,10 +385,9 @@ impl Diagnostic {
             ColorConfig::Always | ColorConfig::Auto => dst = Box::new(termcolor::Ansi::new(dst)),
             ColorConfig::Never => {}
         }
-        HumanEmitter::new(dst, Arc::clone(&je.fallback_bundle))
+        HumanEmitter::new(dst, je.translator.clone())
             .short_message(short)
             .sm(je.sm.clone())
-            .fluent_bundle(je.fluent_bundle.clone())
             .diagnostic_width(je.diagnostic_width)
             .macro_backtrace(je.macro_backtrace)
             .track_diagnostics(je.track_diagnostics)
@@ -430,7 +418,7 @@ impl Diagnostic {
         args: &FluentArgs<'_>,
         je: &JsonEmitter,
     ) -> Diagnostic {
-        let translated_message = je.translate_messages(&subdiag.messages, args);
+        let translated_message = je.translator.translate_messages(&subdiag.messages, args);
         Diagnostic {
             message: translated_message.to_string(),
             code: None,
@@ -454,7 +442,7 @@ impl DiagnosticSpan {
             span.is_primary,
             span.label
                 .as_ref()
-                .map(|m| je.translate_message(m, args).unwrap())
+                .map(|m| je.translator.translate_message(m, args).unwrap())
                 .map(|m| m.to_string()),
             suggestion,
             je,
