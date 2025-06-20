@@ -112,7 +112,7 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
     }
 
     pub fn target_pointer_size(&self) -> usize {
-        self.tcx.data_layout.pointer_size.bits().try_into().unwrap()
+        self.tcx.data_layout.pointer_size().bits().try_into().unwrap()
     }
 
     pub fn entry_fn(&self) -> Option<DefId> {

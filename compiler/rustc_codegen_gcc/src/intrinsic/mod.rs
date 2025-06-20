@@ -541,7 +541,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
                         // so we re-use that same threshold here.
-                        layout.size() <= self.data_layout().pointer_size * 2
+                        layout.size() <= self.data_layout().pointer_size() * 2
                     }
                 };
 

@@ -1184,7 +1184,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let lhs = args[0].immediate();
         let rhs = args[1].immediate();
         let is_add = name == sym::simd_saturating_add;
-        let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
+        let ptr_bits = bx.tcx().data_layout.pointer_size().bits() as _;
         let (signed, elem_width, elem_ty) = match *in_elem.kind() {
             ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits) / 8, bx.cx.type_int_from_ty(i)),
             ty::Uint(i) => {

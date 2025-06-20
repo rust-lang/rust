@@ -162,7 +162,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
     }
 
     fn const_usize(&self, i: u64) -> RValue<'gcc> {
-        let bit_size = self.data_layout().pointer_size.bits();
+        let bit_size = self.data_layout().pointer_size().bits();
         if bit_size < 64 {
             // make sure it doesn't overflow
             assert!(i < (1 << bit_size));

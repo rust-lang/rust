@@ -1233,7 +1233,7 @@ impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>
 
     /// `offset` is relative to this allocation reference, not the base of the allocation.
     pub fn write_ptr_sized(&mut self, offset: Size, val: Scalar<Prov>) -> InterpResult<'tcx> {
-        self.write_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size), val)
+        self.write_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size()), val)
     }
 
     /// Mark the given sub-range (relative to this allocation reference) as uninitialized.
@@ -1285,7 +1285,7 @@ impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Pr
     /// `offset` is relative to this allocation reference, not the base of the allocation.
     pub fn read_pointer(&self, offset: Size) -> InterpResult<'tcx, Scalar<Prov>> {
         self.read_scalar(
-            alloc_range(offset, self.tcx.data_layout().pointer_size),
+            alloc_range(offset, self.tcx.data_layout().pointer_size()),
             /*read_provenance*/ true,
         )
     }

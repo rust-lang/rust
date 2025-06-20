@@ -17,7 +17,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             let mut applicability = Applicability::MaybeIncorrect;
             let from_snippet = snippet_with_applicability(cx, cast_expr.span, "x", &mut applicability);
 
-            if to_nbits < cx.tcx.data_layout.pointer_size.bits() {
+            if to_nbits < cx.tcx.data_layout.pointer_size().bits() {
                 span_lint_and_sugg(
                     cx,
                     FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
