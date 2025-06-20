@@ -273,7 +273,7 @@ pub(crate) struct AlignParser(Option<(Align, Span)>);
 
 impl AlignParser {
     const PATH: &'static [Symbol] = &[sym::align];
-    const TEMPLATE: AttributeTemplate = template!(Word, List: "<alignment in bytes>");
+    const TEMPLATE: AttributeTemplate = template!(List: "<alignment in bytes>");
 
     fn parse<'c, S: Stage>(
         &mut self,

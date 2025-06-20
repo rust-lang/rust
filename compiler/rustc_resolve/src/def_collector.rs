@@ -3,7 +3,7 @@ use std::mem;
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::{AttributeParser, OmitDoc};
+use rustc_attr_parsing::{AttributeParser, Early, OmitDoc};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -128,7 +128,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 // FIXME(jdonszelmann) make one of these in the resolver?
                 // FIXME(jdonszelmann) don't care about tools here maybe? Just parse what we can.
                 // Does that prevents errors from happening? maybe
-                let mut parser = AttributeParser::new_early(
+                let mut parser = AttributeParser::<'_, Early>::new(
                     &self.resolver.tcx.sess,
                     self.resolver.tcx.features(),
                     Vec::new(),

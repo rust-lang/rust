@@ -208,7 +208,7 @@ macro_rules! impl_Display {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 #[cfg(not(feature = "optimize_for_size"))]
                 {
-                    const MAX_DEC_N: usize = $unsigned::MAX.ilog(10) as usize + 1;
+                    const MAX_DEC_N: usize = $unsigned::MAX.ilog10() as usize + 1;
                     // Buffer decimals for $unsigned with right alignment.
                     let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
 
@@ -226,7 +226,7 @@ macro_rules! impl_Display {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 #[cfg(not(feature = "optimize_for_size"))]
                 {
-                    const MAX_DEC_N: usize = $unsigned::MAX.ilog(10) as usize + 1;
+                    const MAX_DEC_N: usize = $unsigned::MAX.ilog10() as usize + 1;
                     // Buffer decimals for $unsigned with right alignment.
                     let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
 
@@ -323,7 +323,7 @@ macro_rules! impl_Display {
 
         #[cfg(feature = "optimize_for_size")]
         fn $gen_name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            const MAX_DEC_N: usize = $u::MAX.ilog(10) as usize + 1;
+            const MAX_DEC_N: usize = $u::MAX.ilog10() as usize + 1;
             let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
             let mut curr = MAX_DEC_N;
             let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
@@ -565,7 +565,7 @@ mod imp {
 }
 impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
-const U128_MAX_DEC_N: usize = u128::MAX.ilog(10) as usize + 1;
+const U128_MAX_DEC_N: usize = u128::MAX.ilog10() as usize + 1;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for u128 {

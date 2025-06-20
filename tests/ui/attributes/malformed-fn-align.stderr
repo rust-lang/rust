@@ -2,54 +2,55 @@ error[E0539]: malformed `align` attribute input
   --> $DIR/malformed-fn-align.rs:5:5
    |
 LL |     #[align]
-   |     ^^^^^^^^ expected this to be a list
+   |     ^^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[align(<alignment in bytes>)]`
+
+error[E0805]: malformed `align` attribute input
+  --> $DIR/malformed-fn-align.rs:8:5
    |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL |     #[align(<alignment in bytes>)]
-   |            ++++++++++++++++++++++
+LL |     #[align(1, 2)]
+   |     ^^^^^^^------^
+   |     |      |
+   |     |      expected a single argument here
+   |     help: must be of the form: `#[align(<alignment in bytes>)]`
 
 error[E0539]: malformed `align` attribute input
-  --> $DIR/malformed-fn-align.rs:9:1
+  --> $DIR/malformed-fn-align.rs:12:1
    |
 LL | #[align = 16]
-   | ^^^^^^^^^^^^^ expected this to be a list
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[align = 16]
-LL + #[align(<alignment in bytes>)]
-   |
-LL - #[align = 16]
-LL + #[align]
-   |
+   | ^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[align(<alignment in bytes>)]`
 
 error[E0589]: invalid alignment value: not an unsuffixed integer
-  --> $DIR/malformed-fn-align.rs:12:9
+  --> $DIR/malformed-fn-align.rs:15:9
    |
 LL | #[align("hello")]
    |         ^^^^^^^
 
 error[E0589]: invalid alignment value: not a power of two
-  --> $DIR/malformed-fn-align.rs:15:9
+  --> $DIR/malformed-fn-align.rs:18:9
    |
 LL | #[align(0)]
    |         ^
 
 error: `#[repr(align(...))]` is not supported on function items
-  --> $DIR/malformed-fn-align.rs:18:8
+  --> $DIR/malformed-fn-align.rs:21:8
    |
 LL | #[repr(align(16))]
    |        ^^^^^^^^^
    |
 help: use `#[align(...)]` instead
-  --> $DIR/malformed-fn-align.rs:18:8
+  --> $DIR/malformed-fn-align.rs:21:8
    |
 LL | #[repr(align(16))]
    |        ^^^^^^^^^
 
 error: `#[align(...)]` is not supported on struct items
-  --> $DIR/malformed-fn-align.rs:21:1
+  --> $DIR/malformed-fn-align.rs:24:1
    |
 LL | #[align(16)]
    | ^^^^^^^^^^^^
@@ -60,7 +61,7 @@ LL - #[align(16)]
 LL + #[repr(align(16))]
    |
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0539, E0589.
+Some errors have detailed explanations: E0539, E0589, E0805.
 For more information about an error, try `rustc --explain E0539`.
