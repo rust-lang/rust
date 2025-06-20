@@ -168,6 +168,8 @@ other threads will be allowed to run to completion before the process exits.
 Note that when running tests in parallel, the test execution order is non-deterministic:
 if multiple tests would fail, the first failure encountered will be reported.
 
+⚠️ 🚧 This requires the `-Z unstable-options` flag.
+
 #### `--test-threads` _NUM_THREADS_
 
 Sets the number of threads to use for running tests in parallel. By default,
