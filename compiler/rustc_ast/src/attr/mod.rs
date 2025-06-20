@@ -217,13 +217,13 @@ impl AttributeExt for Attribute {
             _ => None,
         }
     }
-
-    fn style(&self) -> AttrStyle {
-        self.style
-    }
 }
 
 impl Attribute {
+    pub fn style(&self) -> AttrStyle {
+        self.style
+    }
+
     pub fn may_have_doc_links(&self) -> bool {
         self.doc_str().is_some_and(|s| comments::may_have_doc_links(s.as_str()))
     }
@@ -826,8 +826,6 @@ pub trait AttributeExt: Debug {
     /// commented module (for inner doc) vs within its parent module (for outer
     /// doc).
     fn doc_resolution_scope(&self) -> Option<AttrStyle>;
-
-    fn style(&self) -> AttrStyle;
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding
@@ -901,9 +899,5 @@ impl Attribute {
 
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         AttributeExt::doc_str_and_comment_kind(self)
-    }
-
-    pub fn style(&self) -> AttrStyle {
-        AttributeExt::style(self)
     }
 }

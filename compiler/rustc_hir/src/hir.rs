@@ -1207,6 +1207,14 @@ pub enum Attribute {
 }
 
 impl Attribute {
+    pub fn style(&self) -> AttrStyle {
+        match &self {
+            Attribute::Unparsed(u) => u.style,
+            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => *style,
+            _ => panic!(),
+        }
+    }
+
     pub fn get_normal_item(&self) -> &AttrItem {
         match &self {
             Attribute::Unparsed(normal) => &normal,
@@ -1355,15 +1363,6 @@ impl AttributeExt for Attribute {
             _ => None,
         }
     }
-
-    #[inline]
-    fn style(&self) -> AttrStyle {
-        match &self {
-            Attribute::Unparsed(u) => u.style,
-            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => *style,
-            _ => panic!(),
-        }
-    }
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding
@@ -1451,11 +1450,6 @@ impl Attribute {
     #[inline]
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         AttributeExt::doc_str_and_comment_kind(self)
-    }
-
-    #[inline]
-    pub fn style(&self) -> AttrStyle {
-        AttributeExt::style(self)
     }
 }
 
