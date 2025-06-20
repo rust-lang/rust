@@ -865,7 +865,7 @@ fn link_natively(
                     command: cmd,
                     escaped_output,
                     verbose: sess.opts.verbose,
-                    sysroot_dir: sess.sysroot.clone(),
+                    sysroot_dir: sess.opts.sysroot.path().to_owned(),
                 };
                 sess.dcx().emit_err(err);
                 // If MSVC's `link.exe` was expected but the return code
@@ -1249,10 +1249,10 @@ fn link_sanitizer_runtime(
         if path.exists() {
             sess.target_tlib_path.dir.clone()
         } else {
-            let default_sysroot = filesearch::get_or_default_sysroot();
-            let default_tlib =
-                filesearch::make_target_lib_path(&default_sysroot, sess.opts.target_triple.tuple());
-            default_tlib
+            filesearch::make_target_lib_path(
+                &sess.opts.sysroot.default,
+                sess.opts.target_triple.tuple(),
+            )
         }
     }
 
@@ -1758,7 +1758,7 @@ fn detect_self_contained_mingw(sess: &Session, linker: &Path) -> bool {
     for dir in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {
         let full_path = dir.join(&linker_with_extension);
         // If linker comes from sysroot assume self-contained mode
-        if full_path.is_file() && !full_path.starts_with(&sess.sysroot) {
+        if full_path.is_file() && !full_path.starts_with(sess.opts.sysroot.path()) {
             return false;
         }
     }

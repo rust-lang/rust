@@ -337,7 +337,7 @@ top_level_options!(
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
         libs: Vec<NativeLib> [TRACKED],
-        sysroot: PathBuf [UNTRACKED],
+        sysroot: Sysroot [UNTRACKED],
 
         target_triple: TargetTuple [TRACKED],
 
