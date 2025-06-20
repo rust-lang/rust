@@ -9,6 +9,7 @@ assert-window-property-false: {"searchIndex": null}
 
 // Form input
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#search-button"
 write-into: (".search-input", "Foo")
 press-key: 'Enter'
 wait-for: "#search-tabs"

@@ -1,6 +1,8 @@
 // Checks that the search tab results work correctly with function signature syntax
 // First, try a search-by-name
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#search-button"
+wait-for: ".search-input"
 write-into: (".search-input", "Foo")
 // To be SURE that the search will be run.
 press-key: 'Enter'

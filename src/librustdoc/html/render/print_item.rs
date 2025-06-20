@@ -34,6 +34,7 @@ use crate::html::format::{
     print_constness_with_space, print_where_clause, visibility_print_with_space,
 };
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
+use crate::html::render::sidebar::filters;
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 
