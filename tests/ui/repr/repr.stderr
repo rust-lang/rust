@@ -5,7 +5,7 @@ LL | #[repr]
    | ^^^^^^^
    | |
    | expected this to be a list
-   | help: must be of the form: `#[repr(C)]`
+   | help: must be of the form: `#[repr(C | Rust | align(...) | packed(...) | <integer type> | transparent)]`
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/repr.rs:4:1
@@ -14,7 +14,7 @@ LL | #[repr = "B"]
    | ^^^^^^^^^^^^^
    | |
    | expected this to be a list
-   | help: must be of the form: `#[repr(C)]`
+   | help: must be of the form: `#[repr(C | Rust | align(...) | packed(...) | <integer type> | transparent)]`
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/repr.rs:7:1
@@ -23,7 +23,7 @@ LL | #[repr = "C"]
    | ^^^^^^^^^^^^^
    | |
    | expected this to be a list
-   | help: must be of the form: `#[repr(C)]`
+   | help: must be of the form: `#[repr(C | Rust | align(...) | packed(...) | <integer type> | transparent)]`
 
 error: aborting due to 3 previous errors
 
