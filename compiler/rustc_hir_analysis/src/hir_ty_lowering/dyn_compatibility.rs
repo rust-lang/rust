@@ -2,7 +2,6 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
-use rustc_hir::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
@@ -70,13 +69,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let guar = self.report_trait_object_addition_traits(&regular_traits);
             return Ty::new_error(tcx, guar);
         }
-        // We don't support `PointeeSized` principals
-        let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, span);
-        if regular_traits.iter().any(|(pred, _)| pred.def_id() == pointee_sized_did) {
-            let guar = self.report_pointee_sized_trait_object(span);
-            return Ty::new_error(tcx, guar);
-        }
-
         // Don't create a dyn trait if we have errors in the principal.
         if let Err(guar) = regular_traits.error_reported() {
             return Ty::new_error(tcx, guar);
