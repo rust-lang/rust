@@ -42,9 +42,8 @@ pub fn check(
                 let mut test_attr_spans = vec![];
                 let filename = FileName::anon_source_code(&code);
 
-                let fallback_bundle =
-                    rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
-                let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
+                let translator = rustc_driver::default_translator();
+                let emitter = HumanEmitter::new(Box::new(io::sink()), translator);
                 let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
                 #[expect(clippy::arc_with_non_send_sync)] // `Arc` is expected by with_dcx
                 let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
