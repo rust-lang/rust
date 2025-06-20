@@ -99,7 +99,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     replacer.visit_body_preserves_cfg(body);
 
     if replacer.any_replacement {
-        crate::simplify::remove_unused_definitions(body);
+        crate::simplify::remove_unused_definitions(body, true);
     }
 
     replacer.any_replacement
