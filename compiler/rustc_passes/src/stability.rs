@@ -819,7 +819,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     // For example:
                     // ```
                     // #[unstable_feature_bound(feat_foo)]
-                    // #![unstable(feature = "feat_foo", issue = "none")]
+                    // #[unstable(feature = "feat_foo", issue = "none")]
                     // impl Foo for Bar {}
                     // ```
                     if let Some((

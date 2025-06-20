@@ -2279,6 +2279,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     fn check_unstable_feature_bound(&self, attr_span: Span, span: Span, target: Target) {
         match target {
+            // FIXME(staged_api): There's no reason we can't support more targets here. We're just
+            // being conservative to begin with.
             Target::Fn | Target::Impl => {}
             Target::ExternCrate
             | Target::Use
