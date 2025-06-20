@@ -292,6 +292,7 @@ fn emit_malformed_attribute(
             | sym::align
             | sym::deprecated
             | sym::optimize
+            | sym::cold
     ) {
         return;
     }

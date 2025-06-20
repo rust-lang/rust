@@ -379,14 +379,6 @@ warning: `#[proc_macro_derive]` only has an effect on functions
 LL | #![proc_macro_derive()]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: attribute should be applied to a function definition
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:62:1
-   |
-LL | #![cold]
-   | ^^^^^^^^ cannot be applied to crates
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:64:1
    |
@@ -416,6 +408,14 @@ warning: `#[must_use]` has no effect when applied to a module
    |
 LL | #![must_use]
    | ^^^^^^^^^^^^
+
+warning: attribute should be applied to a function definition
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:62:1
+   |
+LL | #![cold]
+   | ^^^^^^^^ cannot be applied to crates
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: `#[macro_use]` only has an effect on `extern crate` and modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:176:5
