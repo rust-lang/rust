@@ -66,13 +66,13 @@ pub struct ReversedReprCAlign {
     b: i64,
 }
 
-//@ is "$.index[?(@.name=='AlignedExplicitRepr')].attrs" '["#[repr(C, align(16), isize)]"]'
+//@ is "$.index[?(@.name=='AlignedExplicitRepr')].attrs" '["#[repr(C, isize, align(16))]"]'
 #[repr(C, align(16), isize)]
 pub enum AlignedExplicitRepr {
     First,
 }
 
-//@ is "$.index[?(@.name=='ReorderedAlignedExplicitRepr')].attrs" '["#[repr(C, align(16), isize)]"]'
+//@ is "$.index[?(@.name=='ReorderedAlignedExplicitRepr')].attrs" '["#[repr(C, isize, align(16))]"]'
 #[repr(isize, C, align(16))]
 pub enum ReorderedAlignedExplicitRepr {
     First,

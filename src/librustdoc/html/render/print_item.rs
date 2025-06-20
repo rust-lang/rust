@@ -20,7 +20,7 @@ use super::{
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
     render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_repr_attributes_in_code, render_rightside, render_stability_since_raw,
+    render_impl, render_repr_attribute_in_code, render_rightside, render_stability_since_raw,
     render_stability_since_raw_with_extra, write_section_heading,
 };
 use crate::clean;
@@ -1480,18 +1480,14 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
     fn render_attributes_in_pre(&self) -> impl fmt::Display {
         fmt::from_fn(move |f| {
             if self.is_type_alias {
-                // For now the only attributes we render for type aliases are `repr` attributes.
-                if let Some(repr) = clean::repr_attributes(
-                    self.cx.tcx(),
-                    self.cx.cache(),
-                    self.def_id,
-                    ItemType::Union,
-                    false,
-                ) {
+                // For now the only attribute we render for type aliases is the `repr` attribute.
+                if let Some(repr) =
+                    clean::repr_attribute(self.cx.tcx(), self.cx.cache(), self.def_id, false)
+                {
                     writeln!(f, "{repr}")?;
                 };
             } else {
-                for a in self.it.attributes_and_repr(self.cx.tcx(), self.cx.cache(), false) {
+                for a in self.it.attributes(self.cx.tcx(), self.cx.cache(), false) {
                     writeln!(f, "{a}")?;
                 }
             }
@@ -1558,8 +1554,8 @@ impl<'clean> DisplayEnum<'clean> {
 
         wrap_item(w, |w| {
             if is_type_alias {
-                // For now the only attributes we render for type aliases are `repr` attributes.
-                render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Enum);
+                // For now the only attribute we render for type aliases is the `repr` attribute.
+                render_repr_attribute_in_code(w, cx, self.def_id);
             } else {
                 render_attributes_in_code(w, it, cx);
             }
@@ -2016,8 +2012,8 @@ impl<'a> DisplayStruct<'a> {
     ) -> fmt::Result {
         wrap_item(w, |w| {
             if is_type_alias {
-                // For now the only attributes we render for type aliases are `repr` attributes.
-                render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Struct);
+                // For now the only attribute we render for type aliases is the `repr` attribute.
+                render_repr_attribute_in_code(w, cx, self.def_id);
             } else {
                 render_attributes_in_code(w, it, cx);
             }
