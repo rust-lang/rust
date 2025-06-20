@@ -2085,11 +2085,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 match reason {
                     RelaxedBoundForbiddenReason::TraitObjectTy => {
-                        err("`?Trait` is not permitted in trait object types").emit();
+                        err("relaxed bounds are not permitted in trait object types").emit();
                         return;
                     }
                     RelaxedBoundForbiddenReason::SuperTrait => {
-                        let mut diag = err("`?Trait` is not permitted in supertraits");
+                        let mut diag = err("relaxed bounds are not permitted in supertrait bounds");
                         if let Some(def_id) = trait_ref.trait_def_id()
                             && self.tcx.is_lang_item(def_id, hir::LangItem::Sized)
                         {
@@ -2103,7 +2103,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        err("`?Trait` bounds are only permitted at the point where a type parameter is declared")
+        err("this relaxed bound is not permitted here")
+            .with_note(
+                "in this context, relaxed bounds are only allowed on \
+                 type parameters defined by the closest item",
+            )
             .emit();
     }
 

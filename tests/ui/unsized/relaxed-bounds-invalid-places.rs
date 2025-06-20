@@ -1,19 +1,16 @@
 // Test that relaxed bounds can only be placed on type parameters defined by the closest item
 // (ignoring relaxed bounds inside `impl Trait` and in associated type defs here).
 
-struct S1<T>(T) where (T): ?Sized;
-//~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
+struct S1<T>(T) where (T): ?Sized; //~ ERROR this relaxed bound is not permitted here
 
-struct S2<T>(T) where u8: ?Sized;
-//~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
+struct S2<T>(T) where u8: ?Sized; //~ ERROR this relaxed bound is not permitted here
 
-struct S3<T>(T) where &'static T: ?Sized;
-//~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
+struct S3<T>(T) where &'static T: ?Sized; //~ ERROR this relaxed bound is not permitted here
 
 trait Trait<'a> {}
 
 struct S4<T>(T) where for<'a> T: ?Trait<'a>;
-//~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
+//~^ ERROR this relaxed bound is not permitted here
 //~| ERROR relaxing a default bound only does something for `?Sized`
 
 struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
@@ -21,8 +18,7 @@ struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
 //~| ERROR relaxing a default bound only does something for `?Sized`
 
 impl<T> S1<T> {
-    fn f() where T: ?Sized {}
-    //~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
+    fn f() where T: ?Sized {} //~ ERROR this relaxed bound is not permitted here
 }
 
 fn main() {
