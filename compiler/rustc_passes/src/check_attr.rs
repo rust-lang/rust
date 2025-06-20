@@ -142,7 +142,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 Attribute::Parsed(AttributeKind::Repr(_)) => { /* handled below this loop and elsewhere */
                 }
-                Attribute::Parsed(AttributeKind::AllowUnstableFeature(syms)) => {
+                Attribute::Parsed(AttributeKind::UnstableFeatureBound(syms)) => {
                     self.check_unstable_feature_bound(syms.first().unwrap().1, span, target)
                 }
                 Attribute::Parsed(

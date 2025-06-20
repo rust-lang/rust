@@ -803,7 +803,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     let const_stab = attrs::find_attr!(attrs, AttributeKind::ConstStability{stability, ..} => *stability);
 
                     let unstable_feature_stab =
-                        find_attr!(attrs, AttributeKind::AllowUnstableFeature(i) => i)
+                        find_attr!(attrs, AttributeKind::UnstableFeatureBound(i) => i)
                             .map(|i| i.as_slice())
                             .unwrap_or_default();
 

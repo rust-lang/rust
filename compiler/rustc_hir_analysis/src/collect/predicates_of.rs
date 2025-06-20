@@ -321,7 +321,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
     let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
     let allow_unstable_feature_attr =
-        find_attr!(attrs, AttributeKind::AllowUnstableFeature(i) => i)
+        find_attr!(attrs, AttributeKind::UnstableFeatureBound(i) => i)
             .map(|i| i.as_slice())
             .unwrap_or_default();
 

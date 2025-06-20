@@ -28,7 +28,7 @@ pub(crate) struct AllowUnstableFeatureParser;
 impl<S: Stage> CombineAttributeParser<S> for AllowUnstableFeatureParser {
     const PATH: &'static [rustc_span::Symbol] = &[sym::unstable_feature_bound];
     type Item = (Symbol, Span);
-    const CONVERT: ConvertFn<Self::Item> = AttributeKind::AllowUnstableFeature;
+    const CONVERT: ConvertFn<Self::Item> = AttributeKind::UnstableFeatureBound;
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
