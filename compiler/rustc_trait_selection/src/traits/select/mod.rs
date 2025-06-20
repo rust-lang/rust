@@ -848,20 +848,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
 
-                    if self.tcx().features().staged_api() {
-                        // If we are in std/core, and the feature is not enabled through #[unstable_feature_bound(..)].
-                        return Ok(EvaluatedToAmbig);
+                    // During codegen we must assume that all feature bounds hold as we may be
+                    // monomorphizing a body from an upstream crate which had an unstable feature
+                    // enabled that we do not.
+                    //
+                    // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
+                    // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
+                    if self.tcx().features().feature_bound_holds_in_crate(symbol)
+                        || (self.infcx.typing_mode() == TypingMode::PostAnalysis) {
+                         return Ok(EvaluatedToOk);
                     } else {
-                        // Outside of std/core, check if feature is enabled at crate level with #[feature(..)]
-                        // or if we are currently in codegen.
-                        if self.tcx().features().enabled(symbol)
-                            || (self.infcx.typing_mode() == TypingMode::PostAnalysis)
-                        {
-                            return Ok(EvaluatedToOk);
-                        } else {
-                            return Ok(EvaluatedToAmbig);
-                        }
+                         return Ok(EvaluatedToAmbig);
                     }
+
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {

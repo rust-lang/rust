@@ -162,24 +162,21 @@ where
             }
         }
 
-        if self.cx().features().staged_api() {
-            // If we are in std/core, and the feature is not enabled through #[unstable_feature_bound(..)]
-            return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
-                MaybeCause::Ambiguity,
-            ));
-        } else {
-            // Outside of std/core, check if feature is enabled at crate level with #[feature(..)]
-            // or if we are currently in codegen.
-            if self.cx().features().enabled(symbol)
-                || (self.typing_mode() == TypingMode::PostAnalysis)
-            {
-                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
-            } else {
-                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
-                    MaybeCause::Ambiguity,
-                ));
-            }
-        }
+       // During codegen we must assume that all feature bounds hold as we may be
+       // monomorphizing a body from an upstream crate which had an unstable feature
+       // enabled that we do not.
+       //
+       // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
+       // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
+       if self.cx().features().feature_bound_holds_in_crate(symbol)
+           || (self.typing_mode() == TypingMode::PostAnalysis) {
+           return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+       } else {
+           return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
+               MaybeCause::Ambiguity,
+           ));
+       }
+
     }
 
     #[instrument(level = "trace", skip(self))]

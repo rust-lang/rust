@@ -774,20 +774,18 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         }
                     }
 
-                    if self.selcx.tcx().features().staged_api() {
-                        // If we are in std/core, and the feature is not enabled through #[unstable_feature_bound(..)].
-                        return ProcessResult::Unchanged;
-                    } else {
-                        // Outside of std/core, check if feature is enabled at crate level with #[feature(..)]
-                        // or if we are currently in codegen.
-                        if self.selcx.tcx().features().enabled(symbol)
-                            || (self.selcx.infcx.typing_mode() == TypingMode::PostAnalysis)
-                        {
-                            return ProcessResult::Changed(Default::default());
-                        } else {
-                            return ProcessResult::Unchanged;
-                        }
-                    }
+                     // During codegen we must assume that all feature bounds hold as we may be
+                     // monomorphizing a body from an upstream crate which had an unstable feature
+                     // enabled that we do not.
+                     //
+                     // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
+                     // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
+                     if self.selcx.tcx().features().feature_bound_holds_in_crate(symbol)
+                         || (self.selcx.infcx.typing_mode() == TypingMode::PostAnalysis) {
+                         return ProcessResult::Changed(Default::default());
+                     } else {
+                          return ProcessResult::Unchanged;
+                     }
                 }
             },
         }

@@ -584,7 +584,7 @@ pub trait Features<I: Interner>: Copy {
 
     fn associated_const_equality(self) -> bool;
 
-    fn staged_api(self) -> bool;
+    fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
 
     fn enabled(self, symbol: I::Symbol) -> bool;
 }

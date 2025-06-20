@@ -833,8 +833,11 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         self.associated_const_equality()
     }
 
-    fn staged_api(self) -> bool {
-        self.staged_api()
+    fn feature_bound_holds_in_crate(self, symbol: <TyCtxt<'tcx> as Interner>::Symbol) -> bool {
+        // We don't consider feature bounds to hold in the crate when `staged_api` feature is
+        // enabled, even if it is enabled through `#[feature]`.
+        // This is to prevent accidentally leaking unstable APIs to stable.
+        !self.staged_api() && self.enabled(symbol)
     }
 
     fn enabled(self, symbol: <TyCtxt<'tcx> as Interner>::Symbol) -> bool {
