@@ -2,7 +2,7 @@ use std::borrow::{Borrow, Cow};
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_abi::{Align, Size};
+use rustc_abi::{Align, FieldIdx, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -402,6 +402,21 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let b = ecx.read_scalar(&args[1])?;
                 let cmp = ecx.guaranteed_cmp(a, b)?;
                 ecx.write_scalar(Scalar::from_u8(cmp), dest)?;
+            }
+            sym::type_id_eq => {
+                let a = ecx.project_field(&args[0], FieldIdx::ZERO)?;
+                let a = ecx.deref_pointer(&a)?;
+                let (a, offset) = a.ptr().into_parts();
+                assert_eq!(offset, Size::ZERO);
+                let a = a.unwrap().alloc_id();
+                let GlobalAlloc::Type(a) = ecx.tcx.global_alloc(a) else { bug!() };
+                let b = ecx.project_field(&args[1], FieldIdx::ZERO)?;
+                let b = ecx.deref_pointer(&b)?;
+                let (b, offset) = b.ptr().into_parts();
+                assert_eq!(offset, Size::ZERO);
+                let b = b.unwrap().alloc_id();
+                let GlobalAlloc::Type(b) = ecx.tcx.global_alloc(b) else { bug!() };
+                ecx.write_scalar(Scalar::from_bool(a == b), dest)?;
             }
             sym::const_allocate => {
                 let size = ecx.read_scalar(&args[0])?.to_target_usize(ecx)?;
