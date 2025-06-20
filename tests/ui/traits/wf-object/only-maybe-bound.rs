@@ -2,6 +2,6 @@
 
 type _0 = dyn ?Sized;
 //~^ ERROR at least one trait is required for an object type [E0224]
-//~| ERROR ?Trait` is not permitted in trait object types
+//~| ERROR relaxed bounds are not permitted in trait object types
 
 fn main() {}

@@ -1874,9 +1874,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 bounded_ty,
                 bounds,
             }) => {
-                let rbp = match bound_generic_params.is_empty() {
-                    true => RelaxedBoundPolicy::AllowedIfOnTyParam(bounded_ty.id, params),
-                    false => RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::BoundVars),
+                let rbp = if bound_generic_params.is_empty() {
+                    RelaxedBoundPolicy::AllowedIfOnTyParam(bounded_ty.id, params)
+                } else {
+                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::LateBoundVarsInScope)
                 };
                 hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                     bound_generic_params: self.lower_generic_params(

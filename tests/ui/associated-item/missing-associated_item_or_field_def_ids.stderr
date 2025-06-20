@@ -4,7 +4,7 @@ error[E0404]: expected trait, found associated function `Iterator::advance_by`
 LL | fn main() -> dyn Iterator + ?Iterator::advance_by(usize) {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a trait
 
-error[E0658]: `?Trait` is not permitted in trait object types
+error[E0658]: relaxed bounds are not permitted in trait object types
   --> $DIR/missing-associated_item_or_field_def_ids.rs:3:29
    |
 LL | fn main() -> dyn Iterator + ?Iterator::advance_by(usize) {
