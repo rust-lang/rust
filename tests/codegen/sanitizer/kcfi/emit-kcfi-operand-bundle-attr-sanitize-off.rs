@@ -9,15 +9,15 @@
 //@ compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Copt-level=0
 
 #![crate_type = "lib"]
-#![feature(no_core, no_sanitize, lang_items)]
+#![feature(no_core, sanitize, lang_items)]
 #![no_core]
 
 extern crate minicore;
 use minicore::*;
 
-#[no_sanitize(kcfi)]
+#[sanitize(kcfi = "off")]
 pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {
-    // CHECK-LABEL: emit_kcfi_operand_bundle_attr_no_sanitize::foo
+    // CHECK-LABEL: emit_kcfi_operand_bundle_attr_sanitize_off::foo
     // CHECK:       Function Attrs: {{.*}}
     // CHECK-LABEL: define{{.*}}foo{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
     // CHECK:       start:
