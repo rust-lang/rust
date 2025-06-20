@@ -1,9 +1,0 @@
-error[E0277]: the trait bound `TypeId: [const] PartialEq` is not satisfied
-  --> $DIR/issue-73976-monomorphic.rs:21:5
-   |
-LL |     GetTypeId::<T>::VALUE == GetTypeId::<usize>::VALUE
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0277`.

@@ -2725,6 +2725,18 @@ pub const fn type_name<T: ?Sized>() -> &'static str;
 #[rustc_intrinsic]
 pub const fn type_id<T: ?Sized + 'static>() -> crate::any::TypeId;
 
+/// Tests (at compile-time) if two [`crate::any::TypeId`] instances identify the
+/// same type. This is necessary because at const-eval time the actual discriminating
+/// data is opaque and cannot be inspected directly.
+///
+/// The stabilized version of this intrinsic is the [PartialEq] impl for [`core::any::TypeId`].
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+pub const fn type_id_eq(_a: crate::any::TypeId, _b: crate::any::TypeId) -> bool {
+    panic!("type_id_eq should only be used from const eval")
+}
+
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
 /// This is used to implement functions like `slice::from_raw_parts_mut` and
