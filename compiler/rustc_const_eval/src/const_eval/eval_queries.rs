@@ -282,7 +282,9 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
     // We call `const_eval` for zero arg intrinsics, too, in order to cache their value.
     // Catch such calls and evaluate them instead of trying to load a constant's MIR.
-    if let ty::InstanceKind::Intrinsic(def_id) = key.value.instance.def {
+    if let ty::InstanceKind::Intrinsic(def_id) = key.value.instance.def
+        && key.value.promoted.is_none()
+    {
         let ty = key.value.instance.ty(tcx, key.typing_env);
         let ty::FnDef(_, args) = ty.kind() else {
             bug!("intrinsic with type {:?}", ty);

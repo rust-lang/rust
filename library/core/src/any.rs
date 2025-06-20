@@ -727,24 +727,42 @@ unsafe impl Send for TypeId {}
 unsafe impl Sync for TypeId {}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct TypeIdData {
+pub(crate) struct TypeIdData {
     full_hash: [u8; 16],
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl PartialEq for TypeId {
+#[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
+impl const PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.data as *const TypeIdData == other.data as *const TypeIdData
-            || (self.partial_hash == other.partial_hash
-                && self.data.full_hash == other.data.full_hash)
+        const fn ct(a: &TypeId, b: &TypeId) -> bool {
+            crate::intrinsics::type_id_eq(*a, *b)
+        }
+
+        #[inline]
+        fn rt(a: &TypeId, b: &TypeId) -> bool {
+            a.data as *const TypeIdData == b.data as *const TypeIdData
+                || (a.partial_hash == b.partial_hash && a.data.full_hash == b.data.full_hash)
+        }
+
+        core::intrinsics::const_eval_select((self, other), ct, rt)
     }
 
     #[inline]
     fn ne(&self, other: &Self) -> bool {
-        self.partial_hash != other.partial_hash
-            || (self.data as *const TypeIdData != other.data as *const TypeIdData
-                && self.data.full_hash != other.data.full_hash)
+        const fn ct(a: &TypeId, b: &TypeId) -> bool {
+            !crate::intrinsics::type_id_eq(*a, *b)
+        }
+
+        #[inline]
+        fn rt(a: &TypeId, b: &TypeId) -> bool {
+            a.partial_hash != b.partial_hash
+                || (a.data as *const TypeIdData != b.data as *const TypeIdData
+                    && a.data.full_hash != b.data.full_hash)
+        }
+
+        core::intrinsics::const_eval_select((self, other), ct, rt)
     }
 }
 
