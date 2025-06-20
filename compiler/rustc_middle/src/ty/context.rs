@@ -2087,23 +2087,20 @@ impl<'tcx> TyCtxt<'tcx> {
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         let definitions = &self.untracked.definitions;
-        std::iter::from_coroutine(
-            #[coroutine]
-            || {
-                let mut i = 0;
+        gen {
+            let mut i = 0;
 
-                // Recompute the number of definitions each time, because our caller may be creating
-                // new ones.
-                while i < { definitions.read().num_definitions() } {
-                    let local_def_index = rustc_span::def_id::DefIndex::from_usize(i);
-                    yield LocalDefId { local_def_index };
-                    i += 1;
-                }
+            // Recompute the number of definitions each time, because our caller may be creating
+            // new ones.
+            while i < { definitions.read().num_definitions() } {
+                let local_def_index = rustc_span::def_id::DefIndex::from_usize(i);
+                yield LocalDefId { local_def_index };
+                i += 1;
+            }
 
-                // Freeze definitions once we finish iterating on them, to prevent adding new ones.
-                definitions.freeze();
-            },
-        )
+            // Freeze definitions once we finish iterating on them, to prevent adding new ones.
+            definitions.freeze();
+        }
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {

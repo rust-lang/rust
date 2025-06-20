@@ -3,7 +3,7 @@
 use std::iter::TrustedLen;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
-use std::{io, iter, mem};
+use std::{io, mem};
 
 pub(super) use cstore_impl::provide;
 use rustc_ast as ast;
@@ -1272,34 +1272,30 @@ impl<'a> CrateMetadataRef<'a> {
         id: DefIndex,
         sess: &'a Session,
     ) -> impl Iterator<Item = ModChild> {
-        iter::from_coroutine(
-            #[coroutine]
-            move || {
-                if let Some(data) = &self.root.proc_macro_data {
-                    // If we are loading as a proc macro, we want to return
-                    // the view of this crate as a proc macro crate.
-                    if id == CRATE_DEF_INDEX {
-                        for child_index in data.macros.decode(self) {
-                            yield self.get_mod_child(child_index, sess);
-                        }
-                    }
-                } else {
-                    // Iterate over all children.
-                    let non_reexports =
-                        self.root.tables.module_children_non_reexports.get(self, id);
-                    for child_index in non_reexports.unwrap().decode(self) {
+        gen move {
+            if let Some(data) = &self.root.proc_macro_data {
+                // If we are loading as a proc macro, we want to return
+                // the view of this crate as a proc macro crate.
+                if id == CRATE_DEF_INDEX {
+                    for child_index in data.macros.decode(self) {
                         yield self.get_mod_child(child_index, sess);
                     }
+                }
+            } else {
+                // Iterate over all children.
+                let non_reexports = self.root.tables.module_children_non_reexports.get(self, id);
+                for child_index in non_reexports.unwrap().decode(self) {
+                    yield self.get_mod_child(child_index, sess);
+                }
 
-                    let reexports = self.root.tables.module_children_reexports.get(self, id);
-                    if !reexports.is_default() {
-                        for reexport in reexports.decode((self, sess)) {
-                            yield reexport;
-                        }
+                let reexports = self.root.tables.module_children_reexports.get(self, id);
+                if !reexports.is_default() {
+                    for reexport in reexports.decode((self, sess)) {
+                        yield reexport;
                     }
                 }
-            },
-        )
+            }
+        }
     }
 
     fn is_ctfe_mir_available(self, id: DefIndex) -> bool {
