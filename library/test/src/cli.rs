@@ -57,6 +57,7 @@ fn optgroups() -> getopts::Options {
         .optflag("", "test", "Run tests and not benchmarks")
         .optflag("", "bench", "Run benchmarks instead of tests")
         .optflag("", "list", "List all tests and benchmarks")
+        .optflag("", "fail-fast", "Don't start new tests after the first failure")
         .optflag("h", "help", "Display this message")
         .optopt("", "logfile", "Write logs to the specified file (deprecated)", "PATH")
         .optflag(
@@ -270,6 +271,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     let exact = matches.opt_present("exact");
     let list = matches.opt_present("list");
     let skip = matches.opt_strs("skip");
+    let fail_fast = matches.opt_present("fail-fast");
 
     let bench_benchmarks = matches.opt_present("bench");
     let run_tests = !bench_benchmarks || matches.opt_present("test");
@@ -307,7 +309,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         skip,
         time_options,
         options,
-        fail_fast: false,
+        fail_fast,
     };
 
     Ok(test_opts)

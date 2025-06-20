@@ -158,6 +158,16 @@ unstable-options` flag. See [tracking issue
 
 The following options affect how tests are executed.
 
+#### `--fail-fast`
+
+Stops tests after the first failure.
+
+If running tests in parallel (which is the default), then tests that have already been started on
+other threads will be allowed to run to completion before the process exits.
+
+Note that when running tests in parallel, the test execution order is non-deterministic:
+if multiple tests would fail, the first failure encountered will be reported.
+
 #### `--test-threads` _NUM_THREADS_
 
 Sets the number of threads to use for running tests in parallel. By default,
