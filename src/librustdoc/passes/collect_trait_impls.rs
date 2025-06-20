@@ -35,7 +35,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     });
 
     let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
-    let prims: FxHashSet<PrimitiveType> = local_crate.primitives(tcx).iter().map(|p| p.1).collect();
+    let prims: FxHashSet<PrimitiveType> = local_crate.primitives(tcx).map(|(_, p)| p).collect();
 
     let crate_items = {
         let mut coll = ItemAndAliasCollector::new(&cx.cache);
