@@ -187,13 +187,13 @@ pub enum AttributeKind {
     Align { align: Align, span: Span },
 
     /// Represents `#[rustc_allow_const_fn_unstable]`.
-    AllowConstFnUnstable(ThinVec<Symbol>),
+    AllowConstFnUnstable { features: ThinVec<(Symbol, Span)> },
 
     /// Represents `#[allow_internal_unstable]`.
-    AllowInternalUnstable(ThinVec<(Symbol, Span)>),
+    AllowInternalUnstable { features: ThinVec<(Symbol, Span)> },
 
     /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
-    AsPtr(Span),
+    AsPtr { span: Span },
 
     /// Represents `#[rustc_default_body_unstable]`.
     BodyStability {
@@ -217,7 +217,7 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[rustc_const_stable_indirect]`.
-    ConstStabilityIndirect,
+    ConstStabilityIndirect { span: Span },
 
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
     Deprecation { deprecation: Deprecation, span: Span },
@@ -226,14 +226,14 @@ pub enum AttributeKind {
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
-    Inline(InlineAttr, Span),
+    Inline { kind: InlineAttr, span: Span },
 
     /// Represents `#[rustc_macro_transparency]`.
-    MacroTransparency(Transparency),
+    MacroTransparency { transparency: Transparency, span: Span },
     /// Represents `#[optimize(size|speed)]`
-    Optimize(OptimizeAttr, Span),
+    Optimize { kind: OptimizeAttr, span: Span },
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
-    Repr(ThinVec<(ReprAttr, Span)>),
+    Repr { reprs: ThinVec<(ReprAttr, Span)> },
 
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {

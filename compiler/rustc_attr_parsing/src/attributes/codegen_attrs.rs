@@ -25,7 +25,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
             return None;
         };
 
-        let res = match single.meta_item().and_then(|i| i.path().word().map(|i| i.name)) {
+        let kind = match single.meta_item().and_then(|i| i.path().word().map(|i| i.name)) {
             Some(sym::size) => OptimizeAttr::Size,
             Some(sym::speed) => OptimizeAttr::Speed,
             Some(sym::none) => OptimizeAttr::DoNotOptimize,
@@ -35,6 +35,6 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
             }
         };
 
-        Some(AttributeKind::Optimize(res, cx.attr_span))
+        Some(AttributeKind::Optimize { kind, span: cx.attr_span })
     }
 }

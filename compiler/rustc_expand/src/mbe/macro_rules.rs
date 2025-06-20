@@ -540,8 +540,9 @@ pub fn compile_declarative_macro(
 
     check_emission(macro_check::check_meta_variables(&sess.psess, node_id, span, &lhses, &rhses));
 
-    let transparency = find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
-        .unwrap_or(Transparency::fallback(macro_rules));
+    let transparency =
+        find_attr!(attrs, AttributeKind::MacroTransparency{transparency, .. } => *transparency)
+            .unwrap_or(Transparency::fallback(macro_rules));
 
     if let Some(guar) = guar {
         // To avoid warning noise, only consider the rules of this

@@ -16,6 +16,6 @@ impl<S: Stage> SingleAttributeParser<S> for AsPtrParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
         // FIXME: check that there's no args (this is currently checked elsewhere)
-        Some(AttributeKind::AsPtr(cx.attr_span))
+        Some(AttributeKind::AsPtr { span: cx.attr_span })
     }
 }

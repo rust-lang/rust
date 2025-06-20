@@ -880,8 +880,8 @@ impl SyntaxExtension {
         is_local: bool,
     ) -> SyntaxExtension {
         let allow_internal_unstable =
-            find_attr!(attrs, AttributeKind::AllowInternalUnstable(i) => i)
-                .map(|i| i.as_slice())
+            find_attr!(attrs, AttributeKind::AllowInternalUnstable{features} => features)
+                .map(|f| f.as_slice())
                 .unwrap_or_default();
         // FIXME(jdonszelman): allow_internal_unsafe isn't yet new-style
         // let allow_internal_unsafe = find_attr!(attrs, AttributeKind::AllowInternalUnsafe);

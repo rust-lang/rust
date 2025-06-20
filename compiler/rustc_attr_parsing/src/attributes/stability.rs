@@ -139,8 +139,8 @@ impl<S: Stage> SingleAttributeParser<S> for ConstStabilityIndirectParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
-    fn convert(_cx: &mut AcceptContext<'_, '_, S>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
-        Some(AttributeKind::ConstStabilityIndirect)
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
+        Some(AttributeKind::ConstStabilityIndirect { span: cx.attr_span })
     }
 }
 

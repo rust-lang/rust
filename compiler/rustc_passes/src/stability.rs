@@ -122,7 +122,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
 
         let depr = attrs::find_attr!(attrs, AttributeKind::Deprecation{deprecation, span} => (*deprecation, *span));
-        let const_stability_indirect = find_attr!(attrs, AttributeKind::ConstStabilityIndirect);
+        let const_stability_indirect =
+            find_attr!(attrs, AttributeKind::ConstStabilityIndirect { .. });
 
         let mut is_deprecated = false;
         if let Some((depr, span)) = &depr {

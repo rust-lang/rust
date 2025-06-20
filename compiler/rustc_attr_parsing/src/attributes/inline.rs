@@ -21,8 +21,9 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
     const TEMPLATE: AttributeTemplate = template!(Word, List: "always|never");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let span = cx.attr_span;
         match args {
-            ArgParser::NoArgs => Some(AttributeKind::Inline(InlineAttr::Hint, cx.attr_span)),
+            ArgParser::NoArgs => Some(AttributeKind::Inline { kind: InlineAttr::Hint, span }),
             ArgParser::List(list) => {
                 let Some(l) = list.single() else {
                     cx.expected_single_argument(list.span);
@@ -31,10 +32,10 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
 
                 match l.meta_item().and_then(|i| i.path().word_sym()) {
                     Some(sym::always) => {
-                        Some(AttributeKind::Inline(InlineAttr::Always, cx.attr_span))
+                        Some(AttributeKind::Inline { kind: InlineAttr::Always, span })
                     }
                     Some(sym::never) => {
-                        Some(AttributeKind::Inline(InlineAttr::Never, cx.attr_span))
+                        Some(AttributeKind::Inline { kind: InlineAttr::Never, span })
                     }
                     _ => {
                         cx.expected_specific_argument(l.span(), vec!["always", "never"]);
@@ -89,9 +90,9 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
             }
         };
 
-        Some(AttributeKind::Inline(
-            InlineAttr::Force { attr_span: cx.attr_span, reason },
-            cx.attr_span,
-        ))
+        Some(AttributeKind::Inline {
+            kind: InlineAttr::Force { attr_span: cx.attr_span, reason },
+            span: cx.attr_span,
+        })
     }
 }

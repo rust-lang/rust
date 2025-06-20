@@ -1538,7 +1538,8 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        if let Some(reprs) = attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr(r) => r)
+        if let Some(reprs) =
+            attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr{reprs} => reprs )
         {
             for (r, _) in reprs {
                 flags.insert(match *r {

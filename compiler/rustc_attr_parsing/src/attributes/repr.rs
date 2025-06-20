@@ -23,7 +23,7 @@ pub(crate) struct ReprParser;
 impl<S: Stage> CombineAttributeParser<S> for ReprParser {
     type Item = (ReprAttr, Span);
     const PATH: &[Symbol] = &[sym::repr];
-    const CONVERT: ConvertFn<Self::Item> = AttributeKind::Repr;
+    const CONVERT: ConvertFn<Self::Item> = |reprs| AttributeKind::Repr { reprs };
     // FIXME(jdonszelmann): never used
     const TEMPLATE: AttributeTemplate = template!(List: "C");
 

@@ -26,19 +26,19 @@ impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
             cx.expected_name_value(cx.attr_span, None);
             return None;
         };
-        match nv.value_as_str() {
-            Some(sym::transparent) => Some(Transparency::Transparent),
-            Some(sym::semiopaque | sym::semitransparent) => Some(Transparency::SemiOpaque),
-            Some(sym::opaque) => Some(Transparency::Opaque),
-            Some(_) => {
+
+        let transparency = match nv.value_as_str()? {
+            sym::transparent => Transparency::Transparent,
+            sym::semiopaque | sym::semitransparent => Transparency::SemiOpaque,
+            sym::opaque => Transparency::Opaque,
+            _ => {
                 cx.expected_specific_argument_strings(
                     nv.value_span,
                     vec!["transparent", "semitransparent", "opaque"],
                 );
-                None
+                return None;
             }
-            None => None,
-        }
-        .map(AttributeKind::MacroTransparency)
+        };
+        Some(AttributeKind::MacroTransparency { transparency, span: cx.attr_span })
     }
 }

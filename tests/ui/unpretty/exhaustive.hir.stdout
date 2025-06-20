@@ -72,7 +72,8 @@ mod attributes {//! inner single-line doc comment
     #[doc = "outer doc attribute"]
     #[doc = "macro"]
     #[allow()]
-    #[attr = Repr([ReprC])]
+    #[attr = Repr {reprs:
+    [ReprC]}]
     struct Struct;
 }
 

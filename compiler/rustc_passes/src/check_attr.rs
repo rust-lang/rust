@@ -117,50 +117,51 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let attrs = self.tcx.hir_attrs(hir_id);
         for attr in attrs {
             match attr {
-                Attribute::Parsed(AttributeKind::Confusables { first_span, .. }) => {
-                    self.check_confusables(*first_span, target);
-                }
-                Attribute::Parsed(
-                    AttributeKind::Stability { span, .. }
-                    | AttributeKind::ConstStability { span, .. },
-                ) => self.check_stability_promotable(*span, target),
-                Attribute::Parsed(AttributeKind::Inline(InlineAttr::Force { .. }, ..)) => {} // handled separately below
-                Attribute::Parsed(AttributeKind::Inline(kind, attr_span)) => {
-                    self.check_inline(hir_id, *attr_span, span, kind, target)
-                }
-                Attribute::Parsed(AttributeKind::Optimize(_, attr_span)) => {
-                    self.check_optimize(hir_id, *attr_span, span, target)
-                }
-                Attribute::Parsed(AttributeKind::AllowInternalUnstable(syms)) => self
-                    .check_allow_internal_unstable(
-                        hir_id,
-                        syms.first().unwrap().1,
-                        span,
-                        target,
-                        attrs,
-                    ),
-                Attribute::Parsed(AttributeKind::AllowConstFnUnstable { .. }) => {
-                    self.check_rustc_allow_const_fn_unstable(hir_id, attr, span, target)
-                }
-                Attribute::Parsed(AttributeKind::Deprecation { .. }) => {
-                    self.check_deprecated(hir_id, attr, span, target)
-                }
-                Attribute::Parsed(AttributeKind::DocComment { .. }) => { /* `#[doc]` is actually a lot more than just doc comments, so is checked below*/
-                }
-                Attribute::Parsed(AttributeKind::Repr(_)) => { /* handled below this loop and elsewhere */
-                }
-                Attribute::Parsed(AttributeKind::Align { align, span: repr_span }) => {
-                    self.check_align(span, target, *align, *repr_span)
-                }
+                Attribute::Parsed(parsed) => match parsed {
+                    AttributeKind::Confusables { first_span, .. } => {
+                        self.check_confusables(*first_span, target);
+                    }
 
-                Attribute::Parsed(
+                    AttributeKind::Stability { span, .. }
+                    | AttributeKind::ConstStability { span, .. } => {
+                        self.check_stability_promotable(*span, target)
+                    }
+                    AttributeKind::Inline { kind: InlineAttr::Force { .. }, .. } => {} // handled separately below
+                    AttributeKind::Inline { kind, span: attr_span } => {
+                        self.check_inline(hir_id, *attr_span, span, kind, target)
+                    }
+                    AttributeKind::Optimize { span: attr_span, .. } => {
+                        self.check_optimize(hir_id, *attr_span, span, target)
+                    }
+                    AttributeKind::AllowInternalUnstable { features } => self
+                        .check_allow_internal_unstable(
+                            hir_id,
+                            features.first().unwrap().1,
+                            span,
+                            target,
+                            attrs,
+                        ),
+                    AttributeKind::AllowConstFnUnstable { .. } => {
+                        self.check_rustc_allow_const_fn_unstable(hir_id, attr, span, target)
+                    }
+                    AttributeKind::Deprecation { .. } => {
+                        self.check_deprecated(hir_id, attr, span, target)
+                    }
+                    AttributeKind::DocComment { .. } => { /* `#[doc]` is actually a lot more than just doc comments, so is checked below*/
+                    }
+                    AttributeKind::Repr { .. } => { /* handled below this loop and elsewhere */ }
+                    AttributeKind::Align { align, span: repr_span } => {
+                        self.check_align(span, target, *align, *repr_span)
+                    }
+
                     AttributeKind::BodyStability { .. }
-                    | AttributeKind::ConstStabilityIndirect
-                    | AttributeKind::MacroTransparency(_),
-                ) => { /* do nothing  */ }
-                Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
-                    self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
-                }
+                    | AttributeKind::ConstStabilityIndirect { .. }
+                    | AttributeKind::MacroTransparency { .. } => { /* do nothing  */ }
+                    AttributeKind::AsPtr { span: attr_span } => {
+                        self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
+                    }
+                },
+
                 Attribute::Unparsed(_) => {
                     match attr.path().as_slice() {
                         [sym::diagnostic, sym::do_not_recommend, ..] => {
@@ -692,7 +693,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         ) => {
                             continue;
                         }
-                        Attribute::Parsed(AttributeKind::Inline(.., span)) => {
+                        Attribute::Parsed(AttributeKind::Inline { span, .. }) => {
                             self.dcx().emit_err(errors::NakedFunctionIncompatibleAttribute {
                                 span: *span,
                                 naked_span: attr.span(),
@@ -2009,7 +2010,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // #[repr(foo)]
         // #[repr(bar, align(8))]
         // ```
-        let reprs = find_attr!(attrs, AttributeKind::Repr(r) => r.as_slice()).unwrap_or(&[]);
+        let reprs =
+            find_attr!(attrs, AttributeKind::Repr{reprs} => reprs.as_slice()).unwrap_or(&[]);
 
         let mut int_reprs = 0;
         let mut is_explicit_rust = false;
@@ -2426,7 +2428,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // ugly now but can 100% be removed later.
         if let Attribute::Parsed(p) = attr {
             match p {
-                AttributeKind::Repr(reprs) => {
+                AttributeKind::Repr { reprs } => {
                     for (r, span) in reprs {
                         if let ReprAttr::ReprEmpty = r {
                             self.tcx.emit_node_span_lint(
@@ -2663,7 +2665,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_rustc_pub_transparent(&self, attr_span: Span, span: Span, attrs: &[Attribute]) {
-        if !find_attr!(attrs, AttributeKind::Repr(r) => r.iter().any(|(r, _)| r == &ReprAttr::ReprTransparent))
+        if !find_attr!(attrs, AttributeKind::Repr{reprs} => reprs.iter().any(|(r, _)| r == &ReprAttr::ReprTransparent))
             .unwrap_or(false)
         {
             self.dcx().emit_err(errors::RustcPubTransparent { span, attr_span });
@@ -2679,7 +2681,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     ) {
         match (
             target,
-            find_attr!(attrs, AttributeKind::Inline(InlineAttr::Force { attr_span, .. }, _) => *attr_span),
+            find_attr!(attrs, AttributeKind::Inline{kind: InlineAttr::Force {.. }, span} => *span),
         ) {
             (Target::Closure, None) => {
                 let is_coro = matches!(
@@ -2695,7 +2697,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
                 if let Some(attr_span) = find_attr!(
                     self.tcx.get_all_attrs(parent_did),
-                    AttributeKind::Inline(InlineAttr::Force { attr_span, .. }, _) => *attr_span
+                    AttributeKind::Inline{kind: InlineAttr::Force { .. }, span} => *span
                 ) && is_coro
                 {
                     self.dcx()
@@ -2883,8 +2885,8 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             ATTRS_TO_CHECK.iter().find(|attr_to_check| attr.has_name(**attr_to_check))
         {
             (attr.span(), *a)
-        } else if let Attribute::Parsed(AttributeKind::Repr(r)) = attr {
-            (r.first().unwrap().1, sym::repr)
+        } else if let Attribute::Parsed(AttributeKind::Repr { reprs }) = attr {
+            (reprs.first().unwrap().1, sym::repr)
         } else {
             continue;
         };
@@ -2925,7 +2927,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
 fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) {
     let attrs = tcx.hir_attrs(item.hir_id());
 
-    if let Some(attr_span) = find_attr!(attrs, AttributeKind::Inline(i, span) if !matches!(i, InlineAttr::Force{..}) => *span)
+    if let Some(attr_span) = find_attr!(attrs, AttributeKind::Inline{kind, span} if !matches!(kind, InlineAttr::Force{..}) => *span)
     {
         tcx.dcx().emit_err(errors::NonExportedMacroInvalidAttrs { attr_span });
     }

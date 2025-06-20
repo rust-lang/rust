@@ -442,7 +442,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
     let inline_span;
     (codegen_fn_attrs.inline, inline_span) = if let Some((inline_attr, span)) =
-        find_attr!(attrs, AttributeKind::Inline(i, span) => (*i, *span))
+        find_attr!(attrs, AttributeKind::Inline{kind, span} => (*kind, *span))
     {
         (inline_attr, Some(span))
     } else {
@@ -456,8 +456,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         codegen_fn_attrs.inline = InlineAttr::Never;
     }
 
-    codegen_fn_attrs.optimize =
-        find_attr!(attrs, AttributeKind::Optimize(i, _) => *i).unwrap_or(OptimizeAttr::Default);
+    codegen_fn_attrs.optimize = find_attr!(attrs, AttributeKind::Optimize{kind, ..} => *kind)
+        .unwrap_or(OptimizeAttr::Default);
 
     // #73631: closures inherit `#[target_feature]` annotations
     //

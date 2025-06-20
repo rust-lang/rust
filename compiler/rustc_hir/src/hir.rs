@@ -1297,12 +1297,33 @@ impl AttributeExt for Attribute {
 
     #[inline]
     fn span(&self) -> Span {
+        use AttributeKind::*;
+
+        fn combine(spans: impl IntoIterator<Item = Span>) -> Span {
+            spans.into_iter().reduce(|a, b| a.to(b)).unwrap_or(DUMMY_SP)
+        }
+
         match &self {
             Attribute::Unparsed(u) => u.span,
             // FIXME: should not be needed anymore when all attrs are parsed
-            Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
-            a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
+            Attribute::Parsed(p) => match p {
+                Confusables { first_span: span, .. }
+                | ConstStability { span, .. }
+                | Stability { span, .. }
+                | ConstStabilityIndirect { span }
+                | Deprecation { span, .. }
+                | DocComment { span, .. }
+                | Align { span, .. }
+                | AsPtr { span }
+                | Inline { span, .. }
+                | BodyStability { span, .. }
+                | MacroTransparency { span, .. }
+                | Optimize { span, .. } => *span,
+                AllowConstFnUnstable { features, .. } | AllowInternalUnstable { features, .. } => {
+                    combine(features.iter().map(|(_, s)| s).copied())
+                }
+                Repr { reprs } => combine(reprs.iter().map(|(_, s)| s).copied()),
+            },
         }
     }
 
