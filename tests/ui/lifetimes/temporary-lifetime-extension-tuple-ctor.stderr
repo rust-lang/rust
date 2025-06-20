@@ -6,7 +6,7 @@ LL |     let g = some(&temp());
    |                   |
    |                   creates a temporary value which is freed while still in use
 LL |     println!("{a:?} {b:?} {c:?} {d:?} {e:?} {f:?} {g:?}");
-   |                                                   ----- borrow later used here
+   |                                                    - borrow later used here
    |
 help: consider using a `let` binding to create a longer lived value
    |

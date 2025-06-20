@@ -1,5 +1,5 @@
-//@ needs-target-std
-//
+//@ ignore-cross-compile
+
 // Test that we exit with the correct exit code for successful / unsuccessful / ICE compilations
 
 use run_make_support::{rustc, rustdoc};

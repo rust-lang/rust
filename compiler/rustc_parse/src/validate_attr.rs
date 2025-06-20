@@ -289,6 +289,7 @@ fn emit_malformed_attribute(
             | sym::rustc_force_inline
             | sym::rustc_confusables
             | sym::repr
+            | sym::align
             | sym::deprecated
     ) {
         return;

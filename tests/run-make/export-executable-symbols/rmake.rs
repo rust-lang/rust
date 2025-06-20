@@ -8,9 +8,8 @@
 // Reason: the export-executable-symbols flag only works on Unix
 // due to hardcoded platform-specific implementation
 // (See #85673)
-//@ ignore-wasm32
-//@ ignore-wasm64
-//@ needs-target-std
+//@ ignore-cross-compile
+//@ ignore-wasm
 
 use run_make_support::{bin_name, llvm_readobj, rustc};
 

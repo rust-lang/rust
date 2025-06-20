@@ -1316,8 +1316,17 @@ impl PathBuf {
             need_sep = false
         }
 
+        let need_clear = if cfg!(target_os = "cygwin") {
+            // If path is absolute and its prefix is none, it is like `/foo`,
+            // and will be handled below.
+            path.prefix().is_some()
+        } else {
+            // On Unix: prefix is always None.
+            path.is_absolute() || path.prefix().is_some()
+        };
+
         // absolute `path` replaces `self`
-        if path.is_absolute() || path.prefix().is_some() {
+        if need_clear {
             self.inner.truncate(0);
 
         // verbatim paths need . and .. removed
@@ -3643,6 +3652,11 @@ impl Error for NormalizeError {}
 /// paths, this is currently equivalent to calling
 /// [`GetFullPathNameW`][windows-path].
 ///
+/// On Cygwin, this is currently equivalent to calling [`cygwin_conv_path`][cygwin-path]
+/// with mode `CCP_WIN_A_TO_POSIX`, and then being processed like other POSIX platforms.
+/// If a Windows path is given, it will be converted to an absolute POSIX path without
+/// keeping `..`.
+///
 /// Note that these [may change in the future][changes].
 ///
 /// # Errors
@@ -3700,6 +3714,7 @@ impl Error for NormalizeError {}
 /// [changes]: io#platform-specific-behavior
 /// [posix-semantics]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
 /// [windows-path]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamew
+/// [cygwin-path]: https://cygwin.com/cygwin-api/func-cygwin-conv-path.html
 #[stable(feature = "absolute_path", since = "1.79.0")]
 pub fn absolute<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     let path = path.as_ref();

@@ -182,6 +182,9 @@ impl Deprecation {
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum AttributeKind {
     // tidy-alphabetical-start
+    /// Represents `#[align(N)]`.
+    Align { align: Align, span: Span },
+
     /// Represents `#[rustc_allow_const_fn_unstable]`.
     AllowConstFnUnstable(ThinVec<Symbol>),
 

@@ -6,7 +6,7 @@
 // Outputs should be identical.
 // See https://github.com/rust-lang/rust/issues/34902
 
-//@ needs-target-std
+//@ ignore-cross-compile
 //@ ignore-windows
 // Reasons:
 // 1. The object files are reproducible, but their paths are not, which causes

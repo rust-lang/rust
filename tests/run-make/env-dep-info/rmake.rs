@@ -1,5 +1,7 @@
-//@ needs-target-std
-//
+//@ ignore-cross-compile
+//@ needs-crate-type: proc-macro
+//@ ignore-musl (FIXME: can't find `-lunwind`)
+
 // Inside dep-info emit files, #71858 made it so all accessed environment
 // variables are usefully printed. This test checks that this feature works
 // as intended by checking if the environment variables used in compilation

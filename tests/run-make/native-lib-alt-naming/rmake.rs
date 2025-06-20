@@ -1,9 +1,7 @@
-//@ needs-target-std
-//
+//@ ignore-cross-compile
+
 // On MSVC the alternative naming format for static libraries (`libfoo.a`) is accepted in addition
 // to the default format (`foo.lib`).
-
-//REMOVE@ only-msvc
 
 use run_make_support::rustc;
 

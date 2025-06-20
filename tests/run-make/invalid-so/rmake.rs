@@ -1,5 +1,7 @@
 //@ needs-target-std
-//
+//@ needs-crate-type: dylib
+//@ needs-dynamic-linking
+
 // When a fake library was given to the compiler, it would
 // result in an obscure and unhelpful error message. This test
 // creates a false "foo" dylib, and checks that the standard error

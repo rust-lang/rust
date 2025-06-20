@@ -7,8 +7,7 @@
 // See https://github.com/rust-lang/rust/pull/51946
 
 //@ needs-target-std
-//@ ignore-windows
-//@ ignore-apple
+//@ only-elf
 // Reason: this feature only works when the output object format is ELF.
 // This won't be the case on Windows/OSX - for example, OSX produces a Mach-O binary.
 
