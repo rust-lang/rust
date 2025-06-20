@@ -6,7 +6,6 @@ use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_attr_data_structures::{
     AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr, find_attr,
 };
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
@@ -18,13 +17,15 @@ use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self as ty, TyCtxt};
+use rustc_session::lint;
 use rustc_session::parse::feature_err;
-use rustc_session::{Session, lint};
 use rustc_span::{Ident, Span, sym};
 use rustc_target::spec::SanitizerSet;
 
 use crate::errors;
-use crate::target_features::{check_target_feature_trait_unsafe, from_target_feature_attr};
+use crate::target_features::{
+    check_target_feature_trait_unsafe, check_tied_features, from_target_feature_attr,
+};
 
 fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     use rustc_middle::mir::mono::Linkage::*;
@@ -588,25 +589,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     }
 
     codegen_fn_attrs
-}
-
-/// Given a map from target_features to whether they are enabled or disabled, ensure only valid
-/// combinations are allowed.
-pub fn check_tied_features(
-    sess: &Session,
-    features: &FxHashMap<&str, bool>,
-) -> Option<&'static [&'static str]> {
-    if !features.is_empty() {
-        for tied in sess.target.tied_target_features() {
-            // Tied features must be set to the same value, or not set at all
-            let mut tied_iter = tied.iter();
-            let enabled = features.get(tied_iter.next().unwrap());
-            if tied_iter.any(|f| enabled != features.get(f)) {
-                return Some(tied);
-            }
-        }
-    }
-    None
 }
 
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller

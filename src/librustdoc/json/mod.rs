@@ -18,7 +18,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_session::features::StabilityExt;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustdoc_json_types as types;
 // It's important to use the FxHashMap from rustdoc_json_types here, instead of
@@ -148,7 +147,7 @@ fn target(sess: &rustc_session::Session) -> types::Target {
             .copied()
             .filter(|(_, stability, _)| {
                 // Describe only target features which the user can toggle
-                stability.is_toggle_permitted(sess).is_ok()
+                stability.toggle_allowed().is_ok()
             })
             .map(|(name, stability, implied_features)| {
                 types::TargetFeature {
@@ -164,7 +163,7 @@ fn target(sess: &rustc_session::Session) -> types::Target {
                             // Imply only target features which the user can toggle
                             feature_stability
                                 .get(name)
-                                .map(|stability| stability.is_toggle_permitted(sess).is_ok())
+                                .map(|stability| stability.toggle_allowed().is_ok())
                                 .unwrap_or(false)
                         })
                         .map(String::from)
