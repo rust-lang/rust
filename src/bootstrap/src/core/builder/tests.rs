@@ -1242,12 +1242,13 @@ mod staging {
     use crate::core::builder::tests::{
         TEST_TRIPLE_1, configure, configure_with_args, render_steps, run_build,
     };
-    use crate::utils::tests::ConfigBuilder;
+    use crate::utils::tests::{ConfigBuilder, TestCtx};
 
     #[test]
     fn build_compiler_stage_1() {
+        let ctx = TestCtx::new();
         insta::assert_snapshot!(
-            ConfigBuilder::build()
+            ctx.config("build")
                 .path("compiler")
                 .stage(1)
                 .get_steps(), @r"
