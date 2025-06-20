@@ -1,6 +1,5 @@
-//@ known-bug: #110395
-
 #![feature(const_trait_impl, const_ops)]
+//@ check-pass
 
 struct Int(i32);
 
