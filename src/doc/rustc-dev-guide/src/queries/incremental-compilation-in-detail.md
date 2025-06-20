@@ -1,4 +1,4 @@
-# Incremental Compilation in detail
+# Incremental compilation in detail
 
 <!-- toc -->
 
@@ -66,7 +66,7 @@ because it reads the up-to-date version of `Hir(bar)`. Also, we re-run
 `type_check_item(bar)` because result of `type_of(bar)` might have changed.
 
 
-## The Problem With The Basic Algorithm: False Positives
+## The problem with the basic algorithm: false positives
 
 If you read the previous paragraph carefully you'll notice that it says that
 `type_of(bar)` *might* have changed because one of its inputs has changed.
@@ -93,7 +93,7 @@ of examples like this and small changes to the input often potentially affect
 very large parts of the output binaries. As a consequence, we had to make the
 change detection system smarter and more accurate.
 
-## Improving Accuracy: The red-green Algorithm
+## Improving accuracy: the red-green algorithm
 
 The "false positives" problem can be solved by interleaving change detection
 and query re-evaluation. Instead of walking the graph all the way to the
@@ -191,7 +191,7 @@ then itself involve recursively invoking more queries, which can mean we come ba
 to the `try_mark_green()` algorithm for the dependencies recursively.
 
 
-## The Real World: How Persistence Makes Everything Complicated
+## The real world: how persistence makes everything complicated
 
 The sections above described the underlying algorithm for incremental
 compilation but because the compiler process exits after being finished and
@@ -258,7 +258,7 @@ the `LocalId`s within it are still the same.
 
 
 
-### Checking Query Results For Changes: HashStable And Fingerprints
+### Checking query results for changes: `HashStable` and `Fingerprint`s
 
 In order to do red-green-marking we often need to check if the result of a
 query has changed compared to the result it had during the previous
@@ -306,7 +306,7 @@ This approach works rather well but it's not without flaws:
   their stable equivalents while doing the hashing.
 
 
-### A Tale Of Two DepGraphs: The Old And The New
+### A tale of two `DepGraph`s: the old and the new
 
 The initial description of dependency tracking glosses over a few details
 that quickly become a head scratcher when actually trying to implement things.
@@ -344,7 +344,7 @@ new graph is serialized out to disk, alongside the query result cache, and can
 act as the previous dep-graph in a subsequent compilation session.
 
 
-### Didn't You Forget Something?: Cache Promotion
+### Didn't you forget something?: cache promotion
 
 The system described so far has a somewhat subtle property: If all inputs of a
 dep-node are green then the dep-node itself can be marked as green without
@@ -374,7 +374,7 @@ the result cache doesn't unnecessarily shrink again.
 
 
 
-# Incremental Compilation and the Compiler Backend
+# Incremental compilation and the compiler backend
 
 The compiler backend, the part involving LLVM, is using the query system but
 it is not implemented in terms of queries itself. As a consequence it does not
@@ -406,7 +406,7 @@ would save.
 
 
 
-## Query Modifiers
+## Query modifiers
 
 The query system allows for applying [modifiers][mod] to queries. These
 modifiers affect certain aspects of how the system treats the query with
@@ -472,7 +472,7 @@ respect to incremental compilation:
 [mod]: ../query.html#adding-a-new-kind-of-query
 
 
-## The Projection Query Pattern
+## The projection query pattern
 
 It's interesting to note that `eval_always` and `no_hash` can be used together
 in the so-called "projection query" pattern. It is often the case that there is
@@ -516,7 +516,7 @@ because we have the projections to take care of keeping things green as much
 as possible.
 
 
-# Shortcomings of the Current System
+# Shortcomings of the current system
 
 There are many things that still can be improved.
 
