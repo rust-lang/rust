@@ -453,21 +453,16 @@ where
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
-        let mut canonical_goal_evaluation =
-            goal_evaluation.new_canonical_goal_evaluation(canonical_goal);
-        let canonical_response = self.search_graph.evaluate_goal(
+        let canonical_result = self.search_graph.evaluate_goal(
             self.cx(),
             canonical_goal,
             self.step_kind_for_source(source),
-            &mut canonical_goal_evaluation,
+            &mut goal_evaluation,
         );
-        canonical_goal_evaluation.query_result(canonical_response);
-        goal_evaluation.canonical_goal_evaluation(canonical_goal_evaluation);
-        let response = match canonical_response {
-            Err(e) => {
-                self.inspect.goal_evaluation(goal_evaluation);
-                return Err(e);
-            }
+        goal_evaluation.query_result(canonical_result);
+        self.inspect.goal_evaluation(goal_evaluation);
+        let response = match canonical_result {
+            Err(e) => return Err(e),
             Ok(response) => response,
         };
 
@@ -476,7 +471,6 @@ where
 
         let (normalization_nested_goals, certainty) =
             self.instantiate_and_apply_query_response(goal.param_env, &orig_values, response);
-        self.inspect.goal_evaluation(goal_evaluation);
 
         // FIXME: We previously had an assert here that checked that recomputing
         // a goal after applying its constraints did not change its response.
