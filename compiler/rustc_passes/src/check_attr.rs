@@ -128,6 +128,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Inline(kind, attr_span)) => {
                     self.check_inline(hir_id, *attr_span, span, kind, target)
                 }
+                Attribute::Parsed(AttributeKind::Optimize(_, attr_span)) => {
+                    self.check_optimize(hir_id, *attr_span, span, target)
+                }
                 Attribute::Parsed(AttributeKind::AllowInternalUnstable(syms)) => self
                     .check_allow_internal_unstable(
                         hir_id,
@@ -167,7 +170,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_diagnostic_on_unimplemented(attr.span(), hir_id, target)
                         }
                         [sym::coverage, ..] => self.check_coverage(attr, span, target),
-                        [sym::optimize, ..] => self.check_optimize(hir_id, attr, span, target),
                         [sym::no_sanitize, ..] => {
                             self.check_no_sanitize(attr, span, target)
                         }
@@ -529,7 +531,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Checks that `#[optimize(..)]` is applied to a function/closure/method,
     /// or to an impl block or module.
-    fn check_optimize(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_optimize(&self, hir_id: HirId, attr_span: Span, span: Span, target: Target) {
         let is_valid = matches!(
             target,
             Target::Fn
@@ -538,7 +540,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         );
         if !is_valid {
             self.dcx().emit_err(errors::OptimizeInvalidTarget {
-                attr_span: attr.span(),
+                attr_span,
                 defn_span: span,
                 on_crate: hir_id == CRATE_HIR_ID,
             });

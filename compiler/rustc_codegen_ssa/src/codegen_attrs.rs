@@ -455,33 +455,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         codegen_fn_attrs.inline = InlineAttr::Never;
     }
 
-    codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::Default, |ia, attr| {
-        if !attr.has_name(sym::optimize) {
-            return ia;
-        }
-        if attr.is_word() {
-            tcx.dcx().emit_err(errors::ExpectedOneArgumentOptimize { span: attr.span() });
-            return ia;
-        }
-        let Some(ref items) = attr.meta_item_list() else {
-            return OptimizeAttr::Default;
-        };
-
-        let [item] = &items[..] else {
-            tcx.dcx().emit_err(errors::ExpectedOneArgumentOptimize { span: attr.span() });
-            return OptimizeAttr::Default;
-        };
-        if item.has_name(sym::size) {
-            OptimizeAttr::Size
-        } else if item.has_name(sym::speed) {
-            OptimizeAttr::Speed
-        } else if item.has_name(sym::none) {
-            OptimizeAttr::DoNotOptimize
-        } else {
-            tcx.dcx().emit_err(errors::InvalidArgumentOptimize { span: item.span() });
-            OptimizeAttr::Default
-        }
-    });
+    codegen_fn_attrs.optimize =
+        find_attr!(attrs, AttributeKind::Optimize(i, _) => *i).unwrap_or(OptimizeAttr::Default);
 
     // #73631: closures inherit `#[target_feature]` annotations
     //
