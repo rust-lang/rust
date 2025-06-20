@@ -21,7 +21,7 @@ use std::marker::PhantomData;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::data_structures::HashMap;
 
@@ -56,7 +56,7 @@ pub trait Cx: Copy {
     fn evaluation_is_concurrent(&self) -> bool;
 }
 
-pub trait Delegate {
+pub trait Delegate: Sized {
     type Cx: Cx;
     /// Whether to use the provisional cache. Set to `false` by a fuzzer when
     /// validating the search graph.
@@ -94,8 +94,8 @@ pub trait Delegate {
     ) -> bool;
     fn on_stack_overflow(
         cx: Self::Cx,
-        inspect: &mut Self::ProofTreeBuilder,
         input: <Self::Cx as Cx>::Input,
+        inspect: &mut Self::ProofTreeBuilder,
     ) -> <Self::Cx as Cx>::Result;
     fn on_fixpoint_overflow(
         cx: Self::Cx,
@@ -107,6 +107,13 @@ pub trait Delegate {
         cx: Self::Cx,
         for_input: <Self::Cx as Cx>::Input,
         from_result: <Self::Cx as Cx>::Result,
+    ) -> <Self::Cx as Cx>::Result;
+
+    fn compute_goal(
+        search_graph: &mut SearchGraph<Self>,
+        cx: Self::Cx,
+        input: <Self::Cx as Cx>::Input,
+        inspect: &mut Self::ProofTreeBuilder,
     ) -> <Self::Cx as Cx>::Result;
 }
 
@@ -589,15 +596,15 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
     /// Probably the most involved method of the whole solver.
     ///
-    /// Given some goal which is proven via the `prove_goal` closure, this
-    /// handles caching, overflow, and coinductive cycles.
-    pub fn with_new_goal(
+    /// While goals get computed via `D::compute_goal`, this function handles
+    /// caching, overflow, and cycles.
+    #[instrument(level = "debug", skip(self, cx, inspect), ret)]
+    pub fn evaluate_goal(
         &mut self,
         cx: X,
         input: X::Input,
         step_kind_from_parent: PathKind,
         inspect: &mut D::ProofTreeBuilder,
-        evaluate_goal: impl Fn(&mut Self, X, X::Input, &mut D::ProofTreeBuilder) -> X::Result + Copy,
     ) -> X::Result {
         let Some(available_depth) =
             AvailableDepth::allowed_depth_for_nested::<D>(self.root_depth, &self.stack)
@@ -666,7 +673,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         // must not be added to the global cache. Notably, this is the case for
         // trait solver cycles participants.
         let (evaluation_result, dep_node) =
-            cx.with_cached_task(|| self.evaluate_goal_in_task(cx, input, inspect, evaluate_goal));
+            cx.with_cached_task(|| self.evaluate_goal_in_task(cx, input, inspect));
 
         // We've finished computing the goal and have popped it from the stack,
         // lazily update its parent goal.
@@ -736,7 +743,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         }
 
         debug!("encountered stack overflow");
-        D::on_stack_overflow(cx, inspect, input)
+        D::on_stack_overflow(cx, input, inspect)
     }
 
     /// When reevaluating a goal with a changed provisional result, all provisional cache entry
@@ -1064,7 +1071,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         cx: X,
         input: X::Input,
         inspect: &mut D::ProofTreeBuilder,
-        evaluate_goal: impl Fn(&mut Self, X, X::Input, &mut D::ProofTreeBuilder) -> X::Result + Copy,
     ) -> EvaluationResult<X> {
         // We reset `encountered_overflow` each time we rerun this goal
         // but need to make sure we currently propagate it to the global
@@ -1073,7 +1079,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         let mut encountered_overflow = false;
         let mut i = 0;
         loop {
-            let result = evaluate_goal(self, cx, input, inspect);
+            let result = D::compute_goal(self, cx, input, inspect);
             let stack_entry = self.stack.pop();
             encountered_overflow |= stack_entry.encountered_overflow;
             debug_assert_eq!(stack_entry.input, input);
