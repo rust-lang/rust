@@ -9,6 +9,7 @@
 
 //@ only-x86_64
 //@ only-linux
+//@ ignore-cross-compile
 // Reason: This is a platform-independent issue, no need to waste time testing
 // everywhere.
 

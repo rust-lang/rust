@@ -1,4 +1,8 @@
-//@ needs-target-std
+//@ ignore-cross-compile
+
+// NOTE: `sdylib`'s platform support is basically that of `dylib`.
+//@ needs-crate-type: dylib
+
 use run_make_support::rustc;
 
 fn main() {

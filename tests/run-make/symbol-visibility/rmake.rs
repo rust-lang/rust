@@ -1,5 +1,7 @@
-//@ needs-target-std
-//
+//@ ignore-cross-compile
+//@ needs-crate-type: dylib, cdylib, proc-macro
+//@ needs-dynamic-linking
+
 // Dynamic libraries on Rust used to export a very high amount of symbols,
 // going as far as filling the output with mangled names and generic function
 // names. After the rework of #38117, this test checks that no mangled Rust symbols
