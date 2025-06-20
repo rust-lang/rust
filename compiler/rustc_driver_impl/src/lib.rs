@@ -38,6 +38,7 @@ use rustc_data_structures::profiling::{
 };
 use rustc_errors::emitter::stderr_destination;
 use rustc_errors::registry::Registry;
+use rustc_errors::translation::Translator;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
 // This avoids a false positive with `-Wunused_crate_dependencies`.
@@ -108,6 +109,10 @@ use crate::session_diagnostics::{
 };
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+
+pub fn default_translator() -> Translator {
+    Translator::with_fallback_bundle(DEFAULT_LOCALE_RESOURCES.to_vec(), false)
+}
 
 pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     // tidy-alphabetical-start
@@ -1413,11 +1418,10 @@ fn report_ice(
     extra_info: fn(&DiagCtxt),
     using_internal_features: &AtomicBool,
 ) {
-    let fallback_bundle =
-        rustc_errors::fallback_fluent_bundle(crate::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
+    let translator = default_translator();
     let emitter = Box::new(rustc_errors::emitter::HumanEmitter::new(
         stderr_destination(rustc_errors::ColorConfig::Auto),
-        fallback_bundle,
+        translator,
     ));
     let dcx = rustc_errors::DiagCtxt::new(emitter);
     let dcx = dcx.handle();

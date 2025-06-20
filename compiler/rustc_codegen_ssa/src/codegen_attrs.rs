@@ -4,7 +4,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_attr_data_structures::{
-    AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr, find_attr,
+    AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr, ReprAttr, find_attr,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -110,8 +110,20 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
         };
 
-        if let hir::Attribute::Parsed(AttributeKind::Align { align, .. }) = attr {
-            codegen_fn_attrs.alignment = Some(*align);
+        if let hir::Attribute::Parsed(p) = attr {
+            match p {
+                AttributeKind::Repr(reprs) => {
+                    codegen_fn_attrs.alignment = reprs
+                        .iter()
+                        .filter_map(
+                            |(r, _)| if let ReprAttr::ReprAlign(x) = r { Some(*x) } else { None },
+                        )
+                        .max();
+                }
+                AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
+                AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
+                _ => {}
+            }
         }
 
         let Some(Ident { name, .. }) = attr.ident() else {
@@ -119,7 +131,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         };
 
         match name {
-            sym::cold => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
             sym::rustc_allocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR,
             sym::ffi_pure => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
             sym::ffi_const => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST,

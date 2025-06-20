@@ -748,40 +748,10 @@ impl DiagCtxt {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
-    pub fn make_silent(&self, fatal_note: Option<String>, emit_fatal_diagnostic: bool) {
-        // An empty type that implements `Emitter` to temporarily swap in place of the real one,
-        // which will be used in constructing its replacement.
-        struct FalseEmitter;
-
-        impl Emitter for FalseEmitter {
-            fn emit_diagnostic(&mut self, _: DiagInner, _: &Registry) {
-                unimplemented!("false emitter must only used during `make_silent`")
-            }
-
-            fn source_map(&self) -> Option<&SourceMap> {
-                unimplemented!("false emitter must only used during `make_silent`")
-            }
-        }
-
-        impl translation::Translate for FalseEmitter {
-            fn fluent_bundle(&self) -> Option<&FluentBundle> {
-                unimplemented!("false emitter must only used during `make_silent`")
-            }
-
-            fn fallback_fluent_bundle(&self) -> &FluentBundle {
-                unimplemented!("false emitter must only used during `make_silent`")
-            }
-        }
-
+    pub fn make_silent(&self) {
         let mut inner = self.inner.borrow_mut();
-        let mut prev_emitter = Box::new(FalseEmitter) as Box<dyn Emitter + DynSend>;
-        std::mem::swap(&mut inner.emitter, &mut prev_emitter);
-        let new_emitter = Box::new(emitter::SilentEmitter {
-            fatal_emitter: prev_emitter,
-            fatal_note,
-            emit_fatal_diagnostic,
-        });
-        inner.emitter = new_emitter;
+        let translator = inner.emitter.translator().clone();
+        inner.emitter = Box::new(emitter::SilentEmitter { translator });
     }
 
     pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
@@ -1771,7 +1741,12 @@ impl DiagCtxtInner {
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
         let args = crate::translation::to_fluent_args(args);
-        self.emitter.translate_message(&message, &args).map_err(Report::new).unwrap().to_string()
+        self.emitter
+            .translator()
+            .translate_message(&message, &args)
+            .map_err(Report::new)
+            .unwrap()
+            .to_string()
     }
 
     fn eagerly_translate_for_subdiag(

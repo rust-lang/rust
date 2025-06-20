@@ -16,7 +16,6 @@ use rustdoc_json_types::*;
 use thin_vec::ThinVec;
 
 use crate::clean::{self, ItemId};
-use crate::formats::FormatRenderer;
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
 use crate::passes::collect_intra_doc_links::UrlFragment;
@@ -41,7 +40,7 @@ impl JsonRenderer<'_> {
             })
             .collect();
         let docs = item.opt_doc_value();
-        let attrs = item.attributes_and_repr(self.tcx, self.cache(), true);
+        let attrs = item.attributes_and_repr(self.tcx, &self.cache, true);
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);
         let clean::ItemInner { name, item_id, .. } = *item.inner;

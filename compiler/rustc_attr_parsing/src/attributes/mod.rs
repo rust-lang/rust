@@ -87,8 +87,19 @@ pub(crate) trait AttributeParser<S: Stage>: Default + 'static {
 /// [`SingleAttributeParser`] can only convert attributes one-to-one, and cannot combine multiple
 /// attributes together like is necessary for `#[stable()]` and `#[unstable()]` for example.
 pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
+    /// The single path of the attribute this parser accepts.
+    ///
+    /// If you need the parser to accept more than one path, use [`AttributeParser`] instead
     const PATH: &[Symbol];
+
+    /// Configures the precedence of attributes with the same `PATH` on a syntax node.
     const ATTRIBUTE_ORDER: AttributeOrder;
+
+    /// Configures what to do when when the same attribute is
+    /// applied more than once on the same syntax node.
+    ///
+    /// [`ATTRIBUTE_ORDER`](Self::ATTRIBUTE_ORDER) specified which one is assumed to be correct,
+    /// and this specified whether to, for example, warn or error on the other one.
     const ON_DUPLICATE: OnDuplicate<S>;
 
     /// The template this attribute parser should implement. Used for diagnostics.
@@ -98,6 +109,8 @@ pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind>;
 }
 
+/// Use in combination with [`SingleAttributeParser`].
+/// `Single<T: SingleAttributeParser>` implements [`AttributeParser`].
 pub(crate) struct Single<T: SingleAttributeParser<S>, S: Stage>(
     PhantomData<(S, T)>,
     Option<(AttributeKind, Span)>,
@@ -230,6 +243,10 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     const PATH: &[rustc_span::Symbol];
 
     type Item;
+    /// A function that converts individual items (of type [`Item`](Self::Item)) into the final attribute.
+    ///
+    /// For example, individual representations fomr `#[repr(...)]` attributes into an `AttributeKind::Repr(x)`,
+    ///  where `x` is a vec of these individual reprs.
     const CONVERT: ConvertFn<Self::Item>;
 
     /// The template this attribute parser should implement. Used for diagnostics.
@@ -242,6 +259,8 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     ) -> impl IntoIterator<Item = Self::Item> + 'c;
 }
 
+/// Use in combination with [`CombineAttributeParser`].
+/// `Combine<T: CombineAttributeParser>` implements [`AttributeParser`].
 pub(crate) struct Combine<T: CombineAttributeParser<S>, S: Stage>(
     PhantomData<(S, T)>,
     ThinVec<<T as CombineAttributeParser<S>>::Item>,
