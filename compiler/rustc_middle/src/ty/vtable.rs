@@ -106,8 +106,8 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     let size = layout.size.bytes();
     let align = layout.align.abi.bytes();
 
-    let ptr_size = tcx.data_layout.pointer_size;
-    let ptr_align = tcx.data_layout.pointer_align.abi;
+    let ptr_size = tcx.data_layout.pointer_size();
+    let ptr_align = tcx.data_layout.pointer_align().abi;
 
     let vtable_size = ptr_size * u64::try_from(vtable_entries.len()).unwrap();
     let mut vtable = Allocation::new(vtable_size, ptr_align, AllocInit::Uninit, ());

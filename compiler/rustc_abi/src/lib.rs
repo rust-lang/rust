@@ -47,6 +47,7 @@ use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
+use rustc_data_structures::fx::FxHashMap;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
 use rustc_hashes::Hash64;
@@ -221,6 +222,17 @@ impl ReprOptions {
 /// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
 pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
 
+/// Informations relative to a specific address space.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct AddressSpaceInfo {
+    /// The size of the bitwise representation of the pointer.
+    pointer_size: Size,
+    /// The alignment requirements for pointers in this address space.
+    pointer_align: AbiAlign,
+    /// The size of the index that used for address calculations on pointers in this address space.
+    pointer_index: Size,
+}
+
 /// Parsed [Data layout](https://llvm.org/docs/LangRef.html#data-layout)
 /// for a target, which contains everything needed to compute layouts.
 #[derive(Debug, PartialEq, Eq)]
@@ -236,12 +248,13 @@ pub struct TargetDataLayout {
     pub f32_align: AbiAlign,
     pub f64_align: AbiAlign,
     pub f128_align: AbiAlign,
-    pub pointer_size: Size,
-    pub pointer_align: AbiAlign,
     pub aggregate_align: AbiAlign,
 
     /// Alignments for vector types.
     pub vector_align: Vec<(Size, AbiAlign)>,
+
+    pub default_address_space: AddressSpace,
+    pub address_space_info: FxHashMap<AddressSpace, AddressSpaceInfo>,
 
     pub instruction_address_space: AddressSpace,
 
@@ -267,13 +280,20 @@ impl Default for TargetDataLayout {
             f32_align: AbiAlign::new(align(32)),
             f64_align: AbiAlign::new(align(64)),
             f128_align: AbiAlign::new(align(128)),
-            pointer_size: Size::from_bits(64),
-            pointer_align: AbiAlign::new(align(64)),
             aggregate_align: AbiAlign { abi: align(8) },
             vector_align: vec![
                 (Size::from_bits(64), AbiAlign::new(align(64))),
                 (Size::from_bits(128), AbiAlign::new(align(128))),
             ],
+            default_address_space: AddressSpace::ZERO,
+            address_space_info: FxHashMap::from_iter([(
+                AddressSpace::ZERO,
+                AddressSpaceInfo {
+                    pointer_size: Size::from_bits(64),
+                    pointer_align: AbiAlign::new(align(64)),
+                    pointer_index: Size::from_bits(64),
+                },
+            )]),
             instruction_address_space: AddressSpace::ZERO,
             c_enum_min_size: Integer::I32,
         }
@@ -288,6 +308,7 @@ pub enum TargetDataLayoutErrors<'a> {
     InconsistentTargetArchitecture { dl: &'a str, target: &'a str },
     InconsistentTargetPointerWidth { pointer_size: u64, target: u32 },
     InvalidBitsSize { err: String },
+    MissingAddressSpaceInfo { addr_space: AddressSpace },
 }
 
 impl TargetDataLayout {
@@ -298,6 +319,7 @@ impl TargetDataLayout {
     /// determined from llvm string.
     pub fn parse_from_llvm_datalayout_string<'a>(
         input: &'a str,
+        default_address_space: AddressSpace,
     ) -> Result<TargetDataLayout, TargetDataLayoutErrors<'a>> {
         // Parse an address space index from a string.
         let parse_address_space = |s: &'a str, cause: &'a str| {
@@ -334,6 +356,8 @@ impl TargetDataLayout {
         };
 
         let mut dl = TargetDataLayout::default();
+        dl.default_address_space = default_address_space;
+
         let mut i128_align_src = 64;
         for spec in input.split('-') {
             let spec_parts = spec.split(':').collect::<Vec<_>>();
@@ -349,13 +373,48 @@ impl TargetDataLayout {
                 ["f32", a @ ..] => dl.f32_align = parse_align(a, "f32")?,
                 ["f64", a @ ..] => dl.f64_align = parse_align(a, "f64")?,
                 ["f128", a @ ..] => dl.f128_align = parse_align(a, "f128")?,
-                // FIXME(erikdesjardins): we should be parsing nonzero address spaces
-                // this will require replacing TargetDataLayout::{pointer_size,pointer_align}
-                // with e.g. `fn pointer_size_in(AddressSpace)`
-                [p @ "p", s, a @ ..] | [p @ "p0", s, a @ ..] => {
-                    dl.pointer_size = parse_size(s, p)?;
-                    dl.pointer_align = parse_align(a, p)?;
+                [p, s, a @ ..] if p.starts_with("p") => {
+                    let p = p.strip_prefix(char::is_alphabetic).unwrap_or_default();
+
+                    let addr_space = if !p.is_empty() {
+                        parse_address_space(p, "p")?
+                    } else {
+                        AddressSpace::ZERO
+                    };
+
+                    let pointer_size = parse_size(s, p)?;
+                    let info = AddressSpaceInfo {
+                        pointer_index: pointer_size,
+                        pointer_size,
+                        pointer_align: parse_align(a, p)?,
+                    };
+
+                    dl.address_space_info
+                        .entry(addr_space)
+                        .and_modify(|v| *v = info)
+                        .or_insert(info);
                 }
+                [p, s, _pr, i, a @ ..] if p.starts_with("p") => {
+                    let p = p.strip_prefix(char::is_alphabetic).unwrap_or_default();
+
+                    let addr_space = if !p.is_empty() {
+                        parse_address_space(p, "p")?
+                    } else {
+                        AddressSpace::ZERO
+                    };
+
+                    let info = AddressSpaceInfo {
+                        pointer_align: parse_align(a, p)?,
+                        pointer_size: parse_size(s, p)?,
+                        pointer_index: parse_size(i, p)?,
+                    };
+
+                    dl.address_space_info
+                        .entry(addr_space)
+                        .and_modify(|v| *v = info)
+                        .or_insert(info);
+                }
+
                 [s, a @ ..] if s.starts_with('i') => {
                     let Ok(bits) = s[1..].parse::<u64>() else {
                         parse_size(&s[1..], "i")?; // For the user error.
@@ -390,7 +449,39 @@ impl TargetDataLayout {
                 _ => {} // Ignore everything else.
             }
         }
+
+        if !dl.address_space_info.contains_key(&default_address_space) {
+            return Err(TargetDataLayoutErrors::MissingAddressSpaceInfo {
+                addr_space: default_address_space,
+            });
+        }
+
+        // Inherit, if not given, address space informations for specific LLVM elements from the
+        // default data address space.
+
+        if !dl.address_space_info.contains_key(&dl.instruction_address_space) {
+            dl.address_space_info.insert(
+                dl.instruction_address_space,
+                dl.address_space_info.get(&default_address_space).unwrap().clone(),
+            );
+        }
+
         Ok(dl)
+    }
+
+    /// Returns **exclusive** upper bound on object size in bytes, in the default data address
+    /// space.
+    ///
+    /// The theoretical maximum object size is defined as the maximum positive `isize` value.
+    /// This ensures that the `offset` semantics remain well-defined by allowing it to correctly
+    /// index every address within an object along with one byte past the end, along with allowing
+    /// `isize` to store the difference between any two pointers into an object.
+    ///
+    /// LLVM uses a 64-bit integer to represent object size in *bits*, but we care only for bytes,
+    /// so we adopt such a more-constrained size bound due to its technical limitations.
+    #[inline]
+    pub fn obj_size_bound(&self) -> u64 {
+        self.obj_size_bound_in(self.default_address_space)
     }
 
     /// Returns **exclusive** upper bound on object size in bytes.
@@ -403,8 +494,8 @@ impl TargetDataLayout {
     /// LLVM uses a 64-bit integer to represent object size in *bits*, but we care only for bytes,
     /// so we adopt such a more-constrained size bound due to its technical limitations.
     #[inline]
-    pub fn obj_size_bound(&self) -> u64 {
-        match self.pointer_size.bits() {
+    pub fn obj_size_bound_in(&self, address_space: AddressSpace) -> u64 {
+        match self.pointer_size_in(address_space).bits() {
             16 => 1 << 15,
             32 => 1 << 31,
             64 => 1 << 61,
@@ -414,8 +505,13 @@ impl TargetDataLayout {
 
     #[inline]
     pub fn ptr_sized_integer(&self) -> Integer {
+        self.ptr_sized_integer_in(self.default_address_space)
+    }
+
+    #[inline]
+    pub fn ptr_sized_integer_in(&self, address_space: AddressSpace) -> Integer {
         use Integer::*;
-        match self.pointer_size.bits() {
+        match self.pointer_index_in(address_space).bits() {
             16 => I16,
             32 => I32,
             64 => I64,
@@ -438,6 +534,54 @@ impl TargetDataLayout {
         self.cabi_vector_align(vec_size).unwrap_or(AbiAlign::new(
             Align::from_bytes(vec_size.bytes().next_power_of_two()).unwrap(),
         ))
+    }
+
+    /// Get the pointer size in the default data address space.
+    #[inline]
+    pub fn pointer_size(&self) -> Size {
+        self.pointer_size_in(self.default_address_space)
+    }
+
+    /// Get the pointer size in a specific address space.
+    #[inline]
+    pub fn pointer_size_in(&self, c: AddressSpace) -> Size {
+        if let Some(c) = self.address_space_info.get(&c) {
+            c.pointer_size
+        } else {
+            panic!("Use of unknown address space {c:?}");
+        }
+    }
+
+    /// Get the pointer index in the default data address space.
+    #[inline]
+    pub fn pointer_index(&self) -> Size {
+        self.pointer_index_in(self.default_address_space)
+    }
+
+    /// Get the pointer index in a specific address space.
+    #[inline]
+    pub fn pointer_index_in(&self, c: AddressSpace) -> Size {
+        if let Some(c) = self.address_space_info.get(&c) {
+            c.pointer_index
+        } else {
+            panic!("Use of unknown address space {c:?}");
+        }
+    }
+
+    /// Get the pointer alignment in the default data address space.
+    #[inline]
+    pub fn pointer_align(&self) -> AbiAlign {
+        self.pointer_align_in(self.default_address_space)
+    }
+
+    /// Get the pointer alignment in a specific address space.
+    #[inline]
+    pub fn pointer_align_in(&self, c: AddressSpace) -> AbiAlign {
+        if let Some(c) = self.address_space_info.get(&c) {
+            c.pointer_align
+        } else {
+            panic!("Use of unknown address space {c:?}");
+        }
     }
 }
 
@@ -1104,7 +1248,7 @@ impl Primitive {
             // FIXME(erikdesjardins): ignoring address space is technically wrong, pointers in
             // different address spaces can have different sizes
             // (but TargetDataLayout doesn't currently parse that part of the DL string)
-            Pointer(_) => dl.pointer_size,
+            Pointer(a) => dl.pointer_size_in(a),
         }
     }
 
@@ -1118,7 +1262,7 @@ impl Primitive {
             // FIXME(erikdesjardins): ignoring address space is technically wrong, pointers in
             // different address spaces can have different alignments
             // (but TargetDataLayout doesn't currently parse that part of the DL string)
-            Pointer(_) => dl.pointer_align,
+            Pointer(a) => dl.pointer_align_in(a),
         }
     }
 }

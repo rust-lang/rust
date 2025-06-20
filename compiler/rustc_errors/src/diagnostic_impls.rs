@@ -374,6 +374,10 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetDataLayoutErrors<'_> {
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
                 Diag::new(dcx, level, fluent::errors_target_invalid_bits_size).with_arg("err", err)
             }
+            TargetDataLayoutErrors::MissingAddressSpaceInfo { addr_space } => {
+                Diag::new(dcx, level, fluent::errors_target_missing_addr_space_info)
+                    .with_arg("addr_space", addr_space.0)
+            }
         }
     }
 }

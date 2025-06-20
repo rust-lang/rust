@@ -71,7 +71,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
         let adjusted_start = Size::from_bytes(
-            range.start.bytes().saturating_sub(cx.data_layout().pointer_size.bytes() - 1),
+            range.start.bytes().saturating_sub(cx.data_layout().pointer_index().bytes() - 1),
         );
         adjusted_start..range.end()
     }
@@ -142,7 +142,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
     }
 
     pub fn insert_ptr(&mut self, offset: Size, prov: Prov, cx: &impl HasDataLayout) {
-        debug_assert!(self.range_empty(alloc_range(offset, cx.data_layout().pointer_size), cx));
+        debug_assert!(self.range_empty(alloc_range(offset, cx.data_layout().pointer_size()), cx));
         self.ptrs.insert(offset, prov);
     }
 
@@ -174,7 +174,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             let provenance = self.range_ptrs_get(range, cx);
             (
                 provenance.first().unwrap().0,
-                provenance.last().unwrap().0 + cx.data_layout().pointer_size,
+                provenance.last().unwrap().0 + cx.data_layout().pointer_index(),
             )
         };
 
@@ -192,7 +192,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             }
         }
         if last > end {
-            let begin_of_last = last - cx.data_layout().pointer_size;
+            let begin_of_last = last - cx.data_layout().pointer_index();
             if !Prov::OFFSET_IS_ADDR {
                 // We can't split up the provenance into less than a pointer.
                 return Err(AllocError::OverwritePartialPointer(begin_of_last));
@@ -255,7 +255,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             // shift offsets from source allocation to destination allocation
             (offset - src.start) + dest_offset // `Size` operations
         };
-        let ptr_size = cx.data_layout().pointer_size;
+        let ptr_size = cx.data_layout().pointer_size();
 
         // # Pointer-sized provenances
         // Get the provenances that are entirely within this range.

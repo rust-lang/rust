@@ -296,7 +296,7 @@ pub(crate) mod rustc {
             }
 
             let target = cx.data_layout();
-            let pointer_size = target.pointer_size;
+            let pointer_size = target.pointer_size();
 
             match ty.kind() {
                 ty::Bool => Ok(Self::bool()),

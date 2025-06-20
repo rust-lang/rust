@@ -127,7 +127,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { attrs, meta_attrs: None, on_stack } => {
                 if on_stack {
                     // Abi requires aligning struct size to pointer size
-                    let size = self.layout.size.align_to(tcx.data_layout.pointer_align.abi);
+                    let size = self.layout.size.align_to(tcx.data_layout.pointer_align().abi);
                     let size = u32::try_from(size.bytes()).unwrap();
                     smallvec![apply_attrs_to_abi_param(
                         AbiParam::special(pointer_ty(tcx), ArgumentPurpose::StructArgument(size),),
