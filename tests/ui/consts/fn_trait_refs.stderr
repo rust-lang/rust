@@ -4,12 +4,6 @@ error[E0635]: unknown feature `const_fn_trait_ref_impls`
 LL | #![feature(const_fn_trait_ref_impls)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0635]: unknown feature `const_cmp`
-  --> $DIR/fn_trait_refs.rs:7:12
-   |
-LL | #![feature(const_cmp)]
-   |            ^^^^^^^^^
-
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:14:8
    |
@@ -155,21 +149,17 @@ note: `FnMut` can't be used with `~const` because it isn't annotated with `#[con
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0015]: cannot call non-const operator in constants
+error[E0277]: the trait bound `(i32, i32, i32): const PartialEq` is not satisfied
   --> $DIR/fn_trait_refs.rs:71:17
    |
 LL |         assert!(test_one == (1, 1, 1));
    |                 ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot call non-const operator in constants
+error[E0277]: the trait bound `(i32, i32): const PartialEq` is not satisfied
   --> $DIR/fn_trait_refs.rs:74:17
    |
 LL |         assert!(test_two == (2, 2));
    |                 ^^^^^^^^^^^^^^^^^^
-   |
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/fn_trait_refs.rs:16:5
@@ -195,7 +185,7 @@ LL |     f()
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 22 previous errors
+error: aborting due to 21 previous errors
 
-Some errors have detailed explanations: E0015, E0635.
+Some errors have detailed explanations: E0015, E0277, E0635.
 For more information about an error, try `rustc --explain E0015`.

@@ -1,5 +1,4 @@
-//@ known-bug: #110395
-// FIXME(const_trait_impl) check-pass
+//@ check-pass
 
 #![feature(derive_const)]
 #![feature(const_trait_impl)]
