@@ -854,13 +854,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     //
                     // Note: we don't not consider a feature to be enabled
                     // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
-                    if (!self.tcx().features().staged_api() && self.tcx().features().enabled(symbol))
-                        || (self.infcx.typing_mode() == TypingMode::PostAnalysis) {
-                         return Ok(EvaluatedToOk);
+                    if (!self.tcx().features().staged_api()
+                        && self.tcx().features().enabled(symbol))
+                        || (self.infcx.typing_mode() == TypingMode::PostAnalysis)
+                    {
+                        return Ok(EvaluatedToOk);
                     } else {
-                         return Ok(EvaluatedToAmbig);
+                        return Ok(EvaluatedToAmbig);
                     }
-
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
