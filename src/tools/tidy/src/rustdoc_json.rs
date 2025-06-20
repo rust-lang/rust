@@ -1,18 +1,20 @@
 //! Tidy check to ensure that `FORMAT_VERSION` was correctly updated if `rustdoc-json-types` was
 //! updated as well.
 
+use std::ffi::OsStr;
+use std::path::Path;
 use std::process::Command;
 
 use build_helper::ci::CiEnv;
 use build_helper::git::{GitConfig, get_closest_upstream_commit};
 use build_helper::stage0_parser::parse_stage0_file;
 
-fn git_diff(base_commit: &str, extra_arg: &str) -> Option<String> {
+fn git_diff<S: AsRef<OsStr>>(base_commit: &str, extra_arg: S) -> Option<String> {
     let output = Command::new("git").arg("diff").arg(base_commit).arg(extra_arg).output().ok()?;
     Some(String::from_utf8_lossy(&output.stdout).into())
 }
 
-pub fn check(bad: &mut bool) {
+pub fn check(src_path: &Path, bad: &mut bool) {
     println!("Checking tidy rustdoc_json...");
     let stage0 = parse_stage0_file();
     let base_commit = match get_closest_upstream_commit(
@@ -26,13 +28,13 @@ pub fn check(bad: &mut bool) {
         Ok(Some(commit)) => commit,
         Ok(None) => {
             *bad = true;
-            eprintln!("No base commit found, skipping rustdoc_json check");
+            eprintln!("error: no base commit found for rustdoc_json check");
             return;
         }
         Err(error) => {
             *bad = true;
             eprintln!(
-                "Failed to retrieve base commit for rustdoc_json check because of `{error}`, skipping it"
+                "error: failed to retrieve base commit for rustdoc_json check because of `{error}`"
             );
             return;
         }
@@ -46,17 +48,18 @@ pub fn check(bad: &mut bool) {
                 .any(|line| line.starts_with("M") && line.contains("src/rustdoc-json-types"))
             {
                 // `rustdoc-json-types` was not modified so nothing more to check here.
+                println!("`rustdoc-json-types` was not modified.");
                 return;
             }
         }
         None => {
             *bad = true;
-            eprintln!("Failed to run `git diff`");
+            eprintln!("error: failed to run `git diff` in rustdoc_json check");
             return;
         }
     }
     // Then we check that if `FORMAT_VERSION` was updated, the `Latest feature:` was also updated.
-    match git_diff(&base_commit, "src/rustdoc-json-types") {
+    match git_diff(&base_commit, src_path.join("rustdoc-json-types")) {
         Some(output) => {
             let mut format_version_updated = false;
             let mut latest_feature_comment_updated = false;
@@ -71,19 +74,18 @@ pub fn check(bad: &mut bool) {
                 *bad = true;
                 if latest_feature_comment_updated {
                     eprintln!(
-                        "`Latest feature` comment was updated whereas `FORMAT_VERSION` wasn't"
+                        "error: `Latest feature` comment was updated whereas `FORMAT_VERSION` wasn't"
                     );
                 } else {
                     eprintln!(
-                        "`Latest feature` comment was not updated whereas `FORMAT_VERSION` was"
+                        "error: `Latest feature` comment was not updated whereas `FORMAT_VERSION` was"
                     );
                 }
             }
         }
         None => {
             *bad = true;
-            eprintln!("Failed to run `git diff`");
-            return;
+            eprintln!("error: failed to run `git diff` in rustdoc_json check");
         }
     }
 }
