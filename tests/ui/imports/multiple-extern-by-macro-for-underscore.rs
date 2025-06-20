@@ -1,4 +1,6 @@
-//@ edition: 2021
+//@ revisions: ed2015 ed2021
+//@[ed2015] edition: 2015
+//@[ed2021] edition: 2021
 
 // issue#128813
 
@@ -13,6 +15,6 @@ macro_rules! m {
 m!();
 
 fn main() {
-    use ::_;
+    use ::_; //[ed2015]~ ERROR: unresolved import `_`
     //~^ ERROR: expected identifier, found reserved identifier `_`
 }

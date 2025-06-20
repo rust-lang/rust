@@ -1,5 +1,5 @@
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/multiple-extern-by-macro-for-underscore.rs:16:11
+  --> $DIR/multiple-extern-by-macro-for-underscore.rs:18:11
    |
 LL |     use ::_;
    |           ^ expected identifier, found reserved identifier

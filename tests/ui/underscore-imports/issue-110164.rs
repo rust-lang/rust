@@ -1,3 +1,6 @@
+//@ revisions: ed2015 ed2021
+//@[ed2015] edition: 2015
+//@[ed2021] edition: 2021
 use self::*;
 //~^ ERROR unresolved import `self::*`
 use crate::*;

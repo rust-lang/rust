@@ -1,0 +1,15 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/multiple-extern-by-macro-for-underscore.rs:18:11
+   |
+LL |     use ::_;
+   |           ^ expected identifier, found reserved identifier
+
+error[E0432]: unresolved import `_`
+  --> $DIR/multiple-extern-by-macro-for-underscore.rs:18:9
+   |
+LL |     use ::_;
+   |         ^^^ no `_` in the root
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.
