@@ -73,7 +73,11 @@ pub unsafe trait Init<T: ?Sized + Pointee> {
     /// Writes a valid value of type `T` to `slot` or fails.
     ///
     /// If this call returns [`Ok`], then `slot` is guaranteed to contain a valid
-    /// value of type `T`. If `T` is unsized, then `slot` may be combined with
+    /// value of type `T`.
+    /// Otherwise, in case the result is an [`Err`], the implementation must guarantee
+    /// that the `slot` may be repurposed for future reuse.
+    ///
+    /// If `T` is unsized, then `slot` may be combined with
     /// the metadata to obtain a valid pointer to the value.
     ///
     /// Note that `slot` should be thought of as a `*mut T`. A unit type is used
