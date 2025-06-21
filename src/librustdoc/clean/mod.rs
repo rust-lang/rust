@@ -178,7 +178,7 @@ fn is_glob_import(tcx: TyCtxt<'_>, import_id: LocalDefId) -> bool {
 }
 
 fn generate_item_with_correct_attrs(
-    cx: &mut DocContext<'_>,
+    cx: &DocContext<'_>,
     kind: ItemKind,
     def_id: DefId,
     name: Symbol,
@@ -2622,7 +2622,7 @@ pub(crate) fn reexport_chain(
 
 /// Collect attributes from the whole import chain.
 fn get_all_import_attributes<'hir>(
-    cx: &mut DocContext<'hir>,
+    cx: &DocContext<'hir>,
     import_def_id: LocalDefId,
     target_def_id: DefId,
     is_inline: bool,
