@@ -882,8 +882,9 @@ pub struct VarBindingForm<'tcx> {
     pub opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
     /// The span of the pattern in which this variable was bound.
     pub pat_span: Span,
-    /// For each introduction place, record here the span and whether this was a shorthand pattern.
-    pub introductions: Vec<(Span, /* is_shorthand */ bool)>,
+    /// A binding can be introduced multiple times, with or patterns:
+    /// `Foo::A { x } | Foo::B { z: x }`. This stores information for each of those introductions.
+    pub introductions: Vec<VarBindingIntroduction>,
 }
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable)]
@@ -894,6 +895,14 @@ pub enum BindingForm<'tcx> {
     ImplicitSelf(ImplicitSelfKind),
     /// Reference used in a guard expression to ensure immutability.
     RefForGuard,
+}
+
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct VarBindingIntroduction {
+    /// Where this additional introduction happened.
+    pub span: Span,
+    /// Is that introduction a shorthand struct pattern, i.e. `Foo { x }`.
+    pub is_shorthand: bool,
 }
 
 mod binding_form_impl {

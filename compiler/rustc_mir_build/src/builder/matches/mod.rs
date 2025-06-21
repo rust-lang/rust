@@ -817,7 +817,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
         let local_info = self.local_decls[local_id].local_info.as_mut().unwrap_crate_local();
         if let LocalInfo::User(BindingForm::Var(var_info)) = &mut **local_info {
-            var_info.introductions.push((span, is_shorthand));
+            var_info.introductions.push(VarBindingIntroduction { span, is_shorthand });
         }
         Place::from(local_id)
     }
