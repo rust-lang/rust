@@ -1071,17 +1071,6 @@ pub(crate) struct FeaturePreviouslyDeclared<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_naked_functions_incompatible_attribute, code = E0736)]
-pub(crate) struct NakedFunctionIncompatibleAttribute {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(passes_naked_attribute)]
-    pub naked_span: Span,
-    pub attr: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_attr_only_in_functions)]
 pub(crate) struct AttrOnlyInFunctions {
     #[primary_span]

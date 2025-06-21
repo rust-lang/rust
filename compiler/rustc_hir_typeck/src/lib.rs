@@ -42,6 +42,7 @@ mod writeback;
 
 pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
@@ -55,8 +56,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
 use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
@@ -173,7 +174,7 @@ fn typeck_with_inspect<'tcx>(
                 .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
         );
 
-        if tcx.has_attr(def_id, sym::naked) {
+        if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Naked(..)) {
             naked_functions::typeck_naked_fn(tcx, def_id, body);
         }
 
