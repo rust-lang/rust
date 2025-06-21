@@ -330,4 +330,105 @@ $
 
 This feature is used heavily by Cargo; it will pass `--cap-lints allow` when
 compiling your dependencies, so that if they have any warnings, they do not
-pollute the output of your build.
+pollute the output of your build. However, note that `--cap-lints allow` does **not** override lints marked as `force-warn`.
+
+## Priority of lint level sources
+
+Rust allows setting lint levels (`allow`, `warn`, `deny`, `forbid`, `force-warn`) through various sources:
+
+- **Attributes**: `#[allow(...)]`, `#![deny(...)]`, etc.
+- **Command-line options**: `--cap-lints`, `--force-warn`, `-A`, `-W`, `-D`, `-F`
+
+Here’s how these different lint controls interact:
+
+1. [`--force-warn`](#force-warn) forces a lint to warning level, and takes precedence over attributes and all other CLI flags.
+
+   ```rust,compile_fail
+   #[forbid(unused_variables)]
+   fn main() {
+       let x = 42;
+   }
+   ```
+
+   Compiled with:
+
+   ```bash
+    $ rustc --force-warn unused_variables lib.rs
+    warning: unused variable: `x`
+      --> lib.rs:3:9
+      |
+    3 |     let x = 42;
+      |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+      |
+      = note: requested on the command line with `--force-warn unused-variables`
+
+    warning: 1 warning emitted
+   ```
+
+2. [`--cap-lints`](#capping-lints) sets the maximum level of a lint, and takes precedence over attributes as well as the `-D`, `-W`, and `-F` CLI flags.
+
+   ```rust,compile_fail
+   #[deny(unused_variables)]
+   fn main() {
+       let x = 42;
+   }
+   ```
+
+   Compiled with:
+
+   ```bash
+    $ rustc --cap-lints=warn lib.rs
+    warning: unused variable: `x`
+    --> test1.rs:3:9
+      |
+    3 |     let x = 42;
+      |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+      |
+    note: the lint level is defined here
+    --> test1.rs:1:8
+      |
+    1 | #[deny(unused_variables)]
+      |        ^^^^^^^^^^^^^^^^
+
+    warning: 1 warning emitted
+   ```
+
+3. [CLI level flags](#via-compiler-flag) take precedence over attributes.
+
+   The order of the flags matter; flags on the right take precedence over earlier flags.
+
+   ```rust
+   fn main() {
+       let x = 42;
+   }
+   ```
+
+   Compiled with:
+
+   ```bash
+    $ rustc -A unused_variables -D unused_variables lib.rs
+    error: unused variable: `x`
+    --> test1.rs:2:9
+      |
+    2 |     let x = 42;
+      |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+      |
+      = note: requested on the command line with `-D unused-variables`
+
+    error: aborting due to 1 previous error
+   ```
+
+4. Within the source, [attributes](#via-an-attribute) at a lower-level in the syntax tree take precedence over attributes at a higher level, or from a previous attribute on the same entity as listed in left-to-right source order.
+
+   ```rust
+   #![deny(unused_variables)]
+
+   #[allow(unused_variables)]
+   fn main() {
+       let x = 42; // Allow wins
+   }
+   ```
+
+   - The exception is once a lint is set to "forbid", it is an error to try to change its level except for `deny`, which is allowed inside a forbid context, but is ignored.
+
+In terms of priority, [lint groups](groups.md) are treated as-if they are expanded to a list of all of the lints they contain. The exception is the `warnings` group which ignores attribute and CLI order and applies to all lints that would otherwise warn within the entity.
