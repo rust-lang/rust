@@ -725,7 +725,7 @@ impl ToJson for LinkSelfContainedComponents {
 }
 
 bitflags::bitflags! {
-    /// The `-Z linker-features` components that can individually be enabled or disabled.
+    /// The `-C linker-features` components that can individually be enabled or disabled.
     ///
     /// They are feature flags intended to be a more flexible mechanism than linker flavors, and
     /// also to prevent a combinatorial explosion of flavors whenever a new linker feature is
@@ -756,11 +756,22 @@ bitflags::bitflags! {
 rustc_data_structures::external_bitflags_debug! { LinkerFeatures }
 
 impl LinkerFeatures {
-    /// Parses a single `-Z linker-features` well-known feature, not a set of flags.
+    /// Parses a single `-C linker-features` well-known feature, not a set of flags.
     pub fn from_str(s: &str) -> Option<LinkerFeatures> {
         Some(match s {
             "cc" => LinkerFeatures::CC,
             "lld" => LinkerFeatures::LLD,
+            _ => return None,
+        })
+    }
+
+    /// Return the linker feature name, as would be passed on the CLI.
+    ///
+    /// Returns `None` if the bitflags aren't a singular component (but a mix of multiple flags).
+    pub fn as_str(self) -> Option<&'static str> {
+        Some(match self {
+            LinkerFeatures::CC => "cc",
+            LinkerFeatures::LLD => "lld",
             _ => return None,
         })
     }
