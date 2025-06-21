@@ -1054,7 +1054,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 opt_ty_info: param.ty_span,
                                 opt_match_place: Some((None, span)),
                                 pat_span: span,
-                                introductions: vec![(span, false)],
+                                introductions: vec![VarBindingIntroduction {
+                                    span,
+                                    is_shorthand: false,
+                                }],
                             }))
                         };
                     self.var_indices.insert(var, LocalsForNode::One(local));
