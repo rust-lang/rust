@@ -1,4 +1,4 @@
-// should-fail
+//@ should-fail
 
 // The warning is reported with unknown line
 //@ compile-flags: -D raw_pointer_derive

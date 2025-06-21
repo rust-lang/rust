@@ -788,41 +788,70 @@ impl<'test> TestCx<'test> {
                 println!("{}", "--- reported but not expected (from JSON output) ---".green());
                 for error in &unexpected {
                     print(error);
+                    let mut suggestions = Vec::new();
                     for candidate in &not_found {
                         if error.msg.contains(&candidate.msg) {
                             let line_mismatch = candidate.line_num != error.line_num;
                             let kind_mismatch = candidate.kind != error.kind;
                             if kind_mismatch && line_mismatch {
-                                println!(
-                                    "  {} {} {} {}",
-                                    "expected with kind".red(),
-                                    candidate.kind,
-                                    "on line".red(),
-                                    line_str(candidate)
-                                );
+                                suggestions.push((
+                                    format!(
+                                        "  {} {} {} {}",
+                                        "expected with kind".red(),
+                                        candidate.kind,
+                                        "on line".red(),
+                                        line_str(candidate)
+                                    ),
+                                    0,
+                                ));
                             } else if kind_mismatch {
-                                println!("  {} {}", "expected with kind".red(), candidate.kind);
+                                suggestions.push((
+                                    format!("  {} {}", "expected with kind".red(), candidate.kind),
+                                    0,
+                                ));
                             } else {
-                                println!("  {} {}", "expected on line".red(), line_str(candidate));
+                                suggestions.push((
+                                    format!(
+                                        "  {} {}",
+                                        "expected on line".red(),
+                                        line_str(candidate)
+                                    ),
+                                    0,
+                                ));
                             }
                         } else if candidate.line_num.is_some()
                             && candidate.line_num == error.line_num
                         {
                             let kind_mismatch = candidate.kind != error.kind;
                             if kind_mismatch {
-                                println!(
-                                    "  {} {} {} {}",
-                                    "expected with kind".red(),
-                                    candidate.kind,
-                                    "with message".red(),
-                                    candidate.msg.cyan()
-                                );
+                                suggestions.push((
+                                    format!(
+                                        "  {} {} {} {}",
+                                        "expected with kind".red(),
+                                        candidate.kind,
+                                        "with message".red(),
+                                        candidate.msg.cyan()
+                                    ),
+                                    1,
+                                ));
                             } else {
-                                println!(
-                                    "  {} {}",
-                                    "expected with message".red(),
-                                    candidate.msg.cyan()
-                                );
+                                suggestions.push((
+                                    format!(
+                                        "  {} {}",
+                                        "expected with message".red(),
+                                        candidate.msg.cyan()
+                                    ),
+                                    1,
+                                ));
+                            }
+                        }
+                    }
+
+                    suggestions.sort_by_key(|(_, rank)| *rank);
+                    if let Some(&(_, top_rank)) = suggestions.first() {
+                        for (suggestion, rank) in suggestions {
+                            if rank == top_rank {
+                                println!("{suggestion}");
                             }
                         }
                     }
@@ -833,20 +862,31 @@ impl<'test> TestCx<'test> {
                 println!("{}", "--- expected but not reported (from test file) ---".red());
                 for error in &not_found {
                     print(error);
+                    let mut suggestions = Vec::new();
                     for candidate in unexpected.iter().chain(&unimportant) {
                         if candidate.msg.contains(&error.msg) {
                             let line_mismatch = candidate.line_num != error.line_num;
                             let kind_mismatch = candidate.kind != error.kind;
                             if kind_mismatch && line_mismatch {
-                                println!(
-                                    "  {} {} {} {}",
-                                    "reported with kind".green(),
-                                    candidate.kind,
-                                    "on line".green(),
-                                    line_str(candidate)
-                                );
+                                suggestions.push((
+                                    format!(
+                                        "  {} {} {} {}",
+                                        "reported with kind".green(),
+                                        candidate.kind,
+                                        "on line".green(),
+                                        line_str(candidate)
+                                    ),
+                                    0,
+                                ));
                             } else if kind_mismatch {
-                                println!("  {} {}", "reported with kind".green(), candidate.kind);
+                                suggestions.push((
+                                    format!(
+                                        "  {} {}",
+                                        "reported with kind".green(),
+                                        candidate.kind
+                                    ),
+                                    0,
+                                ));
                             } else {
                                 println!(
                                     "  {} {}",
@@ -859,19 +899,34 @@ impl<'test> TestCx<'test> {
                         {
                             let kind_mismatch = candidate.kind != error.kind;
                             if kind_mismatch {
-                                println!(
-                                    "  {} {} {} {}",
-                                    "reported with kind".green(),
-                                    candidate.kind,
-                                    "with message".green(),
-                                    candidate.msg.cyan()
-                                );
+                                suggestions.push((
+                                    format!(
+                                        "  {} {} {} {}",
+                                        "reported with kind".green(),
+                                        candidate.kind,
+                                        "with message".green(),
+                                        candidate.msg.cyan()
+                                    ),
+                                    1,
+                                ));
                             } else {
-                                println!(
-                                    "  {} {}",
-                                    "reported with message".green(),
-                                    candidate.msg.cyan()
-                                );
+                                suggestions.push((
+                                    format!(
+                                        "  {} {}",
+                                        "reported with message".green(),
+                                        candidate.msg.cyan()
+                                    ),
+                                    1,
+                                ));
+                            }
+                        }
+                    }
+
+                    suggestions.sort_by_key(|(_, rank)| *rank);
+                    if let Some(&(_, top_rank)) = suggestions.first() {
+                        for (suggestion, rank) in suggestions {
+                            if rank == top_rank {
+                                println!("{suggestion}");
                             }
                         }
                     }
