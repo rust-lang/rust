@@ -1,6 +1,5 @@
 //@ only-x86_64
 //@ compile-flags: -C no-prepopulate-passes
-#![feature(asm_goto)]
 #![feature(asm_goto_with_outputs)]
 #![crate_type = "lib"]
 use std::arch::asm;
