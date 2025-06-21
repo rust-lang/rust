@@ -17,7 +17,7 @@ mod tests;
 
 /// The canonical name of the desired SDK for a given target.
 pub(super) fn sdk_name(target: &Target) -> &'static str {
-    match (&*target.os, &*target.abi) {
+    match (&*target.os, &*target.env) {
         ("macos", "") => "MacOSX",
         ("ios", "") => "iPhoneOS",
         ("ios", "sim") => "iPhoneSimulator",
@@ -34,7 +34,7 @@ pub(super) fn sdk_name(target: &Target) -> &'static str {
 }
 
 pub(super) fn macho_platform(target: &Target) -> u32 {
-    match (&*target.os, &*target.abi) {
+    match (&*target.os, &*target.env) {
         ("macos", _) => object::macho::PLATFORM_MACOS,
         ("ios", "macabi") => object::macho::PLATFORM_MACCATALYST,
         ("ios", "sim") => object::macho::PLATFORM_IOSSIMULATOR,
