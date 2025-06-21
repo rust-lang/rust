@@ -271,20 +271,20 @@ impl WinError {
     // tidy-alphabetical-start
     pub const ACCESS_DENIED: Self = Self::new(c::ERROR_ACCESS_DENIED);
     pub const ALREADY_EXISTS: Self = Self::new(c::ERROR_ALREADY_EXISTS);
-    pub const BAD_NET_NAME: Self = Self::new(c::ERROR_BAD_NET_NAME);
     pub const BAD_NETPATH: Self = Self::new(c::ERROR_BAD_NETPATH);
+    pub const BAD_NET_NAME: Self = Self::new(c::ERROR_BAD_NET_NAME);
     pub const CANT_ACCESS_FILE: Self = Self::new(c::ERROR_CANT_ACCESS_FILE);
     pub const DELETE_PENDING: Self = Self::new(c::ERROR_DELETE_PENDING);
-    pub const DIR_NOT_EMPTY: Self = Self::new(c::ERROR_DIR_NOT_EMPTY);
     pub const DIRECTORY: Self = Self::new(c::ERROR_DIRECTORY);
+    pub const DIR_NOT_EMPTY: Self = Self::new(c::ERROR_DIR_NOT_EMPTY);
     pub const FILE_NOT_FOUND: Self = Self::new(c::ERROR_FILE_NOT_FOUND);
     pub const INSUFFICIENT_BUFFER: Self = Self::new(c::ERROR_INSUFFICIENT_BUFFER);
     pub const INVALID_FUNCTION: Self = Self::new(c::ERROR_INVALID_FUNCTION);
     pub const INVALID_HANDLE: Self = Self::new(c::ERROR_INVALID_HANDLE);
     pub const INVALID_PARAMETER: Self = Self::new(c::ERROR_INVALID_PARAMETER);
-    pub const NO_MORE_FILES: Self = Self::new(c::ERROR_NO_MORE_FILES);
     pub const NOT_FOUND: Self = Self::new(c::ERROR_NOT_FOUND);
     pub const NOT_SUPPORTED: Self = Self::new(c::ERROR_NOT_SUPPORTED);
+    pub const NO_MORE_FILES: Self = Self::new(c::ERROR_NO_MORE_FILES);
     pub const OPERATION_ABORTED: Self = Self::new(c::ERROR_OPERATION_ABORTED);
     pub const PATH_NOT_FOUND: Self = Self::new(c::ERROR_PATH_NOT_FOUND);
     pub const SHARING_VIOLATION: Self = Self::new(c::ERROR_SHARING_VIOLATION);
