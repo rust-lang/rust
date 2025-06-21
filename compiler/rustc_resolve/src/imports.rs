@@ -711,6 +711,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{msg}");
 
+        if errors.iter().all(|(_, err)| err.segment == Some(kw::Underscore)) {
+            // If we've encountered something like `use _;`, we've already emitted an error stating
+            // that `_` is not a valid identifier, so we silence the resolve error.
+            diag.downgrade_to_delayed_bug();
+        }
+
         if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
             diag.note(note.clone());
         }

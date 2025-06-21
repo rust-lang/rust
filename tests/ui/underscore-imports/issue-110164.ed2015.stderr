@@ -1,17 +1,17 @@
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-110164.rs:5:5
+  --> $DIR/issue-110164.rs:8:5
    |
 LL | use _::a;
    |     ^ expected identifier, found reserved identifier
 
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-110164.rs:8:5
+  --> $DIR/issue-110164.rs:10:5
    |
 LL | use _::*;
    |     ^ expected identifier, found reserved identifier
 
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-110164.rs:13:9
+  --> $DIR/issue-110164.rs:14:9
    |
 LL |     use _::a;
    |         ^ expected identifier, found reserved identifier
@@ -23,41 +23,17 @@ LL |     use _::*;
    |         ^ expected identifier, found reserved identifier
 
 error[E0432]: unresolved import `self::*`
-  --> $DIR/issue-110164.rs:1:5
+  --> $DIR/issue-110164.rs:4:5
    |
 LL | use self::*;
    |     ^^^^^^^ cannot glob-import a module into itself
 
 error[E0432]: unresolved import `crate::*`
-  --> $DIR/issue-110164.rs:3:5
+  --> $DIR/issue-110164.rs:6:5
    |
 LL | use crate::*;
    |     ^^^^^^^^ cannot glob-import a module into itself
 
-error[E0432]: unresolved import `_`
-  --> $DIR/issue-110164.rs:8:5
-   |
-LL | use _::*;
-   |     ^ `_` is not a valid crate or module name
-
-error[E0432]: unresolved import `_`
-  --> $DIR/issue-110164.rs:5:5
-   |
-LL | use _::a;
-   |     ^ `_` is not a valid crate or module name
-
-error[E0432]: unresolved import `_`
-  --> $DIR/issue-110164.rs:13:9
-   |
-LL |     use _::a;
-   |         ^ `_` is not a valid crate or module name
-
-error[E0432]: unresolved import `_`
-  --> $DIR/issue-110164.rs:16:9
-   |
-LL |     use _::*;
-   |         ^ `_` is not a valid crate or module name
-
-error: aborting due to 10 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0432`.
