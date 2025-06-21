@@ -142,3 +142,6 @@ attr_parsing_unused_multiple =
 
 -attr_parsing_perviously_accepted =
     this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+attr_parsing_used_compiler_linker =
+    `used(compiler)` and `used(linker)` can't be used together

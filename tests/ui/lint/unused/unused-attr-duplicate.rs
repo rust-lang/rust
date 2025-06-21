@@ -100,6 +100,7 @@ pub fn no_mangle_test() {}
 
 #[used]
 #[used] //~ ERROR unused attribute
+//~^ WARN this was previously accepted
 static FOO: u32 = 0;
 
 fn main() {}

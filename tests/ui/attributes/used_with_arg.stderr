@@ -14,5 +14,13 @@ LL | #[used(compiler)]
 LL | #[used(linker)]
    | ^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: `used(compiler)` and `used(linker)` can't be used together
+  --> $DIR/used_with_arg.rs:19:1
+   |
+LL | #[used(compiler)]
+   | ^^^^^^^^^^^^^^^^^
+LL | #[used]
+   | ^^^^^^^
+
+error: aborting due to 3 previous errors
 
