@@ -476,7 +476,11 @@ where
                     G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::MetaSized)
                 }
                 Some(TraitSolverLangItem::PointeeSized) => {
-                    unreachable!("`PointeeSized` is removed during lowering");
+                    G::consider_builtin_sizedness_candidates(
+                        self,
+                        goal,
+                        SizedTraitKind::PointeeSized,
+                    )
                 }
                 Some(TraitSolverLangItem::Copy | TraitSolverLangItem::Clone) => {
                     G::consider_builtin_copy_clone_candidate(self, goal)

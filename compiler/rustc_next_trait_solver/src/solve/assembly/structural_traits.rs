@@ -115,9 +115,9 @@ where
     I: Interner,
 {
     match ty.kind() {
-        // impl {Meta,}Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char
-        // impl {Meta,}Sized for &mut? T, [T; N], dyn* Trait, !, Coroutine, CoroutineWitness
-        // impl {Meta,}Sized for Closure, CoroutineClosure
+        // impl {Meta,Pointee,}Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char
+        // impl {Meta,Pointee,}Sized for &mut? T, [T; N], dyn* Trait, !, Coroutine, CoroutineWitness
+        // impl {Meta,Pointee,}Sized for Closure, CoroutineClosure
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Uint(_)
         | ty::Int(_)
@@ -138,14 +138,19 @@ where
         | ty::Dynamic(_, _, ty::DynStar)
         | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
-        // impl {Meta,}Sized for str, [T], dyn Trait
+        // impl {Meta,Pointee,}Sized for str, [T], dyn Trait
         ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
             SizedTraitKind::Sized => Err(NoSolution),
-            SizedTraitKind::MetaSized => Ok(ty::Binder::dummy(vec![])),
+            SizedTraitKind::MetaSized | SizedTraitKind::PointeeSized => {
+                Ok(ty::Binder::dummy(vec![]))
+            }
         },
 
-        // impl {} for extern type
-        ty::Foreign(..) => Err(NoSolution),
+        // impl PointeeSized for extern type
+        ty::Foreign(..) => match sizedness {
+            SizedTraitKind::Sized | SizedTraitKind::MetaSized => Err(NoSolution),
+            SizedTraitKind::PointeeSized => Ok(ty::Binder::dummy(vec![])),
+        },
 
         ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => Err(NoSolution),
 
@@ -156,17 +161,17 @@ where
 
         ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
 
-        // impl {Meta,}Sized for ()
-        // impl {Meta,}Sized for (T1, T2, .., Tn) where Tn: {Meta,}Sized if n >= 1
+        // impl {Meta,Pointee,}Sized for ()
+        // impl {Meta,Pointee,}Sized for (T1, T2, .., Tn) where Tn: {Meta,}Sized if n >= 1
         ty::Tuple(tys) => Ok(ty::Binder::dummy(tys.last().map_or_else(Vec::new, |ty| vec![ty]))),
 
-        // impl {Meta,}Sized for Adt<Args...>
+        // impl {Meta,Pointee,}Sized for Adt<Args...>
         //   where {meta,pointee,}sized_constraint(Adt)<Args...>: {Meta,}Sized
         //
         //   `{meta,pointee,}sized_constraint(Adt)` is the deepest struct trail that can be
         //   determined by the definition of `Adt`, independent of the generic args.
         //
-        // impl {Meta,}Sized for Adt<Args...>
+        // impl {Meta,Pointee,}Sized for Adt<Args...>
         //   if {meta,pointee,}sized_constraint(Adt) == None
         //
         //   As a performance optimization, `{meta,pointee,}sized_constraint(Adt)` can return `None`

@@ -2129,10 +2129,15 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
                 SizedTraitKind::Sized => None,
-                SizedTraitKind::MetaSized => Where(ty::Binder::dummy(Vec::new())),
+                SizedTraitKind::MetaSized | SizedTraitKind::PointeeSized => {
+                    Where(ty::Binder::dummy(Vec::new()))
+                }
             },
 
-            ty::Foreign(..) => None,
+            ty::Foreign(..) => match sizedness {
+                SizedTraitKind::Sized | SizedTraitKind::MetaSized => None,
+                SizedTraitKind::PointeeSized => Where(ty::Binder::dummy(Vec::new())),
+            },
 
             ty::Tuple(tys) => Where(
                 obligation.predicate.rebind(tys.last().map_or_else(Vec::new, |&last| vec![last])),

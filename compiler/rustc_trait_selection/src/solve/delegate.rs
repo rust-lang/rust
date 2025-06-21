@@ -90,6 +90,13 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     {
                         return Some(Certainty::Yes);
                     }
+                    Some(LangItem::PointeeSized)
+                        if self
+                            .resolve_vars_if_possible(trait_pred.self_ty().skip_binder())
+                            .has_trivial_sizedness(self.0.tcx, SizedTraitKind::PointeeSized) =>
+                    {
+                        return Some(Certainty::Yes);
+                    }
                     Some(LangItem::Copy | LangItem::Clone) => {
                         let self_ty =
                             self.resolve_vars_if_possible(trait_pred.self_ty().skip_binder());

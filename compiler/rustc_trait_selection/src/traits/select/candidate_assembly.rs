@@ -101,7 +101,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     );
                 }
                 Some(LangItem::PointeeSized) => {
-                    bug!("`PointeeSized` is removed during lowering");
+                    self.assemble_builtin_sized_candidate(
+                        obligation,
+                        &mut candidates,
+                        SizedTraitKind::PointeeSized,
+                    );
                 }
                 Some(LangItem::Unsize) => {
                     self.assemble_candidates_for_unsizing(obligation, &mut candidates);
@@ -1113,7 +1117,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    /// Assembles the `Sized` and `MetaSized` traits which are built-in to the language itself.
+    /// Assembles the `Sized`, `MetaSized` and `PointeeSized` traits which are built-in to the
+    /// language itself.
     #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_builtin_sized_candidate(
         &mut self,

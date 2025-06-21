@@ -1779,7 +1779,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Fast path helper for testing if a type is `Sized` or `MetaSized`.
+    /// Fast path helper for testing if a type is `Sized`, `MetaSized` or `PointeeSized`.
     ///
     /// Returning true means the type is known to implement the sizedness trait. Returning `false`
     /// means nothing -- could be sized, might not be.
@@ -1814,11 +1814,12 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) => match sizedness {
                 SizedTraitKind::Sized => false,
-                SizedTraitKind::MetaSized => true,
+                SizedTraitKind::MetaSized | SizedTraitKind::PointeeSized => true,
             },
 
             ty::Foreign(..) => match sizedness {
                 SizedTraitKind::Sized | SizedTraitKind::MetaSized => false,
+                SizedTraitKind::PointeeSized => true,
             },
 
             ty::Tuple(tys) => tys.last().is_none_or(|ty| ty.has_trivial_sizedness(tcx, sizedness)),
