@@ -83,7 +83,7 @@ pub use run::{cmd, run, run_fail, run_with_args};
 
 /// Helpers for checking target information.
 pub use targets::{
-    apple_os, is_aix, is_darwin, is_msvc, is_windows, is_windows_gnu, is_win7, llvm_components_contain,
+    apple_os, is_aix, is_darwin, is_msvc, is_windows, is_windows_gnu, is_windows_msvc, is_win7, llvm_components_contain,
     target, uname,
 };
 
