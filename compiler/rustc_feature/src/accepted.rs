@@ -299,6 +299,8 @@ declare_features! (
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607)),
     /// Allows exhaustive pattern matching on uninhabited types when matched by value.
     (accepted, min_exhaustive_patterns, "1.82.0", Some(119612)),
+    /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
+    (accepted, more_qualified_paths, "CURRENT_RUSTC_VERSION", Some(86935)),
     /// Allows using `Self` and associated types in struct expressions and patterns.
     (accepted, more_struct_aliases, "1.16.0", Some(37544)),
     /// Allows using the MOVBE target feature.
