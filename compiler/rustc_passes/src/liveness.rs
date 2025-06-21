@@ -1743,6 +1743,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             .map(|(_, pat_span, _)| *pat_span)
                             .collect::<Vec<_>>(),
                         errors::UnusedVarTryIgnore {
+                            name: name.clone(),
                             sugg: errors::UnusedVarTryIgnoreSugg {
                                 shorthands,
                                 non_shorthands,

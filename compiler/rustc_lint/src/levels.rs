@@ -482,7 +482,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     let name = lint_name.as_str();
                     let suggestion = RenamedLintSuggestion::WithoutSpan { replace };
                     let requested_level = RequestedLevel { level, lint_name };
-                    let lint = RenamedLintFromCommandLine { name, suggestion, requested_level };
+                    let lint =
+                        RenamedLintFromCommandLine { name, replace, suggestion, requested_level };
                     self.emit_lint(RENAMED_AND_REMOVED_LINTS, lint);
                 }
                 CheckLintNameResult::Removed(ref reason) => {
@@ -824,7 +825,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                 RenamedLintSuggestion::WithSpan { suggestion: sp, replace };
                             let name =
                                 tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                            let lint = RenamedLint { name: name.as_str(), suggestion };
+                            let lint = RenamedLint { name: name.as_str(), replace, suggestion };
                             self.emit_span_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
                         }
 

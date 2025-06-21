@@ -163,12 +163,14 @@ impl RegionExplanation<'_> {
 
 impl Subdiagnostic for RegionExplanation<'_> {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        diag.store_args();
         diag.arg("pref_kind", self.prefix);
         diag.arg("suff_kind", self.suffix);
         diag.arg("desc_kind", self.desc.kind);
         diag.arg("desc_arg", self.desc.arg);
 
         let msg = diag.eagerly_translate(fluent::trait_selection_region_explanation);
+        diag.restore_args();
         if let Some(span) = self.desc.span {
             diag.span_note(span, msg);
         } else {

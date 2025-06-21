@@ -978,6 +978,7 @@ pub(crate) struct VariableNotInAllPatterns {
 pub(crate) struct NameDefinedMultipleTime {
     #[primary_span]
     pub(crate) span: Span,
+    pub(crate) name: Symbol,
     pub(crate) descr: &'static str,
     pub(crate) container: &'static str,
     #[subdiagnostic]
@@ -992,13 +993,11 @@ pub(crate) enum NameDefinedMultipleTimeLabel {
     Reimported {
         #[primary_span]
         span: Span,
-        name: Symbol,
     },
     #[label(resolve_name_defined_multiple_time_redefined)]
     Redefined {
         #[primary_span]
         span: Span,
-        name: Symbol,
     },
 }
 
@@ -1008,14 +1007,12 @@ pub(crate) enum NameDefinedMultipleTimeOldBindingLabel {
     Import {
         #[primary_span]
         span: Span,
-        name: Symbol,
         old_kind: &'static str,
     },
     #[label(resolve_name_defined_multiple_time_old_binding_definition)]
     Definition {
         #[primary_span]
         span: Span,
-        name: Symbol,
         old_kind: &'static str,
     },
 }

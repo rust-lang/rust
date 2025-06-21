@@ -256,22 +256,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         let label = match new_binding.is_import_user_facing() {
-            true => errors::NameDefinedMultipleTimeLabel::Reimported { span, name },
-            false => errors::NameDefinedMultipleTimeLabel::Redefined { span, name },
+            true => errors::NameDefinedMultipleTimeLabel::Reimported { span },
+            false => errors::NameDefinedMultipleTimeLabel::Redefined { span },
         };
 
         let old_binding_label =
             (!old_binding.span.is_dummy() && old_binding.span != span).then(|| {
                 let span = self.tcx.sess.source_map().guess_head_span(old_binding.span);
                 match old_binding.is_import_user_facing() {
-                    true => errors::NameDefinedMultipleTimeOldBindingLabel::Import {
-                        span,
-                        name,
-                        old_kind,
-                    },
+                    true => {
+                        errors::NameDefinedMultipleTimeOldBindingLabel::Import { span, old_kind }
+                    }
                     false => errors::NameDefinedMultipleTimeOldBindingLabel::Definition {
                         span,
-                        name,
                         old_kind,
                     },
                 }
@@ -281,6 +278,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .dcx()
             .create_err(errors::NameDefinedMultipleTime {
                 span,
+                name,
                 descr: ns.descr(),
                 container,
                 label,
