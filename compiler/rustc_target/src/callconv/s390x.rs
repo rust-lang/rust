@@ -37,6 +37,12 @@ where
         }
         return;
     }
+    // `is_pass_indirectly` is only `true` for `VaList`, which would be passed indirectly by the
+    // logic below anyway, so this is just here to make it explicit that this case is handled.
+    if arg.layout.is_pass_indirectly() {
+        arg.make_indirect();
+        return;
+    }
 
     let size = arg.layout.size;
     if size.bits() <= 128 {
