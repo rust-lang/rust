@@ -47,6 +47,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut res = vec![];
     let mut visited_comments = FxHashSet::default();
     let mut visited_nodes = FxHashSet::default();
+    let mut merged_fn_bodies = FxHashSet::default();
 
     // regions can be nested, here is a LIFO buffer
     let mut region_starts: Vec<TextSize> = vec![];
@@ -59,6 +60,31 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                 NodeOrToken::Token(token) => token.text().contains('\n'),
             };
             if is_multiline {
+                // for the arg list, we need to special handle
+                if matches!(element.kind(), ARG_LIST | PARAM_LIST) {
+                    if let NodeOrToken::Node(node) = &element {
+                        if let Some(fn_node) = node.parent().and_then(ast::Fn::cast) {
+                            if let Some(body) = fn_node.body() {
+                                // just add a big fold combine the params and body
+                                res.push(Fold {
+                                    range: TextRange::new(
+                                        node.text_range().start(),
+                                        body.syntax().text_range().end(),
+                                    ),
+                                    kind: FoldKind::ArgList,
+                                });
+                                merged_fn_bodies.insert(body.syntax().text_range());
+                                continue;
+                            }
+                        }
+                    }
+                }
+                // skip the merged function body
+                if matches!(element.kind(), BLOCK_EXPR)
+                    && merged_fn_bodies.contains(&element.text_range())
+                {
+                    continue;
+                }
                 res.push(Fold { range: element.text_range(), kind });
                 continue;
             }
@@ -291,6 +317,7 @@ mod tests {
 
     use super::*;
 
+    #[track_caller]
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (ranges, text) = extract_tags(ra_fixture, "fold");
 
@@ -544,7 +571,7 @@ const _: S = S <fold block>{
 fn foo<fold arglist>(
     x: i32,
     y: String,
-)</fold> {}
+) {}</fold>
 "#,
         )
     }
