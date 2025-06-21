@@ -684,7 +684,6 @@ symbols! {
         compiler_fence,
         concat,
         concat_bytes,
-        concat_idents,
         conservative_impl_trait,
         console,
         const_allocate,

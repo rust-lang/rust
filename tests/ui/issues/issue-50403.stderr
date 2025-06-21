@@ -1,8 +1,0 @@
-error: `concat_idents!()` takes 1 or more arguments
-  --> $DIR/issue-50403.rs:5:13
-   |
-LL |     let x = concat_idents!();
-   |             ^^^^^^^^^^^^^^^^
-
-error: aborting due to 1 previous error
-

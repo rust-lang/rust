@@ -36,7 +36,6 @@ mod cfg_eval;
 mod compile_error;
 mod concat;
 mod concat_bytes;
-mod concat_idents;
 mod define_opaque;
 mod derive;
 mod deriving;
@@ -84,7 +83,6 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         compile_error: compile_error::expand_compile_error,
         concat: concat::expand_concat,
         concat_bytes: concat_bytes::expand_concat_bytes,
-        concat_idents: concat_idents::expand_concat_idents,
         const_format_args: format::expand_format_args,
         core_panic: edition_panic::expand_panic,
         env: env::expand_env,
