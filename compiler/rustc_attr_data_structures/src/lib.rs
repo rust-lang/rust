@@ -9,6 +9,7 @@
 // tidy-alphabetical-end
 
 mod attributes;
+mod encode_cross_crate;
 mod stability;
 mod version;
 
@@ -17,6 +18,7 @@ pub mod lints;
 use std::num::NonZero;
 
 pub use attributes::*;
+pub use encode_cross_crate::EncodeCrossCrate;
 use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{AttrStyle, IntTy, UintTy};

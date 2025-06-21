@@ -5,6 +5,7 @@ use std::sync::LazyLock;
 use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
+use rustc_attr_data_structures::EncodeCrossCrate;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::edition::Edition;
 use rustc_span::{Symbol, sym};
@@ -366,12 +367,6 @@ macro_rules! experimental {
     ($attr:ident) => {
         concat!("the `#[", stringify!($attr), "]` attribute is an experimental feature")
     };
-}
-
-#[derive(PartialEq)]
-pub enum EncodeCrossCrate {
-    Yes,
-    No,
 }
 
 pub struct BuiltinAttribute {

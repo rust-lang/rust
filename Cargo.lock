@@ -3723,6 +3723,7 @@ dependencies = [
 name = "rustc_feature"
 version = "0.0.0"
 dependencies = [
+ "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_span",
  "serde",
