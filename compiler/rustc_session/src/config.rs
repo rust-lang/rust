@@ -227,13 +227,15 @@ pub enum CoverageLevel {
 }
 
 /// The different settings that the `-Z autodiff` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+#[derive(Clone, PartialEq, Hash, Debug)]
 pub enum AutoDiff {
     /// Enable the autodiff opt pipeline
     Enable,
 
     /// Print TypeAnalysis information
     PrintTA,
+    /// Print TypeAnalysis information for a specific function
+    PrintTAFn(String),
     /// Print ActivityAnalysis Information
     PrintAA,
     /// Print Performance Warnings from Enzyme

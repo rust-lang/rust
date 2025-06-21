@@ -10,6 +10,7 @@ Multiple options can be separated with a comma. Valid options are:
 
 `Enable` - Required flag to enable autodiff
 `PrintTA` - print Type Analysis Information
+`PrintTAFn` - print Type Analysis Information for a specific function
 `PrintAA` - print Activity Analysis Information
 `PrintPerf` - print Performance Warnings from Enzyme
 `PrintSteps` - prints all intermediate transformations
