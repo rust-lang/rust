@@ -7,6 +7,8 @@ use rustc_macros::{Decodable, Encodable};
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, Symbol};
 
+use crate::errors;
+
 pub(crate) const RAW_IDENT_ERR: &str = "`${concat(..)}` currently does not support raw identifiers";
 pub(crate) const UNSUPPORTED_CONCAT_ELEM_ERR: &str = "expected identifier or string literal";
 
@@ -40,11 +42,32 @@ impl MetaVarExpr {
     ) -> PResult<'psess, MetaVarExpr> {
         let mut iter = input.iter();
         let ident = parse_ident(&mut iter, psess, outer_span)?;
-        let Some(TokenTree::Delimited(.., Delimiter::Parenthesis, args)) = iter.next() else {
-            let msg = "meta-variable expression parameter must be wrapped in parentheses";
-            return Err(psess.dcx().struct_span_err(ident.span, msg));
+        let next = iter.next();
+        let Some(TokenTree::Delimited(.., Delimiter::Parenthesis, args)) = next else {
+            // No `()`; wrong or no delimiters. Point at a problematic span or a place to
+            // add parens if it makes sense.
+            let (unexpected_span, insert_span) = match next {
+                Some(TokenTree::Delimited(..)) => (None, None),
+                Some(tt) => (Some(tt.span()), None),
+                None => (None, Some(ident.span.shrink_to_hi())),
+            };
+            let err =
+                errors::MveMissingParen { ident_span: ident.span, unexpected_span, insert_span };
+            return Err(psess.dcx().create_err(err));
         };
-        check_trailing_token(&mut iter, psess)?;
+
+        // Ensure there are no trailing tokens in the braces, e.g. `${foo() extra}`
+        if iter.peek().is_some() {
+            let span = iter_span(&iter).expect("checked is_some above");
+            let err = errors::MveExtraTokens {
+                span,
+                ident_span: ident.span,
+                extra_count: iter.count(),
+                ..Default::default()
+            };
+            return Err(psess.dcx().create_err(err));
+        }
+
         let mut iter = args.iter();
         let rslt = match ident.as_str() {
             "concat" => parse_concat(&mut iter, psess, outer_span, ident.span)?,
@@ -67,7 +90,7 @@ impl MetaVarExpr {
                 return Err(err);
             }
         };
-        check_trailing_token(&mut iter, psess)?;
+        check_trailing_tokens(&mut iter, psess, ident)?;
         Ok(rslt)
     }
 
@@ -87,20 +110,51 @@ impl MetaVarExpr {
     }
 }
 
-// Checks if there are any remaining tokens. For example, `${ignore(ident ... a b c ...)}`
-fn check_trailing_token<'psess>(
+/// Checks if there are any remaining tokens (for example, `${ignore($valid, extra)}`) and create
+/// a diag with the correct arg count if so.
+fn check_trailing_tokens<'psess>(
     iter: &mut TokenStreamIter<'_>,
     psess: &'psess ParseSess,
+    ident: Ident,
 ) -> PResult<'psess, ()> {
-    if let Some(tt) = iter.next() {
-        let mut diag = psess
-            .dcx()
-            .struct_span_err(tt.span(), format!("unexpected token: {}", pprust::tt_to_string(tt)));
-        diag.span_note(tt.span(), "meta-variable expression must not have trailing tokens");
-        Err(diag)
-    } else {
-        Ok(())
+    if iter.peek().is_none() {
+        // All tokens consumed, as expected
+        return Ok(());
     }
+
+    // `None` for max indicates the arg count must be exact, `Some` indicates a range is accepted.
+    let (min_or_exact_args, max_args) = match ident.as_str() {
+        "concat" => panic!("concat takes unlimited tokens but didn't eat them all"),
+        "ignore" => (1, None),
+        // 1 or 2 args
+        "count" => (1, Some(2)),
+        // 0 or 1 arg
+        "index" => (0, Some(1)),
+        "len" => (0, Some(1)),
+        other => unreachable!("unknown MVEs should be rejected earlier (got `{other}`)"),
+    };
+
+    let err = errors::MveExtraTokens {
+        span: iter_span(iter).expect("checked is_none above"),
+        ident_span: ident.span,
+        extra_count: iter.count(),
+
+        exact_args_note: if max_args.is_some() { None } else { Some(()) },
+        range_args_note: if max_args.is_some() { Some(()) } else { None },
+        min_or_exact_args,
+        max_args: max_args.unwrap_or_default(),
+        name: ident.to_string(),
+    };
+    Err(psess.dcx().create_err(err))
+}
+
+/// Returns a span encompassing all tokens in the iterator if there is at least one item.
+fn iter_span(iter: &TokenStreamIter<'_>) -> Option<Span> {
+    let mut iter = iter.clone(); // cloning is cheap
+    let first_sp = iter.next()?.span();
+    let last_sp = iter.last().map(TokenTree::span).unwrap_or(first_sp);
+    let span = first_sp.with_hi(last_sp.hi());
+    Some(span)
 }
 
 /// Indicates what is placed in a `concat` parameter. For example, literals
