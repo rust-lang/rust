@@ -474,6 +474,65 @@ impl Write for &mut [u8] {
     }
 }
 
+/// Write is implemented for `&mut [MaybeUninit<u8>]` by copying into the slice,
+/// initialising its data.
+///
+/// Note that writing updates the slice to point to the yet unwritten part.
+/// The slice will be empty when it has been completely overwritten.
+///
+/// If the number of bytes to be written exceeds the size of the slice, write
+/// operations will return short writes: ultimately, `Ok(0)`; in this situation,
+/// `write_all` returns an error of kind `ErrorKind::WriteZero`.
+#[stable(feature = "maybe_uninit_slice_io_write", since = "1.87.0")]
+impl Write for &mut [mem::MaybeUninit<u8>] {
+    #[inline]
+    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+        let amt = cmp::min(data.len(), self.len());
+        let (a, b) = mem::take(self).split_at_mut(amt);
+        a.write_copy_of_slice(&data[..amt]);
+        *self = b;
+        Ok(amt)
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let mut nwritten = 0;
+        for buf in bufs {
+            nwritten += self.write(buf)?;
+            if self.is_empty() {
+                break;
+            }
+        }
+
+        Ok(nwritten)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
+        if self.write(data)? < data.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        for buf in bufs {
+            if self.write(buf)? < buf.len() {
+                return Err(io::Error::WRITE_ALL_EOF);
+            }
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
 /// Write is implemented for `Vec<u8>` by appending to the vector.
 /// The vector will grow as needed.
 #[stable(feature = "rust1", since = "1.0.0")]
