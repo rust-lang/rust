@@ -14,6 +14,7 @@
 //!    or contains "invocation-specific".
 
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::ffi::OsString;
 use std::fs::File;
 use std::io::{self, Write as _};
@@ -46,6 +47,7 @@ use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::layout;
 use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
+use crate::html::render::print_item::compare_names;
 use crate::html::render::search_index::{SerializedSearchIndex, build_index};
 use crate::html::render::sorted_template::{self, FileFormat, SortedTemplate};
 use crate::html::render::{AssocItemLink, ImplRenderingParameters, StylePath};
@@ -699,7 +701,7 @@ impl TraitAliasPart {
     fn blank() -> SortedTemplate<<Self as CciPart>::FileFormat> {
         SortedTemplate::from_before_after(
             r"(function() {
-    var implementors = Object.fromEntries([",
+    const implementors = Object.fromEntries([",
             r"]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
@@ -737,7 +739,7 @@ impl TraitAliasPart {
                 },
             };
 
-            let implementors = imps
+            let mut implementors = imps
                 .iter()
                 .filter_map(|imp| {
                     // If the trait and implementation are in the same crate, then
@@ -752,10 +754,12 @@ impl TraitAliasPart {
                     {
                         None
                     } else {
+                        let impl_ = imp.inner_impl();
                         Some(Implementor {
-                            text: imp.inner_impl().print(false, cx).to_string(),
+                            text: impl_.print(false, cx).to_string(),
                             synthetic: imp.inner_impl().kind.is_auto(),
                             types: collect_paths_for_type(&imp.inner_impl().for_, cache),
+                            is_negative: impl_.is_negative_trait_impl(),
                         })
                     }
                 })
@@ -774,7 +778,9 @@ impl TraitAliasPart {
             }
             path.push(format!("{remote_item_type}.{}.js", remote_path[remote_path.len() - 1]));
 
-            let part = OrderedJson::array_sorted(
+            implementors.sort_unstable();
+
+            let part = OrderedJson::array_unsorted(
                 implementors
                     .iter()
                     .map(OrderedJson::serialize)
@@ -787,10 +793,12 @@ impl TraitAliasPart {
     }
 }
 
+#[derive(PartialEq, Eq)]
 struct Implementor {
     text: String,
     synthetic: bool,
     types: Vec<String>,
+    is_negative: bool,
 }
 
 impl Serialize for Implementor {
@@ -800,11 +808,29 @@ impl Serialize for Implementor {
     {
         let mut seq = serializer.serialize_seq(None)?;
         seq.serialize_element(&self.text)?;
+        seq.serialize_element(if self.is_negative { &1 } else { &0 })?;
         if self.synthetic {
             seq.serialize_element(&1)?;
             seq.serialize_element(&self.types)?;
         }
         seq.end()
+    }
+}
+
+impl PartialOrd for Implementor {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(Ord::cmp(self, other))
+    }
+}
+
+impl Ord for Implementor {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // We sort negative impls first.
+        match (self.is_negative, other.is_negative) {
+            (false, true) => Ordering::Greater,
+            (true, false) => Ordering::Less,
+            _ => compare_names(&self.text, &other.text),
+        }
     }
 }
 
