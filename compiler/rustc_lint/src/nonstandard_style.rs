@@ -1,6 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_attr_data_structures::{AttributeKind, ReprAttr};
 use rustc_attr_parsing::AttributeParser;
+use rustc_errors::LintDiagnostic;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::{AttrArgs, AttrItem, Attribute, GenericParamKind, PatExprKind, PatKind};
@@ -529,25 +530,26 @@ impl NonUpperCaseGlobals {
                 }
             }
 
-            let usages = if let Some(did) = did
-                && *name != uc
-            {
-                let mut usage_collector = UsageCollector { cx, did, collected: Vec::new() };
-                cx.tcx.hir_walk_toplevel_module(&mut usage_collector);
-                usage_collector
-                    .collected
-                    .into_iter()
-                    .map(|span| NonUpperCaseGlobalSubTool { span, replace: uc.clone() })
-                    .collect()
-            } else {
-                vec![]
-            };
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            cx.opt_span_lint(NON_UPPER_CASE_GLOBALS, ident.span.into(), |diag| {
+                // Compute usages lazily as it can expansive and useless when the lint is allowed.
+                // cf. https://github.com/rust-lang/rust/pull/142645#issuecomment-2993024625
+                let usages = if let Some(did) = did
+                    && *name != uc
+                {
+                    let mut usage_collector = UsageCollector { cx, did, collected: Vec::new() };
+                    cx.tcx.hir_walk_toplevel_module(&mut usage_collector);
+                    usage_collector
+                        .collected
+                        .into_iter()
+                        .map(|span| NonUpperCaseGlobalSubTool { span, replace: uc.clone() })
+                        .collect()
+                } else {
+                    vec![]
+                };
 
-            cx.emit_span_lint(
-                NON_UPPER_CASE_GLOBALS,
-                ident.span,
-                NonUpperCaseGlobal { sort, name, sub, usages },
-            );
+                NonUpperCaseGlobal { sort, name, sub, usages }.decorate_lint(diag)
+            });
         }
     }
 }
