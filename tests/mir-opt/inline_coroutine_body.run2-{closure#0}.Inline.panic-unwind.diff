@@ -250,7 +250,10 @@
 +         StorageLive(_52);
 +         StorageLive(_44);
 +         StorageLive(_45);
++         // DBG: AssignRef(_48, _19)
++         // DBG: AssignRef(_49, (_19.0: &mut std::future::Ready<()>))
 +         _47 = copy (_19.0: &mut std::future::Ready<()>);
++         // DBG: AssignRef(_46, ((*_47).0: std::option::Option<()>))
 +         StorageLive(_50);
 +         _50 = Option::<()>::None;
 +         _45 = copy ((*_47).0: std::option::Option<()>);

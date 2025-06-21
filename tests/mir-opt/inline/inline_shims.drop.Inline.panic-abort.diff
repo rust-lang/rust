@@ -65,6 +65,8 @@
 +         StorageLive(_12);
 +         StorageLive(_8);
 +         StorageLive(_9);
++         // DBG: AssignRef(_11, ((*_6).0: alloc::raw_vec::RawVec<A>))
++         // DBG: AssignRef(_12, (((*_6).0: alloc::raw_vec::RawVec<A>).0: alloc::raw_vec::RawVecInner))
 +         StorageLive(_13);
 +         _13 = copy (((((*_6).0: alloc::raw_vec::RawVec<A>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
 +         _9 = copy _13 as *mut A (Transmute);
