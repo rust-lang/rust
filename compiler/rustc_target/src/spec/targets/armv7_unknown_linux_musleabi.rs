@@ -9,7 +9,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-linux-musleabi".into(),
         metadata: TargetMetadata {
-            description: Some("Armv7-A Linux with musl 1.2.3".into()),
+            description: Some("Armv7-A Linux with musl 1.2.5".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(true),
