@@ -33,24 +33,26 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         debug!(borrowed_locals = ?ssa.borrowed_locals());
         debug!(copy_classes = ?ssa.copy_classes());
 
-        let fully_moved = fully_moved_locals(&ssa, body);
-        debug!(?fully_moved);
-
-        let mut storage_to_remove = DenseBitSet::new_empty(fully_moved.domain_size());
+        let mut any_replacement = false;
+        let mut storage_to_remove = DenseBitSet::new_empty(body.local_decls.len());
         for (local, &head) in ssa.copy_classes().iter_enumerated() {
             if local != head {
+                any_replacement = true;
                 storage_to_remove.insert(head);
             }
         }
 
-        let any_replacement = ssa.copy_classes().iter_enumerated().any(|(l, &h)| l != h);
+        if !any_replacement {
+            return;
+        }
+
+        let fully_moved = fully_moved_locals(&ssa, body);
+        debug!(?fully_moved);
 
         Replacer { tcx, copy_classes: ssa.copy_classes(), fully_moved, storage_to_remove }
             .visit_body_preserves_cfg(body);
 
-        if any_replacement {
-            crate::simplify::remove_unused_definitions(body);
-        }
+        crate::simplify::remove_unused_definitions(body);
     }
 
     fn is_required(&self) -> bool {
