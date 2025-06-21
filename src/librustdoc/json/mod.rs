@@ -377,3 +377,33 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         }
     }
 }
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+//
+// These assertions are here, not in `src/rustdoc-json-types/lib.rs` where the types are defined,
+// because we have access to `static_assert_size` here.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::types::*;
+    // tidy-alphabetical-start
+    static_assert_size!(AssocItemConstraint, 112);
+    static_assert_size!(Crate, 184);
+    static_assert_size!(ExternalCrate, 48);
+    static_assert_size!(FunctionPointer, 168);
+    static_assert_size!(GenericArg, 80);
+    static_assert_size!(GenericArgs, 104);
+    static_assert_size!(GenericBound, 72);
+    static_assert_size!(GenericParamDef, 136);
+    static_assert_size!(Impl, 304);
+    // `Item` contains a `PathBuf`, which is different sizes on different OSes.
+    static_assert_size!(Item, 528 + size_of::<std::path::PathBuf>());
+    static_assert_size!(ItemSummary, 32);
+    static_assert_size!(PolyTrait, 64);
+    static_assert_size!(PreciseCapturingArg, 32);
+    static_assert_size!(TargetFeature, 80);
+    static_assert_size!(Type, 80);
+    static_assert_size!(WherePredicate, 160);
+    // tidy-alphabetical-end
+}
