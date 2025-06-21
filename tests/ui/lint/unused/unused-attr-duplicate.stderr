@@ -90,18 +90,6 @@ LL | #[automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:79:1
-   |
-LL | #[track_caller]
-   | ^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:78:1
-   |
-LL | #[track_caller]
-   | ^^^^^^^^^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:92:1
    |
 LL | #[export_name = "exported_symbol_name"]
@@ -276,6 +264,18 @@ note: attribute also specified here
    |
 LL | #[cold]
    | ^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:79:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:78:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:98:1

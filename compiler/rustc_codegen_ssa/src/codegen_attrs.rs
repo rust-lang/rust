@@ -95,17 +95,15 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         // In these cases, we bail from performing further checks that are only meaningful for
         // functions (such as calling `fn_sig`, which ICEs if given a non-function). We also
         // report a delayed bug, just in case `check_attr` isn't doing its job.
-        let fn_sig = || {
+        let fn_sig = |attr_span| {
             use DefKind::*;
 
             let def_kind = tcx.def_kind(did);
             if let Fn | AssocFn | Variant | Ctor(..) = def_kind {
                 Some(tcx.fn_sig(did))
             } else {
-                tcx.dcx().span_delayed_bug(
-                    attr.span(),
-                    "this attribute can only be applied to functions",
-                );
+                tcx.dcx()
+                    .span_delayed_bug(attr_span, "this attribute can only be applied to functions");
                 None
             }
         };
@@ -141,6 +139,29 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                             ),
                         });
                     }
+                }
+                AttributeKind::TrackCaller(attr_span) => {
+                    let is_closure = tcx.is_closure_like(did.to_def_id());
+
+                    if !is_closure
+                        && let Some(fn_sig) = fn_sig(*attr_span)
+                        && fn_sig.skip_binder().abi() != ExternAbi::Rust
+                    {
+                        tcx.dcx().emit_err(errors::RequiresRustAbi { span: *attr_span });
+                    }
+                    if is_closure
+                        && !tcx.features().closure_track_caller()
+                        && !attr_span.allows_unstable(sym::closure_track_caller)
+                    {
+                        feature_err(
+                            &tcx.sess,
+                            sym::closure_track_caller,
+                            *attr_span,
+                            "`#[track_caller]` on closures is currently unstable",
+                        )
+                        .emit();
+                    }
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
                 }
                 _ => {}
             }
@@ -202,29 +223,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 }
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
-            sym::track_caller => {
-                let is_closure = tcx.is_closure_like(did.to_def_id());
-
-                if !is_closure
-                    && let Some(fn_sig) = fn_sig()
-                    && fn_sig.skip_binder().abi() != ExternAbi::Rust
-                {
-                    tcx.dcx().emit_err(errors::RequiresRustAbi { span: attr.span() });
-                }
-                if is_closure
-                    && !tcx.features().closure_track_caller()
-                    && !attr.span().allows_unstable(sym::closure_track_caller)
-                {
-                    feature_err(
-                        &tcx.sess,
-                        sym::closure_track_caller,
-                        attr.span(),
-                        "`#[track_caller]` on closures is currently unstable",
-                    )
-                    .emit();
-                }
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
-            }
             sym::export_name => {
                 if let Some(s) = attr.value_str() {
                     if s.as_str().contains('\0') {
