@@ -78,6 +78,10 @@ impl Command {
         self.stderr = Some(stderr);
     }
 
+    pub fn resolve_in_parent_path(&mut self, _use_parent: bool) -> &mut Self {
+        self
+    }
+
     pub fn get_program(&self) -> &OsStr {
         self.prog.as_ref()
     }

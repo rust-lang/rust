@@ -98,6 +98,7 @@ pub struct Command {
     #[cfg(target_os = "linux")]
     create_pidfd: bool,
     pgroup: Option<pid_t>,
+    resolve_in_parent_path: bool,
 }
 
 // passed back to std::process with the pipes connected to the child, if any
@@ -185,6 +186,7 @@ impl Command {
             #[cfg(target_os = "linux")]
             create_pidfd: false,
             pgroup: None,
+            resolve_in_parent_path: false,
         }
     }
 
@@ -219,6 +221,9 @@ impl Command {
         if self.cwd.is_none() {
             self.cwd(&OsStr::new("/"));
         }
+    }
+    pub fn resolve_in_parent_path(&mut self, use_parent: bool) {
+        self.resolve_in_parent_path = use_parent;
     }
 
     #[cfg(target_os = "linux")]
@@ -297,6 +302,10 @@ impl Command {
     #[allow(dead_code)]
     pub fn get_chroot(&self) -> Option<&CStr> {
         self.chroot.as_deref()
+    }
+    #[allow(dead_code)]
+    pub fn get_resolve_in_parent_path(&self) -> bool {
+        self.resolve_in_parent_path
     }
 
     pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {
