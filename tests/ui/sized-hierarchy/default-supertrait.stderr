@@ -1,30 +1,28 @@
-error[E0658]: `?Trait` is not permitted in supertraits
+error[E0658]: relaxed bounds are not permitted in supertrait bounds
   --> $DIR/default-supertrait.rs:8:17
    |
 LL | trait NegSized: ?Sized { }
    |                 ^^^^^^
    |
-   = note: traits are `?Sized` by default
    = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: traits are `?Sized` by default
 
-error[E0658]: `?Trait` is not permitted in supertraits
+error[E0658]: relaxed bounds are not permitted in supertrait bounds
   --> $DIR/default-supertrait.rs:13:21
    |
 LL | trait NegMetaSized: ?MetaSized { }
    |                     ^^^^^^^^^^
    |
-   = note: traits are `?MetaSized` by default
    = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: `?Trait` is not permitted in supertraits
+error[E0658]: relaxed bounds are not permitted in supertrait bounds
   --> $DIR/default-supertrait.rs:19:24
    |
 LL | trait NegPointeeSized: ?PointeeSized { }
    |                        ^^^^^^^^^^^^^
    |
-   = note: traits are `?PointeeSized` by default
    = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
