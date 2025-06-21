@@ -811,7 +811,7 @@ mod desc {
     pub(crate) const parse_wasm_c_abi: &str = "`spec`";
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
-    pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
+    pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 8192";
 }
 
 pub mod parse {
@@ -1922,6 +1922,12 @@ pub mod parse {
     pub(crate) fn parse_align(slot: &mut Option<Align>, v: Option<&str>) -> bool {
         let mut bytes = 0u64;
         if !parse_number(&mut bytes, v) {
+            return false;
+        }
+
+        // Limit the alignment to 8192 (i.e. 0x2000, or 1 << 13) bytes. It is the highest function
+        // alignment that works on all target platforms. COFF does not support higher alignments.
+        if bytes > 8192 {
             return false;
         }
 
