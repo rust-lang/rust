@@ -78,7 +78,7 @@
           StorageDead(_6);
 -         StorageDead(_5);
 -         StorageLive(_9);
--         StorageLive(_10);
+          StorageLive(_10);
           _10 = S(const 5_usize, const 6_usize);
           StorageLive(_11);
           _11 = &_10;
@@ -104,7 +104,7 @@
           StorageDead(_14);
 -         _9 = const ();
           StorageDead(_11);
--         StorageDead(_10);
+          StorageDead(_10);
 -         StorageDead(_9);
 -         StorageLive(_16);
           StorageLive(_17);

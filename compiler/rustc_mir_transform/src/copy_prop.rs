@@ -32,19 +32,28 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
 
         let typing_env = body.typing_env(tcx);
         let ssa = SsaLocals::new(tcx, body, typing_env);
-        debug!(borrowed_locals = ?ssa.borrowed_locals());
+        let borrowed_locals = ssa.borrowed_locals().clone();
+
+        debug!(?borrowed_locals);
         debug!(copy_classes = ?ssa.copy_classes());
 
         let fully_moved = fully_moved_locals(&ssa, body);
         debug!(?fully_moved);
 
         let mut head_storage_to_check = DenseBitSet::new_empty(fully_moved.domain_size());
+        let mut storage_to_remove = DenseBitSet::new_empty(fully_moved.domain_size());
 
         for (local, &head) in ssa.copy_classes().iter_enumerated() {
             if local != head {
                 // We need to determine if we can keep the head's storage statements (which enables better optimizations).
                 // For every local's usage location, if the head is maybe-uninitialized, we'll need to remove it's storage statements.
                 head_storage_to_check.insert(head);
+
+                if borrowed_locals.contains(local) {
+                    // To keep the storage of a head, we require that none of the locals in it's copy class are borrowed,
+                    // since otherwise we cannot easily identify when it is used.
+                    storage_to_remove.insert(head);
+                }
             }
         }
 
@@ -55,11 +64,6 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
             let maybe_uninit = MaybeUninitializedLocals::new()
                 .iterate_to_fixpoint(tcx, body, Some("mir_opt::copy_prop"))
                 .into_results_cursor(body);
-
-            // To keep the storage of a head, we require that none of the locals in it's copy class are borrowed,
-            // since otherwise we cannot easily identify when it is used.
-            let mut storage_to_remove = ssa.borrowed_locals().clone();
-            storage_to_remove.intersect(&head_storage_to_check);
 
             let mut storage_checker = StorageChecker {
                 maybe_uninit,
