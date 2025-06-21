@@ -15,7 +15,6 @@ use std::ops::Index;
 use bridge::*;
 use context::SmirCtxt;
 use rustc_data_structures::fx::{self, FxIndexMap};
-use rustc_data_structures::PointeeSized;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{self, Ty, TyCtxt};

@@ -4,6 +4,7 @@
 //! any sort of conversion and usage of internal rustc code. So we
 //! restrict the usage of internal items to be inside this module.
 
+use rustc_data_structures::PointeeSized;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::{List, Ty, TyCtxt};
 use rustc_middle::{mir, ty};
@@ -143,7 +144,7 @@ pub trait InternalCx<'tcx>: Copy + Clone {
 /// and StableMIR constructs. However, they should be used seldomly and they have no influence
 /// in this crate semver.
 #[doc(hidden)]
-pub trait Stable<'tcx> {
+pub trait Stable<'tcx>: PointeeSized {
     /// The stable representation of the type implementing Stable.
     type T;
     /// Converts an object to the equivalent Stable MIR representation.
