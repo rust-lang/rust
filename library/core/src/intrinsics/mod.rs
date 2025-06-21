@@ -841,7 +841,7 @@ pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
 ///
 /// Note that, unlike most intrinsics, this can only be called at compile-time
 /// as backends do not have an implementation for it. The only caller (its
-/// stable counterpart), wraps this intrinsic call in a `const` block so that
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
 /// backends only see an evaluated constant.
 ///
 /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
@@ -2657,7 +2657,7 @@ pub const fn align_of<T>() -> usize;
 ///
 /// Note that, unlike most intrinsics, this can only be called at compile-time
 /// as backends do not have an implementation for it. The only caller (its
-/// stable counterpart), wraps this intrinsic call in a `const` block so that
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
 /// backends only see an evaluated constant.
 ///
 /// The to-be-stabilized version of this intrinsic is [`crate::mem::variant_count`].
@@ -2696,7 +2696,7 @@ pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 ///
 /// Note that, unlike most intrinsics, this can only be called at compile-time
 /// as backends do not have an implementation for it. The only caller (its
-/// stable counterpart), wraps this intrinsic call in a `const` block so that
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
 /// backends only see an evaluated constant.
 ///
 /// The stabilized version of this intrinsic is [`core::any::type_name`].
@@ -2711,7 +2711,7 @@ pub const fn type_name<T: ?Sized>() -> &'static str;
 ///
 /// Note that, unlike most intrinsics, this can only be called at compile-time
 /// as backends do not have an implementation for it. The only caller (its
-/// stable counterpart), wraps this intrinsic call in a `const` block so that
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
 /// backends only see an evaluated constant.
 ///
 /// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
