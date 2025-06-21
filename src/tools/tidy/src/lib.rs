@@ -3,6 +3,12 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
+use std::ffi::OsStr;
+use std::process::Command;
+
+use build_helper::ci::CiEnv;
+use build_helper::git::{GitConfig, get_closest_upstream_commit};
+use build_helper::stage0_parser::{Stage0Config, parse_stage0_file};
 use termcolor::WriteColor;
 
 macro_rules! static_regex {
@@ -61,6 +67,61 @@ fn tidy_error(args: &str) -> std::io::Result<()> {
 
     writeln!(&mut stderr, ": {args}")?;
     Ok(())
+}
+
+pub struct CiInfo {
+    pub git_merge_commit_email: String,
+    pub nightly_branch: String,
+    pub base_commit: Option<String>,
+    pub ci_env: CiEnv,
+}
+
+impl CiInfo {
+    pub fn new(bad: &mut bool) -> Self {
+        let stage0 = parse_stage0_file();
+        let Stage0Config { nightly_branch, git_merge_commit_email, .. } = stage0.config;
+
+        let mut info = Self {
+            nightly_branch,
+            git_merge_commit_email,
+            ci_env: CiEnv::current(),
+            base_commit: None,
+        };
+        let base_commit = match get_closest_upstream_commit(None, &info.git_config(), info.ci_env) {
+            Ok(Some(commit)) => Some(commit),
+            Ok(None) => {
+                info.error_if_in_ci("no base commit found", bad);
+                None
+            }
+            Err(error) => {
+                info.error_if_in_ci(&format!("failed to retrieve base commit: {error}"), bad);
+                None
+            }
+        };
+        info.base_commit = base_commit;
+        info
+    }
+
+    pub fn git_config(&self) -> GitConfig<'_> {
+        GitConfig {
+            nightly_branch: &self.nightly_branch,
+            git_merge_commit_email: &self.git_merge_commit_email,
+        }
+    }
+
+    pub fn error_if_in_ci(&self, msg: &str, bad: &mut bool) {
+        if self.ci_env.is_running_in_ci() {
+            *bad = true;
+            eprintln!("tidy check error: {msg}");
+        } else {
+            eprintln!("tidy check warning: {msg}. Some checks will be skipped.");
+        }
+    }
+}
+
+pub fn git_diff<S: AsRef<OsStr>>(base_commit: &str, extra_arg: S) -> Option<String> {
+    let output = Command::new("git").arg("diff").arg(base_commit).arg(extra_arg).output().ok()?;
+    Some(String::from_utf8_lossy(&output.stdout).into())
 }
 
 pub mod alphabetical;
