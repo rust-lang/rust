@@ -289,6 +289,7 @@ pub(super) fn transcribe<'a>(
 }
 
 /// Turn `$(...)*` sequences into tokens.
+#[inline] // called once
 fn transcribe_sequence<'tx, 'itp>(
     tscx: &mut TranscrCtx<'tx, 'itp>,
     seq: &mbe::TokenTree,
@@ -357,6 +358,7 @@ fn transcribe_sequence<'tx, 'itp>(
 /// producing "xyz", which is bad because it effectively merges tokens.
 /// `Spacing::Alone` is the safer option. Fortunately, `space_between` will avoid
 /// some of the unnecessary whitespace.
+#[inline] // called once
 fn transcribe_metavar<'tx>(
     tscx: &mut TranscrCtx<'tx, '_>,
     mut sp: Span,
@@ -492,6 +494,7 @@ fn transcribe_metavar<'tx>(
 }
 
 /// Turn `${expr(...)}` metavariable expressionss into tokens.
+#[inline] // called once
 fn transcribe_metavar_expr<'tx>(
     tscx: &mut TranscrCtx<'tx, '_>,
     dspan: DelimSpan,
@@ -537,6 +540,7 @@ fn transcribe_metavar_expr<'tx>(
 }
 
 /// Handle the `${concat(...)}` metavariable expression.
+#[inline] // called once
 fn metavar_expr_concat<'tx>(
     tscx: &mut TranscrCtx<'tx, '_>,
     dspan: DelimSpan,
@@ -617,6 +621,7 @@ fn metavar_expr_concat<'tx>(
 ///   These are typically used for passing larger amounts of code, and tokens in that code usually
 ///   combine with each other and not with tokens outside of the sequence.
 /// - The metavariable span comes from a different crate, then we prefer the more local span.
+#[inline] // called once
 fn maybe_use_metavar_location(
     psess: &ParseSess,
     stack: &[Frame<'_>],
@@ -808,6 +813,7 @@ fn lockstep_iter_size(
 /// * `[ $( ${count(foo, 0)} ),* ]` will be the same as `[ $( ${count(foo)} ),* ]`
 /// * `[ $( ${count(foo, 1)} ),* ]` will return an error because `${count(foo, 1)}` is
 ///   declared inside a single repetition and the index `1` implies two nested repetitions.
+#[inline] // called once
 fn count_repetitions<'dx>(
     dcx: DiagCtxtHandle<'dx>,
     depth_user: usize,
