@@ -95,14 +95,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if let mir::Operand::Constant(const_op) = elem {
                     let val = self.eval_mir_constant(const_op);
                     if val.all_bytes_uninit(self.cx.tcx()) {
-                        let size = bx.const_usize(dest.layout.size.bytes());
-                        bx.memset(
-                            dest.val.llval,
-                            bx.const_undef(bx.type_i8()),
-                            size,
-                            dest.val.align,
-                            MemFlags::empty(),
-                        );
                         return;
                     }
                 }
