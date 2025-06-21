@@ -40,17 +40,21 @@ error: only unsuffixes integer literals are supported in meta-variable expressio
 LL |     ( $( $i:ident ),* ) => { ${ index(1u32) } };
    |                                 ^^^^^
 
-error: meta-variable expression parameter must be wrapped in parentheses
-  --> $DIR/syntax-errors.rs:32:33
+error: expected `(`
+  --> $DIR/syntax-errors.rs:32:38
    |
 LL |     ( $( $i:ident ),* ) => { ${ count } };
-   |                                 ^^^^^
+   |                                      ^ help: try adding parentheses: `( /* ... */ )`
+   |
+   = note: metavariable expressions use function-like parentheses syntax
 
-error: meta-variable expression parameter must be wrapped in parentheses
-  --> $DIR/syntax-errors.rs:49:33
+error: expected `(`
+  --> $DIR/syntax-errors.rs:49:38
    |
 LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
-   |                                 ^^^^^
+   |                                      ^
+   |
+   = note: metavariable expressions use function-like parentheses syntax
 
 error: expected an identifier
   --> $DIR/syntax-errors.rs:54:23
@@ -60,125 +64,85 @@ LL |     () => { ${ignore($123)} }
    |
    = note: `ignore` takes a metavariable argument
 
-error: unexpected token: a
+error: unexpected trailing tokens in metavariable expression braces
   --> $DIR/syntax-errors.rs:66:19
    |
 LL |         ${count() a b c}
-   |                   ^
-   |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:66:19
-   |
-LL |         ${count() a b c}
-   |                   ^
+   |                   ^^^^^ help: try removing these tokens
 
-error: unexpected token: a
+error: unexpected trailing tokens in metavariable expression
   --> $DIR/syntax-errors.rs:68:20
    |
 LL |         ${count($i a b c)}
-   |                    ^
+   |           -----    ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
    |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:68:20
-   |
-LL |         ${count($i a b c)}
-   |                    ^
+   = note: the `count` metavariable expression takes up to 2 arguments
 
-error: unexpected token: a
+error: unexpected trailing tokens in metavariable expression
   --> $DIR/syntax-errors.rs:70:23
    |
 LL |         ${count($i, 1 a b c)}
-   |                       ^
+   |           -----       ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
    |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:70:23
-   |
-LL |         ${count($i, 1 a b c)}
-   |                       ^
+   = note: the `count` metavariable expression takes up to 2 arguments
 
-error: unexpected token: a
+error: unexpected trailing tokens in metavariable expression braces
   --> $DIR/syntax-errors.rs:72:21
    |
 LL |         ${count($i) a b c}
-   |                     ^
-   |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:72:21
-   |
-LL |         ${count($i) a b c}
-   |                     ^
+   |                     ^^^^^ help: try removing these tokens
 
-error: unexpected token: a
+error: unexpected trailing tokens in metavariable expression braces
   --> $DIR/syntax-errors.rs:75:22
    |
 LL |         ${ignore($i) a b c}
-   |                      ^
-   |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:75:22
-   |
-LL |         ${ignore($i) a b c}
-   |                      ^
+   |                      ^^^^^ help: try removing these tokens
 
-error: unexpected token: a
+error: unexpected trailing tokens in metavariable expression
   --> $DIR/syntax-errors.rs:77:21
    |
 LL |         ${ignore($i a b c)}
-   |                     ^
+   |           ------    ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
    |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:77:21
-   |
-LL |         ${ignore($i a b c)}
-   |                     ^
+   = note: the `ignore` metavariable expression takes up to 1 arguments
 
-error: unexpected token: a
+error: unexpected trailing tokens in metavariable expression braces
   --> $DIR/syntax-errors.rs:80:19
    |
 LL |         ${index() a b c}
-   |                   ^
-   |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:80:19
-   |
-LL |         ${index() a b c}
-   |                   ^
+   |                   ^^^^^ help: try removing these tokens
 
-error: unexpected token: a
+error: unexpected trailing tokens in metavariable expression
   --> $DIR/syntax-errors.rs:82:19
    |
 LL |         ${index(1 a b c)}
-   |                   ^
+   |           -----   ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
    |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:82:19
-   |
-LL |         ${index(1 a b c)}
-   |                   ^
+   = note: the `index` metavariable expression takes up to 2 arguments
 
-error: unexpected token: a
+error: unexpected trailing tokens in metavariable expression braces
   --> $DIR/syntax-errors.rs:85:19
    |
 LL |         ${index() a b c}
-   |                   ^
-   |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:85:19
-   |
-LL |         ${index() a b c}
-   |                   ^
+   |                   ^^^^^ help: try removing these tokens
 
-error: unexpected token: a
+error: unexpected trailing tokens in metavariable expression
   --> $DIR/syntax-errors.rs:87:19
    |
 LL |         ${index(1 a b c)}
-   |                   ^
+   |           -----   ^^^^^ help: try removing these tokens
+   |           |
+   |           for this metavariable expression
    |
-note: meta-variable expression must not have trailing tokens
-  --> $DIR/syntax-errors.rs:87:19
-   |
-LL |         ${index(1 a b c)}
-   |                   ^
+   = note: the `index` metavariable expression takes up to 2 arguments
 
 error: meta-variable expression depth must be a literal
   --> $DIR/syntax-errors.rs:94:33

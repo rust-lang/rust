@@ -141,6 +141,25 @@ expand_mve_expected_ident =
     .ignore_expr_note = `ignore` takes a metavariable argument
     .count_expr_note = `count` takes a metavariable argument
 
+expand_mve_extra_tokens_in_braces =
+    unexpected trailing tokens in metavariable expression braces
+    .suggestion = try removing these tokens
+
+expand_mve_extra_tokens_in_expr =
+    unexpected trailing tokens in metavariable expression
+    .label = for this metavariable expression
+    .note= the `{$name}` metavariable expression takes up to {$max} arguments
+    .suggestion = try removing {$count ->
+        [one] this token
+        *[other] these tokens
+    }
+
+expand_mve_missing_paren =
+    expected `(`
+    .label = for this this metavariable expression
+    .note = metavariable expressions use function-like parentheses syntax
+    .suggestion = try adding parentheses
+
 expand_mve_unrecognized_var =
     variable `{$key}` is not recognized in meta-variable expression
 

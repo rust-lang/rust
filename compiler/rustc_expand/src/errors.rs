@@ -522,6 +522,38 @@ mod metavar_exprs {
     }
 
     #[derive(Diagnostic)]
+    #[diag(expand_mve_extra_tokens_in_braces)]
+    pub(crate) struct MveExtraTokensInBraces {
+        #[primary_span]
+        #[suggestion(code = "", applicability = "machine-applicable")]
+        pub span: Span,
+    }
+
+    #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_extra_tokens_in_expr)]
+    pub(crate) struct MveExtraTokensInExpr {
+        #[primary_span]
+        #[suggestion(code = "", applicability = "machine-applicable")]
+        pub span: Span,
+        #[label]
+        pub ident_span: Span,
+        pub count: usize,
+        pub max: usize,
+        pub name: &'static str,
+    }
+
+    #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_missing_paren)]
+    pub(crate) struct MveMissingParen {
+        #[primary_span]
+        pub span: Span,
+        #[suggestion(code = "( /* ... */ )", applicability = "has-placeholders")]
+        pub insert_span: Option<Span>,
+    }
+
+    #[derive(Diagnostic)]
     #[diag(expand_mve_unrecognized_var)]
     pub(crate) struct MveUnrecognizedVar {
         #[primary_span]
