@@ -96,6 +96,7 @@ pub fn export_test() {}
 
 #[no_mangle]
 #[no_mangle] //~ ERROR unused attribute
+//~^ WARN this was previously accepted
 pub fn no_mangle_test() {}
 
 #[used]

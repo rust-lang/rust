@@ -233,6 +233,8 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
+    /// Represents `#[no_mangle]`
+    NoMangle(Span),
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
