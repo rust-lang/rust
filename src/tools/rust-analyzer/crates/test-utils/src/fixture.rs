@@ -446,13 +446,13 @@ impl MiniCore {
             }
 
             let mut keep = true;
-            for &region in active_regions.iter() {
+            for &region in &active_regions {
                 assert!(!region.starts_with(' '), "region marker starts with a space: {region:?}");
                 self.assert_valid_flag(region);
                 seen_regions.push(region);
                 keep &= self.has_flag(region);
             }
-            for &region in inactive_regions.iter() {
+            for &region in &inactive_regions {
                 assert!(!region.starts_with(' '), "region marker starts with a space: {region:?}");
                 self.assert_valid_flag(region);
                 seen_regions.push(region);
