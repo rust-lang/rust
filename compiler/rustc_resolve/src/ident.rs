@@ -905,15 +905,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let break_result = self.visit_module_scopes(ns, |this, scope| match scope {
             ModuleScope::NonGlobal => {
                 // Non-glob bindings are "strong" and can be resolved immediately.
-                if let Some(binding) = resolution.binding
-                    && !binding.is_glob_import()
+                if let Some(binding) = resolution.non_glob_binding
                     && ignore_binding.map_or(true, |b| binding != b)
                 {
                     if let Some(finalize) = finalize {
-                        return Some(this.finalize_module_binding(
+                        return Some(this.finalize_non_glob_module_binding(
                             ident,
-                            Some(binding),
-                            resolution.shadowed_glob,
+                            binding,
+                            resolution.glob_binding,
                             parent_scope,
                             finalize,
                             shadowing,
@@ -928,15 +927,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ModuleScope::Global => {
                 // If we are here, any primary `resolution.binding` is either a glob, None,
                 // or should be ignored.
-                let binding = [resolution.binding, resolution.shadowed_glob]
-                    .into_iter()
-                    .find_map(|binding| if binding == ignore_binding { None } else { binding });
+                let binding = resolution.glob_binding;
+
+                if let Some(binding) = binding {
+                    if !binding.is_glob_import() {
+                        panic!("binding should be glob import {:?}", binding)
+                    }
+                }
 
                 if let Some(finalize) = finalize {
-                    return Some(this.finalize_module_binding(
+                    return Some(this.finalize_glob_module_binding(
                         ident,
                         binding,
-                        resolution.shadowed_glob,
                         parent_scope,
                         finalize,
                         shadowing,
@@ -1040,11 +1042,65 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         Err((Determined, Weak::No))
     }
 
-    fn finalize_module_binding(
+    fn finalize_non_glob_module_binding(
+        &mut self,
+        ident: Ident,
+        binding: NameBinding<'ra>,
+        glob_binding: Option<NameBinding<'ra>>,
+        parent_scope: &ParentScope<'ra>,
+        finalize: Finalize,
+        shadowing: Shadowing,
+    ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
+        let Finalize { path_span, report_private, used, root_span, .. } = finalize;
+
+        if !self.is_accessible_from(binding.vis, parent_scope.module) {
+            if report_private {
+                self.privacy_errors.push(PrivacyError {
+                    ident,
+                    binding,
+                    dedup_span: path_span,
+                    outermost_res: None,
+                    parent_scope: *parent_scope,
+                    single_nested: path_span != root_span,
+                });
+            } else {
+                return Err((Determined, Weak::No));
+            }
+        }
+
+        // Forbid expanded shadowing to avoid time travel.
+        if let Some(shadowed_glob) = glob_binding
+            && shadowing == Shadowing::Restricted
+            && binding.expansion != LocalExpnId::ROOT
+            && binding.res() != shadowed_glob.res()
+        {
+            self.ambiguity_errors.push(AmbiguityError {
+                kind: AmbiguityKind::GlobVsExpanded,
+                ident,
+                b1: binding,
+                b2: shadowed_glob,
+                warning: false,
+                misc1: AmbiguityErrorMisc::None,
+                misc2: AmbiguityErrorMisc::None,
+            });
+        }
+
+        if shadowing == Shadowing::Unrestricted
+            && binding.expansion != LocalExpnId::ROOT
+            && let NameBindingKind::Import { import, .. } = binding.kind
+            && matches!(import.kind, ImportKind::MacroExport)
+        {
+            self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
+        }
+
+        self.record_use(ident, binding, used);
+        return Ok(binding);
+    }
+
+    fn finalize_glob_module_binding(
         &mut self,
         ident: Ident,
         binding: Option<NameBinding<'ra>>,
-        shadowed_glob: Option<NameBinding<'ra>>,
         parent_scope: &ParentScope<'ra>,
         finalize: Finalize,
         shadowing: Shadowing,
@@ -1068,23 +1124,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else {
                 return Err((Determined, Weak::No));
             }
-        }
-
-        // Forbid expanded shadowing to avoid time travel.
-        if let Some(shadowed_glob) = shadowed_glob
-            && shadowing == Shadowing::Restricted
-            && binding.expansion != LocalExpnId::ROOT
-            && binding.res() != shadowed_glob.res()
-        {
-            self.ambiguity_errors.push(AmbiguityError {
-                kind: AmbiguityKind::GlobVsExpanded,
-                ident,
-                b1: binding,
-                b2: shadowed_glob,
-                warning: false,
-                misc1: AmbiguityErrorMisc::None,
-                misc2: AmbiguityErrorMisc::None,
-            });
         }
 
         if shadowing == Shadowing::Unrestricted

@@ -3441,7 +3441,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         };
         ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
         let key = BindingKey::new(ident, ns);
-        let mut binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
+        let mut binding =
+            self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.late_binding());
         debug!(?binding);
         if binding.is_none() {
             // We could not find the trait item in the correct namespace.
@@ -3452,7 +3453,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 _ => ns,
             };
             let key = BindingKey::new(ident, ns);
-            binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
+            binding =
+                self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.late_binding());
             debug!(?binding);
         }
 

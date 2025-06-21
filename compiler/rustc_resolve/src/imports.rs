@@ -22,7 +22,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use smallvec::SmallVec;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::Determinacy::{self, *};
 use crate::Namespace::*;
@@ -235,21 +235,20 @@ pub(crate) struct NameResolution<'ra> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
     pub single_imports: FxIndexSet<Import<'ra>>,
-    /// The least shadowable known binding for this name, or None if there are no known bindings.
-    pub binding: Option<NameBinding<'ra>>,
-    pub shadowed_glob: Option<NameBinding<'ra>>,
+    /// The least shadowable known non-glob binding for this name, or None if there are no known bindings.
+    pub non_glob_binding: Option<NameBinding<'ra>>,
+    pub glob_binding: Option<NameBinding<'ra>>,
 }
 
 impl<'ra> NameResolution<'ra> {
     /// Returns the binding for the name if it is known or None if it not known.
     pub(crate) fn binding(&self) -> Option<NameBinding<'ra>> {
-        self.binding.and_then(|binding| {
-            if !binding.is_glob_import() || self.single_imports.is_empty() {
-                Some(binding)
-            } else {
-                None
-            }
-        })
+        self.non_glob_binding
+            .or_else(|| if self.single_imports.is_empty() { self.glob_binding } else { None })
+    }
+
+    pub(crate) fn late_binding(&self) -> Option<NameBinding<'ra>> {
+        self.non_glob_binding.or_else(|| self.glob_binding)
     }
 }
 
@@ -331,77 +330,79 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.check_reserved_macro_name(key.ident, res);
         self.set_binding_parent_module(binding, module);
         self.update_resolution(module, key, warn_ambiguity, |this, resolution| {
-            if let Some(old_binding) = resolution.binding {
-                if res == Res::Err && old_binding.res() != Res::Err {
+            if let Some(old_non_glob_binding) = resolution.non_glob_binding {
+                if res == Res::Err && old_non_glob_binding.res() != Res::Err {
                     // Do not override real bindings with `Res::Err`s from error recovery.
                     return Ok(());
                 }
-                match (old_binding.is_glob_import(), binding.is_glob_import()) {
-                    (true, true) => {
-                        // FIXME: remove `!binding.is_ambiguity_recursive()` after delete the warning ambiguity.
-                        if !binding.is_ambiguity_recursive()
-                            && let NameBindingKind::Import { import: old_import, .. } =
-                                old_binding.kind
-                            && let NameBindingKind::Import { import, .. } = binding.kind
-                            && old_import == import
-                        {
-                            // We should replace the `old_binding` with `binding` regardless
-                            // of whether they has same resolution or not when they are
-                            // imported from the same glob-import statement.
-                            resolution.binding = Some(binding);
-                        } else if res != old_binding.res() {
-                            resolution.binding = Some(this.new_ambiguity_binding(
+
+                if binding.is_glob_import() {
+                    let (glob_binding, nonglob_binding) = (binding, old_non_glob_binding);
+
+                    if key.ns == MacroNS
+                        && nonglob_binding.expansion != LocalExpnId::ROOT
+                        && glob_binding.res() != nonglob_binding.res()
+                    {
+                        resolution.non_glob_binding = Some(this.new_ambiguity_binding(
+                            AmbiguityKind::GlobVsExpanded,
+                            nonglob_binding,
+                            glob_binding,
+                            false,
+                        ));
+                    }
+
+                    if let Some(old_glob) = resolution.glob_binding {
+                        if glob_binding.res() != old_glob.res() {
+                            resolution.glob_binding = Some(this.new_ambiguity_binding(
                                 AmbiguityKind::GlobVsGlob,
-                                old_binding,
-                                binding,
+                                old_glob,
+                                glob_binding,
                                 warn_ambiguity,
                             ));
-                        } else if !old_binding.vis.is_at_least(binding.vis, this.tcx) {
-                            // We are glob-importing the same item but with greater visibility.
-                            resolution.binding = Some(binding);
-                        } else if binding.is_ambiguity_recursive() {
-                            resolution.binding = Some(this.new_warn_ambiguity_binding(binding));
+                        } else if !old_glob.vis.is_at_least(glob_binding.vis, this.tcx) {
+                            resolution.glob_binding = Some(glob_binding);
                         }
+                    } else {
+                        resolution.glob_binding = Some(glob_binding);
                     }
-                    (old_glob @ true, false) | (old_glob @ false, true) => {
-                        let (glob_binding, nonglob_binding) =
-                            if old_glob { (old_binding, binding) } else { (binding, old_binding) };
-                        if key.ns == MacroNS
-                            && nonglob_binding.expansion != LocalExpnId::ROOT
-                            && glob_binding.res() != nonglob_binding.res()
-                        {
-                            resolution.binding = Some(this.new_ambiguity_binding(
-                                AmbiguityKind::GlobVsExpanded,
-                                nonglob_binding,
-                                glob_binding,
-                                false,
-                            ));
-                        } else {
-                            resolution.binding = Some(nonglob_binding);
-                        }
-
-                        if let Some(old_shadowed_glob) = resolution.shadowed_glob {
-                            assert!(old_shadowed_glob.is_glob_import());
-                            if glob_binding.res() != old_shadowed_glob.res() {
-                                resolution.shadowed_glob = Some(this.new_ambiguity_binding(
-                                    AmbiguityKind::GlobVsGlob,
-                                    old_shadowed_glob,
-                                    glob_binding,
-                                    false,
-                                ));
-                            } else if !old_shadowed_glob.vis.is_at_least(binding.vis, this.tcx) {
-                                resolution.shadowed_glob = Some(glob_binding);
-                            }
-                        } else {
-                            resolution.shadowed_glob = Some(glob_binding);
-                        }
+                } else {
+                    return Err(old_non_glob_binding);
+                }
+            } else if let Some(old_glob_binding) = resolution.glob_binding {
+                if binding.is_glob_import() {
+                    // FIXME: remove `!binding.is_ambiguity_recursive()` after delete the warning ambiguity.
+                    if !binding.is_ambiguity_recursive()
+                        && let NameBindingKind::Import { import: old_import, .. } =
+                            old_glob_binding.kind
+                        && let NameBindingKind::Import { import, .. } = binding.kind
+                        && old_import == import
+                    {
+                        // We should replace the `old_binding` with `binding` regardless
+                        // of whether they has same resolution or not when they are
+                        // imported from the same glob-import statement.
+                        resolution.glob_binding = Some(binding);
+                    } else if res != old_glob_binding.res() {
+                        resolution.glob_binding = Some(this.new_ambiguity_binding(
+                            AmbiguityKind::GlobVsGlob,
+                            old_glob_binding,
+                            binding,
+                            warn_ambiguity,
+                        ));
+                    } else if !old_glob_binding.vis.is_at_least(binding.vis, this.tcx) {
+                        // We are glob-importing the same item but with greater visibility.
+                        resolution.glob_binding = Some(binding);
+                    } else if binding.is_ambiguity_recursive() {
+                        resolution.glob_binding = Some(this.new_warn_ambiguity_binding(binding));
                     }
-                    (false, false) => {
-                        return Err(old_binding);
-                    }
+                } else {
+                    resolution.non_glob_binding = Some(binding);
                 }
             } else {
-                resolution.binding = Some(binding);
+                if binding.is_glob_import() {
+                    resolution.glob_binding = Some(binding);
+                } else {
+                    resolution.non_glob_binding = Some(binding);
+                }
             }
 
             Ok(())
@@ -611,6 +612,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.throw_unresolved_import_error(errors, glob_error);
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub(crate) fn check_hidden_glob_reexports(
         &mut self,
         exported_ambiguities: FxHashSet<NameBinding<'ra>>,
@@ -618,8 +620,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         for module in self.arenas.local_modules().iter() {
             for (key, resolution) in self.resolutions(*module).borrow().iter() {
                 let resolution = resolution.borrow();
+                debug!(?resolution);
 
-                let Some(binding) = resolution.binding else { continue };
+                let Some(binding) = resolution.late_binding() else { continue };
 
                 if let NameBindingKind::Import { import, .. } = binding.kind
                     && let Some((amb_binding, _)) = binding.ambiguity
@@ -639,7 +642,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     );
                 }
 
-                if let Some(glob_binding) = resolution.shadowed_glob {
+                if let Some(glob_binding) = resolution.glob_binding {
                     if binding.res() != Res::Err
                         && glob_binding.res() != Res::Err
                         && let NameBindingKind::Import { import: glob_import, .. } =
@@ -1162,7 +1165,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             return None;
                         } // Never suggest the same name
                         match *resolution.borrow() {
-                            NameResolution { binding: Some(name_binding), .. } => {
+                            NameResolution { non_glob_binding: Some(name_binding), .. } => {
                                 match name_binding.kind {
                                     NameBindingKind::Import { binding, .. } => {
                                         match binding.kind {

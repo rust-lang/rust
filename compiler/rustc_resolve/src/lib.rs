@@ -647,7 +647,8 @@ impl<'ra> Module<'ra> {
         F: FnMut(&mut R, Ident, Namespace, NameBinding<'ra>),
     {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
-            if let Some(binding) = name_resolution.borrow().binding {
+            let resolution = name_resolution.borrow();
+            if let Some(binding) = resolution.non_glob_binding.or_else(|| resolution.glob_binding) {
                 f(resolver, key.ident, key.ns, binding);
             }
         }
