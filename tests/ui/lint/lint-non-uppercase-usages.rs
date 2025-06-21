@@ -15,6 +15,11 @@ const my_static: u32 = 0;
 const LOL: u32 = my_static + 0;
 //~^ SUGGESTION MY_STATIC
 
+mod my_mod {
+    const INSIDE_MOD: u32 = super::my_static + 0;
+    //~^ SUGGESTION MY_STATIC
+}
+
 thread_local! {
     static fooFOO: Cell<usize> = unreachable!();
     //~^ WARN constant `fooFOO` should have an upper case name

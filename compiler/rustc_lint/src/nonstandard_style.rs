@@ -1,7 +1,9 @@
 use rustc_abi::ExternAbi;
 use rustc_attr_data_structures::{AttributeKind, ReprAttr};
 use rustc_attr_parsing::AttributeParser;
+use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::{AttrArgs, AttrItem, Attribute, GenericParamKind, PatExprKind, PatKind};
 use rustc_middle::hir::nested_filter::All;
@@ -498,14 +500,22 @@ impl NonUpperCaseGlobals {
             // We cannot provide meaningful suggestions
             // if the characters are in the category of "Lowercase Letter".
             let sub = if *name != uc {
-                NonUpperCaseGlobalSub::Suggestion { span: ident.span, replace: uc.clone() }
+                NonUpperCaseGlobalSub::Suggestion {
+                    span: ident.span,
+                    replace: uc.clone(),
+                    applicability: if did.is_some() {
+                        Applicability::MachineApplicable
+                    } else {
+                        Applicability::MaybeIncorrect
+                    },
+                }
             } else {
                 NonUpperCaseGlobalSub::Label { span: ident.span }
             };
 
             struct UsageCollector<'a, 'tcx> {
                 cx: &'tcx LateContext<'a>,
-                did: LocalDefId,
+                did: DefId,
                 collected: Vec<Span>,
             }
 
@@ -522,7 +532,7 @@ impl NonUpperCaseGlobals {
                     _id: rustc_hir::HirId,
                 ) -> Self::Result {
                     for seg in path.segments {
-                        if seg.res.opt_def_id() == Some(self.did.to_def_id()) {
+                        if seg.res.opt_def_id() == Some(self.did) {
                             self.collected.push(seg.ident.span);
                         }
                     }
@@ -535,7 +545,8 @@ impl NonUpperCaseGlobals {
                 let usages = if let Some(did) = did
                     && *name != uc
                 {
-                    let mut usage_collector = UsageCollector { cx, did, collected: Vec::new() };
+                    let mut usage_collector =
+                        UsageCollector { cx, did: did.to_def_id(), collected: Vec::new() };
                     cx.tcx.hir_walk_toplevel_module(&mut usage_collector);
                     usage_collector
                         .collected
