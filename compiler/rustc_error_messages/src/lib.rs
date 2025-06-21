@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![doc(rust_logo)]
+#![feature(anonymous_lifetime_in_impl_trait)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(type_alias_impl_trait)]
@@ -8,7 +9,7 @@
 
 use std::borrow::Cow;
 use std::error::Error;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, LazyLock};
 use std::{fmt, fs, io};
 
@@ -21,7 +22,6 @@ use intl_memoizer::concurrent::IntlLangMemoizer;
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
-use smallvec::SmallVec;
 use tracing::{instrument, trace};
 pub use unic_langid::{LanguageIdentifier, langid};
 
@@ -105,9 +105,9 @@ impl From<Vec<FluentError>> for TranslationBundleError {
 ///
 /// If `-Z additional-ftl-path` was provided, load that resource and add it  to the bundle
 /// (overriding any conflicting messages).
-#[instrument(level = "trace")]
+#[instrument(level = "trace", skip(sysroot_candidates))]
 pub fn fluent_bundle(
-    sysroot_candidates: SmallVec<[PathBuf; 2]>,
+    sysroot_candidates: impl Iterator<Item = &Path>,
     requested_locale: Option<LanguageIdentifier>,
     additional_ftl_path: Option<&Path>,
     with_directionality_markers: bool,
@@ -141,7 +141,8 @@ pub fn fluent_bundle(
     // If the user requests the default locale then don't try to load anything.
     if let Some(requested_locale) = requested_locale {
         let mut found_resources = false;
-        for mut sysroot in sysroot_candidates {
+        for sysroot in sysroot_candidates {
+            let mut sysroot = sysroot.to_owned();
             sysroot.push("share");
             sysroot.push("locale");
             sysroot.push(requested_locale.to_string());

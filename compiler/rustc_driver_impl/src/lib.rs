@@ -53,13 +53,13 @@ use rustc_metadata::locator;
 use rustc_middle::ty::TyCtxt;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
-    CG_OPTIONS, CrateType, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType,
+    CG_OPTIONS, CrateType, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, Sysroot,
     UnstableOptions, Z_OPTIONS, nightly_options, parse_target_triple,
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::output::{CRATE_TYPES, collect_crate_types, invalid_output_for_target};
-use rustc_session::{EarlyDiagCtxt, Session, config, filesearch};
+use rustc_session::{EarlyDiagCtxt, Session, config};
 use rustc_span::FileName;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_target::json::ToJson;
@@ -662,7 +662,7 @@ fn print_crate_info(
                 println_info!("{}", targets.join("\n"));
             }
             HostTuple => println_info!("{}", rustc_session::config::host_tuple()),
-            Sysroot => println_info!("{}", sess.sysroot.display()),
+            Sysroot => println_info!("{}", sess.opts.sysroot.path().display()),
             TargetLibdir => println_info!("{}", sess.target_tlib_path.dir.display()),
             TargetSpecJson => {
                 println_info!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
@@ -1114,8 +1114,8 @@ fn get_backend_from_raw_matches(
     let debug_flags = matches.opt_strs("Z");
     let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
     let target = parse_target_triple(early_dcx, matches);
-    let sysroot = filesearch::materialize_sysroot(matches.opt_str("sysroot").map(PathBuf::from));
-    let target = config::build_target_config(early_dcx, &target, &sysroot);
+    let sysroot = Sysroot::new(matches.opt_str("sysroot").map(PathBuf::from));
+    let target = config::build_target_config(early_dcx, &target, sysroot.path());
 
     get_codegen_backend(early_dcx, &sysroot, backend_name, &target)
 }
