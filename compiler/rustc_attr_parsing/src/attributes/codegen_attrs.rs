@@ -1,7 +1,7 @@
 use rustc_attr_data_structures::{AttributeKind, OptimizeAttr};
 use rustc_feature::{AttributeTemplate, template};
 use rustc_session::parse::feature_err;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use super::{AcceptMapping, AttributeOrder, AttributeParser, OnDuplicate, SingleAttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
