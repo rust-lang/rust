@@ -1,0 +1,24 @@
+[package]
+name = "intrinsic-test"
+version = "0.1.0"
+authors = ["Jamie Cunliffe <Jamie.Cunliffe@arm.com>",
+    "James McGregor <James.McGregor2@arm.com",
+    "Adam Gemmell <Adam.Gemmell@arm.com",
+    "Jacob Bramley <jacob.bramley@arm.com>",
+    "James Barford-Evans <james.barford-evans@arm.com>"
+    ]
+license = "MIT OR Apache-2.0"
+edition = "2024"
+
+[dependencies]
+lazy_static = "1.4.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
+csv = "1.1"
+clap = { version = "4.4", features = ["derive"] }
+regex = "1.4.2"
+log = "0.4.11"
+pretty_env_logger = "0.5.0"
+rayon = "1.5.0"
+diff = "0.1.12"
+itertools = "0.14.0"

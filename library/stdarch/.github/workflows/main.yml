@@ -1,0 +1,288 @@
+name: CI
+on:
+  pull_request:
+  merge_group:
+
+jobs:
+  style:
+    name: Check Style
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      run: rustup update nightly --no-self-update && rustup default nightly
+    - run: ci/style.sh
+
+  docs:
+    name: Build Documentation
+    needs: [style]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      run: rustup update nightly --no-self-update && rustup default nightly
+    - run: ci/dox.sh
+      env:
+        CI: 1
+
+  verify:
+    name: Automatic intrinsic verification
+    needs: [style]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      run: rustup update nightly --no-self-update && rustup default nightly
+    - run: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
+
+  test:
+    needs: [style]
+    name: Test
+    runs-on: ${{ matrix.target.os }}
+    strategy:
+      matrix:
+        profile:
+        - dev
+        - release
+        target:
+        # Dockers that are run through docker on linux
+        - tuple: i686-unknown-linux-gnu
+          os: ubuntu-latest
+        - tuple: x86_64-unknown-linux-gnu
+          os: ubuntu-latest
+        - tuple: arm-unknown-linux-gnueabihf
+          os: ubuntu-latest
+        - tuple: armv7-unknown-linux-gnueabihf
+          os: ubuntu-latest
+        - tuple: aarch64-unknown-linux-gnu
+          os: ubuntu-latest
+        - tuple: aarch64_be-unknown-linux-gnu
+          os: ubuntu-latest
+        - tuple: riscv32gc-unknown-linux-gnu
+          os: ubuntu-latest
+        - tuple: riscv64gc-unknown-linux-gnu
+          os: ubuntu-latest
+        - tuple: powerpc-unknown-linux-gnu
+          os: ubuntu-latest
+        - tuple: powerpc64-unknown-linux-gnu
+          os: ubuntu-latest
+        - tuple: powerpc64le-unknown-linux-gnu
+          os: ubuntu-latest
+        # MIPS targets disabled since they are dropped to tier 3.
+        # See https://github.com/rust-lang/compiler-team/issues/648
+        #- tuple: mips-unknown-linux-gnu
+        #  os: ubuntu-latest
+        #- tuple: mips64-unknown-linux-gnuabi64
+        #  os: ubuntu-latest
+        #- tuple: mips64el-unknown-linux-gnuabi64
+        #  os: ubuntu-latest
+        #- tuple: mipsel-unknown-linux-musl
+        #  os: ubuntu-latest
+        - tuple: s390x-unknown-linux-gnu
+          os: ubuntu-latest
+        - tuple: i586-unknown-linux-gnu
+          os: ubuntu-latest
+        - tuple: nvptx64-nvidia-cuda
+          os: ubuntu-latest
+        - tuple: thumbv6m-none-eabi
+          os: ubuntu-latest
+        - tuple: thumbv7m-none-eabi
+          os: ubuntu-latest
+        - tuple: thumbv7em-none-eabi
+          os: ubuntu-latest
+        - tuple: thumbv7em-none-eabihf
+          os: ubuntu-latest
+        - tuple: loongarch64-unknown-linux-gnu
+          os: ubuntu-latest
+        - tuple: wasm32-wasip1
+          os: ubuntu-latest
+
+        # macOS targets
+        - tuple: x86_64-apple-darwin
+          os: macos-15-large
+        - tuple: x86_64-apple-ios-macabi
+          os: macos-15-large
+        - tuple: aarch64-apple-darwin
+          os: macos-15
+        - tuple: aarch64-apple-ios-macabi
+          os: macos-15
+        # FIXME: gh-actions build environment doesn't have linker support
+        # - tuple: i686-apple-darwin
+        #   os: macos-13
+
+        # Windows targets
+        - tuple: x86_64-pc-windows-msvc
+          os: windows-2025
+        - tuple: i686-pc-windows-msvc
+          os: windows-2025
+        - tuple: aarch64-pc-windows-msvc
+          os: windows-11-arm
+        - tuple: x86_64-pc-windows-gnu
+          os: windows-2025
+        # - tuple: i686-pc-windows-gnu
+        #   os: windows-latest
+
+        # Add additional variables to the matrix variations generated above using `include`:
+        include:
+        # `TEST_EVERYTHING` setups - there should be at least 1 for each architecture
+        - target:
+            tuple: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+        - target:
+            tuple: aarch64_be-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+          build_std: true
+        - target:
+            tuple: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+          test_everything: true
+        - target:
+            tuple: loongarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+        - target:
+            tuple: powerpc-unknown-linux-gnu
+            os: ubuntu-latest
+          disable_assert_instr: true
+          test_everything: true
+        - target:
+            tuple: powerpc64-unknown-linux-gnu
+            os: ubuntu-latest
+          disable_assert_instr: true
+          test_everything: true
+        - target:
+            tuple: powerpc64le-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+        - target:
+            tuple: riscv32gc-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+          build_std: true
+        - target:
+            tuple: riscv64gc-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+        - target:
+            tuple: s390x-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+        - target:
+            tuple: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+        # MIPS targets disabled since they are dropped to tier 3.
+        # See https://github.com/rust-lang/compiler-team/issues/648
+        #- target:
+        #    tuple: mips-unknown-linux-gnu
+        #    os: ubuntu-latest
+        #  norun: true
+        #- target:
+        #    tuple: mips64-unknown-linux-gnuabi64
+        #    os: ubuntu-latest
+        #  norun: true
+        #- target:
+        #    tuple: mips64el-unknown-linux-gnuabi64
+        #    os: ubuntu-latest
+        #  norun: true
+        #- target:
+        #    tuple: mipsel-unknown-linux-musl
+        #    os: ubuntu-latest
+        #  norun: true
+        - target:
+            tuple: aarch64-apple-darwin
+            os: macos-15
+          norun: true # https://github.com/rust-lang/stdarch/issues/1206
+        - target:
+            tuple: aarch64-apple-ios-macabi
+            os: macos-15
+          norun: true # https://github.com/rust-lang/stdarch/issues/1206
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      run: |
+        rustup update nightly --no-self-update
+        rustup default nightly
+      shell: bash
+      if: matrix.target.os != 'windows-11-arm'
+    - name: Install Rust for `windows-11-arm` runners
+      # The arm runners don't have Rust pre-installed (https://github.com/actions/partner-runner-images/issues/77)
+      run: |
+        curl https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      shell: bash
+      if: matrix.target.os == 'windows-11-arm'
+
+    - run: rustup target add ${{ matrix.target.tuple }}
+      shell: bash
+      if: matrix.build_std == ''
+    - run: |
+        rustup component add rust-src
+        echo "CARGO_UNSTABLE_BUILD_STD=std" >> $GITHUB_ENV
+      shell: bash
+      if: matrix.build_std != ''
+
+    # Configure some env vars based on matrix configuration
+    - run: echo "PROFILE=--profile=${{matrix.profile}}" >> $GITHUB_ENV
+      shell: bash
+    - run: echo "NORUN=1" >> $GITHUB_ENV
+      shell: bash
+      if: matrix.norun != '' || startsWith(matrix.target.tuple, 'thumb') || matrix.target.tuple == 'nvptx64-nvidia-cuda'
+    - run: echo "STDARCH_TEST_EVERYTHING=1" >> $GITHUB_ENV
+      shell: bash
+      if: matrix.test_everything != ''
+    - run: echo "STDARCH_DISABLE_ASSERT_INSTR=1" >> $GITHUB_ENV
+      shell: bash
+      if: matrix.disable_assert_instr != ''
+    - run: echo "NOSTD=1" >> $GITHUB_ENV
+      shell: bash
+      if: startsWith(matrix.target.tuple, 'thumb') || matrix.target.tuple == 'nvptx64-nvidia-cuda'
+
+    # Windows & OSX go straight to `run.sh` ...
+    - run: ./ci/run.sh
+      shell: bash
+      if: matrix.target.os != 'ubuntu-latest' || startsWith(matrix.target.tuple, 'thumb')
+      env:
+        TARGET: ${{ matrix.target.tuple }}
+
+    # ... while Linux goes to `run-docker.sh`
+    - run: ./ci/run-docker.sh ${{ matrix.target.tuple }}
+      shell: bash
+      if: matrix.target.os == 'ubuntu-latest' && !startsWith(matrix.target.tuple, 'thumb')
+      env:
+        TARGET: ${{ matrix.target.tuple }}
+
+  build-std-detect:
+    needs: [style]
+    name: Build std_detect
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly
+    - run: ./ci/build-std-detect.sh
+
+  conclusion:
+    needs:
+      - docs
+      - verify
+      - test
+      - build-std-detect
+    runs-on: ubuntu-latest
+    # We need to ensure this job does *not* get skipped if its dependencies fail,
+    # because a skipped job is considered a success by GitHub. So we have to
+    # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
+    # when the workflow is canceled manually.
+    #
+    # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+    if: ${{ !cancelled() }} # make sure this is never "skipped"
+    steps:
+      - name: Conclusion
+        run: |
+          # Print the dependent jobs to see them in the CI log
+          jq -C <<< '${{ toJson(needs) }}'
+          # Check if all jobs that we depend on (in the needs array) were successful.
+          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
