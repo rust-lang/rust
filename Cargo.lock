@@ -4200,6 +4200,7 @@ dependencies = [
  "rustc_span",
  "rustc_symbol_mangling",
  "rustc_target",
+ "rustc_trait_selection",
  "serde",
  "serde_json",
  "tracing",

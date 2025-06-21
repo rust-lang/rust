@@ -1,12 +1,13 @@
-#![feature(generic_const_items, trivial_bounds)]
-#![allow(incomplete_features, dead_code, trivial_bounds)]
+//@ check-pass
+#![feature(generic_const_items)]
+#![expect(incomplete_features)]
+#![crate_type = "lib"]
 
-// FIXME(generic_const_items): This looks like a bug to me. I expected that we wouldn't emit any
-// errors. I thought we'd skip the evaluation of consts whose bounds don't hold.
-
-const UNUSED: () = ()
+const _UNUSED: () = ()
 where
-    String: Copy;
-//~^^^ ERROR unreachable code
+    for<'_delay> String: Copy;
 
-fn main() {}
+pub const PUB: () = ()
+where
+    for<'_delay> String: Copy;
+
