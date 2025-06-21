@@ -1,0 +1,47 @@
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-ok.rs:8:5
+   |
+LL | fn cast_inherent_lt<'a, 'b>(x: *mut (dyn Trait<'static> + 'a)) -> *mut (dyn Trait<'static> + 'b) {
+   |                     --  -- lifetime `'b` defined here
+   |                     |
+   |                     lifetime `'a` defined here
+LL |     x as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable pointer to `dyn Trait<'_>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: raw pointer casts of trait objects do not cast away lifetimes
+  --> $DIR/ptr-to-trait-obj-ok.rs:8:5
+   |
+LL |     x as _
+   |     ^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
+
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-ok.rs:34:5
+   |
+LL | fn cast_inherent_lt_wrap<'a, 'b>(
+   |                          --  -- lifetime `'b` defined here
+   |                          |
+   |                          lifetime `'a` defined here
+...
+LL |     x as _
+   |     ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable pointer to `Wrapper<dyn Trait<'_>>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: raw pointer casts of trait objects do not cast away lifetimes
+  --> $DIR/ptr-to-trait-obj-ok.rs:34:5
+   |
+LL |     x as _
+   |     ^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
+
+error: aborting due to 2 previous errors
+
