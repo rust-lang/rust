@@ -11,7 +11,7 @@ use rustc_infer::traits::{
 use rustc_middle::bug;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, Ty, TypeVisitableExt, TypingMode};
 use thin_vec::ThinVec;
 use tracing::{debug, debug_span, instrument};
 
@@ -507,7 +507,16 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         }
                         ty::ConstKind::Bound(_, _) => bug!("escaping bound vars in {:?}", ct),
                         ty::ConstKind::Param(param_ct) => {
-                            param_ct.find_ty_from_env(obligation.param_env)
+                            let Some(ty) = param_ct.find_ty_from_env(obligation.param_env) else {
+                                return ProcessResult::Error(FulfillmentErrorCode::Select(
+                                    SelectionError::ConstArgHasWrongType {
+                                        ct,
+                                        ct_ty: Ty::new_misc_error(self.selcx.tcx()),
+                                        expected_ty: ty,
+                                    },
+                                ));
+                            };
+                            ty
                         }
                     };
 

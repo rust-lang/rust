@@ -979,7 +979,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                         ty::ConstKind::Bound(_, _) => bug!("escaping bound vars in {:?}", ct),
                         ty::ConstKind::Param(param_ct) => {
-                            param_ct.find_ty_from_env(obligation.param_env)
+                            let Some(ty) = param_ct.find_ty_from_env(obligation.param_env) else {
+                                return Ok(EvaluatedToErr);
+                            };
+                            ty
                         }
                     };
 

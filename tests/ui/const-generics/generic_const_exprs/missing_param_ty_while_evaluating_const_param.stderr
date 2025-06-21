@@ -1,0 +1,27 @@
+error[E0425]: cannot find value `B` in this scope
+  --> $DIR/missing_param_ty_while_evaluating_const_param.rs:6:25
+   |
+LL |             let _: [(); B];
+   |                         ^ not found in this scope
+
+error: the constant `FN` is not of type `()`
+  --> $DIR/missing_param_ty_while_evaluating_const_param.rs:6:20
+   |
+LL |             let _: [(); B];
+   |                    ^^^^^^^ expected `()`, found type error
+   |
+note: required by a const generic parameter in `X`
+  --> $DIR/missing_param_ty_while_evaluating_const_param.rs:4:5
+   |
+LL |   struct X<
+   |          - required by a bound in this struct
+LL | /     const FN: () = {
+LL | |         || {
+LL | |             let _: [(); B];
+...  |
+LL | |     },
+   | |_____^ required by this const generic parameter in `X`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
