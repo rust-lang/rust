@@ -762,7 +762,11 @@ config_data! {
         /// though Cargo might be the eventual consumer.
         vfs_extraIncludes: Vec<String> = vec![],
 
-        /// Exclude imports from symbol search.
+        /// Exclude all imports from workspace symbol search.
+        ///
+        /// In addition to regular imports (which are always excluded),
+        /// this option removes public imports (better known as re-exports)
+        /// and removes imports that rename the imported symbol.
         workspace_symbol_search_excludeImports: bool = false,
         /// Workspace symbol search kind.
         workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = WorkspaceSymbolSearchKindDef::OnlyTypes,
