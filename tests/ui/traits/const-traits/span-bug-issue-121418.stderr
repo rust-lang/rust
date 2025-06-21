@@ -14,8 +14,8 @@ error[E0277]: the size for values of type `(dyn T + 'static)` cannot be known at
 LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Mutex<(dyn T + 'static)>`, the trait `Sized` is not implemented for `(dyn T + 'static)`
-note: required because it appears within the type `Mutex<(dyn T + 'static)>`
+   = help: within `std::sync::Mutex<(dyn T + 'static)>`, the trait `Sized` is not implemented for `(dyn T + 'static)`
+note: required because it appears within the type `std::sync::Mutex<(dyn T + 'static)>`
   --> $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
    = note: the return type of a function must have a statically known size
 
@@ -27,7 +27,7 @@ LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
    |                  |
    |                  implicitly returns `()` as its body has no tail or `return` expression
    |
-   = note: expected struct `Mutex<(dyn T + 'static)>`
+   = note: expected struct `std::sync::Mutex<(dyn T + 'static)>`
            found unit type `()`
 
 error: aborting due to 3 previous errors
