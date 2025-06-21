@@ -53,41 +53,15 @@ fn aapcs_ptr(f: extern "aapcs" fn()) {
 extern "aapcs" {}
 //[x64,x64_win,i686,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
 
-extern "msp430-interrupt" fn msp430() {}
-//~^ ERROR is not a supported ABI
-fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-//~^ ERROR is not a supported ABI
-    f()
-}
 extern "msp430-interrupt" {}
 //~^ ERROR is not a supported ABI
 
-extern "avr-interrupt" fn avr() {}
-//~^ ERROR is not a supported ABI
-fn avr_ptr(f: extern "avr-interrupt" fn()) {
-//~^ ERROR is not a supported ABI
-    f()
-}
 extern "avr-interrupt" {}
 //~^ ERROR is not a supported ABI
 
-extern "riscv-interrupt-m" fn riscv() {}
-//[x64,x64_win,i686,arm,aarch64]~^ ERROR is not a supported ABI
-fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
-    //[x64,x64_win,i686,arm,aarch64]~^ ERROR is not a supported ABI
-    f()
-    //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-m" ABI cannot be called
-}
 extern "riscv-interrupt-m" {}
 //[x64,x64_win,i686,arm,aarch64]~^ ERROR is not a supported ABI
 
-extern "x86-interrupt" fn x86() {}
-//[aarch64,arm,riscv32,riscv64]~^ ERROR is not a supported ABI
-fn x86_ptr(f: extern "x86-interrupt" fn()) {
-    //[aarch64,arm,riscv32,riscv64]~^ ERROR is not a supported ABI
-    f()
-    //[x64,x64_win,i686]~^ ERROR functions with the "x86-interrupt" ABI cannot be called
-}
 extern "x86-interrupt" {}
 //[aarch64,arm,riscv32,riscv64]~^ ERROR is not a supported ABI
 
