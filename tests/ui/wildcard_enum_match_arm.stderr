@@ -40,5 +40,11 @@ error: wildcard match will also match any future added variants
 LL |             _ => (),
    |             ^ help: try: `Enum::B | Enum::__Private`
 
-error: aborting due to 6 previous errors
+error: wildcard match will also match any future added variants
+  --> tests/ui/wildcard_enum_match_arm.rs:118:9
+   |
+LL |         r#type => {},
+   |         ^^^^^^ help: try: `r#type @ Foo::B | r#type @ Foo::C`
+
+error: aborting due to 7 previous errors
 
