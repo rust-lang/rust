@@ -798,6 +798,7 @@ pub enum PatKind<'tcx> {
         /// (The same binding can occur multiple times in different branches of
         /// an or-pattern, but only one of them will be primary.)
         is_primary: bool,
+        /// Is this binding a shorthand struct pattern, i.e. `Foo { a }`?
         is_shorthand: bool,
     },
 
