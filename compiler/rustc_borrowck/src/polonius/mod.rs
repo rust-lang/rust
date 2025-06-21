@@ -182,8 +182,6 @@ impl PoloniusContext {
         // Now that we have a complete graph, we can compute reachability to trace the liveness of
         // loans for the next step in the chain, the NLL loan scope and active loans computations.
         let live_loans = compute_loan_liveness(
-            tcx,
-            body,
             regioncx.liveness_constraints(),
             regioncx.outlives_constraints(),
             borrow_set,
