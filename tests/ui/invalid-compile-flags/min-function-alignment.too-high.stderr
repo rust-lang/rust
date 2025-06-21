@@ -1,0 +1,2 @@
+error: incorrect value `16384` for unstable option `min-function-alignment` - a number that is a power of 2 between 1 and 8192 was expected
+
