@@ -20,7 +20,7 @@ use crate::const_eval::CheckAlignment;
 use crate::interpret::{
     CtfeValidationMode, GlobalId, Immediate, InternKind, InternResult, InterpCx, InterpErrorKind,
     InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, StackPopCleanup, create_static_alloc,
-    eval_nullary_intrinsic, intern_const_alloc_recursive, interp_ok, throw_exhaust,
+    intern_const_alloc_recursive, interp_ok, throw_exhaust,
 };
 use crate::{CTRL_C_RECEIVED, errors};
 
@@ -280,34 +280,6 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
-    // We call `const_eval` for zero arg intrinsics, too, in order to cache their value.
-    // Catch such calls and evaluate them instead of trying to load a constant's MIR.
-    if let ty::InstanceKind::Intrinsic(def_id) = key.value.instance.def {
-        let ty = key.value.instance.ty(tcx, key.typing_env);
-        let ty::FnDef(_, args) = ty.kind() else {
-            bug!("intrinsic with type {:?}", ty);
-        };
-        return eval_nullary_intrinsic(tcx, key.typing_env, def_id, args).report_err().map_err(
-            |error| {
-                let span = tcx.def_span(def_id);
-
-                // FIXME(oli-obk): why don't we have any tests for this code path?
-                super::report(
-                    tcx,
-                    error.into_kind(),
-                    span,
-                    || (span, vec![]),
-                    |diag, span, _| {
-                        diag.span_label(
-                            span,
-                            crate::fluent_generated::const_eval_nullary_intrinsic_fail,
-                        );
-                    },
-                )
-            },
-        );
-    }
-
     tcx.eval_to_allocation_raw(key).map(|val| turn_into_const_value(tcx, val, key))
 }
 
