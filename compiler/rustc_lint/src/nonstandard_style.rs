@@ -1,7 +1,9 @@
 use rustc_abi::ExternAbi;
 use rustc_attr_data_structures::{AttributeKind, ReprAttr};
 use rustc_attr_parsing::AttributeParser;
+use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::{AttrArgs, AttrItem, Attribute, GenericParamKind, PatExprKind, PatKind};
 use rustc_middle::hir::nested_filter::All;
@@ -495,17 +497,33 @@ impl NonUpperCaseGlobals {
         if name.chars().any(|c| c.is_lowercase()) {
             let uc = NonSnakeCase::to_snake_case(name).to_uppercase();
 
+            // If the item is exported, suggesting changing it's name would be breaking-change
+            // and could break users without a "nice" applicable fix, so let's avoid it.
+            let can_change_usages = if let Some(did) = did {
+                !cx.tcx.effective_visibilities(()).is_exported(did)
+            } else {
+                false
+            };
+
             // We cannot provide meaningful suggestions
             // if the characters are in the category of "Lowercase Letter".
             let sub = if *name != uc {
-                NonUpperCaseGlobalSub::Suggestion { span: ident.span, replace: uc.clone() }
+                NonUpperCaseGlobalSub::Suggestion {
+                    span: ident.span,
+                    replace: uc.clone(),
+                    applicability: if can_change_usages {
+                        Applicability::MachineApplicable
+                    } else {
+                        Applicability::MaybeIncorrect
+                    },
+                }
             } else {
                 NonUpperCaseGlobalSub::Label { span: ident.span }
             };
 
             struct UsageCollector<'a, 'tcx> {
                 cx: &'tcx LateContext<'a>,
-                did: LocalDefId,
+                did: DefId,
                 collected: Vec<Span>,
             }
 
@@ -521,10 +539,10 @@ impl NonUpperCaseGlobals {
                     path: &rustc_hir::Path<'v>,
                     _id: rustc_hir::HirId,
                 ) -> Self::Result {
-                    for seg in path.segments {
-                        if seg.res.opt_def_id() == Some(self.did.to_def_id()) {
-                            self.collected.push(seg.ident.span);
-                        }
+                    if let Some(final_seg) = path.segments.last()
+                        && final_seg.res.opt_def_id() == Some(self.did)
+                    {
+                        self.collected.push(final_seg.ident.span);
                     }
                 }
             }
@@ -532,10 +550,12 @@ impl NonUpperCaseGlobals {
             cx.emit_span_lint_lazy(NON_UPPER_CASE_GLOBALS, ident.span, || {
                 // Compute usages lazily as it can expansive and useless when the lint is allowed.
                 // cf. https://github.com/rust-lang/rust/pull/142645#issuecomment-2993024625
-                let usages = if let Some(did) = did
+                let usages = if can_change_usages
                     && *name != uc
+                    && let Some(did) = did
                 {
-                    let mut usage_collector = UsageCollector { cx, did, collected: Vec::new() };
+                    let mut usage_collector =
+                        UsageCollector { cx, did: did.to_def_id(), collected: Vec::new() };
                     cx.tcx.hir_walk_toplevel_module(&mut usage_collector);
                     usage_collector
                         .collected

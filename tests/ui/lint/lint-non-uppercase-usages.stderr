@@ -12,7 +12,7 @@ LL + const MY_STATIC: u32 = 0;
    |
 
 warning: constant `fooFOO` should have an upper case name
-  --> $DIR/lint-non-uppercase-usages.rs:19:12
+  --> $DIR/lint-non-uppercase-usages.rs:24:12
    |
 LL |     static fooFOO: Cell<usize> = unreachable!();
    |            ^^^^^^
@@ -24,7 +24,7 @@ LL +     static FOO_FOO: Cell<usize> = unreachable!();
    |
 
 warning: const parameter `foo` should have an upper case name
-  --> $DIR/lint-non-uppercase-usages.rs:24:14
+  --> $DIR/lint-non-uppercase-usages.rs:29:14
    |
 LL | fn foo<const foo: u32>() {
    |              ^^^
