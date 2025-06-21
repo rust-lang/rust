@@ -935,15 +935,15 @@ impl String {
     /// #![feature(vec_into_raw_parts)]
     /// let s = String::from("hello");
     ///
-    /// let (ptr, len, cap) = s.into_raw_parts();
+    /// let (ptr, len, cap) = String::into_raw_parts(s);
     ///
     /// let rebuilt = unsafe { String::from_raw_parts(ptr, len, cap) };
     /// assert_eq!(rebuilt, "hello");
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
-    pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
-        self.vec.into_raw_parts()
+    pub fn into_raw_parts(string: Self) -> (*mut u8, usize, usize) {
+        Vec::into_raw_parts(string.vec)
     }
 
     /// Creates a new `String` from a pointer, a length and a capacity.
