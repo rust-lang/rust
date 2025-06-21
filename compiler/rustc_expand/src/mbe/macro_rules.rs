@@ -392,7 +392,7 @@ pub fn compile_declarative_macro(
 
     let lhs_nm = Ident::new(sym::lhs, span);
     let rhs_nm = Ident::new(sym::rhs, span);
-    let tt_spec = Some(NonterminalKind::TT);
+    let tt_spec = NonterminalKind::TT;
     let macro_rules = macro_def.macro_rules;
 
     // Parse the macro_rules! invocation
@@ -407,9 +407,9 @@ pub fn compile_declarative_macro(
             DelimSpan::dummy(),
             mbe::SequenceRepetition {
                 tts: vec![
-                    mbe::TokenTree::MetaVarDecl(span, lhs_nm, tt_spec),
+                    mbe::TokenTree::MetaVarDecl { span, name: lhs_nm, kind: tt_spec },
                     mbe::TokenTree::token(token::FatArrow, span),
-                    mbe::TokenTree::MetaVarDecl(span, rhs_nm, tt_spec),
+                    mbe::TokenTree::MetaVarDecl { span, name: rhs_nm, kind: tt_spec },
                 ],
                 separator: Some(Token::new(
                     if macro_rules { token::Semi } else { token::Comma },
@@ -448,6 +448,7 @@ pub fn compile_declarative_macro(
         match tt_parser.parse_tt(&mut Cow::Owned(parser), &argument_gram, &mut NoopTracker) {
             Success(m) => m,
             Failure(()) => {
+                debug!("failed to parse macro tt");
                 // The fast `NoopTracker` doesn't have any info on failure, so we need to retry it
                 // with another one that gives us the information we need.
                 // For this we need to reclone the macro body as the previous parser consumed it.
@@ -616,7 +617,7 @@ fn is_empty_token_tree(sess: &Session, seq: &mbe::SequenceRepetition) -> bool {
         let mut iter = seq.tts.iter().peekable();
         while let Some(tt) = iter.next() {
             match tt {
-                mbe::TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Vis)) => {}
+                mbe::TokenTree::MetaVarDecl { kind: NonterminalKind::Vis, .. } => {}
                 mbe::TokenTree::Token(t @ Token { kind: DocComment(..), .. }) => {
                     let mut now = t;
                     while let Some(&mbe::TokenTree::Token(
@@ -651,7 +652,7 @@ fn check_redundant_vis_repetition(
 ) {
     let is_zero_or_one: bool = seq.kleene.op == KleeneOp::ZeroOrOne;
     let is_vis = seq.tts.first().map_or(false, |tt| {
-        matches!(tt, mbe::TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Vis)))
+        matches!(tt, mbe::TokenTree::MetaVarDecl { kind: NonterminalKind::Vis, .. })
     });
 
     if is_vis && is_zero_or_one {
@@ -678,7 +679,7 @@ fn check_lhs_no_empty_seq(sess: &Session, tts: &[mbe::TokenTree]) -> Result<(), 
         match tt {
             TokenTree::Token(..)
             | TokenTree::MetaVar(..)
-            | TokenTree::MetaVarDecl(..)
+            | TokenTree::MetaVarDecl { .. }
             | TokenTree::MetaVarExpr(..) => (),
             TokenTree::Delimited(.., del) => check_lhs_no_empty_seq(sess, &del.tts)?,
             TokenTree::Sequence(span, seq) => {
@@ -777,7 +778,7 @@ impl<'tt> FirstSets<'tt> {
                 match tt {
                     TokenTree::Token(..)
                     | TokenTree::MetaVar(..)
-                    | TokenTree::MetaVarDecl(..)
+                    | TokenTree::MetaVarDecl { .. }
                     | TokenTree::MetaVarExpr(..) => {
                         first.replace_with(TtHandle::TtRef(tt));
                     }
@@ -845,7 +846,7 @@ impl<'tt> FirstSets<'tt> {
             match tt {
                 TokenTree::Token(..)
                 | TokenTree::MetaVar(..)
-                | TokenTree::MetaVarDecl(..)
+                | TokenTree::MetaVarDecl { .. }
                 | TokenTree::MetaVarExpr(..) => {
                     first.add_one(TtHandle::TtRef(tt));
                     return first;
@@ -1084,7 +1085,7 @@ fn check_matcher_core<'tt>(
         match token {
             TokenTree::Token(..)
             | TokenTree::MetaVar(..)
-            | TokenTree::MetaVarDecl(..)
+            | TokenTree::MetaVarDecl { .. }
             | TokenTree::MetaVarExpr(..) => {
                 if token_can_be_followed_by_any(token) {
                     // don't need to track tokens that work with any,
@@ -1152,7 +1153,7 @@ fn check_matcher_core<'tt>(
         // Now `last` holds the complete set of NT tokens that could
         // end the sequence before SUFFIX. Check that every one works with `suffix`.
         for tt in &last.tokens {
-            if let &TokenTree::MetaVarDecl(span, name, Some(kind)) = tt.get() {
+            if let &TokenTree::MetaVarDecl { span, name, kind } = tt.get() {
                 for next_token in &suffix_first.tokens {
                     let next_token = next_token.get();
 
@@ -1172,11 +1173,11 @@ fn check_matcher_core<'tt>(
                         )
                     {
                         // It is suggestion to use pat_param, for example: $x:pat -> $x:pat_param.
-                        let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
+                        let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl {
                             span,
                             name,
-                            Some(NonterminalKind::Pat(PatParam { inferred: false })),
-                        ));
+                            kind: NonterminalKind::Pat(PatParam { inferred: false }),
+                        });
                         sess.psess.buffer_lint(
                             RUST_2021_INCOMPATIBLE_OR_PATTERNS,
                             span,
@@ -1212,11 +1213,11 @@ fn check_matcher_core<'tt>(
                                 && sess.psess.edition.at_least_rust_2021()
                                 && next_token.is_token(&token::Or)
                             {
-                                let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
+                                let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl {
                                     span,
                                     name,
-                                    Some(NonterminalKind::Pat(PatParam { inferred: false })),
-                                ));
+                                    kind: NonterminalKind::Pat(PatParam { inferred: false }),
+                                });
                                 err.span_suggestion(
                                     span,
                                     "try a `pat_param` fragment specifier instead",
@@ -1254,7 +1255,7 @@ fn check_matcher_core<'tt>(
 }
 
 fn token_can_be_followed_by_any(tok: &mbe::TokenTree) -> bool {
-    if let mbe::TokenTree::MetaVarDecl(_, _, Some(kind)) = *tok {
+    if let mbe::TokenTree::MetaVarDecl { kind, .. } = *tok {
         frag_can_be_followed_by_any(kind)
     } else {
         // (Non NT's can always be followed by anything in matchers.)
@@ -1367,7 +1368,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                         }
                         _ => IsInFollow::No(TOKENS),
                     },
-                    TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Block)) => IsInFollow::Yes,
+                    TokenTree::MetaVarDecl { kind: NonterminalKind::Block, .. } => IsInFollow::Yes,
                     _ => IsInFollow::No(TOKENS),
                 }
             }
@@ -1400,11 +1401,10 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                             }
                         }
                     },
-                    TokenTree::MetaVarDecl(
-                        _,
-                        _,
-                        Some(NonterminalKind::Ident | NonterminalKind::Ty | NonterminalKind::Path),
-                    ) => IsInFollow::Yes,
+                    TokenTree::MetaVarDecl {
+                        kind: NonterminalKind::Ident | NonterminalKind::Ty | NonterminalKind::Path,
+                        ..
+                    } => IsInFollow::Yes,
                     _ => IsInFollow::No(TOKENS),
                 }
             }
@@ -1416,8 +1416,7 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     match tt {
         mbe::TokenTree::Token(token) => pprust::token_to_string(token).into(),
         mbe::TokenTree::MetaVar(_, name) => format!("${name}"),
-        mbe::TokenTree::MetaVarDecl(_, name, Some(kind)) => format!("${name}:{kind}"),
-        mbe::TokenTree::MetaVarDecl(_, name, None) => format!("${name}:"),
+        mbe::TokenTree::MetaVarDecl { name, kind, .. } => format!("${name}:{kind}"),
         _ => panic!(
             "{}",
             "unexpected mbe::TokenTree::{Sequence or Delimited} \

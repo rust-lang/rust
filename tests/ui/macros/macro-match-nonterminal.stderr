@@ -24,7 +24,16 @@ help: try adding a specifier here
 LL |     ($a, $b:spec) => {
    |            +++++
 
-error: missing fragment specifier
+error: unexpected end of macro invocation
+  --> $DIR/macro-match-nonterminal.rs:10:5
+   |
+LL | macro_rules! test {
+   | ----------------- when calling this macro
+...
+LL |     test!()
+   |     ^^^^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$a:tt`
   --> $DIR/macro-match-nonterminal.rs:2:6
    |
 LL |     ($a, $b) => {

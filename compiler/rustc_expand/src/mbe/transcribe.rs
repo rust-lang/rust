@@ -283,7 +283,7 @@ pub(super) fn transcribe<'a>(
             }
 
             // There should be no meta-var declarations in the invocation of a macro.
-            mbe::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl`"),
+            mbe::TokenTree::MetaVarDecl { .. } => panic!("unexpected `TokenTree::MetaVarDecl`"),
         }
     }
 }
@@ -776,7 +776,7 @@ fn lockstep_iter_size(
                 size.with(lockstep_iter_size(tt, interpolations, repeats))
             })
         }
-        TokenTree::MetaVar(_, name) | TokenTree::MetaVarDecl(_, name, _) => {
+        TokenTree::MetaVar(_, name) | TokenTree::MetaVarDecl { name, .. } => {
             let name = MacroRulesNormalizedIdent::new(*name);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
