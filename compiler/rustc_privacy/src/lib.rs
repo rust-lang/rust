@@ -67,8 +67,11 @@ impl<'tcx> fmt::Display for LazyDefPathStr<'tcx> {
 /// manually. Second, it doesn't visit some type components like signatures of fn types, or traits
 /// in `impl Trait`, see individual comments in `DefIdVisitorSkeleton::visit_ty`.
 pub trait DefIdVisitor<'tcx> {
+    #[cfg_attr(not(bootstrap), must_use)]
     type Result: VisitorResult = ();
+
     const SHALLOW: bool = false;
+
     fn skip_assoc_tys(&self) -> bool {
         false
     }

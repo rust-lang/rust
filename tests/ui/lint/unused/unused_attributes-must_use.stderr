@@ -123,12 +123,6 @@ error: `#[must_use]` has no effect when applied to an associated const
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
-error: `#[must_use]` has no effect when applied to an associated type
-  --> $DIR/unused_attributes-must_use.rs:70:5
-   |
-LL |     #[must_use]
-   |     ^^^^^^^^^^^
-
 error: `#[must_use]` has no effect when applied to a provided trait method
   --> $DIR/unused_attributes-must_use.rs:83:5
    |
@@ -223,5 +217,5 @@ help: use `let _ = ...` to ignore the resulting value
 LL |     let _ = ().get_four();
    |     +++++++
 
-error: aborting due to 29 previous errors
+error: aborting due to 28 previous errors
 
