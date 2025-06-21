@@ -2671,31 +2671,26 @@ fn filter_tokens_from_list(
 
 fn filter_doc_attr_ident(ident: Symbol, is_inline: bool) -> bool {
     if is_inline {
-        ident == sym::hidden || ident == sym::inline || ident == sym::no_inline
+        matches!(ident, sym::hidden | sym::inline | sym::no_inline)
     } else {
-        ident == sym::cfg
+        matches!(ident, sym::cfg)
     }
 }
 
-/// Remove attributes from `normal` that should not be inherited by `use` re-export.
-/// Before calling this function, make sure `normal` is a `#[doc]` attribute.
+/// Assuming `args` are the arguments to a `doc` attribute (i.e. `#[doc(args...)]`),
+/// remove attribute arguments that should not be inherited by `use` re-export.
 fn filter_doc_attr(args: &mut hir::AttrArgs, is_inline: bool) {
+    fn ident(tt: &TokenTree) -> Option<Symbol> {
+        match *tt {
+            TokenTree::Token(Token { kind: TokenKind::Ident(ident, _), .. }, ..) => Some(ident),
+            _ => None,
+        }
+    }
+
     match args {
         hir::AttrArgs::Delimited(args) => {
-            let tokens = filter_tokens_from_list(&args.tokens, |token| {
-                !matches!(
-                    token,
-                    TokenTree::Token(
-                        Token {
-                            kind: TokenKind::Ident(
-                                ident,
-                                _,
-                            ),
-                            ..
-                        },
-                        _,
-                    ) if filter_doc_attr_ident(*ident, is_inline),
-                )
+            let tokens = filter_tokens_from_list(&args.tokens, |tt| {
+                !ident(tt).is_some_and(|ident| filter_doc_attr_ident(ident, is_inline))
             });
             args.tokens = TokenStream::new(tokens);
         }
