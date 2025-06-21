@@ -1495,6 +1495,9 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
+    /// If there are no matches the full string slice is returned as the only
+    /// item in the iterator.
+    ///
     /// [`char`]: prim@char
     /// [pattern]: self::pattern
     ///
@@ -1525,6 +1528,9 @@ impl str {
     ///
     /// let v: Vec<&str> = "lion::tiger::leopard".split("::").collect();
     /// assert_eq!(v, ["lion", "tiger", "leopard"]);
+    ///
+    /// let v: Vec<&str> = "AABBCC".split("DD").collect();
+    /// assert_eq!(v, ["AABBCC"]);
     ///
     /// let v: Vec<&str> = "abc1def2ghi".split(char::is_numeric).collect();
     /// assert_eq!(v, ["abc", "def", "ghi"]);
