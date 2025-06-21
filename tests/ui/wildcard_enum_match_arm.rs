@@ -105,3 +105,17 @@ fn main() {
         }
     }
 }
+
+fn issue15091() {
+    enum Foo {
+        A,
+        B,
+        C,
+    }
+
+    match Foo::A {
+        Foo::A => {},
+        r#type => {},
+        //~^ wildcard_enum_match_arm
+    }
+}
