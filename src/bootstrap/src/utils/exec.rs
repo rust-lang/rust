@@ -5,7 +5,7 @@
 #![allow(warnings)]
 
 use std::collections::HashMap;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use std::path::Path;
@@ -55,6 +55,14 @@ impl OutputMode {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Default)]
+pub struct CommandCacheKey {
+    program: OsString,
+    args: Vec<OsString>,
+    envs: Vec<(OsString, OsString)>,
+    cwd: Option<PathBuf>,
+}
+
 /// Wrapper around `std::process::Command`.
 ///
 /// By default, the command will exit bootstrap if it fails.
@@ -69,11 +77,7 @@ impl OutputMode {
 /// [allow_failure]: BootstrapCommand::allow_failure
 /// [delay_failure]: BootstrapCommand::delay_failure
 pub struct BootstrapCommand {
-    program: String,
-    args: Vec<String>,
-    envs: Vec<(String, String)>,
-    cwd: Option<PathBuf>,
-
+    cache_key: CommandCacheKey,
     command: Command,
     pub failure_behavior: BehaviorOnFailure,
     // Run the command even during dry run
@@ -81,19 +85,29 @@ pub struct BootstrapCommand {
     // This field makes sure that each command is executed (or disarmed) before it is dropped,
     // to avoid forgetting to execute a command.
     drop_bomb: DropBomb,
+    should_cache: bool,
 }
 
 impl<'a> BootstrapCommand {
     #[track_caller]
     pub fn new<S: AsRef<OsStr>>(program: S) -> Self {
-        Command::new(program).into()
+        Self {
+            should_cache: true,
+            cache_key: CommandCacheKey {
+                program: program.as_ref().to_os_string(),
+                ..CommandCacheKey::default()
+            },
+            ..Command::new(program).into()
+        }
     }
-
     pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        let arg_str = arg.as_ref().to_string_lossy().into_owned();
-        self.args.push(arg_str.clone());
+        self.cache_key.args.push(arg.as_ref().to_os_string());
         self.command.arg(arg.as_ref());
         self
+    }
+
+    pub fn should_cache(&self) -> bool {
+        self.should_cache
     }
 
     pub fn args<I, S>(&mut self, args: I) -> &mut Self
@@ -112,9 +126,7 @@ impl<'a> BootstrapCommand {
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
     {
-        let key_str = key.as_ref().to_string_lossy().into_owned();
-        let val_str = val.as_ref().to_string_lossy().into_owned();
-        self.envs.push((key_str.clone(), val_str.clone()));
+        self.cache_key.envs.push((key.as_ref().to_os_string(), val.as_ref().to_os_string()));
         self.command.env(key, val);
         self
     }
@@ -133,7 +145,7 @@ impl<'a> BootstrapCommand {
     }
 
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
-        self.cwd = Some(dir.as_ref().to_path_buf());
+        self.cache_key.cwd = Some(dir.as_ref().to_path_buf());
         self.command.current_dir(dir);
         self
     }
@@ -205,6 +217,7 @@ impl<'a> BootstrapCommand {
         // We don't know what will happen with the returned command, so we need to mark this
         // command as executed proactively.
         self.mark_as_executed();
+        self.should_cache = false;
         &mut self.command
     }
 
@@ -230,6 +243,10 @@ impl<'a> BootstrapCommand {
             self.env("TERM", "xterm").args(["--color", "always"]);
         }
     }
+
+    pub fn cache_key(&self) -> CommandCacheKey {
+        self.cache_key.clone()
+    }
 }
 
 impl Debug for BootstrapCommand {
@@ -245,10 +262,8 @@ impl From<Command> for BootstrapCommand {
         let program = command.get_program().to_owned();
 
         Self {
-            program: program.clone().into_string().unwrap(),
-            args: Vec::new(),
-            envs: Vec::new(),
-            cwd: None,
+            cache_key: CommandCacheKey::default(),
+            should_cache: false,
             command,
             failure_behavior: BehaviorOnFailure::Exit,
             run_in_dry_run: false,
