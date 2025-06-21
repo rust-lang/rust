@@ -31,6 +31,7 @@
 //!     eq: sized
 //!     error: fmt
 //!     fmt: option, result, transmute, coerce_unsized, copy, clone, derive
+//!     fmt_before_1_89_0: fmt
 //!     fn: tuple
 //!     from: sized, result
 //!     future: pin
@@ -1175,6 +1176,7 @@ pub mod fmt {
             }
         }
 
+        // region:fmt_before_1_89_0
         #[lang = "format_unsafe_arg"]
         pub struct UnsafeArg {
             _private: (),
@@ -1185,6 +1187,7 @@ pub mod fmt {
                 UnsafeArg { _private: () }
             }
         }
+        // endregion:fmt_before_1_89_0
     }
 
     #[derive(Copy, Clone)]
@@ -1204,6 +1207,7 @@ pub mod fmt {
             Arguments { pieces, fmt: None, args: &[] }
         }
 
+        // region:fmt_before_1_89_0
         pub fn new_v1_formatted(
             pieces: &'a [&'static str],
             args: &'a [rt::Argument<'a>],
@@ -1212,6 +1216,17 @@ pub mod fmt {
         ) -> Arguments<'a> {
             Arguments { pieces, fmt: Some(fmt), args }
         }
+        // endregion:fmt_before_1_89_0
+
+        // region:!fmt_before_1_89_0
+        pub unsafe fn new_v1_formatted(
+            pieces: &'a [&'static str],
+            args: &'a [rt::Argument<'a>],
+            fmt: &'a [rt::Placeholder],
+        ) -> Arguments<'a> {
+            Arguments { pieces, fmt: Some(fmt), args }
+        }
+        // endregion:!fmt_before_1_89_0
 
         pub const fn as_str(&self) -> Option<&'static str> {
             match (self.pieces, self.args) {
