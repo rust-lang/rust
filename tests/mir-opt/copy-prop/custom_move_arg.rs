@@ -1,4 +1,3 @@
-// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ test-mir-pass: CopyProp
 
@@ -12,6 +11,13 @@ struct NotCopy(bool);
 // EMIT_MIR custom_move_arg.f.CopyProp.diff
 #[custom_mir(dialect = "runtime")]
 fn f(_1: NotCopy) {
+    // CHECK-LABEL: fn f(
+    // CHECK: bb0: {
+    // CHECK-NOT: _2 = copy _1;
+    // CHECK: _0 = opaque::<NotCopy>(copy _1)
+    // CHECK: bb1: {
+    // CHECK-NOT: _3 = move _2;
+    // CHECK: _0 = opaque::<NotCopy>(copy _1)
     mir! {
         {
             let _2 = _1;
