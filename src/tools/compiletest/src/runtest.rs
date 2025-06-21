@@ -677,9 +677,6 @@ impl<'test> TestCx<'test> {
             return;
         }
 
-        // On Windows, translate all '\' path separators to '/'
-        let file_name = self.testpaths.file.to_string().replace(r"\", "/");
-
         // On Windows, keep all '\' path separators to match the paths reported in the JSON output
         // from the compiler
         let diagnostic_file_name = if self.props.remap_src_base {
@@ -704,6 +701,7 @@ impl<'test> TestCx<'test> {
             .map(|e| Error { msg: self.normalize_output(&e.msg, &[]), ..e });
 
         let mut unexpected = Vec::new();
+        let mut unimportant = Vec::new();
         let mut found = vec![false; expected_errors.len()];
         for actual_error in actual_errors {
             for pattern in &self.props.error_patterns {
@@ -738,14 +736,9 @@ impl<'test> TestCx<'test> {
                         && expected_kinds.contains(&actual_error.kind)
                         && !self.props.dont_require_annotations.contains(&actual_error.kind)
                     {
-                        self.error(&format!(
-                            "{}:{}: unexpected {}: '{}'",
-                            file_name,
-                            actual_error.line_num_str(),
-                            actual_error.kind,
-                            actual_error.msg
-                        ));
                         unexpected.push(actual_error);
+                    } else {
+                        unimportant.push(actual_error);
                     }
                 }
             }
@@ -755,39 +748,195 @@ impl<'test> TestCx<'test> {
         // anything not yet found is a problem
         for (index, expected_error) in expected_errors.iter().enumerate() {
             if !found[index] {
-                self.error(&format!(
-                    "{}:{}: expected {} not found: {}",
-                    file_name,
-                    expected_error.line_num_str(),
-                    expected_error.kind,
-                    expected_error.msg
-                ));
                 not_found.push(expected_error);
             }
         }
 
         if !unexpected.is_empty() || !not_found.is_empty() {
             self.error(&format!(
-                "{} unexpected errors found, {} expected errors not found",
+                "{} unexpected diagnostics reported, {} expected diagnostics not reported",
                 unexpected.len(),
                 not_found.len()
             ));
-            println!("status: {}\ncommand: {}\n", proc_res.status, proc_res.cmdline);
+
+            // Emit locations in a format that is short (relative paths) but "clickable" in editors.
+            // Also normalize path separators to `/`.
+            let file_name = self
+                .testpaths
+                .file
+                .strip_prefix(self.config.src_root.as_str())
+                .unwrap_or(&self.testpaths.file)
+                .to_string()
+                .replace(r"\", "/");
+            let line_str = |e: &Error| {
+                let line_num = e.line_num.map_or("?".to_string(), |line_num| line_num.to_string());
+                // `file:?:NUM` may be confusing to editors and unclickable.
+                let opt_col_num = match e.column_num {
+                    Some(col_num) if line_num != "?" => format!(":{col_num}"),
+                    _ => "".to_string(),
+                };
+                format!("{file_name}:{line_num}{opt_col_num}")
+            };
+            let print = |e: &Error| println!("{}: {}: {}", line_str(e), e.kind, e.msg.cyan());
+            // Fuzzy matching quality:
+            // - message and line / message and kind - great, suggested
+            // - only message - good, suggested
+            // - known line and kind - ok, suggested
+            // - only known line - meh, but suggested
+            // - others are not worth suggesting
             if !unexpected.is_empty() {
-                println!("{}", "--- unexpected errors (from JSON output) ---".green());
+                println!("{}", "--- reported but not expected (from JSON output) ---".green());
                 for error in &unexpected {
-                    println!("{}", error.render_for_expected());
+                    print(error);
+                    let mut suggestions = Vec::new();
+                    for candidate in &not_found {
+                        if error.msg.contains(&candidate.msg) {
+                            let line_mismatch = candidate.line_num != error.line_num;
+                            let kind_mismatch = candidate.kind != error.kind;
+                            if kind_mismatch && line_mismatch {
+                                suggestions.push((
+                                    format!(
+                                        "  {} {} {} {}",
+                                        "expected with kind".red(),
+                                        candidate.kind,
+                                        "on line".red(),
+                                        line_str(candidate)
+                                    ),
+                                    0,
+                                ));
+                            } else if kind_mismatch {
+                                suggestions.push((
+                                    format!("  {} {}", "expected with kind".red(), candidate.kind),
+                                    0,
+                                ));
+                            } else {
+                                suggestions.push((
+                                    format!(
+                                        "  {} {}",
+                                        "expected on line".red(),
+                                        line_str(candidate)
+                                    ),
+                                    0,
+                                ));
+                            }
+                        } else if candidate.line_num.is_some()
+                            && candidate.line_num == error.line_num
+                        {
+                            let kind_mismatch = candidate.kind != error.kind;
+                            if kind_mismatch {
+                                suggestions.push((
+                                    format!(
+                                        "  {} {} {} {}",
+                                        "expected with kind".red(),
+                                        candidate.kind,
+                                        "with message".red(),
+                                        candidate.msg.cyan()
+                                    ),
+                                    1,
+                                ));
+                            } else {
+                                suggestions.push((
+                                    format!(
+                                        "  {} {}",
+                                        "expected with message".red(),
+                                        candidate.msg.cyan()
+                                    ),
+                                    1,
+                                ));
+                            }
+                        }
+                    }
+
+                    suggestions.sort_by_key(|(_, rank)| *rank);
+                    if let Some(&(_, top_rank)) = suggestions.first() {
+                        for (suggestion, rank) in suggestions {
+                            if rank == top_rank {
+                                println!("{suggestion}");
+                            }
+                        }
+                    }
                 }
                 println!("{}", "---".green());
             }
             if !not_found.is_empty() {
-                println!("{}", "--- not found errors (from test file) ---".red());
+                println!("{}", "--- expected but not reported (from test file) ---".red());
                 for error in &not_found {
-                    println!("{}", error.render_for_expected());
+                    print(error);
+                    let mut suggestions = Vec::new();
+                    for candidate in unexpected.iter().chain(&unimportant) {
+                        if candidate.msg.contains(&error.msg) {
+                            let line_mismatch = candidate.line_num != error.line_num;
+                            let kind_mismatch = candidate.kind != error.kind;
+                            if kind_mismatch && line_mismatch {
+                                suggestions.push((
+                                    format!(
+                                        "  {} {} {} {}",
+                                        "reported with kind".green(),
+                                        candidate.kind,
+                                        "on line".green(),
+                                        line_str(candidate)
+                                    ),
+                                    0,
+                                ));
+                            } else if kind_mismatch {
+                                suggestions.push((
+                                    format!(
+                                        "  {} {}",
+                                        "reported with kind".green(),
+                                        candidate.kind
+                                    ),
+                                    0,
+                                ));
+                            } else {
+                                println!(
+                                    "  {} {}",
+                                    "reported on line".green(),
+                                    line_str(candidate)
+                                );
+                            }
+                        } else if candidate.line_num.is_some()
+                            && candidate.line_num == error.line_num
+                        {
+                            let kind_mismatch = candidate.kind != error.kind;
+                            if kind_mismatch {
+                                suggestions.push((
+                                    format!(
+                                        "  {} {} {} {}",
+                                        "reported with kind".green(),
+                                        candidate.kind,
+                                        "with message".green(),
+                                        candidate.msg.cyan()
+                                    ),
+                                    1,
+                                ));
+                            } else {
+                                suggestions.push((
+                                    format!(
+                                        "  {} {}",
+                                        "reported with message".green(),
+                                        candidate.msg.cyan()
+                                    ),
+                                    1,
+                                ));
+                            }
+                        }
+                    }
+
+                    suggestions.sort_by_key(|(_, rank)| *rank);
+                    if let Some(&(_, top_rank)) = suggestions.first() {
+                        for (suggestion, rank) in suggestions {
+                            if rank == top_rank {
+                                println!("{suggestion}");
+                            }
+                        }
+                    }
                 }
-                println!("{}", "---\n".red());
+                println!("{}", "---".red());
             }
-            panic!("errors differ from expected");
+            panic!(
+                "errors differ from expected\nstatus: {}\ncommand: {}\n",
+                proc_res.status, proc_res.cmdline
+            );
         }
     }
 
@@ -2073,7 +2222,6 @@ impl<'test> TestCx<'test> {
             println!("{}", String::from_utf8_lossy(&output.stdout));
             eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         } else {
-            use colored::Colorize;
             eprintln!("warning: no pager configured, falling back to unified diff");
             eprintln!(
                 "help: try configuring a git pager (e.g. `delta`) with `git config --global core.pager delta`"
