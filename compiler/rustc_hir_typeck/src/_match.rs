@@ -1,12 +1,12 @@
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir, ExprKind, PatKind};
+use rustc_hir::{self as hir, ExprKind, HirId, PatKind};
 use rustc_hir_pretty::ty_to_string;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits::{
-    IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
+    MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
 use tracing::{debug, instrument};
 
@@ -414,105 +414,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn if_cause(
         &self,
-        span: Span,
-        cond_span: Span,
-        then_expr: &'tcx hir::Expr<'tcx>,
+        expr_id: HirId,
         else_expr: &'tcx hir::Expr<'tcx>,
-        then_ty: Ty<'tcx>,
-        else_ty: Ty<'tcx>,
         tail_defines_return_position_impl_trait: Option<LocalDefId>,
     ) -> ObligationCause<'tcx> {
-        let mut outer_span = if self.tcx.sess.source_map().is_multiline(span) {
-            // The `if`/`else` isn't in one line in the output, include some context to make it
-            // clear it is an if/else expression:
-            // ```
-            // LL |      let x = if true {
-            //    | _____________-
-            // LL ||         10i32
-            //    ||         ----- expected because of this
-            // LL ||     } else {
-            // LL ||         10u32
-            //    ||         ^^^^^ expected `i32`, found `u32`
-            // LL ||     };
-            //    ||_____- `if` and `else` have incompatible types
-            // ```
-            Some(span)
-        } else {
-            // The entire expression is in one line, only point at the arms
-            // ```
-            // LL |     let x = if true { 10i32 } else { 10u32 };
-            //    |                       -----          ^^^^^ expected `i32`, found `u32`
-            //    |                       |
-            //    |                       expected because of this
-            // ```
-            None
-        };
-
-        let (error_sp, else_id) = if let ExprKind::Block(block, _) = &else_expr.kind {
-            let block = block.innermost_block();
-
-            // Avoid overlapping spans that aren't as readable:
-            // ```
-            // 2 |        let x = if true {
-            //   |   _____________-
-            // 3 |  |         3
-            //   |  |         - expected because of this
-            // 4 |  |     } else {
-            //   |  |____________^
-            // 5 | ||
-            // 6 | ||     };
-            //   | ||     ^
-            //   | ||_____|
-            //   | |______if and else have incompatible types
-            //   |        expected integer, found `()`
-            // ```
-            // by not pointing at the entire expression:
-            // ```
-            // 2 |       let x = if true {
-            //   |               ------- `if` and `else` have incompatible types
-            // 3 |           3
-            //   |           - expected because of this
-            // 4 |       } else {
-            //   |  ____________^
-            // 5 | |
-            // 6 | |     };
-            //   | |_____^ expected integer, found `()`
-            // ```
-            if block.expr.is_none()
-                && block.stmts.is_empty()
-                && let Some(outer_span) = &mut outer_span
-                && let Some(cond_span) = cond_span.find_ancestor_inside(*outer_span)
-            {
-                *outer_span = outer_span.with_hi(cond_span.hi())
-            }
-
-            (self.find_block_span(block), block.hir_id)
-        } else {
-            (else_expr.span, else_expr.hir_id)
-        };
-
-        let then_id = if let ExprKind::Block(block, _) = &then_expr.kind {
-            let block = block.innermost_block();
-            // Exclude overlapping spans
-            if block.expr.is_none() && block.stmts.is_empty() {
-                outer_span = None;
-            }
-            block.hir_id
-        } else {
-            then_expr.hir_id
-        };
+        let error_sp = self.find_block_span_from_hir_id(else_expr.hir_id);
 
         // Finally construct the cause:
         self.cause(
             error_sp,
-            ObligationCauseCode::IfExpression(Box::new(IfExpressionCause {
-                else_id,
-                then_id,
-                then_ty,
-                else_ty,
-                outer_span,
-                tail_defines_return_position_impl_trait,
-            })),
+            ObligationCauseCode::IfExpression { expr_id, tail_defines_return_position_impl_trait },
         )
     }
 
