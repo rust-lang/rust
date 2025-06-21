@@ -233,8 +233,13 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
+
+    /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
+    MayDangle(Span),
+
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
+
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr(ThinVec<(ReprAttr, Span)>),
 
