@@ -1,12 +1,10 @@
 //@ add-core-stubs
 //@ assembly-output: emit-asm
+//@ needs-llvm-components: riscv
 //@ revisions: rv32i rv64i rv32e
 //@[rv32i] compile-flags: --target riscv32i-unknown-none-elf
-//@[rv32i] needs-llvm-components: riscv
 //@[rv64i] compile-flags: --target riscv64imac-unknown-none-elf
-//@[rv64i] needs-llvm-components: riscv
 //@[rv32e] compile-flags: --target riscv32e-unknown-none-elf
-//@[rv32e] needs-llvm-components: riscv
 // ignore-tidy-linelength
 
 #![crate_type = "rlib"]

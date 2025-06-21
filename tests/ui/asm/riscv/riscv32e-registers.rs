@@ -2,14 +2,12 @@
 //
 //@ add-core-stubs
 //@ build-fail
+//@ needs-llvm-components: riscv
 //@ revisions: riscv32e riscv32em riscv32emc
 //
 //@ compile-flags: --crate-type=rlib
-//@ [riscv32e] needs-llvm-components: riscv
 //@ [riscv32e] compile-flags: --target=riscv32e-unknown-none-elf
-//@ [riscv32em] needs-llvm-components: riscv
 //@ [riscv32em] compile-flags: --target=riscv32em-unknown-none-elf
-//@ [riscv32emc] needs-llvm-components: riscv
 //@ [riscv32emc] compile-flags: --target=riscv32emc-unknown-none-elf
 
 // Unlike bad-reg.rs, this tests if the assembler can reject invalid registers
