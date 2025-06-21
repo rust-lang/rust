@@ -20,10 +20,10 @@ macro_rules! define_tests {
 
 define_tests! {
     cast_never TyKind Never {}
-    cast_tup TyKind Tup { 0: &[Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never }] }
-    cast_ptr TyKind Ptr { 0: MutTy { ty: &Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never }, mutbl: Mutability::Not }}
+    cast_tup TyKind Tup { 0: &[Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never, source: TySource::Other }] }
+    cast_ptr TyKind Ptr { 0: MutTy { ty: &Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never, source: TySource::Other }, mutbl: Mutability::Not }}
     cast_array TyKind Array {
-        0: &Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never },
+        0: &Ty { span: DUMMY_SP, hir_id: HirId::INVALID, kind: TyKind::Never, source: TySource::Other },
         1: &ConstArg { hir_id: HirId::INVALID, kind: ConstArgKind::Anon(&AnonConst {
             hir_id: HirId::INVALID,
             def_id: LocalDefId { local_def_index: DefIndex::ZERO },
