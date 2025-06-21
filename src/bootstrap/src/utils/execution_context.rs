@@ -3,6 +3,8 @@
 //! This module provides the [`ExecutionContext`] type, which holds global configuration
 //! relevant during the execution of commands in bootstrap. This includes dry-run
 //! mode, verbosity level, and behavior on failure.
+#![allow(warnings)]
+use std::collections::HashMap;
 use std::panic::Location;
 use std::process::Child;
 use std::sync::{Arc, Mutex};
@@ -10,6 +12,7 @@ use std::sync::{Arc, Mutex};
 use crate::core::config::DryRun;
 #[cfg(feature = "tracing")]
 use crate::trace_cmd;
+use crate::utils::exec::CommandCacheKey;
 use crate::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, exit};
 
 #[derive(Clone, Default)]
@@ -18,6 +21,26 @@ pub struct ExecutionContext {
     verbose: u8,
     pub fail_fast: bool,
     delayed_failures: Arc<Mutex<Vec<String>>>,
+    command_cache: Arc<CommandCache>,
+}
+
+#[derive(Default)]
+pub struct CommandCache {
+    cache: Mutex<HashMap<CommandCacheKey, CommandOutput>>,
+}
+
+impl CommandCache {
+    pub fn new() -> Self {
+        Self { cache: Mutex::new(HashMap::new()) }
+    }
+
+    pub fn get(&self, key: &CommandCacheKey) -> Option<CommandOutput> {
+        self.cache.lock().unwrap().get(key).cloned()
+    }
+
+    pub fn insert(&self, key: CommandCacheKey, output: CommandOutput) {
+        self.cache.lock().unwrap().insert(key, output);
+    }
 }
 
 impl ExecutionContext {
