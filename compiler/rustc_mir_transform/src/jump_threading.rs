@@ -345,6 +345,9 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         extra_elem: Option<TrackElem>,
         state: &mut ConditionSet<'a>,
     ) {
+        if state.is_empty() {
+            return;
+        }
         let mut places_to_exclude = FxHashSet::default();
         self.map.for_each_aliasing_place(place.as_ref(), extra_elem, &mut |vi| {
             places_to_exclude.insert(vi);
