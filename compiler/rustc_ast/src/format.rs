@@ -50,6 +50,14 @@ pub struct FormatArgs {
     ///
     /// Generally only useful for lints that care about the raw bytes the user wrote.
     pub uncooked_fmt_str: (LitKind, Symbol),
+    /// Was the format literal written in the source?
+    /// - `format!("boo")` => true,
+    /// - `format!(concat!("b", "o", "o"))` => false,
+    /// - `format!(include_str!("boo.txt"))` => false,
+    ///
+    /// If it wasn't written in the source then we have to be careful with spans pointing into it
+    /// and suggestions about rewriting it.
+    pub is_source_literal: bool,
 }
 
 /// A piece of a format template string.

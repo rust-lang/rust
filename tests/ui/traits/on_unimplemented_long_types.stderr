@@ -2,7 +2,7 @@ error[E0277]: `Option<Option<Option<...>>>` doesn't implement `std::fmt::Display
   --> $DIR/on_unimplemented_long_types.rs:3:17
    |
 LL |   pub fn foo() -> impl std::fmt::Display {
-   |                   ^^^^^^^^^^^^^^^^^^^^^^ `Option<Option<Option<...>>>` cannot be formatted with the default formatter
+   |                   ^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
 LL |
 LL | /     Some(Some(Some(Some(Some(Some(Some(Some(Some(S...
 LL | |         Some(Some(Some(Some(Some(Some(Some(Some(So...
@@ -14,7 +14,6 @@ LL | |     )))))))))))
    | |_______________- return type was inferred to be `Option<Option<Option<...>>>` here
    |
    = help: the trait `std::fmt::Display` is not implemented for `Option<Option<Option<...>>>`
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/on_unimplemented_long_types.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 

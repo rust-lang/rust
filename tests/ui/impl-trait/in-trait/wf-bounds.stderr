@@ -39,9 +39,8 @@ error[E0277]: `T` doesn't implement `std::fmt::Display`
   --> $DIR/wf-bounds.rs:21:26
    |
 LL |     fn nya4<T>() -> impl Wf<NeedsDisplay<T>>;
-   |                          ^^^^^^^^^^^^^^^^^^^ `T` cannot be formatted with the default formatter
+   |                          ^^^^^^^^^^^^^^^^^^^ the trait `std::fmt::Display` is not implemented for `T`
    |
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 note: required by a bound in `NeedsDisplay`
   --> $DIR/wf-bounds.rs:9:24
    |

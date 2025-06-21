@@ -2,7 +2,7 @@ error[E0277]: `U` doesn't implement `Debug`
   --> $DIR/generic_underconstrained2.rs:9:33
    |
 LL | fn underconstrained<U>(_: U) -> Underconstrained<U> {
-   |                                 ^^^^^^^^^^^^^^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                                 ^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `U`
    |
 note: required by a bound on the type alias `Underconstrained`
   --> $DIR/generic_underconstrained2.rs:5:26
@@ -18,7 +18,7 @@ error[E0277]: `V` doesn't implement `Debug`
   --> $DIR/generic_underconstrained2.rs:19:43
    |
 LL | fn underconstrained2<U, V>(_: U, _: V) -> Underconstrained2<V> {
-   |                                           ^^^^^^^^^^^^^^^^^^^^ `V` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                                           ^^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `V`
    |
 note: required by a bound on the type alias `Underconstrained2`
   --> $DIR/generic_underconstrained2.rs:15:27
@@ -34,7 +34,7 @@ error[E0277]: `U` doesn't implement `Debug`
   --> $DIR/generic_underconstrained2.rs:9:33
    |
 LL | fn underconstrained<U>(_: U) -> Underconstrained<U> {
-   |                                 ^^^^^^^^^^^^^^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                                 ^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `U`
    |
 note: required by a bound on the type alias `Underconstrained`
   --> $DIR/generic_underconstrained2.rs:5:26
@@ -51,7 +51,7 @@ error[E0277]: `V` doesn't implement `Debug`
   --> $DIR/generic_underconstrained2.rs:19:43
    |
 LL | fn underconstrained2<U, V>(_: U, _: V) -> Underconstrained2<V> {
-   |                                           ^^^^^^^^^^^^^^^^^^^^ `V` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                                           ^^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `V`
    |
 note: required by a bound on the type alias `Underconstrained2`
   --> $DIR/generic_underconstrained2.rs:15:27

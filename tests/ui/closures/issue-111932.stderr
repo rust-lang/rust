@@ -14,11 +14,9 @@ error[E0277]: the size for values of type `dyn Foo` cannot be known at compilati
 LL |         println!("{:?}", foo);
    |                   ----   ^^^ doesn't have a size known at compile-time
    |                   |
-   |                   required by a bound introduced by this call
+   |                   required by this formatting parameter
    |
    = help: the trait `Sized` is not implemented for `dyn Foo`
-note: required by an implicit `Sized` bound in `core::fmt::rt::Argument::<'_>::new_debug`
-  --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

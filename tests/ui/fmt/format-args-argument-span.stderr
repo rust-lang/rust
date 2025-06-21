@@ -12,7 +12,9 @@ error[E0277]: `Option<{integer}>` doesn't implement `std::fmt::Display`
   --> $DIR/format-args-argument-span.rs:15:37
    |
 LL |     println!("{x:?} {x} {x:?}", x = Some(1));
-   |                                     ^^^^^^^ `Option<{integer}>` cannot be formatted with the default formatter
+   |                     ---             ^^^^^^^ `Option<{integer}>` cannot be formatted with the default formatter
+   |                     |
+   |                     required by this formatting parameter
    |
    = help: the trait `std::fmt::Display` is not implemented for `Option<{integer}>`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
@@ -22,7 +24,7 @@ error[E0277]: `DisplayOnly` doesn't implement `Debug`
   --> $DIR/format-args-argument-span.rs:18:19
    |
 LL |     println!("{x} {x:?} {x}");
-   |                   ^^^^^ `DisplayOnly` cannot be formatted using `{:?}`
+   |                   ^^^^^ `DisplayOnly` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = help: the trait `Debug` is not implemented for `DisplayOnly`
    = note: add `#[derive(Debug)]` to `DisplayOnly` or manually `impl Debug for DisplayOnly`
@@ -37,7 +39,9 @@ error[E0277]: `DisplayOnly` doesn't implement `Debug`
   --> $DIR/format-args-argument-span.rs:20:35
    |
 LL |     println!("{x} {x:?} {x}", x = DisplayOnly);
-   |                                   ^^^^^^^^^^^ `DisplayOnly` cannot be formatted using `{:?}`
+   |                   -----           ^^^^^^^^^^^ `DisplayOnly` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                   |
+   |                   required by this formatting parameter
    |
    = help: the trait `Debug` is not implemented for `DisplayOnly`
    = note: add `#[derive(Debug)]` to `DisplayOnly` or manually `impl Debug for DisplayOnly`

@@ -4,7 +4,7 @@ use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_session::config::FmtDebug;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{DesugaringKind, Ident, Span, Symbol, sym};
 
 use super::LoweringContext;
 
@@ -14,6 +14,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // format_args!() had any arguments _before_ flattening/inlining.
         let allow_const = fmt.arguments.all_args().is_empty();
         let mut fmt = Cow::Borrowed(fmt);
+
+        let sp = self.mark_span_with_reason(
+            DesugaringKind::FormatLiteral { source: fmt.is_source_literal },
+            sp,
+            sp.ctxt().outer_expn_data().allow_internal_unstable,
+        );
+
         if self.tcx.sess.opts.unstable_opts.flatten_format_args {
             fmt = flatten_format_args(fmt);
             fmt = self.inline_literals(fmt);

@@ -2,9 +2,8 @@ error[E0277]: `T` doesn't implement `std::fmt::Display`
   --> $DIR/generic-associated-types-where.rs:18:22
    |
 LL |     type Assoc2<T> = Vec<T>;
-   |                      ^^^^^^ `T` cannot be formatted with the default formatter
+   |                      ^^^^^^ the trait `std::fmt::Display` is not implemented for `T`
    |
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 help: consider restricting type parameter `T` with trait `Display`
    |
 LL |     type Assoc2<T: std::fmt::Display> = Vec<T>;

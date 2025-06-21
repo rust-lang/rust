@@ -5,9 +5,8 @@ LL | #[derive(Debug)]
    |          ----- in this derive macro expansion
 ...
 LL |      Error
-   |      ^^^^^ `Error` cannot be formatted using `{:?}`
+   |      ^^^^^ the trait `Debug` is not implemented for `Error`
    |
-   = help: the trait `Debug` is not implemented for `Error`
    = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
 help: consider annotating `Error` with `#[derive(Debug)]`
    |

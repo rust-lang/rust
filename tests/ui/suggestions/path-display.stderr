@@ -2,18 +2,23 @@ error[E0277]: `Path` doesn't implement `std::fmt::Display`
   --> $DIR/path-display.rs:5:20
    |
 LL |     println!("{}", path);
-   |                    ^^^^ `Path` cannot be formatted with the default formatter; call `.display()` on it
+   |               --   ^^^^ `Path` cannot be formatted with the default formatter; call `.display()` on it
+   |               |
+   |               required by this formatting parameter
    |
    = help: the trait `std::fmt::Display` is not implemented for `Path`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: call `.display()` or `.to_string_lossy()` to safely print paths, as they may contain non-Unicode data
+   = note: required for `&Path` to implement `std::fmt::Display`
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `PathBuf` doesn't implement `std::fmt::Display`
   --> $DIR/path-display.rs:9:20
    |
 LL |     println!("{}", path);
-   |                    ^^^^ `PathBuf` cannot be formatted with the default formatter; call `.display()` on it
+   |               --   ^^^^ `PathBuf` cannot be formatted with the default formatter; call `.display()` on it
+   |               |
+   |               required by this formatting parameter
    |
    = help: the trait `std::fmt::Display` is not implemented for `PathBuf`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
