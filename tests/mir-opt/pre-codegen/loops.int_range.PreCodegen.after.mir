@@ -89,12 +89,14 @@ fn int_range(_1: usize, _2: usize) -> () {
     bb3: {
         StorageDead(_7);
         StorageDead(_6);
+        StorageLive(_11);
         _11 = copy (_4.0: usize);
         StorageLive(_12);
         _12 = AddUnchecked(copy _11, const 1_usize);
         (_4.0: usize) = move _12;
         StorageDead(_12);
         _13 = Option::<usize>::Some(copy _11);
+        StorageDead(_11);
         StorageDead(_10);
         StorageLive(_14);
         _14 = copy ((_13 as Some).0: usize);

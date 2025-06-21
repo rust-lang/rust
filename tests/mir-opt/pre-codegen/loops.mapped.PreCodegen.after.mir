@@ -54,7 +54,6 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     bb2: {
         StorageLive(_13);
         _5 = &mut _4;
-        StorageLive(_8);
         StorageLive(_7);
         StorageLive(_6);
         _6 = &mut (_4.0: impl Iterator<Item = T>);
@@ -63,6 +62,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
 
     bb3: {
         StorageDead(_6);
+        StorageLive(_8);
         _8 = &mut (_4.1: impl Fn(T) -> U);
         StorageLive(_9);
         _9 = discriminant(_7);
@@ -71,8 +71,8 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
 
     bb4: {
         StorageDead(_9);
-        StorageDead(_7);
         StorageDead(_8);
+        StorageDead(_7);
         StorageDead(_13);
         drop(_4) -> [return: bb5, unwind continue];
     }
@@ -97,8 +97,8 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
         StorageDead(_12);
         StorageDead(_10);
         StorageDead(_9);
-        StorageDead(_7);
         StorageDead(_8);
+        StorageDead(_7);
         StorageLive(_14);
         _14 = move ((_13 as Some).0: U);
         _15 = opaque::<U>(move _14) -> [return: bb8, unwind: bb10];

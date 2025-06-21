@@ -9,9 +9,11 @@
       bb0: {
           _4 = [copy _3; 5];
           _5 = &_4[_1];
-          StorageDead(_3);
-          StorageLive(_3);
+-         StorageDead(_3);
+-         StorageLive(_3);
 -         _0 = copy (*_5);
++         nop;
++         nop;
 +         _0 = copy _3;
           return;
       }

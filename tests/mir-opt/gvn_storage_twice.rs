@@ -43,7 +43,7 @@ pub fn repeat_local_dead(_1: usize, _2: usize, _3: i32) -> i32 {
     }
 }
 
-// Since _3 is uninitizaled when we access _5, GVN should _not_ optimze the code.
+// Since _3 is uninit due to storage when we access _5, GVN should remove the storage statements.
 
 #[custom_mir(dialect = "runtime")]
 pub fn repeat_local_dead_live(_1: usize, _2: usize, _3: i32) -> i32 {

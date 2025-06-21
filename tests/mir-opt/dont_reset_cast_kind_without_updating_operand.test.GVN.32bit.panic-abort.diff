@@ -78,9 +78,8 @@
 -         _12 = AlignOf(());
 +         _11 = const 0_usize;
 +         _12 = const 1_usize;
-          StorageLive(_14);
           StorageLive(_16);
-          StorageLive(_17);
+          StorageLive(_14);
           StorageLive(_19);
           _19 = const false;
 -         switchInt(move _19) -> [0: bb6, otherwise: bb5];
@@ -103,15 +102,16 @@
       }
   
       bb4: {
+          StorageLive(_17);
           _17 = copy ((_15 as Ok).0: std::ptr::NonNull<[u8]>);
           StorageLive(_22);
           _22 = copy _17 as *mut [u8] (Transmute);
           _13 = copy _22 as *mut u8 (PtrToPtr);
           StorageDead(_22);
-          StorageDead(_15);
           StorageDead(_17);
-          StorageDead(_16);
+          StorageDead(_15);
           StorageDead(_14);
+          StorageDead(_16);
           _3 = ShallowInitBox(move _13, ());
           StorageDead(_13);
           StorageDead(_12);

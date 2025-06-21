@@ -37,11 +37,10 @@ fn demo_le(_1: &MultiField, _2: &MultiField) -> bool {
     }
 
     bb0: {
-        StorageLive(_12);
         StorageLive(_11);
         StorageLive(_5);
-        StorageLive(_6);
         StorageLive(_7);
+        StorageLive(_6);
         StorageLive(_3);
         _3 = copy ((*_1).0: char);
         StorageLive(_4);
@@ -65,28 +64,29 @@ fn demo_le(_1: &MultiField, _2: &MultiField) -> bool {
         StorageDead(_8);
         _11 = Option::<std::cmp::Ordering>::Some(move _10);
         StorageDead(_10);
-        StorageDead(_7);
         StorageDead(_6);
+        StorageDead(_7);
         StorageDead(_5);
         goto -> bb3;
     }
 
     bb2: {
         _11 = copy _6;
-        StorageDead(_7);
         StorageDead(_6);
+        StorageDead(_7);
         StorageDead(_5);
         goto -> bb3;
     }
 
     bb3: {
+        StorageLive(_12);
         _12 = move ((_11 as Some).0: std::cmp::Ordering);
         StorageLive(_13);
         _13 = discriminant(_12);
         _0 = Le(move _13, const 0_i8);
         StorageDead(_13);
-        StorageDead(_11);
         StorageDead(_12);
+        StorageDead(_11);
         return;
     }
 }

@@ -38,7 +38,6 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         StorageLive(_11);
         StorageLive(_5);
         _5 = &raw mut (*_1);
-        StorageLive(_8);
         StorageLive(_6);
         _6 = PtrMetadata(copy _1);
         _7 = <std::ops::Range<usize> as SliceIndex<[T]>>::get_unchecked_mut::precondition_check(copy _3, copy _4, move _6) -> [return: bb1, unwind unreachable];
@@ -46,6 +45,7 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
 
     bb1: {
         StorageDead(_6);
+        StorageLive(_8);
         _8 = SubUnchecked(copy _4, copy _3);
         StorageLive(_9);
         _9 = copy _5 as *mut u32 (PtrToPtr);
