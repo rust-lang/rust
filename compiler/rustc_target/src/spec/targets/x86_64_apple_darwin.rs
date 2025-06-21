@@ -2,7 +2,7 @@ use crate::spec::base::apple::{Arch, TargetAbi, base};
 use crate::spec::{SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("macos", Arch::X86_64, TargetAbi::Normal);
+    let (opts, llvm_target, arch) = base("macos", Arch::x86_64(), TargetAbi::Normal);
     Target {
         llvm_target,
         metadata: TargetMetadata {

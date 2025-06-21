@@ -1,8 +1,8 @@
-use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{Target, TargetMetadata, TargetOptions};
+use crate::spec::base::apple::{TargetAbi, base};
+use crate::spec::{ArmVer, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("ios", Arch::Armv7s, TargetAbi::Normal);
+    let (opts, llvm_target, arch) = base("ios", ArmVer::V7S.into(), TargetAbi::Normal);
     Target {
         llvm_target,
         metadata: TargetMetadata {

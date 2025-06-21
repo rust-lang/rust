@@ -4,7 +4,7 @@ use crate::spec::{SanitizerSet, Target, TargetMetadata, TargetOptions};
 pub(crate) fn target() -> Target {
     // x86_64-apple-ios is a simulator target, even though it isn't declared
     // that way in the target name like the other ones...
-    let (opts, llvm_target, arch) = base("ios", Arch::X86_64, TargetAbi::Simulator);
+    let (opts, llvm_target, arch) = base("ios", Arch::x86_64(), TargetAbi::Simulator);
     Target {
         llvm_target,
         metadata: TargetMetadata {
