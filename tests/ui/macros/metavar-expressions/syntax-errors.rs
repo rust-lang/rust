@@ -111,7 +111,7 @@ macro_rules! unknown_ignore_ident {
 
 macro_rules! unknown_metavar {
     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
-    //~^ ERROR unrecognized meta-variable expression
+    //~^ ERROR unrecognized metavariable expression
 }
 
 fn main() {}
