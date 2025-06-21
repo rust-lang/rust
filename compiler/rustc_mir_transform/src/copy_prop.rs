@@ -206,6 +206,7 @@ impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store
                 | MutatingUseContext::Call
+                | MutatingUseContext::Yield
                 | MutatingUseContext::AsmOutput,
             )
             | PlaceContext::NonUse(_) => {
