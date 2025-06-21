@@ -25,7 +25,7 @@ pub struct UselessVec {
     /// Maps from a `vec![]` source callsite invocation span to the "state" (i.e., whether we can
     /// emit a warning there or not).
     ///
-    /// The purpose of this is to buffer lints up until `check_expr_post` so that we can cancel a
+    /// The purpose of this is to buffer lints up until `check_crate_post` so that we can cancel a
     /// lint while visiting, because a `vec![]` invocation span can appear multiple times when
     /// it is passed as a macro argument, once in a context that doesn't require a `Vec<_>` and
     /// another time that does. Consider:
@@ -187,7 +187,11 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                                     .checked_mul(length)
                                     .is_some_and(|size| size <= self.too_large_for_stack)
                             {
-                                suggest_ty.snippet(cx, Some(expr.span), Some(len.span))
+                                suggest_ty.snippet(
+                                    cx,
+                                    Some(expr.span.source_callsite()),
+                                    Some(len.span.source_callsite()),
+                                )
                             } else {
                                 return;
                             }
@@ -267,11 +271,17 @@ impl SuggestedType {
     }
 
     fn snippet(self, cx: &LateContext<'_>, args_span: Option<Span>, len_span: Option<Span>) -> String {
+        // Invariant of the lint as implemented: all spans are from the root context (and as a result,
+        // always trivially crate-local).
+        assert!(args_span.is_none_or(|s| !s.from_expansion()));
+        assert!(len_span.is_none_or(|s| !s.from_expansion()));
+
         let maybe_args = args_span
-            .and_then(|sp| sp.get_source_text(cx))
+            .map(|sp| sp.get_source_text(cx).expect("spans are always crate-local"))
             .map_or(String::new(), |x| x.to_owned());
         let maybe_len = len_span
-            .and_then(|sp| sp.get_source_text(cx).map(|s| format!("; {s}")))
+            .map(|sp| sp.get_source_text(cx).expect("spans are always crate-local"))
+            .map(|st| format!("; {st}"))
             .unwrap_or_default();
 
         match self {
