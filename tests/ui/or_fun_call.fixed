@@ -5,6 +5,7 @@
     clippy::uninlined_format_args,
     clippy::unnecessary_wraps,
     clippy::unnecessary_literal_unwrap,
+    clippy::unnecessary_result_map_or_else,
     clippy::useless_vec
 )]
 
@@ -406,6 +407,35 @@ fn fn_call_in_nested_expr() {
     });
 
     let _ = opt_foo.unwrap_or_else(|| Foo { val: String::default() });
+    //~^ or_fun_call
+}
+
+mod result_map_or {
+    fn g() -> i32 {
+        3
+    }
+
+    fn f(n: i32) -> i32 {
+        n
+    }
+
+    fn test_map_or() {
+        let x: Result<i32, ()> = Ok(4);
+        let _ = x.map_or_else(|_| g(), |v| v);
+        //~^ or_fun_call
+        let _ = x.map_or_else(|_| g(), f);
+        //~^ or_fun_call
+        let _ = x.map_or(0, f);
+    }
+}
+
+fn test_option_get_or_insert() {
+    // assume that this is slow call
+    fn g() -> u8 {
+        99
+    }
+    let mut x = Some(42_u8);
+    let _ = x.get_or_insert_with(g);
     //~^ or_fun_call
 }
 

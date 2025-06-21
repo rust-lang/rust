@@ -167,6 +167,7 @@ generate! {
     futures_util,
     get,
     get_mut,
+    get_or_insert,
     get_or_insert_with,
     get_unchecked,
     get_unchecked_mut,
