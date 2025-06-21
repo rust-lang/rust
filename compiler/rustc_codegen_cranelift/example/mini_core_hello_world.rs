@@ -1,4 +1,13 @@
-#![feature(no_core, lang_items, never_type, linkage, extern_types, thread_local, repr_simd)]
+#![feature(
+    no_core,
+    lang_items,
+    never_type,
+    linkage,
+    extern_types,
+    thread_local,
+    repr_simd,
+    rustc_private
+)]
 #![no_core]
 #![allow(dead_code, non_camel_case_types, internal_features)]
 
@@ -207,10 +216,14 @@ fn main() {
         assert_eq!(intrinsics::align_of::<u16>() as u8, 2);
         assert_eq!(intrinsics::align_of_val(&a) as u8, intrinsics::align_of::<&str>() as u8);
 
-        assert!(!intrinsics::needs_drop::<u8>());
-        assert!(!intrinsics::needs_drop::<[u8]>());
-        assert!(intrinsics::needs_drop::<NoisyDrop>());
-        assert!(intrinsics::needs_drop::<NoisyDropUnsized>());
+        let u8_needs_drop = const { intrinsics::needs_drop::<u8>() };
+        assert!(!u8_needs_drop);
+        let slice_needs_drop = const { intrinsics::needs_drop::<[u8]>() };
+        assert!(!slice_needs_drop);
+        let noisy_drop = const { intrinsics::needs_drop::<NoisyDrop>() };
+        assert!(noisy_drop);
+        let noisy_unsized_drop = const { intrinsics::needs_drop::<NoisyDropUnsized>() };
+        assert!(noisy_unsized_drop);
 
         Unique { pointer: NonNull(1 as *mut &str), _marker: PhantomData } as Unique<dyn SomeTrait>;
 

@@ -742,7 +742,7 @@ impl TypeId {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
-        let t: u128 = intrinsics::type_id::<T>();
+        let t: u128 = const { intrinsics::type_id::<T>() };
         let t1 = (t >> 64) as u64;
         let t2 = t as u64;
 
@@ -824,7 +824,7 @@ impl fmt::Debug for TypeId {
 #[stable(feature = "type_name", since = "1.38.0")]
 #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name<T: ?Sized>() -> &'static str {
-    intrinsics::type_name::<T>()
+    const { intrinsics::type_name::<T>() }
 }
 
 /// Returns the type name of the pointed-to value as a string slice.
