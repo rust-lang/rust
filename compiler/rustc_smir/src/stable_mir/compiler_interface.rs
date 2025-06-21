@@ -152,6 +152,9 @@ pub(crate) trait SmirInterface {
     /// Returns whether this definition is a C string.
     fn adt_is_cstr(&self, def: AdtDef) -> bool;
 
+    /// Returns the representation options for this ADT.
+    fn adt_repr(&self, def: AdtDef) -> ReprOptions;
+
     /// Retrieve the function signature for the given generic arguments.
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig;
 
@@ -166,6 +169,17 @@ pub(crate) trait SmirInterface {
 
     /// The number of variants in this ADT.
     fn adt_variants_len(&self, def: AdtDef) -> usize;
+
+    /// Discriminant for a given variant index of AdtDef.
+    fn adt_discr_for_variant(&self, adt: AdtDef, variant: VariantIdx) -> Discr;
+
+    /// Discriminant for a given variand index and args of a coroutine.
+    fn coroutine_discr_for_variant(
+        &self,
+        coroutine: CoroutineDef,
+        args: &GenericArgs,
+        variant: VariantIdx,
+    ) -> Discr;
 
     /// The name of a variant.
     fn variant_name(&self, def: VariantDef) -> Symbol;
@@ -588,8 +602,10 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     }
 
     /// Returns the representation options for this ADT
-    pub(crate) fn adt_repr(&self, def: AdtDef) -> ReprOptions {
-        self.cx.adt_repr(def)
+    fn adt_repr(&self, def: AdtDef) -> ReprOptions {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.adt_repr(def.internal(&mut *tables, cx.tcx)).stable(&mut *tables, cx)
     }
 
     /// Retrieve the function signature for the given generic arguments.
@@ -632,19 +648,31 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         cx.adt_variants_len(def.internal(&mut *tables, cx.tcx))
     }
 
-    /// Discriminant for a given variant index of AdtDef
-    pub(crate) fn adt_discr_for_variant(&self, adt: AdtDef, variant: VariantIdx) -> Discr {
-        self.cx.adt_discr_for_variant(adt, variant)
+    /// Discriminant for a given variant index of AdtDef.
+    fn adt_discr_for_variant(&self, adt: AdtDef, variant: VariantIdx) -> Discr {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.adt_discr_for_variant(
+            adt.internal(&mut *tables, cx.tcx),
+            variant.internal(&mut *tables, cx.tcx),
+        )
+        .stable(&mut *tables, cx)
     }
 
-    /// Discriminant for a given variand index and args of a coroutine
-    pub(crate) fn coroutine_discr_for_variant(
+    /// Discriminant for a given variand index and args of a coroutine.
+    fn coroutine_discr_for_variant(
         &self,
         coroutine: CoroutineDef,
         args: &GenericArgs,
         variant: VariantIdx,
     ) -> Discr {
-        self.cx.coroutine_discr_for_variant(coroutine, args, variant)
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let tcx = cx.tcx;
+        let def = coroutine.def_id().internal(&mut *tables, tcx);
+        let args_ref = args.internal(&mut *tables, tcx);
+        cx.coroutine_discr_for_variant(def, args_ref, variant.internal(&mut *tables, tcx))
+            .stable(&mut *tables, cx)
     }
 
     /// The name of a variant.

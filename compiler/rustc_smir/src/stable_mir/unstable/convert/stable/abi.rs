@@ -362,7 +362,11 @@ impl<'tcx> Stable<'tcx> for rustc_abi::WrappingRange {
 impl<'tcx> Stable<'tcx> for rustc_abi::ReprFlags {
     type T = ReprFlags;
 
-    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
+    fn stable<'cx>(
+        &self,
+        _tables: &mut Tables<'cx, BridgeTys>,
+        _cx: &SmirCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
         ReprFlags {
             is_simd: self.intersects(Self::IS_SIMD),
             is_c: self.intersects(Self::IS_C),
@@ -375,11 +379,15 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ReprFlags {
 impl<'tcx> Stable<'tcx> for rustc_abi::IntegerType {
     type T = IntegerType;
 
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
         match self {
             rustc_abi::IntegerType::Pointer(signed) => IntegerType::Pointer { is_signed: *signed },
             rustc_abi::IntegerType::Fixed(integer, signed) => {
-                IntegerType::Fixed { length: integer.stable(tables), is_signed: *signed }
+                IntegerType::Fixed { length: integer.stable(tables, cx), is_signed: *signed }
             }
         }
     }
@@ -388,12 +396,16 @@ impl<'tcx> Stable<'tcx> for rustc_abi::IntegerType {
 impl<'tcx> Stable<'tcx> for rustc_abi::ReprOptions {
     type T = ReprOptions;
 
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
         ReprOptions {
-            int: self.int.map(|int| int.stable(tables)),
-            align: self.align.map(|align| align.stable(tables)),
-            pack: self.pack.map(|pack| pack.stable(tables)),
-            flags: self.flags.stable(tables),
+            int: self.int.map(|int| int.stable(tables, cx)),
+            align: self.align.map(|align| align.stable(tables, cx)),
+            pack: self.pack.map(|pack| pack.stable(tables, cx)),
+            flags: self.flags.stable(tables, cx),
         }
     }
 }
