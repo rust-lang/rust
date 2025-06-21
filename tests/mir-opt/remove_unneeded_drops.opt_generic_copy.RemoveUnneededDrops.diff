@@ -1,0 +1,15 @@
+- // MIR for `opt_generic_copy` before RemoveUnneededDrops
++ // MIR for `opt_generic_copy` after RemoveUnneededDrops
+  
+  fn opt_generic_copy(_1: T) -> () {
+      let mut _0: ();
+  
+      bb0: {
+-         drop(_1) -> [return: bb1, unwind unreachable];
+-     }
+- 
+-     bb1: {
+          return;
+      }
+  }
+  

@@ -5,35 +5,40 @@
       let mut _0: ();
       let _1: ();
 +     scope 1 (inlined foo) {
-+         let _2: D;
++         let mut _2: *mut D;
++         let _3: D;
 +         scope 2 {
 +             debug _d => const D;
++         }
++         scope 3 (inlined drop_in_place::<D> - shim(Some(D))) {
++             scope 4 (inlined <D as Drop>::drop) {
++                 debug self => _2;
++             }
 +         }
 +     }
   
       bb0: {
           StorageLive(_1);
 -         _1 = foo() -> [return: bb1, unwind continue];
-+         StorageLive(_2);
-+         asm!("", options(MAY_UNWIND)) -> [return: bb2, unwind: bb3];
++         StorageLive(_3);
++         asm!("", options(MAY_UNWIND)) -> [return: bb1, unwind: bb2];
       }
   
       bb1: {
++         StorageLive(_2);
++         _2 = &raw mut _3;
 +         StorageDead(_2);
++         StorageDead(_3);
           StorageDead(_1);
           _0 = const ();
           return;
 +     }
 + 
-+     bb2: {
-+         drop(_2) -> [return: bb1, unwind continue];
++     bb2 (cleanup): {
++         drop(_3) -> [return: bb3, unwind terminate(cleanup)];
 +     }
 + 
 +     bb3 (cleanup): {
-+         drop(_2) -> [return: bb4, unwind terminate(cleanup)];
-+     }
-+ 
-+     bb4 (cleanup): {
 +         resume;
       }
   }

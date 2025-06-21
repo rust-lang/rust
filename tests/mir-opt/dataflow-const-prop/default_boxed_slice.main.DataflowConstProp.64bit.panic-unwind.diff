@@ -5,6 +5,8 @@
       let mut _0: ();
       let _1: A;
       let mut _2: std::boxed::Box<[bool]>;
+      let mut _8: *mut A;
+      let mut _9: ();
       scope 1 {
           debug a => _1;
       }
@@ -37,6 +39,8 @@
               }
           }
       }
+      scope 14 (inlined drop_in_place::<A> - shim(Some(A))) {
+      }
   
       bb0: {
           StorageLive(_1);
@@ -60,16 +64,21 @@
           _1 = const A {{ foo: Box::<[bool]>(Unique::<[bool]> {{ pointer: NonNull::<[bool]> {{ pointer: Indirect { alloc_id: ALLOC2, offset: Size(0 bytes) }: *const [bool] }}, _marker: PhantomData::<[bool]> }}, std::alloc::Global) }};
           StorageDead(_2);
           _0 = const ();
-          drop(_1) -> [return: bb1, unwind: bb2];
+          StorageLive(_8);
+          _8 = &raw mut _1;
+          StorageLive(_9);
+          drop(((*_8).0: std::boxed::Box<[bool]>)) -> [return: bb2, unwind: bb1];
       }
   
-      bb1: {
+      bb1 (cleanup): {
+          resume;
+      }
+  
+      bb2: {
+          StorageDead(_9);
+          StorageDead(_8);
           StorageDead(_1);
           return;
-      }
-  
-      bb2 (cleanup): {
-          resume;
       }
   }
   

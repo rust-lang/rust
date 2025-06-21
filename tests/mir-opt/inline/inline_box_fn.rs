@@ -1,4 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
 //@ test-mir-pass: Inline
 //@ compile-flags: --crate-type=lib
 
