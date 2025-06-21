@@ -1,6 +1,7 @@
 use std::process::Command;
 
 use super::{TestCx, remove_and_create_dir_all};
+use crate::runtest::DocKind;
 
 impl TestCx<'_> {
     pub(super) fn run_rustdoc_test(&self) {
@@ -11,7 +12,7 @@ impl TestCx<'_> {
             panic!("failed to remove and recreate output directory `{out_dir}`: {e}")
         });
 
-        let proc_res = self.document(&out_dir, &self.testpaths);
+        let proc_res = self.document(&out_dir, &self.testpaths, DocKind::Html);
         if !proc_res.status.success() {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }

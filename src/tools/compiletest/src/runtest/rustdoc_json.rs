@@ -1,6 +1,7 @@
 use std::process::Command;
 
 use super::{TestCx, remove_and_create_dir_all};
+use crate::runtest::DocKind;
 
 impl TestCx<'_> {
     pub(super) fn run_rustdoc_json_test(&self) {
@@ -13,7 +14,11 @@ impl TestCx<'_> {
             panic!("failed to remove and recreate output directory `{out_dir}`: {e}")
         });
 
-        let proc_res = self.document(&out_dir, &self.testpaths);
+        let proc_res = self.document(&out_dir, &self.testpaths, DocKind::Json);
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("rustdoc failed!", &proc_res);
+        }
+        let proc_res = self.document(&out_dir, &self.testpaths, DocKind::Postcard);
         if !proc_res.status.success() {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }
@@ -35,11 +40,11 @@ impl TestCx<'_> {
             })
         }
 
-        let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
-        json_out.set_extension("json");
+        let postcard_out = json_out.with_extension("postcard");
 
         let res = self.run_command_to_procres(
-            Command::new(self.config.jsondoclint_path.as_ref().unwrap()).arg(&json_out),
+            Command::new(self.config.jsondoclint_path.as_ref().unwrap())
+                .args([&json_out, &postcard_out]),
         );
 
         if !res.status.success() {

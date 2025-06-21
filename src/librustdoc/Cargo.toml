@@ -25,6 +25,7 @@ tracing = "0.1"
 tracing-tree = "0.3.0"
 threadpool = "1.8.1"
 unicode-segmentation = "1.9"
+postcard = { version = "1.1.1", default-features = false, features = ["use-std"] }
 
 [dependencies.tracing-subscriber]
 version = "0.3.3"

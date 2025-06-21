@@ -922,9 +922,10 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 config::OutputFormat::Html => sess.time("render_html", || {
                     run_renderer::<html::render::Context<'_>>(krate, render_opts, cache, tcx)
                 }),
-                config::OutputFormat::Json => sess.time("render_json", || {
-                    run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
-                }),
+                config::OutputFormat::Json | config::OutputFormat::Postcard => sess
+                    .time("render_json", || {
+                        run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
+                    }),
                 // Already handled above with doctest runners.
                 config::OutputFormat::Doctest => unreachable!(),
             }

@@ -1,7 +1,7 @@
 use std::io::{BufWriter, Write};
-use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
+use camino::{Utf8Path, Utf8PathBuf};
 use clap::Parser;
 use fs_err as fs;
 use rustdoc_json_types::{Crate, FORMAT_VERSION, Id};
@@ -26,14 +26,16 @@ enum ErrorKind {
 
 #[derive(Debug, Serialize)]
 struct JsonOutput {
-    path: PathBuf,
+    path: String,
     errors: Vec<Error>,
 }
 
 #[derive(Parser)]
 struct Cli {
     /// The path to the json file to be linted
-    path: String,
+    json_path: String,
+
+    postcard_path: String,
 
     /// Show verbose output
     #[arg(long)]
@@ -44,17 +46,32 @@ struct Cli {
 }
 
 fn main() -> Result<()> {
-    let Cli { path, verbose, json_output } = Cli::parse();
+    let Cli { json_path, postcard_path, verbose, json_output } = Cli::parse();
 
-    // We convert `-` into `_` for the file name to be sure the JSON path will always be correct.
-    let path = Path::new(&path);
-    let filename = path.file_name().unwrap().to_str().unwrap().replace('-', "_");
-    let parent = path.parent().unwrap();
-    let path = parent.join(&filename);
+    let json_path = normalize_path(&json_path);
+    let postcard_path = normalize_path(&postcard_path);
 
-    let contents = fs::read_to_string(&path)?;
+    let contents = fs::read_to_string(&json_path)?;
     let krate: Crate = serde_json::from_str(&contents)?;
     assert_eq!(krate.format_version, FORMAT_VERSION);
+
+    {
+        let postcard_contents = fs::read(&postcard_path)?;
+
+        use rustdoc_json_types::postcard::{MAGIC, Magic};
+
+        assert_eq!(postcard_contents[..MAGIC.len()], MAGIC, "missing magic");
+
+        let (magic, format_version, postcard_crate): (Magic, u32, Crate) =
+            postcard::from_bytes(&postcard_contents)?;
+
+        assert_eq!(magic, MAGIC);
+        assert_eq!(format_version, FORMAT_VERSION);
+
+        if postcard_crate != krate {
+            bail!("{postcard_path} doesn't equal {json_path}");
+        }
+    }
 
     let krate_json: Value = serde_json::from_str(&contents)?;
 
@@ -62,7 +79,7 @@ fn main() -> Result<()> {
     validator.check_crate();
 
     if let Some(json_output) = json_output {
-        let output = JsonOutput { path: path.clone(), errors: validator.errs.clone() };
+        let output = JsonOutput { path: json_path.to_string(), errors: validator.errs.clone() };
         let mut f = BufWriter::new(fs::File::create(json_output)?);
         serde_json::to_writer(&mut f, &output)?;
         f.flush()?;
@@ -108,8 +125,18 @@ fn main() -> Result<()> {
                 ErrorKind::Custom(msg) => eprintln!("{}: {}", err.id.0, msg),
             }
         }
-        bail!("Errors validating json {}", path.display());
+        bail!("Errors validating json {json_path}");
     }
 
     Ok(())
+}
+
+fn normalize_path(path: &str) -> Utf8PathBuf {
+    // We convert `-` into `_` for the file name to be sure the JSON path will always be correct.
+
+    let path = Utf8Path::new(&path);
+    let filename = path.file_name().unwrap().to_string().replace('-', "_");
+    let parent = path.parent().unwrap();
+    let path = parent.join(&filename);
+    path
 }
