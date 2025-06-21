@@ -3,6 +3,8 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
 
+#![allow(dead_code)]
+
 pub trait Future {
     type Error;
     fn poll() -> Self::Error;
