@@ -76,12 +76,13 @@ impl Step for Docs {
         let host = self.host;
         builder.default_doc(&[]);
 
-        let dest = "share/doc/rust/html";
+        let dest = format!("share/doc/rust/html/{host}");
 
         let mut tarball = Tarball::new(builder, "rust-docs", &host.triple);
+        tarball.include_target_in_component_name(true);
         tarball.set_product_name("Rust Documentation");
-        tarball.add_bulk_dir(builder.doc_out(host), dest);
-        tarball.add_file(builder.src.join("src/doc/robots.txt"), dest, FileType::Regular);
+        tarball.add_bulk_dir(builder.doc_out(host), &dest);
+        tarball.add_file(builder.src.join("src/doc/robots.txt"), &dest, FileType::Regular);
         Some(tarball.generate())
     }
 }
@@ -113,12 +114,13 @@ impl Step for JsonDocs {
             DocumentationFormat::Json,
         ));
 
-        let dest = "share/doc/rust/json";
+        let dest = format!("share/doc/rust/json/{host}");
 
         let mut tarball = Tarball::new(builder, "rust-docs-json", &host.triple);
+        tarball.include_target_in_component_name(true);
         tarball.set_product_name("Rust Documentation In JSON Format");
         tarball.is_preview(true);
-        tarball.add_bulk_dir(builder.json_doc_out(host), dest);
+        tarball.add_bulk_dir(builder.json_doc_out(host), &dest);
         Some(tarball.generate())
     }
 }
