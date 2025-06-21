@@ -2627,23 +2627,33 @@ fn get_all_import_attributes<'hir>(
     target_def_id: DefId,
     is_inline: bool,
 ) -> Vec<(Cow<'hir, hir::Attribute>, Option<DefId>)> {
-    let mut attrs = Vec::new();
-    let mut first = true;
+    let mut attrs = None;
     for def_id in reexport_chain(cx.tcx, import_def_id, target_def_id)
         .iter()
-        .flat_map(|reexport| reexport.id())
+        .filter_map(|reexport| reexport.id())
     {
         let import_attrs = inline::load_attrs(cx, def_id);
-        if first {
-            // This is the "original" reexport so we get all its attributes without filtering them.
-            attrs = import_attrs.iter().map(|attr| (Cow::Borrowed(attr), Some(def_id))).collect();
-            first = false;
-        // We don't add attributes of an intermediate re-export if it has `#[doc(hidden)]`.
-        } else if cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id) {
-            attrs.extend(add_without_unwanted_attributes(import_attrs, is_inline, Some(def_id)));
+        match &mut attrs {
+            None => {
+                // This is the "original" reexport so we get all its attributes without filtering them.
+                attrs = Some(
+                    import_attrs
+                        .iter()
+                        .map(|attr| (Cow::Borrowed(attr), Some(def_id)))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            Some(attrs) if cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id) => {
+                attrs.extend(add_without_unwanted_attributes(
+                    import_attrs,
+                    is_inline,
+                    Some(def_id),
+                ));
+            }
+            Some(_) => {}
         }
     }
-    attrs
+    attrs.unwrap_or_default()
 }
 
 fn filter_tokens_from_list(
