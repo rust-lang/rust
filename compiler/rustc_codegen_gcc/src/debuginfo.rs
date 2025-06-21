@@ -26,14 +26,17 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
         &mut self,
         _dbg_var: Self::DIVariable,
         _dbg_loc: Self::DILocation,
-        _variable_alloca: Self::Value,
+        is_declared: bool,
+        val: Self::Value,
         _direct_offset: Size,
         _indirect_offsets: &[Size],
         _fragment: Option<Range<Size>>,
     ) {
         // FIXME(tempdragon): Not sure if this is correct, probably wrong but still keep it here.
         #[cfg(feature = "master")]
-        _variable_alloca.set_location(_dbg_loc);
+        if is_declared {
+            val.set_location(_dbg_loc);
+        }
     }
 
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {

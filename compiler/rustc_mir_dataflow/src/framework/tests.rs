@@ -17,13 +17,13 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
 
     let mut blocks = IndexVec::new();
     let mut block = |n, kind| {
-        let nop = mir::Statement { source_info, kind: mir::StatementKind::Nop };
+        let nop = mir::Statement::new(source_info, mir::StatementKind::Nop);
 
-        blocks.push(mir::BasicBlockData {
-            statements: std::iter::repeat(&nop).cloned().take(n).collect(),
-            terminator: Some(mir::Terminator { source_info, kind }),
-            is_cleanup: false,
-        })
+        blocks.push(mir::BasicBlockData::new_stmts(
+            std::iter::repeat(&nop).cloned().take(n).collect(),
+            Some(mir::Terminator { source_info, kind }),
+            false,
+        ))
     };
 
     let dummy_place = mir::Place { local: mir::RETURN_PLACE, projection: ty::List::empty() };

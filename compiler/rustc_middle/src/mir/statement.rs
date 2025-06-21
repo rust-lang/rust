@@ -14,13 +14,27 @@ use crate::ty::CoroutineArgsExt;
 pub struct Statement<'tcx> {
     pub source_info: SourceInfo,
     pub kind: StatementKind<'tcx>,
+    pub debuginfos: Vec<StmtDebugInfo<'tcx>>,
 }
 
-impl Statement<'_> {
+impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
-    pub fn make_nop(&mut self) {
-        self.kind = StatementKind::Nop
+    pub fn make_nop(&mut self, drop_debuginfo: bool) {
+        if matches!(self.kind, StatementKind::Nop) {
+            return;
+        }
+        let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop);
+        if !drop_debuginfo {
+            let Some(debuginfo) = replaced_stmt.as_debuginfo() else {
+                bug!("debuginfo is not yet supported.")
+            };
+            self.debuginfos.push(debuginfo);
+        }
+    }
+
+    pub fn new(source_info: SourceInfo, kind: StatementKind<'tcx>) -> Self {
+        Statement { source_info, kind, debuginfos: Vec::new() }
     }
 }
 
@@ -55,6 +69,17 @@ impl<'tcx> StatementKind<'tcx> {
     pub fn as_assign(&self) -> Option<&(Place<'tcx>, Rvalue<'tcx>)> {
         match self {
             StatementKind::Assign(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    pub fn as_debuginfo(&self) -> Option<StmtDebugInfo<'tcx>> {
+        match self {
+            StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
+                if let Some(local) = place.as_local() =>
+            {
+                Some(StmtDebugInfo::AssignRef(local, *ref_place))
+            }
             _ => None,
         }
     }
@@ -933,4 +958,9 @@ impl RawPtrKind {
             RawPtrKind::FakeForPtrMetadata => "const (fake)",
         }
     }
+}
+
+#[derive(Debug, Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub enum StmtDebugInfo<'tcx> {
+    AssignRef(Local, Place<'tcx>),
 }

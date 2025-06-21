@@ -49,7 +49,7 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
             .visit_body_preserves_cfg(body);
 
         if any_replacement {
-            crate::simplify::remove_unused_definitions(body);
+            crate::simplify::remove_unused_definitions(body, false);
         }
     }
 
@@ -136,7 +136,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = stmt.kind
             && self.storage_to_remove.contains(l)
         {
-            stmt.make_nop();
+            stmt.make_nop(true);
             return;
         }
 
@@ -148,7 +148,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
                 *rhs
             && lhs == rhs
         {
-            stmt.make_nop();
+            stmt.make_nop(true);
         }
     }
 }

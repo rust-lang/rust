@@ -60,6 +60,11 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
+    fn visit_var_debug_info(&mut self, _var_debug_info: &VarDebugInfo<'tcx>) {
+        // Test only: Try to keep the original cost.
+        self.penalty += INSTR_COST;
+    }
+
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         // Most costs are in rvalues and terminators, not in statements.
         match statement.kind {
