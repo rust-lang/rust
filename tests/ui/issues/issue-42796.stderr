@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `s`
-  --> $DIR/issue-42796.rs:18:20
+  --> $DIR/issue-42796.rs:19:20
    |
 LL |     let s = "Hello!".to_owned();
    |         - move occurs because `s` has type `String`, which does not implement the `Copy` trait

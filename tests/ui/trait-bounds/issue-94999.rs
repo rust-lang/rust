@@ -1,4 +1,5 @@
 //@ check-pass
+#![feature(trivial_bounds)]
 
 trait Identity<Q> {
     type T;
@@ -25,6 +26,8 @@ impl<Q> Clone for X
 where
     <S as Identity<Q>>::T: Clone,
     X: Holds<Q = Q>,
+    //~^ WARN trait bound X: Holds does not depend on any type or lifetime parameters
+    // FIXME(#140311): This shouldn't lint
 {
     fn clone(&self) -> Self {
         Self(self.0.clone())

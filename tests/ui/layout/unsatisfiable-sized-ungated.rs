@@ -1,8 +1,5 @@
-//@ check-pass
-// issue: #123134
-
-//! This is a variant of `trivial-bounds-sized.rs` that compiles without any
-//! feature gates and used to trigger a delayed bug.
+// Regression test for #123134. This is a variant of `trivial-bounds-sized.rs`
+// that previously compiled without any feature gate and used to trigger a delayed bug.
 
 trait Api: Sized {
     type Device: ?Sized;
@@ -36,8 +33,7 @@ impl<T> Adapter for T {
     fn open() -> OpenDevice<Self::A>
     where
         <Self::A as Api>::Device: Sized,
-        // ^ the bound expands to `<<T as Adapter>::A as Api>::Device: Sized`, which
-        // is not considered trivial due to containing the type parameter `T`
+        //~^ ERROR the size for values of type `[u8]` cannot be known at compilation time
     {
         unreachable!()
     }
