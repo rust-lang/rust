@@ -55,6 +55,14 @@ impl OutputMode {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Default)]
+pub struct CommandCacheKey {
+    program: String,
+    args: Vec<String>,
+    envs: Vec<(String, String)>,
+    cwd: Option<PathBuf>,
+}
+
 /// Wrapper around `std::process::Command`.
 ///
 /// By default, the command will exit bootstrap if it fails.
@@ -223,6 +231,15 @@ impl<'a> BootstrapCommand {
             // `--color always` to actually work. This env var was lost when
             // compiling through the Makefile. Very strange.
             self.env("TERM", "xterm").args(["--color", "always"]);
+        }
+    }
+
+    pub fn cache_key(&self) -> CommandCacheKey {
+        CommandCacheKey {
+            program: self.program.clone(),
+            args: self.args.clone(),
+            envs: self.envs.clone(),
+            cwd: self.cwd.clone(),
         }
     }
 }
