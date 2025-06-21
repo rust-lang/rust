@@ -2,15 +2,21 @@
 //!
 //! This module provides a structured way to execute and manage commands efficiently,
 //! ensuring controlled failure handling and output management.
+#![allow(warnings)]
+
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::{Debug, Formatter};
+use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
+use std::sync::Mutex;
 
 use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
 
 use super::execution_context::{DeferredCommand, ExecutionContext};
+use crate::PathBuf;
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]
@@ -49,6 +55,14 @@ impl OutputMode {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Default)]
+pub struct CommandCacheKey {
+    program: String,
+    args: Vec<String>,
+    envs: Vec<(String, String)>,
+    cwd: Option<PathBuf>,
+}
+
 /// Wrapper around `std::process::Command`.
 ///
 /// By default, the command will exit bootstrap if it fails.
@@ -63,6 +77,11 @@ impl OutputMode {
 /// [allow_failure]: BootstrapCommand::allow_failure
 /// [delay_failure]: BootstrapCommand::delay_failure
 pub struct BootstrapCommand {
+    program: String,
+    args: Vec<String>,
+    envs: Vec<(String, String)>,
+    cwd: Option<PathBuf>,
+
     command: Command,
     pub failure_behavior: BehaviorOnFailure,
     // Run the command even during dry run
@@ -79,6 +98,8 @@ impl<'a> BootstrapCommand {
     }
 
     pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
+        let arg_str = arg.as_ref().to_string_lossy().into_owned();
+        self.args.push(arg_str.clone());
         self.command.arg(arg.as_ref());
         self
     }
@@ -88,7 +109,9 @@ impl<'a> BootstrapCommand {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        self.command.args(args);
+        args.into_iter().for_each(|arg| {
+            self.arg(arg);
+        });
         self
     }
 
@@ -97,6 +120,9 @@ impl<'a> BootstrapCommand {
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
     {
+        let key_str = key.as_ref().to_string_lossy().into_owned();
+        let val_str = val.as_ref().to_string_lossy().into_owned();
+        self.envs.push((key_str.clone(), val_str.clone()));
         self.command.env(key, val);
         self
     }
@@ -115,6 +141,7 @@ impl<'a> BootstrapCommand {
     }
 
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
+        self.cwd = Some(dir.as_ref().to_path_buf());
         self.command.current_dir(dir);
         self
     }
@@ -206,6 +233,15 @@ impl<'a> BootstrapCommand {
             self.env("TERM", "xterm").args(["--color", "always"]);
         }
     }
+
+    pub fn cache_key(&self) -> CommandCacheKey {
+        CommandCacheKey {
+            program: self.program.clone(),
+            args: self.args.clone(),
+            envs: self.envs.clone(),
+            cwd: self.cwd.clone(),
+        }
+    }
 }
 
 impl Debug for BootstrapCommand {
@@ -221,6 +257,10 @@ impl From<Command> for BootstrapCommand {
         let program = command.get_program().to_owned();
 
         Self {
+            program: program.clone().into_string().unwrap(),
+            args: Vec::new(),
+            envs: Vec::new(),
+            cwd: None,
             command,
             failure_behavior: BehaviorOnFailure::Exit,
             run_always: false,
@@ -230,6 +270,7 @@ impl From<Command> for BootstrapCommand {
 }
 
 /// Represents the current status of `BootstrapCommand`.
+#[derive(Clone, PartialEq)]
 enum CommandStatus {
     /// The command has started and finished with some status.
     Finished(ExitStatus),
@@ -246,6 +287,7 @@ pub fn command<S: AsRef<OsStr>>(program: S) -> BootstrapCommand {
 }
 
 /// Represents the output of an executed process.
+#[derive(Clone, PartialEq)]
 pub struct CommandOutput {
     status: CommandStatus,
     stdout: Option<Vec<u8>>,
