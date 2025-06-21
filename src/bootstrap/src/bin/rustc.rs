@@ -151,18 +151,6 @@ fn main() {
             cmd.arg("--sysroot").arg(&sysroot);
         }
 
-        // If we're compiling specifically the `panic_abort` crate then we pass
-        // the `-C panic=abort` option. Note that we do not do this for any
-        // other crate intentionally as this is the only crate for now that we
-        // ship with panic=abort.
-        //
-        // This... is a bit of a hack how we detect this. Ideally this
-        // information should be encoded in the crate I guess? Would likely
-        // require an RFC amendment to RFC 1513, however.
-        if crate_name == Some("panic_abort") {
-            cmd.arg("-C").arg("panic=abort");
-        }
-
         let crate_type = parse_value_from_args(&orig_args, "--crate-type");
         // `-Ztls-model=initial-exec` must not be applied to proc-macros, see
         // issue https://github.com/rust-lang/rust/issues/100530

@@ -2,6 +2,7 @@ use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
 use rustc_abi::FieldIdx;
+use rustc_attr_data_structures::AttributeKind;
 use rustc_attr_data_structures::ReprAttr::ReprPacked;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
@@ -1384,7 +1385,11 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                 ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
                 ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
                 ty::Adt(def, args) => {
-                    if !def.did().is_local() && !tcx.has_attr(def.did(), sym::rustc_pub_transparent)
+                    if !def.did().is_local()
+                        && !attrs::find_attr!(
+                            tcx.get_all_attrs(def.did()),
+                            AttributeKind::PubTransparent(_)
+                        )
                     {
                         let non_exhaustive = def.is_variant_list_non_exhaustive()
                             || def

@@ -26,6 +26,10 @@ pub(super) struct StackEntry<X: Cx> {
     /// The available depth of a given goal, immutable.
     pub available_depth: AvailableDepth,
 
+    /// Starts out as `None` and gets set when rerunning this
+    /// goal in case we encounter a cycle.
+    pub provisional_result: Option<X::Result>,
+
     /// The maximum depth required while evaluating this goal.
     pub required_depth: usize,
 
@@ -42,10 +46,6 @@ pub(super) struct StackEntry<X: Cx> {
 
     /// The nested goals of this goal, see the doc comment of the type.
     pub nested_goals: NestedGoals<X>,
-
-    /// Starts out as `None` and gets set when rerunning this
-    /// goal in case we encounter a cycle.
-    pub provisional_result: Option<X::Result>,
 }
 
 #[derive_where(Default; X: Cx)]

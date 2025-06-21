@@ -24,3 +24,12 @@ struct SinceAndNote;
 #[attr = Deprecation {deprecation: Deprecation {since: NonStandard("1.2.3"),
 note: "here's why this is deprecated"}}]
 struct FlippedOrder;
+
+fn f() {
+
+    // Attribute is ignored here (with a warning), but still preserved in HIR
+    #[attr = Deprecation {deprecation:
+    Deprecation {since:
+    Unspecified}}]
+    0
+}
