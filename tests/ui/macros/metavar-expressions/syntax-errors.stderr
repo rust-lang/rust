@@ -192,11 +192,13 @@ error: meta-variables within meta-variable expressions must be referenced using 
 LL |         ${ignore(bar)}
    |           ^^^^^^
 
-error: unrecognized meta-variable expression
+error: unrecognized metavariable expression
   --> $DIR/syntax-errors.rs:120:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
-   |                                 ^^^^^^^^^^^^^^ help: supported expressions are count, ignore, index and len
+   |                                 ^^^^^^^^^^^^^^ not a valid metavariable expression
+   |
+   = note: valid metavariable expressions are `count`, `ignore`, `index`, `len`, and `concat`
 
 error: expected identifier or string literal
   --> $DIR/syntax-errors.rs:38:14

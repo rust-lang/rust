@@ -154,6 +154,11 @@ expand_mve_missing_paren =
     .note = metavariable expressions use function-like parentheses syntax
     .suggestion = try adding parentheses
 
+expand_mve_unrecognized_expr =
+    unrecognized metavariable expression
+    .label = not a valid metavariable expression
+    .note = valid metavariable expressions are {$valid_expr_list}
+
 expand_mve_unrecognized_var =
     variable `{$key}` is not recognized in meta-variable expression
 
