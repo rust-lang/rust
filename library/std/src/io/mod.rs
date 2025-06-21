@@ -1626,6 +1626,60 @@ impl<'a> Deref for IoSlice<'a> {
     }
 }
 
+/// Limits a slice of buffers to at most `n` buffers and ensures that it has at
+/// least one buffer, even if empty.
+///
+/// When the slice contains over `n` buffers, ensure that at least one non-empty
+/// buffer is in the truncated slice, if there is one.
+#[allow(unused_macros)] // Not used on all platforms
+pub(crate) macro limit_slices($bufs:expr, $n:expr) {
+    'slices: {
+        let bufs: &[IoSlice<'_>] = $bufs;
+        let n: usize = $n;
+        // if bufs.len() > n || bufs.is_empty()
+        if core::intrinsics::unlikely(bufs.len().wrapping_sub(1) >= n) {
+            for (i, buf) in bufs.iter().enumerate() {
+                if !buf.is_empty() {
+                    let len = cmp::min(bufs.len() - i, n);
+                    break 'slices &bufs[i..i + len];
+                }
+            }
+            // All buffers are empty. Since POSIX requires at least one buffer
+            // for [writev], but possibly bufs.is_empty(), return an empty write.
+            // [writev]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/writev.html
+            return Ok(0);
+        }
+        bufs
+    }
+}
+
+/// Limits a slice of buffers to at most `n` buffers and ensures that it has at
+/// least one buffer, even if empty.
+///
+/// When the slice contains over `n` buffers, ensure that at least one non-empty
+/// buffer is in the truncated slice, if there is one.
+#[allow(unused_macros)] // Not used on all platforms
+pub(crate) macro limit_slices_mut($bufs:expr, $n:expr) {
+    'slices: {
+        let bufs: &mut [IoSliceMut<'_>] = $bufs;
+        let n: usize = $n;
+        // if bufs.len() > n || bufs.is_empty()
+        if core::intrinsics::unlikely(bufs.len().wrapping_sub(1) >= n) {
+            for (i, buf) in bufs.iter().enumerate() {
+                if !buf.is_empty() {
+                    let len = cmp::min(bufs.len() - i, n);
+                    break 'slices &mut bufs[i..i + len];
+                }
+            }
+            // All buffers are empty. Since POSIX requires at least one buffer
+            // for [readv], but possibly bufs.is_empty(), return an empty read.
+            // [readv]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/readv.html
+            return Ok(0);
+        }
+        bufs
+    }
+}
+
 /// A trait for objects which are byte-oriented sinks.
 ///
 /// Implementors of the `Write` trait are sometimes called 'writers'.
