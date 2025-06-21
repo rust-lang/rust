@@ -13,8 +13,12 @@ nightly_branch=master
 # All changes below this comment will be overridden the next time the
 # tool is executed.
 
+compiler_channel_manifest_hash=13b65dfadf9dd9bb722841e0ade5b6f6ebf59186f14af2fce8eb4e732e72032b
+compiler_git_commit_hash=95597e848d27a82b8864c677ab807e9f0be1f68c
 compiler_date=2025-05-26
 compiler_version=beta
+rustfmt_channel_manifest_hash=a70dbc2f0d4cddc940b4c8e413fc2bcb45a8a57d2abf3c5e29a3d4168ba90b4d
+rustfmt_git_commit_hash=2805e1dc4c18ed4c84d161502c48da870c56f68a
 rustfmt_date=2025-05-27
 rustfmt_version=nightly
 
@@ -372,6 +376,15 @@ dist/2025-05-26/clippy-beta-x86_64-unknown-linux-musl.tar.gz=7af7df177e64881dd68
 dist/2025-05-26/clippy-beta-x86_64-unknown-linux-musl.tar.xz=f2f9575cbd3e3f067aeda5f9b7ab424e0dc119448d12872692cb7c6669f61ae0
 dist/2025-05-26/clippy-beta-x86_64-unknown-netbsd.tar.gz=5e1dc30da47902c52ab1fbfa2216a6952385184b44854c47b8eb988bdd1b040d
 dist/2025-05-26/clippy-beta-x86_64-unknown-netbsd.tar.xz=23f21905caa5824a463fac01e18e0055009cecdfd406da76b838105eb78127e7
+dist/2025-05-26/rust-beta-aarch64-pc-windows-msvc.msi=267cfb9bd514e402e9239add481ed0a910b109acbff3ef9c2d772ef1a682b32a
+dist/2025-05-26/rust-beta-i686-pc-windows-gnu.msi=44911ff27b8b717ca81cd0b52215600a10aadf0d152088e5765d7965d45563fd
+dist/2025-05-26/rust-beta-i686-pc-windows-msvc.msi=7171772f73325ef8f4b4adac13b0eb30633c7968b01267defb95e4e6f4c567bf
+dist/2025-05-26/rust-beta-x86_64-pc-windows-gnu.msi=79b3db15b584284e52879615bd8bf754ac8c7864c909b738cfa7d6a549ed3e76
+dist/2025-05-26/rust-beta-x86_64-pc-windows-msvc.msi=755da7c34499c5c3410a3314918b21d49f5b6c4e12b48879f5930b5ba17e0d35
+dist/2025-05-26/rust-beta-aarch64-apple-darwin.pkg=20862aad289534f608e52ef7a813e9bc4cae8d91829e31e81b85ef77fba6f90b
+dist/2025-05-26/rust-beta-x86_64-apple-darwin.pkg=f36add16fc74543210eb366f4bac8ac1ff6ab55e9d5beaf83802cfdb8d55f7a8
+dist/2025-05-26/rustc-beta-src.tar.gz=9e42c1a344896e4b8ed377e45a6a6495ec412b3f5fbe06000e504bc607d05bed
+dist/2025-05-26/rustc-beta-src.tar.xz=45bce011f4342e9814eeb0647e2f1127e5919a5eaa5329fcecc97765ff229628
 dist/2025-05-27/rustfmt-nightly-aarch64-apple-darwin.tar.gz=5a3b21df1d525a049b9bd1fca0e32eb5aad1a82a2800e094af80f121e90878c0
 dist/2025-05-27/rustfmt-nightly-aarch64-apple-darwin.tar.xz=3f7edd6997839f12d70246edb672a13d808bd871bfaa4bda66bb4db4fb1158fc
 dist/2025-05-27/rustfmt-nightly-aarch64-pc-windows-msvc.tar.gz=99ecb24920480c06482d8b10f6dbc23247c66033991ad807f8228dff35626fac
@@ -476,3 +489,12 @@ dist/2025-05-27/rustc-nightly-x86_64-unknown-linux-musl.tar.gz=d146af52aa7fad3b1
 dist/2025-05-27/rustc-nightly-x86_64-unknown-linux-musl.tar.xz=d72ed1096917a5789f26564ddc920c3fdcd29056cf97452371e5141bcc2c8a8e
 dist/2025-05-27/rustc-nightly-x86_64-unknown-netbsd.tar.gz=94b608796d12feff92c54f942318e711879d86b1a3114a710b8366b7415ae025
 dist/2025-05-27/rustc-nightly-x86_64-unknown-netbsd.tar.xz=7d870360a35a34dffede096d62734d97a7bf60d0661e638f73d913cb93bd49ec
+dist/2025-05-27/rust-nightly-aarch64-pc-windows-msvc.msi=9737a96d76515d5b267226915c6917b4f5f2e5466ac5906660e8387e7cd5a453
+dist/2025-05-27/rust-nightly-i686-pc-windows-gnu.msi=d67eec08c0de0dc786577db9fdbf10106f4bfb4c016d2cba4798856c0e3073d9
+dist/2025-05-27/rust-nightly-i686-pc-windows-msvc.msi=4571c0eee00ac2cd6364b03c7b0053de6dc79be3fc8bd6db0c525282d31e46b6
+dist/2025-05-27/rust-nightly-x86_64-pc-windows-gnu.msi=704aab03718a9cbb6b061d8c7ce5a071cdc74bcf94eaf5c6d5350828efdd279e
+dist/2025-05-27/rust-nightly-x86_64-pc-windows-msvc.msi=e7ed14ac27c9ba94e1c07cbdd4348251d7af4c50d084dbb3d7ac3a5a952a7fbc
+dist/2025-05-27/rust-nightly-aarch64-apple-darwin.pkg=fdc071218f279d4a29b6865acb18a0122995a13ccc148a77ca525aad5852be12
+dist/2025-05-27/rust-nightly-x86_64-apple-darwin.pkg=ca1c62078b53ec361408dd32f5880d22d788cf83d735a69a743ffd7b8d394f63
+dist/2025-05-27/rustc-nightly-src.tar.gz=7ba390eb8110b21922d8dbbe80ee58e116a8eb290e0613db74bd666a47fed73b
+dist/2025-05-27/rustc-nightly-src.tar.xz=7341d94e81cb9300276cf1e9213b4d3f6a653fa8c26de1fb2354e3639943d39e
