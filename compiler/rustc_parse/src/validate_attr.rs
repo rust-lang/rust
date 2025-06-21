@@ -293,6 +293,7 @@ fn emit_malformed_attribute(
             | sym::deprecated
             | sym::optimize
             | sym::cold
+            | sym::track_caller
     ) {
         return;
     }
