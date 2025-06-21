@@ -5,7 +5,7 @@
 //@ [strict]compile-flags: -Zstrict-init-checks
 //@ needs-subprocess
 
-#![allow(deprecated, invalid_value)]
+#![allow(deprecated, invalid_value, unreachable_code)]
 #![feature(never_type)]
 
 use std::{
