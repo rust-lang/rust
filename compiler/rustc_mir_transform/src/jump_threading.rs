@@ -913,7 +913,7 @@ fn loop_headers(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
     let mut loop_headers = DenseBitSet::new_empty(body.basic_blocks.len());
     let dominators = body.basic_blocks.dominators();
     // Only visit reachable blocks.
-    for (bb, bbdata) in traversal::preorder(body) {
+    for (bb, bbdata) in traversal::postorder(body) {
         for succ in bbdata.terminator().successors() {
             if dominators.dominates(succ, bb) {
                 loop_headers.insert(succ);
