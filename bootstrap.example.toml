@@ -8,6 +8,14 @@
 # `bootstrap.toml` in the current directory of a build for build configuration, but
 # a custom configuration file can also be specified with `--config` to the build
 # system.
+#
+# Note that the following are equivelent, for more details see <https://toml.io/en/v1.0.0>.
+#
+#     build.verbose = 1
+#
+#     [build]
+#     verbose = 1
+
 
 # =============================================================================
 # Global Settings
@@ -44,7 +52,6 @@
 # =============================================================================
 # Tweaking how LLVM is compiled
 # =============================================================================
-[llvm]
 
 # Whether to use Rust CI built LLVM instead of locally building it.
 #
@@ -62,50 +69,50 @@
 #
 # Note that many of the LLVM options are not currently supported for
 # downloading. Currently only the "assertions" option can be toggled.
-#download-ci-llvm = true
+#llvm.download-ci-llvm = true
 
 # Indicates whether the LLVM build is a Release or Debug build
-#optimize = true
+#llvm.optimize = true
 
 # Indicates whether LLVM should be built with ThinLTO. Note that this will
 # only succeed if you use clang, lld, llvm-ar, and llvm-ranlib in your C/C++
 # toolchain (see the `cc`, `cxx`, `linker`, `ar`, and `ranlib` options below).
 # More info at: https://clang.llvm.org/docs/ThinLTO.html#clang-bootstrap
-#thin-lto = false
+#llvm.thin-lto = false
 
 # Indicates whether an LLVM Release build should include debug info
-#release-debuginfo = false
+#llvm.release-debuginfo = false
 
 # Indicates whether the LLVM assertions are enabled or not
 # NOTE: When assertions are disabled, bugs in the integration between rustc and LLVM can lead to
 # unsoundness (segfaults, etc.) in the rustc process itself, not just in the generated code.
-#assertions = false
+#llvm.assertions = false
 
 # Indicates whether the LLVM testsuite is enabled in the build or not. Does
 # not execute the tests as part of the build as part of x.py build et al,
 # just makes it possible to do `ninja check-llvm` in the staged LLVM build
 # directory when doing LLVM development as part of Rust development.
-#tests = false
+#llvm.tests = false
 
 # Indicates whether the LLVM plugin is enabled or not
-#plugins = false
+#llvm.plugins = false
 
 # Whether to build Enzyme as AutoDiff backend.
-#enzyme = false
+#llvm.enzyme = false
 
 # Whether to build LLVM with support for it's gpu offload runtime.
-#offload = false
+#llvm.offload = false
 
 # When true, link libstdc++ statically into the rustc_llvm.
 # This is useful if you don't want to use the dynamic version of that
 # library provided by LLVM.
-#static-libstdcpp = false
+#llvm.static-libstdcpp = false
 
 # Enable LLVM to use zstd for compression.
-#libzstd = false
+#llvm.libzstd = false
 
 # Whether to use Ninja to build LLVM. This runs much faster than make.
-#ninja = true
+#llvm.ninja = true
 
 # LLVM targets to build support for.
 # Note: this is NOT related to Rust compilation targets. However, as Rust is
@@ -113,13 +120,13 @@
 # the resulting rustc being unable to compile for the disabled architectures.
 #
 # To add support for new targets, see https://rustc-dev-guide.rust-lang.org/building/new-target.html.
-#targets = "AArch64;AMDGPU;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;RISCV;Sparc;SystemZ;WebAssembly;X86"
+#llvm.targets = "AArch64;AMDGPU;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;RISCV;Sparc;SystemZ;WebAssembly;X86"
 
 # LLVM experimental targets to build support for. These targets are specified in
 # the same format as above, but since these targets are experimental, they are
 # not built by default and the experimental Rust compilation targets that depend
 # on them will not work unless the user opts in to building them.
-#experimental-targets = "AVR;M68k;CSKY"
+#llvm.experimental-targets = "AVR;M68k;CSKY"
 
 # Cap the number of parallel linker invocations when compiling LLVM.
 # This can be useful when building LLVM with debug info, which significantly
@@ -127,86 +134,84 @@
 # each linker process.
 # If set to 0, linker invocations are treated like any other job and
 # controlled by bootstrap's -j parameter.
-#link-jobs = 0
+#llvm.link-jobs = 0
 
 # Whether to build LLVM as a dynamically linked library (as opposed to statically linked).
 # Under the hood, this passes `--shared` to llvm-config.
 # NOTE: To avoid performing LTO multiple times, we suggest setting this to `true` when `thin-lto` is enabled.
-#link-shared = llvm.thin-lto
+#llvm.link-shared = llvm.thin-lto
 
 # When building llvm, this configures what is being appended to the version.
 # To use LLVM version as is, provide an empty string.
-#version-suffix = if rust.channel == "dev" { "-rust-dev" } else { "-rust-$version-$channel" }
+#llvm.version-suffix = if rust.channel == "dev" { "-rust-dev" } else { "-rust-$version-$channel" }
 
 # On MSVC you can compile LLVM with clang-cl, but the test suite doesn't pass
 # with clang-cl, so this is special in that it only compiles LLVM with clang-cl.
 # Note that this takes a /path/to/clang-cl, not a boolean.
-#clang-cl = cc
+#llvm.clang-cl = cc
 
 # Pass extra compiler and linker flags to the LLVM CMake build.
-#cflags = ""
-#cxxflags = ""
-#ldflags = ""
+#llvm.cflags = ""
+#llvm.cxxflags = ""
+#llvm.ldflags = ""
 
 # Use libc++ when building LLVM instead of libstdc++. This is the default on
 # platforms already use libc++ as the default C++ library, but this option
 # allows you to use libc++ even on platforms when it's not. You need to ensure
 # that your host compiler ships with libc++.
-#use-libcxx = false
+#llvm.use-libcxx = false
 
 # The value specified here will be passed as `-DLLVM_USE_LINKER` to CMake.
-#use-linker = <none> (path)
+#llvm.use-linker = <none> (path)
 
 # Whether or not to specify `-DLLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN=YES`
-#allow-old-toolchain = false
+#llvm.allow-old-toolchain = false
 
 # Whether to include the Polly optimizer.
-#polly = false
+#llvm.polly = false
 
 # Whether to build the clang compiler.
-#clang = false
+#llvm.clang = false
 
 # Whether to enable llvm compilation warnings.
-#enable-warnings = false
+#llvm.enable-warnings = false
 
 # Custom CMake defines to set when building LLVM.
-#build-config = {}
+#llvm.build-config = {}
 
 # =============================================================================
 # Tweaking how GCC is compiled
 # =============================================================================
-[gcc]
 # Download GCC from CI instead of building it locally.
 # Note that this will attempt to download GCC even if there are local
 # modifications to the `src/gcc` submodule.
 # Currently, this is only supported for the `x86_64-unknown-linux-gnu` target.
-#download-ci-gcc = false
+#gcc.download-ci-gcc = false
 
 # =============================================================================
 # General build configuration options
 # =============================================================================
-[build]
 
 # The default stage to use for the `check` subcommand
-#check-stage = 0
+#build.check-stage = 0
 
 # The default stage to use for the `doc` subcommand
-#doc-stage = 0
+#build.doc-stage = 0
 
 # The default stage to use for the `build` subcommand
-#build-stage = 1
+#build.build-stage = 1
 
 # The default stage to use for the `test` subcommand
-#test-stage = 1
+#build.test-stage = 1
 
 # The default stage to use for the `dist` subcommand
-#dist-stage = 2
+#build.dist-stage = 2
 
 # The default stage to use for the `install` subcommand
-#install-stage = 2
+#build.install-stage = 2
 
 # The default stage to use for the `bench` subcommand
-#bench-stage = 2
+#build.bench-stage = 2
 
 # A descriptive string to be appended to version output (e.g., `rustc --version`),
 # which is also used in places like debuginfo `DW_AT_producer`. This may be useful for
@@ -217,7 +222,7 @@
 # upstream Rust you need to set this to "". However, note that if you set this to "" but
 # are not actually compatible -- for example if you've backported patches that change
 # behavior -- this may lead to miscompilations or other bugs.
-#description = ""
+#build.description = ""
 
 # Build triple for the pre-compiled snapshot compiler. If `rustc` is set, this must match its host
 # triple (see `rustc --version --verbose`; cross-compiling the rust build system itself is NOT
@@ -229,14 +234,14 @@
 # Otherwise, `x.py` will try to infer it from the output of `uname`.
 # If `uname` is not found in PATH, we assume this is `x86_64-pc-windows-msvc`.
 # This may be changed in the future.
-#build = "x86_64-unknown-linux-gnu" (as an example)
+#build.build = "x86_64-unknown-linux-gnu" (as an example)
 
 # Which triples to produce a compiler toolchain for. Each of these triples will be bootstrapped from
 # the build triple themselves. In other words, this is the list of triples for which to build a
 # compiler that can RUN on that triple.
 #
 # Defaults to just the `build` triple.
-#host = [build.build] (list of triples)
+#build.host = [build.build] (list of triples)
 
 # Which triples to build libraries (core/alloc/std/test/proc_macro) for. Each of these triples will
 # be bootstrapped from the build triple themselves. In other words, this is the list of triples for
@@ -245,32 +250,32 @@
 # Defaults to `host`. If you set this explicitly, you likely want to add all
 # host triples to this list as well in order for those host toolchains to be
 # able to compile programs for their native target.
-#target = build.host (list of triples)
+#build.target = build.host (list of triples)
 
 # Use this directory to store build artifacts. Paths are relative to the current directory, not to
 # the root of the repository.
-#build-dir = "build"
+#build.build-dir = "build"
 
 # Instead of downloading the src/stage0 version of Cargo specified, use
 # this Cargo binary instead to build all Rust code
 # If you set this, you likely want to set `rustc` as well.
-#cargo = "/path/to/cargo"
+#build.cargo = "/path/to/cargo"
 
 # Instead of downloading the src/stage0 version of the compiler
 # specified, use this rustc binary instead as the stage0 snapshot compiler.
 # If you set this, you likely want to set `cargo` as well.
-#rustc = "/path/to/rustc"
+#build.rustc = "/path/to/rustc"
 
 # Instead of downloading the src/stage0 version of rustfmt specified,
 # use this rustfmt binary instead as the stage0 snapshot rustfmt.
-#rustfmt = "/path/to/rustfmt"
+#build.rustfmt = "/path/to/rustfmt"
 
 # Instead of downloading the src/stage0 version of cargo-clippy specified,
 # use this cargo-clippy binary instead as the stage0 snapshot cargo-clippy.
 #
 # Note that this option should be used with the same toolchain as the `rustc` option above.
 # Otherwise, clippy is likely to fail due to a toolchain conflict.
-#cargo-clippy = "/path/to/cargo-clippy"
+#build.cargo-clippy = "/path/to/cargo-clippy"
 
 # Whether to build documentation by default. If false, rustdoc and
 # friends will still be compiled but they will not be used to generate any
@@ -278,47 +283,47 @@
 #
 # You can still build documentation when this is disabled by explicitly passing paths,
 # e.g. `x doc library`.
-#docs = true
+#build.docs = true
 
 # Flag to specify whether CSS, JavaScript, and HTML are minified when
 # docs are generated. JSON is always minified, because it's enormous,
 # and generated in already-minified form from the beginning.
-#docs-minification = true
+#build.docs-minification = true
 
 # Flag to specify whether private items should be included in the library docs.
-#library-docs-private-items = false
+#build.library-docs-private-items = false
 
 # Indicate whether to build compiler documentation by default.
 # You can still build documentation when this is disabled by explicitly passing a path: `x doc compiler`.
-#compiler-docs = false
+#build.compiler-docs = false
 
 # Indicate whether git submodules are managed and updated automatically.
-#submodules = true
+#build.submodules = true
 
 # The path to (or name of) the GDB executable to use. This is only used for
 # executing the debuginfo test suite.
-#gdb = "gdb"
+#build.gdb = "gdb"
 
 # The path to (or name of) the LLDB executable to use. This is only used for
 # executing the debuginfo test suite.
-#lldb = "lldb"
+#build.lldb = "lldb"
 
 # The node.js executable to use. Note that this is only used for the emscripten
 # target when running tests, otherwise this can be omitted.
-#nodejs = "node"
+#build.nodejs = "node"
 
 # The npm executable to use. Note that this is used for rustdoc-gui tests,
 # otherwise this can be omitted.
 #
 # Under Windows this should be `npm.cmd` or path to it (verified on nodejs v18.06), or
 # error will be emitted.
-#npm = "npm"
+#build.npm = "npm"
 
 # Python interpreter to use for various tasks throughout the build, notably
 # rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
 #
 # Defaults to the Python interpreter used to execute x.py.
-#python = "python"
+#build.python = "python"
 
 # The path to the REUSE executable to use. Note that REUSE is not required in
 # most cases, as our tooling relies on a cached (and shrunk) copy of the
@@ -328,17 +333,17 @@
 # repository to change, and the cached copy has to be regenerated.
 #
 # Defaults to the "reuse" command in the system path.
-#reuse = "reuse"
+#build.reuse = "reuse"
 
 # Force Cargo to check that Cargo.lock describes the precise dependency
 # set that all the Cargo.toml files create, instead of updating it.
-#locked-deps = false
+#build.locked-deps = false
 
 # Indicate whether the vendored sources are used for Rust dependencies or not.
 #
 # Vendoring requires additional setup. We recommend using the pre-generated source tarballs if you
 # want to use vendoring. See https://forge.rust-lang.org/infra/other-installation-methods.html#source-code.
-#vendor = if "is a tarball source" && "vendor" dir exists && ".cargo/config.toml" file exists { true } else { false }
+#build.vendor = if "is a tarball source" && "vendor" dir exists && ".cargo/config.toml" file exists { true } else { false }
 
 # Typically the build system will build the Rust compiler twice. The second
 # compiler, however, will simply use its own libraries to link against. If you
@@ -346,11 +351,11 @@
 # then you can set this option to true.
 #
 # This is only useful for verifying that rustc generates reproducible builds.
-#full-bootstrap = false
+#build.full-bootstrap = false
 
 # Set the bootstrap/download cache path. It is useful when building rust
 # repeatedly in a CI environment.
-#bootstrap-cache-path = /path/to/shared/cache
+#build.bootstrap-cache-path = /path/to/shared/cache
 
 # Enable a build of the extended Rust tool set which is not only the compiler
 # but also tools such as Cargo. This will also produce "combined installers"
@@ -359,7 +364,7 @@
 # which tools should be built if `extended = true`.
 #
 # This is disabled by default.
-#extended = false
+#build.extended = false
 
 # Set of tools to be included in the installation.
 #
@@ -368,7 +373,7 @@
 # If `extended = true`, they are all included.
 #
 # If any enabled tool fails to build, the installation fails.
-#tools = [
+#build.tools = [
 #    "cargo",
 #    "clippy",
 #    "rustdoc",
@@ -388,17 +393,17 @@
 #
 # The default value for the `features` array is `[]`. However, please note that other flags in
 # `bootstrap.toml` might influence the features enabled for some tools.
-#tool.TOOL_NAME.features = [FEATURE1, FEATURE2]
+#build.tool.TOOL_NAME.features = [FEATURE1, FEATURE2]
 
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose, 3 == print environment variables on each rustc invocation
-#verbose = 0
+#build.verbose = 0
 
 # Build the sanitizer runtimes
-#sanitizers = false
+#build.sanitizers = false
 
 # Build the profiler runtime (required when compiling with options that depend
 # on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
-#profiler = false
+#build.profiler = false
 
 # Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics.
 # Requires the LLVM submodule to be managed by bootstrap (i.e. not external) so that `compiler-rt`
@@ -406,102 +411,100 @@
 #
 # Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
 # order to run `x check`.
-#optimized-compiler-builtins = if rust.channel == "dev" { false } else { true }
+#build.optimized-compiler-builtins = if rust.channel == "dev" { false } else { true }
 
 # Indicates whether the native libraries linked into Cargo will be statically
 # linked or not.
-#cargo-native-static = false
+#build.cargo-native-static = false
 
 # Run the build with low priority, by setting the process group's "nice" value
 # to +10 on Unix platforms, and by using a "low priority" job object on Windows.
-#low-priority = false
+#build.low-priority = false
 
 # Arguments passed to the `./configure` script, used during distcheck. You
 # probably won't fill this in but rather it's filled in by the `./configure`
 # script. Useful for debugging.
-#configure-args = []
+#build.configure-args = []
 
 # Indicates that a local rebuild is occurring instead of a full bootstrap,
 # essentially skipping stage0 as the local compiler is recompiling itself again.
 # Useful for modifying only the stage2 compiler without having to pass `--keep-stage 0` each time.
-#local-rebuild = false
+#build.local-rebuild = false
 
 # Print out how long each bootstrap step took (mostly intended for CI and
 # tracking over time)
-#print-step-timings = false
+#build.print-step-timings = false
 
 # Print out resource usage data for each bootstrap step, as defined by the Unix
 # struct rusage. (Note that this setting is completely unstable: the data it
 # captures, what platforms it supports, the format of its associated output, and
 # this setting's very existence, are all subject to change.)
-#print-step-rusage = false
+#build.print-step-rusage = false
 
 # Always patch binaries for usage with Nix toolchains. If `true` then binaries
 # will be patched unconditionally. If `false` or unset, binaries will be patched
 # only if the current distribution is NixOS. This option is useful when using
 # a Nix toolchain on non-NixOS distributions.
-#patch-binaries-for-nix = false
+#build.patch-binaries-for-nix = false
 
 # Collect information and statistics about the current build, and write it to
 # disk. Enabling this has no impact on the resulting build output. The
 # schema of the file generated by the build metrics feature is unstable, and
 # this is not intended to be used during local development.
-#metrics = false
+#build.metrics = false
 
 # Specify the location of the Android NDK. Used when targeting Android.
-#android-ndk = "/path/to/android-ndk-r26d"
+#build.android-ndk = "/path/to/android-ndk-r26d"
 
 # Number of parallel jobs to be used for building and testing. If set to `0` or
 # omitted, it will be automatically determined. This is the `-j`/`--jobs` flag
 # passed to cargo invocations.
-#jobs = 0
+#build.jobs = 0
 
 # What custom diff tool to use for displaying compiletest tests.
-#compiletest-diff-tool = <none>
+#build.compiletest-diff-tool = <none>
 
 # Whether to use the precompiled stage0 libtest with compiletest.
-#compiletest-use-stage0-libtest = true
+#build.compiletest-use-stage0-libtest = true
 
 # Indicates whether ccache is used when building certain artifacts (e.g. LLVM).
 # Set to `true` to use the first `ccache` in PATH, or set an absolute path to use
 # a specific version.
-#ccache = false
+#build.ccache = false
 
 # List of paths to exclude from the build and test processes.
 # For example, exclude = ["tests/ui", "src/tools/tidy"].
-#exclude = []
+#build.exclude = []
 
 # =============================================================================
 # General install configuration options
 # =============================================================================
-[install]
 
 # Where to install the generated toolchain. Must be an absolute path.
-#prefix = "/usr/local"
+#install.prefix = "/usr/local"
 
 # Where to install system configuration files.
 # If this is a relative path, it will get installed in `prefix` above
-#sysconfdir = "/etc"
+#install.sysconfdir = "/etc"
 
 # Where to install documentation in `prefix` above
-#docdir = "share/doc/rust"
+#install.docdir = "share/doc/rust"
 
 # Where to install binaries in `prefix` above
-#bindir = "bin"
+#install.bindir = "bin"
 
 # Where to install libraries in `prefix` above
-#libdir = "lib"
+#install.libdir = "lib"
 
 # Where to install man pages in `prefix` above
-#mandir = "share/man"
+#install.mandir = "share/man"
 
 # Where to install data in `prefix` above
-#datadir = "share"
+#install.datadir = "share"
 
 # =============================================================================
 # Options for compiling Rust code itself
 # =============================================================================
-[rust]
 
 # Whether or not to optimize when compiling the compiler and standard library,
 # and what level of optimization to use.
@@ -517,7 +520,7 @@
 # 3 - All optimizations.
 # "s" - Optimize for binary size.
 # "z" - Optimize for binary size, but also turn off loop vectorization.
-#optimize = true
+#rust.optimize = true
 
 # Indicates that the build should be configured for debugging Rust. A
 # `debug`-enabled compiler and standard library will be somewhat
@@ -540,7 +543,7 @@
 #       "maximally debuggable" environment (notably libstd) takes
 #       hours to build.
 #
-#debug = false
+#rust.debug = false
 
 # Whether to download the stage 1 and 2 compilers from CI. This is useful if you
 # are working on tools, doc-comments, or library (you will be able to build the
@@ -553,37 +556,37 @@
 #
 # Set this to `true` to always download or `false` to always use the in-tree
 # compiler.
-#download-rustc = false
+#rust.download-rustc = false
 
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
 # compiler.
 #
 # Uses the rustc defaults: https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
-#codegen-units = if incremental { 256 } else { 16 }
+#rust.codegen-units = if incremental { 256 } else { 16 }
 
 # Sets the number of codegen units to build the standard library with,
 # regardless of what the codegen-unit setting for the rest of the compiler is.
 # NOTE: building with anything other than 1 is known to occasionally have bugs.
-#codegen-units-std = codegen-units
+#rust.codegen-units-std = codegen-units
 
 # Whether or not debug assertions are enabled for the compiler and standard library.
 # These can help find bugs at the cost of a small runtime slowdown.
 #
 # Defaults to rust.debug value
-#debug-assertions = rust.debug (boolean)
+#rust.debug-assertions = rust.debug (boolean)
 
 # Whether or not debug assertions are enabled for the standard library.
 # Overrides the `debug-assertions` option, if defined.
 #
 # Defaults to rust.debug-assertions value
-#debug-assertions-std = rust.debug-assertions (boolean)
+#rust.debug-assertions-std = rust.debug-assertions (boolean)
 
 # Whether or not debug assertions are enabled for the tools built by bootstrap.
 # Overrides the `debug-assertions` option, if defined.
 #
 # Defaults to rust.debug-assertions value
-#debug-assertions-tools = rust.debug-assertions (boolean)
+#rust.debug-assertions-tools = rust.debug-assertions (boolean)
 
 # Whether or not to leave debug! and trace! calls in the rust binary.
 #
@@ -591,22 +594,22 @@
 #
 # If you see a message from `tracing` saying "some trace filter directives would enable traces that
 # are disabled statically" because `max_level_info` is enabled, set this value to `true`.
-#debug-logging = rust.debug-assertions (boolean)
+#rust.debug-logging = rust.debug-assertions (boolean)
 
 # Whether or not to build rustc, tools and the libraries with randomized type layout
-#randomize-layout = false
+#rust.randomize-layout = false
 
 # Whether or not overflow checks are enabled for the compiler and standard
 # library.
 #
 # Defaults to rust.debug value
-#overflow-checks = rust.debug (boolean)
+#rust.overflow-checks = rust.debug (boolean)
 
 # Whether or not overflow checks are enabled for the standard library.
 # Overrides the `overflow-checks` option, if defined.
 #
 # Defaults to rust.overflow-checks value
-#overflow-checks-std = rust.overflow-checks (boolean)
+#rust.overflow-checks-std = rust.overflow-checks (boolean)
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # See https://doc.rust-lang.org/rustc/codegen-options/index.html#debuginfo for available options.
@@ -617,20 +620,20 @@
 #
 # Note that debuginfo-level = 2 generates several gigabytes of debuginfo
 # and will slow down the linking process significantly.
-#debuginfo-level = if rust.debug { 1 } else { 0 }
+#rust.debuginfo-level = if rust.debug { 1 } else { 0 }
 
 # Debuginfo level for the compiler.
-#debuginfo-level-rustc = rust.debuginfo-level
+#rust.debuginfo-level-rustc = rust.debuginfo-level
 
 # Debuginfo level for the standard library.
-#debuginfo-level-std = rust.debuginfo-level
+#rust.debuginfo-level-std = rust.debuginfo-level
 
 # Debuginfo level for the tools.
-#debuginfo-level-tools = rust.debuginfo-level
+#rust.debuginfo-level-tools = rust.debuginfo-level
 
 # Debuginfo level for the test suites run with compiletest.
 # FIXME(#61117): Some tests fail when this option is enabled.
-#debuginfo-level-tests = 0
+#rust.debuginfo-level-tests = 0
 
 # Should rustc and the standard library be built with split debuginfo? Default
 # is platform dependent.
@@ -640,13 +643,13 @@
 # The value specified here is only used when targeting the `build.build` triple,
 # and is overridden by `target.<triple>.split-debuginfo` if specified.
 #
-#split-debuginfo = see target.<triple>.split-debuginfo
+#rust.split-debuginfo = see target.<triple>.split-debuginfo
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
-#backtrace = true
+#rust.backtrace = true
 
 # Whether to always use incremental compilation when building rustc
-#incremental = false
+#rust.incremental = false
 
 # The default linker that will be hard-coded into the generated
 # compiler for targets that don't specify a default linker explicitly
@@ -656,7 +659,7 @@
 # setting.
 #
 # See https://doc.rust-lang.org/rustc/codegen-options/index.html#linker for more information.
-#default-linker = <none> (path)
+#rust.default-linker = <none> (path)
 
 # The "channel" for the Rust build to produce. The stable/beta channels only
 # allow using stable features, whereas the nightly and dev channels allow using
@@ -665,7 +668,7 @@
 # You can set the channel to "auto-detect" to load the channel name from `src/ci/channel`.
 #
 # If using tarball sources, default value is "auto-detect", otherwise, it's "dev".
-#channel = if "is a tarball source" { "auto-detect" } else { "dev" }
+#rust.channel = if "is a tarball source" { "auto-detect" } else { "dev" }
 
 # The root location of the musl installation directory. The library directory
 # will also need to contain libunwind.a for an unwinding implementation. Note
@@ -673,65 +676,65 @@
 # linked binaries.
 #
 # Defaults to /usr on musl hosts. Has no default otherwise.
-#musl-root = <platform specific> (path)
+#rust.musl-root = <platform specific> (path)
 
 # By default the `rustc` executable is built with `-Wl,-rpath` flags on Unix
 # platforms to ensure that the compiler is usable by default from the build
 # directory (as it links to a number of dynamic libraries). This may not be
 # desired in distributions, for example.
-#rpath = true
+#rust.rpath = true
 
 # Indicates whether symbols should be stripped using `-Cstrip=symbols`.
-#strip = false
+#rust.strip = false
 
 # Forces frame pointers to be used with `-Cforce-frame-pointers`.
 # This can be helpful for profiling at a small performance cost.
-#frame-pointers = false
+#rust.frame-pointers = false
 
 # Indicates whether stack protectors should be used
 # via the unstable option `-Zstack-protector`.
 #
 # Valid options are : `none`(default),`basic`,`strong`, or `all`.
 # `strong` and `basic` options may be buggy and are not recommended, see rust-lang/rust#114903.
-#stack-protector = "none"
+#rust.stack-protector = "none"
 
 # Prints each test name as it is executed, to help debug issues in the test harness itself.
-#verbose-tests = if is_verbose { true } else { false }
+#rust.verbose-tests = if is_verbose { true } else { false }
 
 # Flag indicating whether tests are compiled with optimizations (the -O flag).
-#optimize-tests = true
+#rust.optimize-tests = true
 
 # Flag indicating whether codegen tests will be run or not. If you get an error
 # saying that the FileCheck executable is missing, you may want to disable this.
 # Also see the target's llvm-filecheck option.
-#codegen-tests = true
+#rust.codegen-tests = true
 
 # Flag indicating whether git info will be retrieved from .git automatically.
 # Having the git information can cause a lot of rebuilds during development.
-#omit-git-hash = if rust.channel == "dev" { true } else { false }
+#rust.omit-git-hash = if rust.channel == "dev" { true } else { false }
 
 # Whether to create a source tarball by default when running `x dist`.
 #
 # You can still build a source tarball when this is disabled by explicitly passing `x dist rustc-src`.
-#dist-src = true
+#rust.dist-src = true
 
 # After building or testing an optional component (e.g. the nomicon or reference), append the
 # result (broken, compiling, testing) into this JSON file.
-#save-toolstates = <none> (path)
+#rust.save-toolstates = <none> (path)
 
 # This is an array of the codegen backends that will be compiled for the rustc
 # that's being compiled. The default is to only build the LLVM codegen backend,
 # and currently the only standard options supported are `"llvm"`, `"cranelift"`
 # and `"gcc"`. The first backend in this list will be used as default by rustc
 # when no explicit backend is specified.
-#codegen-backends = ["llvm"]
+#rust.codegen-backends = ["llvm"]
 
 # Indicates whether LLD will be compiled and made available in the sysroot for rustc to execute, and
 # whether to set it as rustc's default linker on `x86_64-unknown-linux-gnu`. This will also only be
 # when *not* building an external LLVM (so only when using `download-ci-llvm` or building LLVM from
 # the in-tree source): setting `llvm-config` in the `[target.x86_64-unknown-linux-gnu]` section will
 # make this default to false.
-#lld = false in all cases, except on `x86_64-unknown-linux-gnu` as described above, where it is true
+#rust.lld = false in all cases, except on `x86_64-unknown-linux-gnu` as described above, where it is true
 
 # Indicates whether LLD will be used to link Rust crates during bootstrap on
 # supported platforms.
@@ -742,56 +745,56 @@
 # On MSVC, LLD will not be used if we're cross linking.
 #
 # Explicitly setting the linker for a target will override this option when targeting MSVC.
-#use-lld = false
+#rust.use-lld = false
 
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
 # sysroot.
-#llvm-tools = true
+#rust.llvm-tools = true
 
 # Indicates whether the `self-contained` llvm-bitcode-linker, will be made available
 # in the sysroot. It is required for running nvptx tests.
-#llvm-bitcode-linker = false
+#rust.llvm-bitcode-linker = false
 
 # Whether to deny warnings in crates
-#deny-warnings = true
+#rust.deny-warnings = true
 
 # Print backtrace on internal compiler errors during bootstrap
-#backtrace-on-ice = false
+#rust.backtrace-on-ice = false
 
 # Whether to verify generated LLVM IR
-#verify-llvm-ir = false
+#rust.verify-llvm-ir = false
 
 # Compile the compiler with a non-default ThinLTO import limit. This import
 # limit controls the maximum size of functions imported by ThinLTO. Decreasing
 # will make code compile faster at the expense of lower runtime performance.
-#thin-lto-import-instr-limit = if incremental { 10 } else { LLVM default (currently 100) }
+#rust.thin-lto-import-instr-limit = if incremental { 10 } else { LLVM default (currently 100) }
 
 # Map debuginfo paths to `/rust/$sha/...`.
 # Useful for reproducible builds. Generally only set for releases
-#remap-debuginfo = false
+#rust.remap-debuginfo = false
 
 # Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
 # This option is only tested on Linux and OSX. It can also be configured per-target in the
 # [target.<tuple>] section.
-#jemalloc = false
+#rust.jemalloc = false
 
 # Run tests in various test suites with the "nll compare mode" in addition to
 # running the tests in normal mode. Largely only used on CI and during local
 # development of NLL
-#test-compare-mode = false
+#rust.test-compare-mode = false
 
 # Global default for llvm-libunwind for all targets. See the target-specific
 # documentation for llvm-libunwind below. Note that the target-specific
 # option will override this if set.
-#llvm-libunwind = 'no'
+#rust.llvm-libunwind = 'no'
 
 # Enable Windows Control Flow Guard checks in the standard library.
 # This only applies from stage 1 onwards, and only for Windows targets.
-#control-flow-guard = false
+#rust.control-flow-guard = false
 
 # Enable Windows EHCont Guard checks in the standard library.
 # This only applies from stage 1 onwards, and only for Windows targets.
-#ehcont-guard = false
+#rust.ehcont-guard = false
 
 # Enable symbol-mangling-version v0. This can be helpful when profiling rustc,
 # as generics will be preserved in symbols (rather than erased into opaque T).
@@ -799,16 +802,16 @@
 # compiler and its tools and the legacy scheme will be used when compiling the
 # standard library.
 # If an explicit setting is given, it will be used for all parts of the codebase.
-#new-symbol-mangling = true|false (see comment)
+#rust.new-symbol-mangling = true|false (see comment)
 
 # Select LTO mode that will be used for compiling rustc. By default, thin local LTO
 # (LTO within a single crate) is used (like for any Rust crate). You can also select
 # "thin" or "fat" to apply Thin/Fat LTO to the `rustc_driver` dylib, or "off" to disable
 # LTO entirely.
-#lto = "thin-local"
+#rust.lto = "thin-local"
 
 # Build compiler with the optimization enabled and -Zvalidate-mir, currently only for `std`
-#validate-mir-opts = 3
+#rust.validate-mir-opts = 3
 
 # Configure `std` features used during bootstrap.
 #
@@ -822,7 +825,57 @@
 #
 # Since libstd also builds libcore and liballoc as dependencies and all their features are mirrored
 # as libstd features, this option can also be used to configure features such as optimize_for_size.
-#std-features = ["panic_unwind"]
+#rust.std-features = ["panic_unwind"]
+
+# =============================================================================
+# Distribution options
+#
+# These options are related to distribution, mostly for the Rust project itself.
+# You probably won't need to concern yourself with any of these options
+# =============================================================================
+
+# This is the folder of artifacts that the build system will sign. All files in
+# this directory will be signed with the default gpg key using the system `gpg`
+# binary. The `asc` and `sha256` files will all be output into the standard dist
+# output folder (currently `build/dist`)
+#
+# This folder should be populated ahead of time before the build system is
+# invoked.
+#dist.sign-folder = <none> (path)
+
+# The remote address that all artifacts will eventually be uploaded to. The
+# build system generates manifests which will point to these urls, and for the
+# manifests to be correct they'll have to have the right URLs encoded.
+#
+# Note that this address should not contain a trailing slash as file names will
+# be appended to it.
+#dist.upload-addr = <none> (URL)
+
+# Whether to build a plain source tarball to upload
+# We disable that on Windows not to override the one already uploaded on S3
+# as the one built on Windows will contain backslashes in paths causing problems
+# on linux
+#dist.src-tarball = true
+
+# List of compression formats to use when generating dist tarballs. The list of
+# formats is provided to rust-installer, which must support all of them.
+#
+# This list must be non-empty.
+#dist.compression-formats = ["gz", "xz"]
+
+# How much time should be spent compressing the tarballs. The better the
+# compression profile, the longer compression will take.
+#
+# Available options: fast, balanced, best
+#dist.compression-profile = "fast"
+
+# Copy the linker, DLLs, and various libraries from MinGW into the Rust toolchain.
+# Only applies when the host or target is pc-windows-gnu.
+#dist.include-mingw-linker = true
+
+# Whether to vendor dependencies for the dist tarball.
+#dist.vendor = if "is a tarball source" || "is a git repository" { true } else { false }
+
 
 # =============================================================================
 # Options for specific targets
@@ -973,53 +1026,3 @@
 # Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
 # This overrides the global `rust.jemalloc` option. See that option for more info.
 #jemalloc = rust.jemalloc (bool)
-
-# =============================================================================
-# Distribution options
-#
-# These options are related to distribution, mostly for the Rust project itself.
-# You probably won't need to concern yourself with any of these options
-# =============================================================================
-[dist]
-
-# This is the folder of artifacts that the build system will sign. All files in
-# this directory will be signed with the default gpg key using the system `gpg`
-# binary. The `asc` and `sha256` files will all be output into the standard dist
-# output folder (currently `build/dist`)
-#
-# This folder should be populated ahead of time before the build system is
-# invoked.
-#sign-folder = <none> (path)
-
-# The remote address that all artifacts will eventually be uploaded to. The
-# build system generates manifests which will point to these urls, and for the
-# manifests to be correct they'll have to have the right URLs encoded.
-#
-# Note that this address should not contain a trailing slash as file names will
-# be appended to it.
-#upload-addr = <none> (URL)
-
-# Whether to build a plain source tarball to upload
-# We disable that on Windows not to override the one already uploaded on S3
-# as the one built on Windows will contain backslashes in paths causing problems
-# on linux
-#src-tarball = true
-
-# List of compression formats to use when generating dist tarballs. The list of
-# formats is provided to rust-installer, which must support all of them.
-#
-# This list must be non-empty.
-#compression-formats = ["gz", "xz"]
-
-# How much time should be spent compressing the tarballs. The better the
-# compression profile, the longer compression will take.
-#
-# Available options: fast, balanced, best
-#compression-profile = "fast"
-
-# Copy the linker, DLLs, and various libraries from MinGW into the Rust toolchain.
-# Only applies when the host or target is pc-windows-gnu.
-#include-mingw-linker = true
-
-# Whether to vendor dependencies for the dist tarball.
-#vendor = if "is a tarball source" || "is a git repository" { true } else { false }
