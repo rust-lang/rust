@@ -7,17 +7,15 @@ use std::iter;
 use rustc_abi::{Endian, Layout};
 use rustc_hir::def::DefKind;
 use rustc_hir::{Attribute, LangItem};
-use rustc_middle::infer::canonical::ir::{
-    Binder, EarlyBinder, ExistentialTraitRef, FnSig, TraitRef,
-};
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::{BinOp, Body, Const as MirConst, ConstValue, UnOp};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    AdtDef, AdtKind, AssocItem, ClosureKind, GenericArgsRef, Instance, InstanceKind, IntrinsicDef,
-    List, PolyFnSig, ScalarInt, TraitDef, Ty, TyCtxt, TyKind, TypeVisitableExt, UintTy, ValTree,
-    VariantDef,
+    AdtDef, AdtKind, AssocItem, Binder, ClosureKind, CoroutineArgsExt, EarlyBinder,
+    ExistentialTraitRef, FnSig, GenericArgsRef, Instance, InstanceKind, IntrinsicDef, List,
+    PolyFnSig, ScalarInt, TraitDef, TraitRef, Ty, TyCtxt, TyKind, TypeVisitableExt, UintTy,
+    ValTree, VariantDef,
 };
 use rustc_middle::{mir, ty};
 use rustc_session::cstore::ForeignModule;
@@ -189,7 +187,7 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
         self.tcx.trait_impls_in_crate(crate_num).iter().map(|impl_def_id| *impl_def_id).collect()
     }
 
-    pub fn trait_impl(&self, impl_def: DefId) -> EarlyBinder<TyCtxt<'tcx>, TraitRef<TyCtxt<'tcx>>> {
+    pub fn trait_impl(&self, impl_def: DefId) -> EarlyBinder<'tcx, TraitRef<'tcx>> {
         self.tcx.impl_trait_ref(impl_def).unwrap()
     }
 
@@ -370,7 +368,7 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
         &self,
         def_id: DefId,
         args_ref: GenericArgsRef<'tcx>,
-    ) -> Binder<TyCtxt<'tcx>, FnSig<TyCtxt<'tcx>>> {
+    ) -> Binder<'tcx, FnSig<'tcx>> {
         let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args_ref);
         sig
     }
@@ -387,10 +385,7 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
     }
 
     /// Retrieve the closure signature for the given generic arguments.
-    pub fn closure_sig(
-        &self,
-        args_ref: GenericArgsRef<'tcx>,
-    ) -> Binder<TyCtxt<'tcx>, FnSig<TyCtxt<'tcx>>> {
+    pub fn closure_sig(&self, args_ref: GenericArgsRef<'tcx>) -> Binder<'tcx, FnSig<'tcx>> {
         args_ref.as_closure().sig()
     }
 
@@ -686,7 +681,7 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
     pub fn vtable_allocation(
         &self,
         ty: Ty<'tcx>,
-        trait_ref: Option<Binder<TyCtxt<'tcx>, ExistentialTraitRef<TyCtxt<'tcx>>>>,
+        trait_ref: Option<Binder<'tcx, ExistentialTraitRef<'tcx>>>,
     ) -> AllocId {
         let alloc_id = self.tcx.vtable_allocation((
             ty,
