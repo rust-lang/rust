@@ -1912,10 +1912,6 @@ impl CrateMetadata {
         self.dependencies.iter().copied()
     }
 
-    pub(crate) fn add_dependency(&mut self, cnum: CrateNum) {
-        self.dependencies.push(cnum);
-    }
-
     pub(crate) fn target_modifiers(&self) -> TargetModifiers {
         self.root.decode_target_modifiers(&self.blob).collect()
     }
