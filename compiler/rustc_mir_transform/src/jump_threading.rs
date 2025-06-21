@@ -30,6 +30,8 @@
 //! Applying the optimisation can create a lot of new MIR, so we bound the instruction
 //! cost by `MAX_COST`.
 
+use std::cell::OnceCell;
+
 use rustc_arena::DroplessArena;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
@@ -82,15 +84,7 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             loop_headers: loop_headers(body),
             entry_states: IndexVec::from_elem(ConditionSet::BOTTOM, &body.basic_blocks),
             opportunities: Vec::new(),
-            costs: body
-                .basic_blocks
-                .iter_enumerated()
-                .map(|(bb, bbdata)| {
-                    let mut cost = CostChecker::new(tcx, typing_env, None, body);
-                    cost.visit_basic_block_data(bb, bbdata);
-                    cost.cost()
-                })
-                .collect(),
+            costs: IndexVec::from_elem(OnceCell::new(), &body.basic_blocks),
         };
 
         for (bb, bbdata) in traversal::postorder(body) {
@@ -166,7 +160,7 @@ struct TOFinder<'a, 'tcx> {
     arena: &'a DroplessArena,
     opportunities: Vec<ThreadingOpportunity>,
     /// Pre-computed cost of duplicating each block.
-    costs: IndexVec<BasicBlock, usize>,
+    costs: IndexVec<BasicBlock, OnceCell<usize>>,
 }
 
 /// Singly-linked list to represent chains of blocks. This is cheap to copy, and is converted to
@@ -334,11 +328,20 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             cond.chain = BBChain::cons(self.arena, bb, cond.chain);
             // Remove conditions for which the duplication cost is too high.
             // This is required to keep the size of the `ConditionSet` tractable.
-            let cost = cond.cost + self.costs[head];
+            let cost = cond.cost + self.cost(head);
             cond.cost = cost;
             cost <= MAX_COST
         });
         ConditionSet(state)
+    }
+
+    fn cost(&self, bb: BasicBlock) -> usize {
+        *self.costs[bb].get_or_init(|| {
+            let bbdata = &self.body[bb];
+            let mut cost = CostChecker::new(self.tcx, self.typing_env, None, self.body);
+            cost.visit_basic_block_data(bb, bbdata);
+            cost.cost()
+        })
     }
 
     /// Remove all conditions in the state that alias given place.
