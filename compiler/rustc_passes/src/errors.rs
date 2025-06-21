@@ -597,6 +597,13 @@ pub(crate) struct InvalidReprAlignForTarget {
     pub size: u64,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_repr_align_greater_than_coff_max, code = E0806)]
+pub(crate) struct InvalidReprAlignForCoff {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_repr_conflicting, code = E0566)]
 pub(crate) struct ReprConflictingLint;
