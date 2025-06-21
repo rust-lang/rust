@@ -3,7 +3,7 @@ struct Foo {
     //~^ ERROR struct fields are separated by `,`
 }
 
-union Bar { //~ ERROR
+union Bar {
     foo: i32;
     //~^ ERROR union fields are separated by `,`
 }
@@ -13,4 +13,6 @@ enum Baz {
     //~^ ERROR struct fields are separated by `,`
 }
 
-fn main() {}
+fn main() {
+    let _ = Foo { foo: "" }; //~ ERROR mismatched types
+}
