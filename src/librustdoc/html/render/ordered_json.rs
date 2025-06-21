@@ -32,6 +32,10 @@ impl OrderedJson {
         let items = items.into_iter().format_with(",", |item, f| f(item.borrow()));
         Self(format!("[{items}]"))
     }
+
+    pub(crate) fn array_builder() -> OrderedJsonBuilder {
+        OrderedJsonBuilder::default()
+    }
 }
 
 impl fmt::Display for OrderedJson {
@@ -76,6 +80,33 @@ impl fmt::Display for EscapedJson {
         // We need to escape double quotes for the JSON
         let json = self.0.0.replace('\\', r"\\").replace('\'', r"\'").replace("\\\"", "\\\\\"");
         json.fmt(f)
+    }
+}
+
+/// Builds an json array.
+#[derive(Default)]
+pub(crate) struct OrderedJsonBuilder {
+    partial: Vec<u8>,
+}
+
+impl OrderedJsonBuilder {
+    pub(crate) fn push(&mut self, item: impl Serialize) -> &mut Self {
+        if self.partial.is_empty() {
+            self.partial.push(b'[');
+        } else {
+            self.partial.push(b',');
+        }
+        serde_json::to_writer(&mut self.partial, &item).expect("serialization failed");
+        self
+    }
+
+    pub(crate) fn build(&mut self) -> OrderedJson {
+        let mut out = std::mem::take(&mut self.partial);
+        if out.is_empty() {
+            return OrderedJson("[]".to_string());
+        }
+        out.push(b']');
+        OrderedJson(String::from_utf8(out).expect("serialization bug: json is invalid utf8"))
     }
 }
 
