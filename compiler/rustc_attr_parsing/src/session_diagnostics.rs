@@ -476,6 +476,7 @@ pub(crate) struct UnrecognizedReprHint {
 pub(crate) enum AttributeParseErrorReason {
     ExpectedNoArgs,
     ExpectedStringLiteral { byte_string: Option<Span> },
+    ExpectedAtLeastOneArgument,
     ExpectedSingleArgument,
     ExpectedList,
     UnexpectedLiteral,
@@ -518,6 +519,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
             AttributeParseErrorReason::ExpectedSingleArgument => {
                 diag.span_label(self.span, "expected a single argument here");
                 diag.code(E0805);
+            }
+            AttributeParseErrorReason::ExpectedAtLeastOneArgument => {
+                diag.span_label(self.span, "expected at least 1 argument here");
             }
             AttributeParseErrorReason::ExpectedList => {
                 diag.span_label(self.span, "expected this to be a list");

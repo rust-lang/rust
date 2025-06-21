@@ -1,0 +1,76 @@
+error[E0539]: malformed `rustc_skip_during_method_dispatch` attribute input
+  --> $DIR/rustc_skip_during_method_dispatch.rs:3:1
+   |
+LL | #[rustc_skip_during_method_dispatch]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[rustc_skip_during_method_dispatch(array, boxed_slice)]`
+
+error[E0539]: malformed `rustc_skip_during_method_dispatch` attribute input
+  --> $DIR/rustc_skip_during_method_dispatch.rs:7:1
+   |
+LL | #[rustc_skip_during_method_dispatch = "array"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[rustc_skip_during_method_dispatch(array, boxed_slice)]`
+
+error[E0539]: malformed `rustc_skip_during_method_dispatch` attribute input
+  --> $DIR/rustc_skip_during_method_dispatch.rs:11:1
+   |
+LL | #[rustc_skip_during_method_dispatch()]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--^
+   | |                                  |
+   | |                                  expected at least 1 argument here
+   | help: must be of the form: `#[rustc_skip_during_method_dispatch(array, boxed_slice)]`
+
+error[E0538]: malformed `rustc_skip_during_method_dispatch` attribute input
+  --> $DIR/rustc_skip_during_method_dispatch.rs:15:1
+   |
+LL | #[rustc_skip_during_method_dispatch(array, boxed_slice, array)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----^^
+   | |                                                       |
+   | |                                                       found `array` used as a key more than once
+   | help: must be of the form: `#[rustc_skip_during_method_dispatch(array, boxed_slice)]`
+
+error[E0539]: malformed `rustc_skip_during_method_dispatch` attribute input
+  --> $DIR/rustc_skip_during_method_dispatch.rs:19:1
+   |
+LL | #[rustc_skip_during_method_dispatch(slice)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----^^
+   | |                                   |
+   | |                                   valid arguments are `array` or `boxed_slice`
+   | help: must be of the form: `#[rustc_skip_during_method_dispatch(array, boxed_slice)]`
+
+error[E0565]: malformed `rustc_skip_during_method_dispatch` attribute input
+  --> $DIR/rustc_skip_during_method_dispatch.rs:23:1
+   |
+LL | #[rustc_skip_during_method_dispatch(array = true)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------^^
+   | |                                         |
+   | |                                         didn't expect any arguments here
+   | help: must be of the form: `#[rustc_skip_during_method_dispatch(array, boxed_slice)]`
+
+error[E0565]: malformed `rustc_skip_during_method_dispatch` attribute input
+  --> $DIR/rustc_skip_during_method_dispatch.rs:27:1
+   |
+LL | #[rustc_skip_during_method_dispatch("array")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^
+   | |                                   |
+   | |                                   didn't expect a literal here
+   | help: must be of the form: `#[rustc_skip_during_method_dispatch(array, boxed_slice)]`
+
+error: attribute should be applied to a trait
+  --> $DIR/rustc_skip_during_method_dispatch.rs:34:1
+   |
+LL | #[rustc_skip_during_method_dispatch(array)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl OK for () {}
+   | ----------------- not a trait
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0538, E0539, E0565.
+For more information about an error, try `rustc --explain E0538`.

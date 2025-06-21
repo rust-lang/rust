@@ -21,6 +21,7 @@ use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
 use crate::attributes::lint_helpers::AsPtrParser;
 use crate::attributes::repr::{AlignParser, ReprParser};
+use crate::attributes::resolution::SkipDuringMethodDispatchParser;
 use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
@@ -114,6 +115,7 @@ attribute_parsers!(
         Single<MayDangleParser>,
         Single<OptimizeParser>,
         Single<RustcForceInlineParser>,
+        Single<SkipDuringMethodDispatchParser>,
         Single<TransparencyParser>,
         // tidy-alphabetical-end
     ];
@@ -237,14 +239,22 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         })
     }
 
-    pub(crate) fn expected_no_args(&self, args_span: Span) -> ErrorGuaranteed {
-        self.emit_err(AttributeParseError {
-            span: args_span,
-            attr_span: self.attr_span,
-            template: self.template.clone(),
-            attribute: self.attr_path.clone(),
-            reason: AttributeParseErrorReason::ExpectedNoArgs,
-        })
+    pub(crate) fn expect_no_args(&self, args: &ArgParser<'_>) -> Result<(), ErrorGuaranteed> {
+        if let Some(span) = match args {
+            ArgParser::NoArgs => None,
+            ArgParser::List(args) => Some(args.span),
+            ArgParser::NameValue(args) => Some(args.eq_span.to(args.value_span)),
+        } {
+            Err(self.emit_err(AttributeParseError {
+                span,
+                attr_span: self.attr_span,
+                template: self.template.clone(),
+                attribute: self.attr_path.clone(),
+                reason: AttributeParseErrorReason::ExpectedNoArgs,
+            }))
+        } else {
+            Ok(())
+        }
     }
 
     /// emit an error that a `name = value` pair was expected at this span. The symbol can be given for
@@ -289,6 +299,16 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedSingleArgument,
+        })
+    }
+
+    pub(crate) fn expected_at_least_one_argument(&self, span: Span) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::ExpectedAtLeastOneArgument,
         })
     }
 

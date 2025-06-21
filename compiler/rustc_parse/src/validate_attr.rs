@@ -286,6 +286,9 @@ fn emit_malformed_attribute(
     if matches!(
         name,
         sym::inline
+            | sym::rustc_as_ptr
+            | sym::rustc_pub_transparent
+            | sym::rustc_const_stable_indirect
             | sym::rustc_force_inline
             | sym::rustc_confusables
             | sym::repr
@@ -293,6 +296,7 @@ fn emit_malformed_attribute(
             | sym::deprecated
             | sym::optimize
             | sym::cold
+            | sym::rustc_skip_during_method_dispatch
     ) {
         return;
     }
