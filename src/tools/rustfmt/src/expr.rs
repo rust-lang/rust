@@ -2289,8 +2289,10 @@ fn rewrite_expr_addrof(
 ) -> RewriteResult {
     let operator_str = match (mutability, borrow_kind) {
         (ast::Mutability::Not, ast::BorrowKind::Ref) => "&",
+        (ast::Mutability::Not, ast::BorrowKind::Pin) => "&pin const ",
         (ast::Mutability::Not, ast::BorrowKind::Raw) => "&raw const ",
         (ast::Mutability::Mut, ast::BorrowKind::Ref) => "&mut ",
+        (ast::Mutability::Mut, ast::BorrowKind::Pin) => "&pin mut ",
         (ast::Mutability::Mut, ast::BorrowKind::Raw) => "&raw mut ",
     };
     rewrite_unary_prefix(context, operator_str, expr, shape)

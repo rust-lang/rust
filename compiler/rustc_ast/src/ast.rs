@@ -904,6 +904,10 @@ pub enum BorrowKind {
     /// The resulting type is either `*const T` or `*mut T`
     /// where `T = typeof($expr)`.
     Raw,
+    /// A pinned borrow, `&pin const $expr` or `&pin mut $expr`.
+    /// The resulting type is either `Pin<&'a T>` or `Pin<&'a mut T>`
+    /// where `T = typeof($expr)` and `'a` is some lifetime.
+    Pin,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
