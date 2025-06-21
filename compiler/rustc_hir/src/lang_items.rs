@@ -312,6 +312,7 @@ language_item_table! {
     PanicAsyncGenFnResumedPanic, sym::panic_const_async_gen_fn_resumed_panic, panic_const_async_gen_fn_resumed_panic, Target::Fn, GenericRequirement::None;
     PanicGenFnNonePanic, sym::panic_const_gen_fn_none_panic, panic_const_gen_fn_none_panic, Target::Fn, GenericRequirement::None;
     PanicNullPointerDereference, sym::panic_null_pointer_dereference, panic_null_pointer_dereference, Target::Fn, GenericRequirement::None;
+    PanicInvalidEnumConstruction, sym::panic_invalid_enum_construction, panic_invalid_enum_construction, Target::Fn, GenericRequirement::None;
     PanicCoroutineResumedDrop, sym::panic_const_coroutine_resumed_drop, panic_const_coroutine_resumed_drop, Target::Fn, GenericRequirement::None;
     PanicAsyncFnResumedDrop, sym::panic_const_async_fn_resumed_drop, panic_const_async_fn_resumed_drop, Target::Fn, GenericRequirement::None;
     PanicAsyncGenFnResumedDrop, sym::panic_const_async_gen_fn_resumed_drop, panic_const_async_gen_fn_resumed_drop, Target::Fn, GenericRequirement::None;
