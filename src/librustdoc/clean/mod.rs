@@ -178,7 +178,7 @@ fn is_glob_import(tcx: TyCtxt<'_>, import_id: LocalDefId) -> bool {
 }
 
 fn generate_item_with_correct_attrs(
-    cx: &mut DocContext<'_>,
+    cx: &DocContext<'_>,
     kind: ItemKind,
     def_id: DefId,
     name: Symbol,
@@ -198,7 +198,7 @@ fn generate_item_with_correct_attrs(
             || (is_glob_import(cx.tcx, import_id)
                 && (cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id)));
         let mut attrs = get_all_import_attributes(cx, import_id, def_id, is_inline);
-        add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
+        attrs.extend(add_without_unwanted_attributes(target_attrs, is_inline, None));
         attrs
     } else {
         // We only keep the item's attributes.
@@ -2622,28 +2622,38 @@ pub(crate) fn reexport_chain(
 
 /// Collect attributes from the whole import chain.
 fn get_all_import_attributes<'hir>(
-    cx: &mut DocContext<'hir>,
+    cx: &DocContext<'hir>,
     import_def_id: LocalDefId,
     target_def_id: DefId,
     is_inline: bool,
 ) -> Vec<(Cow<'hir, hir::Attribute>, Option<DefId>)> {
-    let mut attrs = Vec::new();
-    let mut first = true;
+    let mut attrs = None;
     for def_id in reexport_chain(cx.tcx, import_def_id, target_def_id)
         .iter()
-        .flat_map(|reexport| reexport.id())
+        .filter_map(|reexport| reexport.id())
     {
         let import_attrs = inline::load_attrs(cx, def_id);
-        if first {
-            // This is the "original" reexport so we get all its attributes without filtering them.
-            attrs = import_attrs.iter().map(|attr| (Cow::Borrowed(attr), Some(def_id))).collect();
-            first = false;
-        // We don't add attributes of an intermediate re-export if it has `#[doc(hidden)]`.
-        } else if cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id) {
-            add_without_unwanted_attributes(&mut attrs, import_attrs, is_inline, Some(def_id));
+        match &mut attrs {
+            None => {
+                // This is the "original" reexport so we get all its attributes without filtering them.
+                attrs = Some(
+                    import_attrs
+                        .iter()
+                        .map(|attr| (Cow::Borrowed(attr), Some(def_id)))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            Some(attrs) if cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id) => {
+                attrs.extend(add_without_unwanted_attributes(
+                    import_attrs,
+                    is_inline,
+                    Some(def_id),
+                ));
+            }
+            Some(_) => {}
         }
     }
-    attrs
+    attrs.unwrap_or_default()
 }
 
 fn filter_tokens_from_list(
@@ -2671,31 +2681,26 @@ fn filter_tokens_from_list(
 
 fn filter_doc_attr_ident(ident: Symbol, is_inline: bool) -> bool {
     if is_inline {
-        ident == sym::hidden || ident == sym::inline || ident == sym::no_inline
+        matches!(ident, sym::hidden | sym::inline | sym::no_inline)
     } else {
-        ident == sym::cfg
+        matches!(ident, sym::cfg)
     }
 }
 
-/// Remove attributes from `normal` that should not be inherited by `use` re-export.
-/// Before calling this function, make sure `normal` is a `#[doc]` attribute.
+/// Assuming `args` are the arguments to a `doc` attribute (i.e. `#[doc(args...)]`),
+/// remove attribute arguments that should not be inherited by `use` re-export.
 fn filter_doc_attr(args: &mut hir::AttrArgs, is_inline: bool) {
+    fn ident(tt: &TokenTree) -> Option<Symbol> {
+        match *tt {
+            TokenTree::Token(Token { kind: TokenKind::Ident(ident, _), .. }, ..) => Some(ident),
+            _ => None,
+        }
+    }
+
     match args {
         hir::AttrArgs::Delimited(args) => {
-            let tokens = filter_tokens_from_list(&args.tokens, |token| {
-                !matches!(
-                    token,
-                    TokenTree::Token(
-                        Token {
-                            kind: TokenKind::Ident(
-                                ident,
-                                _,
-                            ),
-                            ..
-                        },
-                        _,
-                    ) if filter_doc_attr_ident(*ident, is_inline),
-                )
+            let tokens = filter_tokens_from_list(&args.tokens, |tt| {
+                !ident(tt).is_some_and(|ident| filter_doc_attr_ident(ident, is_inline))
             });
             args.tokens = TokenStream::new(tokens);
         }
@@ -2724,34 +2729,32 @@ fn filter_doc_attr(args: &mut hir::AttrArgs, is_inline: bool) {
 /// * `doc(no_inline)`
 /// * `doc(hidden)`
 fn add_without_unwanted_attributes<'hir>(
-    attrs: &mut Vec<(Cow<'hir, hir::Attribute>, Option<DefId>)>,
     new_attrs: &'hir [hir::Attribute],
     is_inline: bool,
     import_parent: Option<DefId>,
-) {
-    for attr in new_attrs {
+) -> impl Iterator<Item = (Cow<'hir, hir::Attribute>, Option<DefId>)> {
+    new_attrs.iter().filter_map(move |attr| {
         if attr.is_doc_comment() {
-            attrs.push((Cow::Borrowed(attr), import_parent));
-            continue;
+            return Some((Cow::Borrowed(attr), import_parent));
         }
-        let mut attr = attr.clone();
         match attr {
-            hir::Attribute::Unparsed(ref mut normal) if let [ident] = &*normal.path.segments => {
+            hir::Attribute::Unparsed(normal) if let [ident] = &*normal.path.segments => {
                 let ident = ident.name;
                 if ident == sym::doc {
+                    let mut normal = normal.clone();
                     filter_doc_attr(&mut normal.args, is_inline);
-                    attrs.push((Cow::Owned(attr), import_parent));
+                    Some((Cow::Owned(hir::Attribute::Unparsed(normal)), import_parent))
                 } else if is_inline || ident != sym::cfg_trace {
                     // If it's not a `cfg()` attribute, we keep it.
-                    attrs.push((Cow::Owned(attr), import_parent));
+                    Some((Cow::Borrowed(attr), import_parent))
+                } else {
+                    None
                 }
             }
-            hir::Attribute::Parsed(..) if is_inline => {
-                attrs.push((Cow::Owned(attr), import_parent));
-            }
-            _ => {}
+            hir::Attribute::Parsed(..) if is_inline => Some((Cow::Borrowed(attr), import_parent)),
+            _ => None,
         }
-    }
+    })
 }
 
 fn clean_maybe_renamed_item<'tcx>(
