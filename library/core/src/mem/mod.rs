@@ -481,6 +481,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_align_of", since = "1.24.0")]
+#[rustc_diagnostic_item = "mem_align_of"]
 pub const fn align_of<T>() -> usize {
     intrinsics::align_of::<T>()
 }
