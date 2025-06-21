@@ -945,3 +945,20 @@ fn try_oom_error() {
     let io_err = io::Error::from(reserve_err);
     assert_eq!(io::ErrorKind::OutOfMemory, io_err.kind());
 }
+
+#[test]
+fn write_maybe_uninit_slice() {
+    let mut buf = [MaybeUninit::uninit(); 16];
+
+    let mut cursor = &mut buf[..];
+    assert_eq!(3, cursor.write(b"foo").unwrap());
+    assert_eq!(6, cursor.write_vectored(&[IoSlice::new(b"bar"), IoSlice::new(b"baz"),]).unwrap());
+    assert_eq!(7, cursor.len());
+    cursor.write_all(b"qux").unwrap();
+    cursor.write_all(b"toolong").unwrap_err();
+    assert_eq!(0, cursor.len());
+
+    // SAFETY: We’ve initialised it using Write interface.
+    let buf = unsafe { buf.assume_init_ref() };
+    assert_eq!(b"foobarbazquxtool", buf);
+}
