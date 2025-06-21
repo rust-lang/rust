@@ -1,132 +1,75 @@
-warning: the calling convention "msp430-interrupt" is not supported on this target
-  --> $DIR/cannot-be-called.rs:60:18
-   |
-LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
-
-warning: the calling convention "avr-interrupt" is not supported on this target
-  --> $DIR/cannot-be-called.rs:67:15
-   |
-LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-warning: the calling convention "riscv-interrupt-m" is not supported on this target
-  --> $DIR/cannot-be-called.rs:74:19
-   |
-LL | fn riscv_m_ptr(f: extern "riscv-interrupt-m" fn()) {
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-warning: the calling convention "riscv-interrupt-s" is not supported on this target
-  --> $DIR/cannot-be-called.rs:81:19
-   |
-LL | fn riscv_s_ptr(f: extern "riscv-interrupt-s" fn()) {
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-error[E0570]: `"msp430-interrupt"` is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:36:1
+error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:38:8
    |
 LL | extern "msp430-interrupt" fn msp430() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^
 
-error[E0570]: `"avr-interrupt"` is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:38:1
+error[E0570]: "avr-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:40:8
    |
 LL | extern "avr-interrupt" fn avr() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^
 
-error[E0570]: `"riscv-interrupt-m"` is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:40:1
+error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:42:8
    |
 LL | extern "riscv-interrupt-m" fn riscv_m() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: `"riscv-interrupt-s"` is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:42:1
+error[E0570]: "riscv-interrupt-s" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:44:8
    |
 LL | extern "riscv-interrupt-s" fn riscv_s() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^
 
-error: functions with the "x86-interrupt" ABI cannot be called
-  --> $DIR/cannot-be-called.rs:56:5
-   |
-LL |     x86();
-   |     ^^^^^
-   |
-note: an `extern "x86-interrupt"` function can only be called using inline assembly
-  --> $DIR/cannot-be-called.rs:56:5
-   |
-LL |     x86();
-   |     ^^^^^
-
-error: functions with the "x86-interrupt" ABI cannot be called
-  --> $DIR/cannot-be-called.rs:91:5
-   |
-LL |     f()
-   |     ^^^
-   |
-note: an `extern "x86-interrupt"` function can only be called using inline assembly
-  --> $DIR/cannot-be-called.rs:91:5
-   |
-LL |     f()
-   |     ^^^
-
-error: aborting due to 6 previous errors; 4 warnings emitted
-
-For more information about this error, try `rustc --explain E0570`.
-Future incompatibility report: Future breakage diagnostic:
-warning: the calling convention "msp430-interrupt" is not supported on this target
-  --> $DIR/cannot-be-called.rs:60:18
+error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:65:25
    |
 LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+   |                         ^^^^^^^^^^^^^^^^^^
 
-Future breakage diagnostic:
-warning: the calling convention "avr-interrupt" is not supported on this target
-  --> $DIR/cannot-be-called.rs:67:15
+error[E0570]: "avr-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:71:22
    |
 LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+   |                      ^^^^^^^^^^^^^^^
 
-Future breakage diagnostic:
-warning: the calling convention "riscv-interrupt-m" is not supported on this target
-  --> $DIR/cannot-be-called.rs:74:19
+error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:77:26
    |
 LL | fn riscv_m_ptr(f: extern "riscv-interrupt-m" fn()) {
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+   |                          ^^^^^^^^^^^^^^^^^^^
 
-Future breakage diagnostic:
-warning: the calling convention "riscv-interrupt-s" is not supported on this target
-  --> $DIR/cannot-be-called.rs:81:19
+error[E0570]: "riscv-interrupt-s" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:83:26
    |
 LL | fn riscv_s_ptr(f: extern "riscv-interrupt-s" fn()) {
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+   |                          ^^^^^^^^^^^^^^^^^^^
 
+error: functions with the "x86-interrupt" ABI cannot be called
+  --> $DIR/cannot-be-called.rs:59:5
+   |
+LL |     x86();
+   |     ^^^^^
+   |
+note: an `extern "x86-interrupt"` function can only be called using inline assembly
+  --> $DIR/cannot-be-called.rs:59:5
+   |
+LL |     x86();
+   |     ^^^^^
+
+error: functions with the "x86-interrupt" ABI cannot be called
+  --> $DIR/cannot-be-called.rs:91:5
+   |
+LL |     f()
+   |     ^^^
+   |
+note: an `extern "x86-interrupt"` function can only be called using inline assembly
+  --> $DIR/cannot-be-called.rs:91:5
+   |
+LL |     f()
+   |     ^^^
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0570`.

@@ -1,96 +1,131 @@
-warning: the calling convention "ptx-kernel" is not supported on this target
-  --> $DIR/unsupported.rs:38:15
+error[E0570]: "ptx-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:36:8
+   |
+LL | extern "ptx-kernel" fn ptx() {}
+   |        ^^^^^^^^^^^^
+
+error[E0570]: "ptx-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:38:22
    |
 LL | fn ptx_ptr(f: extern "ptx-kernel" fn()) {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+   |                      ^^^^^^^^^^^^
 
-error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:43:1
+error[E0570]: "ptx-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:42:8
    |
 LL | extern "ptx-kernel" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^
 
-warning: the calling convention "aapcs" is not supported on this target
-  --> $DIR/unsupported.rs:50:17
+error[E0570]: "gpu-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:44:8
+   |
+LL | extern "gpu-kernel" fn gpu() {}
+   |        ^^^^^^^^^^^^
+
+error[E0570]: "aapcs" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:47:8
+   |
+LL | extern "aapcs" fn aapcs() {}
+   |        ^^^^^^^
+
+error[E0570]: "aapcs" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:49:24
    |
 LL | fn aapcs_ptr(f: extern "aapcs" fn()) {
-   |                 ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   |                        ^^^^^^^
 
-error[E0570]: `"aapcs"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:55:1
+error[E0570]: "aapcs" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:53:8
    |
 LL | extern "aapcs" {}
-   | ^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^
 
-warning: the calling convention "msp430-interrupt" is not supported on this target
-  --> $DIR/unsupported.rs:60:18
-   |
-LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-error[E0570]: `"msp430-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:65:1
+error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:56:8
    |
 LL | extern "msp430-interrupt" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^
 
-warning: the calling convention "avr-interrupt" is not supported on this target
-  --> $DIR/unsupported.rs:70:15
-   |
-LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-error[E0570]: `"avr-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:75:1
+error[E0570]: "avr-interrupt" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:59:8
    |
 LL | extern "avr-interrupt" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^
 
-warning: the calling convention "riscv-interrupt-m" is not supported on this target
-  --> $DIR/unsupported.rs:80:17
-   |
-LL | fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-error[E0570]: `"riscv-interrupt-m"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:86:1
+error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:62:8
    |
 LL | extern "riscv-interrupt-m" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^
 
-warning: the calling convention "thiscall" is not supported on this target
-  --> $DIR/unsupported.rs:102:20
+error[E0570]: "thiscall" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:68:8
+   |
+LL | extern "thiscall" fn thiscall() {}
+   |        ^^^^^^^^^^
+
+error[E0570]: "thiscall" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:70:27
    |
 LL | fn thiscall_ptr(f: extern "thiscall" fn()) {
-   |                    ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   |                           ^^^^^^^^^^
 
-error[E0570]: `"thiscall"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:107:1
+error[E0570]: "thiscall" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:74:8
    |
 LL | extern "thiscall" {}
-   | ^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^
 
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:114:19
+error[E0570]: "C-cmse-nonsecure-call" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:120:28
+   |
+LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:125:8
+   |
+LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:127:29
+   |
+LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:131:8
+   |
+LL | extern "C-cmse-nonsecure-entry" {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "thiscall" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:141:17
+   |
+LL |     ptr: extern "thiscall" fn(),
+   |                 ^^^^^^^^^^
+
+error[E0570]: "thiscall" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:146:16
+   |
+LL |     pub extern "thiscall" fn inherent_fn(self) {
+   |                ^^^^^^^^^^
+
+error[E0570]: "thiscall" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:153:12
+   |
+LL |     extern "thiscall" fn trait_fn(self);
+   |            ^^^^^^^^^^
+
+error[E0570]: "thiscall" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:158:12
+   |
+LL |     extern "thiscall" fn trait_fn(self) {
+   |            ^^^^^^^^^^
+
+warning: "stdcall" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:81:19
    |
 LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    |                   ^^^^^^^^^^^^^^^^^^^^^
@@ -100,8 +135,8 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:121:1
+warning: "stdcall" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:87:1
    |
 LL | extern "stdcall" {}
    | ^^^^^^^^^^^^^^^^^^^
@@ -110,8 +145,8 @@ LL | extern "stdcall" {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:125:1
+warning: "stdcall-unwind" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:91:1
    |
 LL | extern "stdcall-unwind" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,8 +155,8 @@ LL | extern "stdcall-unwind" {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: if you need `extern "stdcall-unwind"` on win32 and `extern "C-unwind"` everywhere else, use `extern "system-unwind"`
 
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:133:17
+warning: "cdecl" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:99:17
    |
 LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    |                 ^^^^^^^^^^^^^^^^^^^
@@ -130,8 +165,8 @@ LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: use `extern "C"` instead
 
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:138:1
+warning: "cdecl" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:104:1
    |
 LL | extern "cdecl" {}
    | ^^^^^^^^^^^^^^^^^
@@ -140,8 +175,8 @@ LL | extern "cdecl" {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: use `extern "C"` instead
 
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:141:1
+warning: "cdecl-unwind" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:107:1
    |
 LL | extern "cdecl-unwind" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -150,32 +185,8 @@ LL | extern "cdecl-unwind" {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: use `extern "C-unwind"` instead
 
-warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
-  --> $DIR/unsupported.rs:155:21
-   |
-LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
-  --> $DIR/unsupported.rs:163:22
-   |
-LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:168:1
-   |
-LL | extern "C-cmse-nonsecure-entry" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:173:1
+warning: "cdecl" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:136:1
    |
 LL | extern "cdecl" {}
    | ^^^^^^^^^^^^^^^^^
@@ -184,62 +195,8 @@ LL | extern "cdecl" {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: use `extern "C"` instead
 
-error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:36:1
-   |
-LL | extern "ptx-kernel" fn ptx() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: `"gpu-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:45:1
-   |
-LL | extern "gpu-kernel" fn gpu() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: `"aapcs"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:48:1
-   |
-LL | extern "aapcs" fn aapcs() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: `"msp430-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:58:1
-   |
-LL | extern "msp430-interrupt" fn msp430() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: `"avr-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:68:1
-   |
-LL | extern "avr-interrupt" fn avr() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: `"riscv-interrupt-m"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:78:1
-   |
-LL | extern "riscv-interrupt-m" fn riscv() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: functions with the "x86-interrupt" ABI cannot be called
-  --> $DIR/unsupported.rs:94:5
-   |
-LL |     f()
-   |     ^^^
-   |
-note: an `extern "x86-interrupt"` function can only be called using inline assembly
-  --> $DIR/unsupported.rs:94:5
-   |
-LL |     f()
-   |     ^^^
-
-error[E0570]: `"thiscall"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:100:1
-   |
-LL | extern "thiscall" fn thiscall() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:110:1
+warning: "stdcall" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:77:1
    |
 LL | extern "stdcall" fn stdcall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -248,8 +205,8 @@ LL | extern "stdcall" fn stdcall() {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
-warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:130:1
+warning: "cdecl" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:96:1
    |
 LL | extern "cdecl" fn cdecl() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -258,100 +215,6 @@ LL | extern "cdecl" fn cdecl() {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: use `extern "C"` instead
 
-error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:161:1
-   |
-LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 16 previous errors; 17 warnings emitted
+error: aborting due to 21 previous errors; 9 warnings emitted
 
 For more information about this error, try `rustc --explain E0570`.
-Future incompatibility report: Future breakage diagnostic:
-warning: the calling convention "ptx-kernel" is not supported on this target
-  --> $DIR/unsupported.rs:38:15
-   |
-LL | fn ptx_ptr(f: extern "ptx-kernel" fn()) {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
-
-Future breakage diagnostic:
-warning: the calling convention "aapcs" is not supported on this target
-  --> $DIR/unsupported.rs:50:17
-   |
-LL | fn aapcs_ptr(f: extern "aapcs" fn()) {
-   |                 ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
-
-Future breakage diagnostic:
-warning: the calling convention "msp430-interrupt" is not supported on this target
-  --> $DIR/unsupported.rs:60:18
-   |
-LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
-
-Future breakage diagnostic:
-warning: the calling convention "avr-interrupt" is not supported on this target
-  --> $DIR/unsupported.rs:70:15
-   |
-LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
-
-Future breakage diagnostic:
-warning: the calling convention "riscv-interrupt-m" is not supported on this target
-  --> $DIR/unsupported.rs:80:17
-   |
-LL | fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
-
-Future breakage diagnostic:
-warning: the calling convention "thiscall" is not supported on this target
-  --> $DIR/unsupported.rs:102:20
-   |
-LL | fn thiscall_ptr(f: extern "thiscall" fn()) {
-   |                    ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
-
-Future breakage diagnostic:
-warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
-  --> $DIR/unsupported.rs:155:21
-   |
-LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
-
-Future breakage diagnostic:
-warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
-  --> $DIR/unsupported.rs:163:22
-   |
-LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
-

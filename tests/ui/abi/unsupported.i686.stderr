@@ -1,234 +1,87 @@
-warning: the calling convention "ptx-kernel" is not supported on this target
-  --> $DIR/unsupported.rs:38:15
-   |
-LL | fn ptx_ptr(f: extern "ptx-kernel" fn()) {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
-
-error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:43:1
-   |
-LL | extern "ptx-kernel" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
-
-warning: the calling convention "aapcs" is not supported on this target
-  --> $DIR/unsupported.rs:50:17
-   |
-LL | fn aapcs_ptr(f: extern "aapcs" fn()) {
-   |                 ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-error[E0570]: `"aapcs"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:55:1
-   |
-LL | extern "aapcs" {}
-   | ^^^^^^^^^^^^^^^^^
-
-warning: the calling convention "msp430-interrupt" is not supported on this target
-  --> $DIR/unsupported.rs:60:18
-   |
-LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-error[E0570]: `"msp430-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:65:1
-   |
-LL | extern "msp430-interrupt" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: the calling convention "avr-interrupt" is not supported on this target
-  --> $DIR/unsupported.rs:70:15
-   |
-LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-error[E0570]: `"avr-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:75:1
-   |
-LL | extern "avr-interrupt" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: the calling convention "riscv-interrupt-m" is not supported on this target
-  --> $DIR/unsupported.rs:80:17
-   |
-LL | fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-error[E0570]: `"riscv-interrupt-m"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:86:1
-   |
-LL | extern "riscv-interrupt-m" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
-  --> $DIR/unsupported.rs:155:21
-   |
-LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
-  --> $DIR/unsupported.rs:163:22
-   |
-LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-
-error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:168:1
-   |
-LL | extern "C-cmse-nonsecure-entry" {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:36:1
+error[E0570]: "ptx-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:36:8
    |
 LL | extern "ptx-kernel" fn ptx() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^
 
-error[E0570]: `"gpu-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:45:1
-   |
-LL | extern "gpu-kernel" fn gpu() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: `"aapcs"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:48:1
-   |
-LL | extern "aapcs" fn aapcs() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: `"msp430-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:58:1
-   |
-LL | extern "msp430-interrupt" fn msp430() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: `"avr-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:68:1
-   |
-LL | extern "avr-interrupt" fn avr() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: `"riscv-interrupt-m"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:78:1
-   |
-LL | extern "riscv-interrupt-m" fn riscv() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: functions with the "x86-interrupt" ABI cannot be called
-  --> $DIR/unsupported.rs:94:5
-   |
-LL |     f()
-   |     ^^^
-   |
-note: an `extern "x86-interrupt"` function can only be called using inline assembly
-  --> $DIR/unsupported.rs:94:5
-   |
-LL |     f()
-   |     ^^^
-
-error[E0570]: `"C-cmse-nonsecure-entry"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:161:1
-   |
-LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 14 previous errors; 7 warnings emitted
-
-For more information about this error, try `rustc --explain E0570`.
-Future incompatibility report: Future breakage diagnostic:
-warning: the calling convention "ptx-kernel" is not supported on this target
-  --> $DIR/unsupported.rs:38:15
+error[E0570]: "ptx-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:38:22
    |
 LL | fn ptx_ptr(f: extern "ptx-kernel" fn()) {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+   |                      ^^^^^^^^^^^^
 
-Future breakage diagnostic:
-warning: the calling convention "aapcs" is not supported on this target
-  --> $DIR/unsupported.rs:50:17
+error[E0570]: "ptx-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:42:8
+   |
+LL | extern "ptx-kernel" {}
+   |        ^^^^^^^^^^^^
+
+error[E0570]: "gpu-kernel" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:44:8
+   |
+LL | extern "gpu-kernel" fn gpu() {}
+   |        ^^^^^^^^^^^^
+
+error[E0570]: "aapcs" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:47:8
+   |
+LL | extern "aapcs" fn aapcs() {}
+   |        ^^^^^^^
+
+error[E0570]: "aapcs" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:49:24
    |
 LL | fn aapcs_ptr(f: extern "aapcs" fn()) {
-   |                 ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+   |                        ^^^^^^^
 
-Future breakage diagnostic:
-warning: the calling convention "msp430-interrupt" is not supported on this target
-  --> $DIR/unsupported.rs:60:18
+error[E0570]: "aapcs" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:53:8
    |
-LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+LL | extern "aapcs" {}
+   |        ^^^^^^^
 
-Future breakage diagnostic:
-warning: the calling convention "avr-interrupt" is not supported on this target
-  --> $DIR/unsupported.rs:70:15
+error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:56:8
    |
-LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+LL | extern "msp430-interrupt" {}
+   |        ^^^^^^^^^^^^^^^^^^
 
-Future breakage diagnostic:
-warning: the calling convention "riscv-interrupt-m" is not supported on this target
-  --> $DIR/unsupported.rs:80:17
+error[E0570]: "avr-interrupt" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:59:8
    |
-LL | fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+LL | extern "avr-interrupt" {}
+   |        ^^^^^^^^^^^^^^^
 
-Future breakage diagnostic:
-warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
-  --> $DIR/unsupported.rs:155:21
+error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:62:8
+   |
+LL | extern "riscv-interrupt-m" {}
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "C-cmse-nonsecure-call" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:120:28
    |
 LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^
 
-Future breakage diagnostic:
-warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
-  --> $DIR/unsupported.rs:163:22
+error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:125:8
+   |
+LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:127:29
    |
 LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
-   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:131:8
+   |
+LL | extern "C-cmse-nonsecure-entry" {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 14 previous errors
+
+For more information about this error, try `rustc --explain E0570`.
