@@ -140,7 +140,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                 Some(CtorKind::Fn) if variant.fields.len() == 1 => "(_)",
                 Some(CtorKind::Fn) => "(..)",
                 Some(CtorKind::Const) => "",
-                None => "{ .. }",
+                None => " { .. }",
             }
         )
     };
