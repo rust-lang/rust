@@ -215,7 +215,9 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         llfn
     }
+}
 
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// Declare a global with an intention to define it.
     ///
     /// Use this function when you intend to define a global. This function will
@@ -234,13 +236,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ///
     /// Use this function when you intend to define a global without a name.
     pub(crate) fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
-        unsafe { llvm::LLVMRustInsertPrivateGlobal(self.llmod, ty) }
+        unsafe { llvm::LLVMRustInsertPrivateGlobal(self.llmod(), ty) }
     }
 
     /// Gets declared value by name.
     pub(crate) fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
         debug!("get_declared_value(name={:?})", name);
-        unsafe { llvm::LLVMRustGetNamedValue(self.llmod, name.as_c_char_ptr(), name.len()) }
+        unsafe { llvm::LLVMRustGetNamedValue(self.llmod(), name.as_c_char_ptr(), name.len()) }
     }
 
     /// Gets defined or externally defined (AvailableExternally linkage) value by
