@@ -328,7 +328,7 @@ impl<T> MaybeUninit<T> {
     #[inline(always)]
     #[rustc_diagnostic_item = "maybe_uninit_uninit"]
     pub const fn uninit() -> MaybeUninit<T> {
-        MaybeUninit { uninit: () }
+        const { MaybeUninit { uninit: () } }
     }
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
