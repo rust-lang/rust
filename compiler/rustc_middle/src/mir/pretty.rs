@@ -1621,6 +1621,9 @@ pub fn write_allocations<'tcx>(
             Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
                 write!(w, " (vtable: impl {dyn_ty} for {ty})")?
             }
+            Some(GlobalAlloc::Type { ty, segment }) => {
+                write!(w, " (typeid segment {segment} for {ty})")?
+            }
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 write!(w, " (static: {}", tcx.def_path_str(did))?;
                 if body.phase <= MirPhase::Runtime(RuntimePhase::PostCleanup)

@@ -6,7 +6,9 @@ use std::assert_matches::assert_matches;
 
 use rustc_abi::Size;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_ast::Mutability;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::interpret::{AllocId, AllocInit, alloc_range};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
@@ -28,6 +30,24 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAll
     let path = crate::util::type_name(tcx, ty);
     let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes(), ());
     tcx.mk_const_alloc(alloc)
+}
+
+pub(crate) fn alloc_type_id<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> AllocId {
+    let size = Size::from_bytes(16);
+    let align = tcx.data_layout.pointer_align;
+    let mut alloc = Allocation::new(size, *align, AllocInit::Uninit, ());
+    let ptr_size = tcx.data_layout.pointer_size;
+    for step in 0..size.bytes() / ptr_size.bytes() {
+        let offset = ptr_size * step;
+        let alloc_id = tcx.reserve_and_set_type_id_alloc(ty, step.try_into().unwrap());
+        let ptr = Pointer::new(alloc_id.into(), Size::ZERO);
+        let val = Scalar::from_pointer(ptr, &tcx);
+        alloc.write_scalar(&tcx, alloc_range(offset, ptr_size), val).unwrap();
+    }
+
+    alloc.mutability = Mutability::Not;
+
+    tcx.reserve_and_set_memory_alloc(tcx.mk_const_alloc(alloc))
 }
 
 /// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated
@@ -52,7 +72,8 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
         }
         sym::type_id => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128())
+            let alloc_id = alloc_type_id(tcx, tp_ty);
+            ConstValue::Indirect { alloc_id, offset: Size::ZERO }
         }
         sym::variant_count => match match tp_ty.kind() {
             // Pattern types have the same number of variants as their base type.

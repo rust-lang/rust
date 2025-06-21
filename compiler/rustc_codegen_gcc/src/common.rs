@@ -303,6 +303,8 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                         let init = self.const_data_from_alloc(alloc);
                         self.static_addr_of(init, alloc.inner().align, None)
                     }
+                    // TODO: generate segment of type id hash
+                    GlobalAlloc::Type { .. } => todo!(),
                     GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));
                         self.get_static(def_id).get_address(None)

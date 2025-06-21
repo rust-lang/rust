@@ -2,7 +2,7 @@ use std::borrow::{Borrow, Cow};
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_abi::{Align, Size};
+use rustc_abi::{Align, FieldIdx, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -402,6 +402,37 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let b = ecx.read_scalar(&args[1])?;
                 let cmp = ecx.guaranteed_cmp(a, b)?;
                 ecx.write_scalar(Scalar::from_u8(cmp), dest)?;
+            }
+            sym::type_id_eq => {
+                let a = ecx.project_field(&args[0], FieldIdx::ZERO)?;
+                let b = ecx.project_field(&args[1], FieldIdx::ZERO)?;
+                let mut eq = true;
+                for index in 0..(16 / ecx.tcx.data_layout.pointer_size.bytes()) {
+                    let a = ecx.project_index(&a, index)?;
+                    let a = ecx.deref_pointer(&a)?;
+                    let (a, offset) = a.ptr().into_parts();
+                    assert_eq!(offset, Size::ZERO);
+                    let a = a.unwrap().alloc_id();
+                    let GlobalAlloc::Type { ty: a, segment: a_segment } = ecx.tcx.global_alloc(a)
+                    else {
+                        bug!()
+                    };
+                    let b = ecx.project_index(&b, index)?;
+                    let b = ecx.deref_pointer(&b)?;
+                    let (b, offset) = b.ptr().into_parts();
+                    assert_eq!(offset, Size::ZERO);
+                    let b = b.unwrap().alloc_id();
+                    let GlobalAlloc::Type { ty: b, segment: b_segment } = ecx.tcx.global_alloc(b)
+                    else {
+                        bug!()
+                    };
+
+                    eq &= a == b && a_segment == b_segment;
+                    if !eq {
+                        break;
+                    }
+                }
+                ecx.write_scalar(Scalar::from_bool(eq), dest)?;
             }
             sym::const_allocate => {
                 let size = ecx.read_scalar(&args[0])?.to_target_usize(ecx)?;
