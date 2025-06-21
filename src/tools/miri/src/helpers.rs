@@ -1346,10 +1346,23 @@ pub fn check_min_vararg_count<'a, 'tcx, const N: usize>(
         return interp_ok(ops);
     }
     throw_ub_format!(
-        "not enough variadic arguments for `{name}`: got {}, expected at least {}",
+        "not enough variadic arguments for `{name}`: got {}, expected at least {N}",
         args.len(),
-        N
     )
+}
+
+/// Error if there are not exactly `N` varidic arguments.
+pub fn check_exact_vararg_count<'a, 'tcx, const N: usize>(
+    name: &'a str,
+    args: &'a [OpTy<'tcx>],
+) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
+    if N != args.len() {
+        throw_ub_format!(
+            "incorrect number of varidic arguments for `{name}`: got {}, expected {N}",
+            args.len(),
+        );
+    }
+    interp_ok(args.try_into().unwrap())
 }
 
 pub fn isolation_abort_error<'tcx>(name: &str) -> InterpResult<'tcx> {
