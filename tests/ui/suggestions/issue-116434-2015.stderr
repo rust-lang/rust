@@ -35,13 +35,18 @@ LL |     fn foo() -> Clone;
    = note: the trait is not dyn compatible because it requires `Self: Sized`
    = note: for a trait to be dyn compatible it needs to allow building a vtable
            for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     fn foo() -> Clone;
+LL +     fn foo() -> Self;
+   |
 help: there is an associated type with the same name
    |
 LL |     fn foo() -> Self::Clone;
    |                 ++++++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-116434-2015.rs:20:20
+  --> $DIR/issue-116434-2015.rs:21:20
    |
 LL |     fn handle() -> DbHandle;
    |                    ^^^^^^^^
@@ -54,7 +59,7 @@ LL |     fn handle() -> dyn DbHandle;
    |                    +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-116434-2015.rs:20:20
+  --> $DIR/issue-116434-2015.rs:21:20
    |
 LL |     fn handle() -> DbHandle;
    |                    ^^^^^^^^
@@ -68,19 +73,24 @@ LL |     fn handle() -> dyn DbHandle;
    |                    +++
 
 error[E0038]: the trait `DbHandle` is not dyn compatible
-  --> $DIR/issue-116434-2015.rs:20:20
+  --> $DIR/issue-116434-2015.rs:21:20
    |
 LL |     fn handle() -> DbHandle;
    |                    ^^^^^^^^ `DbHandle` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/issue-116434-2015.rs:16:17
+  --> $DIR/issue-116434-2015.rs:17:17
    |
 LL | trait DbHandle: Sized {}
    |       --------  ^^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait is not dyn compatible...
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     fn handle() -> DbHandle;
+LL +     fn handle() -> Self;
+   |
 help: there is an associated type with the same name
    |
 LL |     fn handle() -> Self::DbHandle;

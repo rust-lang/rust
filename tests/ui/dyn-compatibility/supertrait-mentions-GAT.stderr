@@ -7,20 +7,6 @@ LL |         Self: 'a;
    |               ^^
    = help: consider adding an explicit lifetime bound `Self: 'a`...
 
-error: associated item referring to unboxed trait object for its own trait
-  --> $DIR/supertrait-mentions-GAT.rs:10:20
-   |
-LL | trait SuperTrait<T>: for<'a> GatTrait<Gat<'a> = T> {
-   |       ---------- in this trait
-LL |     fn c(&self) -> dyn SuperTrait<T>;
-   |                    ^^^^^^^^^^^^^^^^^
-   |
-help: you might have meant to use `Self` to refer to the implementing type
-   |
-LL -     fn c(&self) -> dyn SuperTrait<T>;
-LL +     fn c(&self) -> Self;
-   |
-
 error[E0038]: the trait `SuperTrait` is not dyn compatible
   --> $DIR/supertrait-mentions-GAT.rs:10:20
    |
@@ -37,8 +23,13 @@ LL |     type Gat<'a>
 LL | trait SuperTrait<T>: for<'a> GatTrait<Gat<'a> = T> {
    |       ---------- this trait is not dyn compatible...
    = help: consider moving `Gat` to another trait
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     fn c(&self) -> dyn SuperTrait<T>;
+LL +     fn c(&self) -> Self;
+   |
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0038, E0311.
 For more information about an error, try `rustc --explain E0038`.
