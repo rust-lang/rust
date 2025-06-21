@@ -65,7 +65,7 @@ fn main() {
     demo1!(###"foo"###); //~ ERROR invalid string literal
     demo2!(#"foo"###);
     //~^ ERROR invalid string literal
-    //~| ERROR reserved multi-hash token is forbidden
+    //~| ERROR no rules expected `#`
 
     // More than 255 hashes
     demon!(####################################################################################################################################################################################################################################################################"foo");
