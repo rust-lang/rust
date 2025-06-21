@@ -1186,6 +1186,17 @@ pub(crate) struct InherentTyOutsideNew {
     #[primary_span]
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub note: Option<InherentTyOutsideNewAliasNote>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_analysis_inherent_ty_outside_new_alias_note)]
+pub(crate) struct InherentTyOutsideNewAliasNote {
+    #[primary_span]
+    pub span: Span,
+    pub ty_name: String,
+    pub alias_ty_name: String,
 }
 
 #[derive(Diagnostic)]
