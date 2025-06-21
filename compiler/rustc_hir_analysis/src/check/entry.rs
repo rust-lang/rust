@@ -1,14 +1,15 @@
 use std::ops::Not;
 
 use rustc_abi::ExternAbi;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_session::config::EntryFnType;
+use rustc_span::Span;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
@@ -98,8 +99,10 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         error = true;
     }
 
-    for attr in tcx.get_attrs(main_def_id, sym::track_caller) {
-        tcx.dcx().emit_err(errors::TrackCallerOnMain { span: attr.span(), annotated: main_span });
+    if let Some(attr_span) =
+        find_attr!(tcx.get_all_attrs(main_def_id), AttributeKind::TrackCaller(span) => *span)
+    {
+        tcx.dcx().emit_err(errors::TrackCallerOnMain { span: attr_span, annotated: main_span });
         error = true;
     }
 
