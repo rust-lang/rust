@@ -21,6 +21,7 @@ use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
 use crate::attributes::lint_helpers::AsPtrParser;
 use crate::attributes::repr::{AlignParser, ReprParser};
+use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
@@ -110,6 +111,7 @@ attribute_parsers!(
         Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
         Single<InlineParser>,
+        Single<MayDangleParser>,
         Single<OptimizeParser>,
         Single<RustcForceInlineParser>,
         Single<TransparencyParser>,
