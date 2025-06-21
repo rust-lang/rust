@@ -10,7 +10,8 @@ use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
 use rustc_middle::ty::{
-    self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, TypingMode,
+    self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode,
 };
 use rustc_next_trait_solver::delegate::SolverDelegate as _;
 use rustc_next_trait_solver::solve::{
@@ -264,7 +265,7 @@ where
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx> {
-        let stalled_generators = match infcx.typing_mode() {
+        let stalled_coroutines = match infcx.typing_mode() {
             TypingMode::Analysis { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
@@ -274,7 +275,7 @@ where
             | TypingMode::PostAnalysis => return Default::default(),
         };
 
-        if stalled_generators.is_empty() {
+        if stalled_coroutines.is_empty() {
             return Default::default();
         }
 
@@ -285,7 +286,7 @@ where
                         .visit_proof_tree(
                             obl.as_goal(),
                             &mut StalledOnCoroutines {
-                                stalled_generators,
+                                stalled_coroutines,
                                 span: obl.cause.span,
                                 cache: Default::default(),
                             },
@@ -307,10 +308,10 @@ where
 ///
 /// This function can be also return false positives, which will lead to poor diagnostics
 /// so we want to keep this visitor *precise* too.
-struct StalledOnCoroutines<'tcx> {
-    stalled_generators: &'tcx ty::List<LocalDefId>,
-    span: Span,
-    cache: DelayedSet<Ty<'tcx>>,
+pub struct StalledOnCoroutines<'tcx> {
+    pub stalled_coroutines: &'tcx ty::List<LocalDefId>,
+    pub span: Span,
+    pub cache: DelayedSet<Ty<'tcx>>,
 }
 
 impl<'tcx> inspect::ProofTreeVisitor<'tcx> for StalledOnCoroutines<'tcx> {
@@ -340,12 +341,14 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for StalledOnCoroutines<'tcx> {
         }
 
         if let ty::CoroutineWitness(def_id, _) = *ty.kind()
-            && def_id.as_local().is_some_and(|def_id| self.stalled_generators.contains(&def_id))
+            && def_id.as_local().is_some_and(|def_id| self.stalled_coroutines.contains(&def_id))
         {
-            return ControlFlow::Break(());
+            ControlFlow::Break(())
+        } else if ty.has_coroutines() {
+            ty.super_visit_with(self)
+        } else {
+            ControlFlow::Continue(())
         }
-
-        ty.super_visit_with(self)
     }
 }
 
