@@ -130,6 +130,13 @@ enum Scope<'ra> {
     BuiltinTypes,
 }
 
+/// Scopes used for resolving an `Ident` in a `Module`.
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum ModuleScope {
+    NonGlobal,
+    Global,
+}
+
 /// Names from different contexts may want to visit different subsets of all specific scopes
 /// with different restrictions when looking up the resolution.
 /// This enum is currently used only for early resolution (imports and macros),
