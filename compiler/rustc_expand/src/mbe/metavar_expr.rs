@@ -79,15 +79,11 @@ impl MetaVarExpr {
             "index" => MetaVarExpr::Index(parse_depth(&mut iter, psess, ident.span)?),
             "len" => MetaVarExpr::Len(parse_depth(&mut iter, psess, ident.span)?),
             _ => {
-                let err_msg = "unrecognized meta-variable expression";
-                let mut err = psess.dcx().struct_span_err(ident.span, err_msg);
-                err.span_suggestion(
-                    ident.span,
-                    "supported expressions are count, ignore, index and len",
-                    "",
-                    Applicability::MachineApplicable,
-                );
-                return Err(err);
+                let err = errors::MveUnrecognizedExpr {
+                    span: ident.span,
+                    valid_expr_list: "`count`, `ignore`, `index`, `len`, and `concat`",
+                };
+                return Err(psess.dcx().create_err(err));
             }
         };
         check_trailing_tokens(&mut iter, psess, ident)?;

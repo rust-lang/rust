@@ -531,6 +531,16 @@ mod metavar_exprs {
     }
 
     #[derive(Diagnostic)]
+    #[note]
+    #[diag(expand_mve_unrecognized_expr)]
+    pub(crate) struct MveUnrecognizedExpr {
+        #[primary_span]
+        #[label]
+        pub span: Span,
+        pub valid_expr_list: &'static str,
+    }
+
+    #[derive(Diagnostic)]
     #[diag(expand_mve_unrecognized_var)]
     pub(crate) struct MveUnrecognizedVar {
         #[primary_span]
