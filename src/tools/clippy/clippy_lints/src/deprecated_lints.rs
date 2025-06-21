@@ -187,5 +187,13 @@ declare_with_version! { RENAMED(RENAMED_VERSION): &[(&str, &str)] = &[
     ("clippy::vtable_address_comparisons", "ambiguous_wide_pointer_comparisons"),
     #[clippy::version = ""]
     ("clippy::reverse_range_loop", "clippy::reversed_empty_ranges"),
+    #[clippy::version = "1.88.0"]
+    ("clippy::transmute_int_to_float", "unnecessary_transmutes"),
+    #[clippy::version = "1.88.0"]
+    ("clippy::transmute_int_to_char", "unnecessary_transmutes"),
+    #[clippy::version = "1.88.0"]
+    ("clippy::transmute_float_to_int", "unnecessary_transmutes"),
+    #[clippy::version = "1.88.0"]
+    ("clippy::transmute_num_to_bytes", "unnecessary_transmutes"),
     // end renamed lints. used by `cargo dev rename_lint`
 ]}

@@ -997,6 +997,15 @@ fn report<'tcx>(
             );
         },
         State::DerefedBorrow(state) => {
+            // Do not suggest removing a non-mandatory `&` in `&*rawptr` in an `unsafe` context,
+            // as this may make rustc trigger its `dangerous_implicit_autorefs` lint.
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, subexpr) = data.first_expr.kind
+                && let ExprKind::Unary(UnOp::Deref, subsubexpr) = subexpr.kind
+                && cx.typeck_results().expr_ty_adjusted(subsubexpr).is_raw_ptr()
+            {
+                return;
+            }
+
             let mut app = Applicability::MachineApplicable;
             let (snip, snip_is_macro) =
                 snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);

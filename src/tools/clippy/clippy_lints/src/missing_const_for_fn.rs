@@ -155,9 +155,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             return;
         }
 
-        let mir = cx.tcx.mir_drops_elaborated_and_const_checked(def_id);
+        let mir = cx.tcx.optimized_mir(def_id);
 
-        if let Ok(()) = is_min_const_fn(cx, &mir.borrow(), self.msrv)
+        if let Ok(()) = is_min_const_fn(cx, mir, self.msrv)
             && let hir::Node::Item(hir::Item { vis_span, .. }) | hir::Node::ImplItem(hir::ImplItem { vis_span, .. }) =
                 cx.tcx.hir_node_by_def_id(def_id)
         {
