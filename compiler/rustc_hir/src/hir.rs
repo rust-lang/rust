@@ -1302,6 +1302,7 @@ impl AttributeExt for Attribute {
             // FIXME: should not be needed anymore when all attrs are parsed
             Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::MayDangle(span)) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
