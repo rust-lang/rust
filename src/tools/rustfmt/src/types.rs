@@ -1106,7 +1106,7 @@ impl Rewrite for ast::TyPat {
                 }
                 Ok(s)
             }
-            ast::TyPatKind::Err(_) => Err(RewriteError::Unknown),
+            ast::TyPatKind::NotNull | ast::TyPatKind::Err(_) => Err(RewriteError::Unknown),
         }
     }
 }
