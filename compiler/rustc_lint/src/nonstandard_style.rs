@@ -1,5 +1,5 @@
 use rustc_abi::ExternAbi;
-use rustc_attr_data_structures::{AttributeKind, ReprAttr};
+use rustc_attr_data_structures::{AttributeKind, ReprAttr, find_attr};
 use rustc_attr_parsing::AttributeParser;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
@@ -396,7 +396,9 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         match &fk {
             FnKind::Method(ident, sig, ..) => match method_context(cx, id) {
                 MethodLateContext::PlainImpl => {
-                    if sig.header.abi != ExternAbi::Rust && cx.tcx.has_attr(id, sym::no_mangle) {
+                    if sig.header.abi != ExternAbi::Rust
+                        && find_attr!(cx.tcx.get_all_attrs(id), AttributeKind::NoMangle(..))
+                    {
                         return;
                     }
                     self.check_snake_case(cx, "method", ident);
@@ -408,7 +410,9 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             },
             FnKind::ItemFn(ident, _, header) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
-                if header.abi != ExternAbi::Rust && cx.tcx.has_attr(id, sym::no_mangle) {
+                if header.abi != ExternAbi::Rust
+                    && find_attr!(cx.tcx.get_all_attrs(id), AttributeKind::NoMangle(..))
+                {
                     return;
                 }
                 self.check_snake_case(cx, "function", ident);
@@ -514,7 +518,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
         match it.kind {
             hir::ItemKind::Static(_, ident, ..)
-                if !ast::attr::contains_name(attrs, sym::no_mangle) =>
+                if !find_attr!(attrs, AttributeKind::NoMangle(..)) =>
             {
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", &ident);
             }

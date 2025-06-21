@@ -749,7 +749,6 @@ impl Item {
     pub(crate) fn attributes_without_repr(&self, tcx: TyCtxt<'_>, is_json: bool) -> Vec<String> {
         const ALLOWED_ATTRIBUTES: &[Symbol] =
             &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
-
         self.attrs
             .other_attrs
             .iter()
@@ -767,6 +766,9 @@ impl Item {
                             s
                         }),
                     }
+                } else if matches!(attr, hir::Attribute::Parsed(AttributeKind::NoMangle(..))) {
+                    // FIXME: We don't use the pretty printing of parsed attributes here because the pretty-print is not very pretty...
+                    Some("#[no_mangle]".to_string())
                 } else if attr.has_any_name(ALLOWED_ATTRIBUTES) {
                     Some(
                         rustc_hir_pretty::attribute_to_string(&tcx, attr)

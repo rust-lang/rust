@@ -1310,3 +1310,11 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_no_mangle_nameless)]
+pub(crate) struct NoMangleNameless {
+    #[primary_span]
+    pub span: Span,
+    pub definition: String,
+}

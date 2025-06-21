@@ -6,6 +6,8 @@ use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Pos};
+use rustc_attr_data_structures::AttributeKind;
+use rustc_hir::Attribute;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -44,8 +46,7 @@ impl<'tcx> LateLintPass<'tcx> for NoMangleWithRustAbi {
             let mut app = Applicability::MaybeIncorrect;
             let fn_snippet = snippet_with_applicability(cx, fn_sig.span.with_hi(ident.span.lo()), "..", &mut app);
             for attr in attrs {
-                if let Some(ident) = attr.ident()
-                    && ident.name == rustc_span::sym::no_mangle
+                if let Attribute::Parsed(AttributeKind::NoMangle(attr_span)) = attr
                     && fn_sig.header.abi == ExternAbi::Rust
                     && let Some((fn_attrs, _)) = fn_snippet.rsplit_once("fn")
                     && !fn_attrs.contains("extern")
@@ -54,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for NoMangleWithRustAbi {
                         .span
                         .with_lo(fn_sig.span.lo() + BytePos::from_usize(fn_attrs.len()))
                         .shrink_to_lo();
-                    let attr_snippet = snippet(cx, attr.span(), "..");
+                    let attr_snippet = snippet(cx, *attr_span, "..");
 
                     span_lint_and_then(
                         cx,
