@@ -386,18 +386,44 @@ impl<'a> State<'a> {
 
         let ib = self.ibox(INDENT_UNIT);
 
-        // The Match subexpression in `match x {} - 1` must be parenthesized if
-        // it is the leftmost subexpression in a statement:
-        //
-        //     (match x {}) - 1;
-        //
-        // But not otherwise:
-        //
-        //     let _ = match x {} - 1;
-        //
-        // Same applies to a small set of other expression kinds which eagerly
-        // terminate a statement which opens with them.
-        let needs_par = fixup.would_cause_statement_boundary(expr);
+        let needs_par = {
+            // The Match subexpression in `match x {} - 1` must be parenthesized
+            // if it is the leftmost subexpression in a statement:
+            //
+            //     (match x {}) - 1;
+            //
+            // But not otherwise:
+            //
+            //     let _ = match x {} - 1;
+            //
+            // Same applies to a small set of other expression kinds which
+            // eagerly terminate a statement which opens with them.
+            fixup.would_cause_statement_boundary(expr)
+        } || {
+            // If a binary operation ends up with an attribute, such as
+            // resulting from the following macro expansion, then parentheses
+            // are required so that the attribute encompasses the right
+            // subexpression and not just the left one.
+            //
+            //     #![feature(stmt_expr_attributes)]
+            //
+            //     macro_rules! add_attr {
+            //         ($e:expr) => { #[attr] $e };
+            //     }
+            //
+            //     let _ = add_attr!(1 + 1);
+            //
+            // We must pretty-print `#[attr] (1 + 1)` not `#[attr] 1 + 1`.
+            !attrs.is_empty()
+                && matches!(
+                    expr.kind,
+                    ast::ExprKind::Binary(..)
+                        | ast::ExprKind::Cast(..)
+                        | ast::ExprKind::Assign(..)
+                        | ast::ExprKind::AssignOp(..)
+                        | ast::ExprKind::Range(..)
+                )
+        };
         if needs_par {
             self.popen();
             fixup = FixupContext::default();
