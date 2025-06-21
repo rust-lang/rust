@@ -1,7 +1,6 @@
 use rustc_abi::ExternAbi;
 use rustc_attr_data_structures::{AttributeKind, ReprAttr};
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::LintDiagnostic;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::{AttrArgs, AttrItem, Attribute, GenericParamKind, PatExprKind, PatKind};
@@ -530,8 +529,7 @@ impl NonUpperCaseGlobals {
                 }
             }
 
-            #[allow(rustc::diagnostic_outside_of_impl)]
-            cx.opt_span_lint(NON_UPPER_CASE_GLOBALS, ident.span.into(), |diag| {
+            cx.emit_span_lint_lazy(NON_UPPER_CASE_GLOBALS, ident.span, || {
                 // Compute usages lazily as it can expansive and useless when the lint is allowed.
                 // cf. https://github.com/rust-lang/rust/pull/142645#issuecomment-2993024625
                 let usages = if let Some(did) = did
@@ -548,7 +546,7 @@ impl NonUpperCaseGlobals {
                     vec![]
                 };
 
-                NonUpperCaseGlobal { sort, name, sub, usages }.decorate_lint(diag)
+                NonUpperCaseGlobal { sort, name, sub, usages }
             });
         }
     }
