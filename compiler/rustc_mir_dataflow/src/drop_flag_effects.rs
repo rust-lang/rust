@@ -155,17 +155,15 @@ where
     }
 }
 
-/// Calls `handle_inactive_variant` for each descendant move path of `enum_place` that contains a
-/// `Downcast` to a variant besides the `active_variant`, otherwise calls `handle_active_variant`.
-///
-/// NOTE: If there are no move paths corresponding to an inactive variant, `handle_active_variant`
-/// or `handle_inactive_variant` will not be called for that variant.
-pub(crate) fn on_all_inactive_variants<'tcx>(
+/// Handles each variant that corresponds to one of the child move paths of `enum_place`. If the
+/// variant is `active_variant`, `handle_active_variant` will be called (if provided). Otherwise,
+/// `handle_inactive_variant` will be called.
+pub(crate) fn on_all_variants<'tcx>(
     move_data: &MoveData<'tcx>,
     enum_place: mir::Place<'tcx>,
     active_variant: VariantIdx,
     mut handle_inactive_variant: impl FnMut(MovePathIndex),
-    mut handle_active_variant: impl FnMut(MovePathIndex),
+    mut handle_active_variant: Option<impl FnMut(MovePathIndex)>,
 ) {
     let LookupResult::Exact(enum_mpi) = move_data.rev_lookup.find(enum_place.as_ref()) else {
         return;
@@ -185,7 +183,7 @@ pub(crate) fn on_all_inactive_variants<'tcx>(
 
         if variant_idx != active_variant {
             on_all_children_bits(move_data, variant_mpi, |mpi| handle_inactive_variant(mpi));
-        } else {
+        } else if let Some(ref mut handle_active_variant) = handle_active_variant {
             on_all_children_bits(move_data, variant_mpi, |mpi| handle_active_variant(mpi));
         }
     }

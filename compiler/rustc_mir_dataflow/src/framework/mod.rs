@@ -229,6 +229,19 @@ pub trait Analysis<'tcx> {
         unreachable!();
     }
 
+    /// Calls `apply_switch_int_edge_effect` for each target in `targets` and calls `propagate` with
+    /// the new state. This is used in forward analysis for `MaybeUninitializedPlaces` and
+    /// `MaybeInitializedPlaces`.
+    fn apply_switch_int_edge_effect_for_targets(
+        &mut self,
+        _targets: &mir::SwitchTargets,
+        mut _data: Self::SwitchIntData,
+        _state: &mut Self::Domain,
+        mut _propagate: impl FnMut(mir::BasicBlock, &Self::Domain),
+    ) {
+        unreachable!();
+    }
+
     /* Extension methods */
 
     /// Finds the fixpoint for this dataflow problem.
