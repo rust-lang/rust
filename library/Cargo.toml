@@ -1,3 +1,5 @@
+cargo-features = ["profile-rustflags"]
+
 [workspace]
 resolver = "1"
 members = [
@@ -43,6 +45,14 @@ miniz_oxide.opt-level = "s"
 object.debug = 0
 rustc-demangle.debug = 0
 rustc-demangle.opt-level = "s"
+
+# panic_abort must always be compiled with panic=abort, even when the rest of the
+# sysroot is panic=unwind.
+[profile.dev.package.panic_abort]
+rustflags = ["-Cpanic=abort"]
+
+[profile.release.package.panic_abort]
+rustflags = ["-Cpanic=abort"]
 
 [patch.crates-io]
 # See comments in `library/rustc-std-workspace-core/README.md` for what's going on
