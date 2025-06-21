@@ -3185,8 +3185,7 @@ dependencies = [
 [[package]]
 name = "rustc-rayon-core"
 version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f42932dcd3bcbe484b38a3ccf79b7906fac41c02d408b5b1bac26da3416efdb"
+source = "git+https://github.com/zetanumbers/rayon?branch=rustc-remove-deadlock-detection#3b8d9c138ab70138c2016d19fbb2801a372614f6"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
@@ -4349,7 +4348,6 @@ version = "0.0.0"
 dependencies = [
  "hashbrown",
  "parking_lot",
- "rustc-rayon-core",
  "rustc_abi",
  "rustc_ast",
  "rustc_attr_data_structures",
@@ -6624,3 +6622,8 @@ dependencies = [
  "quote",
  "syn 2.0.103",
 ]
+
+[[patch.unused]]
+name = "rustc-rayon"
+version = "0.5.1"
+source = "git+https://github.com/zetanumbers/rayon?branch=rustc-remove-deadlock-detection#3b8d9c138ab70138c2016d19fbb2801a372614f6"

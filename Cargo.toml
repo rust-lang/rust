@@ -60,6 +60,10 @@ exclude = [
   "obj",
 ]
 
+[patch.crates-io]
+rustc-rayon = { git = "https://github.com/zetanumbers/rayon", branch = "rustc-remove-deadlock-detection" }
+rustc-rayon-core = { git = "https://github.com/zetanumbers/rayon", branch = "rustc-remove-deadlock-detection" }
+
 [profile.release.package.rustc-rayon-core]
 # The rustc fork of Rayon has deadlock detection code which intermittently
 # causes overflows in the CI (see https://github.com/rust-lang/rust/issues/90227)
