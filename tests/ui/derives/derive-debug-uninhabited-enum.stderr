@@ -1,5 +1,5 @@
 warning: variant `Void` is never constructed
-  --> $DIR/derive-uninhabited-enum-38885.rs:13:5
+  --> $DIR/derive-debug-uninhabited-enum.rs:17:5
    |
 LL | enum Foo {
    |      --- variant in this enum
