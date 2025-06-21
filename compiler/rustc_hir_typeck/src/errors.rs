@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 
+use rustc_abi::ExternAbi;
 use rustc_ast::Label;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -1159,8 +1160,10 @@ pub(crate) struct NakedFunctionsMustNakedAsm {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_abi_custom_call)]
-pub(crate) struct AbiCustomCall {
+#[diag(hir_typeck_abi_cannot_be_called)]
+pub(crate) struct AbiCannotBeCalled {
     #[primary_span]
+    #[note]
     pub span: Span,
+    pub abi: ExternAbi,
 }

@@ -126,15 +126,6 @@ path_macros! {
     macro_path: PathNS::Macro,
 }
 
-// Paths in `core`/`alloc`/`std`. This should be avoided and cleaned up by adding diagnostic items.
-pub static ALIGN_OF: PathLookup = value_path!(core::mem::align_of);
-pub static CHAR_TO_DIGIT: PathLookup = value_path!(char::to_digit);
-pub static CONCAT: PathLookup = macro_path!(core::concat);
-pub static IO_ERROR_NEW: PathLookup = value_path!(std::io::Error::new);
-pub static IO_ERRORKIND_OTHER_CTOR: PathLookup = value_path!(std::io::ErrorKind::Other);
-pub static ITER_STEP: PathLookup = type_path!(core::iter::Step);
-pub static SLICE_FROM_REF: PathLookup = value_path!(core::slice::from_ref);
-
 // Paths in external crates
 pub static FUTURES_IO_ASYNCREADEXT: PathLookup = type_path!(futures_util::AsyncReadExt);
 pub static FUTURES_IO_ASYNCWRITEEXT: PathLookup = type_path!(futures_util::AsyncWriteExt);
