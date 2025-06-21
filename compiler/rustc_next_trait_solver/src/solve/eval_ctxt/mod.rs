@@ -430,7 +430,7 @@ where
                 canonical_input,
                 step_kind_from_parent,
                 &mut canonical_goal_evaluation,
-                |search_graph, canonical_goal_evaluation| {
+                |search_graph, cx, canonical_input, canonical_goal_evaluation| {
                     EvalCtxt::enter_canonical(
                         cx,
                         search_graph,

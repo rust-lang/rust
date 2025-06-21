@@ -2,6 +2,7 @@ use derive_where::derive_where;
 
 use super::{AvailableDepth, Cx, NestedGoals};
 use crate::data_structures::HashMap;
+use crate::search_graph::EvaluationResult;
 
 struct Success<X: Cx> {
     required_depth: usize,
@@ -43,28 +44,26 @@ impl<X: Cx> GlobalCache<X> {
         &mut self,
         cx: X,
         input: X::Input,
-
-        origin_result: X::Result,
+        evaluation_result: EvaluationResult<X>,
         dep_node: X::DepNodeIndex,
-
-        required_depth: usize,
-        encountered_overflow: bool,
-        nested_goals: NestedGoals<X>,
     ) {
-        let result = cx.mk_tracked(origin_result, dep_node);
+        let EvaluationResult { encountered_overflow, required_depth, heads, nested_goals, result } =
+            evaluation_result;
+        debug_assert!(heads.is_empty());
+        let result = cx.mk_tracked(result, dep_node);
         let entry = self.map.entry(input).or_default();
         if encountered_overflow {
             let with_overflow = WithOverflow { nested_goals, result };
             let prev = entry.with_overflow.insert(required_depth, with_overflow);
             if let Some(prev) = &prev {
                 assert!(cx.evaluation_is_concurrent());
-                assert_eq!(cx.get_tracked(&prev.result), origin_result);
+                assert_eq!(cx.get_tracked(&prev.result), evaluation_result.result);
             }
         } else {
             let prev = entry.success.replace(Success { required_depth, nested_goals, result });
             if let Some(prev) = &prev {
                 assert!(cx.evaluation_is_concurrent());
-                assert_eq!(cx.get_tracked(&prev.result), origin_result);
+                assert_eq!(cx.get_tracked(&prev.result), evaluation_result.result);
             }
         }
     }
