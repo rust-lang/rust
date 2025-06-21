@@ -146,7 +146,24 @@ impl ExecutionContext {
         stdout: OutputMode,
         stderr: OutputMode,
     ) -> CommandOutput {
-        self.start(command, stdout, stderr).wait_for_output(self)
+        let cache_key = command.cache_key();
+
+        if let Some(cached_output) = self.command_cache.get(&cache_key) {
+            command.mark_as_executed();
+            if self.dry_run() && !command.run_always {
+                return CommandOutput::default();
+            }
+            self.verbose(|| println!("Cache hit: {:?}", command));
+            return cached_output;
+        }
+
+        let output = self.start(command, stdout, stderr).wait_for_output(self);
+
+        if output != CommandOutput::default() {
+            self.command_cache.insert(cache_key, output.clone());
+        }
+
+        output
     }
 
     fn fail(&self, message: &str, output: CommandOutput) -> ! {
