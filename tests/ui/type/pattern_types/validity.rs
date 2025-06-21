@@ -11,7 +11,7 @@ const BAD: pattern_type!(u32 is 1..) = unsafe { std::mem::transmute(0) };
 //~^ ERROR: constructing invalid value: encountered 0
 
 const BAD_UNINIT: pattern_type!(u32 is 1..) =
-    //~^ ERROR: using uninitialized data, but this operation requires initialized memory
+    //~^ ERROR: this operation requires initialized memory
     unsafe { std::mem::transmute(std::mem::MaybeUninit::<u32>::uninit()) };
 
 const BAD_PTR: pattern_type!(usize is 1..) = unsafe { std::mem::transmute(&42) };
@@ -27,7 +27,7 @@ const BAD_FOO: Foo = Foo(Bar(unsafe { std::mem::transmute(0) }));
 //~^ ERROR: constructing invalid value at .0.0: encountered 0
 
 const CHAR_UNINIT: pattern_type!(char is 'A'..'Z') =
-    //~^ ERROR: using uninitialized data, but this operation requires initialized memory
+    //~^ ERROR: this operation requires initialized memory
     unsafe { std::mem::transmute(std::mem::MaybeUninit::<u32>::uninit()) };
 
 const CHAR_OOB_PAT: pattern_type!(char is 'A'..'Z') = unsafe { std::mem::transmute('a') };
