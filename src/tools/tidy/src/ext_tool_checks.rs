@@ -22,6 +22,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{fmt, fs, io};
 
+use crate::walk::walk_no_read;
+
 const MIN_PY_REV: (u32, u32) = (3, 9);
 const MIN_PY_REV_STR: &str = "≥3.9";
 
@@ -56,8 +58,8 @@ fn check_impl(
     extra_checks: Option<&str>,
     pos_args: &[String],
 ) -> Result<(), Error> {
-    let show_diff = std::env::var("TIDY_PRINT_DIFF")
-        .map_or(false, |v| v.eq_ignore_ascii_case("true") || v == "1");
+    let show_diff =
+        std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
 
     // Split comma-separated args up
     let lint_args = match extra_checks {
@@ -72,6 +74,8 @@ fn check_impl(
     let shell_lint = lint_args.contains(&"shell:lint") || shell_all;
     let cpp_all = lint_args.contains(&"cpp");
     let cpp_fmt = lint_args.contains(&"cpp:fmt") || cpp_all;
+    let js_all = lint_args.contains(&"js");
+    let js_lint = lint_args.contains(&"js:lint") || js_all;
 
     let mut py_path = None;
 
@@ -222,6 +226,44 @@ fn check_impl(
         }
 
         shellcheck_runner(&merge_args(&cfg_args, &file_args_shc))?;
+    }
+
+    if js_lint {
+        eprintln!("running `eslint` on JS files");
+        let src_path = root_path.join("src");
+        let eslint_version_path =
+            src_path.join("ci/docker/host-x86_64/mingw-check-tidy/eslint.version");
+        let eslint_version = fs::read_to_string(&eslint_version_path)
+            .map_err(|error| {
+                Error::Generic(format!(
+                    "failed to read `eslint` version file `{}`: {error:?}",
+                    eslint_version_path.display()
+                ))
+            })?
+            .trim()
+            .to_string();
+        let mut files_to_check = Vec::new();
+        let librustdoc_path = src_path.join("librustdoc");
+        let tools_path = src_path.join("tools");
+        walk_no_read(
+            &[&librustdoc_path.join("html/static/js")],
+            |path, is_dir| is_dir || path.extension() != Some(OsStr::new("js")),
+            &mut |path| {
+                files_to_check.push(path.path().into());
+            },
+        );
+        run_eslint(&eslint_version, &files_to_check, librustdoc_path.join("html/static"))?;
+
+        run_eslint(
+            &eslint_version,
+            &[tools_path.join("rustdoc-js/tester.js")],
+            tools_path.join("rustdoc-js"),
+        )?;
+        run_eslint(
+            &eslint_version,
+            &[tools_path.join("rustdoc-gui/tester.js")],
+            tools_path.join("rustdoc-gui"),
+        )?;
     }
 
     Ok(())
@@ -530,6 +572,24 @@ fn find_with_extension(
     }
 
     Ok(output)
+}
+
+fn run_eslint(eslint_version: &str, args: &[PathBuf], config_folder: PathBuf) -> Result<(), Error> {
+    match Command::new("npx")
+        .arg(format!("eslint@{eslint_version}"))
+        .arg("-c")
+        .arg(config_folder.join(".eslintrc.js"))
+        .args(args)
+        .output()
+    {
+        Ok(output) if output.status.success() => Ok(()),
+        Ok(_) => Err(Error::FailedCheck("eslint")),
+        Err(_) => Err(Error::MissingReq(
+            "`npx`",
+            "`eslint` JS linter",
+            Some("`npx` comes bundled with `node` and `npm`".to_string()),
+        )),
+    }
 }
 
 #[derive(Debug)]

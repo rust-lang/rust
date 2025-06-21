@@ -82,7 +82,6 @@ pub mod mir_opt_tests;
 pub mod pal;
 pub mod rustdoc_css_themes;
 pub mod rustdoc_gui_tests;
-pub mod rustdoc_js;
 pub mod rustdoc_json;
 pub mod rustdoc_templates;
 pub mod style;
