@@ -226,6 +226,13 @@ pub enum CoverageLevel {
     Mcdc,
 }
 
+// The different settings that the `-Z offload` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum Offload {
+    /// Enable the llvm offload pipeline
+    Enable,
+}
+
 /// The different settings that the `-Z autodiff` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum AutoDiff {
@@ -3095,7 +3102,7 @@ pub(crate) mod dep_tracking {
         AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, OomStrategy, OptLevel, OutFileName,
+        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OomStrategy, OptLevel, OutFileName,
         OutputType, OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents,
         ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
         SymbolManglingVersion, WasiExecModel,
@@ -3142,6 +3149,7 @@ pub(crate) mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(
         (),
         AutoDiff,
+        Offload,
         bool,
         usize,
         NonZero<usize>,

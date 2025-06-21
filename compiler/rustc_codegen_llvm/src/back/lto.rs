@@ -653,6 +653,7 @@ pub(crate) fn run_pass_manager(
     // We then run the llvm_optimize function a second time, to optimize the code which we generated
     // in the enzyme differentiation pass.
     let enable_ad = config.autodiff.contains(&config::AutoDiff::Enable);
+    let enable_gpu = config.offload.contains(&config::Offload::Enable);
     let stage = if thin {
         write::AutodiffStage::PreAD
     } else {
@@ -665,6 +666,13 @@ pub(crate) fn run_pass_manager(
 
     unsafe {
         write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
+    }
+
+    if cfg!(llvm_enzyme) && enable_gpu && !thin {
+        dbg!(&enable_gpu);
+        let cx =
+            SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
+        crate::builder::gpu_offload::handle_gpu_code(cgcx, &cx);
     }
 
     if cfg!(llvm_enzyme) && enable_ad && !thin {
