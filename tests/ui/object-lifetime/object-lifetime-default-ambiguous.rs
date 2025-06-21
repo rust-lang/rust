@@ -2,21 +2,23 @@
 // type parameter, an explicit lifetime bound is required on object
 // lifetimes within.
 
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 #![allow(dead_code)]
 
 trait Test {
     fn foo(&self) { }
 }
 
-struct Ref0<T:?Sized> {
+struct Ref0<T> {
     r: *mut T
 }
 
-struct Ref1<'a,T:'a+?Sized> {
+struct Ref1<'a,T:'a> {
     r: &'a T
 }
 
-struct Ref2<'a,'b:'a,T:'a+'b+?Sized> {
+struct Ref2<'a,'b:'a,T:'a+'b> {
     r: &'a &'b T
 }
 

@@ -1,12 +1,15 @@
 //@ check-pass
 //@ known-bug: #84591
 
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
+
 trait Subtrait<'a, 'b, R>: Supertrait<'a, 'b> {}
 trait Supertrait<'a, 'b> {
-    fn convert<T: ?Sized>(x: &'a T) -> &'b T;
+    fn convert<T>(x: &'a T) -> &'b T;
 }
 
-fn need_hrtb_subtrait<'a_, 'b_, S, T: ?Sized>(x: &'a_ T) -> &'b_ T
+fn need_hrtb_subtrait<'a_, 'b_, S, T>(x: &'a_ T) -> &'b_ T
 where
     S: for<'a, 'b> Subtrait<'a, 'b, &'b &'a ()>,
 {
@@ -16,7 +19,7 @@ where
     // now be used to transmute any two lifetimes.
 }
 
-fn need_hrtb_supertrait<'a_, 'b_, S, T: ?Sized>(x: &'a_ T) -> &'b_ T
+fn need_hrtb_supertrait<'a_, 'b_, S, T>(x: &'a_ T) -> &'b_ T
 where
     S: for<'a, 'b> Supertrait<'a, 'b>,
 {
@@ -25,13 +28,13 @@ where
 
 struct MyStruct;
 impl<'a: 'b, 'b> Supertrait<'a, 'b> for MyStruct {
-    fn convert<T: ?Sized>(x: &'a T) -> &'b T {
+    fn convert<T>(x: &'a T) -> &'b T {
         x
     }
 }
 impl<'a, 'b> Subtrait<'a, 'b, &'b &'a ()> for MyStruct {}
 
-fn extend_lifetime<'a, 'b, T: ?Sized>(x: &'a T) -> &'b T {
+fn extend_lifetime<'a, 'b, T>(x: &'a T) -> &'b T {
     need_hrtb_subtrait::<MyStruct, T>(x)
 }
 

@@ -8,20 +8,22 @@
 // system, which isn't guaranteed to be normalized after substitution.
 
 #![feature(coerce_unsized)]
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 use std::ops::CoerceUnsized;
 
 trait Mirror {
-    type Assoc: ?Sized;
+    type Assoc;
 }
-impl<T: ?Sized> Mirror for T {
+impl<T> Mirror for T {
     type Assoc = T;
 }
 
 trait Any {}
 impl<T> Any for T {}
 
-struct Signal<'a, T: ?Sized>(<&'a T as Mirror>::Assoc);
+struct Signal<'a, T>(<&'a T as Mirror>::Assoc);
 
 // This `CoerceUnsized` impl isn't special; it's a bit more restricted than we'd see in the wild,
 // but this ICE also reproduces if we were to make it general over `Signal<T> -> Signal<U>`.

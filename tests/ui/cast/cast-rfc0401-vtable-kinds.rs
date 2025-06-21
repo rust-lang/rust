@@ -1,4 +1,8 @@
 //@ run-pass
+
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
+
 // Check that you can cast between different pointers to trait objects
 // whose vtable have the same kind (both lengths, or both trait pointers).
 
@@ -9,11 +13,11 @@ trait Bar { //~ WARN trait `Bar` is never used
 impl Bar for () {}
 
 #[repr(C)]
-struct FooS<T:?Sized>(T);
+struct FooS<T>(T);
 #[repr(C)]
-struct BarS<T:?Sized>(T);
+struct BarS<T>(T);
 
-fn foo_to_bar<T:?Sized>(u: *const FooS<T>) -> *const BarS<T> {
+fn foo_to_bar<T>(u: *const FooS<T>) -> *const BarS<T> {
     u as *const BarS<T>
 }
 

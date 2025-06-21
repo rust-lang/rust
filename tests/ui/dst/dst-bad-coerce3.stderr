@@ -1,5 +1,5 @@
 error[E0597]: `f1` does not live long enough
-  --> $DIR/dst-bad-coerce3.rs:14:32
+  --> $DIR/dst-bad-coerce3.rs:16:32
    |
 LL | fn baz<'a>() {
    |        -- lifetime `'a` defined here
@@ -15,7 +15,7 @@ LL | }
    | - `f1` dropped here while still borrowed
 
 error[E0597]: `f1` does not live long enough
-  --> $DIR/dst-bad-coerce3.rs:19:25
+  --> $DIR/dst-bad-coerce3.rs:21:25
    |
 LL | fn baz<'a>() {
    |        -- lifetime `'a` defined here

@@ -1,4 +1,8 @@
 //@ run-pass
+
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
+
 // Check that trait objects without a principal codegen properly.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -14,9 +18,9 @@ impl<'a> Drop for SetOnDrop<'a> {
     }
 }
 
-trait TypeEq<V: ?Sized> {}
-impl<T: ?Sized> TypeEq<T> for T {}
-fn assert_types_eq<U: ?Sized, V: ?Sized>() where U: TypeEq<V> {}
+trait TypeEq<V> {}
+impl<T> TypeEq<T> for T {}
+fn assert_types_eq<U, V>() where U: TypeEq<V> {}
 
 fn main() {
     // Check that different ways of writing the same type are equal.

@@ -1,14 +1,14 @@
 error[E0277]: the size for values of type `[isize]` cannot be known at compilation time
-  --> $DIR/dst-bad-deep-2.rs:11:38
+  --> $DIR/dst-bad-deep-2.rs:14:38
    |
 LL |     let h: &Fat<Fat<[isize]>> = &Fat(*g);
    |                                      ^^ doesn't have a size known at compile-time
    |
    = help: within `Fat<[isize]>`, the trait `Sized` is not implemented for `[isize]`
 note: required because it appears within the type `Fat<[isize]>`
-  --> $DIR/dst-bad-deep-2.rs:6:8
+  --> $DIR/dst-bad-deep-2.rs:9:8
    |
-LL | struct Fat<T: ?Sized>(T);
+LL | struct Fat<T>(T);
    |        ^^^
    = note: all function arguments must have a statically known size
    = help: unsized fn params are gated as an unstable feature

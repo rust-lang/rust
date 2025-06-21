@@ -5,14 +5,14 @@ use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::{AmbigArg, LangItem, PolyTraitRef};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor, Upcast,
 };
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::traits;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -187,6 +187,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) {
         let tcx = self.tcx();
+
+        // Skip adding any default bounds if `#![rustc_no_implicit_bounds]`
+        if tcx.has_attr(CRATE_DEF_ID, sym::rustc_no_implicit_bounds) {
+            return;
+        }
 
         let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, span);
         let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, span);
@@ -408,24 +413,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         let trait_id = tcx.lang_items().get(trait_);
         if let Some(trait_id) = trait_id
-            && self.do_not_provide_default_trait_bound(
-                trait_id,
-                hir_bounds,
-                self_ty_where_predicates,
-            )
+            && self.should_add_default_traits(trait_id, hir_bounds, self_ty_where_predicates)
         {
             add_trait_bound(tcx, bounds, self_ty, trait_id, span);
         }
     }
 
-    fn do_not_provide_default_trait_bound<'a>(
+    /// Returns `true` if default trait bound should be added.
+    fn should_add_default_traits<'a>(
         &self,
         trait_def_id: DefId,
         hir_bounds: &'a [hir::GenericBound<'tcx>],
         self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
     ) -> bool {
         let collected = collect_bounds(hir_bounds, self_ty_where_predicates, trait_def_id);
-        !collected.any()
+        !self.tcx().has_attr(CRATE_DEF_ID, sym::rustc_no_implicit_bounds) && !collected.any()
     }
 
     /// Lower HIR bounds into `bounds` given the self type `param_ty` and the overarching late-bound vars if any.

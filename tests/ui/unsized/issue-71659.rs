@@ -3,22 +3,24 @@
 //@[next] compile-flags: -Znext-solver
 
 #![feature(unsize)]
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 use std::marker::Unsize;
 
-pub trait CastTo<T: ?Sized>: Unsize<T> {
+pub trait CastTo<T>: Unsize<T> {
     fn cast_to(&self) -> &T;
 }
 
-impl<T: ?Sized, U: ?Sized + Unsize<T>> CastTo<T> for U {
+impl<T, U: Unsize<T>> CastTo<T> for U {
     fn cast_to(&self) -> &T {
         self
     }
 }
 
-impl<T: ?Sized> Cast for T {}
+impl<T> Cast for T {}
 pub trait Cast {
-    fn cast<T: ?Sized>(&self) -> &T
+    fn cast<T>(&self) -> &T
     where
         Self: CastTo<T>,
     {

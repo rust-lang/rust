@@ -3,7 +3,10 @@
 // because it would require stack allocation of an unsized temporary (*g in the
 // test).
 
-struct Fat<T: ?Sized>(T);
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
+
+struct Fat<T>(T);
 
 pub fn main() {
     let f: Fat<[isize; 3]> = Fat([5, 6, 7]);

@@ -1,5 +1,7 @@
 //@ run-pass
 #![feature(coerce_unsized, unsize)]
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 use std::ops::CoerceUnsized;
 use std::marker::Unsize;
@@ -19,12 +21,12 @@ fn simple_array_coercion(x: &[u8; 3]) -> &[u8] { x }
 fn square(a: u32) -> u32 { a * a }
 
 #[derive(PartialEq,Eq)]
-struct PtrWrapper<'a, T: 'a+?Sized>(u32, u32, (), &'a T);
-impl<'a, T: ?Sized+Unsize<U>, U: ?Sized>
+struct PtrWrapper<'a, T: 'a>(u32, u32, (), &'a T);
+impl<'a, T: Unsize<U>, U>
     CoerceUnsized<PtrWrapper<'a, U>> for PtrWrapper<'a, T> {}
 
-struct TrivPtrWrapper<'a, T: 'a+?Sized>(&'a T);
-impl<'a, T: ?Sized+Unsize<U>, U: ?Sized>
+struct TrivPtrWrapper<'a, T: 'a>(&'a T);
+impl<'a, T: Unsize<U>, U>
     CoerceUnsized<TrivPtrWrapper<'a, U>> for TrivPtrWrapper<'a, T> {}
 
 fn coerce_ptr_wrapper(p: PtrWrapper<[u8; 3]>) -> PtrWrapper<[u8]> {
@@ -40,7 +42,7 @@ fn coerce_fat_ptr_wrapper(p: PtrWrapper<dyn Fn(u32) -> u32+Send>)
     p
 }
 
-fn coerce_ptr_wrapper_poly<'a, T, Trait: ?Sized>(p: PtrWrapper<'a, T>)
+fn coerce_ptr_wrapper_poly<'a, T, Trait>(p: PtrWrapper<'a, T>)
                                                  -> PtrWrapper<'a, Trait>
     where PtrWrapper<'a, T>: CoerceUnsized<PtrWrapper<'a, Trait>>
 {

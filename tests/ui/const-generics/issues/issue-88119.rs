@@ -2,6 +2,8 @@
 //@ compile-flags: -Znext-solver
 #![allow(incomplete_features)]
 #![feature(const_trait_impl, generic_const_exprs)]
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 #[const_trait]
 trait ConstName {
@@ -12,18 +14,18 @@ impl const ConstName for u8 {
     const NAME_BYTES: &'static [u8] = b"u8";
 }
 
-const fn name_len<T: ?Sized + ConstName>() -> usize {
+const fn name_len<T: ConstName>() -> usize {
     T::NAME_BYTES.len()
 }
 
-impl<T: ?Sized + ConstName> const ConstName for &T
+impl<T: ConstName> const ConstName for &T
 where
     [(); name_len::<T>()]:,
 {
     const NAME_BYTES: &'static [u8] = b"&T";
 }
 
-impl<T: ?Sized + ConstName> const ConstName for &mut T
+impl<T: ConstName> const ConstName for &mut T
 where
     [(); name_len::<T>()]:,
 {

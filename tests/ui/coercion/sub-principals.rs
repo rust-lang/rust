@@ -7,10 +7,12 @@
 // a non-higer-ranked instantiation.
 
 #![feature(unsize)]
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 use std::marker::Unsize;
 
-fn test<T: ?Sized, U: ?Sized>()
+fn test<T, U>()
 where
     T: Unsize<U>,
 {

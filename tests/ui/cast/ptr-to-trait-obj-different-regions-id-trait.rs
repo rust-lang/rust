@@ -2,20 +2,22 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ check-fail
-//
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
+
 // Make sure we can't trick the compiler by using a projection.
 
 trait Cat<'a> {}
 impl Cat<'_> for () {}
 
 trait Id {
-    type Id: ?Sized;
+    type Id;
 }
-impl<T: ?Sized> Id for T {
+impl<T> Id for T {
     type Id = T;
 }
 
-struct S<T: ?Sized> {
+struct S<T> {
     tail: <T as Id>::Id,
 }
 
