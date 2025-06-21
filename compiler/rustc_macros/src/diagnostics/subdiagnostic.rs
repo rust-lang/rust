@@ -220,7 +220,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     }
 
     /// Generates the code for a field with no attributes.
-    fn generate_field_arg(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
+    fn generate_field_arg(&mut self, binding_info: &BindingInfo<'_>) -> (TokenStream, TokenStream) {
         let diag = &self.parent.diag;
 
         let field = binding_info.ast();
@@ -230,12 +230,16 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let ident = field.ident.as_ref().unwrap();
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
-        quote! {
+        let args = quote! {
             #diag.arg(
                 stringify!(#ident),
                 #field_binding
             );
-        }
+        };
+        let remove_args = quote! {
+            #diag.remove_arg(stringify!(#ident));
+        };
+        (args, remove_args)
     }
 
     /// Generates the necessary code for all attributes on a field.
@@ -600,8 +604,13 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
             calls.extend(call);
         }
-
-        let plain_args: TokenStream = self
+        let store_args = quote! {
+            #diag.store_args();
+        };
+        let restore_args = quote! {
+            #diag.restore_args();
+        };
+        let (plain_args, remove_args): (TokenStream, TokenStream) = self
             .variant
             .bindings()
             .iter()
@@ -610,12 +619,23 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .collect();
 
         let formatting_init = &self.formatting_init;
+
+        // For #[derive(Subdiagnostic)]
+        //
+        // - Store args of the main diagnostic for later restore.
+        // - add args of subdiagnostic.
+        // - Generate the calls, such as note, label, etc.
+        // - Remove the arguments for allowing Vec<Subdiagnostic> to be used.
+        // - Restore the arguments for allowing main and subdiagnostic share the same fields.
         Ok(quote! {
             #init
             #formatting_init
             #attr_args
+            #store_args
             #plain_args
             #calls
+            #remove_args
+            #restore_args
         })
     }
 }

@@ -309,6 +309,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // change the associated item.
                         err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTrait {
                             span: assoc_ident.span,
+                            trait_name: &trait_name,
                             assoc_kind: assoc_kind_str,
                             suggested_name,
                         });
