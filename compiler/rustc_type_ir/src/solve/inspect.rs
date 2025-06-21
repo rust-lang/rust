@@ -23,7 +23,7 @@ use std::hash::Hash;
 use derive_where::derive_where;
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::solve::{CandidateSource, CanonicalInput, Certainty, Goal, GoalSource, QueryResult};
+use crate::solve::{CandidateSource, Certainty, Goal, GoalSource, QueryResult};
 use crate::{Canonical, CanonicalVarValues, Interner};
 
 /// Some `data` together with information about how they relate to the input
@@ -54,18 +54,12 @@ pub type CanonicalState<I, T> = Canonical<I, State<I, T>>;
 pub struct GoalEvaluation<I: Interner> {
     pub uncanonicalized_goal: Goal<I, I::Predicate>,
     pub orig_values: Vec<I::GenericArg>,
-    pub evaluation: CanonicalGoalEvaluation<I>,
-}
-
-#[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
-pub struct CanonicalGoalEvaluation<I: Interner> {
-    pub goal: CanonicalInput<I>,
-    pub kind: CanonicalGoalEvaluationKind<I>,
+    pub kind: GoalEvaluationKind<I>,
     pub result: QueryResult<I>,
 }
 
 #[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
-pub enum CanonicalGoalEvaluationKind<I: Interner> {
+pub enum GoalEvaluationKind<I: Interner> {
     Overflow,
     Evaluation {
         /// This is always `ProbeKind::Root`.
