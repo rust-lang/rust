@@ -1,8 +1,6 @@
 use std::ops::RangeInclusive;
 
-use rustc_middle::mir::{
-    self, BasicBlock, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges,
-};
+use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
 
 use super::visitor::ResultsVisitor;
 use super::{Analysis, Effect, EffectIndex};
@@ -117,7 +115,7 @@ impl Direction for Backward {
                         let mut tmp = analysis.bottom_value(body);
                         for &value in &body.basic_blocks.switch_sources()[&(block, pred)] {
                             tmp.clone_from(exit_state);
-                            analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value);
+                            analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value, None);
                             propagate(pred, &tmp);
                         }
                     } else {
@@ -245,7 +243,7 @@ impl Direction for Forward {
 
     fn apply_effects_in_block<'mir, 'tcx, A>(
         analysis: &mut A,
-        body: &mir::Body<'tcx>,
+        _body: &mir::Body<'tcx>,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
@@ -285,25 +283,10 @@ impl Direction for Forward {
                 }
             }
             TerminatorEdges::SwitchInt { targets, discr } => {
-                if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
-                    let mut tmp = analysis.bottom_value(body);
-                    for (value, target) in targets.iter() {
-                        tmp.clone_from(exit_state);
-                        let value = SwitchTargetValue::Normal(value);
-                        analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value);
-                        propagate(target, &tmp);
-                    }
-
-                    // Once we get to the final, "otherwise" branch, there is no need to preserve
-                    // `exit_state`, so pass it directly to `apply_switch_int_edge_effect` to save
-                    // a clone of the dataflow state.
-                    let otherwise = targets.otherwise();
-                    analysis.apply_switch_int_edge_effect(
-                        &mut data,
-                        exit_state,
-                        SwitchTargetValue::Otherwise,
+                if let Some(data) = analysis.get_switch_int_data(block, discr) {
+                    analysis.apply_switch_int_edge_effect_for_targets(
+                        targets, data, exit_state, propagate,
                     );
-                    propagate(otherwise, exit_state);
                 } else {
                     for target in targets.all_targets() {
                         propagate(*target, exit_state);
