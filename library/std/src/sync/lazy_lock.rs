@@ -62,6 +62,7 @@ union Data<T, F> {
 /// }
 /// ```
 #[stable(feature = "lazy_cell", since = "1.80.0")]
+#[cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type)]
 pub struct LazyLock<T, F = fn() -> T> {
     // FIXME(nonpoison_once): if possible, switch to nonpoison version once it is available
     once: Once,
