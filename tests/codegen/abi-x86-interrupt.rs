@@ -13,8 +13,6 @@
 extern crate minicore;
 use minicore::*;
 
-// CHECK: define x86_intrcc i64 @has_x86_interrupt_abi
+// CHECK: define x86_intrcc void @has_x86_interrupt_abi
 #[no_mangle]
-pub extern "x86-interrupt" fn has_x86_interrupt_abi(a: i64) -> i64 {
-    a
-}
+pub extern "x86-interrupt" fn has_x86_interrupt_abi() {}
