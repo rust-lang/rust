@@ -6,7 +6,9 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, OwnerId, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::{Span};
+use rustc_attr_data_structures::AttributeKind;
+use rustc_attr_data_structures::find_attr;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -74,7 +76,10 @@ fn check_method(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_def: LocalDefId, spa
         // We only show this warning for public exported methods.
         && cx.effective_visibilities.is_exported(fn_def)
         // We don't want to emit this lint if the `#[must_use]` attribute is already there.
-        && !cx.tcx.hir_attrs(owner_id.into()).iter().any(|attr| attr.has_name(sym::must_use))
+        && !find_attr!(
+            cx.tcx.hir_attrs(owner_id.into()),
+            AttributeKind::MustUse { .. }
+        )
         && cx.tcx.visibility(fn_def.to_def_id()).is_public()
         && let ret_ty = return_ty(cx, owner_id)
         && let self_arg = nth_arg(cx, owner_id, 0)

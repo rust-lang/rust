@@ -2,6 +2,7 @@ use std::iter;
 
 use rustc_ast::util::{classify, parser};
 use rustc_ast::{self as ast, ExprKind, HasAttrs as _, StmtKind};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_errors::{MultiSpan, pluralize};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -368,10 +369,12 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         }
 
         fn is_def_must_use(cx: &LateContext<'_>, def_id: DefId, span: Span) -> Option<MustUsePath> {
-            if let Some(attr) = cx.tcx.get_attr(def_id, sym::must_use) {
+            if let Some(reason) = find_attr!(
+                cx.tcx.get_all_attrs(def_id),
+                AttributeKind::MustUse { reason, .. } => reason
+            ) {
                 // check for #[must_use = "..."]
-                let reason = attr.value_str();
-                Some(MustUsePath::Def(span, def_id, reason))
+                Some(MustUsePath::Def(span, def_id, *reason))
             } else {
                 None
             }
