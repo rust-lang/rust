@@ -233,8 +233,17 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
+
+    /// Represents `#[must_use]`.
+    MustUse {
+        span: Span,
+        /// must_use can optionally have a reason: `#[must_use = "reason this must be used"]`
+        reason: Option<Symbol>,
+    },
+
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
+
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr(ThinVec<(ReprAttr, Span)>),
 

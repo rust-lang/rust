@@ -1886,7 +1886,10 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         _ => None,
     };
 
-    did.is_some_and(|did| cx.tcx.has_attr(did, sym::must_use))
+    did.is_some_and(|did| find_attr!(
+            cx.tcx.get_all_attrs(did),
+            AttributeKind::MustUse { ..}
+        ))
 }
 
 /// Checks if a function's body represents the identity function. Looks for bodies of the form:

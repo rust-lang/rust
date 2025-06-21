@@ -403,12 +403,6 @@ LL | #![link_section = "1800"]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: `#[must_use]` has no effect when applied to a module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:72:1
-   |
-LL | #![must_use]
-   | ^^^^^^^^^^^^
-
 warning: attribute should be applied to a function definition
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:62:1
    |
@@ -416,6 +410,12 @@ LL | #![cold]
    | ^^^^^^^^ cannot be applied to crates
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: `#[must_use]` has no effect when applied to a module
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:72:1
+   |
+LL | #![must_use]
+   | ^^^^^^^^^^^^
 
 warning: `#[macro_use]` only has an effect on `extern crate` and modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:176:5

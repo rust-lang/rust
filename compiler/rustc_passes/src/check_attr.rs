@@ -163,6 +163,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::AsPtr(attr_span)) => {
                     self.check_applied_to_fn_or_method(hir_id, *attr_span, span, target)
                 }
+                Attribute::Parsed(AttributeKind::MustUse { span, .. }) => {
+                    self.check_must_use(hir_id, *span, target)
+                }
                 Attribute::Unparsed(_) => {
                     match attr.path().as_slice() {
                         [sym::diagnostic, sym::do_not_recommend, ..] => {
@@ -235,7 +238,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::const_trait, ..] => self.check_must_be_applied_to_trait(attr, span, target),
                         [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
-                        [sym::must_use, ..] => self.check_must_use(hir_id, attr, target),
                         [sym::may_dangle, ..] => self.check_may_dangle(hir_id, attr),
                         [sym::rustc_pass_by_value, ..] => self.check_pass_by_value(attr, span, target),
                         [sym::rustc_allow_incoherent_impl, ..] => {
@@ -688,7 +690,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             AttributeKind::Deprecation { .. }
                             | AttributeKind::Repr { .. }
                             | AttributeKind::Align { .. }
-                            | AttributeKind::Cold(..),
+                            | AttributeKind::Cold(..)
+                            | AttributeKind::MustUse { .. },
                         ) => {
                             continue;
                         }
@@ -1563,7 +1566,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Warns against some misuses of `#[must_use]`
-    fn check_must_use(&self, hir_id: HirId, attr: &Attribute, target: Target) {
+    fn check_must_use(&self, hir_id: HirId, attr_span: Span, target: Target) {
         if matches!(
             target,
             Target::Fn
@@ -1603,7 +1606,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.tcx.emit_node_span_lint(
             UNUSED_ATTRIBUTES,
             hir_id,
-            attr.span(),
+            attr_span,
             errors::MustUseNoEffect { article, target },
         );
     }
