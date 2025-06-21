@@ -1128,6 +1128,14 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn float_vid(self) -> Option<ty::FloatVid> {
+        match self.kind() {
+            &Infer(FloatVar(vid)) => Some(vid),
+            _ => None,
+        }
+    }
+
+    #[inline]
     pub fn is_ty_or_numeric_infer(self) -> bool {
         matches!(self.kind(), Infer(_))
     }

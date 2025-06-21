@@ -120,6 +120,10 @@ hir_typeck_field_multiply_specified_in_initializer =
     .label = used more than once
     .previous_use_label = first use of `{$ident}`
 
+hir_typeck_float_literal_f32_fallback =
+    falling back to `f32` as the trait bound `f32: From<f64>` is not satisfied
+    .suggestion = explicitly specify the type as `f32`
+
 hir_typeck_fn_item_to_variadic_function = can't pass a function item to a variadic function
     .suggestion = use a function pointer instead
     .help = a function item is zero-sized and needs to be cast into a function pointer to be used in FFI

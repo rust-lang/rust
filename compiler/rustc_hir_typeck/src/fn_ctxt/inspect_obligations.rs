@@ -1,5 +1,7 @@
 //! A utility module to inspect currently ambiguous obligations in the current context.
 
+use rustc_data_structures::unord::UnordSet;
+use rustc_hir::def_id::DefId;
 use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
 use rustc_middle::traits::solve::GoalSource;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -96,6 +98,69 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         obligations_for_self_ty
     }
+
+    /// Only needed for the `From<{float}>` for `f32` type fallback.
+    #[instrument(skip(self), level = "debug")]
+    pub(crate) fn from_float_for_f32_root_vids(&self) -> UnordSet<ty::FloatVid> {
+        if self.next_trait_solver() {
+            self.from_float_for_f32_root_vids_next()
+        } else {
+            let Some(from_trait) = self.tcx.lang_items().from_trait() else {
+                return UnordSet::new();
+            };
+            self.fulfillment_cx
+                .borrow_mut()
+                .pending_obligations()
+                .into_iter()
+                .filter_map(|obligation| {
+                    self.predicate_from_float_for_f32_root_vid(from_trait, obligation.predicate)
+                })
+                .collect()
+        }
+    }
+
+    fn predicate_from_float_for_f32_root_vid(
+        &self,
+        from_trait: DefId,
+        predicate: ty::Predicate<'tcx>,
+    ) -> Option<ty::FloatVid> {
+        // The predicates we are looking for look like
+        // `TraitPredicate(<f32 as std::convert::From<{float}>>, polarity:Positive)`.
+        // They will have no bound variables.
+        match predicate.kind().no_bound_vars() {
+            Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
+                polarity: ty::PredicatePolarity::Positive,
+                trait_ref,
+            }))) if trait_ref.def_id == from_trait
+                && self.shallow_resolve(trait_ref.self_ty()).kind()
+                    == &ty::Float(ty::FloatTy::F32) =>
+            {
+                self.root_float_vid(trait_ref.args.type_at(1))
+            }
+            _ => None,
+        }
+    }
+
+    fn from_float_for_f32_root_vids_next(&self) -> UnordSet<ty::FloatVid> {
+        let Some(from_trait) = self.tcx.lang_items().from_trait() else {
+            return UnordSet::new();
+        };
+        let obligations = self.fulfillment_cx.borrow().pending_obligations();
+        debug!(?obligations);
+        let mut vids = UnordSet::new();
+        for obligation in obligations {
+            let mut visitor = FindFromFloatForF32RootVids {
+                fcx: self,
+                from_trait,
+                vids: &mut vids,
+                span: obligation.cause.span,
+            };
+
+            let goal = obligation.as_goal();
+            self.visit_proof_tree(goal, &mut visitor);
+        }
+        vids
+    }
 }
 
 struct NestedObligationsForSelfTy<'a, 'tcx> {
@@ -105,7 +170,7 @@ struct NestedObligationsForSelfTy<'a, 'tcx> {
     obligations_for_self_ty: &'a mut PredicateObligations<'tcx>,
 }
 
-impl<'a, 'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'a, 'tcx> {
+impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'_, 'tcx> {
     fn span(&self) -> Span {
         self.root_cause.span
     }
@@ -155,6 +220,40 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'a, 'tcx> {
         // the nested `?0: FnOnce(u32)` goal.
         if let Some(candidate) = inspect_goal.unique_applicable_candidate() {
             candidate.visit_nested_no_probe(self)
+        }
+    }
+}
+
+struct FindFromFloatForF32RootVids<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
+    from_trait: DefId,
+    vids: &'a mut UnordSet<ty::FloatVid>,
+    span: Span,
+}
+
+impl<'tcx> ProofTreeVisitor<'tcx> for FindFromFloatForF32RootVids<'_, 'tcx> {
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn config(&self) -> InspectConfig {
+        // Avoid hang from exponentially growing proof trees (see `cycle-modulo-ambig-aliases.rs`).
+        // 3 is more than enough for all occurences in practice (a.k.a. `Into`).
+        InspectConfig { max_depth: 3 }
+    }
+
+    fn visit_goal(&mut self, inspect_goal: &InspectGoal<'_, 'tcx>) {
+        if let Some(vid) = self
+            .fcx
+            .predicate_from_float_for_f32_root_vid(self.from_trait, inspect_goal.goal().predicate)
+        {
+            self.vids.insert(vid);
+        } else if let Some(candidate) = inspect_goal.unique_applicable_candidate() {
+            let start_len = self.vids.len();
+            let _ = candidate.goal().infcx().commit_if_ok(|_| {
+                candidate.visit_nested_no_probe(self);
+                if self.vids.len() > start_len { Ok(()) } else { Err(()) }
+            });
         }
     }
 }
