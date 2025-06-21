@@ -321,6 +321,13 @@ impl<Wrapped, Tag> AstNodeWrapper<Wrapped, Tag> {
     }
 }
 
+// FIXME: remove after `stmt_expr_attributes` is stabilized.
+impl<T, Tag> From<AstNodeWrapper<P<T>, Tag>> for AstNodeWrapper<T, Tag> {
+    fn from(value: AstNodeWrapper<P<T>, Tag>) -> Self {
+        AstNodeWrapper { wrapped: *value.wrapped, tag: value.tag }
+    }
+}
+
 impl<Wrapped: HasNodeId, Tag> HasNodeId for AstNodeWrapper<Wrapped, Tag> {
     fn node_id(&self) -> NodeId {
         self.wrapped.node_id()

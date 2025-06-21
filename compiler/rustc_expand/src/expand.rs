@@ -1873,14 +1873,14 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
 /// It can be removed once that feature is stabilized.
 struct MethodReceiverTag;
 
-impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag> {
-    type OutputTy = Self;
+impl InvocationCollectorNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
+    type OutputTy = AstNodeWrapper<P<ast::Expr>, MethodReceiverTag>;
     const KIND: AstFragmentKind = AstFragmentKind::MethodReceiverExpr;
     fn descr() -> &'static str {
         "an expression"
     }
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Expr(self.wrapped)
+        Annotatable::Expr(P(self.wrapped))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         AstNodeWrapper::new(fragment.make_method_receiver_expr(), MethodReceiverTag)
@@ -1983,9 +1983,9 @@ impl DummyAstNode for ast::Expr {
     }
 }
 
-impl DummyAstNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag> {
+impl DummyAstNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
     fn dummy() -> Self {
-        AstNodeWrapper::new(P(ast::Expr::dummy()), MethodReceiverTag)
+        AstNodeWrapper::new(ast::Expr::dummy(), MethodReceiverTag)
     }
 }
 
@@ -2431,7 +2431,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.visit_node(node)
     }
 
-    fn visit_method_receiver_expr(&mut self, node: &mut P<ast::Expr>) {
+    fn visit_method_receiver_expr(&mut self, node: &mut ast::Expr) {
         self.visit_node(AstNodeWrapper::from_mut(node, MethodReceiverTag))
     }
 

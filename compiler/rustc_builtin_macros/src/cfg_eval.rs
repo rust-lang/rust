@@ -161,7 +161,7 @@ impl MutVisitor for CfgEval<'_> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn visit_method_receiver_expr(&mut self, expr: &mut P<ast::Expr>) {
+    fn visit_method_receiver_expr(&mut self, expr: &mut ast::Expr) {
         self.0.configure_expr(expr, true);
         mut_visit::walk_expr(self, expr);
     }
