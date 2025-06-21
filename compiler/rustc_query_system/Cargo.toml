@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 parking_lot = "0.12"
-rustc-rayon-core = { version = "0.5.0" }
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr_data_structures = { path = "../rustc_attr_data_structures" }
@@ -21,6 +20,7 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
+rustc_thread_pool = { path = "../rustc_thread_pool" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 # tidy-alphabetical-end
