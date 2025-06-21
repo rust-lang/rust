@@ -1086,47 +1086,8 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
-    // export symbols from a dynamic library. When building a dynamic library,
-    // however, we're going to want some symbols exported, so this function
-    // generates a DEF file which lists all the symbols.
-    //
-    // The linker will read this `*.def` file and export all the symbols from
-    // the dynamic library. Note that this is not as simple as just exporting
-    // all the symbols in the current crate (as specified by `codegen.reachable`)
-    // but rather we also need to possibly export the symbols of upstream
-    // crates. Upstream rlibs may be linked statically to this dynamic library,
-    // in which case they may continue to transitively be used and hence need
-    // their symbols exported.
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
-        // Symbol visibility takes care of this typically
-        if crate_type == CrateType::Executable {
-            let should_export_executable_symbols =
-                self.sess.opts.unstable_opts.export_executable_symbols;
-            if !should_export_executable_symbols {
-                return;
-            }
-        }
-
-        let path = tmpdir.join("lib.def");
-        let res: io::Result<()> = try {
-            let mut f = File::create_buffered(&path)?;
-
-            // Start off with the standard module name header and then go
-            // straight to exports.
-            writeln!(f, "LIBRARY")?;
-            writeln!(f, "EXPORTS")?;
-            for symbol in symbols {
-                debug!("  _{symbol}");
-                writeln!(f, "  {symbol}")?;
-            }
-        };
-        if let Err(error) = res {
-            self.sess.dcx().emit_fatal(errors::LibDefWriteFailure { error });
-        }
-        let mut arg = OsString::from("/DEF:");
-        arg.push(path);
-        self.link_arg(&arg);
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, _symbols: &[String]) {
+        // We already add /EXPORT arguments to the .drectve section of symbols.o.
     }
 
     fn subsystem(&mut self, subsystem: &str) {
