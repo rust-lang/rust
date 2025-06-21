@@ -1,14 +1,14 @@
-error[E0492]: constants cannot refer to interior mutable data
+error[E0492]: interior mutable shared borrows of lifetime-extended temporaries in the top-level scope of a constant are not allowed
   --> $DIR/E0492.rs:4:33
    |
 LL | const B: &'static AtomicUsize = &A;
-   |                                 ^^ this borrow of an interior mutable value may end up in the final value
+   |                                 ^^ this borrow of an interior mutable value refers to a lifetime-extended temporary
 
-error[E0492]: statics cannot refer to interior mutable data
+error[E0492]: interior mutable shared borrows of lifetime-extended temporaries in the top-level scope of a static are not allowed
   --> $DIR/E0492.rs:5:34
    |
 LL | static C: &'static AtomicUsize = &A;
-   |                                  ^^ this borrow of an interior mutable value may end up in the final value
+   |                                  ^^ this borrow of an interior mutable value refers to a lifetime-extended temporary
    |
    = help: to fix this, the value can be extracted to a separate `static` item and then referenced
 

@@ -5,7 +5,7 @@ use std::cell::Cell;
 const FOO: &Option<Cell<usize>> = {
     let mut a = (Some(Cell::new(0)),);
     a.0 = None; // sets `qualif(a)` to `qualif(a) | qualif(None)`
-    &{a.0} //~ ERROR cannot refer to interior mutable
+    &{a.0} //~ ERROR interior mutable shared borrows of lifetime-extended temporaries
 };
 
 fn main() {}

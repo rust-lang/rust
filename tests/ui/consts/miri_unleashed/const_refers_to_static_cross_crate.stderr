@@ -1,41 +1,32 @@
-error[E0080]: constructing invalid value: encountered reference to mutable memory in `const`
-  --> $DIR/const_refers_to_static_cross_crate.rs:13:1
-   |
-LL | const SLICE_MUT: &[u8; 1] = {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
-
-error[E0080]: constructing invalid value: encountered reference to mutable memory in `const`
-  --> $DIR/const_refers_to_static_cross_crate.rs:18:1
-   |
-LL | const U8_MUT: &u8 = {
-   | ^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
-
-error[E0080]: constructing invalid value: encountered reference to mutable memory in `const`
-  --> $DIR/const_refers_to_static_cross_crate.rs:24:1
-   |
-LL | const U8_MUT2: &u8 = {
-   | ^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
-
 error[E0080]: constant accesses mutable global memory
-  --> $DIR/const_refers_to_static_cross_crate.rs:30:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:27:15
    |
 LL |         match static_cross_crate::OPT_ZERO {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `U8_MUT3` failed here
+
+error: constant SLICE_MUT cannot be used as pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:37:9
+   |
+LL |         SLICE_MUT => true,
+   |         ^^^^^^^^^
+   |
+   = note: constants that reference mutable or external memory cannot be used as pattern
+
+error: constant U8_MUT cannot be used as pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:44:9
+   |
+LL |         U8_MUT => true,
+   |         ^^^^^^
+   |
+   = note: constants that reference mutable or external memory cannot be used as pattern
+
+error: constant U8_MUT2 cannot be used as pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:53:9
+   |
+LL |         U8_MUT2 => true,
+   |         ^^^^^^^
+   |
+   = note: constants that reference mutable or external memory cannot be used as pattern
 
 error: aborting due to 4 previous errors
 

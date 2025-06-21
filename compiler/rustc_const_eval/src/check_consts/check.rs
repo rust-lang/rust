@@ -595,11 +595,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut);
 
                 if !is_allowed && self.place_may_escape(place) {
-                    self.check_op(ops::EscapingMutBorrow(if matches!(rvalue, Rvalue::Ref(..)) {
-                        hir::BorrowKind::Ref
-                    } else {
-                        hir::BorrowKind::Raw
-                    }));
+                    self.check_op(ops::EscapingMutBorrow);
                 }
             }
 
