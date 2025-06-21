@@ -439,24 +439,20 @@ impl CratesIndexPart {
         let content =
             format!("<h1>List of all crates</h1><ul class=\"all-items\">{DELIMITER}</ul>");
         let template = layout::render(layout, &page, "", content, style_files);
-        match SortedTemplate::from_template(&template, DELIMITER) {
-            Ok(template) => template,
-            Err(e) => panic!(
-                "Object Replacement Character (U+FFFC) should not appear in the --index-page: {e}"
-            ),
-        }
+        SortedTemplate::from_template(&template, DELIMITER)
+            .expect("Object Replacement Character (U+FFFC) should not appear in the --index-page")
     }
 
     /// Might return parts that are duplicate with ones in prexisting index.html
     fn get(crate_name: &str, external_crates: &[String]) -> Result<PartsAndLocations<Self>, Error> {
         let mut ret = PartsAndLocations::default();
-        let path = PathBuf::from("index.html");
+        let path = Path::new("index.html");
         for crate_name in external_crates.iter().map(|s| s.as_str()).chain(once(crate_name)) {
             let part = format!(
                 "<li><a href=\"{trailing_slash}index.html\">{crate_name}</a></li>",
                 trailing_slash = ensure_trailing_slash(crate_name),
             );
-            ret.push(path.clone(), part);
+            ret.push(path.to_path_buf(), part);
         }
         Ok(ret)
     }
@@ -737,7 +733,7 @@ impl TraitAliasPart {
                 },
             };
 
-            let implementors = imps
+            let mut implementors = imps
                 .iter()
                 .filter_map(|imp| {
                     // If the trait and implementation are in the same crate, then
@@ -759,12 +755,12 @@ impl TraitAliasPart {
                         })
                     }
                 })
-                .collect::<Vec<_>>();
+                .peekable();
 
             // Only create a js file if we have impls to add to it. If the trait is
             // documented locally though we always create the file to avoid dead
             // links.
-            if implementors.is_empty() && !cache.paths.contains_key(&did) {
+            if implementors.peek().is_none() && !cache.paths.contains_key(&did) {
                 continue;
             }
 
@@ -775,11 +771,7 @@ impl TraitAliasPart {
             path.push(format!("{remote_item_type}.{}.js", remote_path[remote_path.len() - 1]));
 
             let part = OrderedJson::array_sorted(
-                implementors
-                    .iter()
-                    .map(OrderedJson::serialize)
-                    .collect::<Result<Vec<_>, _>>()
-                    .unwrap(),
+                implementors.map(|implementor| OrderedJson::serialize(implementor).unwrap()),
             );
             path_parts.push(path, OrderedJson::array_unsorted([crate_name_json, &part]));
         }
@@ -874,9 +866,8 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
             let impl_ = cache
                 .impls
                 .get(&target_did)
-                .map(|v| &v[..])
-                .unwrap_or_default()
-                .iter()
+                .into_iter()
+                .flatten()
                 .map(|impl_| {
                     (impl_.impl_item.item_id, AliasedTypeImpl { impl_, type_aliases: Vec::new() })
                 })
@@ -891,14 +882,8 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
         // Exclude impls that are directly on this type. They're already in the HTML.
         // Some inlining scenarios can cause there to be two versions of the same
         // impl: one on the type alias and one on the underlying target type.
-        let mut seen_impls: FxHashSet<ItemId> = cache
-            .impls
-            .get(&self_did)
-            .map(|s| &s[..])
-            .unwrap_or_default()
-            .iter()
-            .map(|i| i.impl_item.item_id)
-            .collect();
+        let mut seen_impls: FxHashSet<ItemId> =
+            cache.impls.get(&self_did).into_iter().flatten().map(|i| i.impl_item.item_id).collect();
         for (impl_item_id, aliased_type_impl) in &mut aliased_type.impl_ {
             // Only include this impl if it actually unifies with this alias.
             // Synthetic impls are not included; those are also included in the HTML.
