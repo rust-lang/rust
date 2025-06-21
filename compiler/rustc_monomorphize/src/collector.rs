@@ -949,6 +949,9 @@ fn visit_instance_use<'tcx>(
         }
         ty::InstanceKind::DropGlue(_, None) => {
             // Don't need to emit noop drop glue if we are calling directly.
+            //
+            // Note that we also optimize away the call to visit_instance_use in vtable construction
+            // (see create_mono_items_for_vtable_methods).
             if !is_direct_call {
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
@@ -1177,8 +1180,13 @@ fn create_mono_items_for_vtable_methods<'tcx>(
         output.extend(methods);
     }
 
-    // Also add the destructor.
-    visit_drop_use(tcx, impl_ty, false, source, output);
+    // Also add the destructor, if it's necessary.
+    //
+    // This matches the check in vtable_allocation_provider in middle/ty/vtable.rs,
+    // if we don't need drop we're not adding an actual pointer to the vtable.
+    if impl_ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized()) {
+        visit_drop_use(tcx, impl_ty, false, source, output);
+    }
 }
 
 /// Scans the CTFE alloc in order to find function pointers and statics that must be monomorphized.
