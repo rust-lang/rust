@@ -994,14 +994,15 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub(crate) uncovered: Uncovered,
     #[subdiagnostic]
     pub(crate) inform: Option<Inform>,
-    #[label(mir_build_confused)]
-    pub(crate) interpreted_as_const: Option<Span>,
     #[subdiagnostic]
-    pub(crate) interpreted_as_const_sugg: Option<InterpretedAsConst>,
+    pub(crate) interpreted_as_const: Option<InterpretedAsConst>,
+    #[subdiagnostic]
+    pub(crate) interpreted_as_const_sugg: Option<InterpretedAsConstSugg>,
     #[subdiagnostic]
     pub(crate) adt_defined_here: Option<AdtDefinedHere<'tcx>>,
     #[note(mir_build_privately_uninhabited)]
     pub(crate) witness_1_is_privately_uninhabited: bool,
+    pub(crate) witness_1: String,
     #[note(mir_build_pattern_ty)]
     pub(crate) _p: (),
     pub(crate) pattern_ty: Ty<'tcx>,
@@ -1015,6 +1016,14 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
 #[note(mir_build_inform_irrefutable)]
 #[note(mir_build_more_information)]
 pub(crate) struct Inform;
+
+#[derive(Subdiagnostic)]
+#[label(mir_build_confused)]
+pub(crate) struct InterpretedAsConst {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) variable: String,
+}
 
 pub(crate) struct AdtDefinedHere<'tcx> {
     pub(crate) adt_def_span: Span,
@@ -1046,7 +1055,7 @@ impl<'tcx> Subdiagnostic for AdtDefinedHere<'tcx> {
     applicability = "maybe-incorrect",
     style = "verbose"
 )]
-pub(crate) struct InterpretedAsConst {
+pub(crate) struct InterpretedAsConstSugg {
     #[primary_span]
     pub(crate) span: Span,
     pub(crate) variable: String,
