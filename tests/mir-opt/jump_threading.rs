@@ -449,9 +449,17 @@ fn disappearing_bb(x: u8) -> u8 {
 }
 
 /// Verify that we can thread jumps when we assign from an aggregate constant.
-fn aggregate(x: u8) -> u8 {
+fn aggregate() -> u8 {
     // CHECK-LABEL: fn aggregate(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
     // CHECK-NOT: switchInt(
+    // CHECK: [[a2:_.*]] = copy [[a]];
+    // CHECK: {{_.*}} = Eq(move [[a2]], const 7_u8);
+    // CHECK-NEXT: goto -> [[bb:bb.*]];
+    // CHECK: [[bb]]: {
+    // CHECK-NOT: }
+    // CHECK: _0 = copy [[a]];
 
     const FOO: (u8, u8) = (5, 13);
 
@@ -508,7 +516,16 @@ fn assume(a: u8, b: bool) -> u8 {
 /// Verify that jump threading succeeds seeing through copies of aggregates.
 fn aggregate_copy() -> u32 {
     // CHECK-LABEL: fn aggregate_copy(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: debug c => [[c:_.*]];
     // CHECK-NOT: switchInt(
+    // CHECK: [[c2:_.*]] = copy [[c]];
+    // CHECK: {{_.*}} = Eq(move [[c2]], const 2_u32);
+    // CHECK-NEXT: goto -> [[bb:bb.*]];
+    // CHECK: [[bb]]: {
+    // CHECK-NOT: }
+    // CHECK: _0 = const 13_u32;
 
     const Foo: (u32, u32) = (5, 3);
 
@@ -532,6 +549,14 @@ fn floats() -> u32 {
 
 pub fn bitwise_not() -> i32 {
     // CHECK-LABEL: fn bitwise_not(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: [[a2:_.*]] = copy [[a]];
+    // CHECK: [[not:_.*]] = Not(move [[a2]]);
+    // CHECK: {{_.*}} = Eq(move [[not]], const 0_i32);
+    // CHECK-NEXT: goto -> [[bb:bb.*]];
+    // CHECK: [[bb]]: {
+    // CHECK-NOT: }
+    // CHECK: _0 = const 0_i32;
 
     // Test for #131195, which was optimizing `!a == b` into `a != b`.
     let a = 1;
@@ -540,6 +565,14 @@ pub fn bitwise_not() -> i32 {
 
 pub fn logical_not() -> i32 {
     // CHECK-LABEL: fn logical_not(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: [[a2:_.*]] = copy [[a]];
+    // CHECK: [[not:_.*]] = Not(move [[a2]]);
+    // CHECK: {{_.*}} = Eq(move [[not]], const true);
+    // CHECK-NEXT: goto -> [[bb:bb.*]];
+    // CHECK: [[bb]]: {
+    // CHECK-NOT: }
+    // CHECK: _0 = const 1_i32;
 
     let a = false;
     if !a == true { 1 } else { 0 }
@@ -557,7 +590,7 @@ fn main() {
     mutable_ref();
     renumbered_bb(true);
     disappearing_bb(7);
-    aggregate(7);
+    aggregate();
     assume(7, false);
     floats();
     bitwise_not();
