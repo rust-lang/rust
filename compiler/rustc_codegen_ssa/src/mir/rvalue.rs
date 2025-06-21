@@ -67,6 +67,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         base::coerce_unsized_into(bx, scratch, dest);
                         scratch.storage_dead(bx);
                     }
+                    OperandValue::Uninit => {}
                     OperandValue::Ref(val) => {
                         if val.llextra.is_some() {
                             bug!("unsized coercion on an unsized rvalue");
@@ -90,24 +91,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                // When the element is a const with all bytes uninit, emit a single memset that
-                // writes undef to the entire destination.
-                if let mir::Operand::Constant(const_op) = elem {
-                    let val = self.eval_mir_constant(const_op);
-                    if val.all_bytes_uninit(self.cx.tcx()) {
-                        let size = bx.const_usize(dest.layout.size.bytes());
-                        bx.memset(
-                            dest.val.llval,
-                            bx.const_undef(bx.type_i8()),
-                            size,
-                            dest.val.align,
-                            MemFlags::empty(),
-                        );
-                        return;
-                    }
-                }
-
                 let cg_elem = self.codegen_operand(bx, elem);
+                // Normally the check for uninit is handled inside the operand helpers, but in this
+                // one case we want to bail early so that we don't generate the loop form with an
+                // empty body.
+                if cg_elem.val.is_uninit() {
+                    return;
+                }
 
                 let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
@@ -206,7 +196,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         match src.val {
-            OperandValue::Ref(..) | OperandValue::ZeroSized => {
+            OperandValue::Ref(..) | OperandValue::ZeroSized | OperandValue::Uninit => {
                 span_bug!(
                     self.mir.span,
                     "Operand path should have handled transmute \
@@ -251,6 +241,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let cast_kind = self.value_kind(cast);
 
         match operand.val {
+            OperandValue::Uninit => Some(OperandValue::Uninit),
             OperandValue::Ref(source_place_val) => {
                 assert_eq!(source_place_val.llextra, None);
                 assert_matches!(operand_kind, OperandValueKind::Ref);

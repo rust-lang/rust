@@ -341,6 +341,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     OperandValue::ZeroSized => {
                         // These never have a value to talk about
                     }
+                    OperandValue::Uninit => {
+                        // Better not have a useful name
+                    }
                 },
                 LocalRef::PendingOperand => {}
             }

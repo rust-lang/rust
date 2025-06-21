@@ -17,7 +17,7 @@ use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi, PassMode};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
-use super::operand::OperandValue::{Immediate, Pair, Ref, ZeroSized};
+use super::operand::OperandValue::{Immediate, Pair, Ref, Uninit, ZeroSized};
 use super::place::{PlaceRef, PlaceValue};
 use super::{CachedLlbb, FunctionCx, LocalRef};
 use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphization};
@@ -527,10 +527,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 let op = self.codegen_consume(bx, mir::Place::return_place().as_ref());
-                if let Ref(place_val) = op.val {
-                    bx.load_from_place(bx.backend_type(op.layout), place_val)
-                } else {
-                    op.immediate_or_packed_pair(bx)
+                match op.val {
+                    Uninit => bx.const_undef(bx.immediate_backend_type(op.layout)),
+                    Ref(place_val) => bx.load_from_place(bx.backend_type(op.layout), place_val),
+                    _ => op.immediate_or_packed_pair(bx),
                 }
             }
 
@@ -557,6 +557,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         place_val.llval
                     }
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
+                    Uninit => {
+                        bx.ret_void();
+                        return;
+                    }
                 };
                 load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align.abi)
             }
@@ -1587,6 +1591,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 _ => bug!("ZST {op:?} wasn't ignored, but was passed with abi {arg:?}"),
             },
+            Uninit => {
+                let scratch = PlaceRef::alloca(bx, arg.layout);
+                (scratch.val.llval, scratch.val.align, true)
+            }
         };
 
         if by_ref && !arg.is_indirect() {

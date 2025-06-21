@@ -67,9 +67,14 @@ pub enum OperandValue<V> {
     /// `is_zst` on its `Layout` returns `true`. Note however that
     /// these values can still require alignment.
     ZeroSized,
+    Uninit,
 }
 
 impl<V: CodegenObject> OperandValue<V> {
+    pub(crate) fn is_uninit(&self) -> bool {
+        matches!(self, OperandValue::Uninit)
+    }
+
     /// Treat this value as a pointer and return the data pointer and
     /// optional metadata as backend values.
     ///
@@ -100,6 +105,7 @@ impl<V: CodegenObject> OperandValue<V> {
         ty: TyAndLayout<'tcx>,
     ) -> bool {
         match self {
+            OperandValue::Uninit => true,
             OperandValue::ZeroSized => ty.is_zst(),
             OperandValue::Immediate(_) => cx.is_backend_immediate(ty),
             OperandValue::Pair(_, _) => cx.is_backend_scalar_pair(ty),
@@ -143,6 +149,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         ty: Ty<'tcx>,
     ) -> Self {
         let layout = bx.layout_of(ty);
+
+        if val.all_bytes_uninit(bx.tcx()) {
+            return OperandRef { val: OperandValue::Uninit, layout };
+        }
 
         let val = match val {
             ConstValue::Scalar(x) => {
@@ -442,6 +452,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
         // Read the tag/niche-encoded discriminant from memory.
         let tag_op = match self.val {
+            OperandValue::Uninit => bug!("shouldn't load from uninit"),
             OperandValue::ZeroSized => bug!(),
             OperandValue::Immediate(_) | OperandValue::Pair(_, _) => {
                 self.extract_field(fx, bx, tag_field.as_usize())
@@ -591,6 +602,28 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 }
 
 impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Result<V, abi::Scalar>> {
+    fn update_uninit<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+        tgt: &mut Result<V, abi::Scalar>,
+    ) {
+        let to_scalar = tgt.unwrap_err();
+        let bty = bx.cx().type_from_scalar(to_scalar);
+        *tgt = Ok(bx.const_undef(bty));
+    }
+
+    fn update<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+        tgt: &mut Result<V, abi::Scalar>,
+        src: V,
+        from_scalar: rustc_abi::Scalar,
+    ) {
+        let from_bty = bx.cx().type_from_scalar(from_scalar);
+        let to_scalar = tgt.unwrap_err();
+        let to_bty = bx.cx().type_from_scalar(to_scalar);
+        let imm = transmute_immediate(bx, src, from_scalar, from_bty, to_scalar, to_bty);
+        *tgt = Ok(imm);
+    }
+
     pub(crate) fn insert_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &mut self,
         bx: &mut Bx,
@@ -614,37 +647,48 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Result<V, abi::Scalar>> {
             (field_layout.is_zst(), field_offset == Size::ZERO)
         };
 
-        let mut update = |tgt: &mut Result<V, abi::Scalar>, src, from_scalar| {
-            let from_bty = bx.cx().type_from_scalar(from_scalar);
-            let to_scalar = tgt.unwrap_err();
-            let to_bty = bx.cx().type_from_scalar(to_scalar);
-            let imm = transmute_immediate(bx, src, from_scalar, from_bty, to_scalar, to_bty);
-            *tgt = Ok(imm);
-        };
-
         match (operand.val, operand.layout.backend_repr) {
             (OperandValue::ZeroSized, _) if expect_zst => {}
             (OperandValue::Immediate(v), BackendRepr::Scalar(from_scalar)) => match &mut self.val {
                 OperandValue::Immediate(val @ Err(_)) if is_zero_offset => {
-                    update(val, v, from_scalar);
+                    Self::update(bx, val, v, from_scalar);
                 }
                 OperandValue::Pair(fst @ Err(_), _) if is_zero_offset => {
-                    update(fst, v, from_scalar);
+                    Self::update(bx, fst, v, from_scalar);
                 }
                 OperandValue::Pair(_, snd @ Err(_)) if !is_zero_offset => {
-                    update(snd, v, from_scalar);
+                    Self::update(bx, snd, v, from_scalar);
+                }
+                _ => bug!("Tried to insert {operand:?} into {v:?}.{f:?} of {self:?}"),
+            },
+            (OperandValue::Uninit, BackendRepr::Scalar(_)) => match &mut self.val {
+                OperandValue::Immediate(val @ Err(_)) if is_zero_offset => {
+                    Self::update_uninit(bx, val);
+                }
+                OperandValue::Pair(fst @ Err(_), _) if is_zero_offset => {
+                    Self::update_uninit(bx, fst);
+                }
+                OperandValue::Pair(_, snd @ Err(_)) if !is_zero_offset => {
+                    Self::update_uninit(bx, snd);
                 }
                 _ => bug!("Tried to insert {operand:?} into {v:?}.{f:?} of {self:?}"),
             },
             (OperandValue::Pair(a, b), BackendRepr::ScalarPair(from_sa, from_sb)) => {
                 match &mut self.val {
                     OperandValue::Pair(fst @ Err(_), snd @ Err(_)) => {
-                        update(fst, a, from_sa);
-                        update(snd, b, from_sb);
+                        Self::update(bx, fst, a, from_sa);
+                        Self::update(bx, snd, b, from_sb);
                     }
                     _ => bug!("Tried to insert {operand:?} into {v:?}.{f:?} of {self:?}"),
                 }
             }
+            (OperandValue::Uninit, BackendRepr::ScalarPair(..)) => match &mut self.val {
+                OperandValue::Pair(fst @ Err(_), snd @ Err(_)) => {
+                    Self::update_uninit(bx, fst);
+                    Self::update_uninit(bx, snd);
+                }
+                _ => bug!("Tried to insert {operand:?} into {v:?}.{f:?} of {self:?}"),
+            },
             _ => bug!("Unsupported operand {operand:?} inserting into {v:?}.{f:?} of {self:?}"),
         }
     }
@@ -663,6 +707,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Result<V, abi::Scalar>> {
         };
 
         let val = match val {
+            OperandValue::Uninit => OperandValue::Uninit,
             OperandValue::ZeroSized => OperandValue::ZeroSized,
             OperandValue::Immediate(v) => OperandValue::Immediate(unwrap(v)),
             OperandValue::Pair(a, b) => OperandValue::Pair(unwrap(a), unwrap(b)),
@@ -739,6 +784,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
     ) {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         match self {
+            OperandValue::Uninit => {
+                // Ideally we'd hint to the backend that the destination is deinitialized by the
+                // store. But in practice the destination is almost always uninit already because
+                // OperandValue::Uninit is pretty much only produced by MaybeUninit::uninit.
+                // Attempting to generate a hint by calling memset with undef mostly seems to
+                // confuse LLVM.
+            }
             OperandValue::ZeroSized => {
                 // Avoid generating stores of zero-sized values, because the only way to have a
                 // zero-sized value is through `undef`/`poison`, and the store itself is useless.
