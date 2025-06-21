@@ -378,6 +378,14 @@ pub enum ExprKind<'tcx> {
     Loop {
         body: ExprId,
     },
+    /// A `#[loop_match] loop { state = 'blk: { match state { ... } } }` expression.
+    LoopMatch {
+        /// The state variable that is updated, and also the scrutinee of the match.
+        state: ExprId,
+        region_scope: region::Scope,
+        arms: Box<[ArmId]>,
+        match_span: Span,
+    },
     /// Special expression representing the `let` part of an `if let` or similar construct
     /// (including `if let` guards in match arms, and let-chains formed by `&&`).
     ///
@@ -453,6 +461,11 @@ pub enum ExprKind<'tcx> {
     /// A `continue` expression.
     Continue {
         label: region::Scope,
+    },
+    /// A `#[const_continue] break` expression.
+    ConstContinue {
+        label: region::Scope,
+        value: ExprId,
     },
     /// A `return` expression.
     Return {
