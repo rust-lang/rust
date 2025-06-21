@@ -1139,7 +1139,11 @@ impl<'tcx> Stable<'tcx> for ty::ImplTraitInTraitData {
 impl<'tcx> Stable<'tcx> for rustc_middle::ty::util::Discr<'tcx> {
     type T = stable_mir::ty::Discr;
 
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        stable_mir::ty::Discr { val: self.val, ty: self.ty.stable(tables) }
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &SmirCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        stable_mir::ty::Discr { val: self.val, ty: self.ty.stable(tables, cx) }
     }
 }

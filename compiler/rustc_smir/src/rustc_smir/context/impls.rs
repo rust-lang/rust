@@ -4,13 +4,14 @@
 
 use std::iter;
 
-use rustc_abi::{Endian, Layout};
+use rustc_abi::{Endian, Layout, ReprOptions};
 use rustc_hir::def::DefKind;
 use rustc_hir::{Attribute, LangItem};
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::{BinOp, Body, Const as MirConst, ConstValue, UnOp};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
+use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     AdtDef, AdtKind, AssocItem, Binder, ClosureKind, CoroutineArgsExt, EarlyBinder,
     ExistentialTraitRef, FnSig, GenericArgsRef, Instance, InstanceKind, IntrinsicDef, List,
@@ -363,6 +364,11 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
         self.tcx.is_lang_item(def_id, LangItem::CStr)
     }
 
+    /// Returns the representation options for this ADT.
+    pub fn adt_repr(&self, def: AdtDef<'tcx>) -> ReprOptions {
+        def.repr()
+    }
+
     /// Retrieve the function signature for the given generic arguments.
     pub fn fn_sig(
         &self,
@@ -392,6 +398,25 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
     /// The number of variants in this ADT.
     pub fn adt_variants_len(&self, def: AdtDef<'tcx>) -> usize {
         def.variants().len()
+    }
+
+    /// Discriminant for a given variant index of AdtDef.
+    pub fn adt_discr_for_variant(
+        &self,
+        adt: AdtDef<'tcx>,
+        variant: rustc_abi::VariantIdx,
+    ) -> Discr<'tcx> {
+        adt.discriminant_for_variant(self.tcx, variant)
+    }
+
+    /// Discriminant for a given variand index and args of a coroutine.
+    pub fn coroutine_discr_for_variant(
+        &self,
+        coroutine: DefId,
+        args: GenericArgsRef<'tcx>,
+        variant: rustc_abi::VariantIdx,
+    ) -> Discr<'tcx> {
+        args.as_coroutine().discriminant_for_variant(coroutine, self.tcx, variant)
     }
 
     /// The name of a variant.
