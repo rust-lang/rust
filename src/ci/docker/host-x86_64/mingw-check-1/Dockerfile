@@ -39,7 +39,6 @@ RUN pip3 install --no-deps --no-cache-dir --require-hashes -r /tmp/reuse-require
 
 COPY host-x86_64/mingw-check-1/check-default-config-profiles.sh /scripts/
 COPY host-x86_64/mingw-check-1/validate-toolstate.sh /scripts/
-COPY host-x86_64/mingw-check-1/validate-error-codes.sh /scripts/
 
 # Check library crates on all tier 1 targets.
 # We disable optimized compiler built-ins because that requires a C toolchain for the target.
@@ -52,7 +51,6 @@ ENV SCRIPT \
            python3 ../x.py check --stage 1 --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
            python3 ../x.py check --stage 1 --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
            /scripts/validate-toolstate.sh && \
-           /scripts/validate-error-codes.sh && \
            reuse --include-submodules lint && \
            python3 ../x.py test collect-license-metadata && \
            # Runs checks to ensure that there are no issues in our JS code.
