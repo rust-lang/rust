@@ -31,7 +31,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 #[instrument(skip(tcx, query), level = "debug")]
-fn layout_of<'tcx>(
+pub fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
