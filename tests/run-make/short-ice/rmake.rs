@@ -5,8 +5,6 @@
 // See https://github.com/rust-lang/rust/issues/107910
 
 //@ needs-target-std
-//@ ignore-windows
-// Reason: the assert_eq! on line 32 fails, as error output on Windows is different.
 
 use run_make_support::rustc;
 
