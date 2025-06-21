@@ -48,7 +48,9 @@ fn main() {
     let extra_checks =
         cfg_args.iter().find(|s| s.starts_with("--extra-checks=")).map(String::as_str);
 
-    let bad = std::sync::Arc::new(AtomicBool::new(false));
+    let mut bad = false;
+    let ci_info = CiInfo::new(&mut bad);
+    let bad = std::sync::Arc::new(AtomicBool::new(bad));
 
     let drain_handles = |handles: &mut VecDeque<ScopedJoinHandle<'_, ()>>| {
         // poll all threads for completion before awaiting the oldest one
@@ -110,7 +112,7 @@ fn main() {
         check!(rustdoc_css_themes, &librustdoc_path);
         check!(rustdoc_templates, &librustdoc_path);
         check!(rustdoc_js, &librustdoc_path, &tools_path, &src_path);
-        check!(rustdoc_json, &src_path);
+        check!(rustdoc_json, &src_path, &ci_info);
         check!(known_bug, &crashes_path);
         check!(unknown_revision, &tests_path);
 
