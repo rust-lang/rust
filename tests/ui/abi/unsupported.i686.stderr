@@ -43,93 +43,45 @@ LL | extern "aapcs" {}
 error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:56:8
    |
-LL | extern "msp430-interrupt" fn msp430() {}
-   |        ^^^^^^^^^^^^^^^^^^
-
-error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:58:25
-   |
-LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-   |                         ^^^^^^^^^^^^^^^^^^
-
-error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:62:8
-   |
 LL | extern "msp430-interrupt" {}
    |        ^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "avr-interrupt" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:65:8
-   |
-LL | extern "avr-interrupt" fn avr() {}
-   |        ^^^^^^^^^^^^^^^
-
-error[E0570]: "avr-interrupt" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:67:22
-   |
-LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
-   |                      ^^^^^^^^^^^^^^^
-
-error[E0570]: "avr-interrupt" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:71:8
+  --> $DIR/unsupported.rs:59:8
    |
 LL | extern "avr-interrupt" {}
    |        ^^^^^^^^^^^^^^^
 
 error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:74:8
-   |
-LL | extern "riscv-interrupt-m" fn riscv() {}
-   |        ^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:76:24
-   |
-LL | fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
-   |                        ^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:81:8
+  --> $DIR/unsupported.rs:62:8
    |
 LL | extern "riscv-interrupt-m" {}
    |        ^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "C-cmse-nonsecure-call" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:146:28
+  --> $DIR/unsupported.rs:120:28
    |
 LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
    |                            ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:151:8
+  --> $DIR/unsupported.rs:125:8
    |
 LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:153:29
+  --> $DIR/unsupported.rs:127:29
    |
 LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:157:8
+  --> $DIR/unsupported.rs:131:8
    |
 LL | extern "C-cmse-nonsecure-entry" {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: functions with the "x86-interrupt" ABI cannot be called
-  --> $DIR/unsupported.rs:88:5
-   |
-LL |     f()
-   |     ^^^
-   |
-note: an `extern "x86-interrupt"` function can only be called using inline assembly
-  --> $DIR/unsupported.rs:88:5
-   |
-LL |     f()
-   |     ^^^
-
-error: aborting due to 21 previous errors
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0570`.
