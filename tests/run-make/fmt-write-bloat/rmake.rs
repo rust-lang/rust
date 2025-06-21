@@ -15,14 +15,9 @@
 //! `NO_DEBUG_ASSERTIONS=1`). If debug assertions are disabled, then we can check for the absence of
 //! additional `usize` formatting and padding related symbols.
 
-//@ ignore-windows
-// Reason:
-// - MSVC targets really need to parse the .pdb file (aka the debug information).
-//   On Windows there's an API for that (dbghelp) which maybe we can use
-// - MinGW targets have a lot of symbols included in their runtime which we can't avoid.
-//   We would need to make the symbols we're looking for more specific for this test to work.
 //@ ignore-cross-compile
 
+use run_make_support::artifact_names::bin_name;
 use run_make_support::env::no_debug_assertions;
 use run_make_support::rustc;
 use run_make_support::symbols::any_symbol_contains;
@@ -36,5 +31,5 @@ fn main() {
         // otherwise, add them to the list of symbols to deny.
         panic_syms.extend_from_slice(&["panicking", "panic_fmt", "pad_integral", "Display"]);
     }
-    assert!(!any_symbol_contains("main", &panic_syms));
+    assert!(!any_symbol_contains(bin_name("main"), &panic_syms));
 }
