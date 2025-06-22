@@ -355,6 +355,12 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             return;
         }
         let mut places_to_exclude = FxHashSet::default();
+        //with_capacity(
+        //    self.map.find_value(place.as_ref()).map_or(
+        //        0,
+        //        |place| self.map.values_inside(place).len()
+        //    )
+        //);
         self.map.for_each_aliasing_place(place.as_ref(), extra_elem, &mut |vi| {
             places_to_exclude.insert(vi);
         });
@@ -429,6 +435,10 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         constant: OpTy<'tcx>,
         state: &mut ConditionSet<'a>,
     ) {
+        let values_inside = self.map.values_inside(lhs);
+        if !state.iter().any(|cond| values_inside.contains(&cond.place)) {
+            return;
+        }
         self.map.for_each_projection_value(
             lhs,
             constant,
