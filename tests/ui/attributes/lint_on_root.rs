@@ -1,0 +1,3 @@
+#![inline = ""]
+
+fn main() {}
