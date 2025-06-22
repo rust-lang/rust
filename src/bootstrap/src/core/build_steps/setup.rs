@@ -531,7 +531,7 @@ enum EditorKind {
 
 impl EditorKind {
     // Used in `./tests.rs`.
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub const ALL: &[EditorKind] = &[
         EditorKind::Emacs,
         EditorKind::Helix,

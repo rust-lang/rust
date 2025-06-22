@@ -390,7 +390,6 @@ macro_rules! bootstrap_tool {
         ;
     )+) => {
         #[derive(PartialEq, Eq, Clone)]
-        #[allow(dead_code)]
         pub enum Tool {
             $(
                 $name,

@@ -382,8 +382,6 @@ fn check_trait_item<'tcx>(
         _ => (None, trait_item.span),
     };
 
-    check_dyn_incompatible_self_trait_by_name(tcx, trait_item);
-
     // Check that an item definition in a subtrait is shadowing a supertrait item.
     lint_item_shadowing_supertrait_item(tcx, def_id);
 
@@ -829,70 +827,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATArgsCollector<'tcx> {
             _ => {}
         }
         t.super_visit_with(self)
-    }
-}
-
-fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
-    match ty.kind {
-        hir::TyKind::TraitObject([trait_ref], ..) => match trait_ref.trait_ref.path.segments {
-            [s] => s.res.opt_def_id() == Some(trait_def_id.to_def_id()),
-            _ => false,
-        },
-        _ => false,
-    }
-}
-
-/// Detect when a dyn-incompatible trait is referring to itself in one of its associated items.
-///
-/// In such cases, suggest using `Self` instead.
-fn check_dyn_incompatible_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
-    let (trait_ident, trait_def_id) =
-        match tcx.hir_node_by_def_id(tcx.hir_get_parent_item(item.hir_id()).def_id) {
-            hir::Node::Item(item) => match item.kind {
-                hir::ItemKind::Trait(_, _, ident, ..) => (ident, item.owner_id),
-                _ => return,
-            },
-            _ => return,
-        };
-    let mut trait_should_be_self = vec![];
-    match &item.kind {
-        hir::TraitItemKind::Const(ty, _) | hir::TraitItemKind::Type(_, Some(ty))
-            if could_be_self(trait_def_id.def_id, ty) =>
-        {
-            trait_should_be_self.push(ty.span)
-        }
-        hir::TraitItemKind::Fn(sig, _) => {
-            for ty in sig.decl.inputs {
-                if could_be_self(trait_def_id.def_id, ty) {
-                    trait_should_be_self.push(ty.span);
-                }
-            }
-            match sig.decl.output {
-                hir::FnRetTy::Return(ty) if could_be_self(trait_def_id.def_id, ty) => {
-                    trait_should_be_self.push(ty.span);
-                }
-                _ => {}
-            }
-        }
-        _ => {}
-    }
-    if !trait_should_be_self.is_empty() {
-        if tcx.is_dyn_compatible(trait_def_id) {
-            return;
-        }
-        let sugg = trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();
-        tcx.dcx()
-            .struct_span_err(
-                trait_should_be_self,
-                "associated item referring to unboxed trait object for its own trait",
-            )
-            .with_span_label(trait_ident.span, "in this trait")
-            .with_multipart_suggestion(
-                "you might have meant to use `Self` to refer to the implementing type",
-                sugg,
-                Applicability::MachineApplicable,
-            )
-            .emit();
     }
 }
 

@@ -1566,7 +1566,7 @@ macro_rules! common_visitor_and_walkers {
 
         // FIXME: visit the template exhaustively.
         pub fn walk_format_args<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, fmt: &$($lt)? $($mut)? FormatArgs) -> V::Result {
-            let FormatArgs { span, template: _, arguments, uncooked_fmt_str: _ } = fmt;
+            let FormatArgs { span, template: _, arguments, uncooked_fmt_str: _, is_source_literal: _ } = fmt;
             let args = $(${ignore($mut)} arguments.all_args_mut())? $(${ignore($lt)} arguments.all_args())? ;
             for FormatArgument { kind, expr } in args {
                 match kind {

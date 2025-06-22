@@ -2,7 +2,10 @@ error[E0277]: `<impl IntoIterator as IntoIterator>::Item` doesn't implement `std
   --> $DIR/issue-97760.rs:4:20
    |
 LL |         println!("{x}");
-   |                    ^ `<impl IntoIterator as IntoIterator>::Item` cannot be formatted with the default formatter
+   |                   -^-
+   |                   ||
+   |                   |`<impl IntoIterator as IntoIterator>::Item` cannot be formatted with the default formatter
+   |                   required by this formatting parameter
    |
    = help: the trait `std::fmt::Display` is not implemented for `<impl IntoIterator as IntoIterator>::Item`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
