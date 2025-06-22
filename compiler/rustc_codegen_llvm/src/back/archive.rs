@@ -11,7 +11,7 @@ use rustc_codegen_ssa::back::archive::{
 use rustc_session::Session;
 
 use crate::llvm::archive_ro::{ArchiveRO, Child};
-use crate::llvm::{self, ArchiveKind, last_error};
+use crate::llvm::{self, last_error, parse_archive_kind};
 
 /// Helper for adding many files to an archive.
 #[must_use = "must call build() to finish building the archive"]
@@ -182,8 +182,7 @@ fn llvm_is_ec_object_file(buf: &[u8]) -> bool {
 impl<'a> LlvmArchiveBuilder<'a> {
     fn build_with_llvm(&mut self, output: &Path) -> io::Result<bool> {
         let kind = &*self.sess.target.archive_format;
-        let kind = kind
-            .parse::<ArchiveKind>()
+        let kind = parse_archive_kind(kind)
             .map_err(|_| kind)
             .unwrap_or_else(|kind| self.sess.dcx().emit_fatal(UnknownArchiveKind { kind }));
 
