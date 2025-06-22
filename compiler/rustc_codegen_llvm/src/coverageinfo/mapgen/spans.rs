@@ -1,8 +1,8 @@
+use rustc_llvm::ffi;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Pos, SourceFile, Span};
 use tracing::debug;
 
-use crate::coverageinfo::ffi;
 use crate::coverageinfo::mapgen::LocalFileId;
 
 /// Line and byte-column coordinates of a source code span within some file.

@@ -26,9 +26,8 @@ use crate::abi::FnAbiLlvmExt;
 use crate::common::AsCCharPtr;
 use crate::context::{CodegenCx, GenericCx, SCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::Visibility;
+use crate::llvm::{Value, Visibility};
 use crate::type_::Type;
-use crate::value::Value;
 use crate::{attributes, llvm};
 
 /// Declare a function with a SimpleCx.
@@ -134,7 +133,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         unnamed: llvm::UnnamedAddr,
         fn_type: &'ll Type,
     ) -> &'ll Value {
-        let visibility = Visibility::from_generic(self.tcx.sess.default_visibility());
+        let visibility = llvm::visibility_from_generic(self.tcx.sess.default_visibility());
         declare_raw_fn(self, name, callconv, unnamed, visibility, fn_type)
     }
 

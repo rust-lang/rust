@@ -32,12 +32,9 @@ use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
-use crate::llvm::{
-    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, GEPNoWrapFlags, Metadata, True,
-};
+use crate::llvm::{self, BasicBlock, False, GEPNoWrapFlags, Metadata, True, Value};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
 
 #[must_use]
 pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SCx<'ll>>> {
@@ -568,7 +565,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 ty,
                 ptr,
                 UNNAMED,
-                AtomicOrdering::from_generic(order),
+                llvm::atomic_ordering_from_generic(order),
             );
             // LLVM requires the alignment of atomic loads to be at least the size of the type.
             llvm::LLVMSetAlignment(load, size.bytes() as c_uint);
@@ -808,7 +805,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 self.llbuilder,
                 val,
                 ptr,
-                AtomicOrdering::from_generic(order),
+                llvm::atomic_ordering_from_generic(order),
             );
             // LLVM requires the alignment of atomic stores to be at least the size of the type.
             llvm::LLVMSetAlignment(store, size.bytes() as c_uint);
@@ -1005,12 +1002,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     /* Comparisons */
     fn icmp(&mut self, op: IntPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        let op = llvm::IntPredicate::from_generic(op);
+        let op = llvm::int_predicate_from_generic(op);
         unsafe { llvm::LLVMBuildICmp(self.llbuilder, op as c_uint, lhs, rhs, UNNAMED) }
     }
 
     fn fcmp(&mut self, op: RealPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        let op = llvm::RealPredicate::from_generic(op);
+        let op = llvm::real_predicate_from_generic(op);
         unsafe { llvm::LLVMBuildFCmp(self.llbuilder, op as c_uint, lhs, rhs, UNNAMED) }
     }
 
@@ -1246,8 +1243,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 dst,
                 cmp,
                 src,
-                AtomicOrdering::from_generic(order),
-                AtomicOrdering::from_generic(failure_order),
+                llvm::atomic_ordering_from_generic(order),
+                llvm::atomic_ordering_from_generic(failure_order),
                 llvm::False, // SingleThreaded
             );
             llvm::LLVMSetWeak(value, weak);
@@ -1273,10 +1270,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let mut res = unsafe {
             llvm::LLVMBuildAtomicRMW(
                 self.llbuilder,
-                AtomicRmwBinOp::from_generic(op),
+                llvm::atomic_rmw_bin_op_from_generic(op),
                 dst,
                 src,
-                AtomicOrdering::from_generic(order),
+                llvm::atomic_ordering_from_generic(order),
                 llvm::False, // SingleThreaded
             )
         };
@@ -1298,7 +1295,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             llvm::LLVMBuildFence(
                 self.llbuilder,
-                AtomicOrdering::from_generic(order),
+                llvm::atomic_ordering_from_generic(order),
                 single_threaded,
                 UNNAMED,
             );
