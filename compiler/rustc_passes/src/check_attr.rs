@@ -149,6 +149,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 Attribute::Parsed(AttributeKind::Repr(_)) => { /* handled below this loop and elsewhere */
                 }
+
+                &Attribute::Parsed(AttributeKind::PubTransparent(attr_span)) => {
+                    self.check_rustc_pub_transparent(attr_span, span, attrs)
+                }
                 Attribute::Parsed(AttributeKind::Cold(attr_span)) => {
                     self.check_cold(hir_id, *attr_span, span, target)
                 }
@@ -288,7 +292,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_type_const(hir_id,attr, target);
                         }
                         [sym::linkage, ..] => self.check_linkage(attr, span, target),
-                        [sym::rustc_pub_transparent, ..] => self.check_rustc_pub_transparent(attr.span(), span, attrs),
                         [
                             // ok
                             sym::allow
