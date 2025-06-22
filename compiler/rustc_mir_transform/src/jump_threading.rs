@@ -423,6 +423,10 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         constant: OpTy<'tcx>,
         state: &mut ConditionSet<'a>,
     ) {
+        let values_inside = self.map.values_inside(lhs);
+        if !state.iter().any(|cond| values_inside.contains(&cond.place)) {
+            return;
+        }
         self.map.for_each_projection_value(
             lhs,
             constant,
