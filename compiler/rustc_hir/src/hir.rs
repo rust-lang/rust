@@ -1345,7 +1345,6 @@ impl AttributeExt for Attribute {
     fn doc_str(&self) -> Option<Symbol> {
         match &self {
             Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
-            Attribute::Unparsed(_) if self.has_name(sym::doc) => self.value_str(),
             _ => None,
         }
     }
@@ -1359,9 +1358,6 @@ impl AttributeExt for Attribute {
         match &self {
             Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
                 Some((*comment, *kind))
-            }
-            Attribute::Unparsed(_) if self.has_name(sym::doc) => {
-                self.value_str().map(|s| (s, CommentKind::Line))
             }
             _ => None,
         }
