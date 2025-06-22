@@ -174,6 +174,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::MustUse { span, .. }) => {
                     self.check_must_use(hir_id, *span, target)
                 }
+                Attribute::Parsed(AttributeKind::NoMangle(attr_span)) => {
+                    self.check_no_mangle(hir_id, *attr_span, span, target)
+                }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
@@ -261,7 +264,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::link, ..] => self.check_link(hir_id, attr, span, target),
                         [sym::link_name, ..] => self.check_link_name(hir_id, attr, span, target),
                         [sym::link_section, ..] => self.check_link_section(hir_id, attr, span, target),
-                        [sym::no_mangle, ..] => self.check_no_mangle(hir_id, attr, span, target),
                         [sym::macro_use, ..] | [sym::macro_escape, ..] => {
                             self.check_macro_use(hir_id, attr, target)
                         }
@@ -698,6 +700,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             AttributeKind::Deprecation { .. }
                             | AttributeKind::Repr { .. }
                             | AttributeKind::Align { .. }
+                            | AttributeKind::NoMangle(..)
                             | AttributeKind::Cold(..)
                             | AttributeKind::MustUse { .. },
                         ) => {
@@ -1952,7 +1955,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[no_mangle]` is applied to a function or static.
-    fn check_no_mangle(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_no_mangle(&self, hir_id: HirId, attr_span: Span, span: Span, target: Target) {
         match target {
             Target::Static | Target::Fn => {}
             Target::Method(..) if self.is_impl_item(hir_id) => {}
@@ -1961,7 +1964,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "no_mangle");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr_span, "no_mangle");
             }
             // FIXME: #[no_mangle] was previously allowed on non-functions/statics, this should be an error
             // The error should specify that the item that is wrong is specifically a *foreign* fn/static
@@ -1975,8 +1978,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
                     hir_id,
-                    attr.span(),
-                    errors::NoMangleForeign { span, attr_span: attr.span(), foreign_item_kind },
+                    attr_span,
+                    errors::NoMangleForeign { span, attr_span, foreign_item_kind },
                 );
             }
             _ => {
@@ -1985,7 +1988,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
                     hir_id,
-                    attr.span(),
+                    attr_span,
                     errors::NoMangle { span },
                 );
             }

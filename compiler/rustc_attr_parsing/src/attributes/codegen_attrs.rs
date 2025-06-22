@@ -56,3 +56,21 @@ impl<S: Stage> SingleAttributeParser<S> for ColdParser {
         Some(AttributeKind::Cold(cx.attr_span))
     }
 }
+
+pub(crate) struct NoMangleParser;
+
+impl<S: Stage> SingleAttributeParser<S> for NoMangleParser {
+    const PATH: &[rustc_span::Symbol] = &[sym::no_mangle];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const TEMPLATE: AttributeTemplate = template!(Word);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        if !args.no_args() {
+            cx.expected_no_args(args.span().unwrap_or(cx.attr_span));
+            return None;
+        };
+
+        Some(AttributeKind::NoMangle(cx.attr_span))
+    }
+}
