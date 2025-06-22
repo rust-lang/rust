@@ -43,6 +43,7 @@ use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, EmitAttribute, Late, OmitDoc};
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
@@ -749,14 +750,30 @@ impl<'hir> LoweringContext<'hir> {
         let bodies = SortedMap::from_presorted_elements(bodies);
 
         // Don't hash unless necessary, because it's expensive.
-        let rustc_middle::hir::Hashes { opt_hash_including_bodies, attrs_hash } =
+        let rustc_middle::hir::Hashes { bodies_hash, attrs_hash } =
             self.tcx.hash_owner_nodes(node, &bodies, &attrs, define_opaque);
         let num_nodes = self.item_local_id_counter.as_usize();
         let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies, num_nodes);
-        let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
+        let nodes = hir::OwnerNodes { opt_hash: bodies_hash, nodes, bodies };
         let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash, define_opaque };
 
+        let opt_hash = if self.tcx.needs_crate_hash() {
+            Some(self.tcx.with_stable_hashing_context(|mut hcx| {
+                let mut stable_hasher = StableHasher::new();
+                bodies_hash.unwrap().hash_stable(&mut hcx, &mut stable_hasher);
+                attrs_hash.unwrap().hash_stable(&mut hcx, &mut stable_hasher);
+                // Do not hash delayed_lints.
+                parenting.hash_stable(&mut hcx, &mut stable_hasher);
+                trait_map.hash_stable(&mut hcx, &mut stable_hasher);
+                children.hash_stable(&mut hcx, &mut stable_hasher);
+                stable_hasher.finish()
+            }))
+        } else {
+            None
+        };
+
         self.arena.alloc(hir::OwnerInfo {
+            opt_hash,
             nodes,
             parenting,
             attrs,
