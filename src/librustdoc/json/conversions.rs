@@ -258,14 +258,14 @@ impl FromClean<clean::AssocItemConstraintKind> for AssocItemConstraintKind {
 
 fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
     use clean::ItemKind::*;
-    let name = item.name;
-    let is_crate = item.is_crate();
     let header = item.fn_header(renderer.tcx);
 
     match &item.inner.kind {
-        ModuleItem(m) => {
-            ItemEnum::Module(Module { is_crate, items: renderer.ids(&m.items), is_stripped: false })
-        }
+        ModuleItem(m) => ItemEnum::Module(Module {
+            is_crate: item.is_crate(),
+            items: renderer.ids(&m.items),
+            is_stripped: false,
+        }),
         ImportItem(i) => ItemEnum::Use(i.into_json(renderer)),
         StructItem(s) => ItemEnum::Struct(s.into_json(renderer)),
         UnionItem(u) => ItemEnum::Union(u.into_json(renderer)),
@@ -328,7 +328,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         StrippedItem(inner) => {
             match inner.as_ref() {
                 ModuleItem(m) => ItemEnum::Module(Module {
-                    is_crate,
+                    is_crate: item.is_crate(),
                     items: renderer.ids(&m.items),
                     is_stripped: true,
                 }),
@@ -337,7 +337,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             }
         }
         ExternCrateItem { src } => ItemEnum::ExternCrate {
-            name: name.as_ref().unwrap().to_string(),
+            name: item.name.as_ref().unwrap().to_string(),
             rename: src.map(|x| x.to_string()),
         },
     }
