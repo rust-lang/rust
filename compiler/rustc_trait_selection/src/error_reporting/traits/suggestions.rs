@@ -2879,13 +2879,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         _ => (),
                     }
                 }
-                let descr = format!("required by {a} bound in `{item_name}`");
-                if span.is_visible(sm) {
-                    let msg = format!("required by {this} in `{short_item_name}`");
-                    multispan.push_span_label(span, msg);
-                    err.span_note(multispan, descr);
+
+                // If this is from a format string literal desugaring,
+                // we've already said "required by this formatting parameter"
+                let is_in_fmt_lit = if let Some(s) = err.span.primary_span() {
+                    matches!(s.desugaring_kind(), Some(DesugaringKind::FormatLiteral { .. }))
                 } else {
-                    err.span_note(tcx.def_span(item_def_id), descr);
+                    false
+                };
+                if !is_in_fmt_lit {
+                    let descr = format!("required by {a} bound in `{item_name}`");
+                    if span.is_visible(sm) {
+                        let msg = format!("required by {this} in `{short_item_name}`");
+                        multispan.push_span_label(span, msg);
+                        err.span_note(multispan, descr);
+                    } else {
+                        err.span_note(tcx.def_span(item_def_id), descr);
+                    }
                 }
                 if let Some(note) = note {
                     err.note(note);
@@ -3980,7 +3990,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ) = expr.kind
             {
                 if Some(*span) != err.span.primary_span() {
-                    err.span_label(*span, "required by a bound introduced by this call");
+                    let msg = if span.is_desugaring(DesugaringKind::FormatLiteral { source: true })
+                    {
+                        "required by this formatting parameter"
+                    } else if span.is_desugaring(DesugaringKind::FormatLiteral { source: false }) {
+                        "required by a formatting parameter in this expression"
+                    } else {
+                        "required by a bound introduced by this call"
+                    };
+                    err.span_label(*span, msg);
                 }
             }
 

@@ -13,7 +13,7 @@ LL |     println!("{:?}", 0);
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const function `_print` in constant functions
   --> $DIR/format.rs:7:5

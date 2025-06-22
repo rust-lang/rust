@@ -2,7 +2,9 @@ error[E0277]: `impl Sized` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:9:22
    |
 LL |     println!("{:?}", t);
-   |                      ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               ----   ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting opaque type `impl Sized` with trait `Debug`
@@ -14,7 +16,9 @@ error[E0277]: `T` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:15:22
    |
 LL |     println!("{:?}", t);
-   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               ----   ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T` with trait `Debug`
@@ -26,7 +30,9 @@ error[E0277]: `T` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:21:22
    |
 LL |     println!("{:?}", t);
-   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               ----   ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `T` with trait `Debug`
@@ -38,7 +44,9 @@ error[E0277]: `Y` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:27:30
    |
 LL |     println!("{:?} {:?}", x, y);
-   |                              ^ `Y` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                    ----      ^ `Y` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                    |
+   |                    required by this formatting parameter
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `Y` with trait `Debug`
@@ -50,7 +58,9 @@ error[E0277]: `X` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:33:22
    |
 LL |     println!("{:?}", x);
-   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               ----   ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `X` with trait `Debug`
@@ -62,7 +72,9 @@ error[E0277]: `X` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:39:22
    |
 LL |     println!("{:?}", x);
-   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               ----   ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `X` with trait `Debug`

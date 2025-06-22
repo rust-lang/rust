@@ -4,7 +4,7 @@ error[E0277]: the trait bound `&Chars: Trait` is not satisfied
 LL |     format_args!("{:?}", FlatMap(&Chars));
    |                   ----   ^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `&Chars`
    |                   |
-   |                   required by a bound introduced by this call
+   |                   required by this formatting parameter
    |
    = help: the trait `Trait` is implemented for `Chars`
 note: required for `FlatMap<&Chars>` to implement `Debug`
@@ -14,8 +14,6 @@ LL | impl<T: Trait> std::fmt::Debug for FlatMap<T> {
    |         -----  ^^^^^^^^^^^^^^^     ^^^^^^^^^^
    |         |
    |         unsatisfied trait bound introduced here
-note: required by a bound in `core::fmt::rt::Argument::<'_>::new_debug`
-  --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
 
 error: aborting due to 1 previous error
 
