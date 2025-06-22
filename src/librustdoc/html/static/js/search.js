@@ -4922,7 +4922,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         const docsrsURL = `https://docs.rs/releases/search?query=${encodeURIComponent(query.userQuery)}`;
         const duckduckgoURL = `https://duckduckgo.com/?q=${encodeURIComponent("rust " + query.userQuery)}`;
         output.className = "search-failed" + extraClass;
-        output.innerHTML = `No results in <code>${getVar("crate")}</code> :(<br/>` +
+        output.innerHTML = `No results in <code>${getVar("current-crate")}</code> :(<br/>` +
             `Search for <a href="${docsrsURL}">other crates</a>?<br/>` +
             `Or try on <a href="${duckduckgoURL}">DuckDuckGo</a>?<br/><br/>` +
             "Or try looking in one of these:<ul><li>The <a " +
