@@ -1254,9 +1254,17 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         body_owners,
         opaques,
         nested_bodies,
-        delayed_lint_items,
+        mut delayed_lint_items,
         ..
     } = collector;
+
+    // The crate could have delayed lints too, but would not be picked up by the visitor.
+    // The `delayed_lint_items` list is smart - it only contains items which we know from
+    // earlier passes is guaranteed to contain lints. It's a little harder to determine that
+    // for sure here, so we simply always add the crate to the list. If it has no lints,
+    // we'll discover that later. The cost of this should be low, there's only one crate
+    // after all compared to the many items we have we wouldn't want to iterate over later.
+    delayed_lint_items.push(CRATE_OWNER_ID);
 
     ModuleItems {
         add_root: true,
