@@ -130,6 +130,7 @@ pub enum LifetimeCtxt {
 pub trait Visitor<'ast>: Sized {
     /// The result type of the `visit_*` methods. Can be either `()`,
     /// or `ControlFlow<T>`.
+    #[cfg_attr(not(bootstrap), must_use)]
     type Result: VisitorResult = ();
 
     fn visit_ident(&mut self, _ident: &'ast Ident) -> Self::Result {

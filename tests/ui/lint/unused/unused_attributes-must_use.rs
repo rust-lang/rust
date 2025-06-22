@@ -67,7 +67,7 @@ fn qux<#[must_use] T>(_: T) {} //~ ERROR `#[must_use]` has no effect
 trait Use {
     #[must_use] //~ ERROR `#[must_use]` has no effect
     const ASSOC_CONST: usize = 4;
-    #[must_use] //~ ERROR `#[must_use]` has no effect
+    #[must_use]
     type AssocTy;
 
     #[must_use]

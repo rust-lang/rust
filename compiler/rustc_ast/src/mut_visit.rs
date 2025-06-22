@@ -37,6 +37,7 @@ mod sealed {
 
     /// This is for compatibility with the regular `Visitor`.
     pub trait MutVisitorResult {
+        #[cfg_attr(not(bootstrap), must_use)]
         type Result: VisitorResult;
     }
 
