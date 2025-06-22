@@ -111,6 +111,16 @@ Whether `indexing_slicing` should be allowed in test functions or `#[cfg(test)]`
 * [`indexing_slicing`](https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing)
 
 
+## `allow-large-stack-frames-in-tests`
+Whether functions inside `#[cfg(test)]` modules or test functions should be checked.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`large_stack_frames`](https://rust-lang.github.io/rust-clippy/master/index.html#large_stack_frames)
+
+
 ## `allow-mixed-uninlined-format-args`
 Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
 
