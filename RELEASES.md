@@ -13,7 +13,7 @@ Language
   This allows using boolean literals as `cfg` predicates, e.g. `#[cfg(true)]` and `#[cfg(false)]`.
 - [Fully de-stabilize the `#[bench]` attribute](https://github.com/rust-lang/rust/pull/134273). Usage of `#[bench]` without `#![feature(custom_test_frameworks)]` already triggered a deny-by-default future-incompatibility lint since Rust 1.77, but will now become a hard error.
 - [Add warn-by-default `dangerous_implicit_autorefs` lint against implicit autoref of raw pointer dereference.](https://github.com/rust-lang/rust/pull/123239)
-  The lint [may be bumped to deny-by-default](https://github.com/rust-lang/rust/pull/141661) in a future version of Rust.
+  The lint [will be bumped to deny-by-default](https://github.com/rust-lang/rust/pull/141661) in the next version of Rust.
 - [Add `invalid_null_arguments` lint to prevent invalid usage of null pointers.](https://github.com/rust-lang/rust/pull/119220)
   This lint is uplifted from `clippy::invalid_null_ptr_usage`.
 - [Change trait impl candidate preference for builtin impls and trivial where-clauses.](https://github.com/rust-lang/rust/pull/138176)
