@@ -5,7 +5,13 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
+bitflags = "2.4.1"
 libc = "0.2.73"
+rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_session = { path = "../rustc_session" }
+rustc_target = { path = "../rustc_target" }
 # tidy-alphabetical-end
 
 [build-dependencies]

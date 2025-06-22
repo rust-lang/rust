@@ -2,8 +2,9 @@
 
 use std::ffi::CString;
 
+use rustc_llvm::ffi;
+
 use crate::common::AsCCharPtr;
-use crate::coverageinfo::ffi;
 use crate::llvm;
 
 pub(crate) fn covmap_var_name() -> CString {
@@ -60,10 +61,10 @@ pub(crate) fn write_filenames_to_buffer(filenames: &[impl AsRef<str>]) -> Vec<u8
 
 pub(crate) fn write_function_mappings_to_buffer(
     virtual_file_mapping: &[u32],
-    expressions: &[ffi::CounterExpression],
-    regions: &ffi::Regions,
+    expressions: &[ffi::coverageinfo::CounterExpression],
+    regions: &ffi::coverageinfo::Regions,
 ) -> Vec<u8> {
-    let ffi::Regions {
+    let ffi::coverageinfo::Regions {
         code_regions,
         expansion_regions,
         branch_regions,

@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods as _, ConstCodegenMethods};
+use rustc_llvm::ffi;
 use rustc_middle::mir::coverage::{
     BasicCoverageBlock, CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping,
     MappingKind, Op,
@@ -19,8 +20,8 @@ use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
+use crate::coverageinfo::llvm_cov;
 use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, spans};
-use crate::coverageinfo::{ffi, llvm_cov};
 use crate::llvm;
 
 /// Intermediate coverage metadata for a single function, used to help build
@@ -32,8 +33,8 @@ pub(crate) struct CovfunRecord<'tcx> {
     is_used: bool,
 
     virtual_file_mapping: VirtualFileMapping,
-    expressions: Vec<ffi::CounterExpression>,
-    regions: ffi::Regions,
+    expressions: Vec<ffi::coverageinfo::CounterExpression>,
+    regions: ffi::coverageinfo::Regions,
 }
 
 impl<'tcx> CovfunRecord<'tcx> {
@@ -60,7 +61,7 @@ pub(crate) fn prepare_covfun_record<'tcx>(
         is_used,
         virtual_file_mapping: VirtualFileMapping::default(),
         expressions,
-        regions: ffi::Regions::default(),
+        regions: ffi::coverageinfo::Regions::default(),
     };
 
     fill_region_tables(tcx, fn_cov_info, ids_info, &mut covfun);
@@ -74,8 +75,8 @@ pub(crate) fn prepare_covfun_record<'tcx>(
 }
 
 /// Convert the function's coverage-counter expressions into a form suitable for FFI.
-fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::CounterExpression> {
-    let counter_for_term = ffi::Counter::from_term;
+fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::coverageinfo::CounterExpression> {
+    let counter_for_term = ffi::coverageinfo::Counter::from_term;
 
     // We know that LLVM will optimize out any unused expressions before
     // producing the final coverage map, so there's no need to do the same
@@ -84,11 +85,11 @@ fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::CounterExpression
     ids_info
         .expressions
         .iter()
-        .map(move |&Expression { lhs, op, rhs }| ffi::CounterExpression {
+        .map(move |&Expression { lhs, op, rhs }| ffi::coverageinfo::CounterExpression {
             lhs: counter_for_term(lhs),
             kind: match op {
-                Op::Add => ffi::ExprKind::Add,
-                Op::Subtract => ffi::ExprKind::Subtract,
+                Op::Add => ffi::coverageinfo::ExprKind::Add,
+                Op::Subtract => ffi::coverageinfo::ExprKind::Subtract,
             },
             rhs: counter_for_term(rhs),
         })
@@ -122,7 +123,7 @@ fn fill_region_tables<'tcx>(
         if discard_all { None } else { spans::make_coords(source_map, &source_file, span) }
     };
 
-    let ffi::Regions {
+    let ffi::coverageinfo::Regions {
         code_regions,
         expansion_regions: _, // FIXME(Zalathar): Fill out support for expansion regions
         branch_regions,
@@ -134,13 +135,13 @@ fn fill_region_tables<'tcx>(
     // form suitable for FFI.
     for &Mapping { ref kind, span } in &fn_cov_info.mappings {
         // If this function is unused, replace all counters with zero.
-        let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
+        let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::coverageinfo::Counter {
             let term = if covfun.is_used {
                 ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
             } else {
                 CovTerm::Zero
             };
-            ffi::Counter::from_term(term)
+            ffi::coverageinfo::Counter::from_term(term)
         };
 
         let Some(coords) = make_coords(span) else { continue };
@@ -148,27 +149,34 @@ fn fill_region_tables<'tcx>(
 
         match *kind {
             MappingKind::Code { bcb } => {
-                code_regions.push(ffi::CodeRegion { cov_span, counter: counter_for_bcb(bcb) });
+                code_regions.push(ffi::coverageinfo::CodeRegion {
+                    cov_span,
+                    counter: counter_for_bcb(bcb),
+                });
             }
             MappingKind::Branch { true_bcb, false_bcb } => {
-                branch_regions.push(ffi::BranchRegion {
+                branch_regions.push(ffi::coverageinfo::BranchRegion {
                     cov_span,
                     true_counter: counter_for_bcb(true_bcb),
                     false_counter: counter_for_bcb(false_bcb),
                 });
             }
             MappingKind::MCDCBranch { true_bcb, false_bcb, mcdc_params } => {
-                mcdc_branch_regions.push(ffi::MCDCBranchRegion {
+                mcdc_branch_regions.push(ffi::coverageinfo::MCDCBranchRegion {
                     cov_span,
                     true_counter: counter_for_bcb(true_bcb),
                     false_counter: counter_for_bcb(false_bcb),
-                    mcdc_branch_params: ffi::mcdc::BranchParameters::from(mcdc_params),
+                    mcdc_branch_params: ffi::coverageinfo::mcdc::BranchParameters::from(
+                        mcdc_params,
+                    ),
                 });
             }
             MappingKind::MCDCDecision(mcdc_decision_params) => {
-                mcdc_decision_regions.push(ffi::MCDCDecisionRegion {
+                mcdc_decision_regions.push(ffi::coverageinfo::MCDCDecisionRegion {
                     cov_span,
-                    mcdc_decision_params: ffi::mcdc::DecisionParameters::from(mcdc_decision_params),
+                    mcdc_decision_params: ffi::coverageinfo::mcdc::DecisionParameters::from(
+                        mcdc_decision_params,
+                    ),
                 });
             }
         }

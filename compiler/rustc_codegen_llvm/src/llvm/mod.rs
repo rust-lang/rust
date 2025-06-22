@@ -3,12 +3,11 @@
 use std::ffi::{CStr, CString};
 use std::num::NonZero;
 use std::ptr;
-use std::str::FromStr;
 use std::string::FromUtf8Error;
 
 use libc::c_uint;
 use rustc_abi::{Align, Size, WrappingRange};
-use rustc_llvm::RustString;
+use rustc_llvm::{RustString, ffi};
 
 pub(crate) use self::CallConv::*;
 pub(crate) use self::CodeGenOptSize::*;
@@ -18,13 +17,13 @@ use crate::common::AsCCharPtr;
 
 pub(crate) mod archive_ro;
 pub(crate) mod diagnostic;
-pub(crate) mod enzyme_ffi;
-mod ffi;
 
-pub(crate) use self::enzyme_ffi::*;
+pub(crate) trait LLVMRustResultExt {
+    fn into_result(self) -> Result<(), ()>;
+}
 
-impl LLVMRustResult {
-    pub(crate) fn into_result(self) -> Result<(), ()> {
+impl LLVMRustResultExt for LLVMRustResult {
+    fn into_result(self) -> Result<(), ()> {
         match self {
             LLVMRustResult::Success => Ok(()),
             LLVMRustResult::Failure => Err(()),
@@ -178,18 +177,14 @@ pub(crate) enum CodeGenOptSize {
     CodeGenOptSizeAggressive = 2,
 }
 
-impl FromStr for ArchiveKind {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "gnu" => Ok(ArchiveKind::K_GNU),
-            "bsd" => Ok(ArchiveKind::K_BSD),
-            "darwin" => Ok(ArchiveKind::K_DARWIN),
-            "coff" => Ok(ArchiveKind::K_COFF),
-            "aix_big" => Ok(ArchiveKind::K_AIXBIG),
-            _ => Err(()),
-        }
+pub(crate) fn parse_archive_kind(s: &str) -> Result<ArchiveKind, ()> {
+    match s {
+        "gnu" => Ok(ArchiveKind::K_GNU),
+        "bsd" => Ok(ArchiveKind::K_BSD),
+        "darwin" => Ok(ArchiveKind::K_DARWIN),
+        "coff" => Ok(ArchiveKind::K_COFF),
+        "aix_big" => Ok(ArchiveKind::K_AIXBIG),
+        _ => Err(()),
     }
 }
 
@@ -229,16 +224,19 @@ pub(crate) fn set_thread_local_mode(global: &Value, mode: ThreadLocalMode) {
     }
 }
 
-impl AttributeKind {
+pub(crate) trait AttributeExt {
+    fn create_attr(self, llcx: &Context) -> &Attribute;
+}
+impl AttributeExt for AttributeKind {
     /// Create an LLVM Attribute with no associated value.
-    pub(crate) fn create_attr(self, llcx: &Context) -> &Attribute {
+    fn create_attr(self, llcx: &Context) -> &Attribute {
         unsafe { LLVMRustCreateAttrNoValue(llcx, self) }
     }
 }
 
-impl MemoryEffects {
+impl AttributeExt for MemoryEffects {
     /// Create an LLVM Attribute with these memory effects.
-    pub(crate) fn create_attr(self, llcx: &Context) -> &Attribute {
+    fn create_attr(self, llcx: &Context) -> &Attribute {
         unsafe { LLVMRustCreateMemoryEffectsAttr(llcx, self) }
     }
 }

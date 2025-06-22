@@ -14,7 +14,6 @@ use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::llvm;
 
-pub(crate) mod ffi;
 mod llvm_cov;
 mod mapgen;
 
