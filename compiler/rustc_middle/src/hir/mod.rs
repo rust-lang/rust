@@ -176,11 +176,7 @@ impl<'tcx> TyCtxt<'tcx> {
         define_opaque: Option<&[(Span, LocalDefId)]>,
     ) -> Hashes {
         if !self.needs_crate_hash() {
-            return Hashes {
-                opt_hash_including_bodies: None,
-                attrs_hash: None,
-                delayed_lints_hash: None,
-            };
+            return Hashes { bodies_hash: None, attrs_hash: None, delayed_lints_hash: None };
         }
 
         self.with_stable_hashing_context(|mut hcx| {
@@ -203,11 +199,7 @@ impl<'tcx> TyCtxt<'tcx> {
             delayed_lints.hash_stable(&mut hcx, &mut stable_hasher);
             let h3 = stable_hasher.finish();
 
-            Hashes {
-                opt_hash_including_bodies: Some(h1),
-                attrs_hash: Some(h2),
-                delayed_lints_hash: Some(h3),
-            }
+            Hashes { bodies_hash: Some(h1), attrs_hash: Some(h2), delayed_lints_hash: Some(h3) }
         })
     }
 
@@ -370,7 +362,7 @@ impl<'tcx> TyCtxt<'tcx> {
 /// Hashes computed by [`TyCtxt::hash_owner_nodes`] if necessary.
 #[derive(Clone, Copy, Debug)]
 pub struct Hashes {
-    pub opt_hash_including_bodies: Option<Fingerprint>,
+    pub bodies_hash: Option<Fingerprint>,
     pub attrs_hash: Option<Fingerprint>,
     pub delayed_lints_hash: Option<Fingerprint>,
 }
