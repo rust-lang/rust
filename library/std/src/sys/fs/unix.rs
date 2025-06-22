@@ -54,8 +54,7 @@ use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
     dirent as dirent64, fstat as fstat64, fstatat as fstatat64, ftruncate64, lseek64,
-    lstat as lstat64, mkdirat, off64_t, open as open64, openat as openat64, renameat,
-    stat as stat64, unlinkat,
+    lstat as lstat64, off64_t, open as open64, stat as stat64,
 };
 #[cfg(not(any(
     all(target_os = "linux", not(target_env = "musl")),
@@ -65,22 +64,41 @@ use libc::{
 )))]
 use libc::{
     dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
-    lstat as lstat64, mkdirat, off_t as off64_t, open as open64, openat as openat64, renameat,
-    stat as stat64, unlinkat,
+    lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
 };
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
     target_os = "l4re",
     target_os = "hurd"
 ))]
-use libc::{
-    dirent64, fstat64, ftruncate64, lseek64, lstat64, mkdirat, off64_t, open64, openat64, renameat,
-    stat64, unlinkat,
-};
+use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
+#[cfg(any(
+    target_os = "aix",
+    target_os = "freebsd",
+    target_os = "fuchsia",
+    target_os = "solaris",
+    target_vendor = "apple",
+))]
+use libc::{mkdirat, openat as openat64, renameat, unlinkat};
+#[cfg(not(any(
+    target_os = "redox",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vita",
+    target_os = "nto",
+    target_os = "vxworks",
+    target_os = "fuchsia",
+    target_os = "freebsd",
+    target_os = "solaris",
+    target_os = "aix",
+    target_vendor = "apple",
+    miri
+)))]
+use libc::{mkdirat, openat64, renameat, unlinkat};
 
 #[cfg(any(target_os = "freebsd", target_os = "aix"))]
 const TRAVERSE_DIRECTORY: i32 = libc::O_EXEC;
-#[cfg(any(target_os = "linux", target_os = "android", target_os = "l4re", target_os = "redox"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "l4re"))]
 const TRAVERSE_DIRECTORY: i32 = libc::O_PATH;
 #[cfg(target_os = "illumos")]
 const TRAVERSE_DIRECTORY: i32 = libc::O_SEARCH;
@@ -92,6 +110,12 @@ const TRAVERSE_DIRECTORY: i32 = libc::O_SEARCH;
     target_os = "l4re",
     target_os = "linux",
     target_os = "redox",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vita",
+    target_os = "nto",
+    target_os = "vxworks",
+    miri
 )))]
 const TRAVERSE_DIRECTORY: i32 = libc::O_RDONLY;
 
