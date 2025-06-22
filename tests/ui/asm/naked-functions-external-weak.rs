@@ -1,6 +1,6 @@
 //@ compile-flags: -C opt-level=0
 //@ needs-asm-support
-//@ run-pass
+//@ only-x86_64
 
 // Test that naked functions with external weak linkage don't cause SIGILL
 // This is a regression test for issue #142880
@@ -15,7 +15,7 @@ use std::arch::asm;
 extern "C" fn naked_weak_function() -> u32 {
     unsafe {
         asm!(
-            "mov eax, 42",
+            "mov rax, 42",
             "ret",
             options(noreturn)
         );
