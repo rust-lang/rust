@@ -465,7 +465,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         if let PlaceRef { local, projection: [] } = deref_base {
             let decl = &self.body.local_decls[local];
-            let local_name = self.local_names[local].map(|sym| format!("`{sym}`"));
+            let local_name = self.local_name(local).map(|sym| format!("`{sym}`"));
             if decl.is_ref_for_guard() {
                 return self
                     .cannot_move_out_of(
@@ -829,7 +829,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             if binds_to.len() == 1 {
-                let place_desc = self.local_names[*local].map(|sym| format!("`{sym}`"));
+                let place_desc = self.local_name(*local).map(|sym| format!("`{sym}`"));
 
                 if let Some(expr) = self.find_expr(binding_span) {
                     self.suggest_cloning(err, bind_to.ty, expr, None);

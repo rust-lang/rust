@@ -399,7 +399,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             [implicit_inputs + argument_index];
         let (_, span) = self.regioncx.get_argument_name_and_span_for_region(
             self.body,
-            &self.local_names,
+            self.local_names(),
             argument_index,
         );
 
@@ -973,7 +973,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         {
             let (arg_name, arg_span) = self.regioncx.get_argument_name_and_span_for_region(
                 self.body,
-                &self.local_names,
+                self.local_names(),
                 arg_index,
             );
             let region_name = self.synthesize_region_name();
