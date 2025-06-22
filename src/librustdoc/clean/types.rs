@@ -746,15 +746,17 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    pub(crate) fn attributes_without_repr(&self, tcx: TyCtxt<'_>, is_json: bool) -> Vec<String> {
+    fn attributes_without_repr(&self, tcx: TyCtxt<'_>, is_json: bool) -> Vec<String> {
         const ALLOWED_ATTRIBUTES: &[Symbol] =
             &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
-
         self.attrs
             .other_attrs
             .iter()
             .filter_map(|attr| {
-                if is_json {
+                // NoMangle is special-cased because cargo-semver-checks uses it
+                if matches!(attr, hir::Attribute::Parsed(AttributeKind::NoMangle(..))) {
+                    Some("#[no_mangle]".to_string())
+                } else if is_json {
                     match attr {
                         // rustdoc-json stores this in `Item::deprecation`, so we
                         // don't want it it `Item::attrs`.
@@ -767,26 +769,22 @@ impl Item {
                             s
                         }),
                     }
-                } else if attr.has_any_name(ALLOWED_ATTRIBUTES) {
+                } else {
+                    if !attr.has_any_name(ALLOWED_ATTRIBUTES) {
+                        return None;
+                    }
                     Some(
                         rustc_hir_pretty::attribute_to_string(&tcx, attr)
                             .replace("\\\n", "")
                             .replace('\n', "")
                             .replace("  ", " "),
                     )
-                } else {
-                    None
                 }
             })
             .collect()
     }
 
-    pub(crate) fn attributes_and_repr(
-        &self,
-        tcx: TyCtxt<'_>,
-        cache: &Cache,
-        is_json: bool,
-    ) -> Vec<String> {
+    pub(crate) fn attributes(&self, tcx: TyCtxt<'_>, cache: &Cache, is_json: bool) -> Vec<String> {
         let mut attrs = self.attributes_without_repr(tcx, is_json);
 
         if let Some(repr_attr) = self.repr(tcx, cache, is_json) {

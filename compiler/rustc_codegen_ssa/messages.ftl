@@ -221,6 +221,8 @@ codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple time
 
 codegen_ssa_no_field = no field `{$name}`
 
+codegen_ssa_no_mangle_nameless = `#[no_mangle]` cannot be used on {$definition} as it has no name
+
 codegen_ssa_no_module_named =
     no module named `{$user_path}` (mangled: {$cgu_name}). available modules: {$cgu_names}
 
