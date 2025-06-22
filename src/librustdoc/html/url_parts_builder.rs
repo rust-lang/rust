@@ -146,22 +146,17 @@ impl<'a> Extend<&'a str> for UrlPartsBuilder {
 
 impl FromIterator<Symbol> for UrlPartsBuilder {
     fn from_iter<T: IntoIterator<Item = Symbol>>(iter: T) -> Self {
-        // This code has to be duplicated from the `&str` impl because of
-        // `Symbol::as_str`'s lifetimes.
-        let iter = iter.into_iter();
-        let mut builder = Self::with_capacity_bytes(AVG_PART_LENGTH * iter.size_hint().0);
-        iter.for_each(|part| builder.push(part.as_str()));
-        builder
+        Symbol::with_interner(|interner| {
+            UrlPartsBuilder::from_iter(iter.into_iter().map(|sym| interner.get_str(sym)))
+        })
     }
 }
 
 impl Extend<Symbol> for UrlPartsBuilder {
     fn extend<T: IntoIterator<Item = Symbol>>(&mut self, iter: T) {
-        // This code has to be duplicated from the `&str` impl because of
-        // `Symbol::as_str`'s lifetimes.
-        let iter = iter.into_iter();
-        self.buf.reserve(AVG_PART_LENGTH * iter.size_hint().0);
-        iter.for_each(|part| self.push(part.as_str()));
+        Symbol::with_interner(|interner| {
+            self.extend(iter.into_iter().map(|sym| interner.get_str(sym)))
+        })
     }
 }
 

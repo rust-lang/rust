@@ -12,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::symbol::{InternerInner, Symbol, sym};
 use tracing::{debug, info};
 
 use super::type_layout::document_type_layout;
@@ -333,7 +333,12 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
             }
         }
 
-        fn cmp(i1: &clean::Item, i2: &clean::Item, tcx: TyCtxt<'_>) -> Ordering {
+        fn cmp(
+            i1: &clean::Item,
+            i2: &clean::Item,
+            interner: &InternerInner,
+            tcx: TyCtxt<'_>,
+        ) -> Ordering {
             let rty1 = reorder(i1.type_());
             let rty2 = reorder(i2.type_());
             if rty1 != rty2 {
@@ -349,7 +354,9 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                 return is_stable2.cmp(&is_stable1);
             }
             match (i1.name, i2.name) {
-                (Some(name1), Some(name2)) => compare_names(name1.as_str(), name2.as_str()),
+                (Some(name1), Some(name2)) => {
+                    compare_names(interner.get_str(name1), interner.get_str(name2))
+                }
                 (Some(_), None) => Ordering::Greater,
                 (None, Some(_)) => Ordering::Less,
                 (None, None) => Ordering::Equal,
@@ -360,7 +367,9 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
 
         match cx.shared.module_sorting {
             ModuleSorting::Alphabetical => {
-                not_stripped_items.sort_by(|(_, i1), (_, i2)| cmp(i1, i2, tcx));
+                Symbol::with_interner(|interner| {
+                    not_stripped_items.sort_by(|(_, i1), (_, i2)| cmp(i1, i2, interner, tcx));
+                });
             }
             ModuleSorting::DeclarationOrder => {}
         }

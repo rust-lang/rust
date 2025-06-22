@@ -167,25 +167,27 @@ impl Path {
 ///
 /// Panics if `path` is empty or a segment after the first is `kw::PathRoot`.
 pub fn join_path_syms(path: impl IntoIterator<Item = impl Borrow<Symbol>>) -> String {
-    // This is a guess at the needed capacity that works well in practice. It is slightly faster
-    // than (a) starting with an empty string, or (b) computing the exact capacity required.
-    // `8` works well because it's about the right size and jemalloc's size classes are all
-    // multiples of 8.
-    let mut iter = path.into_iter();
-    let len_hint = iter.size_hint().1.unwrap_or(1);
-    let mut s = String::with_capacity(len_hint * 8);
+    Symbol::with_interner(|interner| {
+        // This is a guess at the needed capacity that works well in practice. It is slightly
+        // faster than (a) starting with an empty string, or (b) computing the exact capacity
+        // required. `8` works well because it's about the right size and jemalloc's size classes
+        // are all multiples of 8.
+        let mut iter = path.into_iter();
+        let len_hint = iter.size_hint().1.unwrap_or(1);
 
-    let first_sym = *iter.next().unwrap().borrow();
-    if first_sym != kw::PathRoot {
-        s.push_str(first_sym.as_str());
-    }
-    for sym in iter {
-        let sym = *sym.borrow();
-        debug_assert_ne!(sym, kw::PathRoot);
-        s.push_str("::");
-        s.push_str(sym.as_str());
-    }
-    s
+        let mut s = String::with_capacity(len_hint * 8);
+        let first_sym = *iter.next().unwrap().borrow();
+        if first_sym != kw::PathRoot {
+            s.push_str(interner.get_str(first_sym));
+        }
+        for sym in iter {
+            let sym = *sym.borrow();
+            debug_assert_ne!(sym, kw::PathRoot);
+            s.push_str("::");
+            s.push_str(interner.get_str(sym));
+        }
+        s
+    })
 }
 
 /// Like `join_path_syms`, but for `Ident`s. This function is necessary because

@@ -288,7 +288,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         const SYMBOL_DIGITS_BASE: u32 = #symbol_digits_base;
 
         /// The number of predefined symbols; this is the first index for
-        /// extra pre-interned symbols in an Interner created via
+        /// extra pre-interned symbols in an interner created via
         /// [`Interner::with_extra_symbols`].
         pub const PREDEFINED_SYMBOLS_COUNT: u32 = #predefined_symbols_count;
 

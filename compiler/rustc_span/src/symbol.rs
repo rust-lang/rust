@@ -2632,6 +2632,19 @@ impl Symbol {
         })
     }
 
+    /// Runs `f` with access to the symbol interner, so you can call
+    /// `interner.get_str(sym)` instead of `sym.as_str()`.
+    ///
+    /// This is for performance: it lets you get the contents of multiple
+    /// symbols with a single TLS lookup and interner lock operation, instead
+    /// of doing those operations once per symbol.
+    pub fn with_interner<R>(f: impl FnOnce(&InternerInner) -> R) -> R {
+        with_session_globals(|session_globals| {
+            let inner = session_globals.symbol_interner.0.lock();
+            f(&inner)
+        })
+    }
+
     pub fn as_u32(self) -> u32 {
         self.0.as_u32()
     }
@@ -2733,14 +2746,13 @@ impl<CTX> HashStable<CTX> for ByteSymbol {
 // string with identical contents (e.g. "foo" and b"foo") are both interned,
 // only one copy will be stored and the resulting `Symbol` and `ByteSymbol`
 // will have the same index.
+//
+// There must only be one of these, otherwise its easy to mix up symbols
+// between interners.
 pub(crate) struct Interner(Lock<InternerInner>);
 
 // The `&'static [u8]`s in this type actually point into the arena.
-//
-// This type is private to prevent accidentally constructing more than one
-// `Interner` on the same thread, which makes it easy to mix up `Symbol`s
-// between `Interner`s.
-struct InternerInner {
+pub struct InternerInner {
     arena: DroplessArena,
     byte_strs: FxIndexSet<&'static [u8]>,
 }
@@ -2794,8 +2806,10 @@ impl Interner {
     /// Get the symbol as a string.
     ///
     /// [`Symbol::as_str()`] should be used in preference to this function.
+    /// (Or [`Symbol::with_interner()`] + [`InternerInner::get_str()`]).
     fn get_str(&self, symbol: Symbol) -> &str {
-        let byte_str = self.get_inner(symbol.0.as_usize());
+        let inner = self.0.lock();
+        let byte_str = inner.byte_strs.get_index(symbol.0.as_usize()).unwrap();
         // SAFETY: known to be a UTF8 string because it's a `Symbol`.
         unsafe { str::from_utf8_unchecked(byte_str) }
     }
@@ -2803,12 +2817,26 @@ impl Interner {
     /// Get the symbol as a string.
     ///
     /// [`ByteSymbol::as_byte_str()`] should be used in preference to this function.
+    /// (Or [`Symbol::with_interner()`] + [`InternerInner::get_byte_str()`]).
     fn get_byte_str(&self, symbol: ByteSymbol) -> &[u8] {
-        self.get_inner(symbol.0.as_usize())
+        let inner = self.0.lock();
+        inner.byte_strs.get_index(symbol.0.as_usize()).unwrap()
+    }
+}
+
+impl InternerInner {
+    /// Get the symbol as a string. Used with `with_interner`.
+    #[inline]
+    pub fn get_str(&self, symbol: Symbol) -> &str {
+        let byte_str = self.byte_strs.get_index(symbol.0.as_usize()).unwrap();
+        // SAFETY: known to be a UTF8 string because it's a `Symbol`.
+        unsafe { str::from_utf8_unchecked(byte_str) }
     }
 
-    fn get_inner(&self, index: usize) -> &[u8] {
-        self.0.lock().byte_strs.get_index(index).unwrap()
+    /// Get the symbol as a string. Used with `with_interner`.
+    #[inline]
+    pub fn get_byte_str(&self, symbol: ByteSymbol) -> &[u8] {
+        self.byte_strs.get_index(symbol.0.as_usize()).unwrap()
     }
 }
 

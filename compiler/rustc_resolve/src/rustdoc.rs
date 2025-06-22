@@ -141,26 +141,32 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
     // In here, the `min_indent` is 1 (because non-sugared fragment are always counted with minimum
     // 1 whitespace), meaning that "hello!" will be considered a codeblock because it starts with 4
     // (5 - 1) whitespaces.
-    let Some(min_indent) = docs
-        .iter()
-        .map(|fragment| {
-            fragment
-                .doc
-                .as_str()
-                .lines()
-                .filter(|line| line.chars().any(|c| !c.is_whitespace()))
-                .map(|line| {
-                    // Compare against either space or tab, ignoring whether they are
-                    // mixed or not.
-                    let whitespace = line.chars().take_while(|c| *c == ' ' || *c == '\t').count();
-                    whitespace
-                        + (if fragment.kind == DocFragmentKind::SugaredDoc { 0 } else { add })
+    let Some(min_indent) = ({
+        Symbol::with_interner(|interner| {
+            docs.iter()
+                .map(|fragment| {
+                    interner
+                        .get_str(fragment.doc)
+                        .lines()
+                        .filter(|line| line.chars().any(|c| !c.is_whitespace()))
+                        .map(|line| {
+                            // Compare against either space or tab, ignoring whether they are
+                            // mixed or not.
+                            let whitespace =
+                                line.chars().take_while(|c| *c == ' ' || *c == '\t').count();
+                            whitespace
+                                + (if fragment.kind == DocFragmentKind::SugaredDoc {
+                                    0
+                                } else {
+                                    add
+                                })
+                        })
+                        .min()
+                        .unwrap_or(usize::MAX)
                 })
                 .min()
-                .unwrap_or(usize::MAX)
         })
-        .min()
-    else {
+    }) else {
         return;
     };
 
