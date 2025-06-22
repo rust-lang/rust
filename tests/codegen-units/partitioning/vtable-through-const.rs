@@ -35,7 +35,6 @@ mod mod1 {
         }
     }
 
-    //~ MONO_ITEM fn mod1::id::<i64> @@ vtable_through_const-mod1.volatile[Internal]
     fn id<T>(x: T) -> T {
         x
     }
@@ -50,8 +49,6 @@ mod mod1 {
         fn do_something_else(&self) {}
     }
 
-    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2>::do_something @@ vtable_through_const-mod1.volatile[External]
-    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2>::do_something_else @@ vtable_through_const-mod1.volatile[External]
     impl Trait2 for NeedsDrop {}
 
     pub trait Trait2Gen<T> {
@@ -93,8 +90,6 @@ pub fn main() {
     // Same as above
     //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait1Gen<u8>>::do_something @@ vtable_through_const-mod1.volatile[External]
     //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait1Gen<u8>>::do_something_else @@ vtable_through_const-mod1.volatile[External]
-    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2Gen<u8>>::do_something @@ vtable_through_const-mod1.volatile[External]
-    //~ MONO_ITEM fn <mod1::NeedsDrop as mod1::Trait2Gen<u8>>::do_something_else @@ vtable_through_const-mod1.volatile[External]
     mod1::TRAIT1_GEN_REF.do_something(0u8);
 
     //~ MONO_ITEM fn mod1::id::<char> @@ vtable_through_const-mod1.volatile[External]
