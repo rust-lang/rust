@@ -55,12 +55,12 @@ impl JsonRenderer<'_> {
                     clean::ModuleItem(_)
                         if self.imported_items.contains(&item_id.expect_def_id()) =>
                     {
-                        from_clean_item(item, self)
+                        item.into_json(self)
                     }
                     _ => return None,
                 }
             }
-            _ => from_clean_item(item, self),
+            _ => item.into_json(self),
         };
         Some(Item {
             id,
@@ -256,90 +256,96 @@ impl FromClean<clean::AssocItemConstraintKind> for AssocItemConstraintKind {
     }
 }
 
-fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
-    use clean::ItemKind::*;
-    let header = item.fn_header(renderer.tcx);
+impl FromClean<clean::Item> for ItemEnum {
+    fn from_clean(item: &clean::Item, renderer: &JsonRenderer<'_>) -> Self {
+        use clean::ItemKind::*;
+        let header = item.fn_header(renderer.tcx);
 
-    match &item.inner.kind {
-        ModuleItem(m) => ItemEnum::Module(Module {
-            is_crate: item.is_crate(),
-            items: renderer.ids(&m.items),
-            is_stripped: false,
-        }),
-        ImportItem(i) => ItemEnum::Use(i.into_json(renderer)),
-        StructItem(s) => ItemEnum::Struct(s.into_json(renderer)),
-        UnionItem(u) => ItemEnum::Union(u.into_json(renderer)),
-        StructFieldItem(f) => ItemEnum::StructField(f.into_json(renderer)),
-        EnumItem(e) => ItemEnum::Enum(e.into_json(renderer)),
-        VariantItem(v) => ItemEnum::Variant(v.into_json(renderer)),
-        FunctionItem(f) => {
-            ItemEnum::Function(from_clean_function(f, true, header.unwrap(), renderer))
-        }
-        ForeignFunctionItem(f, _) => {
-            ItemEnum::Function(from_clean_function(f, false, header.unwrap(), renderer))
-        }
-        TraitItem(t) => ItemEnum::Trait(t.into_json(renderer)),
-        TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
-        MethodItem(m, _) => {
-            ItemEnum::Function(from_clean_function(m, true, header.unwrap(), renderer))
-        }
-        RequiredMethodItem(m) => {
-            ItemEnum::Function(from_clean_function(m, false, header.unwrap(), renderer))
-        }
-        ImplItem(i) => ItemEnum::Impl(i.into_json(renderer)),
-        StaticItem(s) => ItemEnum::Static(from_clean_static(s, rustc_hir::Safety::Safe, renderer)),
-        ForeignStaticItem(s, safety) => ItemEnum::Static(from_clean_static(s, *safety, renderer)),
-        ForeignTypeItem => ItemEnum::ExternType,
-        TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_json(renderer)),
-        // FIXME(generic_const_items): Add support for generic free consts
-        ConstantItem(ci) => ItemEnum::Constant {
-            type_: ci.type_.into_json(renderer),
-            const_: ci.kind.into_json(renderer),
-        },
-        MacroItem(m) => ItemEnum::Macro(m.source.clone()),
-        ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_json(renderer)),
-        PrimitiveItem(p) => {
-            ItemEnum::Primitive(Primitive {
-                name: p.as_sym().to_string(),
-                impls: Vec::new(), // Added in JsonRenderer::item
-            })
-        }
-        // FIXME(generic_const_items): Add support for generic associated consts.
-        RequiredAssocConstItem(_generics, ty) => {
-            ItemEnum::AssocConst { type_: ty.into_json(renderer), value: None }
-        }
-        // FIXME(generic_const_items): Add support for generic associated consts.
-        ProvidedAssocConstItem(ci) | ImplAssocConstItem(ci) => ItemEnum::AssocConst {
-            type_: ci.type_.into_json(renderer),
-            value: Some(ci.kind.expr(renderer.tcx)),
-        },
-        RequiredAssocTypeItem(g, b) => ItemEnum::AssocType {
-            generics: g.into_json(renderer),
-            bounds: b.into_json(renderer),
-            type_: None,
-        },
-        AssocTypeItem(t, b) => ItemEnum::AssocType {
-            generics: t.generics.into_json(renderer),
-            bounds: b.into_json(renderer),
-            type_: Some(t.item_type.as_ref().unwrap_or(&t.type_).into_json(renderer)),
-        },
-        // `convert_item` early returns `None` for stripped items and keywords.
-        KeywordItem => unreachable!(),
-        StrippedItem(inner) => {
-            match inner.as_ref() {
-                ModuleItem(m) => ItemEnum::Module(Module {
-                    is_crate: item.is_crate(),
-                    items: renderer.ids(&m.items),
-                    is_stripped: true,
-                }),
-                // `convert_item` early returns `None` for stripped items we're not including
-                _ => unreachable!(),
+        match &item.inner.kind {
+            ModuleItem(m) => ItemEnum::Module(Module {
+                is_crate: item.is_crate(),
+                items: renderer.ids(&m.items),
+                is_stripped: false,
+            }),
+            ImportItem(i) => ItemEnum::Use(i.into_json(renderer)),
+            StructItem(s) => ItemEnum::Struct(s.into_json(renderer)),
+            UnionItem(u) => ItemEnum::Union(u.into_json(renderer)),
+            StructFieldItem(f) => ItemEnum::StructField(f.into_json(renderer)),
+            EnumItem(e) => ItemEnum::Enum(e.into_json(renderer)),
+            VariantItem(v) => ItemEnum::Variant(v.into_json(renderer)),
+            FunctionItem(f) => {
+                ItemEnum::Function(from_clean_function(f, true, header.unwrap(), renderer))
             }
+            ForeignFunctionItem(f, _) => {
+                ItemEnum::Function(from_clean_function(f, false, header.unwrap(), renderer))
+            }
+            TraitItem(t) => ItemEnum::Trait(t.into_json(renderer)),
+            TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
+            MethodItem(m, _) => {
+                ItemEnum::Function(from_clean_function(m, true, header.unwrap(), renderer))
+            }
+            RequiredMethodItem(m) => {
+                ItemEnum::Function(from_clean_function(m, false, header.unwrap(), renderer))
+            }
+            ImplItem(i) => ItemEnum::Impl(i.into_json(renderer)),
+            StaticItem(s) => {
+                ItemEnum::Static(from_clean_static(s, rustc_hir::Safety::Safe, renderer))
+            }
+            ForeignStaticItem(s, safety) => {
+                ItemEnum::Static(from_clean_static(s, *safety, renderer))
+            }
+            ForeignTypeItem => ItemEnum::ExternType,
+            TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_json(renderer)),
+            // FIXME(generic_const_items): Add support for generic free consts
+            ConstantItem(ci) => ItemEnum::Constant {
+                type_: ci.type_.into_json(renderer),
+                const_: ci.kind.into_json(renderer),
+            },
+            MacroItem(m) => ItemEnum::Macro(m.source.clone()),
+            ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_json(renderer)),
+            PrimitiveItem(p) => {
+                ItemEnum::Primitive(Primitive {
+                    name: p.as_sym().to_string(),
+                    impls: Vec::new(), // Added in JsonRenderer::item
+                })
+            }
+            // FIXME(generic_const_items): Add support for generic associated consts.
+            RequiredAssocConstItem(_generics, ty) => {
+                ItemEnum::AssocConst { type_: ty.into_json(renderer), value: None }
+            }
+            // FIXME(generic_const_items): Add support for generic associated consts.
+            ProvidedAssocConstItem(ci) | ImplAssocConstItem(ci) => ItemEnum::AssocConst {
+                type_: ci.type_.into_json(renderer),
+                value: Some(ci.kind.expr(renderer.tcx)),
+            },
+            RequiredAssocTypeItem(g, b) => ItemEnum::AssocType {
+                generics: g.into_json(renderer),
+                bounds: b.into_json(renderer),
+                type_: None,
+            },
+            AssocTypeItem(t, b) => ItemEnum::AssocType {
+                generics: t.generics.into_json(renderer),
+                bounds: b.into_json(renderer),
+                type_: Some(t.item_type.as_ref().unwrap_or(&t.type_).into_json(renderer)),
+            },
+            // `convert_item` early returns `None` for stripped items and keywords.
+            KeywordItem => unreachable!(),
+            StrippedItem(inner) => {
+                match inner.as_ref() {
+                    ModuleItem(m) => ItemEnum::Module(Module {
+                        is_crate: item.is_crate(),
+                        items: renderer.ids(&m.items),
+                        is_stripped: true,
+                    }),
+                    // `convert_item` early returns `None` for stripped items we're not including
+                    _ => unreachable!(),
+                }
+            }
+            ExternCrateItem { src } => ItemEnum::ExternCrate {
+                name: item.name.as_ref().unwrap().to_string(),
+                rename: src.map(|x| x.to_string()),
+            },
         }
-        ExternCrateItem { src } => ItemEnum::ExternCrate {
-            name: item.name.as_ref().unwrap().to_string(),
-            rename: src.map(|x| x.to_string()),
-        },
     }
 }
 
