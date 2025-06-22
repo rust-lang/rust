@@ -3,7 +3,8 @@
 // prevent the creation of a functional binary.
 // See https://github.com/rust-lang/rust/pull/49878
 
-//@ ignore-cross-compile
+//@ needs-target-std
+//@ ignore-android: FIXME(#142855)
 
 use run_make_support::{cc, extra_c_flags, run, rustc, static_lib_name};
 
