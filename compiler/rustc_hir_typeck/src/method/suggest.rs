@@ -1723,8 +1723,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Don't emit a suggestion if we found an actual method
             // that had unsatisfied trait bounds
             if unsatisfied_predicates.is_empty()
-                // ...or if we already suggested that name because of `rustc_confusable` annotation.
+                // ...or if we already suggested that name because of `rustc_confusable` annotation
                 && Some(similar_candidate.name()) != confusable_suggested
+                // and if the we aren't in an expansion.
+                && !span.from_expansion()
             {
                 self.find_likely_intended_associated_item(
                     &mut err,
