@@ -1663,9 +1663,9 @@ impl<'tcx> AttributeMap<'tcx> {
 /// These nodes are mapped by `ItemLocalId` alongside the index of their parent node.
 /// The HIR tree, including bodies, is pre-hashed.
 pub struct OwnerNodes<'tcx> {
-    /// Pre-computed hash of the full HIR. Used in the crate hash. Only present
-    /// when incr. comp. is enabled.
-    pub opt_hash_including_bodies: Option<Fingerprint>,
+    /// Pre-computed hash of the full HIR, including bodies. Used in the crate hash.
+    /// Only present when incr. comp. is enabled.
+    pub opt_hash: Option<Fingerprint>,
     /// Full HIR for the current owner.
     // The zeroth node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query. It is set to `ItemLocalId::INVALID` to force an ICE if accidentally
@@ -1686,7 +1686,7 @@ impl<'tcx> OwnerNodes<'tcx> {
         OwnerNodes {
             // There is no reason to bother computing a hash for a synthetic body.
             // Just use a constant value.
-            opt_hash_including_bodies: Some(Fingerprint::ZERO),
+            opt_hash: Some(Fingerprint::ZERO),
             nodes: IndexVec::from_elem_n(
                 ParentedNode { parent: ItemLocalId::INVALID, node: OwnerNode::Synthetic.into() },
                 1,
@@ -1712,13 +1712,13 @@ impl fmt::Debug for OwnerNodes<'_> {
                 }),
             )
             .field("bodies", &self.bodies)
-            .field("opt_hash_including_bodies", &self.opt_hash_including_bodies)
+            .field("opt_hash", &self.opt_hash)
             .finish()
     }
 }
 
 /// Full information resulting from lowering an AST node.
-#[derive(Debug, StableHash)]
+#[derive(Debug)]
 pub struct OwnerInfo<'hir> {
     /// Contents of the HIR.
     pub nodes: OwnerNodes<'hir>,
@@ -1737,8 +1737,10 @@ pub struct OwnerInfo<'hir> {
     ///
     /// WARNING: The delayed lints are not hashed as a part of the `OwnerInfo`, and therefore
     ///          should only be accessed in `eval_always` queries.
-    #[stable_hash(ignore)]
     pub delayed_lints: Steal<DelayedLints>,
+
+    // Only present when the crate hash is needed.
+    pub opt_hash: Option<Fingerprint>,
 }
 
 impl<'tcx> OwnerInfo<'tcx> {
