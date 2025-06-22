@@ -1727,10 +1727,10 @@ impl Adt {
     pub fn ty_with_args<'db>(
         self,
         db: &'db dyn HirDatabase,
-        args: impl Iterator<Item = Type<'db>>,
+        args: impl IntoIterator<Item = Type<'db>>,
     ) -> Type<'db> {
         let id = AdtId::from(self);
-        let mut it = args.map(|t| t.ty);
+        let mut it = args.into_iter().map(|t| t.ty);
         let ty = TyBuilder::def_ty(db, id.into(), None)
             .fill(|x| {
                 let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
