@@ -1,8 +1,6 @@
 //! This module defines parallel operations that are implemented in
 //! one way for the serial compiler, and another way the parallel compiler.
 
-#![allow(dead_code)]
-
 use std::any::Any;
 use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
