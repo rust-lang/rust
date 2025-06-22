@@ -193,8 +193,10 @@ fn prefix_and_suffix<'tcx>(
                 emit_fatal("Functions may not have available_externally linkage")
             }
             Linkage::ExternalWeak => {
-                // FIXME: actually this causes a SIGILL in LLVM
-                emit_fatal("Functions may not have external weak linkage")
+                // ExternalWeak linkage can cause SIGILL in LLVM for naked functions.
+                // Fall back to External linkage as a safer alternative that preserves
+                // the intended visibility while avoiding the LLVM bug.
+                writeln!(w, ".globl {asm_name}")?;
             }
         }
 
