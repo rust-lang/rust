@@ -11,7 +11,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_metadata::rendered_const;
 use rustc_middle::{bug, ty};
-use rustc_span::{Pos, Symbol, kw};
+use rustc_span::{Pos, kw, sym};
 use rustdoc_json_types::*;
 use thin_vec::ThinVec;
 
@@ -66,45 +66,14 @@ impl JsonRenderer<'_> {
             id,
             crate_id: item_id.krate().as_u32(),
             name: name.map(|sym| sym.to_string()),
-            span: span.and_then(|span| self.convert_span(span)),
-            visibility: self.convert_visibility(visibility),
+            span: span.and_then(|span| span.into_json(self)),
+            visibility: visibility.into_json(self),
             docs,
             attrs,
-            deprecation: deprecation.map(from_deprecation),
+            deprecation: deprecation.into_json(self),
             inner,
             links,
         })
-    }
-
-    fn convert_span(&self, span: clean::Span) -> Option<Span> {
-        match span.filename(self.sess()) {
-            rustc_span::FileName::Real(name) => {
-                if let Some(local_path) = name.into_local_path() {
-                    let hi = span.hi(self.sess());
-                    let lo = span.lo(self.sess());
-                    Some(Span {
-                        filename: local_path,
-                        begin: (lo.line, lo.col.to_usize() + 1),
-                        end: (hi.line, hi.col.to_usize() + 1),
-                    })
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-
-    fn convert_visibility(&self, v: Option<ty::Visibility<DefId>>) -> Visibility {
-        match v {
-            None => Visibility::Default,
-            Some(ty::Visibility::Public) => Visibility::Public,
-            Some(ty::Visibility::Restricted(did)) if did.is_crate_root() => Visibility::Crate,
-            Some(ty::Visibility::Restricted(did)) => Visibility::Restricted {
-                parent: self.id_from_item_default(did.into()),
-                path: self.tcx.def_path(did).to_string_no_crate_verbose(),
-            },
-        }
     }
 
     fn ids(&self, items: &[clean::Item]) -> Vec<Id> {
@@ -140,11 +109,29 @@ where
     }
 }
 
+impl<T, U> FromClean<Box<T>> for U
+where
+    U: FromClean<T>,
+{
+    fn from_clean(opt: &Box<T>, renderer: &JsonRenderer<'_>) -> Self {
+        opt.as_ref().into_json(renderer)
+    }
+}
+
+impl<T, U> FromClean<Option<T>> for Option<U>
+where
+    U: FromClean<T>,
+{
+    fn from_clean(opt: &Option<T>, renderer: &JsonRenderer<'_>) -> Self {
+        opt.as_ref().map(|x| x.into_json(renderer))
+    }
+}
+
 impl<T, U> FromClean<Vec<T>> for Vec<U>
 where
     U: FromClean<T>,
 {
-    fn from_clean(items: &Vec<T>, renderer: &JsonRenderer<'_>) -> Vec<U> {
+    fn from_clean(items: &Vec<T>, renderer: &JsonRenderer<'_>) -> Self {
         items.iter().map(|i| i.into_json(renderer)).collect()
     }
 }
@@ -153,20 +140,57 @@ impl<T, U> FromClean<ThinVec<T>> for Vec<U>
 where
     U: FromClean<T>,
 {
-    fn from_clean(items: &ThinVec<T>, renderer: &JsonRenderer<'_>) -> Vec<U> {
+    fn from_clean(items: &ThinVec<T>, renderer: &JsonRenderer<'_>) -> Self {
         items.iter().map(|i| i.into_json(renderer)).collect()
     }
 }
 
-pub(crate) fn from_deprecation(deprecation: attrs::Deprecation) -> Deprecation {
-    let attrs::Deprecation { since, note, suggestion: _ } = deprecation;
-    let since = match since {
-        DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
-        DeprecatedSince::Future => Some("TBD".to_owned()),
-        DeprecatedSince::NonStandard(since) => Some(since.to_string()),
-        DeprecatedSince::Unspecified | DeprecatedSince::Err => None,
-    };
-    Deprecation { since, note: note.map(|s| s.to_string()) }
+impl FromClean<clean::Span> for Option<Span> {
+    fn from_clean(span: &clean::Span, renderer: &JsonRenderer<'_>) -> Self {
+        match span.filename(renderer.sess()) {
+            rustc_span::FileName::Real(name) => {
+                if let Some(local_path) = name.into_local_path() {
+                    let hi = span.hi(renderer.sess());
+                    let lo = span.lo(renderer.sess());
+                    Some(Span {
+                        filename: local_path,
+                        begin: (lo.line, lo.col.to_usize() + 1),
+                        end: (hi.line, hi.col.to_usize() + 1),
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+}
+
+impl FromClean<Option<ty::Visibility<DefId>>> for Visibility {
+    fn from_clean(v: &Option<ty::Visibility<DefId>>, renderer: &JsonRenderer<'_>) -> Self {
+        match v {
+            None => Visibility::Default,
+            Some(ty::Visibility::Public) => Visibility::Public,
+            Some(ty::Visibility::Restricted(did)) if did.is_crate_root() => Visibility::Crate,
+            Some(ty::Visibility::Restricted(did)) => Visibility::Restricted {
+                parent: renderer.id_from_item_default((*did).into()),
+                path: renderer.tcx.def_path(*did).to_string_no_crate_verbose(),
+            },
+        }
+    }
+}
+
+impl FromClean<attrs::Deprecation> for Deprecation {
+    fn from_clean(deprecation: &attrs::Deprecation, _renderer: &JsonRenderer<'_>) -> Self {
+        let attrs::Deprecation { since, note, suggestion: _ } = deprecation;
+        let since = match since {
+            DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
+            DeprecatedSince::Future => Some("TBD".to_string()),
+            DeprecatedSince::NonStandard(since) => Some(since.to_string()),
+            DeprecatedSince::Unspecified | DeprecatedSince::Err => None,
+        };
+        Deprecation { since, note: note.map(|sym| sym.to_string()) }
+    }
 }
 
 impl FromClean<clean::GenericArgs> for Option<Box<GenericArgs>> {
@@ -182,7 +206,7 @@ impl FromClean<clean::GenericArgs> for Option<Box<GenericArgs>> {
             },
             Parenthesized { inputs, output } => GenericArgs::Parenthesized {
                 inputs: inputs.into_json(renderer),
-                output: output.as_ref().map(|a| a.as_ref().into_json(renderer)),
+                output: output.into_json(renderer),
             },
             ReturnTypeNotation => GenericArgs::ReturnTypeNotation,
         }))
@@ -193,22 +217,11 @@ impl FromClean<clean::GenericArg> for GenericArg {
     fn from_clean(arg: &clean::GenericArg, renderer: &JsonRenderer<'_>) -> Self {
         use clean::GenericArg::*;
         match arg {
-            Lifetime(l) => GenericArg::Lifetime(convert_lifetime(l)),
+            Lifetime(l) => GenericArg::Lifetime(l.into_json(renderer)),
             Type(t) => GenericArg::Type(t.into_json(renderer)),
             Const(box c) => GenericArg::Const(c.into_json(renderer)),
             Infer => GenericArg::Infer,
         }
-    }
-}
-
-impl FromClean<clean::Constant> for Constant {
-    // FIXME(generic_const_items): Add support for generic const items.
-    fn from_clean(constant: &clean::Constant, renderer: &JsonRenderer<'_>) -> Self {
-        let tcx = renderer.tcx;
-        let expr = constant.expr(tcx);
-        let value = constant.value(tcx);
-        let is_literal = constant.is_literal(tcx);
-        Constant { expr, value, is_literal }
     }
 }
 
@@ -259,21 +272,25 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         StructFieldItem(f) => ItemEnum::StructField(f.into_json(renderer)),
         EnumItem(e) => ItemEnum::Enum(e.into_json(renderer)),
         VariantItem(v) => ItemEnum::Variant(v.into_json(renderer)),
-        FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), renderer)),
+        FunctionItem(f) => {
+            ItemEnum::Function(from_clean_function(f, true, header.unwrap(), renderer))
+        }
         ForeignFunctionItem(f, _) => {
-            ItemEnum::Function(from_function(f, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_clean_function(f, false, header.unwrap(), renderer))
         }
-        TraitItem(t) => ItemEnum::Trait(t.as_ref().into_json(renderer)),
+        TraitItem(t) => ItemEnum::Trait(t.into_json(renderer)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
-        MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), renderer)),
-        RequiredMethodItem(m) => {
-            ItemEnum::Function(from_function(m, false, header.unwrap(), renderer))
+        MethodItem(m, _) => {
+            ItemEnum::Function(from_clean_function(m, true, header.unwrap(), renderer))
         }
-        ImplItem(i) => ItemEnum::Impl(i.as_ref().into_json(renderer)),
-        StaticItem(s) => ItemEnum::Static(convert_static(s, &rustc_hir::Safety::Safe, renderer)),
-        ForeignStaticItem(s, safety) => ItemEnum::Static(convert_static(s, safety, renderer)),
+        RequiredMethodItem(m) => {
+            ItemEnum::Function(from_clean_function(m, false, header.unwrap(), renderer))
+        }
+        ImplItem(i) => ItemEnum::Impl(i.into_json(renderer)),
+        StaticItem(s) => ItemEnum::Static(from_clean_static(s, rustc_hir::Safety::Safe, renderer)),
+        ForeignStaticItem(s, safety) => ItemEnum::Static(from_clean_static(s, *safety, renderer)),
         ForeignTypeItem => ItemEnum::ExternType,
-        TypeAliasItem(t) => ItemEnum::TypeAlias(t.as_ref().into_json(renderer)),
+        TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_json(renderer)),
         // FIXME(generic_const_items): Add support for generic free consts
         ConstantItem(ci) => ItemEnum::Constant {
             type_: ci.type_.into_json(renderer),
@@ -289,7 +306,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
         RequiredAssocConstItem(_generics, ty) => {
-            ItemEnum::AssocConst { type_: ty.as_ref().into_json(renderer), value: None }
+            ItemEnum::AssocConst { type_: ty.into_json(renderer), value: None }
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
         ProvidedAssocConstItem(ci) | ImplAssocConstItem(ci) => ItemEnum::AssocConst {
@@ -361,32 +378,38 @@ impl FromClean<clean::Union> for Union {
     }
 }
 
-pub(crate) fn from_fn_header(header: &rustc_hir::FnHeader) -> FunctionHeader {
-    FunctionHeader {
-        is_async: header.is_async(),
-        is_const: header.is_const(),
-        is_unsafe: header.is_unsafe(),
-        abi: convert_abi(header.abi),
+impl FromClean<rustc_hir::FnHeader> for FunctionHeader {
+    fn from_clean(header: &rustc_hir::FnHeader, renderer: &JsonRenderer<'_>) -> Self {
+        FunctionHeader {
+            is_async: header.is_async(),
+            is_const: header.is_const(),
+            is_unsafe: header.is_unsafe(),
+            abi: header.abi.into_json(renderer),
+        }
     }
 }
 
-fn convert_abi(a: ExternAbi) -> Abi {
-    match a {
-        ExternAbi::Rust => Abi::Rust,
-        ExternAbi::C { unwind } => Abi::C { unwind },
-        ExternAbi::Cdecl { unwind } => Abi::Cdecl { unwind },
-        ExternAbi::Stdcall { unwind } => Abi::Stdcall { unwind },
-        ExternAbi::Fastcall { unwind } => Abi::Fastcall { unwind },
-        ExternAbi::Aapcs { unwind } => Abi::Aapcs { unwind },
-        ExternAbi::Win64 { unwind } => Abi::Win64 { unwind },
-        ExternAbi::SysV64 { unwind } => Abi::SysV64 { unwind },
-        ExternAbi::System { unwind } => Abi::System { unwind },
-        _ => Abi::Other(a.to_string()),
+impl FromClean<ExternAbi> for Abi {
+    fn from_clean(a: &ExternAbi, _renderer: &JsonRenderer<'_>) -> Self {
+        match *a {
+            ExternAbi::Rust => Abi::Rust,
+            ExternAbi::C { unwind } => Abi::C { unwind },
+            ExternAbi::Cdecl { unwind } => Abi::Cdecl { unwind },
+            ExternAbi::Stdcall { unwind } => Abi::Stdcall { unwind },
+            ExternAbi::Fastcall { unwind } => Abi::Fastcall { unwind },
+            ExternAbi::Aapcs { unwind } => Abi::Aapcs { unwind },
+            ExternAbi::Win64 { unwind } => Abi::Win64 { unwind },
+            ExternAbi::SysV64 { unwind } => Abi::SysV64 { unwind },
+            ExternAbi::System { unwind } => Abi::System { unwind },
+            _ => Abi::Other(a.to_string()),
+        }
     }
 }
 
-fn convert_lifetime(l: &clean::Lifetime) -> String {
-    l.0.to_string()
+impl FromClean<clean::Lifetime> for String {
+    fn from_clean(l: &clean::Lifetime, _renderer: &JsonRenderer<'_>) -> String {
+        l.0.to_string()
+    }
 }
 
 impl FromClean<clean::Generics> for Generics {
@@ -411,16 +434,16 @@ impl FromClean<clean::GenericParamDefKind> for GenericParamDefKind {
     fn from_clean(kind: &clean::GenericParamDefKind, renderer: &JsonRenderer<'_>) -> Self {
         use clean::GenericParamDefKind::*;
         match kind {
-            Lifetime { outlives } => GenericParamDefKind::Lifetime {
-                outlives: outlives.into_iter().map(convert_lifetime).collect(),
-            },
+            Lifetime { outlives } => {
+                GenericParamDefKind::Lifetime { outlives: outlives.into_json(renderer) }
+            }
             Type { bounds, default, synthetic } => GenericParamDefKind::Type {
                 bounds: bounds.into_json(renderer),
-                default: default.as_ref().map(|x| x.as_ref().into_json(renderer)),
+                default: default.into_json(renderer),
                 is_synthetic: *synthetic,
             },
             Const { ty, default, synthetic: _ } => GenericParamDefKind::Const {
-                type_: ty.as_ref().into_json(renderer),
+                type_: ty.into_json(renderer),
                 default: default.as_ref().map(|x| x.as_ref().clone()),
             },
         }
@@ -434,45 +457,14 @@ impl FromClean<clean::WherePredicate> for WherePredicate {
             BoundPredicate { ty, bounds, bound_params } => WherePredicate::BoundPredicate {
                 type_: ty.into_json(renderer),
                 bounds: bounds.into_json(renderer),
-                generic_params: bound_params
-                    .iter()
-                    .map(|x| {
-                        let name = x.name.to_string();
-                        let kind = match &x.kind {
-                            clean::GenericParamDefKind::Lifetime { outlives } => {
-                                GenericParamDefKind::Lifetime {
-                                    outlives: outlives.iter().map(|lt| lt.0.to_string()).collect(),
-                                }
-                            }
-                            clean::GenericParamDefKind::Type { bounds, default, synthetic } => {
-                                GenericParamDefKind::Type {
-                                    bounds: bounds
-                                        .into_iter()
-                                        .map(|bound| bound.into_json(renderer))
-                                        .collect(),
-                                    default: default
-                                        .as_ref()
-                                        .map(|ty| ty.as_ref().into_json(renderer)),
-                                    is_synthetic: *synthetic,
-                                }
-                            }
-                            clean::GenericParamDefKind::Const { ty, default, synthetic: _ } => {
-                                GenericParamDefKind::Const {
-                                    type_: ty.as_ref().into_json(renderer),
-                                    default: default.as_ref().map(|d| d.as_ref().clone()),
-                                }
-                            }
-                        };
-                        GenericParamDef { name, kind }
-                    })
-                    .collect(),
+                generic_params: bound_params.into_json(renderer),
             },
             RegionPredicate { lifetime, bounds } => WherePredicate::LifetimePredicate {
-                lifetime: convert_lifetime(lifetime),
+                lifetime: lifetime.into_json(renderer),
                 outlives: bounds
                     .iter()
                     .map(|bound| match bound {
-                        clean::GenericBound::Outlives(lt) => convert_lifetime(lt),
+                        clean::GenericBound::Outlives(lt) => lt.into_json(renderer),
                         _ => bug!("found non-outlives-bound on lifetime predicate"),
                     })
                     .collect(),
@@ -496,15 +488,15 @@ impl FromClean<clean::GenericBound> for GenericBound {
                 GenericBound::TraitBound {
                     trait_: trait_.into_json(renderer),
                     generic_params: generic_params.into_json(renderer),
-                    modifier: from_trait_bound_modifier(modifier),
+                    modifier: modifier.into_json(renderer),
                 }
             }
-            Outlives(lifetime) => GenericBound::Outlives(convert_lifetime(lifetime)),
+            Outlives(lifetime) => GenericBound::Outlives(lifetime.into_json(renderer)),
             Use(args) => GenericBound::Use(
                 args.iter()
                     .map(|arg| match arg {
                         clean::PreciseCapturingArg::Lifetime(lt) => {
-                            PreciseCapturingArg::Lifetime(convert_lifetime(lt))
+                            PreciseCapturingArg::Lifetime(lt.into_json(renderer))
                         }
                         clean::PreciseCapturingArg::Param(param) => {
                             PreciseCapturingArg::Param(param.to_string())
@@ -516,19 +508,22 @@ impl FromClean<clean::GenericBound> for GenericBound {
     }
 }
 
-pub(crate) fn from_trait_bound_modifier(
-    modifiers: &rustc_hir::TraitBoundModifiers,
-) -> TraitBoundModifier {
-    use rustc_hir as hir;
-    let hir::TraitBoundModifiers { constness, polarity } = modifiers;
-    match (constness, polarity) {
-        (hir::BoundConstness::Never, hir::BoundPolarity::Positive) => TraitBoundModifier::None,
-        (hir::BoundConstness::Never, hir::BoundPolarity::Maybe(_)) => TraitBoundModifier::Maybe,
-        (hir::BoundConstness::Maybe(_), hir::BoundPolarity::Positive) => {
-            TraitBoundModifier::MaybeConst
+impl FromClean<rustc_hir::TraitBoundModifiers> for TraitBoundModifier {
+    fn from_clean(
+        modifiers: &rustc_hir::TraitBoundModifiers,
+        _renderer: &JsonRenderer<'_>,
+    ) -> Self {
+        use rustc_hir as hir;
+        let hir::TraitBoundModifiers { constness, polarity } = modifiers;
+        match (constness, polarity) {
+            (hir::BoundConstness::Never, hir::BoundPolarity::Positive) => TraitBoundModifier::None,
+            (hir::BoundConstness::Never, hir::BoundPolarity::Maybe(_)) => TraitBoundModifier::Maybe,
+            (hir::BoundConstness::Maybe(_), hir::BoundPolarity::Positive) => {
+                TraitBoundModifier::MaybeConst
+            }
+            // FIXME: Fill out the rest of this matrix.
+            _ => TraitBoundModifier::None,
         }
-        // FIXME: Fill out the rest of this matrix.
-        _ => TraitBoundModifier::None,
     }
 }
 
@@ -542,35 +537,35 @@ impl FromClean<clean::Type> for Type {
         match ty {
             clean::Type::Path { path } => Type::ResolvedPath(path.into_json(renderer)),
             clean::Type::DynTrait(bounds, lt) => Type::DynTrait(DynTrait {
-                lifetime: lt.as_ref().map(convert_lifetime),
+                lifetime: lt.into_json(renderer),
                 traits: bounds.into_json(renderer),
             }),
             Generic(s) => Type::Generic(s.to_string()),
             // FIXME: add dedicated variant to json Type?
             SelfTy => Type::Generic("Self".to_owned()),
             Primitive(p) => Type::Primitive(p.as_sym().to_string()),
-            BareFunction(f) => Type::FunctionPointer(Box::new(f.as_ref().into_json(renderer))),
+            BareFunction(f) => Type::FunctionPointer(Box::new(f.into_json(renderer))),
             Tuple(t) => Type::Tuple(t.into_json(renderer)),
-            Slice(t) => Type::Slice(Box::new(t.as_ref().into_json(renderer))),
+            Slice(t) => Type::Slice(Box::new(t.into_json(renderer))),
             Array(t, s) => {
-                Type::Array { type_: Box::new(t.as_ref().into_json(renderer)), len: s.to_string() }
+                Type::Array { type_: Box::new(t.into_json(renderer)), len: s.to_string() }
             }
             clean::Type::Pat(t, p) => Type::Pat {
-                type_: Box::new(t.as_ref().into_json(renderer)),
+                type_: Box::new(t.into_json(renderer)),
                 __pat_unstable_do_not_use: p.to_string(),
             },
             ImplTrait(g) => Type::ImplTrait(g.into_json(renderer)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {
                 is_mutable: *mutability == ast::Mutability::Mut,
-                type_: Box::new(type_.as_ref().into_json(renderer)),
+                type_: Box::new(type_.into_json(renderer)),
             },
             BorrowedRef { lifetime, mutability, type_ } => Type::BorrowedRef {
-                lifetime: lifetime.as_ref().map(convert_lifetime),
+                lifetime: lifetime.into_json(renderer),
                 is_mutable: *mutability == ast::Mutability::Mut,
-                type_: Box::new(type_.as_ref().into_json(renderer)),
+                type_: Box::new(type_.into_json(renderer)),
             },
-            QPath(qpath) => qpath.as_ref().into_json(renderer),
+            QPath(qpath) => qpath.into_json(renderer),
             // FIXME(unsafe_binder): Implement rustdoc-json.
             UnsafeBinder(_) => todo!(),
         }
@@ -578,7 +573,7 @@ impl FromClean<clean::Type> for Type {
 }
 
 impl FromClean<clean::Path> for Path {
-    fn from_clean(path: &clean::Path, renderer: &JsonRenderer<'_>) -> Path {
+    fn from_clean(path: &clean::Path, renderer: &JsonRenderer<'_>) -> Self {
         Path {
             path: path.whole_name(),
             id: renderer.id_from_item_default(path.def_id().into()),
@@ -608,13 +603,13 @@ impl FromClean<clean::QPathData> for Type {
             name: assoc.name.to_string(),
             args: assoc.args.into_json(renderer),
             self_type: Box::new(self_type.into_json(renderer)),
-            trait_: trait_.as_ref().map(|trait_| trait_.into_json(renderer)),
+            trait_: trait_.into_json(renderer),
         }
     }
 }
 
 impl FromClean<clean::Term> for Term {
-    fn from_clean(term: &clean::Term, renderer: &JsonRenderer<'_>) -> Term {
+    fn from_clean(term: &clean::Term, renderer: &JsonRenderer<'_>) -> Self {
         match term {
             clean::Term::Type(ty) => Term::Type(ty.into_json(renderer)),
             clean::Term::Constant(c) => Term::Constant(c.into_json(renderer)),
@@ -630,7 +625,7 @@ impl FromClean<clean::BareFunctionDecl> for FunctionPointer {
                 is_unsafe: safety.is_unsafe(),
                 is_const: false,
                 is_async: false,
-                abi: convert_abi(*abi),
+                abi: abi.into_json(renderer),
             },
             generic_params: generic_params.into_json(renderer),
             sig: decl.into_json(renderer),
@@ -709,17 +704,17 @@ impl FromClean<clean::Impl> for Impl {
                 .into_iter()
                 .map(|x| x.to_string())
                 .collect(),
-            trait_: trait_.as_ref().map(|path| path.into_json(renderer)),
+            trait_: trait_.into_json(renderer),
             for_: for_.into_json(renderer),
             items: renderer.ids(&items),
             is_negative,
             is_synthetic,
-            blanket_impl: blanket_impl.map(|x| x.as_ref().into_json(renderer)),
+            blanket_impl: blanket_impl.map(|x| x.into_json(renderer)),
         }
     }
 }
 
-pub(crate) fn from_function(
+pub(crate) fn from_clean_function(
     clean::Function { decl, generics }: &clean::Function,
     has_body: bool,
     header: rustc_hir::FnHeader,
@@ -728,7 +723,7 @@ pub(crate) fn from_function(
     Function {
         sig: decl.into_json(renderer),
         generics: generics.into_json(renderer),
-        header: from_fn_header(&header),
+        header: header.into_json(renderer),
         has_body,
     }
 }
@@ -750,7 +745,7 @@ impl FromClean<clean::Variant> for Variant {
     fn from_clean(variant: &clean::Variant, renderer: &JsonRenderer<'_>) -> Self {
         use clean::VariantKind::*;
 
-        let discriminant = variant.discriminant.as_ref().map(|d| d.into_json(renderer));
+        let discriminant = variant.discriminant.into_json(renderer);
 
         let kind = match &variant.kind {
             CLike => VariantKind::Plain,
@@ -783,10 +778,7 @@ impl FromClean<clean::Import> for Use {
         use clean::ImportKind::*;
         let (name, is_glob) = match import.kind {
             Simple(s) => (s.to_string(), false),
-            Glob => (
-                import.source.path.last_opt().unwrap_or_else(|| Symbol::intern("*")).to_string(),
-                true,
-            ),
+            Glob => (import.source.path.last_opt().unwrap_or(sym::asterisk).to_string(), true),
         };
         Use {
             source: import.source.path.whole_name(),
@@ -798,20 +790,22 @@ impl FromClean<clean::Import> for Use {
 }
 
 impl FromClean<clean::ProcMacro> for ProcMacro {
-    fn from_clean(mac: &clean::ProcMacro, _renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean(mac: &clean::ProcMacro, renderer: &JsonRenderer<'_>) -> Self {
         ProcMacro {
-            kind: from_macro_kind(mac.kind),
+            kind: mac.kind.into_json(renderer),
             helpers: mac.helpers.iter().map(|x| x.to_string()).collect(),
         }
     }
 }
 
-pub(crate) fn from_macro_kind(kind: rustc_span::hygiene::MacroKind) -> MacroKind {
-    use rustc_span::hygiene::MacroKind::*;
-    match kind {
-        Bang => MacroKind::Bang,
-        Attr => MacroKind::Attr,
-        Derive => MacroKind::Derive,
+impl FromClean<rustc_span::hygiene::MacroKind> for MacroKind {
+    fn from_clean(kind: &rustc_span::hygiene::MacroKind, _renderer: &JsonRenderer<'_>) -> Self {
+        use rustc_span::hygiene::MacroKind::*;
+        match kind {
+            Bang => MacroKind::Bang,
+            Attr => MacroKind::Attr,
+            Derive => MacroKind::Derive,
+        }
     }
 }
 
@@ -822,9 +816,9 @@ impl FromClean<clean::TypeAlias> for TypeAlias {
     }
 }
 
-fn convert_static(
+fn from_clean_static(
     stat: &clean::Static,
-    safety: &rustc_hir::Safety,
+    safety: rustc_hir::Safety,
     renderer: &JsonRenderer<'_>,
 ) -> Static {
     let tcx = renderer.tcx;

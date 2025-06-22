@@ -710,7 +710,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_pub_transparent, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes,
+        ErrorFollowing, EncodeCrossCrate::Yes,
         "used internally to mark types with a `transparent` representation when it is guaranteed by the documentation",
     ),
 

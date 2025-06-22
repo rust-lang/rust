@@ -300,8 +300,6 @@ macro_rules! saturating_impl {
 
         /// # Examples
         ///
-        /// Basic usage:
-        ///
         /// ```
         /// use std::num::Saturating;
         ///
@@ -490,8 +488,6 @@ macro_rules! saturating_int_impl {
             ///
             /// # Examples
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -503,8 +499,6 @@ macro_rules! saturating_int_impl {
             /// Returns the largest value that can be represented by this integer type.
             ///
             /// # Examples
-            ///
-            /// Basic usage:
             ///
             /// ```
             /// use std::num::Saturating;
@@ -518,8 +512,6 @@ macro_rules! saturating_int_impl {
             ///
             /// # Examples
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -531,8 +523,6 @@ macro_rules! saturating_int_impl {
             /// Returns the number of ones in the binary representation of `self`.
             ///
             /// # Examples
-            ///
-            /// Basic usage:
             ///
             /// ```
             /// use std::num::Saturating;
@@ -556,8 +546,6 @@ macro_rules! saturating_int_impl {
             ///
             /// # Examples
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -575,8 +563,6 @@ macro_rules! saturating_int_impl {
             /// Returns the number of trailing zeros in the binary representation of `self`.
             ///
             /// # Examples
-            ///
-            /// Basic usage:
             ///
             /// ```
             /// use std::num::Saturating;
@@ -602,8 +588,6 @@ macro_rules! saturating_int_impl {
             /// operator!
             ///
             /// # Examples
-            ///
-            /// Basic usage:
             ///
             /// ```
             /// use std::num::Saturating;
@@ -631,8 +615,6 @@ macro_rules! saturating_int_impl {
             ///
             /// # Examples
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -653,8 +635,6 @@ macro_rules! saturating_int_impl {
             /// Reverses the byte order of the integer.
             ///
             /// # Examples
-            ///
-            /// Basic usage:
             ///
             /// ```
             /// use std::num::Saturating;
@@ -683,8 +663,6 @@ macro_rules! saturating_int_impl {
             /// Please note that this example is shared between integer types.
             /// Which explains why `i16` is used here.
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -712,8 +690,6 @@ macro_rules! saturating_int_impl {
             ///
             /// # Examples
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -740,8 +716,6 @@ macro_rules! saturating_int_impl {
             ///
             /// # Examples
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -767,8 +741,6 @@ macro_rules! saturating_int_impl {
             /// swapped.
             ///
             /// # Examples
-            ///
-            /// Basic usage:
             ///
             /// ```
             /// use std::num::Saturating;
@@ -797,8 +769,6 @@ macro_rules! saturating_int_impl {
             ///
             /// # Examples
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -822,8 +792,6 @@ macro_rules! saturating_int_impl {
             /// Raises self to the power of `exp`, using exponentiation by squaring.
             ///
             /// # Examples
-            ///
-            /// Basic usage:
             ///
             /// ```
             /// use std::num::Saturating;
@@ -860,8 +828,6 @@ macro_rules! saturating_int_impl_signed {
             ///
             /// # Examples
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -882,8 +848,6 @@ macro_rules! saturating_int_impl_signed {
             /// instead of overflowing.
             ///
             /// # Examples
-            ///
-            /// Basic usage:
             ///
             /// ```
             /// use std::num::Saturating;
@@ -911,8 +875,6 @@ macro_rules! saturating_int_impl_signed {
             ///
             /// # Examples
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -934,8 +896,6 @@ macro_rules! saturating_int_impl_signed {
             ///
             /// # Examples
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -954,8 +914,6 @@ macro_rules! saturating_int_impl_signed {
             /// positive.
             ///
             /// # Examples
-            ///
-            /// Basic usage:
             ///
             /// ```
             /// use std::num::Saturating;
@@ -994,8 +952,6 @@ macro_rules! saturating_int_impl_unsigned {
             ///
             /// # Examples
             ///
-            /// Basic usage:
-            ///
             /// ```
             /// use std::num::Saturating;
             ///
@@ -1015,8 +971,6 @@ macro_rules! saturating_int_impl_unsigned {
             /// Returns `true` if and only if `self == 2^k` for some `k`.
             ///
             /// # Examples
-            ///
-            /// Basic usage:
             ///
             /// ```
             /// use std::num::Saturating;
