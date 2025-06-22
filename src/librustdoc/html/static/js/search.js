@@ -4919,11 +4919,12 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         });
     } else if (query.error === null) {
         const dlroChannel = `https://doc.rust-lang.org/${getVar("channel")}`;
+        const docsrsURL = `https://docs.rs/releases/search?query=${encodeURIComponent(query.userQuery)}`;
+        const duckduckgoURL = `https://duckduckgo.com/?q=${encodeURIComponent("rust " + query.userQuery)}`;
         output.className = "search-failed" + extraClass;
-        output.innerHTML = "No results :(<br/>" +
-            "Try on <a href=\"https://duckduckgo.com/?q=" +
-            encodeURIComponent("rust " + query.userQuery) +
-            "\">DuckDuckGo</a>?<br/><br/>" +
+        output.innerHTML = `No results in <code>${getVar("crate")}</code> :(<br/>` +
+            `Search for <a href="${docsrsURL}">other crates</a>?<br/>` +
+            `Or try on <a href="${duckduckgoURL}">DuckDuckGo</a>?<br/><br/>` +
             "Or try looking in one of these:<ul><li>The <a " +
             `href="${dlroChannel}/reference/index.html">Rust Reference</a> ` +
             " for technical details about the language.</li><li><a " +
