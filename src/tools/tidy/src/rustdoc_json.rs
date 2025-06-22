@@ -4,6 +4,7 @@
 use std::ffi::OsStr;
 use std::path::Path;
 use std::process::Command;
+use std::str::FromStr;
 
 use build_helper::ci::CiEnv;
 use build_helper::git::{GitConfig, get_closest_upstream_commit};
@@ -71,9 +72,22 @@ pub fn check(src_path: &Path, bad: &mut bool) {
         Some(output) => {
             let mut format_version_updated = false;
             let mut latest_feature_comment_updated = false;
+            let mut new_version = None;
+            let mut old_version = None;
             for line in output.lines() {
                 if line.starts_with("+pub const FORMAT_VERSION: u32 =") {
                     format_version_updated = true;
+                    new_version = line
+                        .split('=')
+                        .nth(1)
+                        .and_then(|s| s.trim().split(';').next())
+                        .and_then(|s| u32::from_str(s.trim()).ok());
+                } else if line.starts_with("-pub const FORMAT_VERSION: u32 =") {
+                    old_version = line
+                        .split('=')
+                        .nth(1)
+                        .and_then(|s| s.trim().split(';').next())
+                        .and_then(|s| u32::from_str(s.trim()).ok());
                 } else if line.starts_with("+// Latest feature:") {
                     latest_feature_comment_updated = true;
                 }
@@ -91,6 +105,17 @@ pub fn check(src_path: &Path, bad: &mut bool) {
                          updated whereas `FORMAT_VERSION` was in `{RUSTDOC_JSON_TYPES}/lib.rs`"
                     );
                 }
+            }
+            match (new_version, old_version) {
+                (Some(new_version), Some(old_version)) if new_version != old_version + 1 => {
+                    *bad = true;
+                    eprintln!(
+                        "error in `rustdoc_json` tidy check: invalid `FORMAT_VERSION` increase in \
+                         `{RUSTDOC_JSON_TYPES}/lib.rs`, should be `{}`, found `{new_version}`",
+                        old_version + 1,
+                    );
+                }
+                _ => {}
             }
         }
         None => {
