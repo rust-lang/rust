@@ -145,6 +145,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
         }
 
+        // Apply the minimum function alignment here, so that individual backends don't have to.
+        codegen_fn_attrs.alignment = Ord::max(
+            codegen_fn_attrs.alignment,
+            tcx.sess.opts.unstable_opts.min_function_alignment,
+        );
+
         let Some(Ident { name, .. }) = attr.ident() else {
             continue;
         };
