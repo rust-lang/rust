@@ -110,6 +110,7 @@ impl DefPathHash {
 
     /// Builds a new [DefPathHash] with the given [StableCrateId] and
     /// `local_hash`, where `local_hash` must be unique within its crate.
+    #[inline]
     pub fn new(stable_crate_id: StableCrateId, local_hash: Hash64) -> DefPathHash {
         DefPathHash(Fingerprint::new(stable_crate_id.0, local_hash))
     }
@@ -404,21 +405,21 @@ rustc_data_structures::define_id_collections!(
 impl<CTX: HashStableContext> HashStable<CTX> for DefId {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
+        hcx.def_path_hash(*self).hash_stable(hcx, hasher);
     }
 }
 
 impl<CTX: HashStableContext> HashStable<CTX> for LocalDefId {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
+        hcx.def_path_hash(self.to_def_id()).local_hash().hash_stable(hcx, hasher);
     }
 }
 
 impl<CTX: HashStableContext> HashStable<CTX> for CrateNum {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
+        self.as_def_id().to_stable_hash_key(hcx).stable_crate_id().hash_stable(hcx, hasher);
     }
 }
 
@@ -464,30 +465,36 @@ macro_rules! typed_def_id {
         pub struct $Name(DefId);
 
         impl $Name {
+            #[inline]
             pub const fn new_unchecked(def_id: DefId) -> Self {
                 Self(def_id)
             }
 
+            #[inline]
             pub fn to_def_id(self) -> DefId {
                 self.into()
             }
 
+            #[inline]
             pub fn is_local(self) -> bool {
                 self.0.is_local()
             }
 
+            #[inline]
             pub fn as_local(self) -> Option<$LocalName> {
                 self.0.as_local().map($LocalName::new_unchecked)
             }
         }
 
         impl From<$LocalName> for $Name {
+            #[inline]
             fn from(local: $LocalName) -> Self {
                 Self(local.0.to_def_id())
             }
         }
 
         impl From<$Name> for DefId {
+            #[inline]
             fn from(typed: $Name) -> Self {
                 typed.0
             }
@@ -500,26 +507,31 @@ macro_rules! typed_def_id {
         impl !PartialOrd for $LocalName {}
 
         impl $LocalName {
+            #[inline]
             pub const fn new_unchecked(def_id: LocalDefId) -> Self {
                 Self(def_id)
             }
 
+            #[inline]
             pub fn to_def_id(self) -> DefId {
                 self.0.into()
             }
 
+            #[inline]
             pub fn to_local_def_id(self) -> LocalDefId {
                 self.0
             }
         }
 
         impl From<$LocalName> for LocalDefId {
+            #[inline]
             fn from(typed: $LocalName) -> Self {
                 typed.0
             }
         }
 
         impl From<$LocalName> for DefId {
+            #[inline]
             fn from(typed: $LocalName) -> Self {
                 typed.0.into()
             }
