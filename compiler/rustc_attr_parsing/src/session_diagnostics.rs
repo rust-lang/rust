@@ -437,6 +437,15 @@ pub(crate) struct IllFormedAttributeInput {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_ill_formed_attribute_input)]
+pub(crate) struct MustUseIllFormedAttributeInput {
+    #[primary_span]
+    pub span: Span,
+    pub num_suggestions: usize,
+    pub suggestions: DiagArgValue,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_stability_outside_std, code = E0734)]
 pub(crate) struct StabilityOutsideStd {
     #[primary_span]
