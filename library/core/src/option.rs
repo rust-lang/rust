@@ -2037,9 +2037,9 @@ impl<T> Option<&mut T> {
 impl<T, E> Option<Result<T, E>> {
     /// Transposes an `Option` of a [`Result`] into a [`Result`] of an `Option`.
     ///
-    /// [`None`] will be mapped to <code>[Ok]\([None])</code>.
-    /// <code>[Some]\([Ok]\(\_))</code> and <code>[Some]\([Err]\(\_))</code> will be mapped to
-    /// <code>[Ok]\([Some]\(\_))</code> and <code>[Err]\(\_)</code>.
+    /// <code>[Some]\([Ok]\(\_))</code> is mapped to <code>[Ok]\([Some]\(\_))</code>,
+    /// <code>[Some]\([Err]\(\_))</code> is mapped to <code>[Err]\(\_)</code>,
+    /// and [`None`] will be mapped to <code>[Ok]\([None])</code>.
     ///
     /// # Examples
     ///
@@ -2047,9 +2047,9 @@ impl<T, E> Option<Result<T, E>> {
     /// #[derive(Debug, Eq, PartialEq)]
     /// struct SomeErr;
     ///
-    /// let x: Result<Option<i32>, SomeErr> = Ok(Some(5));
-    /// let y: Option<Result<i32, SomeErr>> = Some(Ok(5));
-    /// assert_eq!(x, y.transpose());
+    /// let x: Option<Result<i32, SomeErr>> = Some(Ok(5));
+    /// let y: Result<Option<i32>, SomeErr> = Ok(Some(5));
+    /// assert_eq!(x.transpose(), y);
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
