@@ -127,10 +127,10 @@ LL | fn test_cow_with_ref(c: &Cow<[i32]>) {}
    |                         ^^^^^^^^^^^ help: change this to: `&[i32]`
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do
-  --> tests/ui/ptr_arg.rs:152:66
+  --> tests/ui/ptr_arg.rs:152:64
    |
-LL |     fn some_allowed(#[allow(clippy::ptr_arg)] _v: &Vec<u32>, _s: &String) {}
-   |                                                                  ^^^^^^^ help: change this to: `&str`
+LL |     fn some_allowed(#[allow(clippy::ptr_arg)] v: &Vec<u32>, s: &String) {}
+   |                                                                ^^^^^^^ help: change this to: `&str`
 
 error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:182:21
@@ -143,8 +143,8 @@ help: change this to
 LL ~     fn foo_vec(vec: &[u8]) {
 LL |
 LL |
-LL ~         let _ = vec.to_owned().pop();
-LL ~         let _ = vec.to_owned().clone();
+LL ~         let a = vec.to_owned().pop();
+LL ~         let b = vec.to_owned().clone();
    |
 
 error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
@@ -158,23 +158,23 @@ help: change this to
 LL ~     fn foo_path(path: &Path) {
 LL |
 LL |
-LL ~         let _ = path.to_path_buf().pop();
-LL ~         let _ = path.to_path_buf().clone();
+LL ~         let c = path.to_path_buf().pop();
+LL ~         let d = path.to_path_buf().clone();
    |
 
-error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
+error: writing `&String` instead of `&str` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:196:21
    |
-LL |     fn foo_str(str: &PathBuf) {
-   |                     ^^^^^^^^
+LL |     fn foo_str(str: &String) {
+   |                     ^^^^^^^
    |
 help: change this to
    |
-LL ~     fn foo_str(str: &Path) {
+LL ~     fn foo_str(str: &str) {
 LL |
 LL |
-LL ~         let _ = str.to_path_buf().pop();
-LL ~         let _ = str.to_path_buf().clone();
+LL ~         let e = str.to_owned().pop();
+LL ~         let f = str.to_owned().clone();
    |
 
 error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
@@ -231,6 +231,42 @@ error: writing `&String` instead of `&str` involves a new object where a slice w
 LL |     fn good(v1: &String, v2: &String) {
    |                              ^^^^^^^ help: change this to: `&str`
 
+error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:363:20
+   |
+LL |     fn foo_used(x: &Vec<i32>) {
+   |                    ^^^^^^^^^ help: change this to: `&[i32]`
+
+error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:377:26
+   |
+LL |     fn foo_local_used(x: &Vec<i32>) {
+   |                          ^^^^^^^^^ help: change this to: `&[i32]`
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:386:33
+   |
+LL |     fn foofoo(_x: &Vec<i32>, y: &String) {
+   |                                 ^^^^^^^ help: change this to: `&str`
+
+error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:407:20
+   |
+LL |     fn bar_used(x: &mut Vec<u32>) {
+   |                    ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
+
+error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:421:26
+   |
+LL |     fn bar_local_used(x: &mut Vec<u32>) {
+   |                          ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
+
+error: writing `&mut String` instead of `&mut str` involves a new object where a slice will do
+  --> tests/ui/ptr_arg.rs:430:37
+   |
+LL |     fn barbar(_x: &mut Vec<u32>, y: &mut String) {
+   |                                     ^^^^^^^^^^^ help: change this to: `&mut str`
+
 error: lifetime flowing from input to output with different syntax can be confusing
   --> tests/ui/ptr_arg.rs:314:36
    |
@@ -247,5 +283,5 @@ help: one option is to consistently use `'a`
 LL |     fn cow_good_ret_ty<'a>(input: &'a Cow<'a, str>) -> &'a str {
    |                                                         ++
 
-error: aborting due to 27 previous errors
+error: aborting due to 33 previous errors
 
