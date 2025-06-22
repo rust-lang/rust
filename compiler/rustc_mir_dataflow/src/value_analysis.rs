@@ -750,11 +750,15 @@ impl<'tcx> Map<'tcx> {
         }
     }
 
+    /// Return the range of value indices inside this place.
+    pub fn values_inside(&self, root: PlaceIndex) -> &[ValueIndex] {
+        let range = self.inner_values[root].clone();
+        &self.inner_values_buffer[range]
+    }
+
     /// Invoke a function on each value in the given place and all descendants.
     fn for_each_value_inside(&self, root: PlaceIndex, f: &mut impl FnMut(ValueIndex)) {
-        let range = self.inner_values[root].clone();
-        let values = &self.inner_values_buffer[range];
-        for &v in values {
+        for &v in self.values_inside(root) {
             f(v)
         }
     }
