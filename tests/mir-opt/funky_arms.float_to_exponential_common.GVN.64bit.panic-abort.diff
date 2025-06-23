@@ -51,7 +51,8 @@
           StorageDead(_21);
           _4 = Ne(move _20, const 0_u32);
           StorageDead(_20);
-          StorageLive(_5);
+-         StorageLive(_5);
++         nop;
           switchInt(copy _4) -> [0: bb2, otherwise: bb1];
       }
   
@@ -99,7 +100,7 @@
           StorageLive(_15);
           _15 = copy _3;
 -         _0 = float_to_exponential_common_exact::<T>(move _9, move _10, move _11, move _12, move _15) -> [return: bb5, unwind unreachable];
-+         _0 = float_to_exponential_common_exact::<T>(copy _1, copy _2, move _11, move _12, copy _3) -> [return: bb5, unwind unreachable];
++         _0 = float_to_exponential_common_exact::<T>(copy _1, copy _2, copy _5, move _12, copy _3) -> [return: bb5, unwind unreachable];
       }
   
       bb5: {
@@ -123,7 +124,7 @@
           StorageLive(_19);
           _19 = copy _3;
 -         _0 = float_to_exponential_common_shortest::<T>(move _16, move _17, move _18, move _19) -> [return: bb7, unwind unreachable];
-+         _0 = float_to_exponential_common_shortest::<T>(copy _1, copy _2, move _18, copy _3) -> [return: bb7, unwind unreachable];
++         _0 = float_to_exponential_common_shortest::<T>(copy _1, copy _2, copy _5, copy _3) -> [return: bb7, unwind unreachable];
       }
   
       bb7: {
@@ -135,7 +136,8 @@
       }
   
       bb8: {
-          StorageDead(_5);
+-         StorageDead(_5);
++         nop;
           StorageDead(_4);
           StorageDead(_6);
           return;

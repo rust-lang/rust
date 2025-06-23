@@ -27,9 +27,10 @@
       bb0: {
 -         StorageLive(_2);
 -         _2 = const core::num::<impl u64>::MAX as usize (IntToInt);
+-         StorageLive(_3);
 +         nop;
 +         _2 = const usize::MAX;
-          StorageLive(_3);
++         nop;
           StorageLive(_4);
           StorageLive(_5);
 -         _5 = copy _2;
@@ -90,13 +91,15 @@
           StorageDead(_4);
           StorageLive(_14);
           _14 = copy _3;
-          _0 = opaque::<T>(move _14) -> [return: bb7, unwind unreachable];
+-         _0 = opaque::<T>(move _14) -> [return: bb7, unwind unreachable];
++         _0 = opaque::<T>(copy _3) -> [return: bb7, unwind unreachable];
       }
   
       bb7: {
           StorageDead(_14);
-          StorageDead(_3);
+-         StorageDead(_3);
 -         StorageDead(_2);
++         nop;
 +         nop;
           return;
       }
