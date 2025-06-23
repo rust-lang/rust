@@ -88,11 +88,14 @@ impl Diff {
         self
     }
 
-    fn run_common(&self) -> (&str, &str, String, String) {
+    fn run_common(&self) -> (&str, &str, String, String, String) {
         let expected = self.expected.as_ref().expect("expected text not set");
         let mut actual = self.actual.as_ref().expect("actual text not set").to_string();
         let expected_name = self.expected_name.as_ref().unwrap();
         let actual_name = self.actual_name.as_ref().unwrap();
+
+        let original_actual = actual.clone();
+
         for (regex, replacement) in &self.normalizers {
             let re = Regex::new(regex).expect("bad regex in custom normalization rule");
             actual = re.replace_all(&actual, replacement).into_owned();
@@ -103,21 +106,30 @@ impl Diff {
             .header(expected_name, actual_name)
             .to_string();
 
-        (expected_name, actual_name, output, actual)
+        let normalization_diff = if original_actual != actual {
+            TextDiff::from_lines(&original_actual, &actual)
+                .unified_diff()
+                .header("Before normalization", "After normalization")
+                .to_string()
+        } else {
+            "No normalization was applied".to_string()
+        };
+
+        (expected_name, actual_name, output, actual, normalization_diff)
     }
 
     #[track_caller]
     pub fn run(&mut self) {
         self.drop_bomb.defuse();
-        let (expected_name, actual_name, output, actual) = self.run_common();
+        let (expected_name, actual_name, output, actual, normalization_diff) = self.run_common();
 
         if !output.is_empty() {
             if self.maybe_bless_expected_file(&actual) {
                 return;
             }
             panic!(
-                "test failed: `{}` is different from `{}`\n\n{}",
-                expected_name, actual_name, output
+                "test failed: `{}` is different from `{}`\n\n{}\n\n{}",
+                expected_name, actual_name, output, normalization_diff
             )
         }
     }
@@ -125,15 +137,15 @@ impl Diff {
     #[track_caller]
     pub fn run_fail(&mut self) {
         self.drop_bomb.defuse();
-        let (expected_name, actual_name, output, actual) = self.run_common();
+        let (expected_name, actual_name, output, actual, normalization_diff) = self.run_common();
 
         if output.is_empty() {
             if self.maybe_bless_expected_file(&actual) {
                 return;
             }
             panic!(
-                "test failed: `{}` is not different from `{}`\n\n{}",
-                expected_name, actual_name, output
+                "test failed: `{}` is not different from `{}`\n\n{}\n\n{}",
+                expected_name, actual_name, output, normalization_diff
             )
         }
     }
