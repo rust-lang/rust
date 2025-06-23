@@ -224,7 +224,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     }
 }
 
-#[stable(feature = "array_value_iter_default", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "array_value_iter_default", since = "1.89.0")]
 impl<T, const N: usize> Default for IntoIter<T, N> {
     fn default() -> Self {
         IntoIter::empty()
