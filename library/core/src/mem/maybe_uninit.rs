@@ -328,6 +328,9 @@ impl<T> MaybeUninit<T> {
     #[inline(always)]
     #[rustc_diagnostic_item = "maybe_uninit_uninit"]
     pub const fn uninit() -> MaybeUninit<T> {
+        // It is very helpful for codegen to know when are writing uninit bytes. MIR optimizations
+        // currently do not const-propagate unions, but if we create the const manually that can be
+        // trivially propagated. See #142837.
         const { MaybeUninit { uninit: () } }
     }
 
