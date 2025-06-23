@@ -2033,7 +2033,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[track_caller]
     pub fn insert(&mut self, index: usize, element: T) {
         if intrinsics::unlikely(self.insert_mut(index, element).is_none()) {
-            panic!("insertion index (is {index}) should be <= len (is {len})", index, self.len())
+            panic!("insertion index (is {index}) should be <= len (is {})", self.len())
         };
     }
 
