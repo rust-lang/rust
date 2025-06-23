@@ -134,7 +134,7 @@ enum Scope<'ra> {
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum ModuleScope {
     NonGlobal,
-    Global,
+    Globs,
 }
 
 /// Names from different contexts may want to visit different subsets of all specific scopes

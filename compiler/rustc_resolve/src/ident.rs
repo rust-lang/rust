@@ -224,7 +224,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     #[instrument(skip(self, visitor), level = "debug")]
-    pub(crate) fn visit_module_scopes<T>(
+    fn visit_module_scopes<T>(
         &mut self,
         ns: Namespace,
         mut visitor: impl FnMut(&mut Self, ModuleScope) -> Option<T>,
@@ -236,8 +236,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             scope = match scope {
-                ModuleScope::NonGlobal => ModuleScope::Global,
-                ModuleScope::Global => break, // nowhere else to search
+                ModuleScope::NonGlobal => ModuleScope::Globs,
+                ModuleScope::Globs => break, // nowhere else to search
             };
         }
 
@@ -894,11 +894,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let resolution =
             self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
-        debug!(?resolution);
-
         let check_usable = |this: &mut Self, binding: NameBinding<'ra>| {
             let usable = this.is_accessible_from(binding.vis, parent_scope.module);
-            debug!(?usable);
             if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
         };
 
@@ -924,7 +921,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 None // Continue to global scope
             }
-            ModuleScope::Global => {
+            ModuleScope::Globs => {
                 // If we are here, any primary `resolution.binding` is either a glob, None,
                 // or should be ignored.
                 let binding = resolution.glob_binding;
@@ -958,7 +955,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return Some(Err((Undetermined, Weak::No)));
                 }
 
-                // A glob resolution is determined if it cannot be shadowed by a macro expansion.
+                // So we have a resolution that's from a glob import. This resolution is determined
+                // if it cannot be shadowed by some new item/import expanded from a macro.
+                // This happens either if there are no unexpanded macros, or expanded names cannot
+                // shadow globs (that happens in macro namespace or with restricted shadowing).
+                //
+                // Additionally, any macro in any module can plant names in the root module if it creates
+                // `macro_export` macros, so the root module effectively has unresolved invocations if any
+                // module has unresolved invocations.
+                // However, it causes resolution/expansion to stuck too often (#53144), so, to make
+                // progress, we have to ignore those potential unresolved invocations from other modules
+                // and prohibit access to macro-expanded `macro_export` macros instead (unless restricted
+                // shadowing is enabled, see `macro_expanded_macro_export_errors`).
                 if let Some(binding) = binding {
                     if binding.determined() || ns == MacroNS || shadowing == Shadowing::Restricted {
                         return Some(check_usable(this, binding));
@@ -971,9 +979,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         });
 
-        match break_result {
-            Some(result) => return result,
-            None => {}
+        if let Some(result) = break_result {
+            return result;
         }
 
         // --- From now on we have no resolution. ---
