@@ -969,15 +969,15 @@ fn run_path_with_utf16<T, P: AsRef<Path>>(
 impl Dir {
     pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let opts = OpenOptions::new();
-        Self::new_with_native(path.as_ref(), &opts).map(|handle| Self { handle })
+        run_path_with_wcstr(path.as_ref(), &|path| Self::new_with_native(path, &opts))
     }
 
     pub fn new_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
-        Self::new_with_native(path.as_ref(), &opts).map(|handle| Self { handle })
+        run_path_with_wcstr(path.as_ref(), &|path| Self::new_with_native(path, &opts))
     }
 
     pub fn new_for_traversal<P: AsRef<Path>>(path: P) -> io::Result<Self> {
-        Self::new_native(path.as_ref()).map(|handle| Self { handle })
+        run_path_with_wcstr(path.as_ref(), &|path| Self::new_native(path))
     }
 
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
@@ -1027,14 +1027,35 @@ impl Dir {
         run_path_with_wcstr(to.as_ref(), &|to| self.rename_native(from.as_ref(), to_dir, to))
     }
 
-    fn new_native(path: &Path) -> io::Result<Handle> {
-        let mut opts = OpenOptions::new();
-        opts.access_mode(c::FILE_TRAVERSE);
-        File::open(path, &opts).map(|file| file.into_inner())
+    pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(&self, original: P, link: Q) -> io::Result<()> {
+        run_path_with_utf16(original.as_ref(), &|orig| {
+            self.symlink_native(orig, link.as_ref(), original.as_ref().is_relative())
+        })
     }
 
-    fn new_with_native(path: &Path, opts: &OpenOptions) -> io::Result<Handle> {
-        File::open(path, opts).map(|file| file.into_inner())
+    fn new_native(path: &WCStr) -> io::Result<Self> {
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::FILE_TRAVERSE);
+        Self::new_with_native(path, &opts)
+    }
+
+    fn new_with_native(path: &WCStr, opts: &OpenOptions) -> io::Result<Self> {
+        let creation = opts.get_creation_mode()?;
+        let handle = unsafe {
+            c::CreateFileW(
+                path.as_ptr(),
+                opts.get_access_mode()?,
+                opts.share_mode,
+                opts.security_attributes,
+                creation,
+                opts.get_flags_and_attributes() | c::FILE_FLAG_BACKUP_SEMANTICS,
+                ptr::null_mut(),
+            )
+        };
+        match OwnedHandle::try_from(unsafe { HandleOrInvalid::from_raw_handle(handle) }) {
+            Ok(handle) => Ok(Self { handle: Handle::from_inner(handle) }),
+            Err(_) => Err(Error::last_os_error()),
+        }
     }
 
     fn open_native(&self, path: &[u16], opts: &OpenOptions) -> io::Result<Handle> {
@@ -1158,6 +1179,71 @@ impl Dir {
             )
         };
         unsafe { dealloc(file_rename_info.cast::<u8>(), layout) };
+        if result == 0 { Err(api::get_last_error()).io_result() } else { Ok(()) }
+    }
+
+    fn symlink_native(&self, original: &[u16], link: &Path, relative: bool) -> io::Result<()> {
+        const TOO_LONG_ERR: io::Error =
+            io::const_error!(io::ErrorKind::InvalidFilename, "File name is too long");
+        let mut opts = OpenOptions::new();
+        opts.write(true);
+        let linkfile = File::open(link, &opts)?;
+        let utf16: Vec<u16> = original.iter().chain(original).copied().collect();
+        let file_name_len = u16::try_from(original.len()).or(Err(TOO_LONG_ERR))?;
+        let sym_buffer = c::SYMBOLIC_LINK_REPARSE_BUFFER {
+            SubstituteNameOffset: 0,
+            SubstituteNameLength: file_name_len,
+            PrintNameOffset: file_name_len,
+            PrintNameLength: file_name_len,
+            Flags: if relative { c::SYMLINK_FLAG_RELATIVE } else { 0 },
+            PathBuffer: 0,
+        };
+        let layout = Layout::new::<c::REPARSE_DATA_BUFFER>();
+        let layout = layout
+            .extend(Layout::new::<c::SYMBOLIC_LINK_REPARSE_BUFFER>())
+            .or(Err(TOO_LONG_ERR))?
+            .0;
+        let layout = Layout::array::<u16>(original.len() * 2)
+            .and_then(|arr| layout.extend(arr))
+            .or(Err(TOO_LONG_ERR))?
+            .0;
+        let buffer = unsafe { alloc(layout) }.cast::<c::REPARSE_DATA_BUFFER>();
+        unsafe {
+            buffer.write(c::REPARSE_DATA_BUFFER {
+                ReparseTag: c::IO_REPARSE_TAG_SYMLINK,
+                ReparseDataLength: u16::try_from(size_of_val(&sym_buffer)).or(Err(TOO_LONG_ERR))?,
+                Reserved: 0,
+                rest: (),
+            });
+            buffer
+                .add(offset_of!(c::REPARSE_DATA_BUFFER, rest))
+                .cast::<c::SYMBOLIC_LINK_REPARSE_BUFFER>()
+                .write(sym_buffer);
+            ptr::copy_nonoverlapping(
+                utf16.as_ptr(),
+                buffer
+                    .add(offset_of!(c::REPARSE_DATA_BUFFER, rest))
+                    .add(offset_of!(c::SYMBOLIC_LINK_REPARSE_BUFFER, PathBuffer))
+                    .cast::<u16>(),
+                original.len() * 2,
+            );
+        };
+        let result = unsafe {
+            c::DeviceIoControl(
+                linkfile.handle.as_raw_handle(),
+                c::FSCTL_SET_REPARSE_POINT,
+                &raw const buffer as *const c_void,
+                u32::try_from(size_of_val(&buffer)).or(Err(TOO_LONG_ERR))?,
+                ptr::null_mut(),
+                0,
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        };
+        unsafe {
+            dealloc(buffer.cast(), layout);
+        }
+
         if result == 0 { Err(api::get_last_error()).io_result() } else { Ok(()) }
     }
 }

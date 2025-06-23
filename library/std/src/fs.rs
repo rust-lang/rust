@@ -1781,6 +1781,15 @@ impl Dir {
     ) -> io::Result<()> {
         self.inner.rename(from, &to_dir.inner, to)
     }
+
+    /// Attempts to create a new symbolic link on the filesystem.
+    ///
+    /// If `original` is a relative path, it is interpreted relative to the created link.
+    /// If `link` is a relative path, it is interpreted relative to `self`.
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(&self, original: P, link: Q) -> io::Result<()> {
+        self.inner.symlink(original, link)
+    }
 }
 
 #[unstable(feature = "dirfd", issue = "120426")]
