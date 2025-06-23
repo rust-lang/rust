@@ -1168,7 +1168,7 @@ cc = ["@ehuss"]
 
 [mentions."src/doc/rustc-dev-guide"]
 message = "The rustc-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
-cc = ["@BoxyUwU", "@jieyouxu", "@kobzol"]
+cc = ["@BoxyUwU", "@jieyouxu", "@kobzol", "@tshepang"]
 
 [mentions."compiler/rustc_codegen_ssa/src/codegen_attrs.rs"]
 cc = ["@jdonszelmann"]
