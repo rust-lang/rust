@@ -241,6 +241,7 @@ pub(crate) fn check_intrinsic_type(
         let inputs = sig.skip_binder().inputs().to_vec();
         let output = sig.skip_binder().output();
 
+        // TODO(Sa4dUs): We can also have unsafe ad functions
         (n_tps, n_lts, n_cts, inputs, output, hir::Safety::Safe)
     } else {
         let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
