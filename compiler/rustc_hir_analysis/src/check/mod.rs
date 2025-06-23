@@ -114,7 +114,15 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor> {
-    tcx.calculate_dtor(def_id, always_applicable::check_drop_impl)
+    let dtor = tcx.calculate_dtor(def_id, always_applicable::check_drop_impl);
+    if dtor.is_none() && tcx.features().async_drop() {
+        if let Some(async_dtor) = adt_async_destructor(tcx, def_id) {
+            // When type has AsyncDrop impl, but doesn't have Drop impl, generate error
+            let span = tcx.def_span(async_dtor.impl_did);
+            tcx.dcx().emit_err(errors::AsyncDropWithoutSyncDrop { span });
+        }
+    }
+    dtor
 }
 
 fn adt_async_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::AsyncDestructor> {
@@ -303,9 +311,7 @@ fn default_body_is_unstable(
         reason: reason_str,
     });
 
-    let inject_span = item_did
-        .as_local()
-        .and_then(|id| tcx.crate_level_attribute_injection_span(tcx.local_def_id_to_hir_id(id)));
+    let inject_span = item_did.is_local().then(|| tcx.crate_level_attribute_injection_span());
     rustc_session::parse::add_feature_diagnostics_for_issue(
         &mut err,
         &tcx.sess,

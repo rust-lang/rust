@@ -20,7 +20,7 @@ LL |     fn fnc<const N: dyn Trait = u32>(&self) -> dyn Trait {
    |                                 ^^^ not a value
 
 error[E0425]: cannot find value `bar` in this scope
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:9:9
+  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:8:9
    |
 LL |         bar
    |         ^^^ not found in this scope
@@ -45,22 +45,7 @@ error: defaults for const parameters are only allowed in `struct`, `enum`, `type
 LL |     fn fnc<const N: dyn Trait = u32>(&self) -> dyn Trait {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: associated item referring to unboxed trait object for its own trait
-  --> $DIR/ice-hir-wf-check-anon-const-issue-122199.rs:4:48
-   |
-LL | trait Trait<const N: dyn Trait = bar> {
-   |       ----- in this trait
-...
-LL |     fn fnc<const N: dyn Trait = u32>(&self) -> dyn Trait {
-   |                                                ^^^^^^^^^
-   |
-help: you might have meant to use `Self` to refer to the implementing type
-   |
-LL -     fn fnc<const N: dyn Trait = u32>(&self) -> dyn Trait {
-LL +     fn fnc<const N: dyn Trait = u32>(&self) -> Self {
-   |
-
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0391, E0403, E0423, E0425.
 For more information about an error, try `rustc --explain E0391`.

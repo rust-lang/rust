@@ -1,4 +1,5 @@
-//@ needs-target-std
+//@ ignore-cross-compile
+//@ ignore-wasm (`object` can't handle wasm object files)
 //@ ignore-windows
 // This test should be replaced with one in tests/debuginfo once GDB or LLDB support 128-bit enums.
 

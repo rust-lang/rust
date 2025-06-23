@@ -61,7 +61,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let keywords = local_crate.keywords(cx.tcx);
     {
         let ItemKind::ModuleItem(m) = &mut module.inner.kind else { unreachable!() };
-        m.items.extend(primitives.iter().map(|&(def_id, prim)| {
+        m.items.extend(primitives.map(|(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,
                 Some(prim.as_sym()),
@@ -69,7 +69,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
                 cx,
             )
         }));
-        m.items.extend(keywords.into_iter().map(|(def_id, kw)| {
+        m.items.extend(keywords.map(|(def_id, kw)| {
             Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem, cx)
         }));
     }

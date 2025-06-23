@@ -875,8 +875,4 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         Ok(())
     }
-
-    fn cache(&self) -> &Cache {
-        &self.shared.cache
-    }
 }

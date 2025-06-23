@@ -1785,7 +1785,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This is how `Layout` used to print before it become
-        // `Interned<LayoutS>`. We print it like this to avoid having to update
+        // `Interned<LayoutData>`. We print it like this to avoid having to update
         // expected output in a lot of tests.
         let LayoutData {
             size,

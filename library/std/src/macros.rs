@@ -363,7 +363,14 @@ macro_rules! dbg {
         match $val {
             tmp => {
                 $crate::eprintln!("[{}:{}:{}] {} = {:#?}",
-                    $crate::file!(), $crate::line!(), $crate::column!(), $crate::stringify!($val), &tmp);
+                    $crate::file!(),
+                    $crate::line!(),
+                    $crate::column!(),
+                    $crate::stringify!($val),
+                    // The `&T: Debug` check happens here (not in the format literal desugaring)
+                    // to avoid format literal related messages and suggestions.
+                    &&tmp as &dyn $crate::fmt::Debug,
+                );
                 tmp
             }
         }

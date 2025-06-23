@@ -34,16 +34,22 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMode, fold_regions};
+use rustc_middle::ty::{
+    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, fold_regions,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::{ObligationCtxt, hir_ty_lowering_dyn_compatibility_violations};
+use rustc_trait_selection::traits::{
+    FulfillmentError, ObligationCtxt, hir_ty_lowering_dyn_compatibility_violations,
+};
 use tracing::{debug, instrument};
 
 use crate::errors;
-use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer, RegionInferReason};
+use crate::hir_ty_lowering::{
+    FeedConstTy, HirTyLowerer, InherentAssocCandidate, RegionInferReason,
+};
 
 pub(crate) mod dump;
 mod generics_of;
@@ -362,6 +368,58 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         assoc_ident: Ident,
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_ident))
+    }
+
+    #[instrument(level = "debug", skip(self, _span), ret)]
+    fn select_inherent_assoc_candidates(
+        &self,
+        _span: Span,
+        self_ty: Ty<'tcx>,
+        candidates: Vec<InherentAssocCandidate>,
+    ) -> (Vec<InherentAssocCandidate>, Vec<FulfillmentError<'tcx>>) {
+        assert!(!self_ty.has_infer());
+
+        // We don't just call the normal normalization routine here as we can't provide the
+        // correct `ParamEnv` and it would be wrong to invoke arbitrary trait solving under
+        // the wrong `ParamEnv`. Expanding free aliases doesn't need a `ParamEnv` so we do
+        // this just to make resolution a little bit smarter.
+        let self_ty = self.tcx.expand_free_alias_tys(self_ty);
+        debug!("select_inherent_assoc_candidates: self_ty={:?}", self_ty);
+
+        let candidates = candidates
+            .into_iter()
+            .filter(|&InherentAssocCandidate { impl_, .. }| {
+                let impl_ty = self.tcx().type_of(impl_).instantiate_identity();
+
+                // See comment on doing this operation for `self_ty`
+                let impl_ty = self.tcx.expand_free_alias_tys(impl_ty);
+                debug!("select_inherent_assoc_candidates: impl_ty={:?}", impl_ty);
+
+                // We treat parameters in the self ty as rigid and parameters in the impl ty as infers
+                // because it allows `impl<T> Foo<T>` to unify with `Foo<u8>::IAT`, while also disallowing
+                // `Foo<T>::IAT` from unifying with `impl Foo<u8>`.
+                //
+                // We don't really care about a depth limit here because we're only working with user-written
+                // types and if they wrote a type that would take hours to walk then that's kind of on them. On
+                // the other hand the default depth limit is relatively low and could realistically be hit by
+                // users in normal cases.
+                //
+                // `DeepRejectCtxt` leads to slightly worse IAT resolution than real type equality in cases
+                // where the `impl_ty` has repeated uses of generic parameters. E.g. `impl<T> Foo<T, T>` would
+                // be considered a valid candidate when resolving `Foo<u8, u16>::IAT`.
+                //
+                // Not replacing escaping bound vars in `self_ty` with placeholders also leads to slightly worse
+                // resolution, but it probably won't come up in practice and it would be backwards compatible
+                // to switch over to doing that.
+                ty::DeepRejectCtxt::relate_rigid_infer(self.tcx).types_may_unify_with_depth(
+                    self_ty,
+                    impl_ty,
+                    usize::MAX,
+                )
+            })
+            .collect();
+
+        (candidates, vec![])
     }
 
     fn lower_assoc_item_path(

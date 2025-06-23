@@ -1491,7 +1491,7 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
                     writeln!(f, "{repr}")?;
                 };
             } else {
-                for a in self.it.attributes_and_repr(self.cx.tcx(), self.cx.cache(), false) {
+                for a in self.it.attributes(self.cx.tcx(), self.cx.cache(), false) {
                     writeln!(f, "{a}")?;
                 }
             }

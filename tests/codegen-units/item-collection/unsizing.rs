@@ -1,4 +1,4 @@
-//@ compile-flags:-Zmir-opt-level=0
+//@ compile-flags:-Zmir-opt-level=0 -O
 
 #![deny(dead_code)]
 #![feature(coerce_unsized)]
@@ -42,32 +42,46 @@ struct Wrapper<T: ?Sized>(#[allow(dead_code)] *const T);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
 
+struct PresentDrop;
+
+impl Drop for PresentDrop {
+    fn drop(&mut self) {}
+}
+
+// Custom Coercion Case
+impl Trait for PresentDrop {
+    fn foo(&self) {}
+}
+
 //~ MONO_ITEM fn start
 #[no_mangle]
 pub fn start(_: isize, _: *const *const u8) -> isize {
     // simple case
     let bool_sized = &true;
-    //~ MONO_ITEM fn std::ptr::drop_in_place::<bool> - shim(None) @@ unsizing-cgu.0[Internal]
     //~ MONO_ITEM fn <bool as Trait>::foo
     let _bool_unsized = bool_sized as &Trait;
 
     let char_sized = &'a';
 
-    //~ MONO_ITEM fn std::ptr::drop_in_place::<char> - shim(None) @@ unsizing-cgu.0[Internal]
     //~ MONO_ITEM fn <char as Trait>::foo
     let _char_unsized = char_sized as &Trait;
 
     // struct field
     let struct_sized = &Struct { _a: 1, _b: 2, _c: 3.0f64 };
-    //~ MONO_ITEM fn std::ptr::drop_in_place::<f64> - shim(None) @@ unsizing-cgu.0[Internal]
     //~ MONO_ITEM fn <f64 as Trait>::foo
     let _struct_unsized = struct_sized as &Struct<Trait>;
 
     // custom coercion
     let wrapper_sized = Wrapper(&0u32);
-    //~ MONO_ITEM fn std::ptr::drop_in_place::<u32> - shim(None) @@ unsizing-cgu.0[Internal]
     //~ MONO_ITEM fn <u32 as Trait>::foo
     let _wrapper_sized = wrapper_sized as Wrapper<Trait>;
+
+    // with drop
+    let droppable = &PresentDrop;
+    //~ MONO_ITEM fn <PresentDrop as std::ops::Drop>::drop @@ unsizing-cgu.0[Internal]
+    //~ MONO_ITEM fn std::ptr::drop_in_place::<PresentDrop> - shim(Some(PresentDrop)) @@ unsizing-cgu.0[Internal]
+    //~ MONO_ITEM fn <PresentDrop as Trait>::foo
+    let droppable = droppable as &dyn Trait;
 
     false.foo();
 
