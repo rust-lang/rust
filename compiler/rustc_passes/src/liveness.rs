@@ -85,6 +85,7 @@ use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
 
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -145,7 +146,7 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 
     // Don't run unused pass for #[naked]
-    if tcx.has_attr(def_id.to_def_id(), sym::naked) {
+    if find_attr!(tcx.get_all_attrs(def_id.to_def_id()), AttributeKind::Naked(..)) {
         return;
     }
 

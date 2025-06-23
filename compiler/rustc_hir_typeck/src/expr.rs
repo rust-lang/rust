@@ -7,6 +7,7 @@
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
@@ -3779,7 +3780,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>, span: Span) -> Ty<'tcx> {
         if let rustc_ast::AsmMacro::NakedAsm = asm.asm_macro {
-            if !self.tcx.has_attr(self.body_id, sym::naked) {
+            if !find_attr!(self.tcx.get_all_attrs(self.body_id), AttributeKind::Naked(..)) {
                 self.tcx.dcx().emit_err(NakedAsmOutsideNakedFn { span });
             }
         }
