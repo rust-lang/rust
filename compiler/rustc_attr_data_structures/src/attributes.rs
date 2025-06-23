@@ -234,6 +234,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_const_stable_indirect]`.
     ConstStabilityIndirect,
 
+    /// Represents `#[const_trait]`.
+    ConstTrait(Span),
+
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
     Deprecation { deprecation: Deprecation, span: Span },
 

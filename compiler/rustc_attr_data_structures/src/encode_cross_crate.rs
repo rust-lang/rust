@@ -23,6 +23,7 @@ impl AttributeKind {
             ConstContinue(..) => No,
             ConstStability { .. } => Yes,
             ConstStabilityIndirect => No,
+            ConstTrait(..) => No,
             Deprecation { .. } => Yes,
             DocComment { .. } => Yes,
             Dummy => No,
