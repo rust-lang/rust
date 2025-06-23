@@ -1,6 +1,6 @@
 #![feature(macro_metavar_expr_concat)]
 
-macro_rules! wrong_concat_declarations {
+macro_rules! syntax_errors {
     ($ex:expr) => {
         ${concat()}
         //~^ ERROR expected identifier
@@ -132,7 +132,7 @@ macro_rules! bad_tt_literal {
 }
 
 fn main() {
-    wrong_concat_declarations!(1);
+    syntax_errors!(1);
 
     dollar_sign_without_referenced_ident!(VAR);
 
