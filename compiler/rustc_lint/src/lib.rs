@@ -186,6 +186,19 @@ early_lint_methods!(
     ]
 );
 
+early_lint_methods!(
+    declare_combined_early_lint_pass,
+    [
+        pub BuiltinCombinedEarlyLintPassMustRun,
+        [
+            UnsafeCode: UnsafeCode,
+            AnonymousParameters: AnonymousParameters,
+            EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
+            Expr2024: Expr2024,
+        ]
+    ]
+);
+
 late_lint_methods!(
     declare_combined_late_lint_pass,
     [
