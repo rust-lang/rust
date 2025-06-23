@@ -37,8 +37,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Pretty printing of must_use attributes changed
-pub const FORMAT_VERSION: u32 = 52;
+// Latest feature: Intern filenames
+pub const FORMAT_VERSION: u32 = 53;
 
 /// The root of the emitted JSON blob.
 ///
@@ -58,6 +58,8 @@ pub struct Crate {
     pub index: HashMap<Id, Item>,
     /// Maps IDs to fully qualified paths and other info helpful for generating links.
     pub paths: HashMap<Id, ItemSummary>,
+    /// Interned filenames. `FilenameId`s index into this.
+    pub filenames: Vec<PathBuf>,
     /// Maps `crate_id` of items to a crate name and html_root_url if it exists.
     pub external_crates: HashMap<u32, ExternalCrate>,
     /// Information about the target for which this documentation was generated
@@ -205,8 +207,9 @@ pub struct Item {
 /// A range of source code.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Span {
-    /// The path to the source file for this span relative to the path `rustdoc` was invoked with.
-    pub filename: PathBuf,
+    /// ID of the path to the source file for this span relative to the path `rustdoc` was invoked
+    /// with.
+    pub filename: FilenameId,
     /// One indexed Line and Column of the first character of the `Span`.
     pub begin: (usize, usize),
     /// One indexed Line and Column of the last character of the `Span`.
@@ -385,20 +388,23 @@ pub enum AssocItemConstraintKind {
     Constraint(Vec<GenericBound>),
 }
 
-/// An opaque identifier for an item.
+/// An opaque identifier for an item. The integer within indexes into
+/// [`Crate::index`] to resolve it to an [`Item`], or into [`Crate::paths`]
+/// to resolve it to an [`ItemSummary`].
 ///
-/// It can be used to lookup in [`Crate::index`] or [`Crate::paths`] to resolve it
-/// to an [`Item`].
-///
-/// Id's are only valid within a single JSON blob. They cannot be used to
-/// resolve references between the JSON output's for different crates.
-///
-/// Rustdoc makes no guarantees about the inner value of Id's. Applications
-/// should treat them as opaque keys to lookup items, and avoid attempting
-/// to parse them, or otherwise depend on any implementation details.
+/// `Id`s are only valid within a single JSON blob. They cannot be used to
+/// resolve references between the JSON output for different crates.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 // FIXME(aDotInTheVoid): Consider making this non-public in rustdoc-types.
 pub struct Id(pub u32);
+
+/// An identifier for a filename. The integer within indexes into
+/// [`Crate::filenames`] to resolve to the actual filename.
+///
+/// `FilenameId`s are only valid within a single JSON blob. They cannot be
+/// used to resolve references between the JSON output for different crates.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct FilenameId(pub u32);
 
 /// The fundamental kind of an item. Unlike [`ItemEnum`], this does not carry any additional info.
 ///

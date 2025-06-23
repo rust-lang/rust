@@ -14,7 +14,7 @@ use std::io::{BufWriter, Write, stdout};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -41,6 +41,8 @@ pub(crate) struct JsonRenderer<'tcx> {
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
     index: FxHashMap<types::Id, types::Item>,
+    // Interned filenames.
+    filenames: RefCell<FxIndexSet<PathBuf>>,
     /// The directory where the JSON blob should be written to.
     ///
     /// If this is `None`, the blob will be printed to `stdout` instead.
@@ -107,12 +109,12 @@ impl<'tcx> JsonRenderer<'tcx> {
     }
 
     fn serialize_and_write<T: Write>(
-        &self,
+        sess: &Session,
         output_crate: types::Crate,
         mut writer: BufWriter<T>,
         path: &str,
     ) -> Result<(), Error> {
-        self.sess().time("rustdoc_json_serialize_and_write", || {
+        sess.time("rustdoc_json_serialize_and_write", || {
             try_err!(
                 serde_json::ser::to_writer(&mut writer, &output_crate).map_err(|e| e.to_string()),
                 path
@@ -199,6 +201,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 index: FxHashMap::default(),
                 out_dir: if options.output_to_stdout { None } else { Some(options.output) },
                 cache: Rc::new(cache),
+                filenames: Default::default(),
                 imported_items,
                 id_interner: Default::default(),
             },
@@ -318,6 +321,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let target = target(self.tcx.sess);
 
         debug!("Constructing Output");
+        let sess = self.sess();
         let output_crate = types::Crate {
             root: self.id_from_item_default(e.def_id().into()),
             crate_version: self.cache.crate_version.clone(),
@@ -339,6 +343,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                     )
                 })
                 .collect(),
+            filenames: self.filenames.into_inner().into_iter().collect(),
             external_crates: self
                 .cache
                 .extern_locations
@@ -367,13 +372,14 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             p.push(output_crate.index.get(&output_crate.root).unwrap().name.clone().unwrap());
             p.set_extension("json");
 
-            self.serialize_and_write(
+            Self::serialize_and_write(
+                sess,
                 output_crate,
                 try_err!(File::create_buffered(&p), p),
                 &p.display().to_string(),
             )
         } else {
-            self.serialize_and_write(output_crate, BufWriter::new(stdout().lock()), "<stdout>")
+            Self::serialize_and_write(sess, output_crate, BufWriter::new(stdout().lock()), "<stdout>")
         }
     }
 }
@@ -389,7 +395,7 @@ mod size_asserts {
     use super::types::*;
     // tidy-alphabetical-start
     static_assert_size!(AssocItemConstraint, 112);
-    static_assert_size!(Crate, 184);
+    static_assert_size!(Crate, 208);
     static_assert_size!(ExternalCrate, 48);
     static_assert_size!(FunctionPointer, 168);
     static_assert_size!(GenericArg, 80);
@@ -397,8 +403,7 @@ mod size_asserts {
     static_assert_size!(GenericBound, 72);
     static_assert_size!(GenericParamDef, 136);
     static_assert_size!(Impl, 304);
-    // `Item` contains a `PathBuf`, which is different sizes on different OSes.
-    static_assert_size!(Item, 528 + size_of::<std::path::PathBuf>());
+    static_assert_size!(Item, 544);
     static_assert_size!(ItemSummary, 32);
     static_assert_size!(PolyTrait, 64);
     static_assert_size!(PreciseCapturingArg, 32);

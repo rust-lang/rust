@@ -92,7 +92,7 @@ impl JsonRenderer<'_> {
     }
 }
 
-pub(crate) trait FromClean<T> {
+pub(crate) trait FromClean<T: ?Sized> {
     fn from_clean(f: &T, renderer: &JsonRenderer<'_>) -> Self;
 }
 
@@ -100,7 +100,7 @@ pub(crate) trait IntoJson<T> {
     fn into_json(&self, renderer: &JsonRenderer<'_>) -> T;
 }
 
-impl<T, U> IntoJson<U> for T
+impl<T: ?Sized, U> IntoJson<U> for T
 where
     U: FromClean<T>,
 {
@@ -153,7 +153,7 @@ impl FromClean<clean::Span> for Option<Span> {
                     let hi = span.hi(renderer.sess());
                     let lo = span.lo(renderer.sess());
                     Some(Span {
-                        filename: local_path,
+                        filename: local_path.as_path().into_json(renderer),
                         begin: (lo.line, lo.col.to_usize() + 1),
                         end: (hi.line, hi.col.to_usize() + 1),
                     })
@@ -177,6 +177,20 @@ impl FromClean<Option<ty::Visibility<DefId>>> for Visibility {
                 path: renderer.tcx.def_path(*did).to_string_no_crate_verbose(),
             },
         }
+    }
+}
+
+impl FromClean<std::path::Path> for FilenameId {
+    fn from_clean(path: &std::path::Path, renderer: &JsonRenderer<'_>) -> Self {
+        let mut filenames = renderer.filenames.borrow_mut();
+
+        // To minimize calls to `to_path_buf` (which allocates) we call
+        // `get_index_of` first, which only needs `&Path` and usually succeeds.
+        // If it fails we do a separate insert, which requires `PathBuf`.
+        let idx = filenames
+            .get_index_of(path)
+            .unwrap_or_else(|| filenames.insert_full(path.to_path_buf()).0);
+        FilenameId(idx as u32)
     }
 }
 
