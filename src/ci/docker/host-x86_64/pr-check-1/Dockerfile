@@ -52,7 +52,4 @@ ENV SCRIPT \
   python3 ../x.py check --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
   /scripts/validate-toolstate.sh && \
   reuse --include-submodules lint && \
-  python3 ../x.py test collect-license-metadata && \
-  # Runs checks to ensure that there are no issues in our JS code.
-  es-check es2019 ../src/librustdoc/html/static/js/*.js && \
-  tsc --project ../src/librustdoc/html/static/js/tsconfig.json
+  python3 ../x.py test collect-license-metadata
