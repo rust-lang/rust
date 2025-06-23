@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
+import * as commands from "./commands";
 
 import { Config, prepareVSCodeConfig } from "./config";
 import { createClient } from "./client";
@@ -462,9 +463,17 @@ export class Ctx implements RustAnalyzerExtensionApi {
         for (const [name, factory] of Object.entries(this.commandFactories)) {
             const fullName = `rust-analyzer.${name}`;
             let callback;
+
             if (isClientRunning(this)) {
-                // we asserted that `client` is defined
-                callback = factory.enabled(this);
+                if (name === "run") {
+                    // Special case: support optional argument for `run`
+                    callback = (mode?: "cursor") => {
+                        return commands.run(this, mode)();
+                    };
+                } else {
+                    // we asserted that `client` is defined
+                    callback = factory.enabled(this);
+                }
             } else if (factory.disabled) {
                 callback = factory.disabled(this);
             } else {
