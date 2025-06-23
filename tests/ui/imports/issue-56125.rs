@@ -15,7 +15,7 @@ mod m2 {
 mod m3 {
     mod empty {}
     use empty::issue_56125; //~ ERROR unresolved import `empty::issue_56125`
-    use issue_56125::*; //~ ERROR `issue_56125` is ambiguous
+    use issue_56125::*;
 }
 
 fn main() {}

@@ -14,8 +14,12 @@ pub use foo::*;
 pub use bar::*;
 
 mod ambiguous {
-    mod m1 { pub type A = u8; }
-    mod m2 { pub type A = u8; }
+    mod m1 {
+        pub type A = u8;
+    }
+    mod m2 {
+        pub type A = u8;
+    }
     pub use self::m1::*;
     //~^ ERROR ambiguous glob re-exports
     pub use self::m2::*;
