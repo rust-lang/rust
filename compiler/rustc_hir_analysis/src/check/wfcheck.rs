@@ -1557,7 +1557,9 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     ty::ConstKind::Unevaluated(uv) => {
                         infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
                     }
-                    ty::ConstKind::Param(param_ct) => param_ct.find_ty_from_env(wfcx.param_env),
+                    ty::ConstKind::Param(param_ct) => {
+                        param_ct.find_const_ty_from_env(wfcx.param_env)
+                    }
                 };
 
                 let param_ty = tcx.type_of(param.def_id).instantiate_identity();
