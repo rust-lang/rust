@@ -1415,6 +1415,24 @@ impl PlaceContext {
         )
     }
 
+    /// Returns `true` if this place context may be used to know the address of the given place.
+    #[inline]
+    pub fn may_observe_address(self) -> bool {
+        matches!(
+            self,
+            PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::SharedBorrow
+                    | NonMutatingUseContext::RawBorrow
+                    | NonMutatingUseContext::FakeBorrow
+            ) | PlaceContext::MutatingUse(
+                MutatingUseContext::Drop
+                    | MutatingUseContext::Borrow
+                    | MutatingUseContext::RawBorrow
+                    | MutatingUseContext::AsmOutput
+            )
+        )
+    }
+
     /// Returns `true` if this place context represents a storage live or storage dead marker.
     #[inline]
     pub fn is_storage_marker(self) -> bool {
