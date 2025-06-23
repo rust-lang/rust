@@ -1474,20 +1474,18 @@ fn main() {
 }
 "#,
         expect![[r#"
+            me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
             sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
-            sn if       if expr {}
             sn match match expr {}
-            sn not           !expr
             sn ref           &expr
             sn refm      &mut expr
             sn return  return expr
             sn unsafe    unsafe {}
-            sn while while expr {}
         "#]],
     );
 }

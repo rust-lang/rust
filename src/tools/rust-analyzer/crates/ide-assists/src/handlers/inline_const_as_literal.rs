@@ -58,7 +58,7 @@ pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>
 
 fn validate_type_recursively(
     ctx: &AssistContext<'_>,
-    ty_hir: Option<&hir::Type>,
+    ty_hir: Option<&hir::Type<'_>>,
     refed: bool,
     fuel: i32,
 ) -> Option<()> {

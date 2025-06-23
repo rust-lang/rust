@@ -239,7 +239,7 @@ pub(crate) fn handle_did_change_configuration(
                         let (config, e, _) = config.apply_change(change);
                         this.config_errors = e.is_empty().not().then_some(e);
 
-                        // Client config changes neccesitates .update_config method to be called.
+                        // Client config changes necessitates .update_config method to be called.
                         this.update_configuration(config);
                     }
                 }

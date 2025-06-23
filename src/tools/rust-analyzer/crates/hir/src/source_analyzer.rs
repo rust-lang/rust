@@ -257,7 +257,11 @@ impl<'db> SourceAnalyzer<'db> {
         infer.expr_adjustments.get(&expr_id).map(|v| &**v)
     }
 
-    pub(crate) fn type_of_type(&self, db: &'db dyn HirDatabase, ty: &ast::Type) -> Option<Type> {
+    pub(crate) fn type_of_type(
+        &self,
+        db: &'db dyn HirDatabase,
+        ty: &ast::Type,
+    ) -> Option<Type<'db>> {
         let type_ref = self.type_id(ty)?;
         let ty = TyLoweringContext::new(
             db,
@@ -277,7 +281,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         expr: &ast::Expr,
-    ) -> Option<(Type, Option<Type>)> {
+    ) -> Option<(Type<'db>, Option<Type<'db>>)> {
         let expr_id = self.expr_id(expr.clone())?;
         let infer = self.infer()?;
         let coerced = expr_id
@@ -293,7 +297,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         pat: &ast::Pat,
-    ) -> Option<(Type, Option<Type>)> {
+    ) -> Option<(Type<'db>, Option<Type<'db>>)> {
         let expr_or_pat_id = self.pat_id(pat)?;
         let infer = self.infer()?;
         let coerced = match expr_or_pat_id {
@@ -316,7 +320,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         pat: &ast::IdentPat,
-    ) -> Option<Type> {
+    ) -> Option<Type<'db>> {
         let binding_id = self.binding_id_of_pat(pat)?;
         let infer = self.infer()?;
         let ty = infer[binding_id].clone();
@@ -328,7 +332,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         _param: &ast::SelfParam,
-    ) -> Option<Type> {
+    ) -> Option<Type<'db>> {
         let binding = self.body()?.self_param?;
         let ty = self.infer()?[binding].clone();
         Some(Type::new_with_resolver(db, &self.resolver, ty))
@@ -353,7 +357,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         pat: &ast::Pat,
-    ) -> Option<SmallVec<[Type; 1]>> {
+    ) -> Option<SmallVec<[Type<'db>; 1]>> {
         let pat_id = self.pat_id(pat)?;
         let infer = self.infer()?;
         Some(
@@ -370,7 +374,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         call: &ast::MethodCallExpr,
-    ) -> Option<Callable> {
+    ) -> Option<Callable<'db>> {
         let expr_id = self.expr_id(call.clone().into())?.as_expr()?;
         let (func, substs) = self.infer()?.method_resolution(expr_id)?;
         let ty = db.value_ty(func.into())?.substitute(Interner, &substs);
@@ -395,7 +399,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         call: &ast::MethodCallExpr,
-    ) -> Option<(Either<Function, Field>, Option<GenericSubstitution>)> {
+    ) -> Option<(Either<Function, Field>, Option<GenericSubstitution<'db>>)> {
         let expr_id = self.expr_id(call.clone().into())?.as_expr()?;
         let inference_result = self.infer()?;
         match inference_result.method_resolution(expr_id) {
@@ -419,7 +423,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         call: &ast::Expr,
-    ) -> Option<Callable> {
+    ) -> Option<Callable<'db>> {
         let (orig, adjusted) = self.type_of_expr(db, &call.clone())?;
         adjusted.unwrap_or(orig).as_callable(db)
     }
@@ -440,7 +444,7 @@ impl<'db> SourceAnalyzer<'db> {
         field_expr: ExprId,
         infer: &InferenceResult,
         db: &'db dyn HirDatabase,
-    ) -> Option<GenericSubstitution> {
+    ) -> Option<GenericSubstitution<'db>> {
         let body = self.store()?;
         if let Expr::Field { expr: object_expr, name: _ } = body[field_expr] {
             let (adt, subst) = type_of_expr_including_adjust(infer, object_expr)?.as_adt()?;
@@ -457,7 +461,8 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         field: &ast::FieldExpr,
-    ) -> Option<(Either<Either<Field, TupleField>, Function>, Option<GenericSubstitution>)> {
+    ) -> Option<(Either<Either<Field, TupleField>, Function>, Option<GenericSubstitution<'db>>)>
+    {
         let (def, ..) = self.body_()?;
         let expr_id = self.expr_id(field.clone().into())?.as_expr()?;
         let inference_result = self.infer()?;
@@ -680,7 +685,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         field: &ast::RecordExprField,
-    ) -> Option<(Field, Option<Local>, Type, GenericSubstitution)> {
+    ) -> Option<(Field, Option<Local>, Type<'db>, GenericSubstitution<'db>)> {
         let record_expr = ast::RecordExpr::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let expr = ast::Expr::from(record_expr);
         let expr_id = self.store_sm()?.node_expr(InFile::new(self.file_id, &expr))?;
@@ -724,7 +729,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         field: &ast::RecordPatField,
-    ) -> Option<(Field, Type, GenericSubstitution)> {
+    ) -> Option<(Field, Type<'db>, GenericSubstitution<'db>)> {
         let field_name = field.field_name()?.as_name();
         let record_pat = ast::RecordPat::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let pat_id = self.pat_id(&record_pat.into())?;
@@ -779,7 +784,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         name_ref: &ast::NameRef,
-    ) -> Option<(Either<crate::Variant, crate::Field>, GenericSubstitution)> {
+    ) -> Option<(Either<crate::Variant, crate::Field>, GenericSubstitution<'db>)> {
         let offset_of_expr = ast::OffsetOfExpr::cast(name_ref.syntax().parent()?)?;
         let container = offset_of_expr.ty()?;
         let container = self.type_of_type(db, &container)?;
@@ -851,7 +856,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         path: &ast::Path,
-    ) -> Option<(PathResolution, Option<GenericSubstitution>)> {
+    ) -> Option<(PathResolution, Option<GenericSubstitution<'db>>)> {
         let parent = path.syntax().parent();
         let parent = || parent.clone();
 
@@ -1216,7 +1221,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         literal: &ast::RecordExpr,
-    ) -> Option<Vec<(Field, Type)>> {
+    ) -> Option<Vec<(Field, Type<'db>)>> {
         let body = self.store()?;
         let infer = self.infer()?;
 
@@ -1239,7 +1244,7 @@ impl<'db> SourceAnalyzer<'db> {
         &self,
         db: &'db dyn HirDatabase,
         pattern: &ast::RecordPat,
-    ) -> Option<Vec<(Field, Type)>> {
+    ) -> Option<Vec<(Field, Type<'db>)>> {
         let body = self.store()?;
         let infer = self.infer()?;
 
@@ -1258,7 +1263,7 @@ impl<'db> SourceAnalyzer<'db> {
         substs: &Substitution,
         variant: VariantId,
         missing_fields: Vec<LocalFieldId>,
-    ) -> Vec<(Field, Type)> {
+    ) -> Vec<(Field, Type<'db>)> {
         let field_types = db.field_types(variant);
 
         missing_fields

@@ -13,6 +13,13 @@ Default: `"todo"`
 Placeholder expression to use for missing expressions in assists.
 
 
+## rust-analyzer.assist.preferSelf {#assist.preferSelf}
+
+Default: `false`
+
+When inserting a type (e.g. in "fill match arms" assist), prefer to use `Self` over the type name where possible.
+
+
 ## rust-analyzer.assist.termSearch.borrowcheck {#assist.termSearch.borrowcheck}
 
 Default: `true`
@@ -1535,7 +1542,11 @@ https://github.com/facebook/buck2/tree/main/integrations/rust-project.
 
 Default: `false`
 
-Exclude imports from symbol search.
+Exclude all imports from workspace symbol search.
+
+In addition to regular imports (which are always excluded),
+this option removes public imports (better known as re-exports)
+and removes imports that rename the imported symbol.
 
 
 ## rust-analyzer.workspace.symbol.search.kind {#workspace.symbol.search.kind}

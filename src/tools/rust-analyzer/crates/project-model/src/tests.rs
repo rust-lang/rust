@@ -1,3 +1,5 @@
+use std::env::temp_dir;
+
 use base_db::{CrateGraphBuilder, ProcMacroPaths};
 use cargo_metadata::Metadata;
 use cfg::{CfgAtom, CfgDiff};
@@ -235,11 +237,18 @@ fn smoke_test_real_sysroot_cargo() {
         AbsPath::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR"))),
         &Default::default(),
     );
-    let loaded_sysroot = sysroot.load_workspace(&RustSourceWorkspaceConfig::default_cargo());
+    let cwd = AbsPathBuf::assert_utf8(temp_dir().join("smoke_test_real_sysroot_cargo"));
+    std::fs::create_dir_all(&cwd).unwrap();
+    let loaded_sysroot =
+        sysroot.load_workspace(&RustSourceWorkspaceConfig::default_cargo(), &cwd, &|_| ());
     if let Some(loaded_sysroot) = loaded_sysroot {
         sysroot.set_workspace(loaded_sysroot);
     }
-    assert!(matches!(sysroot.workspace(), RustLibSrcWorkspace::Workspace(_)));
+    assert!(
+        matches!(sysroot.workspace(), RustLibSrcWorkspace::Workspace(_)),
+        "got {}",
+        sysroot.workspace()
+    );
     let project_workspace = ProjectWorkspace {
         kind: ProjectWorkspaceKind::Cargo {
             cargo: cargo_workspace,

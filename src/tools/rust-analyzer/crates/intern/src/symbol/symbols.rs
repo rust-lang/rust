@@ -496,6 +496,7 @@ define_symbols! {
     vectorcall,
     wasm,
     win64,
+    args,
     array,
     boxed_slice,
     completions,

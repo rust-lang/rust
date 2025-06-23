@@ -11,7 +11,7 @@ use syntax::{
 pub fn use_trivial_constructor(
     db: &crate::RootDatabase,
     path: Path,
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     edition: Edition,
 ) -> Option<Expr> {
     match ty.as_adt() {

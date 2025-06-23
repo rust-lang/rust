@@ -117,7 +117,7 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
     if unused.peek().is_some() {
         acc.add(
             AssistId::quick_fix("remove_unused_imports"),
-            "Remove all the unused imports",
+            "Remove all unused imports",
             selected_el.text_range(),
             |builder| {
                 let unused: Vec<ast::UseTree> = unused.map(|x| builder.make_mut(x)).collect();

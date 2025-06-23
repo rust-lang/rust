@@ -4,6 +4,7 @@
 //! but we can't process `.rlib` and need source code instead. The source code
 //! is typically installed with `rustup component add rust-src` command.
 
+use core::fmt;
 use std::{env, fs, ops::Not, path::Path, process::Command};
 
 use anyhow::{Result, format_err};
@@ -32,6 +33,19 @@ pub enum RustLibSrcWorkspace {
     Json(ProjectJson),
     Stitched(stitched::Stitched),
     Empty,
+}
+
+impl fmt::Display for RustLibSrcWorkspace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RustLibSrcWorkspace::Workspace(ws) => write!(f, "workspace {}", ws.workspace_root()),
+            RustLibSrcWorkspace::Json(json) => write!(f, "json {}", json.manifest_or_root()),
+            RustLibSrcWorkspace::Stitched(stitched) => {
+                write!(f, "stitched with {} crates", stitched.crates.len())
+            }
+            RustLibSrcWorkspace::Empty => write!(f, "empty"),
+        }
+    }
 }
 
 impl Sysroot {
@@ -195,6 +209,8 @@ impl Sysroot {
     pub fn load_workspace(
         &self,
         sysroot_source_config: &RustSourceWorkspaceConfig,
+        current_dir: &AbsPath,
+        progress: &dyn Fn(String),
     ) -> Option<RustLibSrcWorkspace> {
         assert!(matches!(self.workspace, RustLibSrcWorkspace::Empty), "workspace already loaded");
         let Self { root: _, rust_lib_src_root: Some(src_root), workspace: _, error: _ } = self
@@ -204,10 +220,16 @@ impl Sysroot {
         if let RustSourceWorkspaceConfig::CargoMetadata(cargo_config) = sysroot_source_config {
             let library_manifest = ManifestPath::try_from(src_root.join("Cargo.toml")).unwrap();
             if fs::metadata(&library_manifest).is_ok() {
-                if let Some(loaded) =
-                    self.load_library_via_cargo(library_manifest, src_root, cargo_config)
-                {
-                    return Some(loaded);
+                match self.load_library_via_cargo(
+                    &library_manifest,
+                    current_dir,
+                    cargo_config,
+                    progress,
+                ) {
+                    Ok(loaded) => return Some(loaded),
+                    Err(e) => {
+                        tracing::error!("`cargo metadata` failed on `{library_manifest}` : {e}")
+                    }
                 }
             }
             tracing::debug!("Stitching sysroot library: {src_root}");
@@ -293,10 +315,11 @@ impl Sysroot {
 
     fn load_library_via_cargo(
         &self,
-        library_manifest: ManifestPath,
-        rust_lib_src_dir: &AbsPathBuf,
+        library_manifest: &ManifestPath,
+        current_dir: &AbsPath,
         cargo_config: &CargoMetadataConfig,
-    ) -> Option<RustLibSrcWorkspace> {
+        progress: &dyn Fn(String),
+    ) -> Result<RustLibSrcWorkspace> {
         tracing::debug!("Loading library metadata: {library_manifest}");
         let mut cargo_config = cargo_config.clone();
         // the sysroot uses `public-dependency`, so we make cargo think it's a nightly
@@ -305,22 +328,16 @@ impl Sysroot {
             Some("nightly".to_owned()),
         );
 
-        let (mut res, _) = match CargoWorkspace::fetch_metadata(
-            &library_manifest,
-            rust_lib_src_dir,
+        let (mut res, _) = CargoWorkspace::fetch_metadata(
+            library_manifest,
+            current_dir,
             &cargo_config,
             self,
             false,
             // Make sure we never attempt to write to the sysroot
             true,
-            &|_| (),
-        ) {
-            Ok(it) => it,
-            Err(e) => {
-                tracing::error!("`cargo metadata` failed on `{library_manifest}` : {e}");
-                return None;
-            }
-        };
+            progress,
+        )?;
 
         // Patch out `rustc-std-workspace-*` crates to point to the real crates.
         // This is done prior to `CrateGraph` construction to prevent de-duplication logic from failing.
@@ -371,8 +388,9 @@ impl Sysroot {
             res.packages.remove(idx);
         });
 
-        let cargo_workspace = CargoWorkspace::new(res, library_manifest, Default::default(), true);
-        Some(RustLibSrcWorkspace::Workspace(cargo_workspace))
+        let cargo_workspace =
+            CargoWorkspace::new(res, library_manifest.clone(), Default::default(), true);
+        Ok(RustLibSrcWorkspace::Workspace(cargo_workspace))
     }
 }
 
