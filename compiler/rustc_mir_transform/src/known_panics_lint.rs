@@ -19,6 +19,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+use rustc_session::lint::LintId;
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
@@ -27,6 +28,11 @@ use crate::errors::{AssertLint, AssertLintKind};
 pub(super) struct KnownPanicsLint;
 
 impl<'tcx> crate::MirLint<'tcx> for KnownPanicsLint {
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        let ignored_lints = tcx.lints_that_dont_need_to_run(());
+        !AssertLintKind::all_lints().iter().all(|lint| ignored_lints.contains(&LintId::of(lint)))
+    }
+
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         if body.tainted_by_errors.is_some() {
             return;

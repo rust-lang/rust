@@ -7,6 +7,7 @@ use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::{self, BasicBlock, BasicBlocks, Body, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, GenericArg, GenericArgs, Instance, Ty, TyCtxt};
+use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 
@@ -16,6 +17,10 @@ use crate::pass_manager::MirLint;
 pub(super) struct CheckCallRecursion;
 
 impl<'tcx> MirLint<'tcx> for CheckCallRecursion {
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        !tcx.lints_that_dont_need_to_run(()).contains(&LintId::of(UNCONDITIONAL_RECURSION))
+    }
+
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let def_id = body.source.def_id().expect_local();
 
@@ -38,6 +43,10 @@ impl<'tcx> MirLint<'tcx> for CheckCallRecursion {
 pub(super) struct CheckDropRecursion;
 
 impl<'tcx> MirLint<'tcx> for CheckDropRecursion {
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        !tcx.lints_that_dont_need_to_run(()).contains(&LintId::of(UNCONDITIONAL_RECURSION))
+    }
+
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let def_id = body.source.def_id().expect_local();
 

@@ -4,6 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
+use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, sym};
@@ -13,6 +14,10 @@ use crate::errors;
 pub(super) struct FunctionItemReferences;
 
 impl<'tcx> crate::MirLint<'tcx> for FunctionItemReferences {
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        !tcx.lints_that_dont_need_to_run(()).contains(&LintId::of(FUNCTION_ITEM_REFERENCES))
+    }
+
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let mut checker = FunctionItemRefChecker { tcx, body };
         checker.visit_body(body);

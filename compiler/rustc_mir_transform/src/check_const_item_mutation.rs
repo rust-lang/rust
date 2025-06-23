@@ -2,6 +2,7 @@ use rustc_hir::HirId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::CONST_ITEM_MUTATION;
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
@@ -11,6 +12,10 @@ use crate::errors;
 pub(super) struct CheckConstItemMutation;
 
 impl<'tcx> crate::MirLint<'tcx> for CheckConstItemMutation {
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        !tcx.lints_that_dont_need_to_run(()).contains(&LintId::of(CONST_ITEM_MUTATION))
+    }
+
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let mut checker = ConstMutationChecker { body, tcx, target_local: None };
         checker.visit_body(body);
