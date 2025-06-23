@@ -101,5 +101,75 @@ LL | |         _ => unreachable!("can't happen"),
 LL | |     };
    | |______^ help: consider writing: `let Some(msg) = Some("hi") else { unreachable!("can't happen") };`
 
-error: aborting due to 10 previous errors
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:188:5
+   |
+LL | /     let tornado = match issue {
+LL | |
+LL | |         Some(Issue9939 { avalanche }) => avalanche,
+LL | |         _ => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let Some(Issue9939 { avalanche: tornado }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:194:5
+   |
+LL | /     let acid_rain = match issue {
+LL | |
+LL | |         Some(Issue9939 { avalanche: tornado }) => tornado,
+LL | |         _ => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let Some(Issue9939 { avalanche: acid_rain }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:203:5
+   |
+LL | /     let _y = match issue {
+LL | |
+LL | |         _x @ Some(Issue9939 { avalanche }) => avalanche,
+LL | |         None => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let _x @ Some(Issue9939 { avalanche: _y }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:210:5
+   |
+LL | /     let _x = match issue {
+LL | |
+LL | |         _x @ Some(Issue9939 { avalanche }) => avalanche,
+LL | |         None => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let Some(Issue9939 { avalanche: _x }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:228:5
+   |
+LL | /     let (issue, drought, flood) = match issue {
+LL | |
+LL | |         flood @ Some(Issue9939b { earthquake, hurricane }) => (flood, hurricane, earthquake),
+LL | |         None => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let issue @ Some(Issue9939b { earthquake: flood, hurricane: drought }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:238:5
+   |
+LL | /     let (_y, erosion) = match issue {
+LL | |
+LL | |         _x @ Some(Issue9939b { earthquake, hurricane }) => (hurricane, earthquake),
+LL | |         None => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let _x @ Some(Issue9939b { earthquake: erosion, hurricane: _y }) = issue else { unreachable!("can't happen") };`
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_match.rs:246:5
+   |
+LL | /     let (_x, erosion) = match issue {
+LL | |
+LL | |         _x @ Some(Issue9939b { earthquake, hurricane }) => (hurricane, earthquake),
+LL | |         None => unreachable!("can't happen"),
+LL | |     };
+   | |______^ help: consider writing: `let Some(Issue9939b { earthquake: erosion, hurricane: _x }) = issue else { unreachable!("can't happen") };`
+
+error: aborting due to 17 previous errors
 
