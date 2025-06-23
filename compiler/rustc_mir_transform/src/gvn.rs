@@ -95,7 +95,7 @@ use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
     intern_const_alloc_for_constprop,
 };
-use rustc_data_structures::fx::{FxIndexSet, MutableValues};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet, MutableValues};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
@@ -235,8 +235,11 @@ struct VnState<'body, 'a, 'tcx> {
     /// Value stored in each local.
     locals: IndexVec<Local, Option<VnIndex>>,
     /// Locals that are assigned that value.
-    // This vector does not hold all the values of `VnIndex` that we create.
-    rev_locals: IndexVec<VnIndex, SmallVec<[Local; 1]>>,
+    // This vector holds the locals that are SSA.
+    rev_locals_ssa: IndexVec<VnIndex, SmallVec<[Local; 1]>>,
+    // This map holds the locals that are not SSA. This map is cleared at the end of each block.
+    // Therefore, we do not need a location, the local always appears before the current location.
+    rev_locals_non_ssa: FxHashMap<VnIndex, SmallVec<[Local; 1]>>,
     values: FxIndexSet<(Value<'a, 'tcx>, Ty<'tcx>)>,
     /// Values evaluated as constants if possible.
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
@@ -272,8 +275,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
             local_decls,
             is_coroutine: body.coroutine.is_some(),
-            locals: IndexVec::from_elem(None, local_decls),
-            rev_locals: IndexVec::with_capacity(num_values),
+            locals: IndexVec::from_elem(None, &body.local_decls),
+            rev_locals_ssa: IndexVec::with_capacity(num_values),
+            rev_locals_non_ssa: FxHashMap::default(),
             values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
             evaluated: IndexVec::with_capacity(num_values),
             next_opaque: 1,
@@ -298,7 +302,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             let evaluated = self.eval_to_const(index);
             let _index = self.evaluated.push(evaluated);
             debug_assert_eq!(index, _index);
-            let _index = self.rev_locals.push(SmallVec::new());
+            let _index = self.rev_locals_ssa.push(Default::default());
             debug_assert_eq!(index, _index);
         }
         index
@@ -336,7 +340,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
         let mut projection = place.projection.iter();
         let base = if place.is_indirect_first_projection() {
-            let base = self.locals[place.local]?;
+            let base = self.local(place.local);
             // Skip the initial `Deref`.
             projection.next();
             AddressBase::Deref(base)
@@ -347,7 +351,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let projection = self
             .arena
             .try_alloc_from_iter(
-                projection.map(|proj| proj.try_map(|value| self.locals[value], |ty| ty).ok_or(())),
+                projection
+                    .map(|proj| proj.try_map(|value| Some(self.local(value)), |ty| ty).ok_or(())),
             )
             .ok()?;
         let value = Value::Address { base, projection, kind, provenance: self.next_opaque() };
@@ -364,12 +369,49 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         self.values.get_index(index.as_usize()).unwrap().1
     }
 
-    /// Record that `local` is assigned `value`. `local` must be SSA.
+    /// Record that `local` is assigned `value`.
     #[instrument(level = "trace", skip(self))]
     fn assign(&mut self, local: Local, value: VnIndex) {
-        debug_assert!(self.ssa.is_ssa(local));
         self.locals[local] = Some(value);
-        self.rev_locals[value].push(local);
+        if self.ssa.is_ssa(local) {
+            self.rev_locals_ssa[value].push(local);
+        } else {
+            self.rev_locals_non_ssa.entry(value).or_default().push(local);
+        }
+    }
+
+    /// Return the value assigned to a local, or assign an opaque value and return it.
+    #[instrument(level = "trace", skip(self), ret)]
+    fn local(&mut self, local: Local) -> VnIndex {
+        if let Some(value) = self.locals[local] {
+            return value;
+        }
+        let value = self.new_opaque(self.local_decls[local].ty);
+        self.locals[local] = Some(value);
+        self.rev_locals_non_ssa.entry(value).or_default().push(local);
+        value
+    }
+
+    #[instrument(level = "trace", skip(self))]
+    fn discard_place(&mut self, place: Place<'tcx>) {
+        let discard_local = |this: &mut Self, local| {
+            if this.ssa.is_ssa(local) {
+                return;
+            }
+            if let Some(value) = this.locals[local].take() {
+                this.rev_locals_non_ssa.entry(value).or_default().retain(|l| *l != local);
+            }
+        };
+        if place.is_indirect_first_projection() {
+            // Non-local mutation maybe invalidate deref.
+            self.invalidate_derefs();
+            // Remove stored value from borrowed locals.
+            for local in self.ssa.borrowed_locals().iter() {
+                discard_local(self, local);
+            }
+        } else {
+            discard_local(self, place.local);
+        }
     }
 
     fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
@@ -634,7 +676,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let (mut place_ty, mut value) = match base {
             // The base is a local, so we take the local's value and project from it.
             AddressBase::Local(local) => {
-                let local = self.locals[local]?;
+                let local = self.local(local);
                 let place_ty = PlaceTy::from_ty(self.ty(local));
                 (place_ty, local)
             }
@@ -740,7 +782,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         // If the projection is indirect, we treat the local as a value, so can replace it with
         // another local.
         if place.is_indirect_first_projection()
-            && let Some(base) = self.locals[place.local]
+            && let base = self.local(place.local)
             && let Some(new_local) = self.try_as_local(base, location)
             && place.local != new_local
         {
@@ -752,9 +794,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
         for i in 0..projection.len() {
             let elem = projection[i];
-            if let ProjectionElem::Index(idx_local) = elem
-                && let Some(idx) = self.locals[idx_local]
-            {
+            if let ProjectionElem::Index(idx_local) = elem {
+                let idx = self.local(idx_local);
                 if let Some(offset) = self.evaluated[idx].as_ref()
                     && let Some(offset) = self.ecx.read_target_usize(offset).discard_err()
                     && let Some(min_length) = offset.checked_add(1)
@@ -790,7 +831,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let mut place_ref = place.as_ref();
 
         // Invariant: `value` holds the value up-to the `index`th projection excluded.
-        let Some(mut value) = self.locals[place.local] else { return Err(place_ref) };
+        let mut value = self.local(place.local);
         // Invariant: `value` has type `place_ty`, with optional downcast variant if needed.
         let mut place_ty = PlaceTy::from_ty(self.local_decls[place.local].ty);
         for (index, proj) in place.projection.iter().enumerate() {
@@ -801,7 +842,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 place_ref = PlaceRef { local, projection: &place.projection[index..] };
             }
 
-            let Some(proj) = proj.try_map(|value| self.locals[value], |ty| ty) else {
+            let Some(proj) = proj.try_map(|value| Some(self.local(value)), |ty| ty) else {
                 return Err(place_ref);
             };
             let Some(ty_and_value) = self.project(place_ty, value, proj) else {
@@ -1710,11 +1751,17 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
     /// return it. If you used this local, add it to `reused_locals` to remove storage statements.
     fn try_as_local(&mut self, index: VnIndex, loc: Location) -> Option<Local> {
-        let other = self.rev_locals.get(index)?;
-        other
-            .iter()
-            .find(|&&other| self.ssa.assignment_dominates(&self.dominators, other, loc))
-            .copied()
+        if let Some(ssa) = self.rev_locals_ssa.get(index)
+            && let Some(other) = ssa
+                .iter()
+                .find(|&&other| self.ssa.assignment_dominates(&self.dominators, other, loc))
+        {
+            Some(*other)
+        } else if let Some(non_ssa) = self.rev_locals_non_ssa.get(&index) {
+            non_ssa.first().copied()
+        } else {
+            None
+        }
     }
 }
 
@@ -1723,11 +1770,20 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
         self.tcx
     }
 
+    fn visit_basic_block_data(&mut self, block: BasicBlock, bbdata: &mut BasicBlockData<'tcx>) {
+        self.rev_locals_non_ssa.clear();
+        for local in self.locals.indices() {
+            if !self.ssa.is_ssa(local) {
+                self.locals[local] = None;
+            }
+        }
+        self.super_basic_block_data(block, bbdata);
+    }
+
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
         self.simplify_place_projection(place, location);
-        if context.is_mutating_use() && place.is_indirect() {
-            // Non-local mutation maybe invalidate deref.
-            self.invalidate_derefs();
+        if context.is_mutating_use() {
+            self.discard_place(*place);
         }
         self.super_place(place, context, location);
     }
@@ -1766,13 +1822,9 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
             }
         }
 
-        if lhs.is_indirect() {
-            // Non-local mutation maybe invalidate deref.
-            self.invalidate_derefs();
-        }
+        self.discard_place(*lhs);
 
         if let Some(local) = lhs.as_local()
-            && self.ssa.is_ssa(local)
             && let rvalue_ty = rvalue.ty(self.local_decls, self.tcx)
             // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
             // `local` as reusable if we have an exact type match.
@@ -1784,14 +1836,13 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
-        if let Terminator { kind: TerminatorKind::Call { destination, .. }, .. } = terminator {
-            if let Some(local) = destination.as_local()
-                && self.ssa.is_ssa(local)
-            {
-                let ty = self.local_decls[local].ty;
-                let opaque = self.new_opaque(ty);
-                self.assign(local, opaque);
-            }
+        self.super_terminator(terminator, location);
+        if let Terminator { kind: TerminatorKind::Call { destination, .. }, .. } = terminator
+            && let Some(local) = destination.as_local()
+        {
+            let ty = self.local_decls[local].ty;
+            let opaque = self.new_opaque(ty);
+            self.assign(local, opaque);
         }
         // Function calls and ASM may invalidate (nested) derefs. We must handle them carefully.
         // Currently, only preserving derefs for trivial terminators like SwitchInt and Goto.
@@ -1802,7 +1853,6 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
         if !safe_to_preserve_derefs {
             self.invalidate_derefs();
         }
-        self.super_terminator(terminator, location);
     }
 }
 
