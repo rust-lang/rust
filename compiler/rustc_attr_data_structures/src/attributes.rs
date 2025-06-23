@@ -254,6 +254,9 @@ pub enum AttributeKind {
     /// Represents `#[ffi_const]`.
     FfiConst(Span),
 
+    /// Represents `#[ffi_pure]`.
+    FfiPure(Span),
+
     /// Represents `#[ignore]`
     Ignore {
         span: Span,

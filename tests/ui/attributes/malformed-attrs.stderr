@@ -134,12 +134,6 @@ error: malformed `fundamental` attribute input
 LL | #[fundamental()]
    | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[fundamental]`
 
-error: malformed `ffi_pure` attribute input
-  --> $DIR/malformed-attrs.rs:165:5
-   |
-LL |     #[unsafe(ffi_pure = 1)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[ffi_pure]`
-
 error: malformed `link_ordinal` attribute input
   --> $DIR/malformed-attrs.rs:167:5
    |
@@ -533,6 +527,15 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | |
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
+
+error[E0565]: malformed `ffi_pure` attribute input
+  --> $DIR/malformed-attrs.rs:165:5
+   |
+LL |     #[unsafe(ffi_pure = 1)]
+   |     ^^^^^^^^^^^^^^^^^^---^^
+   |     |                 |
+   |     |                 didn't expect any arguments here
+   |     help: must be of the form: `#[ffi_pure]`
 
 error[E0565]: malformed `ffi_const` attribute input
   --> $DIR/malformed-attrs.rs:171:5

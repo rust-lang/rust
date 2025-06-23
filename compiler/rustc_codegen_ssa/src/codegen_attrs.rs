@@ -206,6 +206,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 AttributeKind::FfiConst(_) => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST
                 }
+                AttributeKind::FfiPure(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
                 _ => {}
             }
         }
@@ -216,7 +217,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
         match name {
             sym::rustc_allocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR,
-            sym::ffi_pure => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
             sym::rustc_nounwind => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND,
             sym::rustc_reallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR,
             sym::rustc_deallocator => codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR,

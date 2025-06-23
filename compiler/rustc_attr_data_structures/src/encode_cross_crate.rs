@@ -28,6 +28,7 @@ impl AttributeKind {
             ExportName { .. } => Yes,
             ExportStable => No,
             FfiConst(..) => No,
+            FfiPure(..) => No,
             Ignore { .. } => No,
             Inline(..) => No,
             LinkName { .. } => Yes,
