@@ -1,0 +1,64 @@
+- // MIR for `nonfreeze` before GVN
++ // MIR for `nonfreeze` after GVN
+  
+  fn nonfreeze(_1: T) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let mut _2: T;
+      let _3: ();
+      let mut _4: T;
+      let _6: ();
+      let mut _7: T;
+      let _8: ();
+      let mut _9: T;
+      scope 1 {
+          debug y => _2;
+          let _5: &T;
+          scope 2 {
+              debug r => _5;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
++         nop;
+          _2 = copy _1;
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _2;
+-         _3 = opaque::<T>(move _4) -> [return: bb1, unwind unreachable];
++         _3 = opaque::<T>(copy _2) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageLive(_5);
+          _5 = &_1;
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy _1;
+          _6 = opaque::<T>(move _7) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = copy _2;
+-         _8 = opaque::<T>(move _9) -> [return: bb3, unwind unreachable];
++         _8 = opaque::<T>(copy _2) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_9);
+          StorageDead(_8);
+          _0 = const ();
+          StorageDead(_5);
+-         StorageDead(_2);
++         nop;
+          return;
+      }
+  }
+  

@@ -48,8 +48,7 @@
 +         nop;
           StorageLive(_5);
           _5 = const false;
--         _8 = discriminant((*_2));
-+         _8 = discriminant((*_3));
+          _8 = discriminant((*_2));
           switchInt(move _8) -> [0: bb3, otherwise: bb2];
       }
   

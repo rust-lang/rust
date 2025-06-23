@@ -10,8 +10,8 @@ fn main() {
     // CHECK: debug y => [[y:_.*]];
     // CHECK: [[x]] = const 42_u32;
     // CHECK: [[tmp:_.*]] = copy (*{{_.*}});
-    // CHECK: [[x]] = move [[tmp]];
-    // CHECK: [[y]] = copy [[x]];
+    // CHECK: [[x]] = copy [[tmp]];
+    // CHECK: [[y]] = copy [[tmp]];
     let mut x = 42;
     unsafe {
         x = STATIC;

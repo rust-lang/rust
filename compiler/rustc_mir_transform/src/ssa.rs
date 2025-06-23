@@ -99,19 +99,23 @@ impl SsaLocals {
         ssa
     }
 
+    #[inline]
     pub(super) fn num_locals(&self) -> usize {
         self.assignments.len()
     }
 
+    #[inline]
     pub(super) fn locals(&self) -> impl Iterator<Item = Local> {
         self.assignments.indices()
     }
 
+    #[inline]
     pub(super) fn is_ssa(&self, local: Local) -> bool {
         matches!(self.assignments[local], Set1::One(_))
     }
 
     /// Return the number of uses if a local that are not "Deref".
+    #[inline]
     pub(super) fn num_direct_uses(&self, local: Local) -> u32 {
         self.direct_uses[local]
     }

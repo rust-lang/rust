@@ -20,6 +20,6 @@ fn main() {
     // CHECK: [[tmp]] = const 10_i32;
     // CHECK: goto -> bb4;
     // CHECK: bb4: {
-    // CHECK: {{_.*}} = Add(move [[tmp]], const 0_i32);
+    // CHECK: {{_.*}} = copy [[tmp]];
     let x = (if let Some(true) = Some(true) { 42 } else { 10 }) + 0;
 }

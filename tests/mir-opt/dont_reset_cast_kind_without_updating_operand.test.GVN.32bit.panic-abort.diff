@@ -72,9 +72,9 @@
   
       bb0: {
           StorageLive(_1);
--         StorageLive(_2);
+          StorageLive(_2);
+-         StorageLive(_3);
 +         nop;
-          StorageLive(_3);
           StorageLive(_4);
 -         _4 = ();
 +         _4 = const ();
@@ -97,7 +97,8 @@
       }
   
       bb1: {
-          StorageDead(_3);
+-         StorageDead(_3);
++         nop;
           StorageDead(_1);
           return;
       }
@@ -134,12 +135,11 @@
           StorageDead(_4);
           _2 = &_3;
           _1 = &(*_2);
--         StorageDead(_2);
+          StorageDead(_2);
 -         StorageLive(_5);
 -         _10 = copy (*_1);
 +         nop;
-+         nop;
-+         _10 = copy (*_2);
++         _10 = copy _3;
           _11 = copy ((_10.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
           _5 = &raw const (*_11);
 -         StorageLive(_6);
