@@ -1,17 +1,17 @@
 error[E0736]: attribute incompatible with `#[unsafe(naked)]`
-  --> $DIR/error-with-naked.rs:5:1
+  --> $DIR/error-with-naked.rs:5:3
    |
 LL | #[track_caller]
-   | ^^^^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[unsafe(naked)]`
+   |   ^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[unsafe(naked)]`
 LL |
 LL | #[unsafe(naked)]
    | ---------------- function marked with `#[unsafe(naked)]` here
 
 error[E0736]: attribute incompatible with `#[unsafe(naked)]`
-  --> $DIR/error-with-naked.rs:17:5
+  --> $DIR/error-with-naked.rs:17:7
    |
 LL |     #[track_caller]
-   |     ^^^^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[unsafe(naked)]`
+   |       ^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[unsafe(naked)]`
 LL |
 LL |     #[unsafe(naked)]
    |     ---------------- function marked with `#[unsafe(naked)]` here
