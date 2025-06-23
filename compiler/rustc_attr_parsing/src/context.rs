@@ -38,7 +38,8 @@ use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
 use crate::attributes::traits::{
-    ConstTraitParser, DenyExplicitImplParser, SkipDuringMethodDispatchParser,
+    ConstTraitParser, DenyExplicitImplParser, DoNotImplementViaObjectParser,
+    SkipDuringMethodDispatchParser,
 };
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
@@ -145,6 +146,7 @@ attribute_parsers!(
         Single<WithoutArgs<ConstStabilityIndirectParser>>,
         Single<WithoutArgs<ConstTraitParser>>,
         Single<WithoutArgs<DenyExplicitImplParser>>,
+        Single<WithoutArgs<DoNotImplementViaObjectParser>>,
         Single<WithoutArgs<LoopMatchParser>>,
         Single<WithoutArgs<MayDangleParser>>,
         Single<WithoutArgs<NoImplicitPreludeParser>>,

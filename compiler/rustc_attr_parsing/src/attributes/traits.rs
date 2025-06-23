@@ -68,3 +68,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for DenyExplicitImplParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::DenyExplicitImpl;
 }
+
+pub(crate) struct DoNotImplementViaObjectParser;
+impl<S: Stage> NoArgsAttributeParser<S> for DoNotImplementViaObjectParser {
+    const PATH: &[Symbol] = &[sym::rustc_do_not_implement_via_object];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::DoNotImplementViaObject;
+}

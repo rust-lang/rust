@@ -962,8 +962,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         });
 
     let deny_explicit_impl = find_attr!(attrs, AttributeKind::DenyExplicitImpl(_));
-    let implement_via_object =
-        !attrs.iter().any(|attr| attr.has_name(sym::rustc_do_not_implement_via_object));
+    let implement_via_object = !find_attr!(attrs, AttributeKind::DoNotImplementViaObject(_));
 
     ty::TraitDef {
         def_id: def_id.to_def_id(),
