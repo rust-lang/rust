@@ -376,7 +376,9 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(_, _) => return Err(EvaluationFailure::NoSolution),
 
-        // FIXME(unsafe_binders): Unsafe binders could implement `[const] Drop`
+        ty::Init(..) => return Err(EvaluationFailure::NoSolution),
+
+        // FIXME(unsafe_binders): Unsafe binders could implement `~const Drop`
         // if their inner type implements it.
         ty::UnsafeBinder(_) => return Err(EvaluationFailure::NoSolution),
 

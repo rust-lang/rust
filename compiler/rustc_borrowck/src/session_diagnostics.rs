@@ -217,6 +217,13 @@ pub(crate) enum CaptureVarCause {
         #[primary_span]
         var_span: Span,
     },
+    #[label(borrowck_var_borrow_by_use_place_in_init)]
+    BorrowUsePlaceInit {
+        is_single_var: bool,
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
     #[label(borrowck_var_borrow_by_use_in_coroutine)]
     BorrowUseInCoroutine {
         #[primary_span]
@@ -227,6 +234,11 @@ pub(crate) enum CaptureVarCause {
         #[primary_span]
         var_span: Span,
     },
+    #[label(borrowck_var_borrow_by_use_in_init)]
+    BorrowUseInInit {
+        #[primary_span]
+        var_span: Span,
+    },
     #[label(borrowck_var_move_by_use_in_coroutine)]
     MoveUseInCoroutine {
         #[primary_span]
@@ -234,6 +246,11 @@ pub(crate) enum CaptureVarCause {
     },
     #[label(borrowck_var_move_by_use_in_closure)]
     MoveUseInClosure {
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_move_by_use_in_init)]
+    MoveUseInInit {
         #[primary_span]
         var_span: Span,
     },
@@ -249,6 +266,12 @@ pub(crate) enum CaptureVarCause {
         #[primary_span]
         var_span: Span,
     },
+    #[label(borrowck_var_first_borrow_by_use_place_in_init)]
+    FirstBorrowUsePlaceInit {
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
     #[label(borrowck_var_second_borrow_by_use_place_in_coroutine)]
     SecondBorrowUsePlaceCoroutine {
         place: String,
@@ -257,6 +280,12 @@ pub(crate) enum CaptureVarCause {
     },
     #[label(borrowck_var_second_borrow_by_use_place_in_closure)]
     SecondBorrowUsePlaceClosure {
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_second_borrow_by_use_place_in_init)]
+    SecondBorrowUsePlaceInit {
         place: String,
         #[primary_span]
         var_span: Span,
@@ -275,6 +304,12 @@ pub(crate) enum CaptureVarCause {
     },
     #[label(borrowck_partial_var_move_by_use_in_closure)]
     PartialMoveUseInClosure {
+        #[primary_span]
+        var_span: Span,
+        is_partial: bool,
+    },
+    #[label(borrowck_partial_var_move_by_use_in_init)]
+    PartialMoveUseInInit {
         #[primary_span]
         var_span: Span,
         is_partial: bool,

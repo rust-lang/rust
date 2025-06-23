@@ -393,6 +393,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     | ExprKind::Cast(_, _)
                     | ExprKind::DropTemps(_)
                     | ExprKind::If(_, _, _)
+                    | ExprKind::InitBlock(_)
+                    | ExprKind::InitTail(_)
                     | ExprKind::Closure(_)
                     | ExprKind::Block(_, _)
                     | ExprKind::AssignOp(_, _, _)
@@ -568,6 +570,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_match(expr, discrim, arms, expected, match_src)
             }
             ExprKind::Closure(closure) => self.check_expr_closure(closure, expr.span, expected),
+            ExprKind::InitBlock(block) => self.check_init(block, expr.span, expected),
+            ExprKind::InitTail(kind) => self.check_init_tail(kind, expected, expr),
             ExprKind::Block(body, _) => self.check_expr_block(body, expected),
             ExprKind::Call(callee, args) => self.check_expr_call(expr, callee, args, expected),
             ExprKind::Use(used_expr, _) => self.check_expr_use(used_expr, expected),

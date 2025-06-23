@@ -147,6 +147,8 @@ impl CheckInlineAssembly {
             | ExprKind::Match(..)
             | ExprKind::If(..)
             | ExprKind::Closure { .. }
+            | ExprKind::InitBlock(..)
+            | ExprKind::InitTail(..)
             | ExprKind::Assign(..)
             | ExprKind::AssignOp(..)
             | ExprKind::Field(..)

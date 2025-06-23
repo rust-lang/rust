@@ -501,6 +501,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 | ty::Coroutine(..)
                 | ty::CoroutineWitness(..)
                 | ty::Array(..)
+                | ty::Init(..)
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
                 | ty::Never

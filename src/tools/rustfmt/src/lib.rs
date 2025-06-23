@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![feature(box_patterns)]
 #![deny(rust_2018_idioms)]
 #![warn(unreachable_pub)]
 #![recursion_limit = "256"]

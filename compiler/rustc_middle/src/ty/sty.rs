@@ -657,6 +657,7 @@ impl<'tcx> Ty<'tcx> {
                 | DefKind::GlobalAsm
                 | DefKind::Impl { .. }
                 | DefKind::Closure
+                | DefKind::Init
                 | DefKind::SyntheticCoroutineBody => {
                     bug!("not an adt: {def:?} ({:?})", tcx.def_kind(def.did()))
                 }
@@ -794,6 +795,12 @@ impl<'tcx> Ty<'tcx> {
     ) -> Ty<'tcx> {
         tcx.debug_assert_args_compatible(def_id, closure_args);
         Ty::new(tcx, Closure(def_id, closure_args))
+    }
+
+    #[inline]
+    pub fn new_init(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
+        tcx.debug_assert_args_compatible(def_id, args);
+        Ty::new(tcx, Init(def_id, args))
     }
 
     #[inline]
@@ -973,6 +980,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
 
     fn new_closure(interner: TyCtxt<'tcx>, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Self {
         Ty::new_closure(interner, def_id, args)
+    }
+
+    fn new_init(interner: TyCtxt<'tcx>, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Self {
+        Ty::new_init(interner, def_id, args)
     }
 
     fn new_coroutine_witness(
@@ -1579,6 +1590,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnPtr(..)
             | ty::Dynamic(..)
             | ty::Closure(..)
+            | ty::Init(..)
             | ty::CoroutineClosure(..)
             | ty::CoroutineWitness(..)
             | ty::Never
@@ -1615,7 +1627,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
-            | ty::Coroutine(..)
+            | ty::Coroutine(..)|ty::Init(..)
             | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
@@ -1807,6 +1819,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Char
             | ty::Ref(..)
             | ty::Coroutine(..)
+            | ty::Init(..)
             | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Pat(..)
@@ -1886,7 +1899,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Coroutine(..) | ty::CoroutineWitness(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
-            ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
+            ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) | ty::Init(..) => false,
 
             ty::UnsafeBinder(_) => false,
 
@@ -1940,6 +1953,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
+            | ty::Init(_, _)
             | ty::Alias(..)
             | ty::Error(_) => false,
         }

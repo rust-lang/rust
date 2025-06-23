@@ -785,6 +785,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             | ty::Str
             | ty::Dynamic(..)
             | ty::Closure(..)
+            | ty::Init(..)
             | ty::Pat(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..) => interp_ok(false),

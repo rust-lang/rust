@@ -323,11 +323,14 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::AnonConst => {
             collector.collect_taits_declared_in_body();
         }
-        // Closures and coroutines are type checked with their parent
+        // Closures, inits, inline constants and coroutines are type checked with their parent
         // Note that we also support `SyntheticCoroutineBody` since we create
         // a MIR body for the def kind, and some MIR passes (like promotion)
         // may require doing analysis using its typing env.
-        DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody => {
+        DefKind::Closure
+        | DefKind::InlineConst
+        | DefKind::SyntheticCoroutineBody
+        | DefKind::Init => {
             collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
         }
         DefKind::AssocTy | DefKind::TyAlias | DefKind::GlobalAsm => {}

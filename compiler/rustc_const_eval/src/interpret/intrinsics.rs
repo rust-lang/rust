@@ -181,6 +181,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     | ty::FnDef(_, _)
                     | ty::FnPtr(..)
                     | ty::Dynamic(_, _, _)
+                    | ty::Init(_, _)
                     | ty::Closure(_, _)
                     | ty::CoroutineClosure(_, _)
                     | ty::Coroutine(_, _)

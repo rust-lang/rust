@@ -143,6 +143,10 @@ impl<'tcx, B: Bridge> Tables<'tcx, B> {
         B::ClosureDef::new(self.create_def_id(did))
     }
 
+    pub fn init_def(&mut self, did: rustc_span::def_id::DefId) -> B::InitDef {
+        B::InitDef::new(self.create_def_id(did))
+    }
+
     pub fn coroutine_def(&mut self, did: rustc_span::def_id::DefId) -> B::CoroutineDef {
         B::CoroutineDef::new(self.create_def_id(did))
     }
@@ -229,6 +233,7 @@ pub trait Bridge: Sized {
     type ForeignDef: ForeignDef<Self>;
     type FnDef: FnDef<Self>;
     type ClosureDef: ClosureDef<Self>;
+    type InitDef: InitDef<Self>;
     type CoroutineDef: CoroutineDef<Self>;
     type CoroutineClosureDef: CoroutineClosureDef<Self>;
     type AliasDef: AliasDef<Self>;

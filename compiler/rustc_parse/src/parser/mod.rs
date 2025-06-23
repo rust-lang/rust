@@ -727,6 +727,11 @@ impl<'a> Parser<'a> {
             })
     }
 
+    fn check_init_block(&self) -> bool {
+        self.look_ahead(0, |t| matches!(t.kind, token::Ident(sym::init, IdentIsRaw::No)))
+            && self.look_ahead(1, |t| matches!(t.kind, token::Pound))
+    }
+
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {

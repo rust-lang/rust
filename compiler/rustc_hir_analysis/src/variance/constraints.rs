@@ -236,7 +236,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // leaf type -- noop
             }
 
-            ty::FnDef(..) | ty::Coroutine(..) | ty::Closure(..) | ty::CoroutineClosure(..) => {
+            ty::FnDef(..)
+            | ty::Coroutine(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Init(..) => {
                 bug!("Unexpected unnameable type in variance computation: {ty}");
             }
 

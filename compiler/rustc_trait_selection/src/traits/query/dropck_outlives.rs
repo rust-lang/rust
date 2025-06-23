@@ -59,7 +59,9 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         // check if *all* of them are trivial.
         ty::Tuple(tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t)),
 
-        ty::Closure(_, args) => trivial_dropck_outlives(tcx, args.as_closure().tupled_upvars_ty()),
+        ty::Closure(_, args) | ty::Init(_, args) => {
+            trivial_dropck_outlives(tcx, args.as_closure().tupled_upvars_ty())
+        }
         ty::CoroutineClosure(_, args) => {
             trivial_dropck_outlives(tcx, args.as_coroutine_closure().tupled_upvars_ty())
         }
@@ -297,11 +299,20 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             }
         }),
 
-        ty::Closure(_, args) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
-            for ty in args.as_closure().upvar_tys() {
-                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints);
-            }
-        }),
+        ty::Closure(_, args) | ty::Init(_, args) => {
+            rustc_data_structures::stack::ensure_sufficient_stack(|| {
+                for ty in args.as_closure().upvar_tys() {
+                    dtorck_constraint_for_ty_inner(
+                        tcx,
+                        typing_env,
+                        span,
+                        depth + 1,
+                        ty,
+                        constraints,
+                    );
+                }
+            })
+        }
 
         ty::CoroutineClosure(_, args) => {
             rustc_data_structures::stack::ensure_sufficient_stack(|| {

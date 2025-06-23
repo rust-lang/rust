@@ -998,6 +998,19 @@ macro_rules! common_visitor_and_walkers {
                     try_visit!(vis.visit_fn(kind, *span, *id));
                     visit_visitable!($($mut)? vis, fn_decl_span, fn_arg_span);
                 }
+                ExprKind::InitBlock(expr) => {
+                    try_visit!(vis.visit_fn(
+                        FnKind::Closure(&$($mut)?ClosureBinder::NotPresent, &$($mut)?None, &$($mut)?expr.fn_decl, &$($mut)?expr.expr),
+                        *span,
+                        *id,
+                    ));
+                }
+                ExprKind::InitTail(tail) => {
+                    match **tail {
+                        InitKind::Free(ref $($mut)? expr) => try_visit!(vis.visit_expr(expr)),
+                        InitKind::Array(ref $($mut)? exprs) => try_visit!(visit_exprs(vis, exprs)),
+                    }
+                }
                 ExprKind::Block(block, opt_label) =>
                     visit_visitable!($($mut)? vis, block, opt_label),
                 ExprKind::Gen(capt, body, kind, decl_span) =>

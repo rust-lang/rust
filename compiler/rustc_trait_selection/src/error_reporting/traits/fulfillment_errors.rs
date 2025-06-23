@@ -1682,6 +1682,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::CoroutineClosure(..) => Some(21),
                 ty::Pat(..) => Some(22),
                 ty::UnsafeBinder(..) => Some(23),
+                ty::Init(..) => Some(24),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }
@@ -1773,6 +1774,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 hir::CoroutineSource::Closure,
             ))
             | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Gen) => "a gen closure",
+            hir::ClosureKind::Init => "a init thunk",
         }
     }
 

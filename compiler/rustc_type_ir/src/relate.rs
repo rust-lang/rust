@@ -443,6 +443,11 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             Ok(Ty::new_closure(cx, a_id, args))
         }
 
+        (ty::Init(a_did, a_args), ty::Init(b_did, b_args)) if a_did == b_did => {
+            let args = relate_args_invariantly(relation, a_args, b_args)?;
+            Ok(Ty::new_init(cx, a_did, args))
+        }
+
         (ty::CoroutineClosure(a_id, a_args), ty::CoroutineClosure(b_id, b_args))
             if a_id == b_id =>
         {

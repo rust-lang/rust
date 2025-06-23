@@ -95,6 +95,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_coroutine)
             }
 
+            InitCandidate => ImplSource::Builtin(
+                BuiltinImplSource::Misc,
+                self.confirm_init_candidate(obligation)?,
+            ),
+
+            TrivialInitCandidate => ImplSource::Builtin(
+                BuiltinImplSource::Misc,
+                self.confirm_trivial_init_candidate(obligation)?,
+            ),
+
             FutureCandidate => {
                 let vtable_future = self.confirm_future_candidate(obligation)?;
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_future)
@@ -705,6 +715,45 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(nested)
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
+    fn confirm_init_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+    ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
+        let placeholder_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let self_ty = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
+        let ty::Init(_, args) = self_ty.kind() else {
+            bug!("init candidate is only applicable to init blocks")
+        };
+        let closure_args = args.as_closure();
+        let ty::FnPtr(in_outs, _) = closure_args.sig_as_fn_ptr_ty().kind() else { bug!() };
+        let &ty::Tuple(outs) = in_outs.skip_binder().output().kind() else { bug!() };
+        let [ret_ty, ..] = **outs else { bug!() };
+        let trait_ref =
+            ty::TraitRef::new(self.tcx(), placeholder_predicate.def_id(), [self_ty, ret_ty]);
+        let nested = self.equate_trait_refs(
+            obligation.with(self.tcx(), placeholder_predicate),
+            ty::Binder::dummy(trait_ref),
+        )?;
+        Ok(nested)
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn confirm_trivial_init_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+    ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
+        let placeholder_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let self_ty = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
+        let trait_ref =
+            ty::TraitRef::new(self.tcx(), placeholder_predicate.def_id(), [self_ty, self_ty]);
+        let nested = self.equate_trait_refs(
+            obligation.with(self.tcx(), placeholder_predicate),
+            ty::Binder::dummy(trait_ref),
+        )?;
+        Ok(nested)
+    }
+
     fn confirm_future_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
@@ -1308,6 +1357,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Coroutine(..)
             | ty::UnsafeBinder(_)
             | ty::CoroutineWitness(..)
+            | ty::Init(..)
             | ty::Bound(..) => {
                 obligations.push(obligation.with(
                     tcx,

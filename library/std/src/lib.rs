@@ -515,6 +515,8 @@ pub use core::i64;
 #[stable(feature = "i128", since = "1.26.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::i128;
+#[unstable(feature = "in_place_initialization", issue = "999999")]
+pub use core::init;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::intrinsics;
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -749,6 +749,8 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
             };
         }
 
+        InstanceKind::Init(_, _) => return Err("pinit: please implement inlining"),
+
         // This cannot result in an immediate cycle since the callee MIR is a shim, which does
         // not get any optimizations run on it. Any subsequent inlining may cause cycles, but we
         // do not need to catch this here, we can wait until the inliner decides to continue

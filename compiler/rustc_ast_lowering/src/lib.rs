@@ -82,6 +82,7 @@ mod errors;
 mod expr;
 mod format;
 mod index;
+mod init;
 mod item;
 mod pat;
 mod path;
@@ -120,6 +121,7 @@ struct LoweringContext<'a, 'hir> {
     catch_scope: Option<HirId>,
     loop_scope: Option<HirId>,
     is_in_loop_condition: bool,
+    is_in_init_tail: bool,
     is_in_dyn_type: bool,
 
     current_hir_id_owner: hir::OwnerId,
@@ -173,6 +175,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             catch_scope: None,
             loop_scope: None,
             is_in_loop_condition: false,
+            is_in_init_tail: false,
             is_in_dyn_type: false,
             coroutine_kind: None,
             task_context: None,
@@ -916,7 +919,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn with_new_scopes<T>(&mut self, scope_span: Span, f: impl FnOnce(&mut Self) -> T) -> T {
         let current_item = self.current_item;
         self.current_item = Some(scope_span);
-
+        let was_in_init_tail = self.is_in_init_tail;
+        self.is_in_init_tail = false;
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
 
@@ -924,16 +928,38 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let catch_scope = self.catch_scope.take();
         let loop_scope = self.loop_scope.take();
+
         let ret = f(self);
+
         self.catch_scope = catch_scope;
         self.loop_scope = loop_scope;
-
         self.contract_ensures = old_contract;
-
+        self.is_in_init_tail = was_in_init_tail;
         self.is_in_loop_condition = was_in_loop_condition;
-
         self.current_item = current_item;
 
+        ret
+    }
+
+    /// Signal from the lowering context that the tail value of a current block
+    /// should be in-place initialised and should be lowered as an `init` tail.
+    #[inline]
+    fn enter_init_tail_lowering<T>(&mut self, lowering: impl FnOnce(&mut Self) -> T) -> T {
+        let was_in_init_tail = self.is_in_init_tail;
+        self.is_in_init_tail = true;
+        let ret = lowering(self);
+        self.is_in_init_tail = was_in_init_tail;
+        ret
+    }
+
+    /// Signal from the lowering context that blocks in statements of a current block
+    /// shall not be in-place initialised.
+    #[inline]
+    fn enter_non_init_tail_lowering<T>(&mut self, lowering: impl FnOnce(&mut Self) -> T) -> T {
+        let was_in_init_tail = self.is_in_init_tail;
+        self.is_in_init_tail = false;
+        let ret = lowering(self);
+        self.is_in_init_tail = was_in_init_tail;
         ret
     }
 

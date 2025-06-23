@@ -568,6 +568,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
+            | ty::Init(..)
             | ty::Dynamic(..)
             | ty::UnsafeBinder(_)
             | ty::Param(_)
@@ -2046,6 +2047,7 @@ fn resolution_failure(
                             Variant
                             | Field
                             | Closure
+                            | Init
                             | AssocTy
                             | AssocConst
                             | AssocFn

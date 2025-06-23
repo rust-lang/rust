@@ -125,6 +125,7 @@ impl<'a> Sugg<'a> {
             | ExprKind::If(..)
             | ExprKind::Let(..)
             | ExprKind::Closure { .. }
+            | ExprKind::InitBlock(_)
             | ExprKind::Unary(..)
             | ExprKind::Match(..) => Sugg::MaybeParen(get_snippet(expr.span)),
             ExprKind::Continue(..)
@@ -133,6 +134,7 @@ impl<'a> Sugg<'a> {
             | ExprKind::Block(..)
             | ExprKind::Break(..)
             | ExprKind::Call(..)
+            | ExprKind::InitTail(_)
             | ExprKind::Field(..)
             | ExprKind::Index(..)
             | ExprKind::InlineAsm(..)
@@ -191,6 +193,8 @@ impl<'a> Sugg<'a> {
             },
             ast::ExprKind::Gen(..)
             | ast::ExprKind::Block(..)
+            | ast::ExprKind::InitBlock(_)
+            | ast::ExprKind::InitTail(_)
             | ast::ExprKind::Break(..)
             | ast::ExprKind::Call(..)
             | ast::ExprKind::Continue(..)

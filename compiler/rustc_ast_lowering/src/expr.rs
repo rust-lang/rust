@@ -244,6 +244,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         *fn_arg_span,
                     ),
                 },
+                ExprKind::InitBlock(block) => self.lower_expr_init_block(
+                    e.id,
+                    block.init_kw_span,
+                    &block.fn_decl,
+                    &block.expr,
+                ),
+                ExprKind::InitTail(kind) => self.lower_expr_init_tail(kind),
                 ExprKind::Gen(capture_clause, block, genblock_kind, decl_span) => {
                     let desugaring_kind = match genblock_kind {
                         GenBlockKind::Async => hir::CoroutineDesugaring::Async,
@@ -1210,6 +1217,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
             constness: hir::Constness::NotConst,
         });
         hir::ExprKind::Closure(c)
+    }
+
+    fn lower_expr_init_block(
+        &mut self,
+        init_id: NodeId,
+        init_kw_span: Span,
+        fn_decl: &FnDecl,
+        body: &Expr,
+    ) -> hir::ExprKind<'hir> {
+        let def_id = self.local_def_id(init_id);
+
+        let body_id = self.with_new_scopes(body.span, move |this| {
+            this.enter_init_tail_lowering(|this| {
+                this.lower_fn_body(fn_decl, None, |this| this.lower_expr_mut(body))
+            })
+        });
+        let block = self.arena.alloc(hir::InitBlock {
+            def_id,
+            body: body_id,
+            init_kw_span,
+            fn_decl: self.arena.alloc(hir::FnDecl {
+                inputs: &[],
+                output: hir::FnRetTy::DefaultReturn(body.span),
+                c_variadic: false,
+                implicit_self: hir::ImplicitSelfKind::None,
+                lifetime_elision_allowed: false,
+            }),
+        });
+        hir::ExprKind::InitBlock(block)
     }
 
     /// Destructure the LHS of complex assignments.

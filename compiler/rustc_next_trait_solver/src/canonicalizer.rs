@@ -369,6 +369,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::UnsafeBinder(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(..)
+            | ty::Init(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)

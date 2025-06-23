@@ -695,6 +695,8 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
             | ExprKind::Lit(_)
             | ExprKind::ConstBlock(_)
             | ExprKind::Closure { .. }
+            | ExprKind::InitBlock(_)
+            | ExprKind::InitTail(_)
             | ExprKind::Path(_)
             | ExprKind::Continue(_)
             | ExprKind::InlineAsm(_)

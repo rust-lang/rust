@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
     self as hir, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind, ExprKind,
-    FnRetTy, HirId, Lit, PatExprKind, PatKind, QPath, StmtKind, StructTailExpr,
+    FnRetTy, HirId, InitBlock, Lit, PatExprKind, PatKind, QPath, StmtKind, StructTailExpr,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
@@ -547,6 +547,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                     ClosureKind::CoroutineClosure(desugaring) => {
                         format!("ClosureKind::CoroutineClosure(CoroutineDesugaring::{desugaring:?})")
                     },
+                    ClosureKind::Init => "ClosureKind::Init".to_string(),
                 };
 
                 let ret_ty = match fn_decl.output {
@@ -560,6 +561,15 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 );
                 chain!(self, "let {ret_ty} = {fn_decl}.output");
                 self.body(body_id);
+            },
+            ExprKind::InitBlock(&InitBlock { body, .. }) => {
+                bind!(self, body);
+                kind!("InitBlock {{ body: {body}, .. }}");
+                self.body(body);
+            },
+            ExprKind::InitTail(_) => {
+                // FIXME: decide how to print the in-place initialiser properly
+                kind!("InitTail");
             },
             ExprKind::Yield(sub, source) => {
                 bind!(self, sub);

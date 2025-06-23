@@ -500,6 +500,16 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 // contained within is scoped within its binder.
                 intravisit::walk_expr(this, e)
             });
+        } else if let hir::ExprKind::InitBlock(_) = e.kind {
+            self.record_late_bound_vars(e.hir_id, vec![]);
+            let scope = Scope::Binder {
+                hir_id: e.hir_id,
+                bound_vars: Default::default(),
+                s: self.scope,
+                scope_type: BinderScopeType::Normal,
+                where_bound_origin: None,
+            };
+            self.with(scope, |this| intravisit::walk_expr(this, e))
         } else {
             intravisit::walk_expr(self, e)
         }

@@ -599,11 +599,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// have the same `DefKind`.
     ///
     /// Note that closures have a `DefId`, but the closure *expression* also has a
-    // `HirId` that is located within the context where the closure appears (and, sadly,
-    // a corresponding `NodeId`, since those are not yet phased out). The parent of
-    // the closure's `DefId` will also be the context where it appears.
+    /// `HirId` that is located within the context where the closure appears (and, sadly,
+    /// a corresponding `NodeId`, since those are not yet phased out). The parent of
+    /// the closure's `DefId` will also be the context where it appears.
     pub fn is_closure_like(self, def_id: DefId) -> bool {
-        matches!(self.def_kind(def_id), DefKind::Closure)
+        matches!(self.def_kind(def_id), DefKind::Closure | DefKind::Init)
     }
 
     /// Returns `true` if `def_id` refers to a definition that does not have its own
@@ -611,7 +611,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_typeck_child(self, def_id: DefId) -> bool {
         matches!(
             self.def_kind(def_id),
-            DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody
+            DefKind::Closure
+                | DefKind::Init
+                | DefKind::InlineConst
+                | DefKind::SyntheticCoroutineBody
         )
     }
 
@@ -1175,6 +1178,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bound(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
+            | ty::Init(..)
             | ty::Dynamic(..)
             | ty::Foreign(_)
             | ty::Coroutine(..)
@@ -1211,6 +1215,11 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             | ty::FnPtr(..) => true,
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unpin),
+            ty::Init(..) => {
+                // This is subject to further design.
+                // Here we will keep conservative.
+                true
+            }
             ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_unpin(),
             ty::Adt(..)
             | ty::Bound(..)
@@ -1270,6 +1279,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(..)
             | ty::Bound(..)
             | ty::Closure(..)
+            | ty::Init(..)
             | ty::CoroutineClosure(..)
             | ty::Dynamic(..)
             | ty::Foreign(_)
@@ -1432,6 +1442,7 @@ impl<'tcx> Ty<'tcx> {
             ty::FnDef(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
+            | ty::Init(..)
             | ty::Dynamic(..)
             | ty::Coroutine(..) => false,
 
@@ -1554,6 +1565,7 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
+        | ty::Init(..)
         | ty::UnsafeBinder(_) => Ok(smallvec![ty]),
     }
 }

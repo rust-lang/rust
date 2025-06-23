@@ -563,6 +563,7 @@ pub enum RigidTy {
     // FIXME(rustc_public): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
     CoroutineClosure(CoroutineClosureDef, GenericArgs),
+    Init(InitDef, GenericArgs),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
     Tuple(Vec<Ty>),
@@ -749,6 +750,19 @@ crate_def! {
 }
 
 impl ClosureDef {
+    /// Retrieves the body of the closure definition. Returns None if the body
+    /// isn't available.
+    pub fn body(&self) -> Option<Body> {
+        with(|ctx| ctx.has_body(self.0).then(|| ctx.mir_body(self.0)))
+    }
+}
+
+crate_def! {
+    #[derive(Serialize)]
+    pub InitDef;
+}
+
+impl InitDef {
     /// Retrieves the body of the closure definition. Returns None if the body
     /// isn't available.
     pub fn body(&self) -> Option<Body> {

@@ -1237,7 +1237,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// `ClosureKind` may not yet be known.
     pub fn closure_kind(&self, closure_ty: Ty<'tcx>) -> Option<ty::ClosureKind> {
         let unresolved_kind_ty = match *closure_ty.kind() {
-            ty::Closure(_, args) => args.as_closure().kind_ty(),
+            ty::Closure(_, args) | ty::Init(_, args) => args.as_closure().kind_ty(),
             ty::CoroutineClosure(_, args) => args.as_coroutine_closure().kind_ty(),
             _ => bug!("unexpected type {closure_ty}"),
         };

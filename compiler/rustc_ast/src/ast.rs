@@ -1532,6 +1532,9 @@ impl Expr {
                 }
             }
 
+            ExprKind::InitBlock(..) => ExprPrecedence::Jump,
+            ExprKind::InitTail(..) => ExprPrecedence::Jump,
+
             ExprKind::Break(_ /*label*/, value)
             | ExprKind::Ret(value)
             | ExprKind::Yield(YieldKind::Prefix(value))
@@ -1653,6 +1656,19 @@ pub struct Closure {
     pub fn_arg_span: Span,
 }
 
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct InitBlock {
+    pub init_kw_span: Span,
+    pub expr: P<Expr>,
+    pub fn_decl: P<FnDecl>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum InitKind {
+    Free(P<Expr>),
+    Array(ThinVec<P<Expr>>),
+}
+
 /// Limit types of a range (inclusive or exclusive).
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, Walkable)]
 pub enum RangeLimits {
@@ -1770,6 +1786,10 @@ pub enum ExprKind {
     Match(P<Expr>, ThinVec<Arm>, MatchKind),
     /// A closure (e.g., `move |a, b, c| a + b + c`).
     Closure(Box<Closure>),
+    /// An `init` block
+    InitBlock(P<InitBlock>),
+    /// An in-place initialization at the tail position of an `init` block
+    InitTail(P<InitKind>),
     /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
     /// An `async` block (`async move { ... }`),

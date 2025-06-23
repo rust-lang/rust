@@ -929,6 +929,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::Field
         | DefKind::Impl { .. }
         | DefKind::Closure
+        | DefKind::Init
         | DefKind::SyntheticCoroutineBody => true,
         DefKind::ForeignMod | DefKind::GlobalAsm => false,
     }
@@ -958,7 +959,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         // closures from upstream crates, too. This is used by
         // https://github.com/model-checking/kani and is not a performance
         // or maintenance issue for us.
-        DefKind::Closure => true,
+        DefKind::Closure | DefKind::Init => true,
         DefKind::SyntheticCoroutineBody => false,
         DefKind::TyParam
         | DefKind::ConstParam
@@ -1007,6 +1008,7 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::Closure
+        | DefKind::Init
         | DefKind::SyntheticCoroutineBody => false,
     }
 }
@@ -1044,6 +1046,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Closure
         | DefKind::ExternCrate
+        | DefKind::Init
         | DefKind::SyntheticCoroutineBody => false,
     }
 }
@@ -1079,6 +1082,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
+        | DefKind::Init
         | DefKind::ExternCrate
         | DefKind::SyntheticCoroutineBody => false,
     }
@@ -1174,6 +1178,7 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
+        | DefKind::Init
         | DefKind::ExternCrate
         | DefKind::SyntheticCoroutineBody => false,
         DefKind::TyAlias => tcx.type_alias_is_lazy(def_id),
@@ -1204,6 +1209,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::Field
         | DefKind::TyParam
         | DefKind::Closure
+        | DefKind::Init
         | DefKind::SyntheticCoroutineBody => true,
         DefKind::Mod
         | DefKind::ForeignMod
@@ -1233,6 +1239,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Closure
+        | DefKind::Init
         | DefKind::ConstParam
         | DefKind::AnonConst
         | DefKind::InlineConst
@@ -1295,6 +1302,7 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::AssocConst
         | DefKind::Closure
+        | DefKind::Init
         | DefKind::ConstParam
         | DefKind::AnonConst
         | DefKind::InlineConst
@@ -1344,6 +1352,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::ExternCrate
         | DefKind::Ctor(_, CtorKind::Const)
         | DefKind::Variant
+        | DefKind::Init
         | DefKind::SyntheticCoroutineBody => false,
     }
 }
@@ -1366,6 +1375,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::AssocFn
         | DefKind::Closure
+        | DefKind::Init
         | DefKind::ConstParam
         | DefKind::AssocTy
         | DefKind::TyParam

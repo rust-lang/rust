@@ -9,9 +9,9 @@ use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr, ExprField,
-    ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeKind,
-    Node, Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
-    StructTailExpr, TraitBoundModifiers, Ty, TyKind, TyPat, TyPatKind,
+    ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InitBlock, InitKind, InlineAsmOperand, LetExpr,
+    Lifetime, LifetimeKind, Node, Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt,
+    StmtKind, StructTailExpr, TraitBoundModifiers, Ty, TyKind, TyPat, TyPatKind,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -439,9 +439,11 @@ impl HirEqInterExpr<'_, '_, '_> {
                 // an invalid expressions is equal to anything.
                 | ExprKind::Err(..)
 
-                // For the time being, we always consider that two closures are unequal.
+                // For the time being, we always consider that two closures or inits are unequal.
                 // This behavior may change in the future.
                 | ExprKind::Closure(..)
+                | ExprKind::InitTail(_)
+                | ExprKind::InitBlock(_)
                 // For the time being, we always consider that two instances of InlineAsm are different.
                 // This behavior may change in the future.
                 | ExprKind::InlineAsm(_)
@@ -910,6 +912,34 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 std::mem::discriminant(capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
                 self.hash_expr(self.cx.tcx.hir_body(*body).value);
+            },
+            ExprKind::InitBlock(InitBlock { body, .. }) => {
+                self.hash_expr(self.cx.tcx.hir_body(*body).value);
+            },
+            &ExprKind::InitTail(kind) => {
+                std::mem::discriminant(kind).hash(&mut self.s);
+                match kind {
+                    InitKind::Array(exprs) => self.hash_exprs(exprs),
+                    InitKind::Repeat(e, len) => {
+                        self.hash_expr(e);
+                        self.hash_const_arg(len);
+                    },
+                    InitKind::Tuple(exprs) => self.hash_exprs(exprs),
+                    InitKind::Struct(path, fields, expr) => {
+                        self.hash_qpath(path);
+
+                        for f in *fields {
+                            self.hash_name(f.ident.name);
+                            self.hash_expr(f.expr);
+                        }
+
+                        if let StructTailExpr::Base(e) = expr {
+                            self.hash_expr(e);
+                        }
+                    },
+                    InitKind::Free(expr) => self.hash_expr(expr),
+                    InitKind::Block(block, _label) => self.hash_block(block),
+                }
             },
             ExprKind::ConstBlock(l_id) => {
                 self.hash_body(l_id.body);

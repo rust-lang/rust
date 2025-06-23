@@ -258,6 +258,7 @@ bridge_impl!(ForeignModuleDef, crate::ty::ForeignModuleDef);
 bridge_impl!(ForeignDef, crate::ty::ForeignDef);
 bridge_impl!(FnDef, crate::ty::FnDef);
 bridge_impl!(ClosureDef, crate::ty::ClosureDef);
+bridge_impl!(InitDef, crate::ty::InitDef);
 bridge_impl!(CoroutineDef, crate::ty::CoroutineDef);
 bridge_impl!(CoroutineClosureDef, crate::ty::CoroutineClosureDef);
 bridge_impl!(AliasDef, crate::ty::AliasDef);

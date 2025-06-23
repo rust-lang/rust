@@ -161,6 +161,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             self.assemble_closure_candidates(obligation, &mut candidates);
                             self.assemble_fn_pointer_candidates(obligation, &mut candidates);
                         }
+                        Some(LangItem::Init) => {
+                            self.assemble_init_candidates(obligation, &mut candidates);
+                        }
                         _ => {}
                     }
 
@@ -584,6 +587,53 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, candidates))]
+    fn assemble_init_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let self_ty = obligation.self_ty().skip_binder();
+        match self_ty.kind() {
+            ty::Init(_, _) => {
+                debug!("init candidate");
+                candidates.vec.push(InitCandidate);
+            }
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Pat(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_, _)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_, _)
+            | ty::UnsafeBinder(_)
+            | ty::Dynamic(_, _, _)
+            | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(_, _)
+            | ty::Tuple(_)
+            | ty::Alias(_, _)
+            | ty::Param(_)
+            | ty::Infer(
+                ty::IntVar(_) | ty::FloatVar(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
+            )
+            | ty::Bound(_, _) => {
+                debug!("trivial init candidate");
+                candidates.vec.push(TrivialInitCandidate);
+            }
+            ty::Never | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => {}
+        }
+    }
+
     /// Searches for impls that might apply to `obligation`.
     #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_candidates_from_impls(
@@ -694,6 +744,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::CoroutineClosure(..)
                 | ty::Coroutine(_, _)
                 | ty::CoroutineWitness(..)
+                | ty::Init(..)
                 | ty::UnsafeBinder(_)
                 | ty::Never
                 | ty::Tuple(_)
@@ -867,6 +918,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
                 | ty::Coroutine(..)
+                | ty::Init(..)
                 | ty::Never
                 | ty::Tuple(_)
                 | ty::UnsafeBinder(_) => {
@@ -1172,7 +1224,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::Closure(_, args) => {
+            ty::Closure(_, args) | ty::Init(_, args) => {
                 let resolved_upvars =
                     self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
                 if resolved_upvars.is_ty_var() {
@@ -1242,6 +1294,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Array(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
+            | ty::Init(..)
             | ty::Never
             | ty::Error(_) => {
                 candidates.vec.push(SizedCandidate);
@@ -1328,6 +1381,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
+            | ty::Init(..)
             | ty::Never
             | ty::Alias(..)
             | ty::Param(_)
@@ -1367,6 +1421,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
+            | ty::Init(..)
             | ty::UnsafeBinder(_)
             | ty::Never
             | ty::Tuple(..)
@@ -1420,6 +1475,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Coroutine(..)
             | ty::UnsafeBinder(_)
             | ty::CoroutineWitness(..)
+            | ty::Init(..)
             | ty::Bound(..) => {
                 candidates.vec.push(BikeshedGuaranteedNoDropCandidate);
             }

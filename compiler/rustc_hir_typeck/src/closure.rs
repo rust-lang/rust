@@ -116,6 +116,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 (Ty::new_closure(tcx, expr_def_id.to_def_id(), closure_args.args), None)
             }
+            hir::ClosureKind::Init => {
+                let sig = bound_sig.map_bound(|sig| {
+                    tcx.mk_fn_sig([], sig.output(), false, hir::Safety::Safe, ExternAbi::Rust)
+                });
+
+                debug!(?sig, ?expected_kind);
+
+                let closure_kind_ty = Ty::from_closure_kind(tcx, ClosureKind::FnOnce);
+
+                let closure_args = ty::ClosureArgs::new(
+                    tcx,
+                    ty::ClosureArgsParts {
+                        parent_args,
+                        closure_kind_ty,
+                        closure_sig_as_fn_ptr_ty: Ty::new_fn_ptr(tcx, sig),
+                        tupled_upvars_ty,
+                    },
+                );
+
+                (Ty::new_init(tcx, expr_def_id.to_def_id(), closure_args.args), None)
+            }
             hir::ClosureKind::Coroutine(kind) => {
                 let yield_ty = match kind {
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
@@ -301,6 +322,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_ty
     }
 
+    #[instrument(skip(self), level = "debug")]
+    pub(crate) fn check_init(
+        &self,
+        block: &hir::InitBlock<'tcx>,
+        expr_span: Span,
+        expected: Expectation<'tcx>,
+    ) -> Ty<'tcx> {
+        self.check_expr_closure(
+            &hir::Closure {
+                def_id: block.def_id,
+                binder: hir::ClosureBinder::Default,
+                constness: hir::Constness::NotConst,
+                capture_clause: hir::CaptureBy::Value { move_kw: block.init_kw_span },
+                bound_generic_params: &[],
+                fn_decl: block.fn_decl,
+                body: block.body,
+                fn_decl_span: expr_span,
+                fn_arg_span: None,
+                kind: hir::ClosureKind::Init,
+            },
+            expr_span,
+            expected,
+        )
+    }
+
     /// Given the expected type, figures out what it can about this closure we
     /// are about to type check:
     #[instrument(skip(self), level = "debug", ret)]
@@ -344,6 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::ClosureKind::Coroutine(_) | hir::ClosureKind::CoroutineClosure(_) => {
                     (None, None)
                 }
+                hir::ClosureKind::Init => todo!("dxf reject this case"),
             },
             _ => (None, None),
         }
@@ -356,6 +403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         predicates: impl DoubleEndedIterator<Item = (ty::Predicate<'tcx>, Span)>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         let mut expected_sig = None;
+        let mut expected_sig_from_trait_predicate = None;
         let mut expected_kind = None;
 
         for (pred, span) in traits::elaborate(
@@ -371,78 +419,99 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!(?pred);
             let bound_predicate = pred.kind();
 
+            // Make sure that we didn't infer a signature that mentions itself.
+            // This can happen when we elaborate certain supertrait bounds that
+            // mention projections containing the `Self` type. See #105401.
+            struct MentionsTy<'tcx> {
+                expected_ty: Ty<'tcx>,
+            }
+            impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MentionsTy<'tcx> {
+                type Result = ControlFlow<()>;
+
+                fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+                    if t == self.expected_ty {
+                        ControlFlow::Break(())
+                    } else {
+                        t.super_visit_with(self)
+                    }
+                }
+            }
+            let apply_inferred_sig =
+                |inferred_sig: Option<ExpectedSig<'tcx>>, expected_sig: &mut Option<_>| {
+                    // Don't infer a closure signature from a goal that names the closure type as this will
+                    // (almost always) lead to occurs check errors later in type checking.
+                    if self.next_trait_solver()
+                        && let Some(inferred_sig) = inferred_sig
+                    {
+                        // In the new solver it is difficult to explicitly normalize the inferred signature as we
+                        // would have to manually handle universes and rewriting bound vars and placeholders back
+                        // and forth.
+                        //
+                        // Instead we take advantage of the fact that we relating an inference variable with an alias
+                        // will only instantiate the variable if the alias is rigid(*not quite). Concretely we:
+                        // - Create some new variable `?sig`
+                        // - Equate `?sig` with the unnormalized signature, e.g. `fn(<Foo<?x> as Trait>::Assoc)`
+                        // - Depending on whether `<Foo<?x> as Trait>::Assoc` is rigid, ambiguous or normalizeable,
+                        //   we will either wind up with `?sig=<Foo<?x> as Trait>::Assoc/?y/ConcreteTy` respectively.
+                        //
+                        // *: In cases where there are ambiguous aliases in the signature that make use of bound vars
+                        //    they will wind up present in `?sig` even though they are non-rigid.
+                        //
+                        //    This is a bit weird and means we may wind up discarding the goal due to it naming `expected_ty`
+                        //    even though the normalized form may not name `expected_ty`. However, this matches the existing
+                        //    behaviour of the old solver and would be technically a breaking change to fix.
+                        let generalized_fnptr_sig = self.next_ty_var(span);
+                        let inferred_fnptr_sig = Ty::new_fn_ptr(self.tcx, inferred_sig.sig);
+                        self.demand_eqtype(span, inferred_fnptr_sig, generalized_fnptr_sig);
+
+                        let resolved_sig = self.resolve_vars_if_possible(generalized_fnptr_sig);
+
+                        if resolved_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
+                            *expected_sig = Some(ExpectedSig {
+                                cause_span: inferred_sig.cause_span,
+                                sig: resolved_sig.fn_sig(self.tcx),
+                            });
+                        }
+                    } else {
+                        if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
+                            *expected_sig = inferred_sig;
+                        }
+                    }
+                };
             // Given a Projection predicate, we can potentially infer
             // the complete signature.
-            if expected_sig.is_none()
+            if matches!(closure_kind, hir::ClosureKind::Init)
+                && expected_sig_from_trait_predicate.is_none()
+                && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_predicate)) =
+                    bound_predicate.skip_binder()
+                && self.tcx.is_lang_item(trait_predicate.def_id(), LangItem::Init)
+            {
+                apply_inferred_sig(
+                    self.normalize(
+                        span,
+                        self.deduce_sig_from_trait_predicate(
+                            Some(span),
+                            closure_kind,
+                            bound_predicate.rebind(trait_predicate),
+                        ),
+                    ),
+                    &mut expected_sig_from_trait_predicate,
+                );
+            } else if expected_sig.is_none()
                 && let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj_predicate)) =
                     bound_predicate.skip_binder()
             {
-                let inferred_sig = self.normalize(
-                    span,
-                    self.deduce_sig_from_projection(
-                        Some(span),
-                        closure_kind,
-                        bound_predicate.rebind(proj_predicate),
+                apply_inferred_sig(
+                    self.normalize(
+                        span,
+                        self.deduce_sig_from_projection(
+                            Some(span),
+                            closure_kind,
+                            bound_predicate.rebind(proj_predicate),
+                        ),
                     ),
+                    &mut expected_sig,
                 );
-
-                // Make sure that we didn't infer a signature that mentions itself.
-                // This can happen when we elaborate certain supertrait bounds that
-                // mention projections containing the `Self` type. See #105401.
-                struct MentionsTy<'tcx> {
-                    expected_ty: Ty<'tcx>,
-                }
-                impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MentionsTy<'tcx> {
-                    type Result = ControlFlow<()>;
-
-                    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
-                        if t == self.expected_ty {
-                            ControlFlow::Break(())
-                        } else {
-                            t.super_visit_with(self)
-                        }
-                    }
-                }
-
-                // Don't infer a closure signature from a goal that names the closure type as this will
-                // (almost always) lead to occurs check errors later in type checking.
-                if self.next_trait_solver()
-                    && let Some(inferred_sig) = inferred_sig
-                {
-                    // In the new solver it is difficult to explicitly normalize the inferred signature as we
-                    // would have to manually handle universes and rewriting bound vars and placeholders back
-                    // and forth.
-                    //
-                    // Instead we take advantage of the fact that we relating an inference variable with an alias
-                    // will only instantiate the variable if the alias is rigid(*not quite). Concretely we:
-                    // - Create some new variable `?sig`
-                    // - Equate `?sig` with the unnormalized signature, e.g. `fn(<Foo<?x> as Trait>::Assoc)`
-                    // - Depending on whether `<Foo<?x> as Trait>::Assoc` is rigid, ambiguous or normalizeable,
-                    //   we will either wind up with `?sig=<Foo<?x> as Trait>::Assoc/?y/ConcreteTy` respectively.
-                    //
-                    // *: In cases where there are ambiguous aliases in the signature that make use of bound vars
-                    //    they will wind up present in `?sig` even though they are non-rigid.
-                    //
-                    //    This is a bit weird and means we may wind up discarding the goal due to it naming `expected_ty`
-                    //    even though the normalized form may not name `expected_ty`. However, this matches the existing
-                    //    behaviour of the old solver and would be technically a breaking change to fix.
-                    let generalized_fnptr_sig = self.next_ty_var(span);
-                    let inferred_fnptr_sig = Ty::new_fn_ptr(self.tcx, inferred_sig.sig);
-                    self.demand_eqtype(span, inferred_fnptr_sig, generalized_fnptr_sig);
-
-                    let resolved_sig = self.resolve_vars_if_possible(generalized_fnptr_sig);
-
-                    if resolved_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
-                        expected_sig = Some(ExpectedSig {
-                            cause_span: inferred_sig.cause_span,
-                            sig: resolved_sig.fn_sig(self.tcx),
-                        });
-                    }
-                } else {
-                    if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
-                        expected_sig = inferred_sig;
-                    }
-                }
             }
 
             // Even if we can't infer the full signature, we may be able to
@@ -460,6 +529,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some(trait_def_id) = trait_def_id {
                 let found_kind = match closure_kind {
                     hir::ClosureKind::Closure
+                    | hir::ClosureKind::Init
                     // FIXME(iter_macro): Someday we'll probably want iterator closures instead of
                     // just using Fn* for iterators.
                     | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Gen) => {
@@ -488,7 +558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        (expected_sig, expected_kind)
+        (expected_sig.or(expected_sig_from_trait_predicate), expected_kind)
     }
 
     /// Given a projection like "<F as Fn(X)>::Result == Y", we can deduce
@@ -525,6 +595,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 self.extract_sig_from_projection_and_future_bound(cause_span, projection)
             }
+            hir::ClosureKind::Init if self.tcx.is_lang_item(def_id, LangItem::InitError) => {
+                self.extract_init_sig_from_projection(cause_span, projection)
+            }
+            _ => None,
+        }
+    }
+
+    #[instrument(level = "debug", skip(self, cause_span), ret)]
+    fn deduce_sig_from_trait_predicate(
+        &self,
+        cause_span: Option<Span>,
+        closure_kind: hir::ClosureKind,
+        predicate: ty::PolyTraitPredicate<'tcx>,
+    ) -> Option<ExpectedSig<'tcx>> {
+        let def_id = predicate.def_id();
+        match closure_kind {
+            hir::ClosureKind::Init if self.tcx.is_lang_item(def_id, LangItem::Init) => {
+                let predicate = self.resolve_vars_if_possible(predicate);
+                let target_ty = predicate.skip_binder().trait_ref.args.type_at(1);
+                let err_ty = self.next_ty_var(cause_span.unwrap_or(DUMMY_SP));
+                let sig = predicate.rebind(self.tcx.mk_fn_sig(
+                    self.tcx.mk_type_list(&[]),
+                    Ty::new_tup(self.tcx, &[target_ty, err_ty]),
+                    false,
+                    hir::Safety::Safe,
+                    ExternAbi::Rust,
+                ));
+                Some(ExpectedSig { cause_span, sig })
+            }
             _ => None,
         }
     }
@@ -552,6 +651,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let sig = projection.rebind(self.tcx.mk_fn_sig(
             input_tys,
             ret_param_ty,
+            false,
+            hir::Safety::Safe,
+            ExternAbi::Rust,
+        ));
+
+        Some(ExpectedSig { cause_span, sig })
+    }
+
+    /// Given an `Init::Error` projection, extract the args
+    /// and return type to infer a [`ty::PolyFnSig`] for the init block.
+    fn extract_init_sig_from_projection(
+        &self,
+        cause_span: Option<Span>,
+        projection: ty::PolyProjectionPredicate<'tcx>,
+    ) -> Option<ExpectedSig<'tcx>> {
+        let projection = self.resolve_vars_if_possible(projection);
+
+        let target_ty = projection.skip_binder().projection_term.args.type_at(1);
+        debug!(?target_ty);
+
+        // Since this is a return parameter type it is safe to unwrap.
+        let err_ty = projection.skip_binder().term.expect_type();
+        debug!(?err_ty);
+
+        let sig = projection.rebind(self.tcx.mk_fn_sig(
+            self.tcx.mk_type_list(&[]),
+            Ty::new_tup(self.tcx, &[target_ty, err_ty]),
             false,
             hir::Safety::Safe,
             ExternAbi::Rust,
@@ -959,6 +1085,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | hir::ClosureKind::CoroutineClosure(_) => {
                     lowerer.ty_infer(None, decl.output.span())
                 }
+                // The return type in a pseudo-fn-pointer of an `init`
+                // is a tuple of a target and an error type.
+                hir::ClosureKind::Init => Ty::new_tup(
+                    self.tcx,
+                    &[
+                        lowerer.ty_infer(None, decl.output.span()),
+                        lowerer.ty_infer(None, decl.output.span()),
+                    ],
+                ),
             },
         };
 

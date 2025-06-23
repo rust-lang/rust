@@ -816,17 +816,19 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
     let Expr { hir_id, kind, span } = expression;
     try_visit!(visitor.visit_id(*hir_id));
     match *kind {
-        ExprKind::Array(subexpressions) => {
+        ExprKind::InitTail(&InitKind::Array(subexpressions)) | ExprKind::Array(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
         ExprKind::ConstBlock(ref const_block) => {
             try_visit!(visitor.visit_inline_const(const_block))
         }
-        ExprKind::Repeat(ref element, ref count) => {
+        ExprKind::InitTail(&InitKind::Repeat(element, count))
+        | ExprKind::Repeat(element, count) => {
             try_visit!(visitor.visit_expr(element));
             try_visit!(visitor.visit_const_arg_unambig(count));
         }
-        ExprKind::Struct(ref qpath, fields, ref optional_base) => {
+        ExprKind::InitTail(&InitKind::Struct(qpath, fields, ref optional_base))
+        | ExprKind::Struct(qpath, fields, ref optional_base) => {
             try_visit!(visitor.visit_qpath(qpath, *hir_id, *span));
             walk_list!(visitor, visit_expr_field, fields);
             match optional_base {
@@ -834,7 +836,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
                 StructTailExpr::None | StructTailExpr::DefaultFields(_) => {}
             }
         }
-        ExprKind::Tup(subexpressions) => {
+        ExprKind::InitTail(&InitKind::Tuple(subexpressions)) | ExprKind::Tup(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
         ExprKind::Call(ref callee_expression, arguments) => {
@@ -897,7 +899,16 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_generic_param, bound_generic_params);
             try_visit!(visitor.visit_fn(FnKind::Closure, fn_decl, body, *span, def_id));
         }
-        ExprKind::Block(ref block, ref opt_label) => {
+        ExprKind::InitBlock(block) => try_visit!(visitor.visit_fn(
+            FnKind::Closure,
+            block.fn_decl,
+            block.body,
+            *span,
+            block.def_id
+        )),
+        ExprKind::InitTail(&InitKind::Free(expr)) => try_visit!(visitor.visit_expr(expr)),
+        ExprKind::InitTail(&InitKind::Block(block, ref opt_label))
+        | ExprKind::Block(block, ref opt_label) => {
             visit_opt!(visitor, visit_label, opt_label);
             try_visit!(visitor.visit_block(block));
         }
