@@ -262,6 +262,9 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[fundamental]`.
+    Fundamental,
+
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
 

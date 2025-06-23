@@ -30,6 +30,7 @@ impl AttributeKind {
             DoNotImplementViaObject(..) => No,
             DocComment { .. } => Yes,
             ExportName { .. } => Yes,
+            Fundamental { .. } => Yes,
             Inline(..) => No,
             LinkName { .. } => Yes,
             LinkSection { .. } => No,

@@ -122,12 +122,6 @@ error: malformed `cfi_encoding` attribute input
 LL | #[cfi_encoding]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
 
-error: malformed `fundamental` attribute input
-  --> $DIR/malformed-attrs.rs:156:1
-   |
-LL | #[fundamental()]
-   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[fundamental]`
-
 error: malformed `ffi_pure` attribute input
   --> $DIR/malformed-attrs.rs:164:5
    |
@@ -542,6 +536,15 @@ LL | #[marker = 3]
    | |        |
    | |        didn't expect any arguments here
    | help: must be of the form: `#[marker]`
+
+error[E0565]: malformed `fundamental` attribute input
+  --> $DIR/malformed-attrs.rs:156:1
+   |
+LL | #[fundamental()]
+   | ^^^^^^^^^^^^^--^
+   | |            |
+   | |            didn't expect any arguments here
+   | help: must be of the form: `#[fundamental]`
 
 error[E0565]: malformed `non_exhaustive` attribute input
   --> $DIR/malformed-attrs.rs:196:1
