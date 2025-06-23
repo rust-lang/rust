@@ -1,8 +1,7 @@
 //! Basic test for calling methods on generic type parameters in `const fn`.
 
 //@ compile-flags: -Znext-solver
-//@ known-bug: #110395
-// FIXME(const_trait_impl) check-pass
+//@ check-pass
 
 #![feature(const_trait_impl)]
 
