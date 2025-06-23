@@ -52,6 +52,7 @@ impl AttributeKind {
             Stability { .. } => Yes,
             TargetFeature(..) => No,
             TrackCaller(..) => Yes,
+            TypeConst(..) => Yes,
             Used { .. } => No,
             // tidy-alphabetical-end
         }
