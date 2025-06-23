@@ -897,7 +897,7 @@ where
                 ty::Str => TyMaybeWithLayout::Ty(tcx.types.u8),
 
                 // Tuples, coroutines and closures.
-                ty::Closure(_, args) => field_ty_or_layout(
+                ty::Closure(_, args) | ty::Init(_, args) => field_ty_or_layout(
                     TyAndLayout { ty: args.as_closure().tupled_upvars_ty(), ..this },
                     cx,
                     i,

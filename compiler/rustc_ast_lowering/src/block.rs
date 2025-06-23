@@ -26,61 +26,81 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::Block { hir_id, stmts, expr, rules, span: self.lower_span(b.span), targeted_by_break }
     }
 
-    fn lower_stmts(
+    fn lower_one_stmt(
         &mut self,
-        mut ast_stmts: &[Stmt],
-    ) -> (&'hir [hir::Stmt<'hir>], Option<&'hir hir::Expr<'hir>>) {
-        let mut stmts = SmallVec::<[hir::Stmt<'hir>; 8]>::new();
-        let mut expr = None;
-        while let [s, tail @ ..] = ast_stmts {
-            match &s.kind {
-                StmtKind::Let(local) => {
-                    let hir_id = self.lower_node_id(s.id);
-                    let local = self.lower_local(local);
-                    self.alias_attrs(hir_id, local.hir_id);
-                    let kind = hir::StmtKind::Let(local);
-                    let span = self.lower_span(s.span);
-                    stmts.push(hir::Stmt { hir_id, kind, span });
-                }
-                StmtKind::Item(it) => {
-                    stmts.extend(self.lower_item_ref(it).into_iter().enumerate().map(
-                        |(i, item_id)| {
-                            let hir_id = match i {
-                                0 => self.lower_node_id(s.id),
-                                _ => self.next_id(),
-                            };
-                            let kind = hir::StmtKind::Item(item_id);
-                            let span = self.lower_span(s.span);
-                            hir::Stmt { hir_id, kind, span }
-                        },
-                    ));
-                }
-                StmtKind::Expr(e) => {
-                    let e = self.lower_expr(e);
-                    if tail.is_empty() {
-                        expr = Some(e);
-                    } else {
-                        let hir_id = self.lower_node_id(s.id);
-                        self.alias_attrs(hir_id, e.hir_id);
-                        let kind = hir::StmtKind::Expr(e);
+        s: &Stmt,
+        at_tail: Option<&mut Option<&'hir hir::Expr<'hir>>>,
+        hir_stmts: &mut impl Extend<hir::Stmt<'hir>>,
+    ) {
+        match &s.kind {
+            StmtKind::Let(local) => {
+                let hir_id = self.lower_node_id(s.id);
+                let local = self.lower_local(local);
+                self.alias_attrs(hir_id, local.hir_id);
+                let kind = hir::StmtKind::Let(local);
+                let span = self.lower_span(s.span);
+                hir_stmts.extend([hir::Stmt { hir_id, kind, span }]);
+            }
+            StmtKind::Item(it) => {
+                hir_stmts.extend(self.lower_item_ref(it).into_iter().enumerate().map(
+                    |(i, item_id)| {
+                        let hir_id = match i {
+                            0 => self.lower_node_id(s.id),
+                            _ => self.next_id(),
+                        };
+                        let kind = hir::StmtKind::Item(item_id);
                         let span = self.lower_span(s.span);
-                        stmts.push(hir::Stmt { hir_id, kind, span });
-                    }
-                }
-                StmtKind::Semi(e) => {
+                        hir::Stmt { hir_id, kind, span }
+                    },
+                ));
+            }
+            StmtKind::Expr(e) => {
+                if let Some(expr) = at_tail {
+                    let e = if self.is_in_init_tail {
+                        let hir_id = self.lower_node_id(s.id);
+                        let kind = self.lower_implicit_init_tail(e);
+                        self.arena.alloc(hir::Expr { hir_id, kind, span: s.span })
+                    } else {
+                        self.lower_expr(e)
+                    };
+                    *expr = Some(e);
+                } else {
                     let e = self.lower_expr(e);
                     let hir_id = self.lower_node_id(s.id);
                     self.alias_attrs(hir_id, e.hir_id);
-                    let kind = hir::StmtKind::Semi(e);
+                    let kind = hir::StmtKind::Expr(e);
                     let span = self.lower_span(s.span);
-                    stmts.push(hir::Stmt { hir_id, kind, span });
+                    hir_stmts.extend([hir::Stmt { hir_id, kind, span }]);
                 }
-                StmtKind::Empty => {}
-                StmtKind::MacCall(..) => panic!("shouldn't exist here"),
             }
-            ast_stmts = tail;
+            StmtKind::Semi(e) => {
+                let e = self.lower_expr(e);
+                let hir_id = self.lower_node_id(s.id);
+                self.alias_attrs(hir_id, e.hir_id);
+                let kind = hir::StmtKind::Semi(e);
+                let span = self.lower_span(s.span);
+                hir_stmts.extend([hir::Stmt { hir_id, kind, span }]);
+            }
+            StmtKind::Empty => {}
+            StmtKind::MacCall(..) => panic!("shouldn't exist here"),
         }
-        (self.arena.alloc_from_iter(stmts), expr)
+    }
+
+    fn lower_stmts(
+        &mut self,
+        ast_stmts: &[Stmt],
+    ) -> (&'hir [hir::Stmt<'hir>], Option<&'hir hir::Expr<'hir>>) {
+        let mut hir_stmts = SmallVec::<[hir::Stmt<'hir>; 8]>::new();
+        let mut expr = None;
+        if let [stmts @ .., tail] = ast_stmts {
+            self.enter_non_init_tail_lowering(|this| {
+                for s in stmts {
+                    this.lower_one_stmt(s, None, &mut hir_stmts);
+                }
+            });
+            self.lower_one_stmt(tail, Some(&mut expr), &mut hir_stmts);
+        }
+        (self.arena.alloc_from_iter(hir_stmts), expr)
     }
 
     /// Return an `ImplTraitContext` that allows impl trait in bindings if

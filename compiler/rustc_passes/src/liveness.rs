@@ -397,6 +397,8 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 }
                 self.set_captures(expr.hir_id, call_caps);
             }
+            hir::ExprKind::InitBlock(_block) => todo!("dxf implement"),
+            hir::ExprKind::InitTail(_) => intravisit::walk_expr(self, expr),
 
             hir::ExprKind::Let(let_expr) => {
                 self.add_from_pat(let_expr.pat);
@@ -854,11 +856,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::Field(ref e, _) => self.propagate_through_expr(e, succ),
 
-            hir::ExprKind::Closure { .. } => {
-                debug!("{:?} is an ExprKind::Closure", expr);
+            hir::ExprKind::Closure { .. } | hir::ExprKind::InitBlock(_) => {
+                debug!("{:?} is an ExprKind::Closure or ExprKind::InitBlock", expr);
 
                 // the construction of a closure itself is not important,
-                // but we have to consider the closed over variables.
+                // but we have to consider the captured variables.
                 let caps = self
                     .ir
                     .capture_info_map
@@ -1007,9 +1009,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             // Uninteresting cases: just propagate in rev exec order
-            hir::ExprKind::Array(exprs) => self.propagate_through_exprs(exprs, succ),
+            hir::ExprKind::InitTail(&hir::InitKind::Array(exprs)) | hir::ExprKind::Array(exprs) => {
+                self.propagate_through_exprs(exprs, succ)
+            }
 
-            hir::ExprKind::Struct(_, fields, ref with_expr) => {
+            hir::ExprKind::InitTail(&hir::InitKind::Struct(_, fields, ref with_expr))
+            | hir::ExprKind::Struct(_, fields, ref with_expr) => {
                 let succ = match with_expr {
                     hir::StructTailExpr::Base(base) => {
                         self.propagate_through_opt_expr(Some(base), succ)
@@ -1020,6 +1025,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     .iter()
                     .rev()
                     .fold(succ, |succ, field| self.propagate_through_expr(field.expr, succ))
+            }
+
+            hir::ExprKind::InitTail(&hir::InitKind::Free(expr)) => {
+                self.propagate_through_expr(expr, succ)
+            }
+
+            hir::ExprKind::InitTail(&hir::InitKind::Block(blk, _opt_label)) => {
+                self.propagate_through_block(blk, succ)
             }
 
             hir::ExprKind::Call(ref f, args) => {
@@ -1042,7 +1055,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_expr(expr, succ)
             }
 
-            hir::ExprKind::Tup(exprs) => self.propagate_through_exprs(exprs, succ),
+            hir::ExprKind::InitTail(&hir::InitKind::Tuple(exprs)) | hir::ExprKind::Tup(exprs) => {
+                self.propagate_through_exprs(exprs, succ)
+            }
 
             hir::ExprKind::Binary(op, ref l, ref r) if op.node.is_lazy() => {
                 let r_succ = self.propagate_through_expr(r, succ);
@@ -1059,13 +1074,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_expr(l, r_succ)
             }
 
-            hir::ExprKind::AddrOf(_, _, ref e)
-            | hir::ExprKind::Cast(ref e, _)
-            | hir::ExprKind::Type(ref e, _)
-            | hir::ExprKind::UnsafeBinderCast(_, ref e, _)
-            | hir::ExprKind::DropTemps(ref e)
-            | hir::ExprKind::Unary(_, ref e)
-            | hir::ExprKind::Repeat(ref e, _) => self.propagate_through_expr(e, succ),
+            hir::ExprKind::AddrOf(_, _, e)
+            | hir::ExprKind::Cast(e, _)
+            | hir::ExprKind::Type(e, _)
+            | hir::ExprKind::UnsafeBinderCast(_, e, _)
+            | hir::ExprKind::DropTemps(e)
+            | hir::ExprKind::Unary(_, e)
+            | hir::ExprKind::InitTail(&hir::InitKind::Repeat(e, _))
+            | hir::ExprKind::Repeat(e, _) => self.propagate_through_expr(e, succ),
 
             hir::ExprKind::InlineAsm(asm) => {
                 //
@@ -1453,6 +1469,8 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::Struct(..)
         | hir::ExprKind::Repeat(..)
         | hir::ExprKind::Closure { .. }
+        | hir::ExprKind::InitBlock(..)
+        | hir::ExprKind::InitTail(..)
         | hir::ExprKind::Path(_)
         | hir::ExprKind::Yield(..)
         | hir::ExprKind::Type(..)

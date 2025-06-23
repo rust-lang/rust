@@ -69,7 +69,9 @@ where
             Ok(ty::Binder::dummy(tys.to_vec()))
         }
 
-        ty::Closure(_, args) => Ok(ty::Binder::dummy(vec![args.as_closure().tupled_upvars_ty()])),
+        ty::Closure(_, args) | ty::Init(_, args) => {
+            Ok(ty::Binder::dummy(vec![args.as_closure().tupled_upvars_ty()]))
+        }
 
         ty::CoroutineClosure(_, args) => {
             Ok(ty::Binder::dummy(vec![args.as_coroutine_closure().tupled_upvars_ty()]))
@@ -134,6 +136,7 @@ where
         | ty::Pat(..)
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
+        | ty::Init(..)
         | ty::Never
         | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
@@ -231,7 +234,9 @@ where
         ty::Tuple(tys) => Ok(ty::Binder::dummy(tys.to_vec())),
 
         // impl Copy/Clone for Closure where Self::TupledUpvars: Copy/Clone
-        ty::Closure(_, args) => Ok(ty::Binder::dummy(vec![args.as_closure().tupled_upvars_ty()])),
+        ty::Closure(_, args) | ty::Init(_, args) => {
+            Ok(ty::Binder::dummy(vec![args.as_closure().tupled_upvars_ty()]))
+        }
 
         // impl Copy/Clone for CoroutineClosure where Self::TupledUpvars: Copy/Clone
         ty::CoroutineClosure(_, args) => {
@@ -384,6 +389,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Dynamic(_, _, _)
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(..)
+        | ty::Init(..)
         | ty::Never
         | ty::Tuple(_)
         | ty::Pat(_, _)
@@ -558,6 +564,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Dynamic(_, _, _)
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(..)
+        | ty::Init(..)
         | ty::Never
         | ty::UnsafeBinder(_)
         | ty::Tuple(_)
@@ -707,6 +714,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Dynamic(_, _, _)
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(..)
+        | ty::Init(..)
         | ty::Never
         | ty::Tuple(_)
         | ty::Pat(_, _)
@@ -789,6 +797,8 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         | ty::CoroutineClosure(_, _)
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(_, _) => Err(NoSolution),
+
+        ty::Init(..) => Err(NoSolution),
 
         // FIXME(unsafe_binders): Unsafe binders could implement `[const] Drop`
         // if their inner type implements it.

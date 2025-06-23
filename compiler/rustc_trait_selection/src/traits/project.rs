@@ -994,6 +994,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | LangItem::Fn
                         | LangItem::FnMut
                         | LangItem::FnOnce
+                        | LangItem::Init
                         | LangItem::AsyncFn
                         | LangItem::AsyncFnMut
                         | LangItem::AsyncFnOnce,
@@ -1037,6 +1038,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::CoroutineClosure(..)
                         | ty::Coroutine(..)
                         | ty::CoroutineWitness(..)
+                        | ty::Init(..)
                         | ty::Never
                         | ty::Tuple(..)
                         // Integers and floats always have `u8` as their discriminant.
@@ -1091,6 +1093,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             | ty::CoroutineClosure(..)
                             | ty::Coroutine(..)
                             | ty::CoroutineWitness(..)
+                            | ty::Init(..)
                             | ty::Never
                             // Extern types have unit metadata, according to RFC 2850
                             | ty::Foreign(_)
@@ -1262,6 +1265,8 @@ fn confirm_select_candidate<'cx, 'tcx>(
                 confirm_iterator_candidate(selcx, obligation, data)
             } else if tcx.is_lang_item(trait_def_id, LangItem::AsyncIterator) {
                 confirm_async_iterator_candidate(selcx, obligation, data)
+            } else if tcx.is_lang_item(trait_def_id, LangItem::Init) {
+                confirm_init_candidate(selcx, obligation, data)
             } else if selcx.tcx().fn_trait_kind_from_def_id(trait_def_id).is_some() {
                 if obligation.predicate.self_ty().is_closure()
                     || obligation.predicate.self_ty().is_coroutine_closure()
@@ -1669,6 +1674,89 @@ fn confirm_closure_candidate<'cx, 'tcx>(
     confirm_callable_candidate(selcx, obligation, closure_sig, util::TupleArgumentsFlag::No)
         .with_addl_obligations(nested)
         .with_addl_obligations(obligations)
+}
+
+fn confirm_init_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    obligation: &ProjectionTermObligation<'tcx>,
+    nested: PredicateObligations<'tcx>,
+) -> Progress<'tcx> {
+    let tcx = selcx.tcx();
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+    assert!(!self_ty.has_escaping_bound_vars());
+    match self_ty.kind() {
+        // A proper init block
+        ty::Init(_did, args) => {
+            let Normalized { value: sig, obligations } = normalize_with_depth(
+                selcx,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                args.as_closure().sig(),
+            );
+            let &ty::Tuple(init_rets) = sig.output().skip_binder().kind() else {
+                debug!("failed to resolve return or error type of init block");
+                todo!()
+            };
+            let [ret_ty, err_ty] = **init_rets else { bug!() };
+            // This reads `<$self_ty as Init<$ret_ty>>::Error == $err_ty`
+            let predicate = sig.map_bound(|_| ty::ProjectionPredicate {
+                projection_term: ty::AliasTerm::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::InitError, obligation.cause.span),
+                    [self_ty, ret_ty],
+                ),
+                term: err_ty.into(),
+            });
+            confirm_param_env_candidate(selcx, obligation, predicate, true)
+                .with_addl_obligations(nested)
+                .with_addl_obligations(obligations)
+        }
+        // A trivial init value
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Adt(_, _)
+        | ty::Foreign(_)
+        | ty::Str
+        | ty::Array(_, _)
+        | ty::Pat(_, _)
+        | ty::Slice(_)
+        | ty::RawPtr(_, _)
+        | ty::Ref(_, _, _)
+        | ty::FnDef(_, _)
+        | ty::FnPtr(_, _)
+        | ty::UnsafeBinder(_)
+        | ty::Dynamic(_, _, _)
+        | ty::Closure(_, _)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _)
+        | ty::Tuple(_)
+        | ty::Alias(_, _)
+        | ty::Param(_)
+        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+        | ty::Bound(_, _) => {
+            let predicate = ty::Binder::dummy(ty::ProjectionPredicate {
+                projection_term: ty::AliasTerm::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::InitError, obligation.cause.span),
+                    [self_ty, self_ty],
+                ),
+                term: tcx.types.never.into(),
+            });
+            confirm_param_env_candidate(selcx, obligation, predicate, true)
+                .with_addl_obligations(nested)
+        }
+        ty::Never | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => {
+            span_bug!(
+                obligation.cause.span,
+                "here init candidate should not be confirmed on {self_ty:?}"
+            )
+        }
+    }
 }
 
 fn confirm_callable_candidate<'cx, 'tcx>(

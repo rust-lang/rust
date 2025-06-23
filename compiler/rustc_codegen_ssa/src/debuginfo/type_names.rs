@@ -410,7 +410,8 @@ fn push_debuginfo_type_name<'tcx>(
         }
         ty::Closure(def_id, args)
         | ty::CoroutineClosure(def_id, args)
-        | ty::Coroutine(def_id, args, ..) => {
+        | ty::Coroutine(def_id, args, ..)
+        | ty::Init(def_id, args) => {
             // Name will be "{closure_env#0}<T1, T2, ...>", "{coroutine_env#0}<T1, T2, ...>", or
             // "{async_fn_env#0}<T1, T2, ...>", etc.
             // In the case of cpp-like debuginfo, the name additionally gets wrapped inside of

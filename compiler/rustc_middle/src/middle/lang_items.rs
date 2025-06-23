@@ -38,7 +38,7 @@ impl<'tcx> TyCtxt<'tcx> {
         match self.as_lang_item(id)? {
             LangItem::Fn => Some(ty::ClosureKind::Fn),
             LangItem::FnMut => Some(ty::ClosureKind::FnMut),
-            LangItem::FnOnce => Some(ty::ClosureKind::FnOnce),
+            LangItem::FnOnce | LangItem::Init => Some(ty::ClosureKind::FnOnce),
             _ => None,
         }
     }

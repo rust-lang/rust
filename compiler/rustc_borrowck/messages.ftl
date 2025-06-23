@@ -174,6 +174,12 @@ borrowck_partial_var_move_by_use_in_coroutine =
         *[false] moved
     } due to use in coroutine
 
+borrowck_partial_var_move_by_use_in_init =
+    variable {$is_partial ->
+        [true] partially moved
+        *[false] moved
+    } due to use in init
+
 borrowck_restrict_to_static =
     consider restricting the type parameter to the `'static` lifetime
 
@@ -246,6 +252,9 @@ borrowck_value_moved_here =
 borrowck_var_borrow_by_use_in_closure =
     borrow occurs due to use in closure
 
+borrowck_var_borrow_by_use_in_init =
+    borrow occurs due to use in init
+
 borrowck_var_borrow_by_use_in_coroutine =
     borrow occurs due to use in coroutine
 
@@ -254,6 +263,12 @@ borrowck_var_borrow_by_use_place_in_closure =
         *[true] borrow occurs
         [false] borrows occur
     } due to use of {$place} in closure
+
+borrowck_var_borrow_by_use_place_in_init =
+    {$is_single_var ->
+        *[true] borrow occurs
+        [false] borrows occur
+    } due to use of {$place} in init block
 
 borrowck_var_borrow_by_use_place_in_coroutine =
     {$is_single_var ->
@@ -273,6 +288,9 @@ borrowck_var_does_not_need_mut =
 borrowck_var_first_borrow_by_use_place_in_closure =
     first borrow occurs due to use of {$place} in closure
 
+borrowck_var_first_borrow_by_use_place_in_init =
+    first borrow occurs due to use of {$place} in init block
+
 borrowck_var_first_borrow_by_use_place_in_coroutine =
     first borrow occurs due to use of {$place} in coroutine
 
@@ -283,6 +301,9 @@ borrowck_var_here_defined = variable defined here
 borrowck_var_move_by_use_in_closure =
     move occurs due to use in closure
 
+borrowck_var_move_by_use_in_init =
+    move occurs due to use in init block
+
 borrowck_var_move_by_use_in_coroutine =
     move occurs due to use in coroutine
 
@@ -291,6 +312,9 @@ borrowck_var_mutable_borrow_by_use_place_in_closure =
 
 borrowck_var_second_borrow_by_use_place_in_closure =
     second borrow occurs due to use of {$place} in closure
+
+borrowck_var_second_borrow_by_use_place_in_init =
+    second borrow occurs due to use of {$place} in init block
 
 borrowck_var_second_borrow_by_use_place_in_coroutine =
     second borrow occurs due to use of {$place} in coroutine

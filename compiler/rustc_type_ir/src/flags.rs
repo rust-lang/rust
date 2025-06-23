@@ -242,6 +242,7 @@ impl<I: Interner> FlagComputation<I> {
 
             ty::Closure(_, args)
             | ty::Coroutine(_, args)
+            | ty::Init(_, args)
             | ty::CoroutineClosure(_, args)
             | ty::CoroutineWitness(_, args) => {
                 self.add_args(args.as_slice());

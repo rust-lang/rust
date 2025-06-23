@@ -10,30 +10,32 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 pub(crate) fn provide(providers: &mut Providers) {
-    providers.upvars_mentioned = |tcx, def_id| {
-        if !tcx.is_closure_like(def_id) {
-            return None;
-        }
+    providers.upvars_mentioned = upvars_mentioned;
+}
 
-        let local_def_id = def_id.expect_local();
-        let body = tcx.hir_maybe_body_owned_by(local_def_id)?;
+fn upvars_mentioned<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: hir::def_id::DefId,
+) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
+    if !tcx.is_closure_like(def_id) {
+        return None;
+    }
 
-        let mut local_collector = LocalCollector::default();
-        local_collector.visit_body(&body);
+    let local_def_id = def_id.expect_local();
+    let body = tcx.hir_maybe_body_owned_by(local_def_id)?;
 
-        let mut capture_collector = CaptureCollector {
-            tcx,
-            locals: &local_collector.locals,
-            upvars: FxIndexMap::default(),
-        };
-        capture_collector.visit_body(&body);
+    let mut local_collector = LocalCollector::default();
+    local_collector.visit_body(&body);
 
-        if !capture_collector.upvars.is_empty() {
-            Some(tcx.arena.alloc(capture_collector.upvars))
-        } else {
-            None
-        }
-    };
+    let mut capture_collector =
+        CaptureCollector { tcx, locals: &local_collector.locals, upvars: FxIndexMap::default() };
+    capture_collector.visit_body(&body);
+
+    if !capture_collector.upvars.is_empty() {
+        Some(tcx.arena.alloc(capture_collector.upvars))
+    } else {
+        None
+    }
 }
 
 #[derive(Default)]
@@ -75,8 +77,10 @@ impl<'tcx> Visitor<'tcx> for CaptureCollector<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure(closure) = expr.kind {
-            if let Some(upvars) = self.tcx.upvars_mentioned(closure.def_id) {
+        if let hir::ExprKind::Closure(&hir::Closure { def_id, .. })
+        | hir::ExprKind::InitBlock(&hir::InitBlock { def_id, .. }) = expr.kind
+        {
+            if let Some(upvars) = self.tcx.upvars_mentioned(def_id) {
                 // Every capture of a closure expression is a local in scope,
                 // that is moved/copied/borrowed into the closure value, and
                 // for this analysis they are like any other access to a local.

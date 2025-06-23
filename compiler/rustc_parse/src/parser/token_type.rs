@@ -130,6 +130,7 @@ pub enum TokenType {
     // tidy-alphabetical-start
     SymAttSyntax,
     SymClobberAbi,
+    SymInit,
     SymInlateout,
     SymInout,
     SymIs,
@@ -556,6 +557,7 @@ macro_rules! exp {
     (Inlateout)      => { exp!(@sym, inlateout,       SymInlateout) };
     (Inout)          => { exp!(@sym, inout,           SymInout) };
     (Is)             => { exp!(@sym, is,              SymIs) };
+    (Init)           => { exp!(@sym, init,            SymInit) };
     (Label)          => { exp!(@sym, label,           SymLabel) };
     (Lateout)        => { exp!(@sym, lateout,         SymLateout) };
     (MayUnwind)      => { exp!(@sym, may_unwind,      SymMayUnwind) };

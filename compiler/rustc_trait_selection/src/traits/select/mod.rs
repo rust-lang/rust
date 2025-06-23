@@ -1994,6 +1994,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | AsyncClosureCandidate
                 | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
+                | InitCandidate
+                | TrivialInitCandidate
                 | FutureCandidate
                 | IteratorCandidate
                 | AsyncIteratorCandidate
@@ -2128,6 +2130,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Array(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
+            | ty::Init(..)
             | ty::Never
             | ty::Error(_) => {
                 // safe for everything
@@ -2255,7 +2258,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 Where(hidden_types)
             }
 
-            ty::Closure(_, args) => {
+            ty::Closure(_, args) | ty::Init(_, args) => {
                 // (*) binder moved here
                 let ty = self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
                 if let ty::Infer(ty::TyVar(_)) = ty.kind() {
@@ -2373,7 +2376,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 t.rebind(tys.iter().collect())
             }
 
-            ty::Closure(_, args) => {
+            ty::Closure(_, args) | ty::Init(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
                 t.rebind(vec![ty])
             }

@@ -213,6 +213,15 @@ pub enum TyKind<I: Interner> {
     /// ```
     CoroutineWitness(I::DefId, I::GenericArgs),
 
+    /// The anonymous type of an `init` block. Used to represent the type of `init $init_expr`.
+    /// The components are
+    /// - the `DefId` of the init block;
+    /// - the generics of the init block;
+    /// - the unique type that this init block is initialising in-place and the error type,
+    ///   which is encoded in the `fn_ptr` of the generics as return type tuple
+    ///   `(<inited type, error type>)`
+    Init(I::DefId, I::GenericArgs),
+
     /// The never type `!`.
     Never,
 
@@ -317,6 +326,7 @@ impl<I: Interner> TyKind<I> {
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
+            | ty::Init(..)
             | ty::Never
             | ty::Tuple(_) => true,
 
@@ -372,6 +382,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             CoroutineClosure(d, s) => f.debug_tuple("CoroutineClosure").field(d).field(&s).finish(),
             Coroutine(d, s) => f.debug_tuple("Coroutine").field(d).field(&s).finish(),
             CoroutineWitness(d, s) => f.debug_tuple("CoroutineWitness").field(d).field(&s).finish(),
+            Init(d, s) => f.debug_tuple("Init").field(d).field(&s).finish(),
             Never => write!(f, "!"),
             Tuple(t) => {
                 write!(f, "(")?;

@@ -818,6 +818,9 @@ impl UseSpans<'_> {
                         PartialAssignment => AssignPartInClosure { path_span },
                     });
                 }
+                hir::ClosureKind::Init => {
+                    // @dingxiangfei2009: what subdiagnostic?
+                }
             }
         }
     }
@@ -1531,6 +1534,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                     hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                         CaptureVarCause::PartialMoveUseInClosure { var_span, is_partial }
+                    }
+                    hir::ClosureKind::Init => {
+                        CaptureVarCause::PartialMoveUseInInit { var_span, is_partial }
                     }
                 })
             }

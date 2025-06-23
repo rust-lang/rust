@@ -181,9 +181,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             }
         }
         Node::ConstBlock(_)
-        | Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
-            Some(tcx.typeck_root_def_id(def_id.to_def_id()))
-        }
+        | Node::Expr(&hir::Expr {
+            kind: hir::ExprKind::Closure { .. } | hir::ExprKind::InitBlock { .. },
+            ..
+        }) => Some(tcx.typeck_root_def_id(def_id.to_def_id())),
         Node::OpaqueTy(&hir::OpaqueTy {
             origin:
                 hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, in_trait_or_impl }
@@ -371,14 +372,20 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
-    if let Node::Expr(&hir::Expr {
-        kind: hir::ExprKind::Closure(hir::Closure { kind, .. }), ..
-    }) = node
-    {
+    let closure_kind = match node {
+        Node::Expr(&hir::Expr {
+            kind: hir::ExprKind::Closure(hir::Closure { kind, .. }), ..
+        }) => Some(kind),
+        Node::Expr(hir::Expr { kind: hir::ExprKind::InitBlock(_), .. }) => Some(&ClosureKind::Init),
+        _ => None,
+    };
+    if let Some(kind) = closure_kind {
         // See `ClosureArgsParts`, `CoroutineArgsParts`, and `CoroutineClosureArgsParts`
         // for info on the usage of each of these fields.
         let dummy_args = match kind {
-            ClosureKind::Closure => &["<closure_kind>", "<closure_signature>", "<upvars>"][..],
+            ClosureKind::Closure | ClosureKind::Init => {
+                &["<closure_kind>", "<closure_signature>", "<upvars>"][..]
+            }
             ClosureKind::Coroutine(_) => &[
                 "<coroutine_kind>",
                 "<resume_ty>",

@@ -1405,6 +1405,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::Infer(..)
             | ty::Bound(..)
             | ty::Error(_)
+            | ty::Init(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)

@@ -102,6 +102,10 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             ty::Closure(_, args) => {
                 args.as_closure().tupled_upvars_ty().visit_with(self);
             }
+            ty::Init(_, args) => {
+                // Yes, ty::Init has the same generic schema as that of closure
+                args.as_closure().tupled_upvars_ty().visit_with(self);
+            }
 
             ty::CoroutineClosure(_, args) => {
                 args.as_coroutine_closure().tupled_upvars_ty().visit_with(self);
