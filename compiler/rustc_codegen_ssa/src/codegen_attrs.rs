@@ -23,6 +23,7 @@ use rustc_span::{Ident, Span, sym};
 use rustc_target::spec::SanitizerSet;
 
 use crate::errors;
+use crate::errors::NoMangleNameless;
 use crate::target_features::{
     check_target_feature_trait_unsafe, check_tied_features, from_target_feature_attr,
 };
@@ -87,7 +88,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
     let mut mixed_export_name_no_mangle_lint_state = MixedExportNameAndNoMangleState::default();
-    let mut no_mangle_span = None;
 
     for attr in attrs.iter() {
         // In some cases, attribute are only valid on functions, but it's the `check_attr`
@@ -122,9 +122,34 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 }
                 AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
                 AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
+                AttributeKind::NoMangle(attr_span) => {
+                    if tcx.opt_item_name(did.to_def_id()).is_some() {
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+                        mixed_export_name_no_mangle_lint_state.track_no_mangle(
+                            *attr_span,
+                            tcx.local_def_id_to_hir_id(did),
+                            attr,
+                        );
+                    } else {
+                        tcx.dcx().emit_err(NoMangleNameless {
+                            span: *attr_span,
+                            definition: format!(
+                                "{} {}",
+                                tcx.def_descr_article(did.to_def_id()),
+                                tcx.def_descr(did.to_def_id())
+                            ),
+                        });
+                    }
+                }
                 _ => {}
             }
         }
+
+        // Apply the minimum function alignment here, so that individual backends don't have to.
+        codegen_fn_attrs.alignment = Ord::max(
+            codegen_fn_attrs.alignment,
+            tcx.sess.opts.unstable_opts.min_function_alignment,
+        );
 
         let Some(Ident { name, .. }) = attr.ident() else {
             continue;
@@ -141,28 +166,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
             }
             sym::naked => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
-            sym::no_mangle => {
-                no_mangle_span = Some(attr.span());
-                if tcx.opt_item_name(did.to_def_id()).is_some() {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
-                    mixed_export_name_no_mangle_lint_state.track_no_mangle(
-                        attr.span(),
-                        tcx.local_def_id_to_hir_id(did),
-                        attr,
-                    );
-                } else {
-                    tcx.dcx()
-                        .struct_span_err(
-                            attr.span(),
-                            format!(
-                                "`#[no_mangle]` cannot be used on {} {} as it has no name",
-                                tcx.def_descr_article(did.to_def_id()),
-                                tcx.def_descr(did.to_def_id()),
-                            ),
-                        )
-                        .emit();
-                }
-            }
             sym::rustc_std_internal_symbol => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
             }
@@ -544,12 +547,15 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
         && codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
     {
+        let no_mangle_span =
+            find_attr!(attrs, AttributeKind::NoMangle(no_mangle_span) => *no_mangle_span)
+                .unwrap_or_default();
         let lang_item =
             lang_items::extract(attrs).map_or(None, |(name, _span)| LangItem::from_name(name));
         let mut err = tcx
             .dcx()
             .struct_span_err(
-                no_mangle_span.unwrap_or_default(),
+                no_mangle_span,
                 "`#[no_mangle]` cannot be used on internal language items",
             )
             .with_note("Rustc requires this item to have a specific mangled name.")
