@@ -19,7 +19,8 @@ use crate::core::build_steps::tool::{self, COMPILETEST_ALLOW_FEATURES, SourceTyp
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
 use crate::core::builder::{
-    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, crate_description,
+    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata,
+    crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion};
@@ -1174,6 +1175,10 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Tidy);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("tidy", TargetSelection::default()))
+    }
 }
 
 fn testdir(builder: &Builder<'_>, host: TargetSelection) -> PathBuf {
@@ -1235,6 +1240,12 @@ macro_rules! test {
                         value
                     }),
                 })
+            }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                Some(
+                    StepMetadata::test(stringify!($name), self.target)
+                )
             }
         }
     };
@@ -2482,6 +2493,10 @@ impl Step for CrateLibrustc {
             mode: Mode::Rustc,
             crates: self.crates,
         });
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("CrateLibrustc", self.target))
     }
 }
 

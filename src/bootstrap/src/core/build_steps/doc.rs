@@ -14,7 +14,8 @@ use std::{env, fs, mem};
 use crate::core::build_steps::compile;
 use crate::core::build_steps::tool::{self, SourceType, Tool, prepare_tool_cargo};
 use crate::core::builder::{
-    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, crate_description,
+    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata,
+    crate_description,
 };
 use crate::core::config::{Config, TargetSelection};
 use crate::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
@@ -661,6 +662,10 @@ impl Step for Std {
                 }
             }
         }
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::doc("std", self.target).stage(self.stage))
     }
 }
 

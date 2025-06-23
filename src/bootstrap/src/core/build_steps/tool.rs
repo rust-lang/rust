@@ -786,6 +786,16 @@ impl Step for Rustdoc {
             ToolBuildResult { tool_path, build_compiler, target_compiler }
         }
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build("rustdoc", self.compiler.host)
+                // rustdoc is ToolRustc, so stage N rustdoc is built by stage N-1 rustc
+                // FIXME: make this stage deduction automatic somehow
+                // FIXME: log the compiler that actually built ToolRustc steps
+                .stage(self.compiler.stage.saturating_sub(1)),
+        )
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
