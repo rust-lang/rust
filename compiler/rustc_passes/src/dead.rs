@@ -58,6 +58,8 @@ fn local_adt_def_of_ty<'tcx>(ty: &hir::Ty<'tcx>) -> Option<LocalDefId> {
                 None
             }
         }
+        TyKind::Slice(ty) | TyKind::Array(ty, _) => local_adt_def_of_ty(ty),
+        TyKind::Ptr(ty) | TyKind::Ref(_, ty) => local_adt_def_of_ty(ty.ty),
         _ => None,
     }
 }

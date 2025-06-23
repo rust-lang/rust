@@ -699,16 +699,30 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 // `impl ReachableTrait<UnreachableTy> for ReachableTy<UnreachableTy> { ... }`
                 // can be usable from other crates (#57264). So we skip args when calculating
                 // reachability and consider an impl reachable if its "shallow" type and trait are
-                // reachable.
+                // reachable if there were no private types.
                 //
                 // The assumption we make here is that type-inference won't let you use an impl
                 // without knowing both "shallow" version of its self type and "shallow" version of
                 // its trait if it exists (which require reaching the `DefId`s in them).
-                let item_ev = EffectiveVisibility::of_impl::<true>(
+                let impl_vis = ty::Visibility::of_impl::<false>(
                     item.owner_id.def_id,
                     self.tcx,
-                    &self.effective_visibilities,
+                    &Default::default(),
                 );
+
+                let item_ev = if impl_vis.is_public() {
+                    EffectiveVisibility::of_impl::<true>(
+                        item.owner_id.def_id,
+                        self.tcx,
+                        &self.effective_visibilities,
+                    )
+                } else {
+                    EffectiveVisibility::of_impl::<false>(
+                        item.owner_id.def_id,
+                        self.tcx,
+                        &self.effective_visibilities,
+                    )
+                };
 
                 self.update_eff_vis(item.owner_id.def_id, item_ev, None, Level::Direct);
 
