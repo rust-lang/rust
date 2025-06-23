@@ -410,7 +410,7 @@ For more details on bootstrapping, see
   - Guide: [The HIR](hir.md)
   - Guide: [Identifiers in the HIR](hir.md#identifiers-in-the-hir)
   - Guide: [The `HIR` Map](hir.md#the-hir-map)
-  - Guide: [Lowering `AST` to `HIR`](ast-lowering.md)
+  - Guide: [Lowering `AST` to `HIR`](./hir/lowering.md)
   - How to view `HIR` representation for your code `cargo rustc -- -Z unpretty=hir-tree`
   - Rustc `HIR` definition: [`rustc_hir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html)
   - Main entry point: **TODO**

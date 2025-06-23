@@ -298,6 +298,35 @@ appropriately. (This is needed by Cargo which shares the same dependencies
 across multiple build targets, so it should only report an unused dependency if
 its not used by any of the targets.)
 
+## Timings
+
+**This setting is currently unstable and requires usage of `-Zunstable-options`.**
+
+The `--timings` option will tell `rustc` to emit messages when a certain compilation
+section (such as code generation or linking) begins or ends. The messages currently have
+the following format:
+
+```json
+{
+    "$message_type": "section_timing", /* Type of this message */
+    "event": "start", /* Marks the "start" or "end" of the compilation section */
+    "name": "link",  /* The name of the compilation section */
+    // Opaque timestamp when the message was emitted, in microseconds
+    // The timestamp is currently relative to the beginning of the compilation session
+    "time": 12345
+}
+```
+
+Note that the JSON format of the `timings` messages is unstable and subject to change.
+
+Compilation sections can be nested; for example, if you encounter the start of "foo",
+then the start of "bar", then the end of "bar" and then the end of "bar", it means that the
+"bar" section happened as a part of the "foo" section.
+
+The timestamp should only be used for computing the duration of each section.
+
+We currently do not guarantee any specific section names to be emitted.
+
 [option-emit]: command-line-arguments.md#option-emit
 [option-error-format]: command-line-arguments.md#option-error-format
 [option-json]: command-line-arguments.md#option-json

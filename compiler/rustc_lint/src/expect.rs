@@ -1,5 +1,4 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::CRATE_OWNER_ID;
 use rustc_middle::lint::LintExpectation;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -18,7 +17,7 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
 
     let mut expectations = Vec::new();
 
-    for owner in std::iter::once(CRATE_OWNER_ID).chain(krate.owners()) {
+    for owner in krate.owners() {
         let lints = tcx.shallow_lint_levels_on(owner);
         expectations.extend_from_slice(&lints.expectations);
     }

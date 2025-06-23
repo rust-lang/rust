@@ -1,0 +1,17 @@
+error[E0080]: encountered static that tried to initialize itself with itself
+  --> $DIR/read_before_init.rs:11:45
+   |
+LL | pub static X: (i32, MaybeUninit<i32>) = (1, foo(&X.0));
+   |                                             ^^^^^^^^^ evaluation of `X` failed inside this call
+   |
+note: inside `foo`
+  --> $DIR/read_before_init.rs:17:9
+   |
+LL |         std::ptr::copy(x, temp.as_mut_ptr(), 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: inside `std::ptr::copy::<i32>`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

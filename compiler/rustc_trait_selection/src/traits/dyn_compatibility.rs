@@ -31,7 +31,7 @@ use crate::traits::{
 ///
 /// Currently that is `Self` in supertraits. This is needed
 /// because `dyn_compatibility_violations` can't be used during
-/// type collection.
+/// type collection, as type collection is needed for `dyn_compatiblity_violations` itself.
 #[instrument(level = "debug", skip(tcx), ret)]
 pub fn hir_ty_lowering_dyn_compatibility_violations(
     tcx: TyCtxt<'_>,

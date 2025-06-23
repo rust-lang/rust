@@ -87,6 +87,11 @@ help: alternatively, consider constraining `g` so it does not apply to trait obj
    |
 LL | trait A { fn g(b: B) -> B where Self: Sized; }
    |                           +++++++++++++++++
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL - trait B { fn f(a: A) -> A; }
+LL + trait B { fn f(a: Self) -> A; }
+   |
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/avoid-ice-on-warning-3.rs:14:19
@@ -124,6 +129,11 @@ help: alternatively, consider constraining `f` so it does not apply to trait obj
    |
 LL | trait B { fn f(a: A) -> A where Self: Sized; }
    |                           +++++++++++++++++
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL - trait A { fn g(b: B) -> B; }
+LL + trait A { fn g(b: Self) -> B; }
+   |
 
 error: aborting due to 2 previous errors; 6 warnings emitted
 

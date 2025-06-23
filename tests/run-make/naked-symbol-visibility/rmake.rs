@@ -1,5 +1,8 @@
 //@ ignore-windows
 //@ only-x86_64
+//@ needs-target-std
+//@ needs-crate-type: dylib
+
 use run_make_support::object::ObjectSymbol;
 use run_make_support::object::read::{File, Object, Symbol};
 use run_make_support::targets::is_windows;

@@ -22,29 +22,14 @@ error: suffixes on string literals are invalid
 LL | #[must_use = "string"suffix]
    |              ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
-error: malformed `must_use` attribute input
-  --> $DIR/bad-lit-suffixes.rs:34:1
-   |
-LL | #[must_use = "string"suffix]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
-   |
-LL - #[must_use = "string"suffix]
-LL + #[must_use = "reason"]
-   |
-LL - #[must_use = "string"suffix]
-LL + #[must_use]
-   |
-
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:39:15
+  --> $DIR/bad-lit-suffixes.rs:38:15
    |
 LL | #[link(name = "string"suffix)]
    |               ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
 error: invalid suffix `suffix` for number literal
-  --> $DIR/bad-lit-suffixes.rs:43:41
+  --> $DIR/bad-lit-suffixes.rs:42:41
    |
 LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
    |                                         ^^^^^^^ invalid suffix `suffix`
@@ -165,5 +150,5 @@ LL |     1.0e10suffix;
    |
    = help: valid suffixes are `f32` and `f64`
 
-error: aborting due to 21 previous errors; 2 warnings emitted
+error: aborting due to 20 previous errors; 2 warnings emitted
 

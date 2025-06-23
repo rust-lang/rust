@@ -1196,7 +1196,7 @@ impl CrateError {
                             .opts
                             .crate_name
                             .clone()
-                            .unwrap_or("<unknown>".to_string()),
+                            .unwrap_or_else(|| "<unknown>".to_string()),
                         is_nightly_build: sess.is_nightly_build(),
                         profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                         locator_triple: locator.triple,
@@ -1217,7 +1217,11 @@ impl CrateError {
                     crate_name,
                     add_info: String::new(),
                     missing_core,
-                    current_crate: sess.opts.crate_name.clone().unwrap_or("<unknown>".to_string()),
+                    current_crate: sess
+                        .opts
+                        .crate_name
+                        .clone()
+                        .unwrap_or_else(|| "<unknown>".to_string()),
                     is_nightly_build: sess.is_nightly_build(),
                     profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                     locator_triple: sess.opts.target_triple.clone(),

@@ -705,7 +705,7 @@ impl<'tcx> Collector<'tcx> {
             .map_or(import_name_type, |ord| Some(PeImportNameType::Ordinal(ord)));
 
         DllImport {
-            name: codegen_fn_attrs.link_name.unwrap_or(self.tcx.item_name(item)),
+            name: codegen_fn_attrs.link_name.unwrap_or_else(|| self.tcx.item_name(item)),
             import_name_type,
             calling_convention,
             span,

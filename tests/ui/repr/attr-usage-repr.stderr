@@ -36,13 +36,13 @@ LL | |     B,
 LL | | }
    | |_- not a struct
 
-error[E0517]: attribute should be applied to a struct, enum, function, associated function, or union
+error[E0517]: attribute should be applied to a struct, enum, or union
   --> $DIR/attr-usage-repr.rs:48:1
    |
 LL | #[repr()]
    | ^^^^^^^^^
 LL | type SirThisIsAType = i32;
-   | -------------------------- not a struct, enum, function, associated function, or union
+   | -------------------------- not a struct, enum, or union
 
 error: aborting due to 5 previous errors
 

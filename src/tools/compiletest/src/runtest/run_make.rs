@@ -12,7 +12,7 @@ impl TestCx<'_> {
         // For `run-make` V2, we need to perform 2 steps to build and run a `run-make` V2 recipe
         // (`rmake.rs`) to run the actual tests. The support library is already built as a tool rust
         // library and is available under
-        // `build/$HOST/stage0-bootstrap-tools/$TARGET/release/librun_make_support.rlib`.
+        // `build/$HOST/bootstrap-tools/$TARGET/release/librun_make_support.rlib`.
         //
         // 1. We need to build the recipe `rmake.rs` as a binary and link in the `run_make_support`
         //    library.
@@ -63,7 +63,7 @@ impl TestCx<'_> {
         //
         // ```
         // build/<target_triple>/
-        // ├── stage0-bootstrap-tools/
+        // ├── bootstrap-tools/
         // │   ├── <host_triple>/release/librun_make_support.rlib   // <- support rlib itself
         // │   ├── <host_triple>/release/deps/                      // <- deps
         // │   └── release/deps/                                    // <- deps of deps
@@ -72,7 +72,7 @@ impl TestCx<'_> {
         // FIXME(jieyouxu): there almost certainly is a better way to do this (specifically how the
         // support lib and its deps are organized), but this seems to work for now.
 
-        let tools_bin = host_build_root.join("stage0-bootstrap-tools");
+        let tools_bin = host_build_root.join("bootstrap-tools");
         let support_host_path = tools_bin.join(&self.config.host).join("release");
         let support_lib_path = support_host_path.join("librun_make_support.rlib");
 
@@ -219,6 +219,10 @@ impl TestCx<'_> {
 
         if let Some(ref remote_test_client) = self.config.remote_test_client {
             cmd.env("REMOTE_TEST_CLIENT", remote_test_client);
+        }
+
+        if let Some(runner) = &self.config.runner {
+            cmd.env("RUNNER", runner);
         }
 
         // We don't want RUSTFLAGS set from the outside to interfere with

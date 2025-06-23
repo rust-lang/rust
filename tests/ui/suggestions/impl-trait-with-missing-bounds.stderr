@@ -2,11 +2,10 @@ error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:6:13
    |
 LL |         qux(constraint);
-   |         --- ^^^^^^^^^^ `<impl Iterator as Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |         --- ^^^^^^^^^^ the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
    |         |
    |         required by a bound introduced by this call
    |
-   = help: the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
 note: required by a bound in `qux`
   --> $DIR/impl-trait-with-missing-bounds.rs:50:16
    |
@@ -22,11 +21,10 @@ error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:14:13
    |
 LL |         qux(constraint);
-   |         --- ^^^^^^^^^^ `<impl Iterator as Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |         --- ^^^^^^^^^^ the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
    |         |
    |         required by a bound introduced by this call
    |
-   = help: the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
 note: required by a bound in `qux`
   --> $DIR/impl-trait-with-missing-bounds.rs:50:16
    |
@@ -42,11 +40,10 @@ error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:22:13
    |
 LL |         qux(constraint);
-   |         --- ^^^^^^^^^^ `<impl Iterator as Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |         --- ^^^^^^^^^^ the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
    |         |
    |         required by a bound introduced by this call
    |
-   = help: the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
 note: required by a bound in `qux`
   --> $DIR/impl-trait-with-missing-bounds.rs:50:16
    |
@@ -62,11 +59,10 @@ error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:30:13
    |
 LL |         qux(constraint);
-   |         --- ^^^^^^^^^^ `<impl Iterator as Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |         --- ^^^^^^^^^^ the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
    |         |
    |         required by a bound introduced by this call
    |
-   = help: the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
 note: required by a bound in `qux`
   --> $DIR/impl-trait-with-missing-bounds.rs:50:16
    |
@@ -82,11 +78,10 @@ error[E0277]: `<impl Iterator + std::fmt::Debug as Iterator>::Item` doesn't impl
   --> $DIR/impl-trait-with-missing-bounds.rs:37:13
    |
 LL |         qux(constraint);
-   |         --- ^^^^^^^^^^ `<impl Iterator + std::fmt::Debug as Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |         --- ^^^^^^^^^^ the trait `Debug` is not implemented for `<impl Iterator + std::fmt::Debug as Iterator>::Item`
    |         |
    |         required by a bound introduced by this call
    |
-   = help: the trait `Debug` is not implemented for `<impl Iterator + std::fmt::Debug as Iterator>::Item`
 note: required by a bound in `qux`
   --> $DIR/impl-trait-with-missing-bounds.rs:50:16
    |
@@ -102,11 +97,10 @@ error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:45:13
    |
 LL |         qux(constraint);
-   |         --- ^^^^^^^^^^ `<impl Iterator as Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |         --- ^^^^^^^^^^ the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
    |         |
    |         required by a bound introduced by this call
    |
-   = help: the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
 note: required by a bound in `qux`
   --> $DIR/impl-trait-with-missing-bounds.rs:50:16
    |

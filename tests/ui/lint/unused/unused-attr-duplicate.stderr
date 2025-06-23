@@ -66,19 +66,6 @@ LL | #[should_panic]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:60:1
-   |
-LL | #[must_use = "some message"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:59:1
-   |
-LL | #[must_use]
-   | ^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:66:1
    |
 LL | #[non_exhaustive]
@@ -101,31 +88,6 @@ note: attribute also specified here
    |
 LL | #[automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:74:1
-   |
-LL | #[inline(never)]
-   | ^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:73:1
-   |
-LL | #[inline(always)]
-   | ^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:77:1
-   |
-LL | #[cold]
-   | ^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:76:1
-   |
-LL | #[cold]
-   | ^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:79:1
@@ -288,6 +250,44 @@ note: attribute also specified here
    |
 LL |     #[macro_export]
    |     ^^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:60:1
+   |
+LL | #[must_use = "some message"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:59:1
+   |
+LL | #[must_use]
+   | ^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:74:1
+   |
+LL | #[inline(never)]
+   | ^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:73:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:77:1
+   |
+LL | #[cold]
+   | ^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:76:1
+   |
+LL | #[cold]
+   | ^^^^^^^
 
 error: aborting due to 23 previous errors
 

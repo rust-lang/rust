@@ -1781,7 +1781,7 @@ impl<'a> Parser<'a> {
         let mut recovered = Recovered::No;
         if self.eat(exp!(OpenBrace)) {
             while self.token != token::CloseBrace {
-                match self.parse_field_def(adt_ty) {
+                match self.parse_field_def(adt_ty, ident_span) {
                     Ok(field) => {
                         fields.push(field);
                     }
@@ -1894,7 +1894,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an element of a struct declaration.
-    fn parse_field_def(&mut self, adt_ty: &str) -> PResult<'a, FieldDef> {
+    fn parse_field_def(&mut self, adt_ty: &str, ident_span: Span) -> PResult<'a, FieldDef> {
         self.recover_vcs_conflict_marker();
         let attrs = self.parse_outer_attributes()?;
         self.recover_vcs_conflict_marker();
@@ -1902,7 +1902,7 @@ impl<'a> Parser<'a> {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
             let safety = this.parse_unsafe_field();
-            this.parse_single_struct_field(adt_ty, lo, vis, safety, attrs)
+            this.parse_single_struct_field(adt_ty, lo, vis, safety, attrs, ident_span)
                 .map(|field| (field, Trailing::No, UsePreAttrPos::No))
         })
     }
@@ -1915,27 +1915,26 @@ impl<'a> Parser<'a> {
         vis: Visibility,
         safety: Safety,
         attrs: AttrVec,
+        ident_span: Span,
     ) -> PResult<'a, FieldDef> {
-        let mut seen_comma: bool = false;
         let a_var = self.parse_name_and_ty(adt_ty, lo, vis, safety, attrs)?;
-        if self.token == token::Comma {
-            seen_comma = true;
-        }
-        if self.eat(exp!(Semi)) {
-            let sp = self.prev_token.span;
-            let mut err =
-                self.dcx().struct_span_err(sp, format!("{adt_ty} fields are separated by `,`"));
-            err.span_suggestion_short(
-                sp,
-                "replace `;` with `,`",
-                ",",
-                Applicability::MachineApplicable,
-            );
-            return Err(err);
-        }
         match self.token.kind {
             token::Comma => {
                 self.bump();
+            }
+            token::Semi => {
+                self.bump();
+                let sp = self.prev_token.span;
+                let mut err =
+                    self.dcx().struct_span_err(sp, format!("{adt_ty} fields are separated by `,`"));
+                err.span_suggestion_short(
+                    sp,
+                    "replace `;` with `,`",
+                    ",",
+                    Applicability::MachineApplicable,
+                );
+                err.span_label(ident_span, format!("while parsing this {adt_ty}"));
+                err.emit();
             }
             token::CloseBrace => {}
             token::DocComment(..) => {
@@ -1945,19 +1944,11 @@ impl<'a> Parser<'a> {
                     missing_comma: None,
                 };
                 self.bump(); // consume the doc comment
-                let comma_after_doc_seen = self.eat(exp!(Comma));
-                // `seen_comma` is always false, because we are inside doc block
-                // condition is here to make code more readable
-                if !seen_comma && comma_after_doc_seen {
-                    seen_comma = true;
-                }
-                if comma_after_doc_seen || self.token == token::CloseBrace {
+                if self.eat(exp!(Comma)) || self.token == token::CloseBrace {
                     self.dcx().emit_err(err);
                 } else {
-                    if !seen_comma {
-                        let sp = previous_span.shrink_to_hi();
-                        err.missing_comma = Some(sp);
-                    }
+                    let sp = previous_span.shrink_to_hi();
+                    err.missing_comma = Some(sp);
                     return Err(self.dcx().create_err(err));
                 }
             }

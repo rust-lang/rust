@@ -5,7 +5,7 @@
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
-use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -18,7 +18,7 @@ use rustc_errors::{
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{Attribute, ExprKind, HirId, QPath};
+use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
 use rustc_infer::infer;
@@ -43,10 +43,9 @@ use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectatio
 use crate::coercion::{CoerceMany, DynamicCoerceMany};
 use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
-    BaseExpressionDoubleDotEnableDefaultFieldValues, BaseExpressionDoubleDotRemove,
-    CantDereference, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
-    HelpUseLatestEdition, NakedAsmOutsideNakedFn, NoFieldOnType, NoFieldOnVariant,
-    ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
+    BaseExpressionDoubleDotRemove, CantDereference, FieldMultiplySpecifiedInInitializer,
+    FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition, NakedAsmOutsideNakedFn, NoFieldOnType,
+    NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
     TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
 use crate::{
@@ -56,7 +55,7 @@ use crate::{
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
-        let for_each_attr = |id: HirId, callback: &mut dyn FnMut(&Attribute)| {
+        let has_attr = |id: HirId| -> bool {
             for attr in self.tcx.hir_attrs(id) {
                 // For the purpose of rendering suggestions, disregard attributes
                 // that originate from desugaring of any kind. For example, `x?`
@@ -72,11 +71,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //     let y: u32 = (x?).try_into().unwrap();
                 //                  +  +++++++++++++++++++++
                 if attr.span().desugaring_kind().is_none() {
-                    callback(attr);
+                    return true;
                 }
             }
+            false
         };
-        expr.precedence(&for_each_attr)
+        expr.precedence(&has_attr)
     }
 
     /// Check an expr with an expectation type, and also demand that the expr's
@@ -1651,13 +1651,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(method.def_id),
                 );
 
-                // Functions of type `extern "custom" fn(/* ... */)` cannot be called using
-                // `ExprKind::MethodCall`. These functions have a calling convention that is
-                // unknown to rust, hence it cannot generate code for the call. The only way
-                // to execute such a function is via inline assembly.
-                if let ExternAbi::Custom = method.sig.abi {
-                    self.tcx.dcx().emit_err(crate::errors::AbiCustomCall { span: expr.span });
-                }
+                self.check_call_abi(method.sig.abi, expr.span);
 
                 method.sig.output()
             }
@@ -2158,7 +2152,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             if !self.tcx.features().default_field_values() {
-                let sugg = self.tcx.crate_level_attribute_injection_span(expr.hir_id);
+                let sugg = self.tcx.crate_level_attribute_injection_span();
                 self.dcx().emit_err(BaseExpressionDoubleDot {
                     span: span.shrink_to_hi(),
                     // We only mention enabling the feature if this is a nightly rustc *and* the
@@ -2166,18 +2160,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     default_field_values_suggestion: if self.tcx.sess.is_nightly_build()
                         && missing_mandatory_fields.is_empty()
                         && !missing_optional_fields.is_empty()
-                        && sugg.is_some()
                     {
-                        sugg
-                    } else {
-                        None
-                    },
-                    default_field_values_help: if self.tcx.sess.is_nightly_build()
-                        && missing_mandatory_fields.is_empty()
-                        && !missing_optional_fields.is_empty()
-                        && sugg.is_none()
-                    {
-                        Some(BaseExpressionDoubleDotEnableDefaultFieldValues)
+                        Some(sugg)
                     } else {
                         None
                     },
