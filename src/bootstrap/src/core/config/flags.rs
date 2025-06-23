@@ -383,7 +383,7 @@ pub enum Subcommand {
         bless: bool,
         #[arg(long)]
         /// comma-separated list of other files types to check (accepts py, py:lint,
-        /// py:fmt, shell, shell:lint, cpp, cpp:fmt, spellcheck)
+        /// py:fmt, shell, cpp, cpp:fmt, js, js:lint, js:typecheck, js:es-check)
         ///
         /// Any argument can be prefixed with "auto:" to only run if
         /// relevant files are modified (eg. "auto:py").
