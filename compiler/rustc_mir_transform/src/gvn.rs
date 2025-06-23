@@ -1755,7 +1755,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
         self.simplify_place_projection(place, location);
-        if context.is_mutating_use() && !place.projection.is_empty() {
+        if context.is_mutating_use() && place.is_indirect() {
             // Non-local mutation maybe invalidate deref.
             self.invalidate_derefs();
         }
@@ -1767,36 +1767,41 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
         self.super_operand(operand, location);
     }
 
-    fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
-        if let StatementKind::Assign(box (ref mut lhs, ref mut rvalue)) = stmt.kind {
-            self.simplify_place_projection(lhs, location);
+    fn visit_assign(
+        &mut self,
+        lhs: &mut Place<'tcx>,
+        rvalue: &mut Rvalue<'tcx>,
+        location: Location,
+    ) {
+        self.simplify_place_projection(lhs, location);
 
-            let value = self.simplify_rvalue(lhs, rvalue, location);
-            let value = if let Some(local) = lhs.as_local()
-                && self.ssa.is_ssa(local)
-                // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
-                // `local` as reusable if we have an exact type match.
-                && self.local_decls[local].ty == rvalue.ty(self.local_decls, self.tcx)
+        let value = self.simplify_rvalue(lhs, rvalue, location);
+        if let Some(value) = value {
+            if let Some(const_) = self.try_as_constant(value) {
+                *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
+            } else if let Some(place) = self.try_as_place(value, location, false)
+                && *rvalue != Rvalue::Use(Operand::Move(place))
+                && *rvalue != Rvalue::Use(Operand::Copy(place))
             {
-                let value = value.unwrap_or_else(|| self.new_opaque());
-                self.assign(local, value);
-                Some(value)
-            } else {
-                value
-            };
-            if let Some(value) = value {
-                if let Some(const_) = self.try_as_constant(value) {
-                    *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
-                } else if let Some(place) = self.try_as_place(value, location, false)
-                    && *rvalue != Rvalue::Use(Operand::Move(place))
-                    && *rvalue != Rvalue::Use(Operand::Copy(place))
-                {
-                    *rvalue = Rvalue::Use(Operand::Copy(place));
-                    self.reused_locals.insert(place.local);
-                }
+                *rvalue = Rvalue::Use(Operand::Copy(place));
+                self.reused_locals.insert(place.local);
             }
         }
-        self.super_statement(stmt, location);
+
+        if lhs.is_indirect() {
+            // Non-local mutation maybe invalidate deref.
+            self.invalidate_derefs();
+        }
+
+        if let Some(local) = lhs.as_local()
+            && self.ssa.is_ssa(local)
+            // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
+            // `local` as reusable if we have an exact type match.
+            && self.local_decls[local].ty == rvalue.ty(self.local_decls, self.tcx)
+        {
+            let value = value.unwrap_or_else(|| self.new_opaque());
+            self.assign(local, value);
+        }
     }
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
