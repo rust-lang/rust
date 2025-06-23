@@ -133,7 +133,7 @@ pub trait Interner:
     type Const: Const<Self>;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
     type BoundConst: BoundVarLike<Self>;
-    type PlaceholderConst: PlaceholderLike<Self, Bound = Self::BoundConst>;
+    type PlaceholderConst: PlaceholderConst<Self>;
     type ValueConst: ValueConst<Self>;
     type ExprConst: ExprConst<Self>;
     type ValTree: Copy + Debug + Hash + Eq;
@@ -340,12 +340,6 @@ pub trait Interner:
 
     type UnsizingParams: Deref<Target = DenseBitSet<u32>>;
     fn unsizing_params_for_adt(self, adt_def_id: Self::DefId) -> Self::UnsizingParams;
-
-    fn find_const_ty_from_env(
-        self,
-        param_env: Self::ParamEnv,
-        placeholder: Self::PlaceholderConst,
-    ) -> Self::Ty;
 
     fn anonymize_bound_vars<T: TypeFoldable<Self>>(
         self,
