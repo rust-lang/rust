@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(adt_const_params, generic_arg_infer, generic_const_parameter_types)]
+#![feature(adt_const_params, generic_const_parameter_types)]
 #![expect(incomplete_features)]
 
 struct Bar<const N: usize, const M: [u8; N]>;

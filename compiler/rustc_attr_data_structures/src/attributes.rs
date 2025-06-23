@@ -8,7 +8,7 @@ use thin_vec::ThinVec;
 
 use crate::{DefaultBodyStability, PartialConstStability, PrintAttribute, RustcVersion, Stability};
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -38,7 +38,8 @@ pub enum InstructionSetAttr {
     ArmT32,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, PrintAttribute)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum OptimizeAttr {
     /// No `#[optimize(..)]` attribute
     #[default]
@@ -182,6 +183,9 @@ impl Deprecation {
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum AttributeKind {
     // tidy-alphabetical-start
+    /// Represents `#[align(N)]`.
+    Align { align: Align, span: Span },
+
     /// Represents `#[rustc_allow_const_fn_unstable]`.
     AllowConstFnUnstable(ThinVec<Symbol>),
 
@@ -197,6 +201,9 @@ pub enum AttributeKind {
         /// Span of the `#[rustc_default_body_unstable(...)]` attribute
         span: Span,
     },
+
+    /// Represents `#[cold]`.
+    Cold(Span),
 
     /// Represents `#[rustc_confusables]`.
     Confusables {
@@ -221,8 +228,27 @@ pub enum AttributeKind {
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
+    /// Represents `#[inline]` and `#[rustc_force_inline]`.
+    Inline(InlineAttr, Span),
+
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
+
+    /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
+    MayDangle(Span),
+
+    /// Represents `#[must_use]`.
+    MustUse {
+        span: Span,
+        /// must_use can optionally have a reason: `#[must_use = "reason this must be used"]`
+        reason: Option<Symbol>,
+    },
+
+    /// Represents `#[optimize(size|speed)]`
+    Optimize(OptimizeAttr, Span),
+
+    /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
+    PubTransparent(Span),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr(ThinVec<(ReprAttr, Span)>),

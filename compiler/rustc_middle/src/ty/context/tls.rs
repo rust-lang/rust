@@ -36,7 +36,7 @@ impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
 }
 
 // Import the thread-local variable from Rayon, which is preserved for Rayon jobs.
-use rayon_core::tlv::TLV;
+use rustc_thread_pool::tlv::TLV;
 
 #[inline]
 fn erase(context: &ImplicitCtxt<'_, '_>) -> *const () {

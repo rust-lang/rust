@@ -208,7 +208,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
 
     let proxy_ = Arc::clone(&proxy);
     let proxy__ = Arc::clone(&proxy);
-    let builder = rayon_core::ThreadPoolBuilder::new()
+    let builder = rustc_thread_pool::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(move || proxy_.acquire_thread())
         .release_thread_handler(move || proxy__.release_thread())
@@ -218,7 +218,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
             // locals to it. The new thread runs the deadlock handler.
 
             let current_gcx2 = current_gcx2.clone();
-            let registry = rayon_core::Registry::current();
+            let registry = rustc_thread_pool::Registry::current();
             let session_globals = rustc_span::with_session_globals(|session_globals| {
                 session_globals as *const SessionGlobals as usize
             });
@@ -265,7 +265,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
             builder
                 .build_scoped(
                     // Initialize each new worker thread when created.
-                    move |thread: rayon_core::ThreadBuilder| {
+                    move |thread: rustc_thread_pool::ThreadBuilder| {
                         // Register the thread for use with the `WorkerLocal` type.
                         registry.register();
 
@@ -274,7 +274,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
                         })
                     },
                     // Run `f` on the first thread in the thread pool.
-                    move |pool: &rayon_core::ThreadPool| {
+                    move |pool: &rustc_thread_pool::ThreadPool| {
                         pool.install(|| f(current_gcx.into_inner(), proxy))
                     },
                 )

@@ -1,4 +1,4 @@
-#![feature(generic_const_exprs, generic_arg_infer)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 // minimized repro for #105205

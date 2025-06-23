@@ -11,11 +11,6 @@ use crate::spec::{FloatAbi, RustcAbi, Target};
 /// These exist globally and are not in the target-specific lists below.
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
-/// Features that require special handling when passing to LLVM:
-/// these are target-specific (i.e., must also be listed in the target-specific list below)
-/// but do not correspond to an LLVM target feature.
-pub const RUSTC_SPECIAL_FEATURES: &[&str] = &["backchain"];
-
 /// Stability information for target features.
 #[derive(Debug, Copy, Clone)]
 pub enum Stability {
@@ -34,9 +29,6 @@ pub enum Stability {
     /// particular for features are actually ABI configuration flags (not all targets are as nice as
     /// RISC-V and have an explicit way to set the ABI separate from target features).
     Forbidden { reason: &'static str },
-    /// This feature can not be set via `-Ctarget-feature` or `#[target_feature]`, it can only be set
-    /// by target modifier flag. Target modifier flags are tracked to be consistent in linked modules.
-    TargetModifierOnly { reason: &'static str, flag: &'static str },
 }
 use Stability::*;
 
@@ -52,7 +44,6 @@ impl<CTX> HashStable<CTX> for Stability {
             Stability::Forbidden { reason } => {
                 reason.hash_stable(hcx, hasher);
             }
-            Stability::TargetModifierOnly { .. } => {}
         }
     }
 }
@@ -62,7 +53,7 @@ impl Stability {
     /// (It might still be nightly-only even if this returns `true`, so make sure to also check
     /// `requires_nightly`.)
     pub fn in_cfg(&self) -> bool {
-        !matches!(self, Stability::Forbidden { .. })
+        matches!(self, Stability::Stable | Stability::Unstable { .. })
     }
 
     /// Returns the nightly feature that is required to toggle this target feature via
@@ -78,7 +69,16 @@ impl Stability {
             Stability::Unstable(nightly_feature) => Some(nightly_feature),
             Stability::Stable { .. } => None,
             Stability::Forbidden { .. } => panic!("forbidden features should not reach this far"),
-            Stability::TargetModifierOnly { .. } => None,
+        }
+    }
+
+    /// Returns whether the feature may be toggled via `#[target_feature]` or `-Ctarget-feature`.
+    /// (It might still be nightly-only even if this returns `true`, so make sure to also check
+    /// `requires_nightly`.)
+    pub fn toggle_allowed(&self) -> Result<(), &'static str> {
+        match self {
+            Stability::Unstable(_) | Stability::Stable { .. } => Ok(()),
+            Stability::Forbidden { reason } => Err(reason),
         }
     }
 }
@@ -270,12 +270,7 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rcpc3", Unstable(sym::aarch64_unstable_target_feature), &["rcpc2"]),
     // FEAT_RDM
     ("rdm", Stable, &["neon"]),
-    // This is needed for inline assembly, but shouldn't be stabilized as-is
-    // since it should be enabled globally using -Zfixed-x18, not
-    // #[target_feature].
-    // Note that cfg(target_feature = "reserve-x18") is currently not set for
-    // targets that reserve x18 by default.
-    ("reserve-x18", Unstable(sym::aarch64_unstable_target_feature), &[]),
+    ("reserve-x18", Forbidden { reason: "use `-Zfixed-x18` compiler flag instead" }, &[]),
     // FEAT_SB
     ("sb", Stable, &[]),
     // FEAT_SHA1 & FEAT_SHA256
@@ -450,26 +445,17 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rdseed", Stable, &[]),
     (
         "retpoline-external-thunk",
-        Stability::TargetModifierOnly {
-            reason: "use `retpoline-external-thunk` target modifier flag instead",
-            flag: "retpoline-external-thunk",
-        },
+        Stability::Forbidden { reason: "use `-Zretpoline-external-thunk` compiler flag instead" },
         &[],
     ),
     (
         "retpoline-indirect-branches",
-        Stability::TargetModifierOnly {
-            reason: "use `retpoline` target modifier flag instead",
-            flag: "retpoline",
-        },
+        Stability::Forbidden { reason: "use `-Zretpoline` compiler flag instead" },
         &[],
     ),
     (
         "retpoline-indirect-calls",
-        Stability::TargetModifierOnly {
-            reason: "use `retpoline` target modifier flag instead",
-            flag: "retpoline",
-        },
+        Stability::Forbidden { reason: "use `-Zretpoline` compiler flag instead" },
         &[],
     ),
     ("rtm", Unstable(sym::rtm_target_feature), &[]),
@@ -732,6 +718,7 @@ static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 #[rustfmt::skip]
 const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
+    // For "backchain", https://github.com/rust-lang/rust/issues/142412 is a stabilization blocker
     ("backchain", Unstable(sym::s390x_target_feature), &[]),
     ("concurrent-functions", Unstable(sym::s390x_target_feature), &[]),
     ("deflate-conversion", Unstable(sym::s390x_target_feature), &[]),

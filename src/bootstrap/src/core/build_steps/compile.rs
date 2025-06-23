@@ -24,7 +24,8 @@ use crate::core::build_steps::tool::SourceType;
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath, crate_description,
+    Builder, Cargo, Kind, PathSet, RunConfig, ShouldRun, Step, StepMetadata, TaskPath,
+    crate_description,
 };
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
 use crate::utils::build_stamp;
@@ -304,6 +305,14 @@ impl Step for Std {
             self,
             builder.compiler(compiler.stage, builder.config.host_target),
         ));
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build("std", self.target)
+                .built_by(self.compiler)
+                .stage(self.compiler.stage),
+        )
     }
 }
 
@@ -1170,6 +1179,14 @@ impl Step for Rustc {
         ));
 
         build_compiler.stage
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::build("rustc", self.target)
+                .built_by(self.build_compiler)
+                .stage(self.build_compiler.stage + 1),
+        )
     }
 }
 

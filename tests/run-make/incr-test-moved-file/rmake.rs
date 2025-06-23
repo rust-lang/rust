@@ -9,7 +9,7 @@
 // for successful compilation.
 // See https://github.com/rust-lang/rust/issues/83112
 
-//@ needs-target-std
+//@ ignore-cross-compile
 
 use run_make_support::{rfs, rustc};
 

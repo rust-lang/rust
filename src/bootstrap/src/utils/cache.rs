@@ -218,10 +218,15 @@ pub struct Cache {
         >,
     >,
     #[cfg(test)]
-    /// Contains steps in the same order in which they were executed
-    /// Useful for tests
-    /// Tuples (step, step output)
-    executed_steps: RefCell<Vec<(Box<dyn Any>, Box<dyn Any>)>>,
+    /// Contains step metadata of executed steps (in the same order in which they were executed).
+    /// Useful for tests.
+    executed_steps: RefCell<Vec<ExecutedStep>>,
+}
+
+#[cfg(test)]
+#[derive(Debug)]
+pub struct ExecutedStep {
+    pub metadata: Option<crate::core::builder::StepMetadata>,
 }
 
 impl Cache {
@@ -243,9 +248,8 @@ impl Cache {
 
         #[cfg(test)]
         {
-            let step: Box<dyn Any> = Box::new(step.clone());
-            let output: Box<dyn Any> = Box::new(value.clone());
-            self.executed_steps.borrow_mut().push((step, output));
+            let metadata = step.metadata();
+            self.executed_steps.borrow_mut().push(ExecutedStep { metadata });
         }
 
         stepcache.insert(step, value);
@@ -283,7 +287,7 @@ impl Cache {
     }
 
     #[cfg(test)]
-    pub fn into_executed_steps(mut self) -> Vec<(Box<dyn Any>, Box<dyn Any>)> {
+    pub fn into_executed_steps(mut self) -> Vec<ExecutedStep> {
         mem::take(&mut self.executed_steps.borrow_mut())
     }
 }

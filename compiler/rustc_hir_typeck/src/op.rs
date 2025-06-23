@@ -706,7 +706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .sess
                         .source_map()
                         .span_to_snippet(lhs_expr.span)
-                        .unwrap_or("_".to_string()),
+                        .unwrap_or_else(|_| "_".to_string()),
                 };
 
                 if op.span().can_be_used_for_suggestions() {

@@ -1,6 +1,8 @@
 // This is a simple smoke test for rustdoc's `--emit dep-info` feature. It prints out
 // information about dependencies in a Makefile-compatible format, as a `.d` file.
 
+//@ needs-target-std
+
 use run_make_support::assertion_helpers::assert_contains;
 use run_make_support::{path, rfs, rustdoc};
 

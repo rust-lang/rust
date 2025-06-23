@@ -1412,8 +1412,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let src_alloc = self.get_alloc_raw(src_alloc_id)?;
         let src_range = alloc_range(src_offset, size);
         assert!(!self.memory.validation_in_progress.get(), "we can't be copying during validation");
-        // For the overlapping case, it is crucial that we trigger the read hook
+
+        // Trigger read hooks.
+        // For the overlapping case, it is crucial that we trigger the read hooks
         // before the write hook -- the aliasing model cares about the order.
+        if let Ok((alloc_id, ..)) = self.ptr_try_get_alloc_id(src, size.bytes() as i64) {
+            M::before_alloc_read(self, alloc_id)?;
+        }
         M::before_memory_read(
             tcx,
             &self.machine,

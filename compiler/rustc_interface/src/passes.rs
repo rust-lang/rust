@@ -192,7 +192,7 @@ fn configure_and_expand(
         // Create the config for macro expansion
         let recursion_limit = get_recursion_limit(pre_configured_attrs, sess);
         let cfg = rustc_expand::expand::ExpansionConfig {
-            crate_name: crate_name.to_string(),
+            crate_name,
             features,
             recursion_limit,
             trace_mac: sess.opts.unstable_opts.trace_macros,
@@ -1011,8 +1011,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
     // Prefetch this to prevent multiple threads from blocking on it later.
     // This is needed since the `hir_id_validator::check_crate` call above is not guaranteed
-    // to use `hir_crate`.
-    tcx.ensure_done().hir_crate(());
+    // to use `hir_crate_items`.
+    tcx.ensure_done().hir_crate_items(());
 
     let sess = tcx.sess;
     sess.time("misc_checking_1", || {

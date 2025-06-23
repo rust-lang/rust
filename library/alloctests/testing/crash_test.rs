@@ -1,8 +1,7 @@
 use std::cmp::Ordering;
+use std::fmt::Debug;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
-
-use crate::fmt::Debug; // the `Debug` trait is the only thing we use from `crate::fmt`
 
 /// A blueprint for crash test dummy instances that monitor particular events.
 /// Some instances may be configured to panic at some point.
@@ -36,6 +35,7 @@ impl CrashTestDummy {
     }
 
     /// Returns how many times instances of the dummy have been cloned.
+    #[allow(unused)]
     pub(crate) fn cloned(&self) -> usize {
         self.cloned.load(SeqCst)
     }
@@ -46,6 +46,7 @@ impl CrashTestDummy {
     }
 
     /// Returns how many times instances of the dummy have had their `query` member invoked.
+    #[allow(unused)]
     pub(crate) fn queried(&self) -> usize {
         self.queried.load(SeqCst)
     }
@@ -71,6 +72,7 @@ impl Instance<'_> {
     }
 
     /// Some anonymous query, the result of which is already given.
+    #[allow(unused)]
     pub(crate) fn query<R>(&self, result: R) -> R {
         self.origin.queried.fetch_add(1, SeqCst);
         if self.panic == Panic::InQuery {

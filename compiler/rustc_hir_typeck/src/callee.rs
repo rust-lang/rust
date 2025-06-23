@@ -1,6 +1,6 @@
 use std::iter;
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{CanonAbi, ExternAbi};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
@@ -16,6 +16,7 @@ use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
+use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -84,7 +85,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         while result.is_none() && autoderef.next().is_some() {
             result = self.try_overloaded_call_step(call_expr, callee_expr, arg_exprs, &autoderef);
         }
-        self.check_call_custom_abi(autoderef.final_ty(false), call_expr.span);
+
+        match autoderef.final_ty(false).kind() {
+            ty::FnDef(def_id, _) => {
+                let abi = self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi;
+                self.check_call_abi(abi, call_expr.span);
+            }
+            ty::FnPtr(_, header) => {
+                self.check_call_abi(header.abi, call_expr.span);
+            }
+            _ => { /* cannot have a non-rust abi */ }
+        }
+
         self.register_predicates(autoderef.into_obligations());
 
         let output = match result {
@@ -137,19 +149,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         output
     }
 
-    /// Functions of type `extern "custom" fn(/* ... */)` cannot be called using `ExprKind::Call`.
+    /// Can a function with this ABI be called with a rust call expression?
     ///
-    /// These functions have a calling convention that is unknown to rust, hence it cannot generate
-    /// code for the call. The only way to execute such a function is via inline assembly.
-    fn check_call_custom_abi(&self, callee_ty: Ty<'tcx>, span: Span) {
-        let abi = match callee_ty.kind() {
-            ty::FnDef(def_id, _) => self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi,
-            ty::FnPtr(_, header) => header.abi,
-            _ => return,
+    /// Some ABIs cannot be called from rust, either because rust does not know how to generate
+    /// code for the call, or because a call does not semantically make sense.
+    pub(crate) fn check_call_abi(&self, abi: ExternAbi, span: Span) {
+        let canon_abi = match AbiMap::from_target(&self.sess().target).canonize_abi(abi, false) {
+            AbiMapping::Direct(canon_abi) | AbiMapping::Deprecated(canon_abi) => canon_abi,
+            AbiMapping::Invalid => return,
         };
 
-        if let ExternAbi::Custom = abi {
-            self.tcx.dcx().emit_err(errors::AbiCustomCall { span });
+        let valid = match canon_abi {
+            // Rust doesn't know how to call functions with this ABI.
+            CanonAbi::Custom => false,
+
+            // These is an entry point for the host, and cannot be called on the GPU.
+            CanonAbi::GpuKernel => false,
+
+            // The interrupt ABIs should only be called by the CPU. They have complex
+            // pre- and postconditions, and can use non-standard instructions like `iret` on x86.
+            CanonAbi::Interrupt(_) => false,
+
+            CanonAbi::C
+            | CanonAbi::Rust
+            | CanonAbi::RustCold
+            | CanonAbi::Arm(_)
+            | CanonAbi::X86(_) => true,
+        };
+
+        if !valid {
+            let err = crate::errors::AbiCannotBeCalled { span, abi };
+            self.tcx.dcx().emit_err(err);
         }
     }
 

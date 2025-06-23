@@ -1,4 +1,5 @@
 use rustc_attr_data_structures::{AttributeKind, DeprecatedSince, Deprecation};
+use rustc_feature::{AttributeTemplate, template};
 use rustc_span::{Span, Symbol, sym};
 
 use super::util::parse_version;
@@ -6,7 +7,6 @@ use super::{AttributeOrder, OnDuplicate, SingleAttributeParser};
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
-use crate::session_diagnostics::UnsupportedLiteralReason;
 
 pub(crate) struct DeprecationParser;
 
@@ -18,25 +18,18 @@ fn get<S: Stage>(
     item: &Option<Symbol>,
 ) -> Option<Symbol> {
     if item.is_some() {
-        cx.emit_err(session_diagnostics::MultipleItem { span: param_span, item: name.to_string() });
+        cx.duplicate_key(param_span, name);
         return None;
     }
     if let Some(v) = arg.name_value() {
         if let Some(value_str) = v.value_as_str() {
             Some(value_str)
         } else {
-            let lit = v.value_as_lit();
-            cx.emit_err(session_diagnostics::UnsupportedLiteral {
-                span: v.value_span,
-                reason: UnsupportedLiteralReason::DeprecatedString,
-                is_bytestr: lit.kind.is_bytestr(),
-                start_point_span: cx.sess().source_map().start_point(lit.span),
-            });
+            cx.expected_string_literal(v.value_span, Some(&v.value_as_lit()));
             None
         }
     } else {
-        // FIXME(jdonszelmann): suggestion?
-        cx.emit_err(session_diagnostics::IncorrectMetaItem { span: param_span, suggestion: None });
+        cx.expected_name_value(param_span, Some(name));
         None
     }
 }
@@ -45,6 +38,11 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
     const PATH: &[Symbol] = &[sym::deprecated];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const TEMPLATE: AttributeTemplate = template!(
+        Word,
+        List: r#"/*opt*/ since = "version", /*opt*/ note = "reason""#,
+        NameValueStr: "reason"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let features = cx.features();
@@ -55,56 +53,59 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
 
         let is_rustc = features.staged_api();
 
-        if let Some(value) = args.name_value()
-            && let Some(value_str) = value.value_as_str()
-        {
-            note = Some(value_str)
-        } else if let Some(list) = args.list() {
-            for param in list.mixed() {
-                let param_span = param.span();
-                let Some(param) = param.meta_item() else {
-                    cx.emit_err(session_diagnostics::UnsupportedLiteral {
-                        span: param_span,
-                        reason: UnsupportedLiteralReason::DeprecatedKvPair,
-                        is_bytestr: false,
-                        start_point_span: cx.sess().source_map().start_point(param_span),
-                    });
-                    return None;
-                };
-
-                let ident_name = param.path().word_sym();
-
-                match ident_name {
-                    Some(name @ sym::since) => {
-                        since = Some(get(cx, name, param_span, param.args(), &since)?);
-                    }
-                    Some(name @ sym::note) => {
-                        note = Some(get(cx, name, param_span, param.args(), &note)?);
-                    }
-                    Some(name @ sym::suggestion) => {
-                        if !features.deprecated_suggestion() {
-                            cx.emit_err(session_diagnostics::DeprecatedItemSuggestion {
-                                span: param_span,
-                                is_nightly: cx.sess().is_nightly_build(),
-                                details: (),
-                            });
-                        }
-
-                        suggestion = Some(get(cx, name, param_span, param.args(), &suggestion)?);
-                    }
-                    _ => {
-                        cx.emit_err(session_diagnostics::UnknownMetaItem {
-                            span: param_span,
-                            item: param.path().to_string(),
-                            expected: if features.deprecated_suggestion() {
-                                &["since", "note", "suggestion"]
-                            } else {
-                                &["since", "note"]
-                            },
-                        });
+        match args {
+            ArgParser::NoArgs => {
+                // ok
+            }
+            ArgParser::List(list) => {
+                for param in list.mixed() {
+                    let Some(param) = param.meta_item() else {
+                        cx.unexpected_literal(param.span());
                         return None;
+                    };
+
+                    let ident_name = param.path().word_sym();
+
+                    match ident_name {
+                        Some(name @ sym::since) => {
+                            since = Some(get(cx, name, param.span(), param.args(), &since)?);
+                        }
+                        Some(name @ sym::note) => {
+                            note = Some(get(cx, name, param.span(), param.args(), &note)?);
+                        }
+                        Some(name @ sym::suggestion) => {
+                            if !features.deprecated_suggestion() {
+                                cx.emit_err(session_diagnostics::DeprecatedItemSuggestion {
+                                    span: param.span(),
+                                    is_nightly: cx.sess().is_nightly_build(),
+                                    details: (),
+                                });
+                            }
+
+                            suggestion =
+                                Some(get(cx, name, param.span(), param.args(), &suggestion)?);
+                        }
+                        _ => {
+                            cx.unknown_key(
+                                param.span(),
+                                param.path().to_string(),
+                                if features.deprecated_suggestion() {
+                                    &["since", "note", "suggestion"]
+                                } else {
+                                    &["since", "note"]
+                                },
+                            );
+                            return None;
+                        }
                     }
                 }
+            }
+            ArgParser::NameValue(v) => {
+                let Some(value) = v.value_as_str() else {
+                    cx.expected_string_literal(v.value_span, Some(v.value_as_lit()));
+                    return None;
+                };
+                note = Some(value);
             }
         }
 

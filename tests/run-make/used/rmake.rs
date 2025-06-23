@@ -1,5 +1,6 @@
 //@ needs-target-std
-//
+//@ ignore-wasm (`object` can't handle wasm object files)
+
 // This test ensures that the compiler is keeping static variables, even if not referenced
 // by another part of the program, in the output object file.
 //

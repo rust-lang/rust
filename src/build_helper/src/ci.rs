@@ -17,7 +17,11 @@ impl CiEnv {
     }
 
     pub fn is_ci() -> bool {
-        Self::current() != CiEnv::None
+        Self::current().is_running_in_ci()
+    }
+
+    pub fn is_running_in_ci(self) -> bool {
+        self != CiEnv::None
     }
 
     /// Checks if running in rust-lang/rust managed CI job.
