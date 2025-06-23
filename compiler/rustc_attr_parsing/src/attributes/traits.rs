@@ -75,3 +75,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for DoNotImplementViaObjectParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::DoNotImplementViaObject;
 }
+
+pub(crate) struct CoinductiveParser;
+impl<S: Stage> NoArgsAttributeParser<S> for CoinductiveParser {
+    const PATH: &[Symbol] = &[sym::rustc_coinductive];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Coinductive;
+}

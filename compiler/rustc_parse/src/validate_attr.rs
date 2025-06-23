@@ -296,6 +296,7 @@ fn emit_malformed_attribute(
             | sym::rustc_pass_by_value
             | sym::rustc_deny_explicit_impl
             | sym::rustc_do_not_implement_via_object
+            | sym::rustc_coinductive
             | sym::const_trait
             | sym::repr
             | sym::align
