@@ -120,6 +120,11 @@ impl BootstrapCommand {
         self
     }
 
+    pub fn stdin(&mut self, stdin: std::process::Stdio) -> &mut Self {
+        self.command.stdin(stdin);
+        self
+    }
+
     #[must_use]
     pub fn delay_failure(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
