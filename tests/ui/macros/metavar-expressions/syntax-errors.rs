@@ -28,13 +28,35 @@ macro_rules! metavar_with_literal_suffix {
     //~^ ERROR only unsuffixes integer literals are supported in meta-variable expressions
 }
 
-macro_rules! metavar_without_parens {
-    ( $( $i:ident ),* ) => { ${ count{i} } };
+macro_rules! mve_without_parens {
+    ( $( $i:ident ),* ) => { ${ count } };
     //~^ ERROR meta-variable expression parameter must be wrapped in parentheses
 }
 
 #[rustfmt::skip]
-macro_rules! open_brackets_without_tokens {
+macro_rules! empty_expression {
+    () => { ${} };
+    //~^ ERROR expected identifier or string literal
+}
+
+#[rustfmt::skip]
+macro_rules! open_brackets_with_lit {
+     () => { ${ "hi" } };
+     //~^ ERROR expected identifier
+ }
+
+macro_rules! mve_wrong_delim {
+    ( $( $i:ident ),* ) => { ${ count{i} } };
+    //~^ ERROR meta-variable expression parameter must be wrapped in parentheses
+}
+
+macro_rules! invalid_metavar {
+    () => { ${ignore($123)} }
+    //~^ ERROR expected identifier, found `123`
+}
+
+#[rustfmt::skip]
+macro_rules! open_brackets_with_group {
     ( $( $i:ident ),* ) => { ${ {} } };
     //~^ ERROR expected identifier
 }
