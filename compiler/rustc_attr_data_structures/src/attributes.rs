@@ -365,6 +365,9 @@ pub enum AttributeKind {
     /// Represents `#[type_const]`.
     TypeConst(Span),
 
+    /// Represents `#[rustc_unsafe_specialization_marker]`.
+    UnsafeSpecializationMarker(Span),
+
     /// Represents `#[used]`
     Used { used_by: UsedBy, span: Span },
     // tidy-alphabetical-end

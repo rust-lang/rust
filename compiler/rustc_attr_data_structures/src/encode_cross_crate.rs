@@ -61,6 +61,7 @@ impl AttributeKind {
             TargetFeature(..) => No,
             TrackCaller(..) => Yes,
             TypeConst(..) => Yes,
+            UnsafeSpecializationMarker(..) => No,
             Used { .. } => No,
             // tidy-alphabetical-end
         }

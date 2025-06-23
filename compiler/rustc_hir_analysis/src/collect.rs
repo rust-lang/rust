@@ -877,14 +877,13 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     )
     .unwrap_or([false; 2]);
 
-    let specialization_kind =
-        if attrs.iter().any(|attr| attr.has_name(sym::rustc_unsafe_specialization_marker)) {
-            ty::trait_def::TraitSpecializationKind::Marker
-        } else if find_attr!(attrs, AttributeKind::SpecializationTrait(_)) {
-            ty::trait_def::TraitSpecializationKind::AlwaysApplicable
-        } else {
-            ty::trait_def::TraitSpecializationKind::None
-        };
+    let specialization_kind = if find_attr!(attrs, AttributeKind::UnsafeSpecializationMarker(_)) {
+        ty::trait_def::TraitSpecializationKind::Marker
+    } else if find_attr!(attrs, AttributeKind::SpecializationTrait(_)) {
+        ty::trait_def::TraitSpecializationKind::AlwaysApplicable
+    } else {
+        ty::trait_def::TraitSpecializationKind::None
+    };
     let must_implement_one_of = attrs
         .iter()
         .find(|attr| attr.has_name(sym::rustc_must_implement_one_of))
