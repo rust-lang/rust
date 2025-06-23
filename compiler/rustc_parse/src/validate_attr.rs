@@ -283,6 +283,7 @@ pub fn check_builtin_meta_item(
                 | sym::rustc_confusables
                 | sym::rustc_skip_during_method_dispatch
                 | sym::rustc_pass_by_value
+                | sym::rustc_deny_explicit_impl
                 | sym::const_trait
                 | sym::repr
                 | sym::align

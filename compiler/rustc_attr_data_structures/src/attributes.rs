@@ -237,6 +237,9 @@ pub enum AttributeKind {
     /// Represents `#[const_trait]`.
     ConstTrait(Span),
 
+    ///Represents `#[rustc_deny_explicit_impl]`.
+    DenyExplicitImpl(Span),
+
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
     Deprecation { deprecation: Deprecation, span: Span },
 

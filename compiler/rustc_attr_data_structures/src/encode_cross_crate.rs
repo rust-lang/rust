@@ -24,6 +24,7 @@ impl AttributeKind {
             ConstStability { .. } => Yes,
             ConstStabilityIndirect => No,
             ConstTrait(..) => No,
+            DenyExplicitImpl(..) => No,
             Deprecation { .. } => Yes,
             DocComment { .. } => Yes,
             Dummy => No,

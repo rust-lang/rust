@@ -122,7 +122,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match attr {
                 Attribute::Parsed(
                     AttributeKind::SkipDuringMethodDispatch { span: attr_span, .. }
-                    | AttributeKind::ConstTrait(attr_span),
+                    | AttributeKind::ConstTrait(attr_span)
+                    | AttributeKind::DenyExplicitImpl(attr_span),
                 ) => {
                     self.check_must_be_applied_to_trait(*attr_span, span, target);
                 }
@@ -299,7 +300,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
                         [sym::rustc_coinductive, ..]
                         | [sym::rustc_must_implement_one_of, ..]
-                        | [sym::rustc_deny_explicit_impl, ..]
                         | [sym::rustc_do_not_implement_via_object, ..]
                         => self.check_must_be_applied_to_trait(attr.span(), span, target),
                         [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
