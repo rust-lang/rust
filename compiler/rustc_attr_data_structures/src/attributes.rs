@@ -256,6 +256,9 @@ pub enum AttributeKind {
     /// Represents `#[ffi_const]`.
     FfiConst(Span),
 
+    /// Represents `#[ffi_pure]`.
+    FfiPure(Span),
+
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
 

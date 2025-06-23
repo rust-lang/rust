@@ -73,3 +73,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for FfiConstParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiConst;
 }
+
+pub(crate) struct FfiPureParser;
+impl<S: Stage> NoArgsAttributeParser<S> for FfiPureParser {
+    const PATH: &[Symbol] = &[sym::ffi_pure];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
+}
