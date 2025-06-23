@@ -32,14 +32,8 @@ where
         debug_assert!(self.term_is_fully_unconstrained(goal));
         let cx = self.cx();
         match goal.predicate.alias.kind(cx) {
-            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
-                let trait_ref = goal.predicate.alias.trait_ref(cx);
-                let (_, proven_via) =
-                    self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
-                        let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
-                        ecx.compute_trait_goal(trait_goal)
-                    })?;
-                self.assemble_and_merge_candidates(proven_via, goal, |ecx| {
+            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => self
+                .assemble_and_merge_candidates(goal, |ecx| {
                     ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
                         this.structurally_instantiate_normalizes_to_term(
                             goal,
@@ -47,8 +41,7 @@ where
                         );
                         this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     })
-                })
-            }
+                }),
             ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => {
                 self.normalize_inherent_associated_term(goal)
             }

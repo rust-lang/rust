@@ -591,7 +591,7 @@ where
         if let Some(kind) = kind.no_bound_vars() {
             match kind {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
-                    self.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
+                    self.compute_trait_goal(Goal { param_env, predicate })
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
                     self.compute_host_effect_goal(Goal { param_env, predicate })

@@ -1433,6 +1433,17 @@ where
     pub(super) fn compute_trait_goal(
         &mut self,
         goal: Goal<I, TraitPredicate<I>>,
+    ) -> QueryResult<I> {
+        let Some(goal) = self.normalize_goal_self_ty(goal)? else {
+            return self.forced_ambiguity(MaybeCause::Ambiguity).map(|c| c.result);
+        };
+        self.compute_trait_goal_for_normalized_self_ty(goal).map(|(r, _via)| r)
+    }
+
+    #[instrument(level = "trace", skip(self))]
+    pub(super) fn compute_trait_goal_for_normalized_self_ty(
+        &mut self,
+        goal: Goal<I, TraitPredicate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         let candidates = self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
         self.merge_trait_candidates(candidates)

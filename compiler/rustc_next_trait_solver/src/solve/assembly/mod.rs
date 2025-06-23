@@ -364,22 +364,7 @@ where
         goal: Goal<I, G>,
         assemble_from: AssembleCandidatesFrom,
     ) -> Vec<Candidate<I>> {
-        let Ok(normalized_self_ty) =
-            self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
-        else {
-            return vec![];
-        };
-
-        if normalized_self_ty.is_ty_var() {
-            debug!("self type has been normalized to infer");
-            return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
-        }
-
-        let goal: Goal<I, G> =
-            goal.with(self.cx(), goal.predicate.with_self_ty(self.cx(), normalized_self_ty));
-        // Vars that show up in the rest of the goal substs may have been constrained by
-        // normalizing the self type as well, since type variables are not uniquified.
-        let goal = self.resolve_vars_if_possible(goal);
+        assert!(!goal.predicate.self_ty().is_ty_var());
 
         let mut candidates = vec![];
 
@@ -885,6 +870,30 @@ where
         }
     }
 
+    pub(super) fn normalize_goal_self_ty<G: GoalKind<D>>(
+        &mut self,
+        goal: Goal<I, G>,
+    ) -> Result<Option<Goal<I, G>>, NoSolution> {
+        let cx = self.cx();
+
+        let Ok(normalized_self_ty) =
+            self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
+        else {
+            return Err(NoSolution);
+        };
+
+        if normalized_self_ty.is_ty_var() {
+            debug!("self type has been normalized to infer");
+            return Ok(None);
+        }
+
+        let goal: Goal<I, G> = goal.with(cx, goal.predicate.with_self_ty(cx, normalized_self_ty));
+        // Vars that show up in the rest of the goal substs may have been constrained by
+        // normalizing the self type as well, since type variables are not uniquified.
+        let goal = self.resolve_vars_if_possible(goal);
+        Ok(Some(goal))
+    }
+
     /// Assemble and merge candidates for goals which are related to an underlying trait
     /// goal. Right now, this is normalizes-to and host effect goals.
     ///
@@ -918,11 +927,20 @@ where
     #[instrument(level = "debug", skip(self, inject_normalize_to_rigid_candidate), ret)]
     pub(super) fn assemble_and_merge_candidates<G: GoalKind<D>>(
         &mut self,
-        proven_via: Option<TraitGoalProvenVia>,
         goal: Goal<I, G>,
         inject_normalize_to_rigid_candidate: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> QueryResult<I> {
-        let Some(proven_via) = proven_via else {
+        let Some(goal) = self.normalize_goal_self_ty(goal)? else {
+            return self.forced_ambiguity(MaybeCause::Ambiguity).map(|c| c.result);
+        };
+
+        let cx = self.cx();
+        let trait_ref = goal.predicate.trait_ref(cx);
+        let (_, Some(proven_via)) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
+            let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
+            ecx.compute_trait_goal_for_normalized_self_ty(trait_goal)
+        })?
+        else {
             // We don't care about overflow. If proving the trait goal overflowed, then
             // it's enough to report an overflow error for that, we don't also have to
             // overflow during normalization.
