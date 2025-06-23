@@ -111,7 +111,6 @@ fn main() {
         check!(rustdoc_gui_tests, &tests_path);
         check!(rustdoc_css_themes, &librustdoc_path);
         check!(rustdoc_templates, &librustdoc_path);
-        check!(rustdoc_js, &librustdoc_path, &tools_path, &src_path);
         check!(rustdoc_json, &src_path, &ci_info);
         check!(known_bug, &crashes_path);
         check!(unknown_revision, &tests_path);
@@ -173,7 +172,17 @@ fn main() {
         };
         check!(unstable_book, &src_path, collected);
 
-        check!(ext_tool_checks, &root_path, &output_directory, bless, extra_checks, pos_args);
+        check!(
+            ext_tool_checks,
+            &root_path,
+            &output_directory,
+            &librustdoc_path,
+            &tools_path,
+            &src_path,
+            bless,
+            extra_checks,
+            pos_args
+        );
     });
 
     if bad.load(Ordering::Relaxed) {
