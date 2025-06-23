@@ -117,3 +117,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for FundamentalParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Fundamental;
 }
+
+pub(crate) struct ParenSugarParser;
+impl<S: Stage> NoArgsAttributeParser<S> for ParenSugarParser {
+    const PATH: &[Symbol] = &[sym::rustc_paren_sugar];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ParenSugar;
+}

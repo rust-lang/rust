@@ -131,9 +131,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 &Attribute::Parsed(
                     AttributeKind::SpecializationTrait(attr_span)
-                    | AttributeKind::UnsafeSpecializationMarker(attr_span),
+                    | AttributeKind::UnsafeSpecializationMarker(attr_span)
+                    | AttributeKind::ParenSugar(attr_span),
                 ) => {
-                    // FIXME(specialization): more validation is needed
+                    // FIXME: more validation is needed
                     self.check_must_be_applied_to_trait(attr_span, span, target);
                 }
                 &Attribute::Parsed(AttributeKind::TypeConst(attr_span)) => {

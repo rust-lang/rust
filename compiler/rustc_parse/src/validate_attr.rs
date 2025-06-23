@@ -291,6 +291,7 @@ pub fn check_builtin_meta_item(
                 | sym::rustc_unsafe_specialization_marker
                 | sym::marker
                 | sym::fundamental
+                | sym::rustc_paren_sugar
                 | sym::type_const
                 | sym::repr
                 | sym::align

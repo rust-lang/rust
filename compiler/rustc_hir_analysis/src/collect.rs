@@ -860,7 +860,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         hir::Constness::NotConst
     };
 
-    let paren_sugar = attrs.iter().any(|attr| attr.has_name(sym::rustc_paren_sugar));
+    let paren_sugar = find_attr!(attrs, AttributeKind::ParenSugar(_));
     if paren_sugar && !tcx.features().unboxed_closures() {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }

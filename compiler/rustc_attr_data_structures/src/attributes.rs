@@ -325,6 +325,9 @@ pub enum AttributeKind {
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 
+    /// Represents `#[rustc_paren_sugar]`.
+    ParenSugar(Span),
+
     /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
     PassByValue(Span),
 
