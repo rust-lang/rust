@@ -166,6 +166,14 @@ impl Dir {
     ) -> io::Result<()> {
         self.0
     }
+
+    pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        _original: P,
+        _link: Q,
+    ) -> io::Result<()> {
+        self.0
+    }
 }
 
 impl fmt::Debug for Dir {

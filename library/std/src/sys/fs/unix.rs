@@ -79,7 +79,7 @@ use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, st
     target_os = "solaris",
     target_vendor = "apple",
 ))]
-use libc::{mkdirat, openat as openat64, renameat, unlinkat};
+use libc::{mkdirat, openat as openat64, renameat, symlinkat, unlinkat};
 #[cfg(not(any(
     target_os = "redox",
     target_os = "espidf",
@@ -94,7 +94,7 @@ use libc::{mkdirat, openat as openat64, renameat, unlinkat};
     target_vendor = "apple",
     miri
 )))]
-use libc::{mkdirat, openat64, renameat, unlinkat};
+use libc::{mkdirat, openat64, renameat, symlinkat, unlinkat};
 
 #[cfg(any(target_os = "freebsd", target_os = "aix"))]
 const TRAVERSE_DIRECTORY: i32 = libc::O_EXEC;
@@ -400,6 +400,12 @@ impl Dir {
         })
     }
 
+    pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(&self, original: P, link: Q) -> io::Result<()> {
+        run_path_with_cstr(original.as_ref(), &|original| {
+            run_path_with_cstr(link.as_ref(), &|link| self.symlink_c(original, link))
+        })
+    }
+
     pub fn open_c(&self, path: &CStr, opts: &OpenOptions) -> io::Result<File> {
         let flags = libc::O_CLOEXEC
             | opts.get_access_mode()?
@@ -459,6 +465,10 @@ impl Dir {
             renameat(self.0.as_raw_fd(), p1.as_ptr(), new_dir.0.as_raw_fd(), p2.as_ptr())
         })
         .map(|_| ())
+    }
+
+    pub fn symlink_c(&self, original: &CStr, link: &CStr) -> io::Result<()> {
+        cvt(unsafe { symlinkat(original.as_ptr(), self.0.as_raw_fd(), link.as_ptr()) }).map(|_| ())
     }
 }
 
