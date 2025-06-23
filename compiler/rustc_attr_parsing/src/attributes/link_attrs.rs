@@ -66,3 +66,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for ExportStableParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
 }
+
+pub(crate) struct FfiConstParser;
+impl<S: Stage> NoArgsAttributeParser<S> for FfiConstParser {
+    const PATH: &[Symbol] = &[sym::ffi_const];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiConst;
+}

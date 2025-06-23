@@ -287,6 +287,7 @@ fn emit_malformed_attribute(
         name,
         sym::inline
             | sym::export_stable
+            | sym::ffi_const
             | sym::may_dangle
             | sym::rustc_as_ptr
             | sym::rustc_pub_transparent

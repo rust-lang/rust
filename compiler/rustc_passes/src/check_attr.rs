@@ -204,6 +204,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::ExportStable) => {
                     // handled in `check_export`
                 }
+                &Attribute::Parsed(AttributeKind::FfiConst(attr_span)) => {
+                    self.check_ffi_const(attr_span, target)
+                }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
@@ -298,7 +301,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_has_incoherent_inherent_impls(attr, span, target)
                         }
                         [sym::ffi_pure, ..] => self.check_ffi_pure(attr.span(), attrs, target),
-                        [sym::ffi_const, ..] => self.check_ffi_const(attr.span(), target),
                         [sym::link_ordinal, ..] => self.check_link_ordinal(attr, span, target),
                         [sym::link, ..] => self.check_link(hir_id, attr, span, target),
                         [sym::macro_use, ..] | [sym::macro_escape, ..] => {
@@ -1503,7 +1505,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.dcx().emit_err(errors::FfiPureInvalidTarget { attr_span });
             return;
         }
-        if attrs.iter().any(|a| a.has_name(sym::ffi_const)) {
+        if find_attr!(attrs, AttributeKind::FfiConst(_)) {
             // `#[ffi_const]` functions cannot be `#[ffi_pure]`
             self.dcx().emit_err(errors::BothFfiConstAndPure { attr_span });
         }
