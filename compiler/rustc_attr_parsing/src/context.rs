@@ -39,7 +39,7 @@ use crate::attributes::stability::{
 };
 use crate::attributes::traits::{
     CoinductiveParser, ConstTraitParser, DenyExplicitImplParser, DoNotImplementViaObjectParser,
-    SkipDuringMethodDispatchParser, TypeConstParser,
+    SkipDuringMethodDispatchParser, SpecializationTraitParser, TypeConstParser,
 };
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
@@ -155,6 +155,7 @@ attribute_parsers!(
         Single<WithoutArgs<NonExhaustiveParser>>,
         Single<WithoutArgs<PassByValueParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
+        Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
         Single<WithoutArgs<TypeConstParser>>,
         // tidy-alphabetical-end

@@ -298,6 +298,7 @@ fn emit_malformed_attribute(
             | sym::rustc_do_not_implement_via_object
             | sym::rustc_coinductive
             | sym::const_trait
+            | sym::rustc_specialization_trait
             | sym::type_const
             | sym::repr
             | sym::align

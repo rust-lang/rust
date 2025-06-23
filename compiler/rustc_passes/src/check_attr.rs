@@ -125,7 +125,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Coinductive(attr_span)
                     | AttributeKind::ConstTrait(attr_span)
                     | AttributeKind::DenyExplicitImpl(attr_span)
-                    | AttributeKind::DoNotImplementViaObject(attr_span),
+                    | AttributeKind::DoNotImplementViaObject(attr_span)
+                    | AttributeKind::SpecializationTrait(attr_span),
                 ) => {
                     self.check_must_be_applied_to_trait(*attr_span, span, target);
                 }
