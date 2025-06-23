@@ -20,7 +20,7 @@ use rustc_middle::ty::{TyCtxt, VisitorResult, try_visit};
 use rustc_middle::{bug, ty};
 use rustc_next_trait_solver::resolve::eager_resolve_vars;
 use rustc_next_trait_solver::solve::inspect::{self, instantiate_canonical_state};
-use rustc_next_trait_solver::solve::{GenerateProofTree, MaybeCause, SolverDelegateEvalExt as _};
+use rustc_next_trait_solver::solve::{MaybeCause, SolverDelegateEvalExt as _};
 use rustc_span::Span;
 use tracing::instrument;
 
@@ -248,9 +248,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                     // considering the constrained RHS, and pass the resulting certainty to
                     // `InspectGoal::new` so that the goal has the right result (and maintains
                     // the impression that we don't do this normalizes-to infer hack at all).
-                    let (nested, proof_tree) =
-                        infcx.evaluate_root_goal_raw(goal, GenerateProofTree::Yes, None);
-                    let proof_tree = proof_tree.unwrap();
+                    let (nested, proof_tree) = infcx.evaluate_root_goal_for_proof_tree(goal, span);
                     let nested_goals_result = nested.and_then(|(nested, _)| {
                         normalizes_to_term_hack.constrain_and(
                             infcx,
@@ -284,9 +282,8 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 // into another candidate who ends up with different inference
                 // constraints, we get an ICE if we already applied the constraints
                 // from the chosen candidate.
-                let proof_tree = infcx
-                    .probe(|_| infcx.evaluate_root_goal(goal, GenerateProofTree::Yes, span, None).1)
-                    .unwrap();
+                let proof_tree =
+                    infcx.probe(|_| infcx.evaluate_root_goal_for_proof_tree(goal, span).1);
                 InspectGoal::new(infcx, self.goal.depth + 1, proof_tree, None, source)
             }
         }
@@ -488,13 +485,8 @@ impl<'tcx> InferCtxt<'tcx> {
         depth: usize,
         visitor: &mut V,
     ) -> V::Result {
-        let (_, proof_tree) = <&SolverDelegate<'tcx>>::from(self).evaluate_root_goal(
-            goal,
-            GenerateProofTree::Yes,
-            visitor.span(),
-            None,
-        );
-        let proof_tree = proof_tree.unwrap();
+        let (_, proof_tree) = <&SolverDelegate<'tcx>>::from(self)
+            .evaluate_root_goal_for_proof_tree(goal, visitor.span());
         visitor.visit_goal(&InspectGoal::new(self, depth, proof_tree, None, GoalSource::Misc))
     }
 }
