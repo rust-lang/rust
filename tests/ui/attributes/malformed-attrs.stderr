@@ -116,12 +116,6 @@ error: malformed `cfi_encoding` attribute input
 LL | #[cfi_encoding]
    | ^^^^^^^^^^^^^^^ help: must be of the form: `#[cfi_encoding = "encoding"]`
 
-error: malformed `type_const` attribute input
-  --> $DIR/malformed-attrs.rs:143:5
-   |
-LL |     #[type_const = 1]
-   |     ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[type_const]`
-
 error: malformed `marker` attribute input
   --> $DIR/malformed-attrs.rs:155:1
    |
@@ -554,6 +548,15 @@ LL | #[non_exhaustive = 1]
    | |                |
    | |                didn't expect any arguments here
    | help: must be of the form: `#[non_exhaustive]`
+
+error[E0565]: malformed `type_const` attribute input
+  --> $DIR/malformed-attrs.rs:143:5
+   |
+LL |     #[type_const = 1]
+   |     ^^^^^^^^^^^^^---^
+   |     |            |
+   |     |            didn't expect any arguments here
+   |     help: must be of the form: `#[type_const]`
 
 error: attribute should be applied to `const fn`
   --> $DIR/malformed-attrs.rs:34:1

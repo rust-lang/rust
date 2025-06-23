@@ -129,6 +129,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ) => {
                     self.check_must_be_applied_to_trait(*attr_span, span, target);
                 }
+                &Attribute::Parsed(AttributeKind::TypeConst(attr_span)) => {
+                    self.check_type_const(hir_id, attr_span, target)
+                }
                 Attribute::Parsed(AttributeKind::Confusables { first_span, .. }) => {
                     self.check_confusables(*first_span, target);
                 }
@@ -337,9 +340,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::coroutine, ..] => {
                             self.check_coroutine(attr, target);
-                        }
-                        [sym::type_const, ..] => {
-                            self.check_type_const(hir_id,attr, target);
                         }
                         [sym::linkage, ..] => self.check_linkage(attr, span, target),
                         [
@@ -2513,7 +2513,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_type_const(&self, hir_id: HirId, attr: &Attribute, target: Target) {
+    fn check_type_const(&self, hir_id: HirId, attr_span: Span, target: Target) {
         let tcx = self.tcx;
         if target == Target::AssocConst
             && let parent = tcx.parent(hir_id.expect_owner().to_def_id())
@@ -2523,7 +2523,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         } else {
             self.dcx()
                 .struct_span_err(
-                    attr.span(),
+                    attr_span,
                     "`#[type_const]` must only be applied to trait associated constants",
                 )
                 .emit();

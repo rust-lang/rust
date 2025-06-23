@@ -359,6 +359,9 @@ pub enum AttributeKind {
     /// Represents `#[track_caller]`
     TrackCaller(Span),
 
+    /// Represents `#[type_const]`.
+    TypeConst(Span),
+
     /// Represents `#[used]`
     Used { used_by: UsedBy, span: Span },
     // tidy-alphabetical-end

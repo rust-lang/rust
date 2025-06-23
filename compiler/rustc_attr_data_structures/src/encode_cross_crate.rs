@@ -59,6 +59,7 @@ impl AttributeKind {
             StdInternalSymbol(..) => No,
             TargetFeature(..) => No,
             TrackCaller(..) => Yes,
+            TypeConst(..) => Yes,
             Used { .. } => No,
             // tidy-alphabetical-end
         }
