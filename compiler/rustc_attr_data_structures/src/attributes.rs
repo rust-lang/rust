@@ -272,6 +272,9 @@ pub enum AttributeKind {
     /// Represents `#[ffi_pure]`.
     FfiPure(Span),
 
+    /// Represents `#[fundamental]`.
+    Fundamental,
+
     /// Represents `#[ignore]`
     Ignore {
         span: Span,

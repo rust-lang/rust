@@ -142,6 +142,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::Marker(attr_span)) => {
                     self.check_marker(hir_id, attr_span, span, target)
                 }
+                Attribute::Parsed(AttributeKind::Fundamental) => {
+                    // FIXME: add validation
+                }
                 Attribute::Parsed(AttributeKind::Confusables { first_span, .. }) => {
                     self.check_confusables(*first_span, target);
                 }
@@ -374,7 +377,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::prelude_import
                             | sym::panic_handler
                             | sym::allow_internal_unsafe
-                            | sym::fundamental
                             | sym::lang
                             | sym::needs_allocator
                             | sym::default_lib_allocator

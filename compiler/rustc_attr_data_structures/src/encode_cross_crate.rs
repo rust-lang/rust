@@ -34,6 +34,7 @@ impl AttributeKind {
             ExportStable => No,
             FfiConst(..) => No,
             FfiPure(..) => No,
+            Fundamental { .. } => Yes,
             Ignore { .. } => No,
             Inline(..) => No,
             LinkName { .. } => Yes,

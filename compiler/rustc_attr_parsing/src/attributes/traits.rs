@@ -110,3 +110,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for MarkerParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::Marker;
 }
+
+pub(crate) struct FundamentalParser;
+impl<S: Stage> NoArgsAttributeParser<S> for FundamentalParser {
+    const PATH: &[Symbol] = &[sym::fundamental];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Fundamental;
+}
