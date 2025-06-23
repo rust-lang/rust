@@ -244,6 +244,9 @@ pub enum AttributeKind {
         reason: Option<Symbol>,
     },
 
+    /// Represents `#[no_mangle]`
+    NoMangle(Span),
+
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 
