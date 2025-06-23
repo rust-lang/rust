@@ -83,7 +83,7 @@ declare_features! (
     /// Allows overloading augmented assignment operations like `a += b`.
     (accepted, augmented_assignments, "1.8.0", Some(28235)),
     /// Allows using `avx512*` target features.
-    (accepted, avx512_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
+    (accepted, avx512_target_feature, "1.89.0", Some(44839)),
     /// Allows mixing bind-by-move in patterns and references to those identifiers in guards.
     (accepted, bind_by_move_pattern_guards, "1.39.0", Some(15287)),
     /// Allows bindings in the subpattern of a binding pattern.
@@ -221,7 +221,7 @@ declare_features! (
     /// Allows capturing variables in scope using format_args!
     (accepted, format_args_capture, "1.58.0", Some(67984)),
     /// Infer generic args for both consts and types.
-    (accepted, generic_arg_infer, "CURRENT_RUSTC_VERSION", Some(85077)),
+    (accepted, generic_arg_infer, "1.89.0", Some(85077)),
     /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
     (accepted, generic_associated_types, "1.65.0", Some(44265)),
     /// Allows attributes on lifetime/type formal parameters in generics (RFC 1327).
@@ -262,7 +262,7 @@ declare_features! (
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120)),
     // Allows using the `kl` and `widekl` target features and the associated intrinsics
-    (accepted, keylocker_x86, "CURRENT_RUSTC_VERSION", Some(134813)),
+    (accepted, keylocker_x86, "1.89.0", Some(134813)),
     /// Allows `'a: { break 'a; }`.
     (accepted, label_break_value, "1.65.0", Some(48594)),
     /// Allows `let...else` statements.
@@ -365,7 +365,7 @@ declare_features! (
     /// Lessens the requirements for structs to implement `Unsize`.
     (accepted, relaxed_struct_unsize, "1.58.0", Some(81793)),
     /// Allows the `#[repr(i128)]` attribute for enums.
-    (accepted, repr128, "CURRENT_RUSTC_VERSION", Some(56071)),
+    (accepted, repr128, "1.89.0", Some(56071)),
     /// Allows `repr(align(16))` struct attribute (RFC 1358).
     (accepted, repr_align, "1.25.0", Some(33626)),
     /// Allows using `#[repr(align(X))]` on enums with equivalent semantics
@@ -387,7 +387,7 @@ declare_features! (
     /// Allows `Self` struct constructor (RFC 2302).
     (accepted, self_struct_ctor, "1.32.0", Some(51994)),
     /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
-    (accepted, sha512_sm_x86, "CURRENT_RUSTC_VERSION", Some(126624)),
+    (accepted, sha512_sm_x86, "1.89.0", Some(126624)),
     /// Shorten the tail expression lifetime
     (accepted, shorter_tail_lifetimes, "1.84.0", Some(123739)),
     /// Allows using subslice patterns, `[a, .., b]` and `[a, xs @ .., b]`.
