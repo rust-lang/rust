@@ -139,6 +139,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::TypeConst(attr_span)) => {
                     self.check_type_const(hir_id, attr_span, target)
                 }
+                &Attribute::Parsed(AttributeKind::Marker(attr_span)) => {
+                    self.check_marker(hir_id, attr_span, span, target)
+                }
                 Attribute::Parsed(AttributeKind::Confusables { first_span, .. }) => {
                     self.check_confusables(*first_span, target);
                 }
@@ -272,7 +275,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::no_sanitize, ..] => {
                             self.check_no_sanitize(attr, span, target)
                         }
-                        [sym::marker, ..] => self.check_marker(hir_id, attr, span, target),
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
                         [sym::doc, ..] => self.check_doc_attrs(
                             attr,
@@ -836,7 +838,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[marker]` attribute on an `item` is valid.
-    fn check_marker(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_marker(&self, hir_id: HirId, attr_span: Span, span: Span, target: Target) {
         match target {
             Target::Trait => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
@@ -844,13 +846,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "marker");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr_span, "marker");
             }
             _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToTrait {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
+                self.dcx()
+                    .emit_err(errors::AttrShouldBeAppliedToTrait { attr_span, defn_span: span });
             }
         }
     }

@@ -294,6 +294,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
 
+    /// Represents `#[marker]`.
+    Marker(Span),
+
     /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
     MayDangle(Span),
 

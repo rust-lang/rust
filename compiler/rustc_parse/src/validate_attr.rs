@@ -289,6 +289,7 @@ pub fn check_builtin_meta_item(
                 | sym::const_trait
                 | sym::rustc_specialization_trait
                 | sym::rustc_unsafe_specialization_marker
+                | sym::marker
                 | sym::type_const
                 | sym::repr
                 | sym::align

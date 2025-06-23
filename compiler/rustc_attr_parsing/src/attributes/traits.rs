@@ -103,3 +103,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for UnsafeSpecializationMarkerParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::UnsafeSpecializationMarker;
 }
+
+pub(crate) struct MarkerParser;
+impl<S: Stage> NoArgsAttributeParser<S> for MarkerParser {
+    const PATH: &[Symbol] = &[sym::marker];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Marker;
+}
