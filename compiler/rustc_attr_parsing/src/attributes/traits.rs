@@ -96,3 +96,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for SpecializationTraitParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::SpecializationTrait;
 }
+
+pub(crate) struct UnsafeSpecializationMarkerParser;
+impl<S: Stage> NoArgsAttributeParser<S> for UnsafeSpecializationMarkerParser {
+    const PATH: &[Symbol] = &[sym::rustc_unsafe_specialization_marker];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::UnsafeSpecializationMarker;
+}

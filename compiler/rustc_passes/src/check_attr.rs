@@ -125,10 +125,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Coinductive(attr_span)
                     | AttributeKind::ConstTrait(attr_span)
                     | AttributeKind::DenyExplicitImpl(attr_span)
-                    | AttributeKind::DoNotImplementViaObject(attr_span)
-                    | AttributeKind::SpecializationTrait(attr_span),
+                    | AttributeKind::DoNotImplementViaObject(attr_span),
                 ) => {
                     self.check_must_be_applied_to_trait(*attr_span, span, target);
+                }
+                &Attribute::Parsed(
+                    AttributeKind::SpecializationTrait(attr_span)
+                    | AttributeKind::UnsafeSpecializationMarker(attr_span),
+                ) => {
+                    // FIXME(specialization): more validation is needed
+                    self.check_must_be_applied_to_trait(attr_span, span, target);
                 }
                 &Attribute::Parsed(AttributeKind::TypeConst(attr_span)) => {
                     self.check_type_const(hir_id, attr_span, target)
