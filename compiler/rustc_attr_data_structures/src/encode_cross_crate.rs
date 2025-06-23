@@ -44,6 +44,7 @@ impl AttributeKind {
             NoMangle(..) => No,
             NonExhaustive(..) => Yes,
             Optimize(..) => No,
+            ParenSugar(..) => No,
             PassByValue(..) => Yes,
             PubTransparent(..) => Yes,
             Repr(..) => No,
