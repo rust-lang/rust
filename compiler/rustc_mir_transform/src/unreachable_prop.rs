@@ -13,13 +13,13 @@ use crate::patch::MirPatch;
 
 pub(super) struct UnreachablePropagation;
 
-impl crate::MirPass<'_> for UnreachablePropagation {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+impl<'tcx> crate::MirPass<'tcx> for UnreachablePropagation {
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
         // Enable only under -Zmir-opt-level=2 as this can make programs less debuggable.
-        sess.mir_opt_level() >= 2
+        tcx.sess.mir_opt_level() >= 2
     }
 
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut patch = MirPatch::new(body);
         let mut unreachable_blocks = FxHashSet::default();
 

@@ -10,8 +10,8 @@ use crate::simplify;
 pub(super) struct MultipleReturnTerminators;
 
 impl<'tcx> crate::MirPass<'tcx> for MultipleReturnTerminators {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 4
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.mir_opt_level() >= 4
     }
 
     fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

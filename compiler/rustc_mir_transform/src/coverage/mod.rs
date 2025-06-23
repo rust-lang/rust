@@ -29,8 +29,8 @@ use crate::coverage::mappings::ExtractedMappings;
 pub(super) struct InstrumentCoverage;
 
 impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.instrument_coverage()
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.instrument_coverage()
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {

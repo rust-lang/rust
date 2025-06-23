@@ -9,8 +9,8 @@ use rustc_session::config::MirStripDebugInfo;
 pub(super) struct StripDebugInfo;
 
 impl<'tcx> crate::MirPass<'tcx> for StripDebugInfo {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.opts.unstable_opts.mir_strip_debuginfo != MirStripDebugInfo::None
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.opts.unstable_opts.mir_strip_debuginfo != MirStripDebugInfo::None
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

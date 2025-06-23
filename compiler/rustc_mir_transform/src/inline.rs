@@ -43,16 +43,17 @@ struct CallSite<'tcx> {
 pub struct Inline;
 
 impl<'tcx> crate::MirPass<'tcx> for Inline {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        if let Some(enabled) = sess.opts.unstable_opts.inline_mir {
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        if let Some(enabled) = tcx.sess.opts.unstable_opts.inline_mir {
             return enabled;
         }
 
-        match sess.mir_opt_level() {
+        match tcx.sess.mir_opt_level() {
             0 | 1 => false,
             2 => {
-                (sess.opts.optimize == OptLevel::More || sess.opts.optimize == OptLevel::Aggressive)
-                    && sess.opts.incremental == None
+                (tcx.sess.opts.optimize == OptLevel::More
+                    || tcx.sess.opts.optimize == OptLevel::Aggressive)
+                    && tcx.sess.opts.incremental == None
             }
             _ => true,
         }
@@ -82,7 +83,7 @@ impl ForceInline {
 }
 
 impl<'tcx> crate::MirPass<'tcx> for ForceInline {
-    fn is_enabled(&self, _: &rustc_session::Session) -> bool {
+    fn is_enabled(&self, _: TyCtxt<'tcx>) -> bool {
         true
     }
 
