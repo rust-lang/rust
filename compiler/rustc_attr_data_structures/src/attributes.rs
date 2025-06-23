@@ -251,6 +251,9 @@ pub enum AttributeKind {
     /// Represents `#[export_stable]`.
     ExportStable,
 
+    /// Represents `#[ffi_const]`.
+    FfiConst(Span),
+
     /// Represents `#[ignore]`
     Ignore {
         span: Span,

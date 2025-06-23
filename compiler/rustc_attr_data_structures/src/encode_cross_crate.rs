@@ -27,6 +27,7 @@ impl AttributeKind {
             DocComment { .. } => Yes,
             ExportName { .. } => Yes,
             ExportStable => No,
+            FfiConst(..) => No,
             Ignore { .. } => No,
             Inline(..) => No,
             LinkName { .. } => Yes,

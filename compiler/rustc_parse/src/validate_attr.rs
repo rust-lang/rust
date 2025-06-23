@@ -272,6 +272,7 @@ pub fn check_builtin_meta_item(
             name,
             sym::inline
                 | sym::export_stable
+                | sym::ffi_const
                 | sym::may_dangle
                 | sym::rustc_as_ptr
                 | sym::rustc_pub_transparent
