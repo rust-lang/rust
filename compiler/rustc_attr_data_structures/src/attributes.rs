@@ -343,6 +343,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_skip_during_method_dispatch]`.
     SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
 
+    /// Represents `#[rustc_specialization_trait]`.
+    SpecializationTrait(Span),
+
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {
         stability: Stability,

@@ -55,6 +55,7 @@ impl AttributeKind {
             RustcLayoutScalarValidRangeStart(..) => Yes,
             RustcObjectLifetimeDefault => No,
             SkipDuringMethodDispatch { .. } => No,
+            SpecializationTrait(..) => No,
             Stability { .. } => Yes,
             StdInternalSymbol(..) => No,
             TargetFeature(..) => No,

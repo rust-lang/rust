@@ -89,3 +89,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for TypeConstParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::TypeConst;
 }
+
+pub(crate) struct SpecializationTraitParser;
+impl<S: Stage> NoArgsAttributeParser<S> for SpecializationTraitParser {
+    const PATH: &[Symbol] = &[sym::rustc_specialization_trait];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::SpecializationTrait;
+}

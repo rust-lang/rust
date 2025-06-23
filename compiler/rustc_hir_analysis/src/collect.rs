@@ -880,7 +880,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let specialization_kind =
         if attrs.iter().any(|attr| attr.has_name(sym::rustc_unsafe_specialization_marker)) {
             ty::trait_def::TraitSpecializationKind::Marker
-        } else if attrs.iter().any(|attr| attr.has_name(sym::rustc_specialization_trait)) {
+        } else if find_attr!(attrs, AttributeKind::SpecializationTrait(_)) {
             ty::trait_def::TraitSpecializationKind::AlwaysApplicable
         } else {
             ty::trait_def::TraitSpecializationKind::None
