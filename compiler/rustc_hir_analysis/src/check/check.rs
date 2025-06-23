@@ -2,8 +2,8 @@ use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
 use rustc_abi::FieldIdx;
-use rustc_attr_data_structures::AttributeKind;
 use rustc_attr_data_structures::ReprAttr::ReprPacked;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{EmissionGuarantee, MultiSpan};
@@ -104,7 +104,7 @@ pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ex
 pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, fn_sig_span: Span) {
     if fn_sig.abi == ExternAbi::Custom {
         // Function definitions that use `extern "custom"` must be naked functions.
-        if !tcx.has_attr(def_id, sym::naked) {
+        if !find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Naked(_)) {
             tcx.dcx().emit_err(crate::errors::AbiCustomClothedFunction {
                 span: fn_sig_span,
                 naked_span: tcx.def_span(def_id).shrink_to_lo(),

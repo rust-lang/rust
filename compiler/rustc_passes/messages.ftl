@@ -491,11 +491,6 @@ passes_must_not_suspend =
 passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
 
-passes_naked_functions_incompatible_attribute =
-    attribute incompatible with `#[unsafe(naked)]`
-    .label = the `{$attr}` attribute is incompatible with `#[unsafe(naked)]`
-    .naked_attribute = function marked with `#[unsafe(naked)]` here
-
 passes_no_link =
     attribute should be applied to an `extern crate` item
     .label = not an `extern crate` item
