@@ -16,6 +16,7 @@ use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use span::{Edition, FileId};
+use toolchain::Tool;
 use tracing::instrument;
 use triomphe::Arc;
 
@@ -29,6 +30,7 @@ use crate::{
     project_json::{Crate, CrateArrayIdx},
     sysroot::RustLibSrcWorkspace,
     toolchain_info::{QueryConfig, rustc_cfg, target_data_layout, target_tuple, version},
+    utf8_stdout,
 };
 use tracing::{debug, error, info};
 
@@ -209,7 +211,7 @@ impl ProjectWorkspace {
         progress: &(dyn Fn(String) + Sync),
     ) -> Result<ProjectWorkspace, anyhow::Error> {
         progress("Discovering sysroot".to_owned());
-        let workspace_dir = cargo_toml.parent();
+
         let CargoConfig {
             features,
             rustc_source,
@@ -224,6 +226,7 @@ impl ProjectWorkspace {
             no_deps,
             ..
         } = config;
+        let workspace_dir = cargo_toml.parent();
         let mut sysroot = match (sysroot, sysroot_src) {
             (Some(RustLibSource::Discover), None) => Sysroot::discover(workspace_dir, extra_env),
             (Some(RustLibSource::Discover), Some(sysroot_src)) => {
@@ -237,6 +240,31 @@ impl ProjectWorkspace {
             }
             (None, _) => Sysroot::empty(),
         };
+
+        // Resolve the Cargo.toml to the workspace root as we base the `target` dir off of it.
+        let mut cmd = sysroot.tool(Tool::Cargo, workspace_dir, extra_env);
+        cmd.args(["locate-project", "--workspace", "--manifest-path", cargo_toml.as_str()]);
+        let cargo_toml = &match utf8_stdout(&mut cmd) {
+            Ok(output) => {
+                #[derive(serde_derive::Deserialize)]
+                struct Root {
+                    root: Utf8PathBuf,
+                }
+                match serde_json::from_str::<Root>(&output) {
+                    Ok(object) => ManifestPath::try_from(AbsPathBuf::assert(object.root))
+                        .expect("manifest path should be absolute"),
+                    Err(e) => {
+                        tracing::error!(%e, %cargo_toml, "failed fetching cargo workspace root");
+                        cargo_toml.clone()
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!(%e, %cargo_toml, "failed fetching cargo workspace root");
+                cargo_toml.clone()
+            }
+        };
+        let workspace_dir = cargo_toml.parent();
 
         tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.rust_lib_src_root(), root = ?sysroot.root(), "Using sysroot");
         progress("Querying project metadata".to_owned());
