@@ -26,6 +26,7 @@ impl AttributeKind {
             ConstTrait(..) => No,
             DenyExplicitImpl(..) => No,
             Deprecation { .. } => Yes,
+            DoNotImplementViaObject(..) => No,
             DocComment { .. } => Yes,
             Dummy => No,
             ExportName { .. } => Yes,

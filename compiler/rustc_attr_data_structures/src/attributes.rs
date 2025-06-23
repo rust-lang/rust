@@ -243,6 +243,9 @@ pub enum AttributeKind {
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
     Deprecation { deprecation: Deprecation, span: Span },
 
+    /// Represents `#[rustc_do_not_implement_via_object]`.
+    DoNotImplementViaObject(Span),
+
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
