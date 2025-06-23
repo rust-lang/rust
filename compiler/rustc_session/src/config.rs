@@ -1364,8 +1364,10 @@ impl Default for Options {
             cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             real_rust_source_base_dir: None,
+            real_rustc_dev_source_base_dir: None,
             edition: DEFAULT_EDITION,
             json_artifact_notifications: false,
+            json_timings: false,
             json_unused_externs: JsonUnusedExterns::No,
             json_future_incompat: false,
             pretty: None,
@@ -1880,6 +1882,9 @@ pub struct JsonConfig {
     pub json_rendered: HumanReadableErrorType,
     pub json_color: ColorConfig,
     json_artifact_notifications: bool,
+    /// Output start and end timestamps of several high-level compilation sections
+    /// (frontend, backend, linker).
+    json_timings: bool,
     pub json_unused_externs: JsonUnusedExterns,
     json_future_incompat: bool,
 }
@@ -1921,6 +1926,7 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
     let mut json_artifact_notifications = false;
     let mut json_unused_externs = JsonUnusedExterns::No;
     let mut json_future_incompat = false;
+    let mut json_timings = false;
     for option in matches.opt_strs("json") {
         // For now conservatively forbid `--color` with `--json` since `--json`
         // won't actually be emitting any colors and anything colorized is
@@ -1937,6 +1943,7 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
                 }
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
+                "timings" => json_timings = true,
                 "unused-externs" => json_unused_externs = JsonUnusedExterns::Loud,
                 "unused-externs-silent" => json_unused_externs = JsonUnusedExterns::Silent,
                 "future-incompat" => json_future_incompat = true,
@@ -1949,6 +1956,7 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
         json_rendered,
         json_color,
         json_artifact_notifications,
+        json_timings,
         json_unused_externs,
         json_future_incompat,
     }
@@ -2476,6 +2484,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         json_rendered,
         json_color,
         json_artifact_notifications,
+        json_timings,
         json_unused_externs,
         json_future_incompat,
     } = parse_json(early_dcx, matches);
@@ -2496,6 +2505,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut target_modifiers);
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
+
+    if !unstable_opts.unstable_options && json_timings {
+        early_dcx.early_fatal("--json=timings is unstable and requires using `-Zunstable-options`");
+    }
 
     check_error_format_stability(early_dcx, &unstable_opts, error_format);
 
@@ -2701,9 +2714,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let sysroot = filesearch::materialize_sysroot(sysroot_opt);
 
-    let real_rust_source_base_dir = {
-        // This is the location used by the `rust-src` `rustup` component.
-        let mut candidate = sysroot.join("lib/rustlib/src/rust");
+    let real_source_base_dir = |suffix: &str, confirm: &str| {
+        let mut candidate = sysroot.join(suffix);
         if let Ok(metadata) = candidate.symlink_metadata() {
             // Replace the symlink bootstrap creates, with its destination.
             // We could try to use `fs::canonicalize` instead, but that might
@@ -2716,8 +2728,16 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         }
 
         // Only use this directory if it has a file we can expect to always find.
-        candidate.join("library/std/src/lib.rs").is_file().then_some(candidate)
+        candidate.join(confirm).is_file().then_some(candidate)
     };
+
+    let real_rust_source_base_dir =
+        // This is the location used by the `rust-src` `rustup` component.
+        real_source_base_dir("lib/rustlib/src/rust", "library/std/src/lib.rs");
+
+    let real_rustc_dev_source_base_dir =
+        // This is the location used by the `rustc-dev` `rustup` component.
+        real_source_base_dir("lib/rustlib/rustc-src/rust", "compiler/rustc/src/main.rs");
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
@@ -2772,8 +2792,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
         real_rust_source_base_dir,
+        real_rustc_dev_source_base_dir,
         edition,
         json_artifact_notifications,
+        json_timings,
         json_unused_externs,
         json_future_incompat,
         pretty,

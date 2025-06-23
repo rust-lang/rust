@@ -52,10 +52,9 @@ pub struct Compiler {
 pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
-            let psess = ParseSess::with_silent_emitter(
+            let psess = ParseSess::with_fatal_emitter(
                 vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
                 format!("this error occurred on the command line: `--cfg={s}`"),
-                true,
             );
             let filename = FileName::cfg_spec_source_code(&s);
 
@@ -116,10 +115,9 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
     let mut check_cfg = CheckCfg { exhaustive_names, exhaustive_values, ..CheckCfg::default() };
 
     for s in specs {
-        let psess = ParseSess::with_silent_emitter(
+        let psess = ParseSess::with_fatal_emitter(
             vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
             format!("this error occurred on the command line: `--check-cfg={s}`"),
-            true,
         );
         let filename = FileName::cfg_spec_source_code(&s);
 

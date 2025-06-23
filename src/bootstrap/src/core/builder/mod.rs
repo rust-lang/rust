@@ -130,6 +130,38 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
         // as such calling them from ./x.py isn't logical.
         unimplemented!()
     }
+
+    /// Returns metadata of the step, for tests
+    fn metadata(&self) -> Option<StepMetadata> {
+        None
+    }
+}
+
+/// Metadata that describes an executed step, mostly for testing and tracing.
+#[allow(unused)]
+#[derive(Debug)]
+pub struct StepMetadata {
+    name: &'static str,
+    kind: Kind,
+    target: TargetSelection,
+    built_by: Option<Compiler>,
+    stage: Option<u32>,
+}
+
+impl StepMetadata {
+    pub fn build(name: &'static str, target: TargetSelection) -> Self {
+        Self { name, kind: Kind::Build, target, built_by: None, stage: None }
+    }
+
+    pub fn built_by(mut self, compiler: Compiler) -> Self {
+        self.built_by = Some(compiler);
+        self
+    }
+
+    pub fn stage(mut self, stage: u32) -> Self {
+        self.stage = Some(stage);
+        self
+    }
 }
 
 pub struct RunConfig<'a> {

@@ -970,6 +970,11 @@ pub(crate) struct TypeIrInherentUsage;
 pub(crate) struct TypeIrTraitUsage;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_type_ir_direct_use)]
+#[note]
+pub(crate) struct TypeIrDirectUse;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_non_glob_import_type_ir_inherent)]
 pub(crate) struct NonGlobImportTypeIrInherent {
     #[suggestion(code = "{snippet}", applicability = "maybe-incorrect")]
@@ -2626,6 +2631,7 @@ pub(crate) struct UnusedCrateDependency {
     pub local_crate: Symbol,
 }
 
+// FIXME(jdonszelmann): duplicated in rustc_attr_parsing, should be moved there completely.
 #[derive(LintDiagnostic)]
 #[diag(lint_ill_formed_attribute_input)]
 pub(crate) struct IllFormedAttributeInput {

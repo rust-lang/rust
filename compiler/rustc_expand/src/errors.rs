@@ -183,12 +183,12 @@ pub(crate) struct FeatureNotAllowed {
 #[derive(Diagnostic)]
 #[diag(expand_recursion_limit_reached)]
 #[help]
-pub(crate) struct RecursionLimitReached<'a> {
+pub(crate) struct RecursionLimitReached {
     #[primary_span]
     pub span: Span,
     pub descr: String,
     pub suggested_limit: Limit,
-    pub crate_name: &'a str,
+    pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]

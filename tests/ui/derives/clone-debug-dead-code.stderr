@@ -40,7 +40,7 @@ LL | struct D { f: () }
    |        |
    |        field in this struct
    |
-   = note: `D` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `D` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
 
 error: field `f` is never read
   --> $DIR/clone-debug-dead-code.rs:21:12

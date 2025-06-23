@@ -27,5 +27,5 @@ impl S<()> {
 fn main() {
     let _: S::<bool>::Pr = ();
     //[shadowed]~^ ERROR associated type `Pr` not found
-    //[uncovered]~^^ ERROR ambiguous associated type
+    //[uncovered]~^^ ERROR associated type `Pr` not found
 }

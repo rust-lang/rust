@@ -105,6 +105,10 @@ build/
       debuginfo/
       ...
 
+    # Bootstrap host tools (which are always compiled with the stage0 compiler)
+    # are stored here.
+    bootstrap-tools/
+
     # Location where the stage0 Cargo and Rust compiler are unpacked. This
     # directory is purely an extracted and overlaid tarball of these two (done
     # by the bootstrap Python script). In theory, the build system does not

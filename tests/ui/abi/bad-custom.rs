@@ -73,19 +73,19 @@ unsafe extern "custom" {
 
 fn caller(f: unsafe extern "custom" fn(i64) -> i64, mut x: i64) -> i64 {
     unsafe { f(x) }
-    //~^ ERROR functions with the `"custom"` ABI cannot be called
+    //~^ ERROR functions with the "custom" ABI cannot be called
 }
 
 fn caller_by_ref(f: &unsafe extern "custom" fn(i64) -> i64, mut x: i64) -> i64 {
     unsafe { f(x) }
-    //~^ ERROR functions with the `"custom"` ABI cannot be called
+    //~^ ERROR functions with the "custom" ABI cannot be called
 }
 
 type Custom = unsafe extern "custom" fn(i64) -> i64;
 
 fn caller_alias(f: Custom, mut x: i64) -> i64 {
     unsafe { f(x) }
-    //~^ ERROR functions with the `"custom"` ABI cannot be called
+    //~^ ERROR functions with the "custom" ABI cannot be called
 }
 
 #[unsafe(naked)]
@@ -107,15 +107,15 @@ fn no_promotion_to_fn_trait(f: unsafe extern "custom" fn()) -> impl Fn()  {
 pub fn main() {
     unsafe {
         assert_eq!(double(21), 42);
-        //~^ ERROR functions with the `"custom"` ABI cannot be called
+        //~^ ERROR functions with the "custom" ABI cannot be called
 
         assert_eq!(unsafe { increment(41) }, 42);
-        //~^ ERROR functions with the `"custom"` ABI cannot be called
+        //~^ ERROR functions with the "custom" ABI cannot be called
 
         assert!(Thing(41).is_even());
-        //~^ ERROR functions with the `"custom"` ABI cannot be called
+        //~^ ERROR functions with the "custom" ABI cannot be called
 
         assert_eq!(Thing::bitwise_not(42), !42);
-        //~^ ERROR functions with the `"custom"` ABI cannot be called
+        //~^ ERROR functions with the "custom" ABI cannot be called
     }
 }

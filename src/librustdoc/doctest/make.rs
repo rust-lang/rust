@@ -456,16 +456,13 @@ fn parse_source(
     let filename = FileName::anon_source_code(&wrapped_source);
 
     let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
-    let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-        rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
-        false,
-    );
+    let translator = rustc_driver::default_translator();
     info.supports_color =
-        HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle.clone())
+        HumanEmitter::new(stderr_destination(ColorConfig::Auto), translator.clone())
             .supports_color();
     // Any errors in parsing should also appear when the doctest is compiled for real, so just
     // send all the errors that the parser emits directly into a `Sink` instead of stderr.
-    let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
+    let emitter = HumanEmitter::new(Box::new(io::sink()), translator);
 
     // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();

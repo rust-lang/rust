@@ -1213,6 +1213,17 @@ pub enum DesugaringKind {
     Contract,
     /// A pattern type range start/end
     PatTyRange,
+    /// A format literal.
+    FormatLiteral {
+        /// Was this format literal written in the source?
+        /// - `format!("boo")` => Yes,
+        /// - `format!(concat!("b", "o", "o"))` => No,
+        /// - `format!(include_str!("boo.txt"))` => No,
+        ///
+        /// If it wasn't written in the source then we have to be careful with suggestions about
+        /// rewriting it.
+        source: bool,
+    },
 }
 
 impl DesugaringKind {
@@ -1231,6 +1242,10 @@ impl DesugaringKind {
             DesugaringKind::BoundModifier => "trait bound modifier",
             DesugaringKind::Contract => "contract check",
             DesugaringKind::PatTyRange => "pattern type",
+            DesugaringKind::FormatLiteral { source: true } => "format string literal",
+            DesugaringKind::FormatLiteral { source: false } => {
+                "expression that expanded into a format string literal"
+            }
         }
     }
 
@@ -1250,6 +1265,7 @@ impl DesugaringKind {
             DesugaringKind::BoundModifier => value == "BoundModifier",
             DesugaringKind::Contract => value == "Contract",
             DesugaringKind::PatTyRange => value == "PatTyRange",
+            DesugaringKind::FormatLiteral { .. } => value == "FormatLiteral",
         }
     }
 }

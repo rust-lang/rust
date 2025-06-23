@@ -7,6 +7,7 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(not(bootstrap), allow(rustc::direct_use_of_rustc_type_ir))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
@@ -74,7 +75,9 @@ pub use snippet::Style;
 pub use termcolor::{Color, ColorSpec, WriteColor};
 use tracing::debug;
 
+use crate::emitter::TimingEvent;
 use crate::registry::Registry;
+use crate::timings::TimingRecord;
 
 pub mod annotate_snippet_emitter_writer;
 pub mod codes;
@@ -90,6 +93,7 @@ mod snippet;
 mod styled_buffer;
 #[cfg(test)]
 mod tests;
+pub mod timings;
 pub mod translation;
 
 pub type PResult<'a, T> = Result<T, Diag<'a>>;
@@ -744,40 +748,10 @@ impl DiagCtxt {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
-    pub fn make_silent(&self, fatal_note: Option<String>, emit_fatal_diagnostic: bool) {
-        // An empty type that implements `Emitter` to temporarily swap in place of the real one,
-        // which will be used in constructing its replacement.
-        struct FalseEmitter;
-
-        impl Emitter for FalseEmitter {
-            fn emit_diagnostic(&mut self, _: DiagInner, _: &Registry) {
-                unimplemented!("false emitter must only used during `make_silent`")
-            }
-
-            fn source_map(&self) -> Option<&SourceMap> {
-                unimplemented!("false emitter must only used during `make_silent`")
-            }
-        }
-
-        impl translation::Translate for FalseEmitter {
-            fn fluent_bundle(&self) -> Option<&FluentBundle> {
-                unimplemented!("false emitter must only used during `make_silent`")
-            }
-
-            fn fallback_fluent_bundle(&self) -> &FluentBundle {
-                unimplemented!("false emitter must only used during `make_silent`")
-            }
-        }
-
+    pub fn make_silent(&self) {
         let mut inner = self.inner.borrow_mut();
-        let mut prev_emitter = Box::new(FalseEmitter) as Box<dyn Emitter + DynSend>;
-        std::mem::swap(&mut inner.emitter, &mut prev_emitter);
-        let new_emitter = Box::new(emitter::SilentEmitter {
-            fatal_emitter: prev_emitter,
-            fatal_note,
-            emit_fatal_diagnostic,
-        });
-        inner.emitter = new_emitter;
+        let translator = inner.emitter.translator().clone();
+        inner.emitter = Box::new(emitter::SilentEmitter { translator });
     }
 
     pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
@@ -1154,6 +1128,14 @@ impl<'a> DiagCtxtHandle<'a> {
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
         self.inner.borrow_mut().emitter.emit_artifact_notification(path, artifact_type);
+    }
+
+    pub fn emit_timing_section_start(&self, record: TimingRecord) {
+        self.inner.borrow_mut().emitter.emit_timing_section(record, TimingEvent::Start);
+    }
+
+    pub fn emit_timing_section_end(&self, record: TimingRecord) {
+        self.inner.borrow_mut().emitter.emit_timing_section(record, TimingEvent::End);
     }
 
     pub fn emit_future_breakage_report(&self) {
@@ -1759,7 +1741,12 @@ impl DiagCtxtInner {
         args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
         let args = crate::translation::to_fluent_args(args);
-        self.emitter.translate_message(&message, &args).map_err(Report::new).unwrap().to_string()
+        self.emitter
+            .translator()
+            .translate_message(&message, &args)
+            .map_err(Report::new)
+            .unwrap()
+            .to_string()
     }
 
     fn eagerly_translate_for_subdiag(

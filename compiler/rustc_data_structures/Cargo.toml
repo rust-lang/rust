@@ -14,7 +14,6 @@ indexmap = "2.4.0"
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "12.0.1"
 rustc-hash = "2.0.0"
-rustc-rayon-core = { version = "0.5.0" }
 rustc-stable-hash = { version = "0.1.0", features = ["nightly"] }
 rustc_arena = { path = "../rustc_arena" }
 rustc_graphviz = { path = "../rustc_graphviz" }
@@ -22,6 +21,7 @@ rustc_hashes = { path = "../rustc_hashes" }
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
+rustc_thread_pool = { path = "../rustc_thread_pool" }
 smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dangle"] }
 stacker = "0.1.17"
 tempfile = "3.2"

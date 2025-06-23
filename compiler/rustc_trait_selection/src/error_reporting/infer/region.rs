@@ -891,7 +891,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (b'a'..=b'z')
                 .map(|c| format!("'{}", c as char))
                 .find(|candidate| !used_names.iter().any(|e| e.as_str() == candidate))
-                .unwrap_or("'lt".to_string())
+                .unwrap_or_else(|| "'lt".to_string())
         };
 
         let mut visitor = LifetimeReplaceVisitor {

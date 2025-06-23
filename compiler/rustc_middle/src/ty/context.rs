@@ -1479,6 +1479,12 @@ pub struct GlobalCtxt<'tcx> {
 
     pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
 
+    /// Caches the index of the highest bound var in clauses in a canonical binder.
+    pub highest_var_in_clauses_cache: Lock<FxHashMap<ty::Clauses<'tcx>, usize>>,
+    /// Caches the instantiation of a canonical binder given a set of args.
+    pub clauses_cache:
+        Lock<FxHashMap<(ty::Clauses<'tcx>, &'tcx [ty::GenericArg<'tcx>]), ty::Clauses<'tcx>>>,
+
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
@@ -1727,6 +1733,8 @@ impl<'tcx> TyCtxt<'tcx> {
             new_solver_evaluation_cache: Default::default(),
             new_solver_canonical_param_env_cache: Default::default(),
             canonical_param_env_cache: Default::default(),
+            highest_var_in_clauses_cache: Default::default(),
+            clauses_cache: Default::default(),
             data_layout,
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
@@ -2079,23 +2087,20 @@ impl<'tcx> TyCtxt<'tcx> {
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         let definitions = &self.untracked.definitions;
-        std::iter::from_coroutine(
-            #[coroutine]
-            || {
-                let mut i = 0;
+        gen {
+            let mut i = 0;
 
-                // Recompute the number of definitions each time, because our caller may be creating
-                // new ones.
-                while i < { definitions.read().num_definitions() } {
-                    let local_def_index = rustc_span::def_id::DefIndex::from_usize(i);
-                    yield LocalDefId { local_def_index };
-                    i += 1;
-                }
+            // Recompute the number of definitions each time, because our caller may be creating
+            // new ones.
+            while i < { definitions.read().num_definitions() } {
+                let local_def_index = rustc_span::def_id::DefIndex::from_usize(i);
+                yield LocalDefId { local_def_index };
+                i += 1;
+            }
 
-                // Freeze definitions once we finish iterating on them, to prevent adding new ones.
-                definitions.freeze();
-            },
-        )
+            // Freeze definitions once we finish iterating on them, to prevent adding new ones.
+            definitions.freeze();
+        }
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
@@ -2113,7 +2118,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> &'tcx rustc_hir::def_path_hash_map::DefPathHashMap {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
-        self.ensure_ok().hir_crate(());
+        self.ensure_ok().hir_crate_items(());
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
         self.untracked.definitions.freeze().def_path_hash_to_def_index_map()
@@ -3160,42 +3165,33 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_level(self.sess, lint, level, Some(span.into()), decorate);
     }
 
-    /// Find the crate root and the appropriate span where `use` and outer attributes can be
-    /// inserted at.
-    pub fn crate_level_attribute_injection_span(self, hir_id: HirId) -> Option<Span> {
-        for (_hir_id, node) in self.hir_parent_iter(hir_id) {
-            if let hir::Node::Crate(m) = node {
-                return Some(m.spans.inject_use_span.shrink_to_lo());
-            }
-        }
-        None
+    /// Find the appropriate span where `use` and outer attributes can be inserted at.
+    pub fn crate_level_attribute_injection_span(self) -> Span {
+        let node = self.hir_node(hir::CRATE_HIR_ID);
+        let hir::Node::Crate(m) = node else { bug!() };
+        m.spans.inject_use_span.shrink_to_lo()
     }
 
     pub fn disabled_nightly_features<E: rustc_errors::EmissionGuarantee>(
         self,
         diag: &mut Diag<'_, E>,
-        hir_id: Option<HirId>,
         features: impl IntoIterator<Item = (String, Symbol)>,
     ) {
         if !self.sess.is_nightly_build() {
             return;
         }
 
-        let span = hir_id.and_then(|id| self.crate_level_attribute_injection_span(id));
+        let span = self.crate_level_attribute_injection_span();
         for (desc, feature) in features {
             // FIXME: make this string translatable
             let msg =
                 format!("add `#![feature({feature})]` to the crate attributes to enable{desc}");
-            if let Some(span) = span {
-                diag.span_suggestion_verbose(
-                    span,
-                    msg,
-                    format!("#![feature({feature})]\n"),
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                diag.help(msg);
-            }
+            diag.span_suggestion_verbose(
+                span,
+                msg,
+                format!("#![feature({feature})]\n"),
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 

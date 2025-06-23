@@ -1727,7 +1727,6 @@ impl<'tcx> Pick<'tcx> {
             }
             tcx.disabled_nightly_features(
                 lint,
-                Some(scope_expr_id),
                 self.unstable_candidates.iter().map(|(candidate, feature)| {
                     (format!(" `{}`", tcx.def_path_str(candidate.item.def_id)), *feature)
                 }),

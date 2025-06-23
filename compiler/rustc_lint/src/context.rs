@@ -711,6 +711,15 @@ impl<'tcx> LateContext<'tcx> {
 
     /// Gets the absolute path of `def_id` as a vector of `Symbol`.
     ///
+    /// Note that this is kinda expensive because it has to
+    /// travel the tree and pretty-print. Use sparingly.
+    ///
+    /// If you're trying to match for an item given by its path, use a
+    /// diagnostic item. If you're only interested in given sections, use more
+    /// specific functions, such as [`TyCtxt::crate_name`]
+    ///
+    /// FIXME: It would be great if this could be optimized.
+    ///
     /// # Examples
     ///
     /// ```rust,ignore (no context or def id available)
@@ -855,14 +864,15 @@ impl<'tcx> LateContext<'tcx> {
     /// rendering diagnostic. This is not the same as the precedence that would
     /// be used for pretty-printing HIR by rustc_hir_pretty.
     pub fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
-        let for_each_attr = |id: hir::HirId, callback: &mut dyn FnMut(&hir::Attribute)| {
+        let has_attr = |id: hir::HirId| -> bool {
             for attr in self.tcx.hir_attrs(id) {
                 if attr.span().desugaring_kind().is_none() {
-                    callback(attr);
+                    return true;
                 }
             }
+            false
         };
-        expr.precedence(&for_each_attr)
+        expr.precedence(&has_attr)
     }
 
     /// If the given expression is a local binding, find the initializer expression.

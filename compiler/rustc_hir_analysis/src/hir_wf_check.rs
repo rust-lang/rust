@@ -1,7 +1,8 @@
+use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{self as hir, AmbigArg, ForeignItem, ForeignItemKind};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{ObligationCause, WellFormedLoc};
+use rustc_infer::traits::{ObligationCause, ObligationCauseCode, WellFormedLoc};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode, fold_regions};
@@ -107,6 +108,17 @@ fn diagnostic_hir_wf_check<'tcx>(
                     // over less-specific types (e.g. `Option<MyStruct<u8>>`)
                     if self.depth >= self.cause_depth {
                         self.cause = Some(error.obligation.cause);
+                        if let hir::TyKind::TraitObject(..) = ty.kind {
+                            if let DefKind::AssocTy | DefKind::AssocConst | DefKind::AssocFn =
+                                self.tcx.def_kind(self.def_id)
+                            {
+                                self.cause = Some(ObligationCause::new(
+                                    ty.span,
+                                    self.def_id,
+                                    ObligationCauseCode::DynCompatible(ty.span),
+                                ));
+                            }
+                        }
                         self.cause_depth = self.depth
                     }
                 }

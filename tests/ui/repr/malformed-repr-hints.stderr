@@ -1,15 +1,3 @@
-error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
-  --> $DIR/malformed-repr-hints.rs:14:8
-   |
-LL | #[repr(align(2, 4))]
-   |        ^^^^^^^^^^^
-
-error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
-  --> $DIR/malformed-repr-hints.rs:18:8
-   |
-LL | #[repr(align())]
-   |        ^^^^^^^
-
 error[E0552]: incorrect `repr(packed)` attribute format: `packed` takes exactly one parenthesized argument, or no parentheses at all
   --> $DIR/malformed-repr-hints.rs:6:8
    |
@@ -21,6 +9,18 @@ error[E0589]: invalid `repr(align)` attribute: `align` needs an argument
    |
 LL | #[repr(align)]
    |        ^^^^^ help: supply an argument here: `align(...)`
+
+error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
+  --> $DIR/malformed-repr-hints.rs:14:8
+   |
+LL | #[repr(align(2, 4))]
+   |        ^^^^^^^^^^^
+
+error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
+  --> $DIR/malformed-repr-hints.rs:18:8
+   |
+LL | #[repr(align())]
+   |        ^^^^^^^
 
 error[E0552]: invalid representation hint: `Rust` does not take a parenthesized argument list
   --> $DIR/malformed-repr-hints.rs:23:8

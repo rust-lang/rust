@@ -452,13 +452,6 @@ fn infer_placeholder_type<'tcx>(
             if let Some(ty) = node.ty() {
                 visitor.visit_ty_unambig(ty);
             }
-            // If we have just one span, let's try to steal a const `_` feature error.
-            let try_steal_span = if !tcx.features().generic_arg_infer() && visitor.spans.len() == 1
-            {
-                visitor.spans.first().copied()
-            } else {
-                None
-            };
             // If we didn't find any infer tys, then just fallback to `span`.
             if visitor.spans.is_empty() {
                 visitor.spans.push(span);
@@ -489,15 +482,7 @@ fn infer_placeholder_type<'tcx>(
                 }
             }
 
-            if let Some(try_steal_span) = try_steal_span {
-                cx.dcx().try_steal_replace_and_emit_err(
-                    try_steal_span,
-                    StashKey::UnderscoreForArrayLengths,
-                    diag,
-                )
-            } else {
-                diag.emit()
-            }
+            diag.emit()
         });
     Ty::new_error(tcx, guar)
 }

@@ -1,18 +1,11 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
-#[cfg(unix)]
-use std::ffi::c_int;
 use std::fmt::Debug;
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Output};
-
-#[cfg(unix)]
-unsafe extern "C" {
-    fn raise(signal: c_int) -> c_int;
-}
 
 fn exec_command(
     input: &[&dyn AsRef<OsStr>],
@@ -27,17 +20,14 @@ fn exec_command(
     #[cfg(unix)]
     {
         if let Some(signal) = status.signal() {
-            unsafe {
-                raise(signal as _);
-            }
             // In case the signal didn't kill the current process.
-            return Err(command_error(input, &cwd, format!("Process received signal {}", signal)));
+            return Err(command_error(input, &cwd, format!("Process received signal {signal}")));
         }
     }
     Ok(status)
 }
 
-fn get_command_inner(
+pub(crate) fn get_command_inner(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
     env: Option<&HashMap<String, String>>,
@@ -75,18 +65,18 @@ fn check_exit_status(
     );
     let input = input.iter().map(|i| i.as_ref()).collect::<Vec<&OsStr>>();
     if show_err {
-        eprintln!("Command `{:?}` failed", input);
+        eprintln!("Command `{input:?}` failed");
     }
     if let Some(output) = output {
         let stdout = String::from_utf8_lossy(&output.stdout);
         if !stdout.is_empty() {
             error.push_str("\n==== STDOUT ====\n");
-            error.push_str(&*stdout);
+            error.push_str(&stdout);
         }
         let stderr = String::from_utf8_lossy(&output.stderr);
         if !stderr.is_empty() {
             error.push_str("\n==== STDERR ====\n");
-            error.push_str(&*stderr);
+            error.push_str(&stderr);
         }
     }
     Err(error)
@@ -136,6 +126,7 @@ pub fn run_command_with_output_and_env(
     Ok(())
 }
 
+#[cfg(not(unix))]
 pub fn run_command_with_output_and_env_no_err(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
@@ -242,7 +233,7 @@ pub fn get_toolchain() -> Result<String, String> {
             if !line.starts_with("channel") {
                 return None;
             }
-            line.split('"').skip(1).next()
+            line.split('"').nth(1)
         })
         .next()
     {
@@ -281,7 +272,7 @@ fn git_clone_inner(
 }
 
 fn get_repo_name(url: &str) -> String {
-    let repo_name = url.split('/').last().unwrap();
+    let repo_name = url.split('/').next_back().unwrap();
     match repo_name.strip_suffix(".git") {
         Some(n) => n.to_string(),
         None => repo_name.to_string(),

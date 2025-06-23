@@ -1,5 +1,4 @@
 #![crate_type = "rlib"]
-#![feature(generic_arg_infer)]
 
 struct Foo<const N: usize>;
 struct Bar<T, const N: usize>(T);

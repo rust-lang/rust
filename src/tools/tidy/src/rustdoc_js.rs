@@ -62,6 +62,9 @@ pub fn check(librustdoc_path: &Path, tools_path: &Path, src_path: &Path, bad: &m
             return;
         }
     };
+    // Having the correct `eslint` version installed via `npm` isn't strictly necessary, since we're invoking it via `npx`,
+    // but this check allows the vast majority that is not working on the rustdoc frontend to avoid the penalty of running
+    // `eslint` in tidy. See also: https://github.com/rust-lang/rust/pull/142851
     match get_eslint_version() {
         Some(version) => {
             if version != eslint_version {
