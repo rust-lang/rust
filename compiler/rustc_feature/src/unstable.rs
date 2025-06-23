@@ -238,7 +238,7 @@ declare_features! (
     /// Allows using `rustc_*` attributes (RFC 572).
     (internal, rustc_attrs, "1.0.0", None),
     /// Introduces a hierarchy of `Sized` traits (RFC 3729).
-    (unstable, sized_hierarchy, "CURRENT_RUSTC_VERSION", None),
+    (unstable, sized_hierarchy, "1.89.0", None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
     /// Added for testing unstable lints; perma-unstable.
@@ -356,7 +356,7 @@ declare_features! (
     /// Allows `extern "cmse-nonsecure-call" fn()`.
     (unstable, abi_cmse_nonsecure_call, "CURRENT_RUSTC_VERSION", Some(81391)),
     /// Allows `extern "custom" fn()`.
-    (unstable, abi_custom, "CURRENT_RUSTC_VERSION", Some(140829)),
+    (unstable, abi_custom, "1.89.0", Some(140829)),
     /// Allows `extern "gpu-kernel" fn()`.
     (unstable, abi_gpu_kernel, "1.86.0", Some(135467)),
     /// Allows `extern "msp430-interrupt" fn()`.
@@ -376,7 +376,7 @@ declare_features! (
     /// Allows inherent and trait methods with arbitrary self types that are raw pointers.
     (unstable, arbitrary_self_types_pointers, "1.83.0", Some(44874)),
     /// Allows #[cfg(...)] on inline assembly templates and operands.
-    (unstable, asm_cfg, "CURRENT_RUSTC_VERSION", Some(140364)),
+    (unstable, asm_cfg, "1.89.0", Some(140364)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Enables experimental register support in inline assembly.

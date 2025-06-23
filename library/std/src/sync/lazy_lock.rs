@@ -313,7 +313,7 @@ impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     }
 }
 
-#[stable(feature = "lazy_deref_mut", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "lazy_deref_mut", since = "1.89.0")]
 impl<T, F: FnOnce() -> T> DerefMut for LazyLock<T, F> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
