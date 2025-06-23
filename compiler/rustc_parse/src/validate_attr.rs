@@ -300,6 +300,7 @@ fn emit_malformed_attribute(
             | sym::const_trait
             | sym::rustc_specialization_trait
             | sym::rustc_unsafe_specialization_marker
+            | sym::marker
             | sym::type_const
             | sym::repr
             | sym::align

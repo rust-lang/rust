@@ -35,6 +35,7 @@ impl AttributeKind {
             LinkSection { .. } => No,
             LoopMatch(..) => No,
             MacroTransparency(..) => Yes,
+            Marker(..) => No,
             MayDangle(..) => No,
             MustUse { .. } => Yes,
             Naked(..) => No,
