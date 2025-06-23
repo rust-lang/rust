@@ -868,7 +868,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     // Only regular traits can be marker.
     let is_marker = !is_alias && attrs.iter().any(|attr| attr.has_name(sym::marker));
 
-    let rustc_coinductive = attrs.iter().any(|attr| attr.has_name(sym::rustc_coinductive));
+    let rustc_coinductive = find_attr!(attrs, AttributeKind::Coinductive(_));
     let is_fundamental = attrs.iter().any(|attr| attr.has_name(sym::fundamental));
 
     let [skip_array_during_method_dispatch, skip_boxed_slice_during_method_dispatch] = find_attr!(

@@ -122,6 +122,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match attr {
                 Attribute::Parsed(
                     AttributeKind::SkipDuringMethodDispatch { span: attr_span, .. }
+                    | AttributeKind::Coinductive(attr_span)
                     | AttributeKind::ConstTrait(attr_span)
                     | AttributeKind::DenyExplicitImpl(attr_span)
                     | AttributeKind::DoNotImplementViaObject(attr_span),
@@ -299,9 +300,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_dirty, ..]
                         | [sym::rustc_if_this_changed, ..]
                         | [sym::rustc_then_this_would_need, ..] => self.check_rustc_dirty_clean(attr),
-                        [sym::rustc_coinductive, ..]
-                        | [sym::rustc_must_implement_one_of, ..]
-                        => self.check_must_be_applied_to_trait(attr.span(), span, target),
+                        [sym::rustc_must_implement_one_of, ..] => self.check_must_be_applied_to_trait(attr.span(), span, target),
                         [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                         [sym::rustc_allow_incoherent_impl, ..] => {

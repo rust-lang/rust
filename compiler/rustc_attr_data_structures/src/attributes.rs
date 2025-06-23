@@ -211,6 +211,9 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[rustc_coinductive]`.
+    Coinductive(Span),
+
     /// Represents `#[cold]`.
     Cold(Span),
 
