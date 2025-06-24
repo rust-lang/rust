@@ -20,6 +20,7 @@ use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
 use crate::attributes::lint_helpers::{AsPtrParser, PubTransparentParser};
+use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::repr::{AlignParser, ReprParser};
 use crate::attributes::semantics::MayDangleParser;
@@ -111,9 +112,11 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Single<AsPtrParser>,
         Single<ColdParser>,
+        Single<ConstContinueParser>,
         Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
         Single<InlineParser>,
+        Single<LoopMatchParser>,
         Single<MayDangleParser>,
         Single<MustUseParser>,
         Single<NoMangleParser>,
