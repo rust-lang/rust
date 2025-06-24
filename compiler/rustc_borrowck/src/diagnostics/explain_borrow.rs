@@ -781,8 +781,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     } else {
                         LaterUseKind::FakeLetRead
                     }
-                } else if self.was_captured_by_trait_object(borrow) {
-                    LaterUseKind::TraitCapture
+                } else if let Some(unsize_span) = self.was_captured_by_trait_object(borrow) {
+                    // We drilled down the span to the actual location of the unsize, rather
+                    // than the location of the borrow.
+                    return (LaterUseKind::TraitCapture, unsize_span, None);
                 } else if location.statement_index == block.statements.len() {
                     if let TerminatorKind::Call { func, call_source: CallSource::Normal, .. } =
                         &block.terminator().kind
@@ -819,7 +821,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// Checks if a borrowed value was captured by a trait object. We do this by
     /// looking forward in the MIR from the reserve location and checking if we see
     /// an unsized cast to a trait object on our data.
-    fn was_captured_by_trait_object(&self, borrow: &BorrowData<'tcx>) -> bool {
+    fn was_captured_by_trait_object(&self, borrow: &BorrowData<'tcx>) -> Option<Span> {
         // Start at the reserve location, find the place that we want to see cast to a trait object.
         let location = borrow.reserve_location;
         let block = &self.body[location.block];
@@ -835,10 +837,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 if let Some(local) = place.as_local() {
                     local
                 } else {
-                    return false;
+                    return None;
                 }
             } else {
-                return false;
+                return None;
             };
 
         debug!("was_captured_by_trait: target={:?} queue={:?}", target, queue);
@@ -885,7 +887,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                                         if from == target {
                                             debug!("was_captured_by_trait_object: ty={:?}", ty);
                                             // Check the type for a trait object.
-                                            return match ty.kind() {
+                                            let matches = match ty.kind() {
                                                 // `&dyn Trait`
                                                 ty::Ref(_, ty, _) if ty.is_trait() => true,
                                                 // `Box<dyn Trait>`
@@ -898,11 +900,16 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                                                 // Anything else.
                                                 _ => false,
                                             };
+                                            if matches {
+                                                return Some(stmt.source_info.span);
+                                            } else {
+                                                return None;
+                                            }
                                         }
                                     }
-                                    return false;
+                                    return None;
                                 }
-                                _ => return false,
+                                _ => return None,
                             }
                         }
                         _ => {}
@@ -926,7 +933,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         );
                         // Check if one of the arguments to this function is the target place.
                         let found_target = args.iter().any(|arg| {
-                            if let Operand::Move(place) = arg.node {
+                            if let Operand::Move(place) | Operand::Copy(place) = arg.node {
                                 if let Some(potential) = place.as_local() {
                                     potential == target
                                 } else {
@@ -950,6 +957,6 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         }
 
         // We didn't find anything and ran out of locations to check.
-        false
+        None
     }
 }
