@@ -65,16 +65,16 @@ pub fn print_hir_stats(tcx: TyCtxt<'_>) {
         StatCollector { tcx: Some(tcx), nodes: FxHashMap::default(), seen: FxHashSet::default() };
     tcx.hir_walk_toplevel_module(&mut collector);
     tcx.hir_walk_attributes(&mut collector);
-    collector.print("HIR STATS", "hir-stats");
+    collector.print(tcx, "HIR STATS", "hir-stats");
 }
 
-pub fn print_ast_stats(krate: &ast::Crate) {
+pub fn print_ast_stats(tcx: TyCtxt<'_>, krate: &ast::Crate) {
     use rustc_ast::visit::Visitor;
 
     let mut collector =
         StatCollector { tcx: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
     collector.visit_crate(krate);
-    collector.print("POST EXPANSION AST STATS", "ast-stats");
+    collector.print(tcx, "POST EXPANSION AST STATS", "ast-stats");
 }
 
 impl<'k> StatCollector<'k> {
@@ -116,7 +116,7 @@ impl<'k> StatCollector<'k> {
         }
     }
 
-    fn print(&self, title: &str, prefix: &str) {
+    fn print(&self, tcx: TyCtxt<'_>, title: &str, prefix: &str) {
         use std::fmt::Write;
 
         // We will soon sort, so the initial order does not matter.
@@ -142,7 +142,8 @@ impl<'k> StatCollector<'k> {
         // `RUSTFLAGS='-Zinput-stats' cargo build`). It still doesn't guarantee
         // non-interleaving, though.
         let mut s = String::new();
-        _ = writeln!(s, "{prefix} {title}");
+        _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
+        _ = writeln!(s, "{prefix} {title}: {}", tcx.crate_name(hir::def_id::LOCAL_CRATE));
         _ = writeln!(
             s,
             "{prefix} {:<name_w$}{:>acc_size_w$}{:>count_w$}{:>item_size_w$}",
@@ -193,7 +194,7 @@ impl<'k> StatCollector<'k> {
             "",
             usize_with_underscores(total_count),
         );
-        _ = writeln!(s, "{prefix}");
+        _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
         eprint!("{s}");
     }
 }

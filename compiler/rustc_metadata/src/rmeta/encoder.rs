@@ -794,7 +794,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // `RUSTFLAGS='-Zmeta-stats' cargo build`). It still doesn't guarantee
             // non-interleaving, though.
             let mut s = String::new();
-            _ = writeln!(s, "{prefix} METADATA STATS");
+            _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
+            _ = writeln!(s, "{prefix} METADATA STATS: {}", tcx.crate_name(LOCAL_CRATE));
             _ = writeln!(s, "{prefix} {:<section_w$}{:>size_w$}", "Section", "Size");
             _ = writeln!(s, "{prefix} {}", "-".repeat(banner_w));
             for (label, size) in stats {
@@ -814,7 +815,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 usize_with_underscores(total_bytes),
                 perc(zero_bytes)
             );
-            _ = writeln!(s, "{prefix}");
+            _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
             eprint!("{s}");
         }
 

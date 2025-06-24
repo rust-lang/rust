@@ -370,7 +370,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
-        input_stats::print_ast_stats(krate);
+        input_stats::print_ast_stats(tcx, krate);
     }
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.

@@ -1,4 +1,5 @@
-ast-stats POST EXPANSION AST STATS
+ast-stats ================================================================
+ast-stats POST EXPANSION AST STATS: input_stats
 ast-stats Name                Accumulated Size         Count     Item Size
 ast-stats ----------------------------------------------------------------
 ast-stats Item                   1_584 (NN.N%)            11           144
@@ -57,8 +58,9 @@ ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
 ast-stats Total                  7_416                   127
-ast-stats
-hir-stats HIR STATS
+ast-stats ================================================================
+hir-stats ================================================================
+hir-stats HIR STATS: input_stats
 hir-stats Name                Accumulated Size         Count     Item Size
 hir-stats ----------------------------------------------------------------
 hir-stats PathSegment            1_776 (NN.N%)            37            48
@@ -118,4 +120,4 @@ hir-stats Lifetime                  28 (NN.N%)             1            28
 hir-stats ForeignItemRef            24 (NN.N%)             1            24
 hir-stats ----------------------------------------------------------------
 hir-stats Total                  8_676                   172
-hir-stats
+hir-stats ================================================================
