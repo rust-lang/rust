@@ -246,7 +246,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     /// Create a global constant.
     ///
     /// The returned global variable is a pointer in the default address space for globals.
-    pub(crate) fn static_addr_of_impl(
+    pub(crate) fn static_addr_of_const(
         &self,
         cv: &'ll Value,
         align: Align,
@@ -554,8 +554,8 @@ impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
     /// The pointer will always be in the default address space. If global variables default to a
     /// different address space, an addrspacecast is inserted.
     fn static_addr_of(&self, cv: &'ll Value, align: Align, kind: Option<&str>) -> &'ll Value {
-        let gv = self.static_addr_of_impl(cv, align, kind);
-        // static_addr_of_impl returns the bare global variable, which might not be in the default
+        let gv = self.static_addr_of_const(cv, align, kind);
+        // static_addr_of_const returns the bare global variable, which might not be in the default
         // address space. Cast to the default address space if necessary.
         self.const_pointercast(gv, self.type_ptr())
     }

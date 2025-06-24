@@ -58,10 +58,14 @@ pub trait ConstCodegenMethods<'tcx>:
     /// Create a global constant.
     ///
     /// The returned global variable is a pointer in the default address space for globals.
-    fn static_addr_of_impl(&self, cv: Self::Value, align: Align, kind: Option<&str>)
-    -> Self::Value;
+    fn static_addr_of_const(
+        &self,
+        cv: Self::Value,
+        align: Align,
+        kind: Option<&str>,
+    ) -> Self::Value;
 
-    /// Same as `static_addr_of_impl`, but does not mark the static as immutable
+    /// Same as `static_addr_of_const`, but does not mark the static as immutable
     fn static_addr_of_mut(&self, cv: Self::Value, align: Align, kind: Option<&str>) -> Self::Value;
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, ty: Self::Type) -> Self::Value {
@@ -97,7 +101,7 @@ pub trait ConstCodegenMethods<'tcx>:
                             let alloc = alloc.inner();
                             let value = match alloc.mutability {
                                 Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
-                                _ => self.static_addr_of_impl(init, alloc.align, None),
+                                _ => self.static_addr_of_const(init, alloc.align, None),
                             };
                             if !self.tcx().sess.fewer_names()
                                 && self.get_value_name(value).is_empty()
@@ -124,7 +128,7 @@ pub trait ConstCodegenMethods<'tcx>:
                             )))
                             .unwrap_memory();
                         let init = self.const_data_from_alloc(alloc);
-                        let value = self.static_addr_of_impl(init, alloc.inner().align, None);
+                        let value = self.static_addr_of_const(init, alloc.inner().align, None);
                         value
                     }
                     GlobalAlloc::Static(def_id) => {

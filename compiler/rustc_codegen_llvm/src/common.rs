@@ -279,13 +279,13 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMConstPtrToInt(val, ty) }
     }
 
-    fn static_addr_of_impl(
+    fn static_addr_of_const(
         &self,
         cv: Self::Value,
         align: Align,
         kind: Option<&str>,
     ) -> Self::Value {
-        self.static_addr_of_impl(cv, align, kind)
+        self.static_addr_of_const(cv, align, kind)
     }
 
     fn static_addr_of_mut(&self, cv: Self::Value, align: Align, kind: Option<&str>) -> Self::Value {
