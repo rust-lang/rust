@@ -162,7 +162,6 @@ pub(crate) struct FeatureRemoved<'a> {
     #[subdiagnostic]
     pub reason: Option<FeatureRemovedReason<'a>>,
     pub removed_rustc_version: &'a str,
-    pub current_rustc_version: &'a str,
     pub pull_note: String,
 }
 
@@ -444,7 +443,7 @@ pub(crate) struct InvalidFragmentSpecifier {
     #[primary_span]
     pub span: Span,
     pub fragment: Ident,
-    pub help: String,
+    pub help: &'static str,
 }
 
 #[derive(Diagnostic)]

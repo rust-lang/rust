@@ -321,7 +321,7 @@ impl<'a> CrateLocator<'a> {
 
         CrateLocator {
             only_needs_metadata,
-            sysroot: &sess.sysroot,
+            sysroot: sess.opts.sysroot.path(),
             metadata_loader,
             cfg_version: sess.cfg_version,
             crate_name,

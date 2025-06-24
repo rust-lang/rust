@@ -24,6 +24,7 @@ pub(super) fn failed_to_match_macro(
     arg: TokenStream,
     lhses: &[Vec<MatcherLoc>],
 ) -> (Span, ErrorGuaranteed) {
+    debug!("failed to match macro");
     // An error occurred, try the expansion again, tracking the expansion closely for better
     // diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);

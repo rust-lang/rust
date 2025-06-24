@@ -1070,7 +1070,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.link_arg("/PDBALTPATH:%_PDB%");
 
         // This will cause the Microsoft linker to embed .natvis info into the PDB file
-        let natvis_dir_path = self.sess.sysroot.join("lib\\rustlib\\etc");
+        let natvis_dir_path = self.sess.opts.sysroot.path().join("lib\\rustlib\\etc");
         if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
             for entry in natvis_dir {
                 match entry {

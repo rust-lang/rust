@@ -117,7 +117,6 @@ use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, MacroRulesNormalizedIdent, Span, kw};
 use smallvec::SmallVec;
 
-use super::quoted::VALID_FRAGMENT_NAMES_MSG;
 use crate::errors;
 use crate::mbe::{KleeneToken, TokenTree};
 
@@ -263,14 +262,7 @@ fn check_binders(
             }
         }
         // Similarly, this can only happen when checking a toplevel macro.
-        TokenTree::MetaVarDecl(span, name, kind) => {
-            if kind.is_none() && node_id != DUMMY_NODE_ID {
-                psess.dcx().emit_err(errors::MissingFragmentSpecifier {
-                    span,
-                    add_span: span.shrink_to_hi(),
-                    valid: VALID_FRAGMENT_NAMES_MSG,
-                });
-            }
+        TokenTree::MetaVarDecl { span, name, .. } => {
             if !macros.is_empty() {
                 psess.dcx().span_bug(span, "unexpected MetaVarDecl in nested lhs");
             }
@@ -339,7 +331,7 @@ fn check_occurrences(
 ) {
     match *rhs {
         TokenTree::Token(..) => {}
-        TokenTree::MetaVarDecl(span, _name, _kind) => {
+        TokenTree::MetaVarDecl { span, .. } => {
             psess.dcx().span_bug(span, "unexpected MetaVarDecl in rhs")
         }
         TokenTree::MetaVar(span, name) => {
