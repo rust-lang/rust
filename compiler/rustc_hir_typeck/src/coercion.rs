@@ -206,6 +206,30 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return self.coerce_from_inference_variable(a, b);
         }
 
+        // No coercion needed; types are identical. The only exception is when we have
+        // a mutable reference, which needs a pair of reborrow adjustments inserted.
+        if a == b {
+            if let ty::Ref(_, pointee, ty::Mutability::Mut) = *a.kind() {
+                return Ok(InferOk {
+                    value: (
+                        vec![
+                            Adjustment { kind: Adjust::Deref(None), target: pointee },
+                            Adjustment {
+                                kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut {
+                                    allow_two_phase_borrow: AllowTwoPhase::No,
+                                })),
+                                target: a,
+                            },
+                        ],
+                        a,
+                    ),
+                    obligations: Default::default(),
+                });
+            } else {
+                return Ok(InferOk { value: (vec![], a), obligations: Default::default() });
+            }
+        }
+
         // Consider coercing the subtype to a DST
         //
         // NOTE: this is wrapped in a `commit_if_ok` because it creates
