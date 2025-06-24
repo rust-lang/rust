@@ -205,9 +205,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             // Find a way to reuse `immediate_const_vector` from `codegen_ssa` instead.
             let indexes = {
                 use rustc_middle::mir::interpret::*;
-                let idx_const = match &idx.node {
-                    Operand::Constant(const_) => crate::constant::eval_mir_constant(fx, const_).0,
-                    Operand::Copy(_) | Operand::Move(_) => unreachable!("{idx:?}"),
+                let idx_const = if let Some(const_) = idx.node.constant() {
+                    crate::constant::eval_mir_constant(fx, const_).0
+                } else {
+                    unreachable!("{idx:?}")
                 };
 
                 let idx_bytes = match idx_const {

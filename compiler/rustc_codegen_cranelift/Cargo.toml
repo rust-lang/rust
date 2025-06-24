@@ -8,12 +8,12 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { version = "0.120.0", default-features = false, features = ["std", "timing", "unwind", "all-native-arch"] }
-cranelift-frontend = { version = "0.120.0" }
-cranelift-module = { version = "0.120.0" }
-cranelift-native = { version = "0.120.0" }
-cranelift-jit = { version = "0.120.0", optional = true }
-cranelift-object = { version = "0.120.0" }
+cranelift-codegen = { version = "0.121.0", default-features = false, features = ["std", "timing", "unwind", "all-native-arch"] }
+cranelift-frontend = { version = "0.121.0" }
+cranelift-module = { version = "0.121.0" }
+cranelift-native = { version = "0.121.0" }
+cranelift-jit = { version = "0.121.0", optional = true }
+cranelift-object = { version = "0.121.0" }
 target-lexicon = "0.13"
 gimli = { version = "0.31", default-features = false, features = ["write"] }
 object = { version = "0.36", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
@@ -24,12 +24,12 @@ smallvec = "1.8.1"
 
 [patch.crates-io]
 # Uncomment to use an unreleased version of cranelift
-#cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-33.0.0", version = "0.120.0" }
-#cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-33.0.0", version = "0.120.0" }
-#cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-33.0.0", version = "0.120.0" }
-#cranelift-native = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-33.0.0", version = "0.120.0" }
-#cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-33.0.0", version = "0.120.0" }
-#cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-33.0.0", version = "0.120.0" }
+#cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-34.0.0", version = "0.121.0" }
+#cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-34.0.0", version = "0.121.0" }
+#cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-34.0.0", version = "0.121.0" }
+#cranelift-native = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-34.0.0", version = "0.121.0" }
+#cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-34.0.0", version = "0.121.0" }
+#cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "release-34.0.0", version = "0.121.0" }
 
 # Uncomment to use local checkout of cranelift
 #cranelift-codegen = { path = "../wasmtime/cranelift/codegen" }
