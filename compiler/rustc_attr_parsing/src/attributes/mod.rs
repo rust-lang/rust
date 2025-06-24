@@ -36,6 +36,7 @@ pub(crate) mod must_use;
 pub(crate) mod repr;
 pub(crate) mod semantics;
 pub(crate) mod stability;
+pub(crate) mod traits;
 pub(crate) mod transparency;
 pub(crate) mod util;
 
