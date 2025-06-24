@@ -3667,7 +3667,7 @@ impl GenericDef {
 
         let generics = db.generic_params(def);
 
-        if generics.is_empty() && generics.no_predicates() {
+        if generics.is_empty() && generics.has_no_predicates() {
             return;
         }
 
