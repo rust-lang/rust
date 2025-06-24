@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 
 use libc::{c_char, c_uint};
 use rustc_abi as abi;
-use rustc_abi::{Align, HasDataLayout};
+use rustc_abi::HasDataLayout;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
@@ -251,10 +251,6 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         })
     }
 
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value {
-        const_alloc_to_llvm(self, alloc.inner(), /*static*/ false)
-    }
-
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {
         unsafe {
             llvm::LLVMConstInBoundsGEP2(
@@ -279,17 +275,14 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMConstPtrToInt(val, ty) }
     }
 
-    fn static_addr_of_const(
-        &self,
-        cv: Self::Value,
-        align: Align,
-        kind: Option<&str>,
-    ) -> Self::Value {
-        self.static_addr_of_const(cv, align, kind)
+    fn static_addr_of_const(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Self::Value {
+        let cv = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
+        self.static_addr_of_const(cv, alloc.inner().align, kind)
     }
 
-    fn static_addr_of_mut(&self, cv: Self::Value, align: Align, kind: Option<&str>) -> Self::Value {
-        self.static_addr_of_mut(cv, align, kind)
+    fn static_addr_of_mut(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Self::Value {
+        let cv = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
+        self.static_addr_of_mut(cv, alloc.inner().align, kind)
     }
 }
 

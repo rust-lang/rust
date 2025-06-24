@@ -1,4 +1,4 @@
-use rustc_abi::{self as abi, Align, HasDataLayout, Primitive};
+use rustc_abi::{self as abi, HasDataLayout, Primitive};
 use rustc_ast::Mutability;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hashes::Hash128;
@@ -49,8 +49,6 @@ pub trait ConstCodegenMethods<'tcx>:
     fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;
     fn const_to_opt_u128(&self, v: Self::Value, sign_ext: bool) -> Option<u128>;
 
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value;
-
     fn const_bitcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
     fn const_pointercast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
     fn const_int_to_ptr(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
@@ -58,15 +56,10 @@ pub trait ConstCodegenMethods<'tcx>:
     /// Create a global constant.
     ///
     /// The returned global variable is a pointer in the default address space for globals.
-    fn static_addr_of_const(
-        &self,
-        cv: Self::Value,
-        align: Align,
-        kind: Option<&str>,
-    ) -> Self::Value;
+    fn static_addr_of_const(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Self::Value;
 
     /// Same as `static_addr_of_const`, but does not mark the static as immutable
-    fn static_addr_of_mut(&self, cv: Self::Value, align: Align, kind: Option<&str>) -> Self::Value;
+    fn static_addr_of_mut(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Self::Value;
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, ty: Self::Type) -> Self::Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
@@ -97,18 +90,16 @@ pub trait ConstCodegenMethods<'tcx>:
                                 self.const_bitcast(val, ty)
                             };
                         } else {
-                            let init = self.const_data_from_alloc(alloc);
-                            let alloc = alloc.inner();
-                            let value = match alloc.mutability {
-                                Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
-                                _ => self.static_addr_of_const(init, alloc.align, None),
+                            let value = match alloc.inner().mutability {
+                                Mutability::Mut => self.static_addr_of_mut(alloc, None),
+                                _ => self.static_addr_of_const(alloc, None),
                             };
                             if !self.tcx().sess.fewer_names()
                                 && self.get_value_name(value).is_empty()
                             {
                                 let hash = self.tcx().with_stable_hashing_context(|mut hcx| {
                                     let mut hasher = StableHasher::new();
-                                    alloc.hash_stable(&mut hcx, &mut hasher);
+                                    alloc.inner().hash_stable(&mut hcx, &mut hasher);
                                     hasher.finish::<Hash128>()
                                 });
                                 self.set_value_name(value, format!("alloc_{hash:032x}").as_bytes());
@@ -127,9 +118,7 @@ pub trait ConstCodegenMethods<'tcx>:
                                 }),
                             )))
                             .unwrap_memory();
-                        let init = self.const_data_from_alloc(alloc);
-                        let value = self.static_addr_of_const(init, alloc.inner().align, None);
-                        value
+                        self.static_addr_of_const(alloc, None)
                     }
                     GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx().is_static(def_id));

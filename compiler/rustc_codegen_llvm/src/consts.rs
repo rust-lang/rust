@@ -553,8 +553,9 @@ impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
     ///
     /// The pointer will always be in the default address space. If global variables default to a
     /// different address space, an addrspacecast is inserted.
-    fn static_addr_of(&self, cv: &'ll Value, align: Align, kind: Option<&str>) -> &'ll Value {
-        let gv = self.static_addr_of_const(cv, align, kind);
+    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> &'ll Value {
+        let cv = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
+        let gv = self.static_addr_of_const(cv, alloc.inner().align, kind);
         // static_addr_of_const returns the bare global variable, which might not be in the default
         // address space. Cast to the default address space if necessary.
         self.const_pointercast(gv, self.type_ptr())

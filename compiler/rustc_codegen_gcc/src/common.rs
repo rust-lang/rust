@@ -1,6 +1,6 @@
 use gccjit::{LValue, RValue, ToRValue, Type};
 use rustc_abi as abi;
-use rustc_abi::{Align, HasDataLayout};
+use rustc_abi::HasDataLayout;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
@@ -39,6 +39,22 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
         // SIMD builtins require a constant value.
         self.bitcast_if_needed(value, typ)
+    }
+
+    pub fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> RValue<'gcc> {
+        // We ignore the alignment for the purpose of deduping RValues
+        // The alignment is not handled / used in any way by `const_alloc_to_gcc`,
+        // so it is OK to overwrite it here.
+        let mut mock_alloc = alloc.inner().clone();
+        mock_alloc.align = rustc_abi::Align::MAX;
+        // Check if the rvalue is already in the cache - if so, just return it directly.
+        if let Some(res) = self.const_cache.borrow().get(&mock_alloc) {
+            return *res;
+        }
+        // Rvalue not in the cache - convert and add it.
+        let res = crate::consts::const_alloc_to_gcc_uncached(self, alloc);
+        self.const_cache.borrow_mut().insert(mock_alloc, res);
+        res
     }
 }
 
@@ -219,22 +235,6 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         None
     }
 
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value {
-        // We ignore the alignment for the purpose of deduping RValues
-        // The alignment is not handled / used in any way by `const_alloc_to_gcc`,
-        // so it is OK to overwrite it here.
-        let mut mock_alloc = alloc.inner().clone();
-        mock_alloc.align = rustc_abi::Align::MAX;
-        // Check if the rvalue is already in the cache - if so, just return it directly.
-        if let Some(res) = self.const_cache.borrow().get(&mock_alloc) {
-            return *res;
-        }
-        // Rvalue not in the cache - convert and add it.
-        let res = crate::consts::const_alloc_to_gcc_uncached(self, alloc);
-        self.const_cache.borrow_mut().insert(mock_alloc, res);
-        res
-    }
-
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {
         self.context
             .new_array_access(None, base_addr, self.const_usize(offset.bytes()))
@@ -253,17 +253,13 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.context.new_cast(None, val, ty)
     }
 
-    fn static_addr_of_const(
-        &self,
-        cv: Self::Value,
-        align: Align,
-        kind: Option<&str>,
-    ) -> Self::Value {
-        self.static_addr_of(cv, align, kind)
+    fn static_addr_of_const(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Self::Value {
+        self.static_addr_of(alloc, kind)
     }
 
-    fn static_addr_of_mut(&self, cv: Self::Value, align: Align, kind: Option<&str>) -> Self::Value {
-        self.static_addr_of_mut(cv, align, kind)
+    fn static_addr_of_mut(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Self::Value {
+        let cv = self.const_data_from_alloc(alloc);
+        self.static_addr_of_mut(cv, alloc.inner().align, kind)
     }
 }
 
