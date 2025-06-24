@@ -6,12 +6,13 @@
 //@ compile-flags:-C panic=abort
 //@ aux-build:helper.rs
 
-#![feature(rustc_private, lang_items)]
+#![feature(rustc_private, lang_items, panic_unwind)]
 #![no_std]
 #![no_main]
 
 extern crate alloc;
 extern crate libc;
+extern crate unwind; // For _Unwind_Resume
 
 // ARM targets need these symbols
 #[no_mangle]
