@@ -15,6 +15,7 @@ impl AttributeKind {
             // tidy-alphabetical-start
             Align { .. } => No,
             AllowConstFnUnstable(..) => No,
+            AllowIncoherentImpl(..) => No,
             AllowInternalUnstable(..) => Yes,
             AsPtr(..) => Yes,
             BodyStability { .. } => No,
