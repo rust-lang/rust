@@ -157,6 +157,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(rust_type))
                 .unwrap();
             let align = layout.align.abi.bytes();
+            // For types with size 1, the alignment can be 1 and only 1
+            // So, we can skip the call to ``get_aligned`.
+            // In the future, we can add a GCC API to query the type align,
+            // and call `get_aligned` if and only if that differs from Rust's expectations.
+            if layout.size.bytes() == 1 {
+                return context.new_c_type(ctype);
+            }
             #[cfg(feature = "master")]
             {
                 context.new_c_type(ctype).get_aligned(align)
