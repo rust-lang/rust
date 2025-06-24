@@ -141,13 +141,6 @@ pub(crate) struct RequiresRustAbi {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_null_on_export, code = E0648)]
-pub(crate) struct NullOnExport {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_unsupported_instruction_set, code = E0779)]
 pub(crate) struct UnsupportedInstructionSet {
     #[primary_span]
