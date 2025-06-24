@@ -909,13 +909,8 @@ fn maybe_from_hir_attr(
                 Attribute::ExportName(
                     attr.value_str().expect("checked by attr validation").to_string(),
                 )
-            } else if attr.has_name(sym::doc)
-                && attr
-                    .meta_item_list()
-                    .is_some_and(|metas| metas.iter().any(|item| item.has_name(sym::hidden)))
-            {
-                Attribute::DocHidden
             } else {
+                // FIXME: We should handle `#[doc(hidden)]` here.
                 other_attr(tcx, attr)
             });
         }

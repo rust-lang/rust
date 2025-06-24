@@ -202,13 +202,13 @@ pub struct Item {
     pub inner: ItemEnum,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 /// An attribute, eg `#[repr(C)]`
 ///
 /// This doesn't include:
 /// - `#[doc = "Doc Comment"]` or `/// Doc comment`. These are in [`Item::docs`] instead.
 /// - `#[deprecated]`. These are in [`Item::deprecation`] instead.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
 pub enum Attribute {
     /// `#[non_exhaustive]`
     NonExhaustive,
@@ -224,38 +224,55 @@ pub enum Attribute {
     /// `#[repr]`
     Repr(AttributeRepr),
 
-    ExportName(String),
-    /// `#[doc(hidden)]`
-    DocHidden,
     /// `#[no_mangle]`
     NoMangle,
 
     /// Something else.
     ///
     /// Things here are explicitly *not* covered by the [`FORMAT_VERSION`]
-    /// constant, and may change without bumping the format version. If you rely
-    /// on an attribute here, please open an issue about adding a new variant for
-    /// that attr.
+    /// constant, and may change without bumping the format version.
+    ///
+    /// As an implementation detail, this is currently either:
+    /// 1. A HIR debug printing, like `"#[attr = Optimize(Speed)]"`
+    /// 2. The attribute as it appears in source form, like
+    ///    `"#[optimize(speed)]"`.
     Other(String),
-}
+g
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// The contents of a `#[repr(...)]` attribute.
+///
+/// Used in [`Attribute::Repr`].
 pub struct AttributeRepr {
+    /// The representation, e.g. `#[repr(C)]`, `#[repr(transparent)]`
     pub kind: ReprKind,
 
-    /// Alignment, in bytes.
+    /// Alignment in bytes, if explicitly specified by `#[repr(align(...)]`.
     pub align: Option<u64>,
+    /// Alignment in bytes, if explicitly specified by `#[repr(packed(...)]]`.
     pub packed: Option<u64>,
 
+    /// The integer type for an enum descriminant, if explicitly specified.
+    ///
+    /// e.g. `"i32"`, for `#[repr(C, i32)]`
     pub int: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// The kind of `#[repr]`.
+///
+/// See [AttributeRepr::kind]`.
 pub enum ReprKind {
+    /// `#[repr(Rust)]`
+    ///
+    /// Also the default.
     Rust,
+    /// `#[repr(C)]`
     C,
+    /// `#[repr(transparent)]
     Transparent,
+    /// `#[repr(simd)]`
     Simd,
 }
 
