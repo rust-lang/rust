@@ -1,14 +1,14 @@
 error[E0557]: feature has been removed
-  --> $DIR/const-trait-impl-parameter-mismatch.rs:11:30
+  --> $DIR/const-trait-impl-parameter-mismatch.rs:10:30
    |
 LL | #![feature(const_trait_impl, effects)]
    |                              ^^^^^^^ feature has been removed
    |
-   = note: removed in 1.84.0 (you are using $RUSTC_VERSION); see <https://github.com/rust-lang/rust/pull/132479> for more information
+   = note: removed in 1.84.0; see <https://github.com/rust-lang/rust/pull/132479> for more information
    = note: removed, redundant with `#![feature(const_trait_impl)]`
 
 error[E0049]: associated function `compute` has 0 type parameters but its trait declaration has 1 type parameter
-  --> $DIR/const-trait-impl-parameter-mismatch.rs:20:16
+  --> $DIR/const-trait-impl-parameter-mismatch.rs:19:16
    |
 LL |     fn compute<T: ~const Aux>() -> u32;
    |                - expected 1 type parameter
