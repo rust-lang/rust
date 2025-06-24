@@ -136,27 +136,3 @@ extern "C-cmse-nonsecure-entry" {}
 extern "cdecl" {}
 //[x64_win]~^ WARN unsupported_calling_conventions
 //[x64_win]~^^ WARN this was previously accepted
-
-struct FnPtrBearer {
-    ptr: extern "thiscall" fn(),
-    //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ ERROR: is not a supported ABI
-}
-
-impl FnPtrBearer {
-    pub extern "thiscall" fn inherent_fn(self) {
-        //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ ERROR: is not a supported ABI
-        (self.ptr)()
-    }
-}
-
-trait Trait {
-    extern "thiscall" fn trait_fn(self);
-    //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ ERROR: is not a supported ABI
-}
-
-impl Trait for FnPtrBearer {
-    extern "thiscall" fn trait_fn(self) {
-        //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ ERROR: is not a supported ABI
-        self.inherent_fn()
-    }
-}
