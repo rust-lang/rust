@@ -152,21 +152,26 @@ fn report_single_pattern(
             }) if lit.node.is_str() || lit.node.is_bytestr() => pat_ref_count + 1,
             _ => pat_ref_count,
         };
-        // References are only implicitly added to the pattern, so no overflow here.
-        // e.g. will work: match &Some(_) { Some(_) => () }
-        // will not: match Some(_) { &Some(_) => () }
-        let ref_count_diff = ty_ref_count - pat_ref_count;
 
-        // Try to remove address of expressions first.
-        let (ex, removed) = peel_n_hir_expr_refs(ex, ref_count_diff);
-        let ref_count_diff = ref_count_diff - removed;
+        // References are implicitly removed when `deref_patterns` are used.
+        // They are implicitly added when match ergonomics are used.
+        let (ex, ref_or_deref_adjust) = if ty_ref_count > pat_ref_count {
+            let ref_count_diff = ty_ref_count - pat_ref_count;
+
+            // Try to remove address of expressions first.
+            let (ex, removed) = peel_n_hir_expr_refs(ex, ref_count_diff);
+
+            (ex, "&".repeat(ref_count_diff - removed))
+        } else {
+            (ex, "*".repeat(pat_ref_count - ty_ref_count))
+        };
 
         let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
         let sugg = format!(
             "if {} == {}{} {}{els_str}",
             snippet_with_context(cx, ex.span, ctxt, "..", &mut app).0,
             // PartialEq for different reference counts may not exist.
-            "&".repeat(ref_count_diff),
+            ref_or_deref_adjust,
             snippet_with_applicability(cx, arm.pat.span, "..", &mut app),
             expr_block(cx, arm.body, ctxt, "..", Some(expr.span), &mut app),
         );
