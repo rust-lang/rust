@@ -353,8 +353,8 @@ declare_features! (
 
     /// Allows `extern "avr-interrupt" fn()` and `extern "avr-non-blocking-interrupt" fn()`.
     (unstable, abi_avr_interrupt, "1.45.0", Some(69664)),
-    /// Allows `extern "C-cmse-nonsecure-call" fn()`.
-    (unstable, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391)),
+    /// Allows `extern "cmse-nonsecure-call" fn()`.
+    (unstable, abi_cmse_nonsecure_call, "CURRENT_RUSTC_VERSION", Some(81391)),
     /// Allows `extern "custom" fn()`.
     (unstable, abi_custom, "CURRENT_RUSTC_VERSION", Some(140829)),
     /// Allows `extern "gpu-kernel" fn()`.
