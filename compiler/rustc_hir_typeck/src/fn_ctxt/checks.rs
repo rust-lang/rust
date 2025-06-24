@@ -242,6 +242,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 arg_expr.span,
                 ObligationCauseCode::WellFormed(None),
             );
+
+            // Unsized function arguments must be place expressions, because we can't move them.
+            self.check_place_expr_if_unsized(fn_input_ty, arg_expr);
         }
 
         // First, let's unify the formal method signature with the expectation eagerly.
@@ -540,6 +543,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 call_span,
                 call_expr,
                 tuple_arguments,
+            );
+        }
+    }
+
+    /// If `unsized_fn_params` is active, check that unsized values are place
+    /// expressions. This is needed because we can't move unsized values.
+    ///
+    /// If `unsized_fn_params` is inactive, this will be checked in borrowck instead.
+    fn check_place_expr_if_unsized(&self, ty: Ty<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        if self.tcx.features().unsized_fn_params() && !expr.is_syntactic_place_expr() {
+            self.require_type_is_sized(
+                ty,
+                expr.span,
+                ObligationCauseCode::UnsizedNonPlaceExpr(expr.span),
             );
         }
     }
@@ -1870,7 +1887,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
             }
             hir::StmtKind::Semi(expr) => {
-                self.check_expr(expr);
+                let ty = self.check_expr(expr);
+                self.check_place_expr_if_unsized(ty, expr);
             }
         }
 

@@ -406,6 +406,10 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Obligations emitted during the normalization of a free type alias.
     TypeAlias(ObligationCauseCodeHandle<'tcx>, Span, DefId),
+
+    /// Only reachable if the `unsized_fn_params` feature is used. Unsized function arguments must
+    /// be place expressions, because we can't move them.
+    UnsizedNonPlaceExpr(Span),
 }
 
 /// Whether a value can be extracted into a const.
