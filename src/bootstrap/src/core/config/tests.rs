@@ -17,7 +17,7 @@ use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{LldMode, Target, TargetSelection};
+use crate::core::config::{LldMode, StringOrBool, Target, TargetSelection};
 use crate::utils::tests::git::git_test;
 
 pub(crate) fn parse(config: &str) -> Config {
@@ -212,7 +212,7 @@ runner = "x86_64-runner"
     let darwin = TargetSelection::from_user("aarch64-apple-darwin");
     let darwin_values = Target {
         runner: Some("apple".into()),
-        optimized_compiler_builtins: Some(false),
+        optimized_compiler_builtins: Some(StringOrBool::Bool(false)),
         ..Default::default()
     };
     assert_eq!(
