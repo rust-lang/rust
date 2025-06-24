@@ -9,6 +9,7 @@ use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_session::Session;
+use rustc_session::config::OutputFilenames;
 use rustc_span::sym;
 
 use crate::CodegenCx;
@@ -41,6 +42,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
         tcx.dcx().fatal("can't jit non-executable crate");
     }
 
+    let output_filenames = tcx.output_filenames(());
     let (mut jit_module, mut cx) = create_jit_module(tcx);
     let mut cached_context = Context::new();
 
@@ -60,6 +62,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
                 MonoItem::Fn(inst) => {
                     codegen_and_compile_fn(
                         tcx,
+                        &output_filenames,
                         &mut cx,
                         &mut cached_context,
                         &mut jit_module,
@@ -122,6 +125,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
 
 fn codegen_and_compile_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
+    output_filenames: &OutputFilenames,
     cx: &mut crate::CodegenCx,
     cached_context: &mut Context,
     module: &mut dyn Module,
@@ -149,7 +153,14 @@ fn codegen_and_compile_fn<'tcx>(
             module,
             instance,
         );
-        crate::base::compile_fn(cx, &tcx.prof, cached_context, module, codegened_func);
+        crate::base::compile_fn(
+            cx,
+            &tcx.prof,
+            output_filenames,
+            cached_context,
+            module,
+            codegened_func,
+        );
     });
 }
 

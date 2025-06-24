@@ -12,6 +12,7 @@ use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_session::config::OutputFilenames;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
@@ -138,6 +139,7 @@ pub(crate) fn codegen_fn<'tcx>(
 pub(crate) fn compile_fn(
     cx: &mut crate::CodegenCx,
     profiler: &SelfProfilerRef,
+    output_filenames: &OutputFilenames,
     cached_context: &mut Context,
     module: &mut dyn Module,
     codegened_func: CodegenedFunction,
@@ -215,7 +217,7 @@ pub(crate) fn compile_fn(
     if cx.should_write_ir {
         // Write optimized function to file for debugging
         crate::pretty_clif::write_clif_file(
-            &cx.output_filenames,
+            output_filenames,
             &codegened_func.symbol_name,
             "opt",
             module.isa(),
@@ -225,7 +227,7 @@ pub(crate) fn compile_fn(
 
         if let Some(disasm) = &context.compiled_code().unwrap().vcode {
             crate::pretty_clif::write_ir_file(
-                &cx.output_filenames,
+                output_filenames,
                 &format!("{}.vcode", codegened_func.symbol_name),
                 |file| file.write_all(disasm.as_bytes()),
             )

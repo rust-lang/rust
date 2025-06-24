@@ -594,6 +594,7 @@ fn module_codegen(
 
     let profiler = tcx.prof.clone();
     let invocation_temp = tcx.sess.invocation_temp.clone();
+    let output_filenames = tcx.output_filenames(()).clone();
 
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
         profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
@@ -606,6 +607,7 @@ fn module_codegen(
                 crate::base::compile_fn(
                     &mut cx,
                     &profiler,
+                    &output_filenames,
                     &mut cached_context,
                     &mut module,
                     codegened_func,
