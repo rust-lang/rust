@@ -2,15 +2,12 @@
 //!
 //! This module provides a structured way to execute and manage commands efficiently,
 //! ensuring controlled failure handling and output management.
-#![allow(warnings)]
 
-use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Formatter};
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::path::Path;
 use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
-use std::sync::Mutex;
 
 use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
@@ -59,7 +56,7 @@ impl OutputMode {
 pub struct CommandCacheKey {
     program: OsString,
     args: Vec<OsString>,
-    envs: Vec<(OsString, OsString)>,
+    envs: Vec<(OsString, Option<OsString>)>,
     cwd: Option<PathBuf>,
 }
 
@@ -90,18 +87,14 @@ pub struct BootstrapCommand {
 impl<'a> BootstrapCommand {
     #[track_caller]
     pub fn new<S: AsRef<OsStr>>(program: S) -> Self {
-        Self { should_cache: true, ..Command::new(program).into() }
+        Command::new(program).into()
     }
     pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
         self.command.arg(arg.as_ref());
         self
     }
 
-    pub fn should_cache(&self) -> bool {
-        self.should_cache
-    }
-
-    pub fn cache_never(&mut self) -> &mut Self {
+    pub fn do_not_cache(&mut self) -> &mut Self {
         self.should_cache = false;
         self
     }
@@ -111,9 +104,7 @@ impl<'a> BootstrapCommand {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        args.into_iter().for_each(|arg| {
-            self.arg(arg);
-        });
+        self.command.args(args);
         self
     }
 
@@ -212,7 +203,7 @@ impl<'a> BootstrapCommand {
         // command will be handled. Caching must also be avoided here, as the inner command could be
         // modified externally without us being aware.
         self.mark_as_executed();
-        self.cache_never();
+        self.do_not_cache();
         &mut self.command
     }
 
@@ -240,7 +231,19 @@ impl<'a> BootstrapCommand {
     }
 
     pub fn cache_key(&self) -> Option<CommandCacheKey> {
-        (!self.should_cache).then(|| self.into())
+        if !self.should_cache {
+            return None;
+        }
+        let command = &self.command;
+        Some(CommandCacheKey {
+            program: command.get_program().into(),
+            args: command.get_args().map(OsStr::to_os_string).collect(),
+            envs: command
+                .get_envs()
+                .map(|(k, v)| (k.to_os_string(), v.map(|val| val.to_os_string())))
+                .collect(),
+            cwd: command.get_current_dir().map(Path::to_path_buf),
+        })
     }
 }
 
@@ -256,26 +259,11 @@ impl From<Command> for BootstrapCommand {
     fn from(command: Command) -> Self {
         let program = command.get_program().to_owned();
         Self {
-            should_cache: false,
+            should_cache: true,
             command,
             failure_behavior: BehaviorOnFailure::Exit,
             run_in_dry_run: false,
             drop_bomb: DropBomb::arm(program),
-        }
-    }
-}
-
-impl From<&BootstrapCommand> for CommandCacheKey {
-    fn from(value: &BootstrapCommand) -> Self {
-        let command = &value.command;
-        CommandCacheKey {
-            program: command.get_program().into(),
-            args: command.get_args().map(OsStr::to_os_string).collect(),
-            envs: command
-                .get_envs()
-                .filter_map(|(k, v_opt)| v_opt.map(|v| (k.to_owned(), v.to_owned())))
-                .collect(),
-            cwd: command.get_current_dir().map(Path::to_path_buf),
         }
     }
 }

@@ -3,7 +3,6 @@
 //! This module provides the [`ExecutionContext`] type, which holds global configuration
 //! relevant during the execution of commands in bootstrap. This includes dry-run
 //! mode, verbosity level, and behavior on failure.
-#![allow(warnings)]
 use std::collections::HashMap;
 use std::panic::Location;
 use std::process::Child;
@@ -37,14 +36,15 @@ enum CommandState<'a> {
         stdout: OutputMode,
         stderr: OutputMode,
         executed_at: &'a Location<'a>,
+        cache_key: Option<CommandCacheKey>,
     },
 }
 
-impl CommandCache {
-    pub fn new() -> Self {
-        Self { cache: Mutex::new(HashMap::new()) }
-    }
+pub struct DeferredCommand<'a> {
+    state: CommandState<'a>,
+}
 
+impl CommandCache {
     pub fn get(&self, key: &CommandCacheKey) -> Option<CommandOutput> {
         self.cache.lock().unwrap().get(key).cloned()
     }
@@ -122,13 +122,33 @@ impl ExecutionContext {
         stdout: OutputMode,
         stderr: OutputMode,
     ) -> DeferredCommand<'a> {
+        let cache_key = command.cache_key();
+
+        if let Some(cached_output) = cache_key.as_ref().and_then(|key| self.command_cache.get(key))
+        {
+            command.mark_as_executed();
+
+            self.verbose(|| println!("Cache hit: {command:?}"));
+
+            return DeferredCommand { state: CommandState::Cached(cached_output) };
+        }
+
         command.mark_as_executed();
 
         let created_at = command.get_created_location();
         let executed_at = std::panic::Location::caller();
 
         if self.dry_run() && !command.run_in_dry_run {
-            return DeferredCommand { process: None, stdout, stderr, command, executed_at };
+            return DeferredCommand {
+                state: CommandState::Deferred {
+                    process: None,
+                    command,
+                    stdout,
+                    stderr,
+                    executed_at,
+                    cache_key,
+                },
+            };
         }
 
         #[cfg(feature = "tracing")]
@@ -144,7 +164,16 @@ impl ExecutionContext {
 
         let child = cmd.spawn();
 
-        DeferredCommand { process: Some(child), stdout, stderr, command, executed_at }
+        DeferredCommand {
+            state: CommandState::Deferred {
+                process: Some(child),
+                command,
+                stdout,
+                stderr,
+                executed_at,
+                cache_key,
+            },
+        }
     }
 
     /// Execute a command and return its output.
@@ -157,29 +186,7 @@ impl ExecutionContext {
         stdout: OutputMode,
         stderr: OutputMode,
     ) -> CommandOutput {
-        let cache_key = command.cache_key();
-
-        if let Some(cached_output) = cache_key.as_ref().and_then(|key| self.command_cache.get(key))
-        {
-            command.mark_as_executed();
-
-            if self.dry_run() && !command.run_always {
-                return CommandOutput::default();
-            }
-
-            self.verbose(|| println!("Cache hit: {:?}", command));
-            return cached_output;
-        }
-
-        let output = self.start(command, stdout, stderr).wait_for_output(self);
-
-        if !self.dry_run() || command.run_always {
-            if let Some(cache_key) = cache_key {
-                self.command_cache.insert(cache_key, output.clone());
-            }
-        }
-
-        output
+        self.start(command, stdout, stderr).wait_for_output(self)
     }
 
     fn fail(&self, message: &str, output: CommandOutput) -> ! {
@@ -212,25 +219,42 @@ impl AsRef<ExecutionContext> for ExecutionContext {
     }
 }
 
-pub struct DeferredCommand<'a> {
-    process: Option<Result<Child, std::io::Error>>,
-    command: &'a mut BootstrapCommand,
-    stdout: OutputMode,
-    stderr: OutputMode,
-    executed_at: &'a Location<'a>,
-}
-
 impl<'a> DeferredCommand<'a> {
-    pub fn wait_for_output(mut self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
-        let exec_ctx = exec_ctx.as_ref();
+    pub fn wait_for_output(self, exec_ctx: impl AsRef<ExecutionContext>) -> CommandOutput {
+        match self.state {
+            CommandState::Cached(output) => output,
+            CommandState::Deferred { process, command, stdout, stderr, executed_at, cache_key } => {
+                let exec_ctx = exec_ctx.as_ref();
 
-        let process = match self.process.take() {
+                let output =
+                    Self::finish_process(process, command, stdout, stderr, executed_at, exec_ctx);
+
+                if (!exec_ctx.dry_run() || command.run_always)
+                    && let (Some(cache_key), Some(_)) = (&cache_key, output.status())
+                {
+                    exec_ctx.command_cache.insert(cache_key.clone(), output.clone());
+                }
+
+                output
+            }
+        }
+    }
+
+    pub fn finish_process(
+        mut process: Option<Result<Child, std::io::Error>>,
+        command: &mut BootstrapCommand,
+        stdout: OutputMode,
+        stderr: OutputMode,
+        executed_at: &'a std::panic::Location<'a>,
+        exec_ctx: &ExecutionContext,
+    ) -> CommandOutput {
+        let process = match process.take() {
             Some(p) => p,
             None => return CommandOutput::default(),
         };
 
-        let created_at = self.command.get_created_location();
-        let executed_at = self.executed_at;
+        let created_at = command.get_created_location();
+        let executed_at = executed_at;
 
         let mut message = String::new();
 
@@ -238,7 +262,7 @@ impl<'a> DeferredCommand<'a> {
             Ok(child) => match child.wait_with_output() {
                 Ok(result) if result.status.success() => {
                     // Successful execution
-                    CommandOutput::from_output(result, self.stdout, self.stderr)
+                    CommandOutput::from_output(result, stdout, stderr)
                 }
                 Ok(result) => {
                     // Command ran but failed
@@ -247,20 +271,20 @@ impl<'a> DeferredCommand<'a> {
                     writeln!(
                         message,
                         r#"
-Command {:?} did not execute successfully.
+Command {command:?} did not execute successfully.
 Expected success, got {}
 Created at: {created_at}
 Executed at: {executed_at}"#,
-                        self.command, result.status,
+                        result.status,
                     )
                     .unwrap();
 
-                    let output = CommandOutput::from_output(result, self.stdout, self.stderr);
+                    let output = CommandOutput::from_output(result, stdout, stderr);
 
-                    if self.stdout.captures() {
+                    if stdout.captures() {
                         writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
                     }
-                    if self.stderr.captures() {
+                    if stderr.captures() {
                         writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
                     }
 
@@ -272,13 +296,12 @@ Executed at: {executed_at}"#,
 
                     writeln!(
                         message,
-                        "\n\nCommand {:?} did not execute successfully.\
-                        \nIt was not possible to execute the command: {e:?}",
-                        self.command
+                        "\n\nCommand {command:?} did not execute successfully.\
+                        \nIt was not possible to execute the command: {e:?}"
                     )
                     .unwrap();
 
-                    CommandOutput::did_not_start(self.stdout, self.stderr)
+                    CommandOutput::did_not_start(stdout, stderr)
                 }
             },
             Err(e) => {
@@ -287,18 +310,17 @@ Executed at: {executed_at}"#,
 
                 writeln!(
                     message,
-                    "\n\nCommand {:?} did not execute successfully.\
-                    \nIt was not possible to execute the command: {e:?}",
-                    self.command
+                    "\n\nCommand {command:?} did not execute successfully.\
+                    \nIt was not possible to execute the command: {e:?}"
                 )
                 .unwrap();
 
-                CommandOutput::did_not_start(self.stdout, self.stderr)
+                CommandOutput::did_not_start(stdout, stderr)
             }
         };
 
         if !output.is_success() {
-            match self.command.failure_behavior {
+            match command.failure_behavior {
                 BehaviorOnFailure::DelayFail => {
                     if exec_ctx.fail_fast {
                         exec_ctx.fail(&message, output);
