@@ -122,7 +122,7 @@ pub(crate) enum MatcherLoc {
     MetaVarDecl {
         span: Span,
         bind: Ident,
-        kind: Option<NonterminalKind>,
+        kind: NonterminalKind,
         next_metavar: usize,
         seq_depth: usize,
     },
@@ -151,12 +151,7 @@ impl Display for MatcherLoc {
                 write!(f, "{}", token_descr(token))
             }
             MatcherLoc::MetaVarDecl { bind, kind, .. } => {
-                write!(f, "meta-variable `${bind}")?;
-                if let Some(kind) = kind {
-                    write!(f, ":{kind}")?;
-                }
-                write!(f, "`")?;
-                Ok(())
+                write!(f, "meta-variable `${bind}:{kind}`")
             }
             MatcherLoc::Eof => f.write_str("end of macro"),
 
@@ -220,7 +215,7 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
                         seq_depth,
                     };
                 }
-                &TokenTree::MetaVarDecl(span, bind, kind) => {
+                &TokenTree::MetaVarDecl { span, name: bind, kind } => {
                     locs.push(MatcherLoc::MetaVarDecl {
                         span,
                         bind,
@@ -330,7 +325,7 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
     matcher
         .iter()
         .map(|tt| match tt {
-            TokenTree::MetaVarDecl(..) => 1,
+            TokenTree::MetaVarDecl { .. } => 1,
             TokenTree::Sequence(_, seq) => seq.num_captures,
             TokenTree::Delimited(.., delim) => count_metavar_decls(&delim.tts),
             TokenTree::Token(..) => 0,
@@ -551,18 +546,12 @@ impl TtParser {
                     mp.idx = idx_first;
                     self.cur_mps.push(mp);
                 }
-                &MatcherLoc::MetaVarDecl { span, kind, .. } => {
+                &MatcherLoc::MetaVarDecl { kind, .. } => {
                     // Built-in nonterminals never start with these tokens, so we can eliminate
                     // them from consideration. We use the span of the metavariable declaration
                     // to determine any edition-specific matching behavior for non-terminals.
-                    if let Some(kind) = kind {
-                        if Parser::nonterminal_may_begin_with(kind, token) {
-                            self.bb_mps.push(mp);
-                        }
-                    } else {
-                        // E.g. `$e` instead of `$e:expr`, reported as a hard error if actually used.
-                        // Both this check and the one in `nameize` are necessary, surprisingly.
-                        return Some(Error(span, "missing fragment specifier".to_string()));
+                    if Parser::nonterminal_may_begin_with(kind, token) {
+                        self.bb_mps.push(mp);
                     }
                 }
                 MatcherLoc::Eof => {
@@ -666,11 +655,7 @@ impl TtParser {
                     let mut mp = self.bb_mps.pop().unwrap();
                     let loc = &matcher[mp.idx];
                     if let &MatcherLoc::MetaVarDecl {
-                        span,
-                        kind: Some(kind),
-                        next_metavar,
-                        seq_depth,
-                        ..
+                        span, kind, next_metavar, seq_depth, ..
                     } = loc
                     {
                         // We use the span of the metavariable declaration to determine any
@@ -715,7 +700,7 @@ impl TtParser {
             .bb_mps
             .iter()
             .map(|mp| match &matcher[mp.idx] {
-                MatcherLoc::MetaVarDecl { bind, kind: Some(kind), .. } => {
+                MatcherLoc::MetaVarDecl { bind, kind, .. } => {
                     format!("{kind} ('{bind}')")
                 }
                 _ => unreachable!(),
@@ -745,19 +730,13 @@ impl TtParser {
         // `NamedParseResult`. Otherwise, it's an error.
         let mut ret_val = FxHashMap::default();
         for loc in matcher {
-            if let &MatcherLoc::MetaVarDecl { span, bind, kind, .. } = loc {
-                if kind.is_some() {
-                    match ret_val.entry(MacroRulesNormalizedIdent::new(bind)) {
-                        Vacant(spot) => spot.insert(res.next().unwrap()),
-                        Occupied(..) => {
-                            return Error(span, format!("duplicated bind name: {bind}"));
-                        }
-                    };
-                } else {
-                    // E.g. `$e` instead of `$e:expr`, reported as a hard error if actually used.
-                    // Both this check and the one in `parse_tt_inner` are necessary, surprisingly.
-                    return Error(span, "missing fragment specifier".to_string());
-                }
+            if let &MatcherLoc::MetaVarDecl { span, bind, .. } = loc {
+                match ret_val.entry(MacroRulesNormalizedIdent::new(bind)) {
+                    Vacant(spot) => spot.insert(res.next().unwrap()),
+                    Occupied(..) => {
+                        return Error(span, format!("duplicated bind name: {bind}"));
+                    }
+                };
             }
         }
         Success(ret_val)
