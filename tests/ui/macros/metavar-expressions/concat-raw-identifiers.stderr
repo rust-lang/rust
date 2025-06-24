@@ -1,105 +1,106 @@
-error: invalid item within a `${concat(...)}` expression
+error: invalid item within a `${concat(..)}` expression
   --> $DIR/concat-raw-identifiers.rs:28:22
    |
 LL |         let ${concat(r#abc, abc)}: () = ();
    |                      ^^^^^
    |
    = note: raw identifiers cannot be concatenated
-help: expanding this `concat(...)` expression
-  --> $DIR/concat-raw-identifiers.rs:28:15
-   |
-LL |         let ${concat(r#abc, abc)}: () = ();
-   |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error: invalid item within a `${concat(..)}` expression
   --> $DIR/concat-raw-identifiers.rs:32:27
    |
 LL |         let ${concat(abc, r#abc)}: () = ();
    |                           ^^^^^
    |
    = note: raw identifiers cannot be concatenated
-help: expanding this `concat(...)` expression
-  --> $DIR/concat-raw-identifiers.rs:32:15
-   |
-LL |         let ${concat(abc, r#abc)}: () = ();
-   |               ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error: invalid item within a `${concat(..)}` expression
   --> $DIR/concat-raw-identifiers.rs:35:22
    |
 LL |         let ${concat(r#abc, r#abc)}: () = ();
    |                      ^^^^^
    |
    = note: raw identifiers cannot be concatenated
-help: expanding this `concat(...)` expression
-  --> $DIR/concat-raw-identifiers.rs:35:15
-   |
-LL |         let ${concat(r#abc, r#abc)}: () = ();
-   |               ^^^^^^
 
-error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/concat-raw-identifiers.rs:5:28
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-raw-identifiers.rs:64:16
    |
-LL |         let ${concat(abc, $rhs)}: () = ();
-   |                            ^^^
+LL |     idents_01!(r#_c);
+   |                ^^^^
+   |
+   = note: raw identifiers cannot be concatenated
 
-error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/concat-raw-identifiers.rs:12:23
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-raw-identifiers.rs:66:16
    |
-LL |         let ${concat($lhs, abc)}: () = ();
-   |                       ^^^
+LL |     idents_10!(r#_c);
+   |                ^^^^
+   |
+   = note: raw identifiers cannot be concatenated
 
-error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/concat-raw-identifiers.rs:19:23
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-raw-identifiers.rs:68:16
    |
-LL |         let ${concat($lhs, $rhs)}: () = ();
-   |                       ^^^
+LL |     idents_11!(r#_c, d);
+   |                ^^^^
+   |
+   = note: raw identifiers cannot be concatenated
 
-error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/concat-raw-identifiers.rs:19:29
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-raw-identifiers.rs:69:20
    |
-LL |         let ${concat($lhs, $rhs)}: () = ();
-   |                             ^^^
+LL |     idents_11!(_e, r#f);
+   |                    ^^^
+   |
+   = note: raw identifiers cannot be concatenated
 
-error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/concat-raw-identifiers.rs:19:23
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-raw-identifiers.rs:70:16
    |
-LL |         let ${concat($lhs, $rhs)}: () = ();
-   |                       ^^^
+LL |     idents_11!(r#_g, r#h);
+   |                ^^^^
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: raw identifiers cannot be concatenated
 
-error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/concat-raw-identifiers.rs:42:28
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-raw-identifiers.rs:72:13
    |
-LL |         let ${concat(abc, $rhs)}: () = ();
-   |                            ^^^
+LL |     tts_01!(r#_c);
+   |             ^^^^
+   |
+   = note: raw identifiers cannot be concatenated
 
-error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/concat-raw-identifiers.rs:49:23
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-raw-identifiers.rs:74:13
    |
-LL |         let ${concat($lhs, abc)}: () = ();
-   |                       ^^^
+LL |     tts_10!(r#_c);
+   |             ^^^^
+   |
+   = note: raw identifiers cannot be concatenated
 
-error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/concat-raw-identifiers.rs:56:23
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-raw-identifiers.rs:76:13
    |
-LL |         let ${concat($lhs, $rhs)}: () = ();
-   |                       ^^^
+LL |     tts_11!(r#_c, d);
+   |             ^^^^
+   |
+   = note: raw identifiers cannot be concatenated
 
-error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/concat-raw-identifiers.rs:56:29
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-raw-identifiers.rs:77:17
    |
-LL |         let ${concat($lhs, $rhs)}: () = ();
-   |                             ^^^
+LL |     tts_11!(_e, r#f);
+   |                 ^^^
+   |
+   = note: raw identifiers cannot be concatenated
 
-error: `${concat(..)}` currently does not support raw identifiers
-  --> $DIR/concat-raw-identifiers.rs:56:23
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-raw-identifiers.rs:78:13
    |
-LL |         let ${concat($lhs, $rhs)}: () = ();
-   |                       ^^^
+LL |     tts_11!(r#_g, r#h);
+   |             ^^^^
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: raw identifiers cannot be concatenated
 
 error: expected pattern, found `$`
   --> $DIR/concat-raw-identifiers.rs:28:13

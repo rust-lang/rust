@@ -3,60 +3,60 @@
 macro_rules! idents_01 {
     ($rhs:ident) => {
         let ${concat(abc, $rhs)}: () = ();
-        //~^ ERROR `${concat(..)}` currently does not support raw identifiers
+        //~^ ERROR invalid item within a `${concat(..)}` expression
     };
 }
 
 macro_rules! idents_10 {
     ($lhs:ident) => {
         let ${concat($lhs, abc)}: () = ();
-        //~^ ERROR `${concat(..)}` currently does not support raw identifiers
+        //~^ ERROR invalid item within a `${concat(..)}` expression
     };
 }
 
 macro_rules! idents_11 {
     ($lhs:ident, $rhs:ident) => {
         let ${concat($lhs, $rhs)}: () = ();
-        //~^ ERROR `${concat(..)}` currently does not support raw identifiers
-        //~| ERROR `${concat(..)}` currently does not support raw identifiers
-        //~| ERROR `${concat(..)}` currently does not support raw identifiers
+        //~^ ERROR invalid item within a `${concat(..)}` expression
+        //~| ERROR invalid item within a `${concat(..)}` expression
+        //~| ERROR invalid item within a `${concat(..)}` expression
     };
 }
 
 macro_rules! no_params {
     () => {
         let ${concat(r#abc, abc)}: () = ();
-        //~^ ERROR invalid item within a `${concat(...)}` expression
+        //~^ ERROR invalid item within a `${concat(..)}` expression
         //~| ERROR expected pattern, found `$`
 
         let ${concat(abc, r#abc)}: () = ();
-        //~^ ERROR invalid item within a `${concat(...)}` expression
+        //~^ ERROR invalid item within a `${concat(..)}` expression
 
         let ${concat(r#abc, r#abc)}: () = ();
-        //~^ ERROR invalid item within a `${concat(...)}` expression
+        //~^ ERROR invalid item within a `${concat(..)}` expression
     };
 }
 
 macro_rules! tts_01 {
     ($rhs:tt) => {
         let ${concat(abc, $rhs)}: () = ();
-        //~^ ERROR `${concat(..)}` currently does not support raw identifiers
+        //~^ ERROR invalid item within a `${concat(..)}` expression
     };
 }
 
 macro_rules! tts_10 {
     ($lhs:tt) => {
         let ${concat($lhs, abc)}: () = ();
-        //~^ ERROR `${concat(..)}` currently does not support raw identifiers
+        //~^ ERROR invalid item within a `${concat(..)}` expression
     };
 }
 
 macro_rules! tts_11 {
     ($lhs:tt, $rhs:tt) => {
         let ${concat($lhs, $rhs)}: () = ();
-        //~^ ERROR `${concat(..)}` currently does not support raw identifiers
-        //~| ERROR `${concat(..)}` currently does not support raw identifiers
-        //~| ERROR `${concat(..)}` currently does not support raw identifiers
+        //~^ ERROR invalid item within a `${concat(..)}` expression
+        //~| ERROR invalid item within a `${concat(..)}` expression
+        //~| ERROR invalid item within a `${concat(..)}` expression
     };
 }
 
