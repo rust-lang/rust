@@ -140,8 +140,8 @@ enum LocalRef<'tcx, V> {
     Place(PlaceRef<'tcx, V>),
     /// `UnsizedPlace(p)`: `p` itself is a thin pointer (indirect place).
     /// `*p` is the wide pointer that references the actual unsized place.
-    /// Every time it is initialized, we have to reallocate the place
-    /// and update the wide pointer. That's the reason why it is indirect.
+    ///
+    /// Rust has no alloca and thus no ability to move the unsized place.
     UnsizedPlace(PlaceRef<'tcx, V>),
     /// The backend [`OperandValue`] has already been generated.
     Operand(OperandRef<'tcx, V>),
@@ -498,7 +498,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                         LocalRef::Place(PlaceRef::new_sized(llarg, arg.layout))
                     }
                 }
-                // Unsized indirect qrguments
+                // Unsized indirect arguments
                 PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
                     // As the storage for the indirect argument lives during
                     // the whole function call, we just copy the wide pointer.
