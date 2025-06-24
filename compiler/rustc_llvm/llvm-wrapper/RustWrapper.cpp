@@ -1625,7 +1625,6 @@ LLVMRustGetFunctionCall(LLVMValueRef Fn, const char *Name, size_t NameLen) {
         const llvm::Function *calledFunc = callInst->getCalledFunction();
         if (calledFunc && calledFunc->getName() == targetName) {
           // Found a call to the target function
-          llvm::errs() << "Found call: " << *callInst << "\n";
           return wrap(callInst);
         }
       }

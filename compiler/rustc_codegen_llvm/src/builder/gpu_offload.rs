@@ -117,32 +117,12 @@ pub(crate) fn gen_image_wrapper_module<'ll>(
         llvm::set_section(llglobal, &c_section_name);
         llvm::set_alignment(llglobal, Align::EIGHT);
 
-        //@.omp_offloading.device_image = internal unnamed_addr constant [4040 x i8] c"111111111", section ".llvm.offloading", align 8
-        // TODO
-        //  @.omp_offloading.device_images = internal unnamed_addr constant [1 x %__tgt_device_image] [%__tgt_device_image { ptr getelementptr ([4040 x i8], ptr @.omp_offloading.device_image, i64 0, i64 144), ptr getelementptr ([4040 x i8], ptr @.omp_offloading.device_image, i64 0, i64 4040), ptr @__start_omp_offloading_entries, ptr @__stop_omp_offloading_entries }]
-        //  @.omp_offloading.descriptor = internal constant %__tgt_bin_desc { i32 1, ptr @.omp_offloading.device_images, ptr @__start_omp_offloading_entries, ptr @__stop_omp_offloading_entries }
-        //  @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 101, ptr @.omp_offloading.descriptor_reg, ptr null }]
-        //
-        //  define internal void @.omp_offloading.descriptor_reg() section ".text.startup" {
-        //  entry:
-        //    call void @__tgt_register_lib(ptr @.omp_offloading.descriptor)
-        //    %0 = call i32 @atexit(ptr @.omp_offloading.descriptor_unreg)
-        //    ret void
-        //  }
-        //
-        //  define internal void @.omp_offloading.descriptor_unreg() section ".text.startup" {
-        //  entry:
-        //    call void @__tgt_unregister_lib(ptr @.omp_offloading.descriptor)
-        //    ret void
-        //  }
-
         llvm::LLVMPrintModuleToFile(
             llmod,
             CString::new("rustmagic.openmp.image.wrapper.ll").unwrap().as_ptr(),
             std::ptr::null_mut(),
         );
 
-        // Clean up
         llvm::LLVMDisposeModule(llmod);
         llvm::LLVMContextDispose(llcx);
     }
@@ -154,7 +134,6 @@ pub(crate) fn handle_gpu_code<'ll>(
 ) {
     let (offload_entry_ty, at_one, begin, update, end, tgt_bin_desc, fn_ty) = gen_globals(&cx);
 
-    dbg!("created struct");
     let mut o_types = vec![];
     let mut kernels = vec![];
     for num in 0..9 {
@@ -164,13 +143,17 @@ pub(crate) fn handle_gpu_code<'ll>(
             kernels.push(kernel);
         }
     }
-    dbg!("gen_call_handling");
     gen_call_handling(&cx, &kernels, at_one, begin, update, end, tgt_bin_desc, fn_ty, &o_types);
     gen_image_wrapper_module(&cgcx, &cx);
-    // In a follow-up PR, we will enable gpu device code generation.
-    //gen_asdf(&cgcx, &cx);
 }
 
+// The meaning of the __tgt_offload_entry (as per llvm docs) is
+// Type,  Identifier, Description
+// void*,   addr,     Address of global symbol within device image (function or global)
+// char*,   name,     Name of the symbol
+// size_t,  size,     Size of the entry info (0 if it is a function)
+// int32_t, flags,    Flags associated with the entry (see Target Region Entry Flags)
+// int32_t, reserved, Reserved, to be used by the runtime library.
 fn add_tgt_offload_entry<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Type {
     let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
     let tptr = cx.type_ptr();
@@ -228,6 +211,7 @@ fn gen_globals<'ll>(
     let tgt_bin_desc_name = cx.type_named_struct("struct.__tgt_bin_desc");
     cx.set_struct_body(tgt_bin_desc_name, &tgt_bin_desc_ty, false);
 
+    // For each kernel to run on the gpu, we will later generate one entry of this type.
     // coppied from LLVM
     // typedef struct {
     //   uint64_t Reserved;
@@ -244,25 +228,15 @@ fn gen_globals<'ll>(
         vec![ti32, ti32, tptr, tptr, tptr, tptr, tptr, tptr, ti64, ti64, tarr, tarr, ti32];
 
     cx.set_struct_body(kernel_arguments_ty, &kernel_elements, false);
+    // For now we don't handle kernels, so for now we just add a global dummy
+    // to make sure that the __tgt_offload_entrr is defined and handled correctly.
     cx.declare_global("my_struct_global2", kernel_arguments_ty);
-    //@my_struct_global = external global %struct.__tgt_offload_entry
-    //@my_struct_global2 = external global %struct.__tgt_kernel_arguments
-    dbg!(&kernel_arguments_ty);
-    //LLVMTypeRef elements[9] = {i64Ty, i16Ty, i16Ty, i32Ty, ptrTy, ptrTy, i64Ty, i64Ty, ptrTy};
-    //LLVMStructSetBody(structTy, elements, 9, 0);
 
-    // New, to test memtransfer
-    // ; Function Attrs: nounwind
-    // declare void @__tgt_target_data_begin_mapper(ptr, i64, i32, ptr, ptr, ptr, ptr, ptr, ptr) #3
-    //
-    // ; Function Attrs: nounwind
-    // declare void @__tgt_target_data_update_mapper(ptr, i64, i32, ptr, ptr, ptr, ptr, ptr, ptr) #3
-    //
-    // ; Function Attrs: nounwind
-    // declare void @__tgt_target_data_end_mapper(ptr, i64, i32, ptr, ptr, ptr, ptr, ptr, ptr) #3
-
+    // Move data to the gpu
     let mapper_begin = "__tgt_target_data_begin_mapper";
+    // Update data on the gpu, currently not used.
     let mapper_update = String::from("__tgt_target_data_update_mapper");
+    // Move data from the GPU
     let mapper_end = String::from("__tgt_target_data_end_mapper");
     let args = vec![tptr, ti64, ti32, tptr, tptr, tptr, tptr, tptr, tptr];
     let mapper_fn_ty = cx.type_func(&args, cx.type_void());
@@ -361,8 +335,6 @@ fn gen_define_handling<'ll>(
     // Next: For each function, generate these three entries. A weak constant,
     // the llvm.rodata entry name, and  the omp_offloading_entries value
 
-    // @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id = weak constant i8 0
-    // @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
     let name = format!(".kernel_{num}.region_id");
     let initializer = cx.get_const_i8(0);
     let region_id = add_unnamed_global(&cx, &name, initializer, WeakAnyLinkage);
@@ -402,17 +374,6 @@ fn gen_define_handling<'ll>(
     llvm::set_alignment(llglobal, Align::ONE);
     let c_section_name = CString::new(".omp_offloading_entries").unwrap();
     llvm::set_section(llglobal, &c_section_name);
-    // rustc
-    // @.offloading.entry.kernel_3 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.kernel_3.region_id, ptr @.offloading.entry_name.3, i64 0, i64 0, ptr null }, section ".omp_offloading_entries", align 1
-    // clang
-    // @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
-
-    //
-    // 1. @.offload_sizes.{num} = private unnamed_addr constant [4 x i64] [i64 8, i64 0, i64 16, i64 0]
-    // 2. @.offload_maptypes
-    // 3. @.__omp_offloading_<hash>_fnc_name_<hash> = weak constant i8 0
-    // 4. @.offloading.entry_name = internal unnamed_addr constant [66 x i8] c"__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7\00", section ".llvm.rodata.offloading", align 1
-    // 5. @.offloading.entry.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.__omp_offloading_86fafab6_c40006a1__Z3fooPSt7complexIdES1_S0_m_l7.region_id, ptr @.offloading.entry_name, i64 0, i64 0, ptr null }, section "omp_offloading_entries", align 1
     o_types
 }
 
@@ -454,7 +415,6 @@ fn gen_call_handling<'ll>(
             llvm::LLVMRustGetFunctionCall(main_fn, kernel_name.as_c_char_ptr(), kernel_name.len())
         };
         let kernel_call = if call.is_some() {
-            dbg!("found kernel call");
             call.unwrap()
         } else {
             return;
@@ -464,7 +424,6 @@ fn gen_call_handling<'ll>(
         let mut builder = SBuilder::build(cx, kernel_call_bb);
 
         let types = cx.func_params_types(cx.get_type_of_global(called));
-        dbg!(&types);
         let num_args = types.len() as u64;
 
         // Step 0)
