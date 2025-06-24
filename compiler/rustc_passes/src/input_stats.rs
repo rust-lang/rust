@@ -123,6 +123,7 @@ impl<'k> StatCollector<'k> {
         #[allow(rustc::potential_query_instability)]
         let mut nodes: Vec<_> = self.nodes.iter().collect();
         nodes.sort_by_cached_key(|(label, node)| (node.stats.accum_size(), label.to_owned()));
+        nodes.reverse(); // bigger items first
 
         let name_w = 18;
         let acc_size1_w = 10;

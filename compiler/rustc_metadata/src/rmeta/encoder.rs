@@ -779,6 +779,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             assert_eq!(self.opaque.file().stream_position().unwrap(), pos_before_rewind);
 
             stats.sort_by_key(|&(_, usize)| usize);
+            stats.reverse(); // bigger items first
 
             let prefix = "meta-stats";
             let perc = |bytes| (bytes * 100) as f64 / total_bytes as f64;
