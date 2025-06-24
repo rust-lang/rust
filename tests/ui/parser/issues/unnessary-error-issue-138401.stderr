@@ -1,0 +1,19 @@
+error: mismatched closing delimiter: `)`
+  --> $DIR/unnessary-error-issue-138401.rs:1:27
+   |
+LL | pub fn foo(x: i64) -> i64 {
+   |                           ^ unclosed delimiter
+LL |     x.abs) 
+   |          ^ mismatched closing delimiter
+
+error: unexpected closing delimiter: `}`
+  --> $DIR/unnessary-error-issue-138401.rs:4:1
+   |
+LL |     x.abs) 
+   |          - missing open `(` for this delimiter
+LL |
+LL | }
+   | ^ unexpected closing delimiter
+
+error: aborting due to 2 previous errors
+
