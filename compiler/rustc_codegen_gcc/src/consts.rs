@@ -35,7 +35,9 @@ fn set_global_alignment<'gcc, 'tcx>(
 }
 
 impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
-    fn static_addr_of(&self, cv: RValue<'gcc>, align: Align, kind: Option<&str>) -> RValue<'gcc> {
+    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> RValue<'gcc> {
+        let align = alloc.inner().align;
+        let cv = self.const_data_from_alloc(alloc);
         if let Some(variable) = self.const_globals.borrow().get(&cv) {
             if let Some(global_variable) = self.global_lvalues.borrow().get(variable) {
                 let alignment = align.bits() as i32;
