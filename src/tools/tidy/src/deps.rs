@@ -206,6 +206,7 @@ const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
     ("wasmtime-jit-icache-coherence", "Apache-2.0 WITH LLVM-exception"),
+    ("wasmtime-math", "Apache-2.0 WITH LLVM-exception"),
     // tidy-alphabetical-end
 ];
 
@@ -537,6 +538,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "indexmap",
     "libc",
     "libloading",
+    "libm",
     "log",
     "mach2",
     "memchr",
@@ -554,6 +556,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "target-lexicon",
     "unicode-ident",
     "wasmtime-jit-icache-coherence",
+    "wasmtime-math",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
