@@ -1675,8 +1675,16 @@ impl Config {
     pub fn optimized_compiler_builtins(&self, target: TargetSelection) -> bool {
         self.target_config
             .get(&target)
-            .and_then(|t| t.optimized_compiler_builtins)
+            .and_then(|t| t.optimized_compiler_builtins.as_ref())
+            .map(StringOrBool::is_string_or_true)
             .unwrap_or(self.optimized_compiler_builtins)
+    }
+
+    pub fn optimized_compiler_builtins_path(&self, target: TargetSelection) -> Option<&str> {
+        match self.target_config.get(&target)?.optimized_compiler_builtins.as_ref()? {
+            StringOrBool::String(s) => Some(s),
+            StringOrBool::Bool(_) => None,
+        }
     }
 
     pub fn llvm_enabled(&self, target: TargetSelection) -> bool {
