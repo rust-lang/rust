@@ -175,7 +175,7 @@ pub(crate) fn codegen_inline_asm_inner<'tcx>(
     fx.inline_asm_index += 1;
 
     let generated_asm = asm_gen.generate_asm_wrapper(&asm_name);
-    fx.cx.global_asm.push_str(&generated_asm);
+    fx.inline_asm.push_str(&generated_asm);
 
     let mut inputs = Vec::new();
     let mut outputs = Vec::new();

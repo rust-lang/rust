@@ -512,7 +512,7 @@ fn codegen_cgu_content(
     tcx: TyCtxt<'_>,
     module: &mut dyn Module,
     cgu_name: rustc_span::Symbol,
-) -> (CodegenCx, Vec<CodegenedFunction>) {
+) -> (CodegenCx, Vec<CodegenedFunction>, String) {
     let _timer = tcx.prof.generic_activity_with_arg("codegen cgu", cgu_name.as_str());
 
     let cgu = tcx.codegen_unit(cgu_name);
@@ -524,6 +524,7 @@ fn codegen_cgu_content(
         tcx.sess.opts.debuginfo != DebugInfo::None,
         cgu_name,
     );
+    let mut global_asm = String::new();
     let mut type_dbg = TypeDebugContext::default();
     super::predefine_mono_items(tcx, module, &mono_items);
     let mut codegened_functions = vec![];
@@ -533,7 +534,7 @@ fn codegen_cgu_content(
                 if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED)
                 {
                     rustc_codegen_ssa::mir::naked_asm::codegen_naked_asm(
-                        &mut GlobalAsmContext { tcx, global_asm: &mut cx.global_asm },
+                        &mut GlobalAsmContext { tcx, global_asm: &mut global_asm },
                         instance,
                         MonoItemData {
                             linkage: RLinkage::External,
@@ -565,7 +566,7 @@ fn codegen_cgu_content(
             }
             MonoItem::GlobalAsm(item_id) => {
                 rustc_codegen_ssa::base::codegen_global_asm(
-                    &mut GlobalAsmContext { tcx, global_asm: &mut cx.global_asm },
+                    &mut GlobalAsmContext { tcx, global_asm: &mut global_asm },
                     item_id,
                 );
             }
@@ -573,7 +574,7 @@ fn codegen_cgu_content(
     }
     crate::main_shim::maybe_create_entry_wrapper(tcx, module, false, cgu.is_primary());
 
-    (cx, codegened_functions)
+    (cx, codegened_functions, global_asm)
 }
 
 fn module_codegen(
@@ -586,7 +587,8 @@ fn module_codegen(
 ) -> OngoingModuleCodegen {
     let mut module = make_module(tcx.sess, cgu_name.as_str().to_string());
 
-    let (mut cx, codegened_functions) = codegen_cgu_content(tcx, &mut module, cgu_name);
+    let (mut cx, codegened_functions, mut global_asm) =
+        codegen_cgu_content(tcx, &mut module, cgu_name);
 
     let cgu_name = cgu_name.as_str().to_owned();
 
@@ -610,6 +612,7 @@ fn module_codegen(
                     &output_filenames,
                     &mut cached_context,
                     &mut module,
+                    &mut global_asm,
                     codegened_func,
                 );
             }
@@ -620,7 +623,7 @@ fn module_codegen(
                 crate::global_asm::compile_global_asm(
                     &global_asm_config,
                     &cgu_name,
-                    &cx.global_asm,
+                    global_asm,
                     invocation_temp.as_deref(),
                 )
             })?;

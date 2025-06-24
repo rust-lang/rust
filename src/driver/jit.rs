@@ -80,10 +80,6 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
         }
     });
 
-    if !cx.global_asm.is_empty() {
-        tcx.dcx().fatal("Inline asm is not supported in JIT mode");
-    }
-
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, true, true);
 
     tcx.dcx().abort_if_errors();
@@ -153,14 +149,20 @@ fn codegen_and_compile_fn<'tcx>(
             module,
             instance,
         );
+
+        let mut global_asm = String::new();
         crate::base::compile_fn(
             cx,
             &tcx.prof,
             output_filenames,
             cached_context,
             module,
+            &mut global_asm,
             codegened_func,
         );
+        if !global_asm.is_empty() {
+            tcx.dcx().fatal("Inline asm is not supported in JIT mode");
+        }
     });
 }
 

@@ -26,6 +26,7 @@ pub(crate) struct CodegenedFunction {
     func: Function,
     clif_comments: CommentWriter,
     func_debug_cx: Option<FunctionDebugContext>,
+    inline_asm: String,
 }
 
 pub(crate) fn codegen_fn<'tcx>(
@@ -105,6 +106,7 @@ pub(crate) fn codegen_fn<'tcx>(
 
         clif_comments,
         next_ssa_var: 0,
+        inline_asm: String::new(),
         inline_asm_index: 0,
     };
 
@@ -116,6 +118,7 @@ pub(crate) fn codegen_fn<'tcx>(
     let symbol_name = fx.symbol_name;
     let clif_comments = fx.clif_comments;
     let func_debug_cx = fx.func_debug_cx;
+    let inline_asm = fx.inline_asm;
 
     fx.constants_cx.finalize(fx.tcx, &mut *fx.module);
 
@@ -133,7 +136,7 @@ pub(crate) fn codegen_fn<'tcx>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx }
+    CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx, inline_asm }
 }
 
 pub(crate) fn compile_fn(
@@ -142,12 +145,14 @@ pub(crate) fn compile_fn(
     output_filenames: &OutputFilenames,
     cached_context: &mut Context,
     module: &mut dyn Module,
+    global_asm: &mut String,
     codegened_func: CodegenedFunction,
 ) {
     let _timer =
         profiler.generic_activity_with_arg("compile function", &*codegened_func.symbol_name);
 
     let clif_comments = codegened_func.clif_comments;
+    global_asm.push_str(&codegened_func.inline_asm);
 
     // Store function in context
     let context = cached_context;

@@ -126,7 +126,6 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 /// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
 struct CodegenCx {
     should_write_ir: bool,
-    global_asm: String,
     debug_context: Option<DebugContext>,
     cgu_name: Symbol,
 }
@@ -142,7 +141,6 @@ impl CodegenCx {
         };
         CodegenCx {
             should_write_ir: crate::pretty_clif::should_write_ir(tcx),
-            global_asm: String::new(),
             debug_context,
             cgu_name,
         }

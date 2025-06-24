@@ -168,7 +168,7 @@ impl GlobalAsmConfig {
 pub(crate) fn compile_global_asm(
     config: &GlobalAsmConfig,
     cgu_name: &str,
-    global_asm: &str,
+    global_asm: String,
     invocation_temp: Option<&str>,
 ) -> Result<Option<PathBuf>, String> {
     if global_asm.is_empty() {
