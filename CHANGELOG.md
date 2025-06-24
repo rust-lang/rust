@@ -26,7 +26,7 @@ Current stable, released 2025-06-26
 ### Moves and Deprecations
 
 * Moved [`uninlined_format_args`] to `style` (from `pedantic`)
-  [#14219](https://github.com/rust-lang/rust-clippy/pull/14219)
+  [#14160](https://github.com/rust-lang/rust-clippy/pull/14160)
 * [`match_on_vec_items`] deprecated in favor of [`indexing_slicing`]
   [#14217](https://github.com/rust-lang/rust-clippy/pull/14217)
 
