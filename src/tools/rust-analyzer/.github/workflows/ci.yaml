@@ -17,6 +17,10 @@ env:
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   changes:
     runs-on: ubuntu-latest
