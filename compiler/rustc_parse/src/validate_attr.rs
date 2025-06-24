@@ -286,13 +286,20 @@ fn emit_malformed_attribute(
     if matches!(
         name,
         sym::inline
+            | sym::may_dangle
+            | sym::rustc_as_ptr
+            | sym::rustc_pub_transparent
+            | sym::rustc_const_stable_indirect
             | sym::rustc_force_inline
             | sym::rustc_confusables
+            | sym::rustc_skip_during_method_dispatch
             | sym::repr
             | sym::align
             | sym::deprecated
             | sym::optimize
             | sym::cold
+            | sym::naked
+            | sym::no_mangle
             | sym::must_use
     ) {
         return;

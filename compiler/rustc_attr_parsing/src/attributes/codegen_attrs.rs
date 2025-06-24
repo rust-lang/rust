@@ -50,8 +50,8 @@ impl<S: Stage> SingleAttributeParser<S> for ColdParser {
     const TEMPLATE: AttributeTemplate = template!(Word);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
-        if !args.no_args() {
-            cx.expected_no_args(args.span().unwrap_or(cx.attr_span));
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
             return None;
         }
 
@@ -67,8 +67,8 @@ pub(crate) struct NakedParser {
 impl<S: Stage> AttributeParser<S> for NakedParser {
     const ATTRIBUTES: AcceptMapping<Self, S> =
         &[(&[sym::naked], template!(Word), |this, cx, args| {
-            if !args.no_args() {
-                cx.expected_no_args(args.span().unwrap_or(cx.attr_span));
+            if let Err(span) = args.no_args() {
+                cx.expected_no_args(span);
                 return;
             }
 
@@ -175,10 +175,10 @@ impl<S: Stage> SingleAttributeParser<S> for NoMangleParser {
     const TEMPLATE: AttributeTemplate = template!(Word);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
-        if !args.no_args() {
-            cx.expected_no_args(args.span().unwrap_or(cx.attr_span));
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
             return None;
-        };
+        }
 
         Some(AttributeKind::NoMangle(cx.attr_span))
     }

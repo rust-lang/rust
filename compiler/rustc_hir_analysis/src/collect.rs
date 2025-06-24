@@ -21,6 +21,7 @@ use std::ops::Bound;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::Recovered;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
@@ -1151,22 +1152,11 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let rustc_coinductive = tcx.has_attr(def_id, sym::rustc_coinductive);
     let is_fundamental = tcx.has_attr(def_id, sym::fundamental);
 
-    // FIXME: We could probably do way better attribute validation here.
-    let mut skip_array_during_method_dispatch = false;
-    let mut skip_boxed_slice_during_method_dispatch = false;
-    for attr in tcx.get_attrs(def_id, sym::rustc_skip_during_method_dispatch) {
-        if let Some(lst) = attr.meta_item_list() {
-            for item in lst {
-                if let Some(ident) = item.ident() {
-                    match ident.as_str() {
-                        "array" => skip_array_during_method_dispatch = true,
-                        "boxed_slice" => skip_boxed_slice_during_method_dispatch = true,
-                        _ => (),
-                    }
-                }
-            }
-        }
-    }
+    let [skip_array_during_method_dispatch, skip_boxed_slice_during_method_dispatch] = find_attr!(
+        tcx.get_all_attrs(def_id),
+        AttributeKind::SkipDuringMethodDispatch { array, boxed_slice, span:_ } => [*array, *boxed_slice]
+    )
+    .unwrap_or([false; 2]);
 
     let specialization_kind = if tcx.has_attr(def_id, sym::rustc_unsafe_specialization_marker) {
         ty::trait_def::TraitSpecializationKind::Marker
