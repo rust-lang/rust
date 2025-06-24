@@ -58,27 +58,6 @@
 #[unsafe(naked)]
 #[rustc_std_internal_symbol]
 pub unsafe extern "custom" fn __rust_probestack() {
-    #[cfg(not(all(target_env = "sgx", target_vendor = "fortanix")))]
-    macro_rules! ret {
-        () => {
-            "ret"
-        };
-    }
-
-    #[cfg(all(target_env = "sgx", target_vendor = "fortanix"))]
-    macro_rules! ret {
-        // for this target, [manually patch for LVI].
-        //
-        // [manually patch for LVI]: https://software.intel.com/security-software-guidance/insights/deep-dive-load-value-injection#specialinstructions
-        () => {
-            "
-            pop %r11
-            lfence
-            jmp *%r11
-            "
-        };
-    }
-
     core::arch::naked_asm!(
         "
             .cfi_startproc
@@ -128,8 +107,18 @@ pub unsafe extern "custom" fn __rust_probestack() {
             .cfi_def_cfa_register %rsp
             .cfi_adjust_cfa_offset -8
     ",
-        ret!(),
-        "
+    #[cfg(not(all(target_env = "sgx", target_vendor = "fortanix")))]
+    "       ret",
+    #[cfg(all(target_env = "sgx", target_vendor = "fortanix"))]
+    "
+            // for this target, [manually patch for LVI].
+            //
+            // [manually patch for LVI]: https://software.intel.com/security-software-guidance/insights/deep-dive-load-value-injection#specialinstructions
+            pop %r11
+            lfence
+            jmp *%r11
+    ",
+    "
             .cfi_endproc
     ",
         options(att_syntax)

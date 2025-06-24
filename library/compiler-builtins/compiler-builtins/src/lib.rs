@@ -7,6 +7,7 @@
 #![feature(compiler_builtins)]
 #![feature(core_intrinsics)]
 #![feature(linkage)]
+#![feature(asm_cfg)]
 #![feature(naked_functions)]
 #![feature(repr_simd)]
 #![feature(macro_metavar_expr_concat)]
