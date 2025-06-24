@@ -355,9 +355,9 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
             "{prefix} {:<name_w$}{:>uses_w$}{:>lines_w$}{:>avg_lines_w$}{:>bytes_w$}{:>avg_bytes_w$}",
             name,
             thousands::usize_with_underscores(uses),
-            thousands::isize_with_underscores(lines),
+            thousands::usize_with_underscores(lines),
             thousands::f64p1_with_underscores(avg_lines),
-            thousands::isize_with_underscores(bytes),
+            thousands::usize_with_underscores(bytes),
             thousands::f64p1_with_underscores(avg_bytes),
         );
     }
