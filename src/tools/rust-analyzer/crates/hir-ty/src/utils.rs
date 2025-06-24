@@ -1,7 +1,7 @@
 //! Helper functions for working with def, which don't need to be a separate
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
 
-use std::iter;
+use std::{cell::LazyCell, iter};
 
 use base_db::Crate;
 use chalk_ir::{
@@ -161,11 +161,12 @@ impl Iterator for ClauseElaborator<'_> {
 }
 
 fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
-    let resolver = trait_.resolver(db);
+    let resolver = LazyCell::new(|| trait_.resolver(db));
     let (generic_params, store) = db.generic_params_and_store(trait_.into());
     let trait_self = generic_params.trait_self_param();
     generic_params
         .where_predicates()
+        .iter()
         .filter_map(|pred| match pred {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {

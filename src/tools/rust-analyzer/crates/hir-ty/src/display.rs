@@ -2178,6 +2178,7 @@ impl HirDisplayWithExpressionStore for TypeRefId {
                         f.write_joined(
                             generic_params
                                 .where_predicates()
+                                .iter()
                                 .filter_map(|it| match it {
                                     WherePredicate::TypeBound { target, bound }
                                     | WherePredicate::ForLifetime { lifetimes: _, target, bound }

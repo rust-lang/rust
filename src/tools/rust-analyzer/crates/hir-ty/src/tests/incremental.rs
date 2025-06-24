@@ -695,10 +695,8 @@ fn main() {
                 "return_type_impl_traits_shim",
                 "infer_shim",
                 "function_signature_with_source_map_shim",
-                "trait_environment_shim",
                 "expr_scopes_shim",
                 "struct_signature_with_source_map_shim",
-                "generic_predicates_shim",
                 "variant_fields_with_source_map_shim",
                 "inherent_impls_in_crate_shim",
                 "impl_signature_with_source_map_shim",
@@ -708,7 +706,6 @@ fn main() {
                 "trait_impls_in_crate_shim",
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",
-                "generic_predicates_shim",
                 "generic_predicates_shim",
             ]
         "#]],

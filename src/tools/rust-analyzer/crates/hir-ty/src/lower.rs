@@ -884,6 +884,11 @@ pub(crate) fn field_types_with_diagnostics_query(
     variant_id: VariantId,
 ) -> (Arc<ArenaMap<LocalFieldId, Binders<Ty>>>, Diagnostics) {
     let var_data = db.variant_fields(variant_id);
+    let fields = var_data.fields();
+    if fields.is_empty() {
+        return (Arc::new(ArenaMap::default()), None);
+    }
+
     let (resolver, def): (_, GenericDefId) = match variant_id {
         VariantId::StructId(it) => (it.resolver(db), it.into()),
         VariantId::UnionId(it) => (it.resolver(db), it.into()),
@@ -899,7 +904,7 @@ pub(crate) fn field_types_with_diagnostics_query(
         LifetimeElisionKind::AnonymousReportError,
     )
     .with_type_param_mode(ParamLoweringMode::Variable);
-    for (field_id, field_data) in var_data.fields().iter() {
+    for (field_id, field_data) in fields.iter() {
         res.insert(field_id, make_binders(db, &generics, ctx.lower_ty(field_data.type_ref)));
     }
     (Arc::new(res), create_diagnostics(ctx.diagnostics))
@@ -920,6 +925,10 @@ pub(crate) fn generic_predicates_for_param_query(
     assoc_name: Option<Name>,
 ) -> GenericPredicates {
     let generics = generics(db, def);
+    if generics.has_no_predicates() && generics.is_empty() {
+        return GenericPredicates(None);
+    }
+
     let resolver = def.resolver(db);
     let mut ctx = TyLoweringContext::new(
         db,
@@ -1025,6 +1034,10 @@ pub(crate) fn trait_environment_query(
     def: GenericDefId,
 ) -> Arc<TraitEnvironment> {
     let generics = generics(db, def);
+    if generics.has_no_predicates() && generics.is_empty() {
+        return TraitEnvironment::empty(def.krate(db));
+    }
+
     let resolver = def.resolver(db);
     let mut ctx = TyLoweringContext::new(
         db,
@@ -1128,6 +1141,10 @@ where
     F: Fn(&WherePredicate, GenericDefId) -> bool,
 {
     let generics = generics(db, def);
+    if generics.has_no_predicates() && generics.is_empty() {
+        return (GenericPredicates(None), None);
+    }
+
     let resolver = def.resolver(db);
     let mut ctx = TyLoweringContext::new(
         db,
@@ -1154,7 +1171,7 @@ where
         }
     }
 
-    if generics.len() > 0 {
+    if !generics.is_empty() {
         let subst = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
         let explicitly_unsized_tys = ctx.unsized_types;
         if let Some(implicitly_sized_predicates) =
@@ -1229,7 +1246,7 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
     def: GenericDefId,
 ) -> (GenericDefaults, Diagnostics) {
     let generic_params = generics(db, def);
-    if generic_params.len() == 0 {
+    if generic_params.is_empty() {
         return (GenericDefaults(None), None);
     }
     let resolver = def.resolver(db);
