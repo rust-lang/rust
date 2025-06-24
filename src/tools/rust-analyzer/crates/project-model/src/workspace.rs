@@ -26,7 +26,10 @@ use crate::{
     WorkspaceBuildScripts,
     build_dependencies::BuildScriptOutput,
     cargo_workspace::{CargoMetadataConfig, DepKind, PackageData, RustLibSource},
-    env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
+    env::{
+        cargo_config_build_target_dir, cargo_config_env, inject_cargo_env,
+        inject_cargo_package_env, inject_rustc_tool_env,
+    },
     project_json::{Crate, CrateArrayIdx},
     sysroot::RustLibSrcWorkspace,
     toolchain_info::{QueryConfig, rustc_cfg, target_data_layout, target_tuple, version},
@@ -280,8 +283,11 @@ impl ProjectWorkspace {
             .ok()
             .flatten();
 
-        let target_dir =
-            config.target_dir.clone().unwrap_or_else(|| workspace_dir.join("target").into());
+        let target_dir = config
+            .target_dir
+            .clone()
+            .or_else(|| cargo_config_build_target_dir(cargo_toml, extra_env, &sysroot))
+            .unwrap_or_else(|| workspace_dir.join("target").into());
 
         // We spawn a bunch of processes to query various information about the workspace's
         // toolchain and sysroot
@@ -452,6 +458,14 @@ impl ProjectWorkspace {
         let targets = target_tuple::get(query_config, config.target.as_deref(), &config.extra_env)
             .unwrap_or_default();
         let toolchain = version::get(query_config, &config.extra_env).ok().flatten();
+        let project_root = project_json.project_root();
+        let target_dir = config
+            .target_dir
+            .clone()
+            .or_else(|| {
+                cargo_config_build_target_dir(project_json.manifest()?, &config.extra_env, &sysroot)
+            })
+            .unwrap_or_else(|| project_root.join("target").into());
 
         // We spawn a bunch of processes to query various information about the workspace's
         // toolchain and sysroot
@@ -469,7 +483,6 @@ impl ProjectWorkspace {
                 )
             });
             let loaded_sysroot = s.spawn(|| {
-                let project_root = project_json.project_root();
                 if let Some(sysroot_project) = sysroot_project {
                     sysroot.load_workspace(
                         &RustSourceWorkspaceConfig::Json(*sysroot_project),
@@ -477,10 +490,6 @@ impl ProjectWorkspace {
                         progress,
                     )
                 } else {
-                    let target_dir = config
-                        .target_dir
-                        .clone()
-                        .unwrap_or_else(|| project_root.join("target").into());
                     sysroot.load_workspace(
                         &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                             config,
@@ -535,7 +544,12 @@ impl ProjectWorkspace {
             .unwrap_or_default();
         let rustc_cfg = rustc_cfg::get(query_config, None, &config.extra_env);
         let data_layout = target_data_layout::get(query_config, None, &config.extra_env);
-        let target_dir = config.target_dir.clone().unwrap_or_else(|| dir.join("target").into());
+        let target_dir = config
+            .target_dir
+            .clone()
+            .or_else(|| cargo_config_build_target_dir(detached_file, &config.extra_env, &sysroot))
+            .unwrap_or_else(|| dir.join("target").into());
+
         let loaded_sysroot = sysroot.load_workspace(
             &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                 config,
