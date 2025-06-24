@@ -534,9 +534,22 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return Err(TypeError::Mismatch);
         }
 
+        // This is an optimization because coercion is one of the most common
+        // operations that we do in typeck, since it happens at every assignment
+        // and call arg (among other positions).
+        //
         // These targets are known to never be RHS in `LHS: CoerceUnsized<RHS>`.
         // That's because these are built-in types for which a core-provided impl
         // doesn't exist, and for which a user-written impl is invalid.
+        //
+        // This is technically incomplete when users write impossible bounds like
+        // `where T: CoerceUnsized<usize>`, for example, but that trait is unstable
+        // and coercion is allowed to be incomplete. The only case where this matters
+        // is impossible bounds.
+        //
+        // Note that some of these types implement `LHS: Unsize<RHS>`, but they
+        // do not implement *`CoerceUnsized`* which is the root obligation of the
+        // check below.
         match target.kind() {
             ty::Bool
             | ty::Char
@@ -557,6 +570,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             | ty::Never
             | ty::Tuple(_) => return Err(TypeError::Mismatch),
             _ => {}
+        }
+        // Additionally, we ignore `&str -> &str` coercions, which happen very
+        // commonly since strings are one of the most used argument types in Rust,
+        // we do coercions when type checking call expressions.
+        if let ty::Ref(_, source_pointee, ty::Mutability::Not) = *source.kind()
+            && source_pointee.is_str()
+            && let ty::Ref(_, target_pointee, ty::Mutability::Not) = *target.kind()
+            && target_pointee.is_str()
+        {
+            return Err(TypeError::Mismatch);
         }
 
         let traits =
