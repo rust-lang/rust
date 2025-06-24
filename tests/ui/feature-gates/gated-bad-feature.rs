@@ -1,4 +1,3 @@
-//@ normalize-stderr: "you are using [0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?( \([^)]*\))?" -> "you are using $$RUSTC_VERSION"
 #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
 //~^ ERROR malformed `feature`
 //~| ERROR malformed `feature`
