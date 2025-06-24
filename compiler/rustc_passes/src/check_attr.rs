@@ -143,7 +143,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::Marker(attr_span)) => {
                     self.check_marker(hir_id, attr_span, span, target)
                 }
-                Attribute::Parsed(AttributeKind::Fundamental) => {
+                Attribute::Parsed(AttributeKind::Fundamental | AttributeKind::CoherenceIsCore) => {
                     // FIXME: add validation
                 }
                 &Attribute::Parsed(AttributeKind::AllowIncoherentImpl(attr_span)) => {

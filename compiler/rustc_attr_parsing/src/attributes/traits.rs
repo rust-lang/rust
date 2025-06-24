@@ -132,6 +132,13 @@ impl<S: Stage> NoArgsAttributeParser<S> for AllowIncoherentImplParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::AllowIncoherentImpl;
 }
 
+pub(crate) struct CoherenceIsCoreParser;
+impl<S: Stage> NoArgsAttributeParser<S> for CoherenceIsCoreParser {
+    const PATH: &[Symbol] = &[sym::rustc_coherence_is_core];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::CoherenceIsCore;
+}
+
 pub(crate) struct FundamentalParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FundamentalParser {
     const PATH: &[Symbol] = &[sym::fundamental];

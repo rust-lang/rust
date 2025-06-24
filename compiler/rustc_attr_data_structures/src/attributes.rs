@@ -216,6 +216,9 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[rustc_coherence_is_core]`.
+    CoherenceIsCore,
+
     /// Represents `#[rustc_coinductive]`.
     Coinductive(Span),
 
