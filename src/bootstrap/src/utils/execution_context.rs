@@ -29,6 +29,17 @@ pub struct CommandCache {
     cache: Mutex<HashMap<CommandCacheKey, CommandOutput>>,
 }
 
+enum CommandState<'a> {
+    Cached(CommandOutput),
+    Deferred {
+        process: Option<Result<Child, std::io::Error>>,
+        command: &'a mut BootstrapCommand,
+        stdout: OutputMode,
+        stderr: OutputMode,
+        executed_at: &'a Location<'a>,
+    },
+}
+
 impl CommandCache {
     pub fn new() -> Self {
         Self { cache: Mutex::new(HashMap::new()) }
