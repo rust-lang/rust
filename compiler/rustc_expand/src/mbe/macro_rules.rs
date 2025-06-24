@@ -229,6 +229,8 @@ fn expand_macro<'cx>(
             let tts = match transcribe(psess, &named_matches, rhs, rhs_span, transparency, id) {
                 Ok(tts) => tts,
                 Err(err) => {
+                    // Pessimize error handling for perf
+                    std::hint::cold_path();
                     let guar = err.emit();
                     return DummyResult::any(arm_span, guar);
                 }
