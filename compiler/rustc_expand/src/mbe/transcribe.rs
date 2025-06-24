@@ -70,6 +70,7 @@ struct TranscrCtx<'psess, 'itp> {
 
 impl<'psess> TranscrCtx<'psess, '_> {
     /// Span marked with the correct expansion and transparency.
+    #[inline(always)]
     fn visited_dspan(&mut self, dspan: DelimSpan) -> Span {
         let mut span = dspan.entire();
         self.marker.mark_span(&mut span);
@@ -86,6 +87,7 @@ struct Marker {
 
 impl Marker {
     /// Mark a span with the stored expansion ID and transparency.
+    #[inline(always)]
     fn mark_span(&mut self, span: &mut Span) {
         // `apply_mark` is a relatively expensive operation, both due to taking hygiene lock, and
         // by itself. All tokens in a macro body typically have the same syntactic context, unless
@@ -113,6 +115,7 @@ enum FrameKind {
 }
 
 impl<'a> Frame<'a> {
+    #[inline(always)]
     fn new_delimited(src: &'a mbe::Delimited, span: DelimSpan, spacing: DelimSpacing) -> Frame<'a> {
         Frame {
             tts: &src.tts,
@@ -121,6 +124,7 @@ impl<'a> Frame<'a> {
         }
     }
 
+    #[inline(always)]
     fn new_sequence(
         src: &'a mbe::SequenceRepetition,
         sep: Option<Token>,
@@ -133,6 +137,7 @@ impl<'a> Frame<'a> {
 impl<'a> Iterator for Frame<'a> {
     type Item = &'a mbe::TokenTree;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<&'a mbe::TokenTree> {
         let res = self.tts.get(self.idx);
         self.idx += 1;
@@ -687,6 +692,7 @@ fn maybe_use_metavar_location(
 /// See the definition of `repeats` in the `transcribe` function. `repeats` is used to descend
 /// into the right place in nested matchers. If we attempt to descend too far, the macro writer has
 /// made a mistake, and we return `None`.
+#[inline(always)]
 fn lookup_cur_matched<'a>(
     ident: MacroRulesNormalizedIdent,
     interpolations: &'a FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
@@ -727,6 +733,7 @@ impl LockstepIterSize {
     /// - `Unconstrained` is compatible with everything.
     /// - `Contradiction` is incompatible with everything.
     /// - `Constraint(len)` is only compatible with other constraints of the same length.
+    #[inline(always)]
     fn with(self, other: LockstepIterSize) -> LockstepIterSize {
         match self {
             LockstepIterSize::Unconstrained => other,
@@ -764,6 +771,7 @@ impl LockstepIterSize {
 /// declared at depths which weren't equal or there was a compiler bug. For example, if we have 3 repetitions of
 /// the outer sequence and 4 repetitions of the inner sequence for `x`, we should have the same for
 /// `y`; otherwise, we can't transcribe them both at the given depth.
+#[inline(always)]
 fn lockstep_iter_size(
     tree: &mbe::TokenTree,
     interpolations: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
@@ -875,6 +883,7 @@ fn count_repetitions<'dx>(
 }
 
 /// Returns a `NamedMatch` item declared on the LHS given an arbitrary [Ident]
+#[inline(always)]
 fn matched_from_ident<'ctx, 'interp, 'rslt>(
     dcx: DiagCtxtHandle<'ctx>,
     ident: Ident,
@@ -906,6 +915,7 @@ fn out_of_bounds_err<'a>(dcx: DiagCtxtHandle<'a>, max: usize, span: Span, ty: &s
 }
 
 /// Extracts an metavariable symbol that can be an identifier, a token tree or a literal.
+#[inline(always)]
 fn extract_symbol_from_pnr<'a>(
     dcx: DiagCtxtHandle<'a>,
     pnr: &ParseNtResult,
