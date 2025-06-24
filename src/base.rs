@@ -1084,7 +1084,7 @@ pub(crate) fn codegen_panic_nounwind<'tcx>(
     msg_str: &str,
     span: Span,
 ) {
-    let msg_ptr = fx.anonymous_str(msg_str);
+    let msg_ptr = crate::constant::pointer_for_anonymous_str(fx, msg_str);
     let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
     let args = [msg_ptr, msg_len];
 

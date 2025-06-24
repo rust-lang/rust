@@ -420,21 +420,6 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             crate::constant::codegen_const_value(self, const_loc, self.tcx.caller_location_ty())
         })
     }
-
-    pub(crate) fn anonymous_str(&mut self, msg: &str) -> Value {
-        let mut data = DataDescription::new();
-        data.define(msg.as_bytes().to_vec().into_boxed_slice());
-        let msg_id = self.module.declare_anonymous_data(false, false).unwrap();
-
-        // Ignore DuplicateDefinition error, as the data will be the same
-        let _ = self.module.define_data(msg_id, &data);
-
-        let local_msg_id = self.module.declare_data_in_func(msg_id, self.bcx.func);
-        if self.clif_comments.enabled() {
-            self.add_comment(local_msg_id, msg);
-        }
-        self.bcx.ins().global_value(self.pointer_type, local_msg_id)
-    }
 }
 
 pub(crate) struct FullyMonomorphizedLayoutCx<'tcx>(pub(crate) TyCtxt<'tcx>);

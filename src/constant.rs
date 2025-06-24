@@ -3,6 +3,7 @@
 use std::cmp::Ordering;
 
 use cranelift_module::*;
+use rustc_const_eval::interpret::CTFE_ALLOC_SALT;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, GlobalAlloc, Scalar, read_target_uint};
@@ -199,23 +200,20 @@ pub(crate) fn codegen_const_value<'tcx>(
             }
         },
         ConstValue::Indirect { alloc_id, offset } => CValue::by_ref(
-            pointer_for_allocation(fx, alloc_id)
+            Pointer::new(pointer_for_allocation(fx, alloc_id))
                 .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
             layout,
         ),
         ConstValue::Slice { data, meta } => {
             let alloc_id = fx.tcx.reserve_and_set_memory_alloc(data);
-            let ptr = pointer_for_allocation(fx, alloc_id).get_addr(fx);
+            let ptr = pointer_for_allocation(fx, alloc_id);
             let len = fx.bcx.ins().iconst(fx.pointer_type, meta as i64);
             CValue::by_val_pair(ptr, len, layout)
         }
     }
 }
 
-fn pointer_for_allocation<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
-    alloc_id: AllocId,
-) -> crate::pointer::Pointer {
+fn pointer_for_allocation<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, alloc_id: AllocId) -> Value {
     let alloc = fx.tcx.global_alloc(alloc_id).unwrap_memory();
     let data_id =
         data_id_for_alloc_id(&mut fx.constants_cx, fx.module, alloc_id, alloc.inner().mutability);
@@ -224,8 +222,7 @@ fn pointer_for_allocation<'tcx>(
     if fx.clif_comments.enabled() {
         fx.add_comment(local_data_id, format!("{:?}", alloc_id));
     }
-    let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
-    crate::pointer::Pointer::new(global_ptr)
+    fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
 }
 
 fn data_id_for_alloc_id(
@@ -249,6 +246,11 @@ pub(crate) fn data_id_for_vtable<'tcx>(
 ) -> DataId {
     let alloc_id = tcx.vtable_allocation((ty, trait_ref));
     data_id_for_alloc_id(cx, module, alloc_id, Mutability::Not)
+}
+
+pub(crate) fn pointer_for_anonymous_str(fx: &mut FunctionCx<'_, '_, '_>, msg: &str) -> Value {
+    let alloc_id = fx.tcx.allocate_bytes_dedup(msg.as_bytes(), CTFE_ALLOC_SALT);
+    pointer_for_allocation(fx, alloc_id)
 }
 
 fn data_id_for_static(
