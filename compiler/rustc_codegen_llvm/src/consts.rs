@@ -216,14 +216,6 @@ fn check_and_apply_linkage<'ll, 'tcx>(
 }
 
 impl<'ll> CodegenCx<'ll, '_> {
-    pub(crate) fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        unsafe { llvm::LLVMConstBitCast(val, ty) }
-    }
-
-    pub(crate) fn const_pointercast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        unsafe { llvm::LLVMConstPointerCast(val, ty) }
-    }
-
     /// Create a global variable.
     ///
     /// The returned global variable is a pointer in the default address space for globals.
@@ -570,5 +562,15 @@ impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
 
     fn codegen_static(&mut self, def_id: DefId) {
         self.codegen_static_item(def_id)
+    }
+
+    fn get_value_name(&self, val: Self::Value) -> &[u8] {
+        llvm::get_value_name(val)
+    }
+    fn set_value_name(&self, val: Self::Value, name: &[u8]) {
+        llvm::set_value_name(val, name)
+    }
+    fn get_static(&self, def_id: DefId) -> Self::Value {
+        self.get_static(def_id)
     }
 }

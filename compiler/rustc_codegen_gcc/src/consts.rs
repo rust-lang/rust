@@ -150,6 +150,17 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             self.add_used_global(global.to_rvalue());
         }
     }
+
+    fn get_value_name(&self, _val: Self::Value) -> &[u8] {
+        // TODO(antoyo)
+        &[]
+    }
+    fn set_value_name(&self, _val: Self::Value, _name: &[u8]) {
+        // TODO(antoyo)
+    }
+    fn get_static(&self, def_id: DefId) -> Self::Value {
+        self.get_static(def_id).get_address(None)
+    }
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {

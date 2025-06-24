@@ -59,11 +59,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMVoidTypeInContext(self.llcx()) }
     }
 
-    ///x Creates an integer type with the given number of bits, e.g., i24
-    pub(crate) fn type_ix(&self, num_bits: u64) -> &'ll Type {
-        unsafe { llvm::LLVMIntTypeInContext(self.llcx(), num_bits as c_uint) }
-    }
-
     pub(crate) fn type_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
         unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
     }
@@ -201,6 +196,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
 
     fn type_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, False) }
+    }
+
+    fn type_ix(&self, num_bits: u64) -> &'ll Type {
+        unsafe { llvm::LLVMIntTypeInContext(self.llcx(), num_bits as c_uint) }
     }
 
     fn type_kind(&self, ty: &'ll Type) -> TypeKind {

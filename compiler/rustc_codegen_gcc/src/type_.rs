@@ -17,22 +17,6 @@ use crate::context::CodegenCx;
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    pub fn type_ix(&self, num_bits: u64) -> Type<'gcc> {
-        // gcc only supports 1, 2, 4 or 8-byte integers.
-        // FIXME(antoyo): this is misleading to use the next power of two as rustc_codegen_ssa
-        // sometimes use 96-bit numbers and the following code will give an integer of a different
-        // size.
-        let bytes = (num_bits / 8).next_power_of_two() as i32;
-        match bytes {
-            1 => self.i8_type,
-            2 => self.i16_type,
-            4 => self.i32_type,
-            8 => self.i64_type,
-            16 => self.i128_type,
-            _ => panic!("unexpected num_bits: {}", num_bits),
-        }
-    }
-
     pub fn type_void(&self) -> Type<'gcc> {
         self.context.new_type::<()>()
     }
@@ -146,6 +130,22 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
 
     fn type_isize(&self) -> Type<'gcc> {
         self.isize_type
+    }
+
+    fn type_ix(&self, num_bits: u64) -> Type<'gcc> {
+        // gcc only supports 1, 2, 4 or 8-byte integers.
+        // FIXME(antoyo): this is misleading to use the next power of two as rustc_codegen_ssa
+        // sometimes use 96-bit numbers and the following code will give an integer of a different
+        // size.
+        let bytes = (num_bits / 8).next_power_of_two() as i32;
+        match bytes {
+            1 => self.i8_type,
+            2 => self.i16_type,
+            4 => self.i32_type,
+            8 => self.i64_type,
+            16 => self.i128_type,
+            _ => panic!("unexpected num_bits: {}", num_bits),
+        }
     }
 
     fn type_f16(&self) -> Type<'gcc> {
