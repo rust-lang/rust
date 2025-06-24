@@ -534,6 +534,31 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return Err(TypeError::Mismatch);
         }
 
+        // These targets are known to never be RHS in `LHS: CoerceUnsized<RHS>`.
+        // That's because these are built-in types for which a core-provided impl
+        // doesn't exist, and for which a user-written impl is invalid.
+        match target.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_, _)
+            | ty::Dynamic(_, _, _)
+            | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(_, _)
+            | ty::Never
+            | ty::Tuple(_) => return Err(TypeError::Mismatch),
+            _ => {}
+        }
+
         let traits =
             (self.tcx.lang_items().unsize_trait(), self.tcx.lang_items().coerce_unsized_trait());
         let (Some(unsize_did), Some(coerce_unsized_did)) = traits else {
