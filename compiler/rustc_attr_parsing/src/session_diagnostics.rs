@@ -446,6 +446,13 @@ pub(crate) struct MustUseIllFormedAttributeInput {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_null_on_export, code = E0648)]
+pub(crate) struct NullOnExport {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_stability_outside_std, code = E0734)]
 pub(crate) struct StabilityOutsideStd {
     #[primary_span]

@@ -230,8 +230,6 @@ codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
 codegen_ssa_no_saved_object_file = cached cgu {$cgu_name} should have an object file, but doesn't
 
-codegen_ssa_null_on_export = `export_name` may not contain null characters
-
 codegen_ssa_out_of_range_integer = integer value out of range
     .label = value must be between `0` and `255`
 

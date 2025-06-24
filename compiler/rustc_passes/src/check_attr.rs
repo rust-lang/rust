@@ -169,6 +169,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Cold(attr_span)) => {
                     self.check_cold(hir_id, *attr_span, span, target)
                 }
+                Attribute::Parsed(AttributeKind::ExportName { span: attr_span, .. }) => {
+                    self.check_export_name(hir_id, *attr_span, span, target)
+                }
                 Attribute::Parsed(AttributeKind::Align { align, span: repr_span }) => {
                     self.check_align(span, target, *align, *repr_span)
                 }
@@ -223,7 +226,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             &mut doc_aliases,
                         ),
                         [sym::no_link, ..] => self.check_no_link(hir_id, attr, span, target),
-                        [sym::export_name, ..] => self.check_export_name(hir_id, attr, span, target),
                         [sym::rustc_layout_scalar_valid_range_start, ..]
                         | [sym::rustc_layout_scalar_valid_range_end, ..] => {
                             self.check_rustc_layout_scalar_valid_range(attr, span, target)
@@ -1653,7 +1655,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[export_name]` is applied to a function or static.
-    fn check_export_name(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_export_name(&self, hir_id: HirId, attr_span: Span, span: Span, target: Target) {
         match target {
             Target::Static | Target::Fn => {}
             Target::Method(..) if self.is_impl_item(hir_id) => {}
@@ -1662,10 +1664,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "export_name");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr_span, "export_name");
             }
             _ => {
-                self.dcx().emit_err(errors::ExportName { attr_span: attr.span(), span });
+                self.dcx().emit_err(errors::ExportName { attr_span, span });
             }
         }
     }

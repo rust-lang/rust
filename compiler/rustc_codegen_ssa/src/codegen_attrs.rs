@@ -119,6 +119,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         .max();
                 }
                 AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
+                AttributeKind::ExportName { name, span: attr_span } => {
+                    codegen_fn_attrs.export_name = Some(*name);
+                    mixed_export_name_no_mangle_lint_state.track_export_name(*attr_span);
+                }
                 AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
                 AttributeKind::Align { align, .. } => codegen_fn_attrs.alignment = Some(*align),
                 AttributeKind::NoMangle(attr_span) => {
@@ -223,17 +227,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 }
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
-            sym::export_name => {
-                if let Some(s) = attr.value_str() {
-                    if s.as_str().contains('\0') {
-                        // `#[export_name = ...]` will be converted to a null-terminated string,
-                        // so it may not contain any null characters.
-                        tcx.dcx().emit_err(errors::NullOnExport { span: attr.span() });
-                    }
-                    codegen_fn_attrs.export_name = Some(s);
-                    mixed_export_name_no_mangle_lint_state.track_export_name(attr.span());
-                }
-            }
             sym::target_feature => {
                 let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
                     tcx.dcx().span_delayed_bug(attr.span(), "target_feature applied to non-fn");
