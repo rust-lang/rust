@@ -813,7 +813,7 @@ function preLoadCss(cssUrl) {
             return [elem, elem ? elem.querySelector(".negative-marker") : null];
         }
         const implementors = implementorsElems("implementors-list");
-        const synthetic_implementors = implementorsElems("synthetic-implementors-list");
+        const syntheticImplementors = implementorsElems("synthetic-implementors-list");
         const inlined_types = new Set();
 
         const TEXT_IDX = 0;
@@ -821,13 +821,13 @@ function preLoadCss(cssUrl) {
         const SYNTHETIC_IDX = 2;
         const TYPES_IDX = 3;
 
-        if (synthetic_implementors[0]) {
+        if (syntheticImplementors[0]) {
             // This `inlined_types` variable is used to avoid having the same implementation
             // showing up twice. For example "String" in the "Sync" doc page.
             //
             // By the way, this is only used by and useful for traits implemented automatically
             // (like "Send" and "Sync").
-            onEachLazy(synthetic_implementors[0].getElementsByClassName("impl"), el => {
+            onEachLazy(syntheticImplementors[0].getElementsByClassName("impl"), el => {
                 const aliases = el.getAttribute("data-aliases");
                 if (!aliases) {
                     return;
@@ -862,7 +862,7 @@ function preLoadCss(cssUrl) {
 
             struct_loop:
             for (const struct of structs) {
-                const list = struct[SYNTHETIC_IDX] ? synthetic_implementors : implementors;
+                const list = struct[SYNTHETIC_IDX] ? syntheticImplementors : implementors;
 
                 // The types list is only used for synthetic impls.
                 // If this changes, `main.js` and `write_shared.rs` both need changed.
@@ -909,6 +909,12 @@ function preLoadCss(cssUrl) {
                 }
                 currentNbImpls += 1;
             }
+        }
+        if (implementors[0]) {
+            implementors[0].style.display = "block";
+        }
+        if (syntheticImplementors[0]) {
+            syntheticImplementors[0].style.display = "block";
         }
     };
     if (window.pending_implementors) {
