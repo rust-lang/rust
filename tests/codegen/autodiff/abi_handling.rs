@@ -37,8 +37,10 @@ fn square(x: f32) -> f32 {
 
 // CHECK: ; abi_handling::f1
 // CHECK-NEXT: ; Function Attrs: {{.*}}noinline{{.*}}
-// debug-NEXT: define internal float @_ZN12abi_handling2f117h536ac8081c1e4101E(ptr align 4 %x)
-// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f117h536ac8081c1e4101E(float %x.0.val, float %x.4.val)
+// debug-NEXT: define internal float @_ZN12abi_handling2f117h536ac8081c1e4101E
+// debug-SAME: (ptr align 4 %x)
+// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f117h536ac8081c1e4101E
+// release-SAME: (float %x.0.val, float %x.4.val)
 #[autodiff_forward(df1, Dual, Dual)]
 fn f1(x: &[f32; 2]) -> f32 {
     x[0] + x[1]
@@ -46,8 +48,10 @@ fn f1(x: &[f32; 2]) -> f32 {
 
 // CHECK: ; abi_handling::f2
 // CHECK-NEXT: ; Function Attrs: {{.*}}noinline{{.*}}
-// debug-NEXT: define internal float @_ZN12abi_handling2f217h33732e9f83c91bc9E(ptr %f, float %x)
-// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f217h33732e9f83c91bc9E(float noundef %x)
+// debug-NEXT: define internal float @_ZN12abi_handling2f217h33732e9f83c91bc9E
+// debug-SAME: (ptr %f, float %x)
+// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f217h33732e9f83c91bc9E
+// release-SAME: (float noundef %x)
 #[autodiff_reverse(df2, Const, Active, Active)]
 fn f2(f: fn(f32) -> f32, x: f32) -> f32 {
     f(x)
@@ -55,8 +59,10 @@ fn f2(f: fn(f32) -> f32, x: f32) -> f32 {
 
 // CHECK: ; abi_handling::f3
 // CHECK-NEXT: ; Function Attrs: {{.*}}noinline{{.*}}
-// debug-NEXT: define internal float @_ZN12abi_handling2f317h9cd1fc602b0815a4E(ptr align 4 %x, ptr align 4 %y)
-// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f317h9cd1fc602b0815a4E(float %x.0.val)
+// debug-NEXT: define internal float @_ZN12abi_handling2f317h9cd1fc602b0815a4E
+// debug-SAME: (ptr align 4 %x, ptr align 4 %y)
+// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f317h9cd1fc602b0815a4E
+// release-SAME: (float %x.0.val)
 #[autodiff_forward(df3, Dual, Dual, Dual)]
 fn f3<'a>(x: &'a f32, y: &'a f32) -> f32 {
     *x * *y
@@ -64,8 +70,10 @@ fn f3<'a>(x: &'a f32, y: &'a f32) -> f32 {
 
 // CHECK: ; abi_handling::f4
 // CHECK-NEXT: ; Function Attrs: {{.*}}noinline{{.*}}
-// debug-NEXT: define internal float @_ZN12abi_handling2f417h2f4a9a7492d91e9fE(float %x.0, float %x.1)
-// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f417h2f4a9a7492d91e9fE(float noundef %x.0, float noundef %x.1)
+// debug-NEXT: define internal float @_ZN12abi_handling2f417h2f4a9a7492d91e9fE
+// debug-SAME: (float %x.0, float %x.1)
+// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f417h2f4a9a7492d91e9fE
+// release-SAME: (float noundef %x.0, float noundef %x.1)
 #[autodiff_forward(df4, Dual, Dual)]
 fn f4(x: (f32, f32)) -> f32 {
     x.0 * x.1
@@ -73,8 +81,10 @@ fn f4(x: (f32, f32)) -> f32 {
 
 // CHECK: ; abi_handling::f5
 // CHECK-NEXT: ; Function Attrs: {{.*}}noinline{{.*}}
-// debug-NEXT: define internal float @_ZN12abi_handling2f517hf8d4ac4d2c2a3976E(float %i.0, float %i.1)
-// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f517hf8d4ac4d2c2a3976E(float noundef %i.0, float noundef %i.1)
+// debug-NEXT: define internal float @_ZN12abi_handling2f517hf8d4ac4d2c2a3976E
+// debug-SAME: (float %i.0, float %i.1)
+// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f517hf8d4ac4d2c2a3976E
+// release-SAME: (float noundef %i.0, float noundef %i.1)
 #[autodiff_forward(df5, Dual, Dual)]
 fn f5(i: Input) -> f32 {
     i.x + i.y
@@ -82,15 +92,19 @@ fn f5(i: Input) -> f32 {
 
 // CHECK: ; abi_handling::f6
 // CHECK-NEXT: ; Function Attrs: {{.*}}noinline{{.*}}
-// debug-NEXT: define internal float @_ZN12abi_handling2f617h5784b207bbb2483eE(float %i.0, float %i.1)
-// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f617h5784b207bbb2483eE(float noundef %i.0, float noundef %i.1)
+// debug-NEXT: define internal float @_ZN12abi_handling2f617h5784b207bbb2483eE
+// debug-SAME: (float %i.0, float %i.1)
+// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f617h5784b207bbb2483eE
+// release-SAME: (float noundef %i.0, float noundef %i.1)
 #[autodiff_forward(df6, Dual, Dual)]
 fn f6(i: NestedInput) -> f32 {
     i.x + i.y.z * i.y.z
 }
 
 // df1
-// release: define internal fastcc { float, float } @fwddiffe_ZN12abi_handling2f117h536ac8081c1e4101E(float %x.0.val, float %x.4.val)
+// release: define internal fastcc { float, float }
+// release-SAME: @fwddiffe_ZN12abi_handling2f117h536ac8081c1e4101E
+// release-SAME: (float %x.0.val, float %x.4.val)
 // release-NEXT: start:
 // release-NEXT: %_0 = fadd float %x.0.val, %x.4.val
 // release-NEXT: %0 = insertvalue { float, float } undef, float %_0, 0
@@ -98,7 +112,8 @@ fn f6(i: NestedInput) -> f32 {
 // release-NEXT: ret { float, float } %1
 // release-NEXT: }
 
-// debug: define internal { float, float } @fwddiffe_ZN12abi_handling2f117h536ac8081c1e4101E(ptr align 4 %x, ptr align 4 %"x'")
+// debug: define internal { float, float } @fwddiffe_ZN12abi_handling2f117h536ac8081c1e4101E
+// debug-SAME: (ptr align 4 %x, ptr align 4 %"x'")
 // debug-NEXT: start:
 // debug-NEXT: %"'ipg" = getelementptr inbounds float, ptr %"x'", i64 0
 // debug-NEXT: %0 = getelementptr inbounds nuw float, ptr %x, i64 0
@@ -116,7 +131,9 @@ fn f6(i: NestedInput) -> f32 {
 // debug-NEXT: }
 
 // df2
-// release: define internal fastcc { float, float } @diffe_ZN12abi_handling2f217h33732e9f83c91bc9E(float noundef %x)
+// release: define internal fastcc { float, float }
+// release-SAME: @diffe_ZN12abi_handling2f217h33732e9f83c91bc9E
+// release-SAME: (float noundef %x)
 // release-NEXT: invertstart:
 // release-NEXT: %_0.i = fmul float %x, %x
 // release-NEXT: %0 = insertvalue { float, float } undef, float %_0.i, 0
@@ -124,7 +141,8 @@ fn f6(i: NestedInput) -> f32 {
 // release-NEXT: ret { float, float } %1
 // release-NEXT: }
 
-// debug: define internal { float, float } @diffe_ZN12abi_handling2f217h33732e9f83c91bc9E(ptr %f, float %x, float %differeturn)
+// debug: define internal { float, float } @diffe_ZN12abi_handling2f217h33732e9f83c91bc9E
+// debug-SAME: (ptr %f, float %x, float %differeturn)
 // debug-NEXT: start:
 // debug-NEXT: %"x'de" = alloca float, align 4
 // debug-NEXT: store float 0.000000e+00, ptr %"x'de", align 4
@@ -142,14 +160,17 @@ fn f6(i: NestedInput) -> f32 {
 // debug-NEXT: }
 
 // df3
-// release: define internal fastcc { float, float } @fwddiffe_ZN12abi_handling2f317h9cd1fc602b0815a4E(float %x.0.val)
+// release: define internal fastcc { float, float }
+// release-SAME: @fwddiffe_ZN12abi_handling2f317h9cd1fc602b0815a4E
+// release-SAME: (float %x.0.val)
 // release-NEXT: start:
 // release-NEXT: %0 = insertvalue { float, float } undef, float %x.0.val, 0
 // release-NEXT: %1 = insertvalue { float, float } %0, float 0x40099999A0000000, 1
 // release-NEXT: ret { float, float } %1
 // release-NEXT: }
 
-// debug: define internal { float, float } @fwddiffe_ZN12abi_handling2f317h9cd1fc602b0815a4E(ptr align 4 %x, ptr align 4 %"x'", ptr align 4 %y, ptr align 4 %"y'")
+// debug: define internal { float, float } @fwddiffe_ZN12abi_handling2f317h9cd1fc602b0815a4E
+// debug-SAME: (ptr align 4 %x, ptr align 4 %"x'", ptr align 4 %y, ptr align 4 %"y'")
 // debug-NEXT: start:
 // debug-NEXT: %"_3'ipl" = load float, ptr %"x'", align 4, !alias.scope !9, !noalias !12
 // debug-NEXT: %_3 = load float, ptr %x, align 4, !alias.scope !12, !noalias !9
@@ -165,14 +186,17 @@ fn f6(i: NestedInput) -> f32 {
 // debug-NEXT: }
 
 // df4
-// release: define internal fastcc { float, float } @fwddiffe_ZN12abi_handling2f417h2f4a9a7492d91e9fE(float noundef %x.0, float %"x.0'")
+// release: define internal fastcc { float, float }
+// release-SAME: @fwddiffe_ZN12abi_handling2f417h2f4a9a7492d91e9fE
+// release-SAME: (float noundef %x.0, float %"x.0'")
 // release-NEXT: start:
 // release-NEXT: %0 = insertvalue { float, float } undef, float %x.0, 0
 // release-NEXT: %1 = insertvalue { float, float } %0, float %"x.0'", 1
 // release-NEXT: ret { float, float } %1
 // release-NEXT: }
 
-// debug: define internal { float, float } @fwddiffe_ZN12abi_handling2f417h2f4a9a7492d91e9fE(float %x.0, float %"x.0'", float %x.1, float %"x.1'")
+// debug: define internal { float, float } @fwddiffe_ZN12abi_handling2f417h2f4a9a7492d91e9fE
+// debug-SAME: (float %x.0, float %"x.0'", float %x.1, float %"x.1'")
 // debug-NEXT: start:
 // debug-NEXT: %_0 = fmul float %x.0, %x.1
 // debug-NEXT: %0 = fmul fast float %"x.0'", %x.1
@@ -184,7 +208,9 @@ fn f6(i: NestedInput) -> f32 {
 // debug-NEXT: }
 
 // df5
-// release: define internal fastcc { float, float } @fwddiffe_ZN12abi_handling2f517hf8d4ac4d2c2a3976E(float noundef %i.0, float %"i.0'")
+// release: define internal fastcc { float, float }
+// release-SAME: @fwddiffe_ZN12abi_handling2f517hf8d4ac4d2c2a3976E
+// release-SAME: (float noundef %i.0, float %"i.0'")
 // release-NEXT: start:
 // release-NEXT: %_0 = fadd float %i.0, 1.000000e+00
 // release-NEXT: %0 = insertvalue { float, float } undef, float %_0, 0
@@ -192,7 +218,8 @@ fn f6(i: NestedInput) -> f32 {
 // release-NEXT: ret { float, float } %1
 // release-NEXT: }
 
-// debug: define internal { float, float } @fwddiffe_ZN12abi_handling2f517hf8d4ac4d2c2a3976E(float %i.0, float %"i.0'", float %i.1, float %"i.1'")
+// debug: define internal { float, float } @fwddiffe_ZN12abi_handling2f517hf8d4ac4d2c2a3976E
+// debug-SAME: (float %i.0, float %"i.0'", float %i.1, float %"i.1'")
 // debug-NEXT: start:
 // debug-NEXT: %_0 = fadd float %i.0, %i.1
 // debug-NEXT: %0 = fadd fast float %"i.0'", %"i.1'"
@@ -202,7 +229,9 @@ fn f6(i: NestedInput) -> f32 {
 // debug-NEXT: }
 
 // df6
-// release: define internal fastcc { float, float } @fwddiffe_ZN12abi_handling2f617h5784b207bbb2483eE(float noundef %i.0, float %"i.0'", float noundef %i.1, float %"i.1'")
+// release: define internal fastcc { float, float }
+// release-SAME: @fwddiffe_ZN12abi_handling2f617h5784b207bbb2483eE
+// release-SAME: (float noundef %i.0, float %"i.0'", float noundef %i.1, float %"i.1'")
 // release-NEXT: start:
 // release-NEXT: %_3 = fmul float %i.1, %i.1
 // release-NEXT: %0 = fadd fast float %"i.1'", %"i.1'"
@@ -214,7 +243,8 @@ fn f6(i: NestedInput) -> f32 {
 // release-NEXT: ret { float, float } %4
 // release-NEXT: }
 
-// debug: define internal { float, float } @fwddiffe_ZN12abi_handling2f617h5784b207bbb2483eE(float %i.0, float %"i.0'", float %i.1, float %"i.1'")
+// debug: define internal { float, float } @fwddiffe_ZN12abi_handling2f617h5784b207bbb2483eE
+// debug-SAME: (float %i.0, float %"i.0'", float %i.1, float %"i.1'")
 // debug-NEXT: start:
 // debug-NEXT: %_3 = fmul float %i.1, %i.1
 // debug-NEXT: %0 = fmul fast float %"i.1'", %i.1
