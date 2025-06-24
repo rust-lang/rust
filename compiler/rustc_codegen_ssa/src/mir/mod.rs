@@ -142,6 +142,9 @@ enum LocalRef<'tcx, V> {
     /// `*p` is the wide pointer that references the actual unsized place.
     ///
     /// Rust has no alloca and thus no ability to move the unsized place.
+    ///
+    /// FIXME: Since unsized locals are gutted, can we maybe use `Place` here? Or refactor it in
+    /// another way? There are quite a few `UnsizedPlace => bug` branches now.
     UnsizedPlace(PlaceRef<'tcx, V>),
     /// The backend [`OperandValue`] has already been generated.
     Operand(OperandRef<'tcx, V>),
