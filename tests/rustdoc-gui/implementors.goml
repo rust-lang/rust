@@ -1,7 +1,7 @@
 // The goal of this test is to check that the external trait implementors, generated with JS,
 // have the same display than the "local" ones.
 go-to: "file://" + |DOC_PATH| + "/implementors/trait.Whatever.html"
-assert: "#implementors-list"
+wait-for-css: ("#implementors-list", {"display": "block"})
 // There are supposed to be four implementors listed.
 assert-count: ("#implementors-list .impl", 4)
 // There are supposed to be two non-negative implementors.
@@ -66,3 +66,8 @@ assert-count: ("#implementors-list .impl", 1)
 go-to: "file://" + |DOC_PATH| + "/http/trait.HttpTrait.html"
 assert-count: ("#implementors-list .impl", 1)
 assert-attribute: ("#implementors-list .impl a.trait", {"href": "../http/trait.HttpTrait.html"})
+
+// Now we check that if JS is disabled, the implementors list will be visible.
+javascript: false
+reload:
+assert-css: ("#implementors-list", {"display": "block"})
