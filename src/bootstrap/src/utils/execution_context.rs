@@ -122,18 +122,14 @@ impl ExecutionContext {
         stdout: OutputMode,
         stderr: OutputMode,
     ) -> DeferredCommand<'a> {
+        command.mark_as_executed();
         let cache_key = command.cache_key();
 
         if let Some(cached_output) = cache_key.as_ref().and_then(|key| self.command_cache.get(key))
         {
-            command.mark_as_executed();
-
             self.verbose(|| println!("Cache hit: {command:?}"));
-
             return DeferredCommand { state: CommandState::Cached(cached_output) };
         }
-
-        command.mark_as_executed();
 
         let created_at = command.get_created_location();
         let executed_at = std::panic::Location::caller();
@@ -254,7 +250,6 @@ impl<'a> DeferredCommand<'a> {
         };
 
         let created_at = command.get_created_location();
-        let executed_at = executed_at;
 
         let mut message = String::new();
 

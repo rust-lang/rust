@@ -71,6 +71,9 @@ pub struct CommandCacheKey {
 ///
 /// Bootstrap will print a debug log to stdout if the command fails and failure is not allowed.
 ///
+/// By default, command executions are cached based on their workdir, program, arguments, and environment variables.
+/// This avoids re-running identical commands unnecessarily, unless caching is explicitly disabled.
+///
 /// [allow_failure]: BootstrapCommand::allow_failure
 /// [delay_failure]: BootstrapCommand::delay_failure
 pub struct BootstrapCommand {
