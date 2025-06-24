@@ -499,7 +499,12 @@ pub struct InferArg {
 
 impl InferArg {
     pub fn to_ty(&self) -> Ty<'static> {
-        Ty { kind: TyKind::Infer(()), span: self.span, hir_id: self.hir_id }
+        Ty {
+            kind: TyKind::Infer(()),
+            span: self.span,
+            hir_id: self.hir_id,
+            source: TySource::Other,
+        }
     }
 }
 
@@ -3282,6 +3287,16 @@ impl<'hir> AssocItemConstraintKind<'hir> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, HashStable_Generic)]
+pub enum TySource {
+    /// `Vec` in `Vec::new`
+    ImplicitSelf,
+
+    /// Details not yet needed. Feel free to give useful
+    /// categorization to these usages.
+    Other,
+}
+
 /// An uninhabited enum used to make `Infer` variants on [`Ty`] and [`ConstArg`] be
 /// unreachable. Zero-Variant enums are guaranteed to have the same layout as the never
 /// type.
@@ -3301,6 +3316,7 @@ pub struct Ty<'hir, Unambig = ()> {
     pub hir_id: HirId,
     pub span: Span,
     pub kind: TyKind<'hir, Unambig>,
+    pub source: TySource,
 }
 
 impl<'hir> Ty<'hir, AmbigArg> {
@@ -5001,7 +5017,7 @@ mod size_asserts {
     static_assert_size!(StmtKind<'_>, 16);
     static_assert_size!(TraitItem<'_>, 88);
     static_assert_size!(TraitItemKind<'_>, 48);
-    static_assert_size!(Ty<'_>, 48);
+    static_assert_size!(Ty<'_>, 56);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end
 }

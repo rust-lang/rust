@@ -2093,7 +2093,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 kind,
                 count: expected_lifetimes,
             };
-            let mut should_lint = true;
             for rib in self.lifetime_ribs.iter().rev() {
                 match rib.kind {
                     // In create-parameter mode we error here because we don't want to support
@@ -2116,7 +2115,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             span: path_span,
                             subdiag,
                         });
-                        should_lint = false;
 
                         for id in node_ids {
                             self.record_lifetime_res(
@@ -2184,20 +2182,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         span_bug!(elided_lifetime_span, "unexpected rib kind: {:?}", rib.kind)
                     }
                 }
-            }
-
-            if should_lint {
-                self.r.lint_buffer.buffer_lint(
-                    lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
-                    segment_id,
-                    elided_lifetime_span,
-                    lint::BuiltinLintDiag::ElidedLifetimesInPaths(
-                        expected_lifetimes,
-                        path_span,
-                        !segment.has_generic_args,
-                        elided_lifetime_span,
-                    ),
-                );
             }
         }
     }

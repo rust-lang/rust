@@ -1,5 +1,5 @@
 // --force-warn $LINT causes $LINT (which is allow-by-default) to warn
-//@ compile-flags: --force-warn elided_lifetimes_in_paths
+//@ compile-flags: --force-warn hidden_lifetimes_in_paths
 //@ check-pass
 
 struct Foo<'a> {
@@ -7,6 +7,6 @@ struct Foo<'a> {
 }
 
 fn foo(x: &Foo) {}
-//~^ WARN hidden lifetime parameters in types are deprecated
+//~^ WARN paths containing hidden lifetime parameters are deprecated
 
 fn main() {}
