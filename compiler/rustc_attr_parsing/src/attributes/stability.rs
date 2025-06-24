@@ -139,7 +139,10 @@ impl<S: Stage> SingleAttributeParser<S> for ConstStabilityIndirectParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
-    fn convert(_cx: &mut AcceptContext<'_, '_, S>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
+        }
         Some(AttributeKind::ConstStabilityIndirect)
     }
 }
@@ -361,8 +364,8 @@ pub(crate) fn parse_unstability<S: Stage>(
                 };
             }
             Some(sym::soft) => {
-                if !param.args().no_args() {
-                    cx.emit_err(session_diagnostics::SoftNoArgs { span: param.span() });
+                if let Err(span) = args.no_args() {
+                    cx.emit_err(session_diagnostics::SoftNoArgs { span });
                 }
                 is_soft = true;
             }

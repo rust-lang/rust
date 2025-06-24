@@ -118,6 +118,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         for attr in attrs {
             let mut style = None;
             match attr {
+                Attribute::Parsed(AttributeKind::SkipDuringMethodDispatch {
+                    span: attr_span,
+                    ..
+                }) => {
+                    self.check_must_be_applied_to_trait(*attr_span, span, target);
+                }
                 Attribute::Parsed(AttributeKind::Confusables { first_span, .. }) => {
                     self.check_confusables(*first_span, target);
                 }
@@ -250,7 +256,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | [sym::rustc_must_implement_one_of, ..]
                         | [sym::rustc_deny_explicit_impl, ..]
                         | [sym::rustc_do_not_implement_via_object, ..]
-                        | [sym::const_trait, ..] => self.check_must_be_applied_to_trait(attr, span, target),
+                        | [sym::const_trait, ..] => self.check_must_be_applied_to_trait(attr.span(), span, target),
                         [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                         [sym::rustc_pass_by_value, ..] => self.check_pass_by_value(attr, span, target),
@@ -1805,14 +1811,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the attribute is applied to a trait.
-    fn check_must_be_applied_to_trait(&self, attr: &Attribute, span: Span, target: Target) {
+    fn check_must_be_applied_to_trait(&self, attr_span: Span, defn_span: Span, target: Target) {
         match target {
             Target::Trait => {}
             _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToTrait {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
+                self.dcx().emit_err(errors::AttrShouldBeAppliedToTrait { attr_span, defn_span });
             }
         }
     }

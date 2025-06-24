@@ -26,6 +26,7 @@ use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
+use crate::attributes::traits::SkipDuringMethodDispatchParser;
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single};
 use crate::parser::{ArgParser, MetaItemParser, PathParser};
@@ -119,6 +120,7 @@ attribute_parsers!(
         Single<OptimizeParser>,
         Single<PubTransparentParser>,
         Single<RustcForceInlineParser>,
+        Single<SkipDuringMethodDispatchParser>,
         Single<TransparencyParser>,
         // tidy-alphabetical-end
     ];
@@ -322,6 +324,16 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedSingleArgument,
+        })
+    }
+
+    pub(crate) fn expected_at_least_one_argument(&self, span: Span) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::ExpectedAtLeastOneArgument,
         })
     }
 
