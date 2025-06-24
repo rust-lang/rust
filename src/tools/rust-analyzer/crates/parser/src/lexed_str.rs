@@ -11,7 +11,8 @@
 use std::ops;
 
 use rustc_literal_escaper::{
-    EscapeError, Mode, unescape_byte, unescape_char, unescape_mixed, unescape_unicode,
+    EscapeError, Mode, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char,
+    unescape_str,
 };
 
 use crate::{
@@ -151,14 +152,14 @@ impl<'a> Converter<'a> {
         self.res
     }
 
-    fn push(&mut self, kind: SyntaxKind, len: usize, err: Option<&str>) {
+    fn push(&mut self, kind: SyntaxKind, len: usize, errors: Vec<String>) {
         self.res.push(kind, self.offset);
         self.offset += len;
 
-        if let Some(err) = err {
-            let token = self.res.len() as u32;
-            let msg = err.to_owned();
-            self.res.error.push(LexError { msg, token });
+        for msg in errors {
+            if !msg.is_empty() {
+                self.res.error.push(LexError { msg, token: self.res.len() as u32 });
+            }
         }
     }
 
@@ -167,14 +168,16 @@ impl<'a> Converter<'a> {
         // We drop some useful information here (see patterns with double dots `..`)
         // Storing that info in `SyntaxKind` is not possible due to its layout requirements of
         // being `u16` that come from `rowan::SyntaxKind`.
-        let mut err = "";
+        let mut errors: Vec<String> = vec![];
 
         let syntax_kind = {
             match kind {
                 rustc_lexer::TokenKind::LineComment { doc_style: _ } => COMMENT,
                 rustc_lexer::TokenKind::BlockComment { doc_style: _, terminated } => {
                     if !terminated {
-                        err = "Missing trailing `*/` symbols to terminate the block comment";
+                        errors.push(
+                            "Missing trailing `*/` symbols to terminate the block comment".into(),
+                        );
                     }
                     COMMENT
                 }
@@ -184,9 +187,9 @@ impl<'a> Converter<'a> {
                     invalid_infostring,
                 } => {
                     if *has_invalid_preceding_whitespace {
-                        err = "invalid preceding whitespace for frontmatter opening"
+                        errors.push("invalid preceding whitespace for frontmatter opening".into());
                     } else if *invalid_infostring {
-                        err = "invalid infostring for frontmatter"
+                        errors.push("invalid infostring for frontmatter".into());
                     }
                     FRONTMATTER
                 }
@@ -198,7 +201,7 @@ impl<'a> Converter<'a> {
                     SyntaxKind::from_keyword(token_text, self.edition).unwrap_or(IDENT)
                 }
                 rustc_lexer::TokenKind::InvalidIdent => {
-                    err = "Ident contains invalid characters";
+                    errors.push("Ident contains invalid characters".into());
                     IDENT
                 }
 
@@ -206,7 +209,7 @@ impl<'a> Converter<'a> {
 
                 rustc_lexer::TokenKind::GuardedStrPrefix if self.edition.at_least_2024() => {
                     // FIXME: rustc does something better for recovery.
-                    err = "Invalid string literal (reserved syntax)";
+                    errors.push("Invalid string literal (reserved syntax)".into());
                     ERROR
                 }
                 rustc_lexer::TokenKind::GuardedStrPrefix => {
@@ -222,12 +225,12 @@ impl<'a> Converter<'a> {
 
                 rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
                     if *starts_with_number {
-                        err = "Lifetime name cannot start with a number";
+                        errors.push("Lifetime name cannot start with a number".into());
                     }
                     LIFETIME_IDENT
                 }
                 rustc_lexer::TokenKind::UnknownPrefixLifetime => {
-                    err = "Unknown lifetime prefix";
+                    errors.push("Unknown lifetime prefix".into());
                     LIFETIME_IDENT
                 }
                 rustc_lexer::TokenKind::RawLifetime => LIFETIME_IDENT,
@@ -262,119 +265,128 @@ impl<'a> Converter<'a> {
                 rustc_lexer::TokenKind::Unknown => ERROR,
                 rustc_lexer::TokenKind::UnknownPrefix if token_text == "builtin" => IDENT,
                 rustc_lexer::TokenKind::UnknownPrefix => {
-                    err = "unknown literal prefix";
+                    errors.push("unknown literal prefix".into());
                     IDENT
                 }
                 rustc_lexer::TokenKind::Eof => EOF,
             }
         };
 
-        let err = if err.is_empty() { None } else { Some(err) };
-        self.push(syntax_kind, token_text.len(), err);
+        self.push(syntax_kind, token_text.len(), errors);
     }
 
     fn extend_literal(&mut self, len: usize, kind: &rustc_lexer::LiteralKind) {
-        let mut err = "";
+        let invalid_raw_msg = String::from("Invalid raw string literal");
+
+        let mut errors = vec![];
+        let mut no_end_quote = |c: char, kind: &str| {
+            errors.push(format!("Missing trailing `{c}` symbol to terminate the {kind} literal"));
+        };
 
         let syntax_kind = match *kind {
             rustc_lexer::LiteralKind::Int { empty_int, base: _ } => {
                 if empty_int {
-                    err = "Missing digits after the integer base prefix";
+                    errors.push("Missing digits after the integer base prefix".into());
                 }
                 INT_NUMBER
             }
             rustc_lexer::LiteralKind::Float { empty_exponent, base: _ } => {
                 if empty_exponent {
-                    err = "Missing digits after the exponent symbol";
+                    errors.push("Missing digits after the exponent symbol".into());
                 }
                 FLOAT_NUMBER
             }
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    err = "Missing trailing `'` symbol to terminate the character literal";
+                    no_end_quote('\'', "character");
                 } else {
                     let text = &self.res.text[self.offset + 1..][..len - 1];
-                    let i = text.rfind('\'').unwrap();
-                    let text = &text[..i];
+                    let text = &text[..text.rfind('\'').unwrap()];
                     if let Err(e) = unescape_char(text) {
-                        err = error_to_diagnostic_message(e, Mode::Char);
+                        errors.push(err_to_msg(e, Mode::Char));
                     }
                 }
                 CHAR
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
-                    err = "Missing trailing `'` symbol to terminate the byte literal";
+                    no_end_quote('\'', "byte");
                 } else {
                     let text = &self.res.text[self.offset + 2..][..len - 2];
-                    let i = text.rfind('\'').unwrap();
-                    let text = &text[..i];
+                    let text = &text[..text.rfind('\'').unwrap()];
                     if let Err(e) = unescape_byte(text) {
-                        err = error_to_diagnostic_message(e, Mode::Byte);
+                        errors.push(err_to_msg(e, Mode::Byte));
                     }
                 }
-
                 BYTE
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
-                    err = "Missing trailing `\"` symbol to terminate the string literal";
+                    no_end_quote('"', "string");
                 } else {
                     let text = &self.res.text[self.offset + 1..][..len - 1];
-                    let i = text.rfind('"').unwrap();
-                    let text = &text[..i];
-                    err = unescape_string_error_message(text, Mode::Str);
+                    let text = &text[..text.rfind('"').unwrap()];
+                    unescape_str(text, |_, res| {
+                        if let Err(e) = res {
+                            errors.push(err_to_msg(e, Mode::Str));
+                        }
+                    });
                 }
                 STRING
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
-                    err = "Missing trailing `\"` symbol to terminate the byte string literal";
+                    no_end_quote('"', "byte string");
                 } else {
                     let text = &self.res.text[self.offset + 2..][..len - 2];
-                    let i = text.rfind('"').unwrap();
-                    let text = &text[..i];
-                    err = unescape_string_error_message(text, Mode::ByteStr);
+                    let text = &text[..text.rfind('"').unwrap()];
+                    unescape_byte_str(text, |_, res| {
+                        if let Err(e) = res {
+                            errors.push(err_to_msg(e, Mode::ByteStr));
+                        }
+                    });
                 }
                 BYTE_STRING
             }
             rustc_lexer::LiteralKind::CStr { terminated } => {
                 if !terminated {
-                    err = "Missing trailing `\"` symbol to terminate the string literal";
+                    no_end_quote('"', "C string")
                 } else {
                     let text = &self.res.text[self.offset + 2..][..len - 2];
-                    let i = text.rfind('"').unwrap();
-                    let text = &text[..i];
-                    err = unescape_string_error_message(text, Mode::CStr);
+                    let text = &text[..text.rfind('"').unwrap()];
+                    unescape_c_str(text, |_, res| {
+                        if let Err(e) = res {
+                            errors.push(err_to_msg(e, Mode::CStr));
+                        }
+                    });
                 }
                 C_STRING
             }
             rustc_lexer::LiteralKind::RawStr { n_hashes } => {
                 if n_hashes.is_none() {
-                    err = "Invalid raw string literal";
+                    errors.push(invalid_raw_msg);
                 }
                 STRING
             }
             rustc_lexer::LiteralKind::RawByteStr { n_hashes } => {
                 if n_hashes.is_none() {
-                    err = "Invalid raw string literal";
+                    errors.push(invalid_raw_msg);
                 }
                 BYTE_STRING
             }
             rustc_lexer::LiteralKind::RawCStr { n_hashes } => {
                 if n_hashes.is_none() {
-                    err = "Invalid raw string literal";
+                    errors.push(invalid_raw_msg);
                 }
                 C_STRING
             }
         };
 
-        let err = if err.is_empty() { None } else { Some(err) };
-        self.push(syntax_kind, len, err);
+        self.push(syntax_kind, len, errors);
     }
 }
 
-fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
+fn err_to_msg(error: EscapeError, mode: Mode) -> String {
     match error {
         EscapeError::ZeroChars => "empty character literal",
         EscapeError::MoreThanOneChar => "character literal may only contain one codepoint",
@@ -410,28 +422,5 @@ fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
         EscapeError::UnskippedWhitespaceWarning => "",
         EscapeError::MultipleSkippedLinesWarning => "",
     }
-}
-
-fn unescape_string_error_message(text: &str, mode: Mode) -> &'static str {
-    let mut error_message = "";
-    match mode {
-        Mode::CStr => {
-            unescape_mixed(text, mode, &mut |_, res| {
-                if let Err(e) = res {
-                    error_message = error_to_diagnostic_message(e, mode);
-                }
-            });
-        }
-        Mode::ByteStr | Mode::Str => {
-            unescape_unicode(text, mode, &mut |_, res| {
-                if let Err(e) = res {
-                    error_message = error_to_diagnostic_message(e, mode);
-                }
-            });
-        }
-        _ => {
-            // Other Modes are not supported yet or do not apply
-        }
-    }
-    error_message
+    .into()
 }
