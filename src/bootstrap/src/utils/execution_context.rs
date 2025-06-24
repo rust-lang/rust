@@ -148,21 +148,24 @@ impl ExecutionContext {
     ) -> CommandOutput {
         let cache_key = command.cache_key();
 
-        if command.should_cache()
-            && let Some(cached_output) = self.command_cache.get(&cache_key)
+        if let Some(cached_output) = cache_key.as_ref().and_then(|key| self.command_cache.get(key))
         {
             command.mark_as_executed();
+
             if self.dry_run() && !command.run_always {
                 return CommandOutput::default();
             }
+
             self.verbose(|| println!("Cache hit: {:?}", command));
             return cached_output;
         }
 
         let output = self.start(command, stdout, stderr).wait_for_output(self);
 
-        if !self.dry_run() || command.run_always && command.should_cache() {
-            self.command_cache.insert(cache_key, output.clone());
+        if !self.dry_run() || command.run_always {
+            if let Some(cache_key) = cache_key {
+                self.command_cache.insert(cache_key, output.clone());
+            }
         }
 
         output

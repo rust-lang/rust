@@ -77,7 +77,6 @@ pub struct CommandCacheKey {
 /// [allow_failure]: BootstrapCommand::allow_failure
 /// [delay_failure]: BootstrapCommand::delay_failure
 pub struct BootstrapCommand {
-    cache_key: CommandCacheKey,
     command: Command,
     pub failure_behavior: BehaviorOnFailure,
     // Run the command even during dry run
@@ -91,17 +90,9 @@ pub struct BootstrapCommand {
 impl<'a> BootstrapCommand {
     #[track_caller]
     pub fn new<S: AsRef<OsStr>>(program: S) -> Self {
-        Self {
-            should_cache: true,
-            cache_key: CommandCacheKey {
-                program: program.as_ref().to_os_string(),
-                ..CommandCacheKey::default()
-            },
-            ..Command::new(program).into()
-        }
+        Self { should_cache: true, ..Command::new(program).into() }
     }
     pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.cache_key.args.push(arg.as_ref().to_os_string());
         self.command.arg(arg.as_ref());
         self
     }
@@ -126,7 +117,6 @@ impl<'a> BootstrapCommand {
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
     {
-        self.cache_key.envs.push((key.as_ref().to_os_string(), val.as_ref().to_os_string()));
         self.command.env(key, val);
         self
     }
@@ -145,7 +135,6 @@ impl<'a> BootstrapCommand {
     }
 
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
-        self.cache_key.cwd = Some(dir.as_ref().to_path_buf());
         self.command.current_dir(dir);
         self
     }
@@ -244,8 +233,8 @@ impl<'a> BootstrapCommand {
         }
     }
 
-    pub fn cache_key(&self) -> CommandCacheKey {
-        self.cache_key.clone()
+    pub fn cache_key(&self) -> Option<CommandCacheKey> {
+        (!self.should_cache).then(|| self.into())
     }
 }
 
@@ -260,14 +249,27 @@ impl From<Command> for BootstrapCommand {
     #[track_caller]
     fn from(command: Command) -> Self {
         let program = command.get_program().to_owned();
-
         Self {
-            cache_key: CommandCacheKey::default(),
             should_cache: false,
             command,
             failure_behavior: BehaviorOnFailure::Exit,
             run_in_dry_run: false,
             drop_bomb: DropBomb::arm(program),
+        }
+    }
+}
+
+impl From<&BootstrapCommand> for CommandCacheKey {
+    fn from(value: &BootstrapCommand) -> Self {
+        let command = &value.command;
+        CommandCacheKey {
+            program: command.get_program().into(),
+            args: command.get_args().map(OsStr::to_os_string).collect(),
+            envs: command
+                .get_envs()
+                .filter_map(|(k, v_opt)| v_opt.map(|v| (k.to_owned(), v.to_owned())))
+                .collect(),
+            cwd: command.get_current_dir().map(Path::to_path_buf),
         }
     }
 }
