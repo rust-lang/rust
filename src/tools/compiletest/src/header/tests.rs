@@ -150,6 +150,7 @@ impl ConfigBuilder {
             "--mode",
             self.mode.as_deref().unwrap_or("ui"),
             "--suite=ui",
+            "--rust-version=DUMMY_VERSION_STRING",
             "--compile-lib-path=",
             "--run-lib-path=",
             "--python=",

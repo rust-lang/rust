@@ -2485,6 +2485,10 @@ impl<'test> TestCx<'test> {
                 .into_owned();
         }
 
+        // Normalize out rustc version info strings that may be present in the output (usually for
+        // deprecated since diagnostics).
+        normalized = normalized.replace(&self.config.rust_version, "$RUST_VERSION");
+
         // Custom normalization rules
         for rule in custom_rules {
             let re = Regex::new(&rule.0).expect("bad regex in custom normalization rule");

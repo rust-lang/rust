@@ -1639,6 +1639,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
 
+        cmd.arg("--rust-version").arg(builder.rust_version());
+
         if suite == "mir-opt" {
             builder.ensure(compile::Std::new(compiler, target).is_for_mir_opt_tests(true));
         } else {

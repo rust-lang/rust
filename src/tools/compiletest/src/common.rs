@@ -181,6 +181,9 @@ pub struct Config {
     /// May run a few more tests before stopping, due to threading.
     pub fail_fast: bool,
 
+    /// E.g. `1.89.0-beta.1 (88b80702e 2025-06-23)`, used for UI normalizations.
+    pub rust_version: String,
+
     /// The library paths required for running the compiler.
     pub compile_lib_path: Utf8PathBuf,
 

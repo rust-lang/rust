@@ -58,157 +58,144 @@ pub fn parse_config(args: Vec<String>) -> Config {
     }
 
     let mut opts = Options::new();
-    opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
-        .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
-        .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
-        .optopt("", "cargo-path", "path to cargo to use for compiling", "PATH")
-        .optopt(
-            "",
-            "stage0-rustc-path",
-            "path to rustc to use for compiling run-make recipes",
-            "PATH",
-        )
-        .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
-        .optopt("", "coverage-dump-path", "path to coverage-dump to use in tests", "PATH")
-        .reqopt("", "python", "path to python to use for doc tests", "PATH")
-        .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
-        .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
-        .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
-        .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
-        .reqopt("", "src-root", "directory containing sources", "PATH")
-        .reqopt("", "src-test-suite-root", "directory containing test suite sources", "PATH")
-        .reqopt("", "build-root", "path to root build directory", "PATH")
-        .reqopt("", "build-test-suite-root", "path to test suite specific build directory", "PATH")
-        .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
-        .reqopt("", "stage", "stage number under test", "N")
-        .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
-        .reqopt(
-            "",
-            "mode",
-            "which sort of compile tests to run",
-            "pretty | debug-info | codegen | rustdoc \
+    opts.reqopt(
+        "",
+        "rust-version",
+        "rust version info (e.g. `1.89.0-beta.1 (88b80702e 2025-06-23)`)",
+        "VERSION STRING",
+    )
+    .reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
+    .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
+    .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
+    .optopt("", "cargo-path", "path to cargo to use for compiling", "PATH")
+    .optopt("", "stage0-rustc-path", "path to rustc to use for compiling run-make recipes", "PATH")
+    .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
+    .optopt("", "coverage-dump-path", "path to coverage-dump to use in tests", "PATH")
+    .reqopt("", "python", "path to python to use for doc tests", "PATH")
+    .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
+    .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
+    .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
+    .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
+    .reqopt("", "src-root", "directory containing sources", "PATH")
+    .reqopt("", "src-test-suite-root", "directory containing test suite sources", "PATH")
+    .reqopt("", "build-root", "path to root build directory", "PATH")
+    .reqopt("", "build-test-suite-root", "path to test suite specific build directory", "PATH")
+    .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
+    .reqopt("", "stage", "stage number under test", "N")
+    .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
+    .reqopt(
+        "",
+        "mode",
+        "which sort of compile tests to run",
+        "pretty | debug-info | codegen | rustdoc \
             | rustdoc-json | codegen-units | incremental | run-make | ui \
             | rustdoc-js | mir-opt | assembly | crashes",
-        )
-        .reqopt(
-            "",
-            "suite",
-            "which suite of compile tests to run. used for nicer error reporting.",
-            "SUITE",
-        )
-        .optopt(
-            "",
-            "pass",
-            "force {check,build,run}-pass tests to this mode.",
-            "check | build | run",
-        )
-        .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
-        .optflag("", "ignored", "run tests marked as ignored")
-        .optflag("", "has-enzyme", "run tests that require enzyme")
-        .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
-        .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
-        .optmulti(
-            "",
-            "skip",
-            "skip tests matching SUBSTRING. Can be passed multiple times",
-            "SUBSTRING",
-        )
-        .optflag("", "exact", "filters match exactly")
-        .optopt(
-            "",
-            "runner",
-            "supervisor program to run tests under \
+    )
+    .reqopt(
+        "",
+        "suite",
+        "which suite of compile tests to run. used for nicer error reporting.",
+        "SUITE",
+    )
+    .optopt("", "pass", "force {check,build,run}-pass tests to this mode.", "check | build | run")
+    .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
+    .optflag("", "ignored", "run tests marked as ignored")
+    .optflag("", "has-enzyme", "run tests that require enzyme")
+    .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
+    .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
+    .optmulti(
+        "",
+        "skip",
+        "skip tests matching SUBSTRING. Can be passed multiple times",
+        "SUBSTRING",
+    )
+    .optflag("", "exact", "filters match exactly")
+    .optopt(
+        "",
+        "runner",
+        "supervisor program to run tests under \
              (eg. emulator, valgrind)",
-            "PROGRAM",
-        )
-        .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
-        .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
-        .optflag(
-            "",
-            "rust-randomized-layout",
-            "set this when rustc/stdlib were compiled with randomized layouts",
-        )
-        .optflag("", "optimize-tests", "run tests with optimizations enabled")
-        .optflag("", "verbose", "run tests verbosely, showing all output")
-        .optflag(
-            "",
-            "bless",
-            "overwrite stderr/stdout files instead of complaining about a mismatch",
-        )
-        .optflag("", "fail-fast", "stop as soon as possible after any test fails")
-        .optflag("", "quiet", "print one character per test instead of one line")
-        .optopt("", "color", "coloring: auto, always, never", "WHEN")
-        .optflag("", "json", "emit json output instead of plaintext output")
-        .optopt("", "target", "the target to build for", "TARGET")
-        .optopt("", "host", "the host to build for", "HOST")
-        .optopt("", "cdb", "path to CDB to use for CDB debuginfo tests", "PATH")
-        .optopt("", "gdb", "path to GDB to use for GDB debuginfo tests", "PATH")
-        .optopt("", "lldb-version", "the version of LLDB used", "VERSION STRING")
-        .optopt("", "llvm-version", "the version of LLVM used", "VERSION STRING")
-        .optflag("", "system-llvm", "is LLVM the system LLVM")
-        .optopt("", "android-cross-path", "Android NDK standalone path", "PATH")
-        .optopt("", "adb-path", "path to the android debugger", "PATH")
-        .optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH")
-        .optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH")
-        .reqopt("", "cc", "path to a C compiler", "PATH")
-        .reqopt("", "cxx", "path to a C++ compiler", "PATH")
-        .reqopt("", "cflags", "flags for the C compiler", "FLAGS")
-        .reqopt("", "cxxflags", "flags for the CXX compiler", "FLAGS")
-        .optopt("", "ar", "path to an archiver", "PATH")
-        .optopt("", "target-linker", "path to a linker for the target", "PATH")
-        .optopt("", "host-linker", "path to a linker for the host", "PATH")
-        .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
-        .optopt("", "llvm-bin-dir", "Path to LLVM's `bin` directory", "PATH")
-        .optopt("", "nodejs", "the name of nodejs", "PATH")
-        .optopt("", "npm", "the name of npm", "PATH")
-        .optopt("", "remote-test-client", "path to the remote test client", "PATH")
-        .optopt(
-            "",
-            "compare-mode",
-            "mode describing what file the actual ui output will be compared to",
-            "COMPARE MODE",
-        )
-        .optflag(
-            "",
-            "rustfix-coverage",
-            "enable this to generate a Rustfix coverage file, which is saved in \
+        "PROGRAM",
+    )
+    .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
+    .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
+    .optflag(
+        "",
+        "rust-randomized-layout",
+        "set this when rustc/stdlib were compiled with randomized layouts",
+    )
+    .optflag("", "optimize-tests", "run tests with optimizations enabled")
+    .optflag("", "verbose", "run tests verbosely, showing all output")
+    .optflag("", "bless", "overwrite stderr/stdout files instead of complaining about a mismatch")
+    .optflag("", "fail-fast", "stop as soon as possible after any test fails")
+    .optflag("", "quiet", "print one character per test instead of one line")
+    .optopt("", "color", "coloring: auto, always, never", "WHEN")
+    .optflag("", "json", "emit json output instead of plaintext output")
+    .optopt("", "target", "the target to build for", "TARGET")
+    .optopt("", "host", "the host to build for", "HOST")
+    .optopt("", "cdb", "path to CDB to use for CDB debuginfo tests", "PATH")
+    .optopt("", "gdb", "path to GDB to use for GDB debuginfo tests", "PATH")
+    .optopt("", "lldb-version", "the version of LLDB used", "VERSION STRING")
+    .optopt("", "llvm-version", "the version of LLVM used", "VERSION STRING")
+    .optflag("", "system-llvm", "is LLVM the system LLVM")
+    .optopt("", "android-cross-path", "Android NDK standalone path", "PATH")
+    .optopt("", "adb-path", "path to the android debugger", "PATH")
+    .optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH")
+    .optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH")
+    .reqopt("", "cc", "path to a C compiler", "PATH")
+    .reqopt("", "cxx", "path to a C++ compiler", "PATH")
+    .reqopt("", "cflags", "flags for the C compiler", "FLAGS")
+    .reqopt("", "cxxflags", "flags for the CXX compiler", "FLAGS")
+    .optopt("", "ar", "path to an archiver", "PATH")
+    .optopt("", "target-linker", "path to a linker for the target", "PATH")
+    .optopt("", "host-linker", "path to a linker for the host", "PATH")
+    .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
+    .optopt("", "llvm-bin-dir", "Path to LLVM's `bin` directory", "PATH")
+    .optopt("", "nodejs", "the name of nodejs", "PATH")
+    .optopt("", "npm", "the name of npm", "PATH")
+    .optopt("", "remote-test-client", "path to the remote test client", "PATH")
+    .optopt(
+        "",
+        "compare-mode",
+        "mode describing what file the actual ui output will be compared to",
+        "COMPARE MODE",
+    )
+    .optflag(
+        "",
+        "rustfix-coverage",
+        "enable this to generate a Rustfix coverage file, which is saved in \
             `./<build_test_suite_root>/rustfix_missing_coverage.txt`",
-        )
-        .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
-        .optflag("", "only-modified", "only run tests that result been modified")
-        // FIXME: Temporarily retained so we can point users to `--no-capture`
-        .optflag("", "nocapture", "")
-        .optflag("", "no-capture", "don't capture stdout/stderr of tests")
-        .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
-        .optflag("h", "help", "show this message")
-        .reqopt("", "channel", "current Rust channel", "CHANNEL")
-        .optflag(
-            "",
-            "git-hash",
-            "run tests which rely on commit version being compiled into the binaries",
-        )
-        .optopt("", "edition", "default Rust edition", "EDITION")
-        .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH")
-        .reqopt(
-            "",
-            "git-merge-commit-email",
-            "email address used for finding merge commits",
-            "EMAIL",
-        )
-        .optopt(
-            "",
-            "compiletest-diff-tool",
-            "What custom diff tool to use for displaying compiletest tests.",
-            "COMMAND",
-        )
-        .reqopt("", "minicore-path", "path to minicore aux library", "PATH")
-        .optflag("N", "no-new-executor", "disables the new test executor, and uses libtest instead")
-        .optopt(
-            "",
-            "debugger",
-            "only test a specific debugger in debuginfo tests",
-            "gdb | lldb | cdb",
-        );
+    )
+    .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
+    .optflag("", "only-modified", "only run tests that result been modified")
+    // FIXME: Temporarily retained so we can point users to `--no-capture`
+    .optflag("", "nocapture", "")
+    .optflag("", "no-capture", "don't capture stdout/stderr of tests")
+    .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
+    .optflag("h", "help", "show this message")
+    .reqopt("", "channel", "current Rust channel", "CHANNEL")
+    .optflag(
+        "",
+        "git-hash",
+        "run tests which rely on commit version being compiled into the binaries",
+    )
+    .optopt("", "edition", "default Rust edition", "EDITION")
+    .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH")
+    .reqopt("", "git-merge-commit-email", "email address used for finding merge commits", "EMAIL")
+    .optopt(
+        "",
+        "compiletest-diff-tool",
+        "What custom diff tool to use for displaying compiletest tests.",
+        "COMMAND",
+    )
+    .reqopt("", "minicore-path", "path to minicore aux library", "PATH")
+    .optflag("N", "no-new-executor", "disables the new test executor, and uses libtest instead")
+    .optopt(
+        "",
+        "debugger",
+        "only test a specific debugger in debuginfo tests",
+        "gdb | lldb | cdb",
+    );
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -245,6 +232,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         }
     }
 
+    let rust_version = opt_str2(matches.opt_str("rust-version"));
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
     let (cdb, cdb_version) = debuggers::analyze_cdb(matches.opt_str("cdb"), &target);
@@ -333,6 +321,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         fail_fast: matches.opt_present("fail-fast")
             || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
 
+        rust_version,
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
@@ -453,6 +442,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
 pub fn log_config(config: &Config) {
     let c = config;
     logv(c, "configuration:".to_string());
+
+    logv(c, format!("rust_version: {}", config.rust_version));
     logv(c, format!("compile_lib_path: {}", config.compile_lib_path));
     logv(c, format!("run_lib_path: {}", config.run_lib_path));
     logv(c, format!("rustc_path: {}", config.rustc_path));
