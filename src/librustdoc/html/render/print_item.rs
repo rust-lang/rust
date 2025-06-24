@@ -1702,6 +1702,7 @@ fn render_enum_fields(
                 if v.is_stripped() {
                     continue;
                 }
+                write!(w, "{}", render_attributes_in_pre(v, TAB, cx))?;
                 w.write_str(TAB)?;
                 match v.kind {
                     clean::VariantItem(ref var) => match var.kind {
