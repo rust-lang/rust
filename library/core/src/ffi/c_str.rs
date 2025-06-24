@@ -660,6 +660,19 @@ impl CStr {
     }
 }
 
+#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<&Self> for CStr {
+    #[inline]
+    fn eq(&self, other: &&Self) -> bool {
+        *self == **other
+    }
+
+    #[inline]
+    fn ne(&self, other: &&Self) -> bool {
+        *self != **other
+    }
+}
+
 // `.to_bytes()` representations are compared instead of the inner `[c_char]`s,
 // because `c_char` is `i8` (not `u8`) on some platforms.
 // That is why this is implemented manually and not derived.
@@ -670,6 +683,7 @@ impl PartialOrd for CStr {
         self.to_bytes().partial_cmp(&other.to_bytes())
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for CStr {
     #[inline]
