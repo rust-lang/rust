@@ -1296,6 +1296,28 @@ bitflags::bitflags! {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Sysroot {
+    pub explicit: Option<PathBuf>,
+    pub default: PathBuf,
+}
+
+impl Sysroot {
+    pub fn new(explicit: Option<PathBuf>) -> Sysroot {
+        Sysroot { explicit, default: filesearch::default_sysroot() }
+    }
+
+    /// Return explicit sysroot if it was passed with `--sysroot`, or default sysroot otherwise.
+    pub fn path(&self) -> &Path {
+        self.explicit.as_deref().unwrap_or(&self.default)
+    }
+
+    /// Returns both explicit sysroot if it was passed with `--sysroot` and the default sysroot.
+    pub fn all_paths(&self) -> impl Iterator<Item = &Path> {
+        self.explicit.as_deref().into_iter().chain(iter::once(&*self.default))
+    }
+}
+
 pub fn host_tuple() -> &'static str {
     // Get the host triple out of the build environment. This ensures that our
     // idea of the host triple is the same as for the set of libraries we've
@@ -1342,7 +1364,7 @@ impl Default for Options {
             describe_lints: false,
             output_types: OutputTypes(BTreeMap::new()),
             search_paths: vec![],
-            sysroot: filesearch::materialize_sysroot(None),
+            sysroot: Sysroot::new(None),
             target_triple: TargetTuple::from_tuple(host_tuple()),
             test: false,
             incremental: None,
@@ -2673,7 +2695,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let cg = cg;
 
-    let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
     let target_triple = parse_target_triple(early_dcx, matches);
     let opt_level = parse_opt_level(early_dcx, matches, &cg);
     // The `-g` and `-C debuginfo` flags specify the same setting, so we want to be able
@@ -2712,10 +2733,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let logical_env = parse_logical_env(early_dcx, matches);
 
-    let sysroot = filesearch::materialize_sysroot(sysroot_opt);
+    let sysroot = Sysroot::new(matches.opt_str("sysroot").map(PathBuf::from));
 
     let real_source_base_dir = |suffix: &str, confirm: &str| {
-        let mut candidate = sysroot.join(suffix);
+        let mut candidate = sysroot.path().join(suffix);
         if let Ok(metadata) = candidate.symlink_metadata() {
             // Replace the symlink bootstrap creates, with its destination.
             // We could try to use `fs::canonicalize` instead, but that might
@@ -2742,7 +2763,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
         search_paths.push(SearchPath::from_cli_opt(
-            &sysroot,
+            sysroot.path(),
             &target_triple,
             early_dcx,
             s,

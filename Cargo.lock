@@ -3655,7 +3655,6 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
- "smallvec",
  "tracing",
  "unic-langid",
 ]
@@ -4447,7 +4446,6 @@ dependencies = [
  "rustc_serialize",
  "rustc_span",
  "rustc_target",
- "smallvec",
  "termize",
  "tracing",
  "windows",

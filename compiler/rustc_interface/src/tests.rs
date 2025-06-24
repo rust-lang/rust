@@ -41,9 +41,11 @@ where
 
     let matches = optgroups().parse(args).unwrap();
     let sessopts = build_session_options(&mut early_dcx, &matches);
-    let sysroot = sessopts.sysroot.clone();
-    let target =
-        rustc_session::config::build_target_config(&early_dcx, &sessopts.target_triple, &sysroot);
+    let target = rustc_session::config::build_target_config(
+        &early_dcx,
+        &sessopts.target_triple,
+        sessopts.sysroot.path(),
+    );
     let hash_kind = sessopts.unstable_opts.src_hash_algorithm(&target);
     let checksum_hash_kind = sessopts.unstable_opts.checksum_hash_algorithm();
     let sm_inputs = Some(SourceMapInputs {
@@ -72,7 +74,6 @@ where
             vec![],
             Default::default(),
             target,
-            sysroot,
             "",
             None,
             &USING_INTERNAL_FEATURES,
