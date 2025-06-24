@@ -456,16 +456,33 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         value: SwitchTargetValue,
         otherwise_state: Option<&mut Self::Domain>,
     ) {
-        if let SwitchTargetValue::Normal(value) = value {
-            // Kill all move paths that correspond to variants we know to be inactive along this
-            // particular outgoing edge of a `SwitchInt`.
-            drop_flag_effects::on_all_variants(
-                self.move_data,
-                data.enum_place,
-                data.next_discr(value),
-                |mpi| state.kill(mpi),
-                otherwise_state.map(|state| |mpi| state.kill(mpi)),
-            );
+        let SwitchTargetValue::Normal(value) = value else {
+            return;
+        };
+
+        let handle_inactive_variant = |mpi| state.kill(mpi);
+
+        // Kill all move paths that correspond to variants we know to be inactive along this
+        // particular outgoing edge of a `SwitchInt`.
+        match otherwise_state {
+            Some(otherwise_state) => {
+                drop_flag_effects::on_all_variants(
+                    self.move_data,
+                    data.enum_place,
+                    data.next_discr(value),
+                    handle_inactive_variant,
+                    |mpi| otherwise_state.kill(mpi),
+                );
+            }
+            None => {
+                drop_flag_effects::on_all_variants(
+                    self.move_data,
+                    data.enum_place,
+                    data.next_discr(value),
+                    handle_inactive_variant,
+                    |_mpi| {},
+                );
+            }
         }
     }
 
@@ -598,16 +615,33 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         value: SwitchTargetValue,
         otherwise_state: Option<&mut Self::Domain>,
     ) {
-        if let SwitchTargetValue::Normal(value) = value {
-            // Mark all move paths that correspond to variants other than this one as maybe
-            // uninitialized (in reality, they are *definitely* uninitialized).
-            drop_flag_effects::on_all_variants(
-                self.move_data,
-                data.enum_place,
-                data.next_discr(value),
-                |mpi| state.gen_(mpi),
-                otherwise_state.map(|state| |mpi| state.gen_(mpi)),
-            );
+        let SwitchTargetValue::Normal(value) = value else {
+            return;
+        };
+
+        let handle_inactive_variant = |mpi| state.gen_(mpi);
+
+        // Mark all move paths that correspond to variants other than this one as maybe
+        // uninitialized (in reality, they are *definitely* uninitialized).
+        match otherwise_state {
+            Some(otherwise_state) => {
+                drop_flag_effects::on_all_variants(
+                    self.move_data,
+                    data.enum_place,
+                    data.next_discr(value),
+                    handle_inactive_variant,
+                    |mpi| otherwise_state.gen_(mpi),
+                );
+            }
+            None => {
+                drop_flag_effects::on_all_variants(
+                    self.move_data,
+                    data.enum_place,
+                    data.next_discr(value),
+                    handle_inactive_variant,
+                    |_mpi| {},
+                );
+            }
         }
     }
 
