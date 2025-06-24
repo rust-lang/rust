@@ -505,7 +505,7 @@ fn transcribe_metavar_expr<'tx>(
         MetaVarExpr::Concat(ref elements) => metavar_expr_concat(tscx, dspan, elements)?,
         MetaVarExpr::Count(original_ident, depth) => {
             let matched = matched_from_ident(dcx, original_ident, tscx.interp)?;
-            let count = count_repetitions(dcx, depth, matched, &tscx.repeats, &dspan)?;
+            let count = count_repetitions(dcx, depth, matched, &tscx.repeats, dspan)?;
             TokenTree::token_alone(
                 TokenKind::lit(token::Integer, sym::integer(count), None),
                 tscx.visited_dspan(dspan),
