@@ -253,7 +253,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.context.new_cast(None, val, ty)
     }
 
-    fn static_addr_of_impl(
+    fn static_addr_of_const(
         &self,
         cv: Self::Value,
         align: Align,
