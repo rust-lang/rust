@@ -107,6 +107,8 @@ platforms, mainly about filenames.
 
 Compiletest makes the following replacements on the compiler output:
 
+- The rust version string (e.g. `1.89.0-beta.1 (88b80702e 2025-06-23)`) is
+  replaced with `$RUST_VERSION`.
 - The directory where the test is defined is replaced with `$DIR`. Example:
   `/path/to/rust/tests/ui/error-codes`
 - The directory to the standard library source is replaced with `$SRC_DIR`.
