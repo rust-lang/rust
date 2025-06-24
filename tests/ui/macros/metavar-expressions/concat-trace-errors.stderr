@@ -1,63 +1,32 @@
-error: invalid item within a `${concat(...)}` expression
+error: invalid item within a `${concat(..)}` expression
   --> $DIR/concat-trace-errors.rs:9:24
    |
 LL |         ${concat("hi", " bye ")};
    |                        ^^^^^^^
-   |
-   = note: this literal produced an invalid identifier
-help: expanding this `concat(...)` expression
-  --> $DIR/concat-trace-errors.rs:9:11
-   |
-LL |         ${concat("hi", " bye ")};
-   |           ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error: invalid item within a `${concat(..)}` expression
   --> $DIR/concat-trace-errors.rs:11:24
    |
 LL |         ${concat("hi", "-", "bye")};
    |                        ^^^
-   |
-   = note: this literal produced an invalid identifier
-help: expanding this `concat(...)` expression
-  --> $DIR/concat-trace-errors.rs:11:11
-   |
-LL |         ${concat("hi", "-", "bye")};
-   |           ^^^^^^
 
-error: invalid item within a `${concat(...)}` expression
+error: invalid item within a `${concat(..)}` expression
   --> $DIR/concat-trace-errors.rs:13:22
    |
 LL |         ${concat($a, "-")};
    |                      ^^^
-   |
-   = note: this literal produced an invalid identifier
-help: expanding this `concat(...)` expression
-  --> $DIR/concat-trace-errors.rs:13:11
-   |
-LL |         ${concat($a, "-")};
-   |           ^^^^^^
 
-error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-trace-errors.rs:20:24
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-trace-errors.rs:25:17
    |
-LL |         const _: () = ${concat("hi", $a, "bye")};
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
-...
 LL | post_expansion!("!");
-   | -------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `post_expansion` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                 ^^^
 
-error: `${concat(..)}` is not generating a valid identifier
-  --> $DIR/concat-trace-errors.rs:29:24
+error: invalid item within a `${concat(..)}` expression
+  --> $DIR/concat-trace-errors.rs:34:31
    |
-LL |         const _: () = ${concat($a, $b, $c, $d, $e)};
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
 LL | post_expansion_many!(a, b, c, ".d", e);
-   | -------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `post_expansion_many` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                               ^^^^
 
 error: aborting due to 5 previous errors
 

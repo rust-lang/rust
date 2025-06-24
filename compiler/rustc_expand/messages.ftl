@@ -133,20 +133,23 @@ expand_module_multiple_candidates =
 expand_must_repeat_once =
     this must repeat at least once
 
-expand_mve_concat_invalid =
-    invalid item within a `{"${concat(...)}"}` expression
-    .expr_ident = expanding this `concat(...)` expression
-    .invalid_ident = this literal produced an invalid identifier
+expand_mve_concat_invalid_in =
+    invalid item within a {"`${concat(..)}`"} expression
+    .metavar_label = expanding this metavariable
     .float_lit = float literals cannot be concatenated
     .c_str_lit = C string literals cannot be concatenated
     .b_str_lit = byte literals cannot be concatenated
     .raw_ident = raw identifiers cannot be concatenated
-    .unsupported = unsupported input for `concat(...)`
+    .unsupported = unsupported input for `concat(..)`
     .valid_types = `concat` can join {$valid}
-    .expected_metavar = expected an identifier; got `{$found}`
-    .expected_metavar_dollar = todo
-    .unexpected_group = todo
-    .hi_label = todo
+    .expected_metavar = expected an identifier
+    .expected_metavar_dollar = `$` indicates the start of a metavariable
+    .invalid_metavar = expanding something
+    .valid_metavars = {"`${concat(..)}`"} can join metavariables of type {$valid}
+
+expand_mve_concat_invalid_out =
+    invalid item within a {"`${concat(..)}`"} would produce an invalid identifier
+    .label = todo
 
 expand_mve_expected_ident =
     expected an identifier

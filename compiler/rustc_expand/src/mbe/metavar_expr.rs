@@ -2,16 +2,15 @@ use rustc_ast::token::{self, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
 use rustc_ast::{self as ast, LitIntType, LitKind};
 use rustc_ast_pretty::pprust;
-use rustc_errors::PResult;
+use rustc_errors::{DiagCtxtHandle, PResult};
 use rustc_lexer::is_id_continue;
 use rustc_macros::{Decodable, Encodable};
 use rustc_session::errors::create_lit_error;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, Symbol};
 
-use crate::errors::{self, MveConcatInvalidReason, MveExpectedIdentContext};
+use crate::errors::{self, MveConcatInvalidTyReason, MveExpectedIdentContext};
 
-pub(crate) const RAW_IDENT_ERR: &str = "`${concat(..)}` currently does not support raw identifiers";
 pub(crate) const VALID_EXPR_CONCAT_TYPES: &str =
     "metavariables, identifiers, string literals, and integer literals";
 
@@ -218,9 +217,9 @@ fn parse_concat<'psess>(
         };
 
         let make_err = |reason| {
-            let err = errors::MveConcatInvalid {
+            let err = errors::MveConcatInvalidTy {
                 span: tt.span(),
-                ident_span: expr_ident_span,
+                metavar_span: None,
                 reason,
                 valid: VALID_EXPR_CONCAT_TYPES,
             };
@@ -228,64 +227,22 @@ fn parse_concat<'psess>(
         };
 
         let token = match tt {
-            TokenTree::Token(token, _) => token,
+            TokenTree::Token(token, _) => *token,
             TokenTree::Delimited(..) => {
-                return make_err(MveConcatInvalidReason::UnexpectedGroup);
+                return make_err(MveConcatInvalidTyReason::UnsupportedInput);
             }
         };
 
         let element = if let Some(dollar) = dollar {
             // Expecting a metavar
             let Some((ident, _)) = token.ident() else {
-                return make_err(MveConcatInvalidReason::ExpectedMetavarIdent {
-                    found: pprust::token_to_string(token).into_owned(),
-                    dollar,
-                });
+                return make_err(MveConcatInvalidTyReason::ExpectedMetavarIdent { dollar });
             };
 
             // Variables get passed untouched
             MetaVarExprConcatElem::Var(ident)
-        } else if let TokenKind::Literal(lit) = token.kind {
-            // Preprocess with `from_token_lit` to handle unescaping, float / int literal suffix
-            // stripping.
-            //
-            // For consistent user experience, please keep this in sync with the handling of
-            // literals in `rustc_builtin_macros::concat`!
-            let s = match ast::LitKind::from_token_lit(lit.clone()) {
-                Ok(ast::LitKind::Str(s, _)) => s.to_string(),
-                Ok(ast::LitKind::Float(..)) => {
-                    return make_err(MveConcatInvalidReason::FloatLit);
-                }
-                Ok(ast::LitKind::Char(c)) => c.to_string(),
-                Ok(ast::LitKind::Int(i, _)) => i.to_string(),
-                Ok(ast::LitKind::Bool(b)) => b.to_string(),
-                Ok(ast::LitKind::CStr(..)) => return make_err(MveConcatInvalidReason::CStrLit),
-                Ok(ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..)) => {
-                    return make_err(MveConcatInvalidReason::ByteStrLit);
-                }
-                Ok(ast::LitKind::Err(_guarantee)) => {
-                    // REVIEW: a diagnostic was already emitted, should we just break?
-                    return make_err(MveConcatInvalidReason::InvalidLiteral);
-                }
-                Err(err) => return Err(create_lit_error(psess, err, lit, token.span)),
-            };
-
-            if !s.chars().all(|ch| is_id_continue(ch)) {
-                // Check that all characters are valid in the middle of an identifier. This doesn't
-                // guarantee that the final identifier is valid (we still need to check it later),
-                // but it allows us to catch errors with specific arguments before expansion time;
-                // for example, string literal "foo.bar" gets flagged before the macro is invoked.
-                return make_err(MveConcatInvalidReason::InvalidIdent);
-            }
-
-            MetaVarExprConcatElem::Ident(s)
-        } else if let Some((elem, is_raw)) = token.ident() {
-            if is_raw == IdentIsRaw::Yes {
-                return make_err(MveConcatInvalidReason::RawIdentifier);
-            }
-            MetaVarExprConcatElem::Ident(elem.as_str().to_string())
         } else {
-            return make_err(MveConcatInvalidReason::UnsupportedInput);
+            MetaVarExprConcatElem::Ident(parse_tok_for_concat(psess, token)?)
         };
 
         result.push(element);
@@ -350,6 +307,68 @@ fn parse_depth<'psess>(
         let msg = "only unsuffixes integer literals are supported in meta-variable expressions";
         Err(psess.dcx().struct_span_err(span, msg))
     }
+}
+
+/// Validate that a token can be concatenated as an identifier, then stringify it.
+pub(super) fn parse_tok_for_concat<'psess>(
+    psess: &'psess ParseSess,
+    token: Token,
+) -> PResult<'psess, String> {
+    let dcx = psess.dcx();
+    let make_err = |reason| {
+        let err = errors::MveConcatInvalidTy {
+            span: token.span,
+            metavar_span: None,
+            reason,
+            valid: VALID_EXPR_CONCAT_TYPES,
+        };
+        Err(dcx.create_err(err))
+    };
+
+    let elem = if let TokenKind::Literal(lit) = token.kind {
+        // Preprocess with `from_token_lit` to handle unescaping, float / int literal suffix
+        // stripping.
+        //
+        // For consistent user experience, please keep this in sync with the handling of
+        // literals in `rustc_builtin_macros::concat`!
+        let s = match ast::LitKind::from_token_lit(lit.clone()) {
+            Ok(ast::LitKind::Str(s, _)) => s.to_string(),
+            Ok(ast::LitKind::Float(..)) => {
+                return make_err(MveConcatInvalidTyReason::FloatLit);
+            }
+            Ok(ast::LitKind::Char(c)) => c.to_string(),
+            Ok(ast::LitKind::Int(i, _)) => i.to_string(),
+            Ok(ast::LitKind::Bool(b)) => b.to_string(),
+            Ok(ast::LitKind::CStr(..)) => return make_err(MveConcatInvalidTyReason::CStrLit),
+            Ok(ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..)) => {
+                return make_err(MveConcatInvalidTyReason::ByteStrLit);
+            }
+            Ok(ast::LitKind::Err(_guarantee)) => {
+                // REVIEW: a diagnostic was already emitted, should we just break?
+                return make_err(MveConcatInvalidTyReason::InvalidLiteral);
+            }
+            Err(err) => return Err(create_lit_error(psess, err, lit, token.span)),
+        };
+
+        if !s.chars().all(|ch| is_id_continue(ch)) {
+            // Check that all characters are valid in the middle of an identifier. This doesn't
+            // guarantee that the final identifier is valid (we still need to check it later),
+            // but it allows us to catch errors with specific arguments before expansion time;
+            // for example, string literal "foo.bar" gets flagged before the macro is invoked.
+            return make_err(MveConcatInvalidTyReason::InvalidIdent);
+        }
+
+        s
+    } else if let Some((elem, is_raw)) = token.ident() {
+        if is_raw == IdentIsRaw::Yes {
+            return make_err(MveConcatInvalidTyReason::RawIdentifier);
+        }
+        elem.as_str().to_string()
+    } else {
+        return make_err(MveConcatInvalidTyReason::UnsupportedInput);
+    };
+
+    Ok(elem)
 }
 
 /// Tries to parse a generic ident. If this fails, create a missing identifier diagnostic with

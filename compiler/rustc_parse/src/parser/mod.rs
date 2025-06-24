@@ -1657,3 +1657,24 @@ pub enum ParseNtResult {
     Path(P<ast::Path>),
     Vis(P<ast::Visibility>),
 }
+
+impl ParseNtResult {
+    #[inline]
+    pub fn span(&self) -> Span {
+        match self {
+            ParseNtResult::Tt(token_tree) => token_tree.span(),
+            ParseNtResult::Ident(ident, ..) => ident.span,
+            ParseNtResult::Lifetime(ident, ..) => ident.span,
+            ParseNtResult::Item(item) => item.span,
+            ParseNtResult::Block(block) => block.span,
+            ParseNtResult::Stmt(stmt) => stmt.span,
+            ParseNtResult::Pat(pat, ..) => pat.span,
+            ParseNtResult::Expr(expr, ..) => expr.span,
+            ParseNtResult::Literal(expr) => expr.span,
+            ParseNtResult::Ty(ty) => ty.span,
+            ParseNtResult::Meta(attr_item) => attr_item.span(),
+            ParseNtResult::Path(path) => path.span,
+            ParseNtResult::Vis(visibility) => visibility.span,
+        }
+    }
+}
