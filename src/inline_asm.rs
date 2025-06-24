@@ -103,11 +103,12 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                     // be exported from the main codegen unit and may thus be unreachable from the
                     // object file created by an external assembler.
                     let wrapper_name = format!(
-                        "__inline_asm_{}_wrapper_n{}",
+                        "{}__inline_asm_{}_wrapper_n{}",
+                        fx.symbol_name,
                         fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
-                        fx.cx.inline_asm_index
+                        fx.inline_asm_index,
                     );
-                    fx.cx.inline_asm_index += 1;
+                    fx.inline_asm_index += 1;
                     let sig =
                         get_function_sig(fx.tcx, fx.target_config.default_call_conv, instance);
                     create_wrapper_function(fx.module, sig, &wrapper_name, symbol.name);
@@ -166,11 +167,12 @@ pub(crate) fn codegen_inline_asm_inner<'tcx>(
     asm_gen.allocate_stack_slots();
 
     let asm_name = format!(
-        "__inline_asm_{}_n{}",
+        "{}__inline_asm_{}_n{}",
+        fx.symbol_name,
         fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
-        fx.cx.inline_asm_index
+        fx.inline_asm_index,
     );
-    fx.cx.inline_asm_index += 1;
+    fx.inline_asm_index += 1;
 
     let generated_asm = asm_gen.generate_asm_wrapper(&asm_name);
     fx.cx.global_asm.push_str(&generated_asm);

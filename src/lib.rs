@@ -129,7 +129,6 @@ struct CodegenCx {
     invocation_temp: Option<String>,
     should_write_ir: bool,
     global_asm: String,
-    inline_asm_index: usize,
     debug_context: Option<DebugContext>,
     cgu_name: Symbol,
 }
@@ -148,7 +147,6 @@ impl CodegenCx {
             invocation_temp: tcx.sess.invocation_temp.clone(),
             should_write_ir: crate::pretty_clif::should_write_ir(tcx),
             global_asm: String::new(),
-            inline_asm_index: 0,
             debug_context,
             cgu_name,
         }

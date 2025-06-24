@@ -104,6 +104,7 @@ pub(crate) fn codegen_fn<'tcx>(
 
         clif_comments,
         next_ssa_var: 0,
+        inline_asm_index: 0,
     };
 
     tcx.prof.generic_activity("codegen clif ir").run(|| codegen_fn_body(&mut fx, start_block));
