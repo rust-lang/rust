@@ -129,6 +129,7 @@ impl Emitter for JsonEmitter {
         };
         let name = match record.section {
             TimingSection::Linking => "link",
+            TimingSection::Codegen => "codegen",
         };
         let data = SectionTimestamp { name, event, timestamp: record.timestamp };
         let result = self.emit(EmitTyped::SectionTiming(data));

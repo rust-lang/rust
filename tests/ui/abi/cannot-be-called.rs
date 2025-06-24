@@ -1,3 +1,8 @@
+/*! Tests entry-point ABIs cannot be called
+
+Interrupt ABIs share similar semantics, in that they are special entry-points unusable by Rust.
+So we test that they error in essentially all of the same places.
+*/
 //@ add-core-stubs
 //@ revisions: x64 x64_win i686 riscv32 riscv64 avr msp430
 //
@@ -18,20 +23,17 @@
 #![no_core]
 #![feature(
     no_core,
-    lang_items,
-    abi_ptx,
     abi_msp430_interrupt,
     abi_avr_interrupt,
     abi_gpu_kernel,
     abi_x86_interrupt,
     abi_riscv_interrupt,
-    abi_c_cmse_nonsecure_call,
-    abi_vectorcall,
-    cmse_nonsecure_entry
 )]
 
 extern crate minicore;
 use minicore::*;
+
+/* extern "interrupt" definition */
 
 extern "msp430-interrupt" fn msp430() {}
 //[x64,x64_win,i686,riscv32,riscv64,avr]~^ ERROR is not a supported ABI
@@ -44,6 +46,7 @@ extern "riscv-interrupt-s" fn riscv_s() {}
 extern "x86-interrupt" fn x86() {}
 //[riscv32,riscv64,avr,msp430]~^ ERROR is not a supported ABI
 
+/* extern "interrupt" calls  */
 fn call_the_interrupts() {
     msp430();
     //[msp430]~^ ERROR functions with the "msp430-interrupt" ABI cannot be called
@@ -57,37 +60,34 @@ fn call_the_interrupts() {
     //[x64,x64_win,i686]~^ ERROR functions with the "x86-interrupt" ABI cannot be called
 }
 
+/* extern "interrupt" fnptr calls */
+
 fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-    //[x64,x64_win,i686,riscv32,riscv64,avr]~^ WARN unsupported_fn_ptr_calling_conventions
-    //[x64,x64_win,i686,riscv32,riscv64,avr]~^^ WARN this was previously accepted
+    //[x64,x64_win,i686,riscv32,riscv64,avr]~^ ERROR is not a supported ABI
     f()
     //[msp430]~^ ERROR functions with the "msp430-interrupt" ABI cannot be called
 }
 
 fn avr_ptr(f: extern "avr-interrupt" fn()) {
-    //[x64,x64_win,i686,riscv32,riscv64,msp430]~^ WARN unsupported_fn_ptr_calling_conventions
-    //[x64,x64_win,i686,riscv32,riscv64,msp430]~^^ WARN this was previously accepted
+    //[x64,x64_win,i686,riscv32,riscv64,msp430]~^ ERROR is not a supported ABI
     f()
     //[avr]~^ ERROR functions with the "avr-interrupt" ABI cannot be called
 }
 
 fn riscv_m_ptr(f: extern "riscv-interrupt-m" fn()) {
-    //[x64,x64_win,i686,avr,msp430]~^ WARN unsupported_fn_ptr_calling_conventions
-    //[x64,x64_win,i686,avr,msp430]~^^ WARN this was previously accepted
+    //[x64,x64_win,i686,avr,msp430]~^ ERROR is not a supported ABI
     f()
     //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-m" ABI cannot be called
 }
 
 fn riscv_s_ptr(f: extern "riscv-interrupt-s" fn()) {
-    //[x64,x64_win,i686,avr,msp430]~^ WARN unsupported_fn_ptr_calling_conventions
-    //[x64,x64_win,i686,avr,msp430]~^^ WARN this was previously accepted
+    //[x64,x64_win,i686,avr,msp430]~^ ERROR is not a supported ABI
     f()
     //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-s" ABI cannot be called
 }
 
 fn x86_ptr(f: extern "x86-interrupt" fn()) {
-    //[riscv32,riscv64,avr,msp430]~^ WARN unsupported_fn_ptr_calling_conventions
-    //[riscv32,riscv64,avr,msp430]~^^ WARN this was previously accepted
+    //[riscv32,riscv64,avr,msp430]~^ ERROR is not a supported ABI
     f()
     //[x64,x64_win,i686]~^ ERROR functions with the "x86-interrupt" ABI cannot be called
 }

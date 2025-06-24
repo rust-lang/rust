@@ -2,7 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, HirId, LifetimeSource, PredicateOrigin};
@@ -1644,9 +1644,29 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.error_on_invalid_abi(abi_str);
             ExternAbi::Rust
         });
-        let sess = self.tcx.sess;
-        let features = self.tcx.features();
-        gate_unstable_abi(sess, features, span, extern_abi);
+        let tcx = self.tcx;
+
+        // we can't do codegen for unsupported ABIs, so error now so we won't get farther
+        if !tcx.sess.target.is_abi_supported(extern_abi) {
+            let mut err = struct_span_code_err!(
+                tcx.dcx(),
+                span,
+                E0570,
+                "{extern_abi} is not a supported ABI for the current target",
+            );
+
+            if let ExternAbi::Stdcall { unwind } = extern_abi {
+                let c_abi = ExternAbi::C { unwind };
+                let system_abi = ExternAbi::System { unwind };
+                err.help(format!("if you need `extern {extern_abi}` on win32 and `extern {c_abi}` everywhere else, \
+                    use `extern {system_abi}`"
+                ));
+            }
+            err.emit();
+        }
+        // Show required feature gate even if we already errored, as the user is likely to build the code
+        // for the actually intended target next and then they will need the feature gate.
+        gate_unstable_abi(tcx.sess, tcx.features(), span, extern_abi);
         extern_abi
     }
 

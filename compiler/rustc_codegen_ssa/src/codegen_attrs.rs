@@ -146,12 +146,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
         }
 
-        // Apply the minimum function alignment here, so that individual backends don't have to.
-        codegen_fn_attrs.alignment = Ord::max(
-            codegen_fn_attrs.alignment,
-            tcx.sess.opts.unstable_opts.min_function_alignment,
-        );
-
         let Some(Ident { name, .. }) = attr.ident() else {
             continue;
         };
@@ -453,6 +447,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     }
 
     mixed_export_name_no_mangle_lint_state.lint_if_mixed(tcx);
+
+    // Apply the minimum function alignment here, so that individual backends don't have to.
+    codegen_fn_attrs.alignment =
+        Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
 
     let inline_span;
     (codegen_fn_attrs.inline, inline_span) = if let Some((inline_attr, span)) =

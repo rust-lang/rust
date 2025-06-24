@@ -16,6 +16,7 @@
 
 #![feature(
     no_core,
+    intrinsics,
     lang_items,
     auto_traits,
     freeze_impls,
@@ -195,4 +196,10 @@ impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a
 #[lang = "drop"]
 trait Drop {
     fn drop(&mut self);
+}
+
+pub mod mem {
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
 }

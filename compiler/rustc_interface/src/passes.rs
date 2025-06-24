@@ -11,6 +11,7 @@ use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
 use rustc_data_structures::{parallel, thousands};
+use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -1176,6 +1177,8 @@ pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
 ) -> (Box<dyn Any>, EncodedMetadata) {
+    tcx.sess.timings.start_section(tcx.sess.dcx(), TimingSection::Codegen);
+
     // Hook for tests.
     if let Some((def_id, _)) = tcx.entry_fn(())
         && tcx.has_attr(def_id, sym::rustc_delayed_bug_from_inside_query)
