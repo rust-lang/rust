@@ -1630,7 +1630,7 @@ fn add_target_crate_root(
                     None => Err("proc-macro crate build data is missing dylib path".to_owned()),
                 }
             }
-            None => Err("proc-macro crate is missing its build data".to_owned()),
+            None => Err("build scripts have not been built".to_owned()),
         };
         proc_macros.insert(crate_id, proc_macro);
     }

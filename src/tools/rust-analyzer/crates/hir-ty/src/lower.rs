@@ -711,7 +711,7 @@ impl<'a> TyLoweringContext<'a> {
                             .unwrap_or(it),
                         None => it,
                     },
-                    None => static_lifetime(),
+                    None => error_lifetime(),
                 },
             })
             .intern(Interner)
