@@ -156,7 +156,8 @@ impl AbiMap {
                 | ExternAbi::Msp430Interrupt
                 | ExternAbi::RiscvInterruptM
                 | ExternAbi::RiscvInterruptS
-                | ExternAbi::X86Interrupt,
+                | ExternAbi::X86Interrupt
+                | ExternAbi::RustInvalid,
                 _,
             ) => return AbiMapping::Invalid,
         };

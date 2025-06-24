@@ -36,6 +36,10 @@ pub enum ExternAbi {
     /// Stronger than just `#[cold]` because `fn` pointers might be incompatible.
     RustCold,
 
+    /// An always-invalid ABI that's used to test "this ABI is not supported by this platform"
+    /// in a platform-agnostic way.
+    RustInvalid,
+
     /// Unstable impl detail that directly uses Rust types to describe the ABI to LLVM.
     /// Even normally-compatible Rust types can become ABI-incompatible with this ABI!
     Unadjusted,
@@ -157,6 +161,7 @@ abi_impls! {
             RiscvInterruptS =><= "riscv-interrupt-s",
             RustCall =><= "rust-call",
             RustCold =><= "rust-cold",
+            RustInvalid =><= "rust-invalid",
             Stdcall { unwind: false } =><= "stdcall",
             Stdcall { unwind: true } =><= "stdcall-unwind",
             System { unwind: false } =><= "system",
