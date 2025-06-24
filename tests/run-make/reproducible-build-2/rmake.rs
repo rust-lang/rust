@@ -7,22 +7,36 @@
 // See https://github.com/rust-lang/rust/issues/34902
 
 //@ ignore-cross-compile
-//@ ignore-windows
-// Reasons:
-// 1. The object files are reproducible, but their paths are not, which causes
-// the first assertion in the test to fail.
-// 2. When the sysroot gets copied, some symlinks must be re-created,
-// which is a privileged action on Windows.
 
-use run_make_support::{rfs, rust_lib_name, rustc};
+//@ ignore-windows-gnu
+// GNU Linker for Windows is non-deterministic.
+
+use run_make_support::{bin_name, is_windows_msvc, rfs, rust_lib_name, rustc};
 
 fn main() {
     // test 1: fat lto
     rustc().input("reproducible-build-aux.rs").run();
-    rustc().input("reproducible-build.rs").arg("-Clto=fat").output("reproducible-build").run();
-    rfs::rename("reproducible-build", "reproducible-build-a");
-    rustc().input("reproducible-build.rs").arg("-Clto=fat").output("reproducible-build").run();
-    assert_eq!(rfs::read("reproducible-build"), rfs::read("reproducible-build-a"));
+    let make_reproducible_build = || {
+        let mut reproducible_build = rustc();
+        reproducible_build
+            .input("reproducible-build.rs")
+            .arg("-Clto=fat")
+            .output(bin_name("reproducible-build"));
+        if is_windows_msvc() {
+            // Avoids timestamps, etc. when linking.
+            reproducible_build.arg("-Clink-arg=/Brepro");
+        }
+        reproducible_build.run();
+    };
+    make_reproducible_build();
+    rfs::rename(bin_name("reproducible-build"), "reproducible-build-a");
+    if is_windows_msvc() {
+        // Linker acts differently if there is already a PDB file with the same
+        // name.
+        rfs::remove_file("reproducible-build.pdb");
+    }
+    make_reproducible_build();
+    assert_eq!(rfs::read(bin_name("reproducible-build")), rfs::read("reproducible-build-a"));
 
     // test 2: sysroot
     let sysroot = rustc().print("sysroot").run().stdout_utf8();
