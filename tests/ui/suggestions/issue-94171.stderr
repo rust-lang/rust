@@ -10,16 +10,8 @@ LL - (; {`
 LL + (; {'
    |
 
-error: mismatched closing delimiter: `]`
-  --> $DIR/issue-94171.rs:1:5
-   |
-LL | fn L(]{match
-   |     ^^ mismatched closing delimiter
-   |     |
-   |     unclosed delimiter
-
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-94171.rs:5:52
+  --> $DIR/issue-94171.rs:4:52
    |
 LL | fn L(]{match
    |      -- unclosed delimiter
@@ -29,9 +21,9 @@ LL | (; {`
    | -  - unclosed delimiter
    | |
    | unclosed delimiter
-...
+LL |
 LL |
    |                                                   ^
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

@@ -1,11 +1,3 @@
-error: mismatched closing delimiter: `)`
-  --> $DIR/issue-105209.rs:2:11
-   |
-LL | #![c={#![c[)x
-   |           ^^ mismatched closing delimiter
-   |           |
-   |           unclosed delimiter
-
 error: this file contains an unclosed delimiter
   --> $DIR/issue-105209.rs:3:68
    |
@@ -18,5 +10,5 @@ LL | #![c={#![c[)x
 LL |
    |                                                                   ^
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
