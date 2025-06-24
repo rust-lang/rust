@@ -170,7 +170,6 @@ macro_rules! impl_float {
 
 impl_float!(f32, u32; f64, u64);
 
-#[cfg(not(bootstrap))]
 #[cfg(target_has_reliable_f16)]
 impl_float!(f16, u16);
 
