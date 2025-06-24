@@ -11,7 +11,6 @@ use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 
 pub(crate) struct SkipDuringMethodDispatchParser;
-
 impl<S: Stage> SingleAttributeParser<S> for SkipDuringMethodDispatchParser {
     const PATH: &[Symbol] = &[sym::rustc_skip_during_method_dispatch];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
@@ -55,11 +54,27 @@ impl<S: Stage> SingleAttributeParser<S> for SkipDuringMethodDispatchParser {
     }
 }
 
-pub(crate) struct ConstTraitParser;
-impl<S: Stage> NoArgsAttributeParser<S> for ConstTraitParser {
-    const PATH: &[Symbol] = &[sym::const_trait];
+pub(crate) struct ParenSugarParser;
+impl<S: Stage> NoArgsAttributeParser<S> for ParenSugarParser {
+    const PATH: &[Symbol] = &[sym::rustc_paren_sugar];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ParenSugar;
+}
+
+pub(crate) struct TypeConstParser;
+impl<S: Stage> NoArgsAttributeParser<S> for TypeConstParser {
+    const PATH: &[Symbol] = &[sym::type_const];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::TypeConst;
+}
+
+// Markers
+
+pub(crate) struct MarkerParser;
+impl<S: Stage> NoArgsAttributeParser<S> for MarkerParser {
+    const PATH: &[Symbol] = &[sym::marker];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ConstTrait;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Marker;
 }
 
 pub(crate) struct DenyExplicitImplParser;
@@ -76,19 +91,16 @@ impl<S: Stage> NoArgsAttributeParser<S> for DoNotImplementViaObjectParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::DoNotImplementViaObject;
 }
 
-pub(crate) struct CoinductiveParser;
-impl<S: Stage> NoArgsAttributeParser<S> for CoinductiveParser {
-    const PATH: &[Symbol] = &[sym::rustc_coinductive];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Coinductive;
+// Const traits
+
+pub(crate) struct ConstTraitParser;
+impl<S: Stage> NoArgsAttributeParser<S> for ConstTraitParser {
+    const PATH: &[Symbol] = &[sym::const_trait];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ConstTrait;
 }
 
-pub(crate) struct TypeConstParser;
-impl<S: Stage> NoArgsAttributeParser<S> for TypeConstParser {
-    const PATH: &[Symbol] = &[sym::type_const];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::TypeConst;
-}
+// Specialization
 
 pub(crate) struct SpecializationTraitParser;
 impl<S: Stage> NoArgsAttributeParser<S> for SpecializationTraitParser {
@@ -104,11 +116,13 @@ impl<S: Stage> NoArgsAttributeParser<S> for UnsafeSpecializationMarkerParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::UnsafeSpecializationMarker;
 }
 
-pub(crate) struct MarkerParser;
-impl<S: Stage> NoArgsAttributeParser<S> for MarkerParser {
-    const PATH: &[Symbol] = &[sym::marker];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Marker;
+// Coherence
+
+pub(crate) struct CoinductiveParser;
+impl<S: Stage> NoArgsAttributeParser<S> for CoinductiveParser {
+    const PATH: &[Symbol] = &[sym::rustc_coinductive];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Coinductive;
 }
 
 pub(crate) struct FundamentalParser;
@@ -116,11 +130,4 @@ impl<S: Stage> NoArgsAttributeParser<S> for FundamentalParser {
     const PATH: &[Symbol] = &[sym::fundamental];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Fundamental;
-}
-
-pub(crate) struct ParenSugarParser;
-impl<S: Stage> NoArgsAttributeParser<S> for ParenSugarParser {
-    const PATH: &[Symbol] = &[sym::rustc_paren_sugar];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ParenSugar;
 }
