@@ -27,6 +27,14 @@ use crate::mbe::{self, KleeneOp, MetaVarExpr};
 
 /// Context needed to perform transcription of metavariable expressions.
 struct TranscrCtx<'psess, 'itp> {
+    psess: &'psess ParseSess,
+
+    /// Map from metavars to matched tokens
+    interp: &'itp FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+
+    /// Allow marking spans.
+    marker: Marker,
+
     /// The stack of things yet to be completely expanded.
     ///
     /// We descend into the RHS (`src`), expanding things as we go. This stack contains the things
@@ -58,14 +66,6 @@ struct TranscrCtx<'psess, 'itp> {
     /// The in-progress `result` lives at the top of this stack. Each entered `TokenTree` adds a
     /// new entry.
     result_stack: Vec<Vec<TokenTree>>,
-
-    /// Allow marking spans.
-    marker: Marker,
-
-    psess: &'psess ParseSess,
-
-    /// Map from metavars to matched tokens
-    interp: &'itp FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
 }
 
 impl<'psess> TranscrCtx<'psess, '_> {
@@ -174,17 +174,17 @@ pub(super) fn transcribe<'a>(
     }
 
     let mut tscx = TranscrCtx {
+        psess,
+        interp,
+        marker: Marker { expand_id, transparency, cache: Default::default() },
+        repeats: Vec::new(),
         stack: smallvec![Frame::new_delimited(
             src,
             src_span,
             DelimSpacing::new(Spacing::Alone, Spacing::Alone)
         )],
-        repeats: Vec::new(),
         result: Vec::new(),
         result_stack: Vec::new(),
-        marker: Marker { expand_id, transparency, cache: Default::default() },
-        psess,
-        interp,
     };
 
     loop {
