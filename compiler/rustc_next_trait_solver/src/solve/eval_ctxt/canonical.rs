@@ -15,6 +15,7 @@ use rustc_index::IndexVec;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
+use rustc_type_ir::solve::TraitGoalProvenVia;
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable,
 };
@@ -178,6 +179,7 @@ where
                 var_values,
                 certainty,
                 external_constraints: self.cx().mk_external_constraints(external_constraints),
+                trait_goal_proven_via: None,
             },
         );
 
@@ -278,7 +280,7 @@ where
         param_env: I::ParamEnv,
         original_values: &[I::GenericArg],
         response: CanonicalResponse<I>,
-    ) -> (NestedNormalizationGoals<I>, Certainty) {
+    ) -> (NestedNormalizationGoals<I>, Option<TraitGoalProvenVia>, Certainty) {
         let instantiation = Self::compute_query_response_instantiation_values(
             self.delegate,
             &original_values,
@@ -286,7 +288,7 @@ where
             self.origin_span,
         );
 
-        let Response { var_values, external_constraints, certainty } =
+        let Response { var_values, external_constraints, certainty, trait_goal_proven_via } =
             self.delegate.instantiate_canonical(response, instantiation);
 
         Self::unify_query_var_values(
@@ -306,7 +308,7 @@ where
         self.register_region_constraints(region_constraints);
         self.register_new_opaque_types(opaque_types);
 
-        (normalization_nested_goals.clone(), certainty)
+        (normalization_nested_goals.clone(), trait_goal_proven_via, certainty)
     }
 
     /// This returns the canonical variable values to instantiate the bound variables of

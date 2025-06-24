@@ -225,6 +225,32 @@ pub struct Response<I: Interner> {
     pub var_values: CanonicalVarValues<I>,
     /// Additional constraints returned by this query.
     pub external_constraints: I::ExternalConstraints,
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub trait_goal_proven_via: Option<TraitGoalProvenVia>,
+}
+
+/// How we've proven this trait goal.
+///
+/// This is used by `NormalizesTo` goals to only normalize
+/// by using the same 'kind of candidate' we've used to prove
+/// its corresponding trait goal. Most notably, we do not
+/// normalize by using an impl if the trait goal has been
+/// proven via a `ParamEnv` candidate.
+///
+/// This is necessary to avoid unnecessary region constraints,
+/// see trait-system-refactor-initiative#125 for more details.
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub enum TraitGoalProvenVia {
+    /// We've proven the trait goal by something which is
+    /// is not a non-global where-bound or an alias-bound.
+    ///
+    /// This means we don't disable any candidates during
+    /// normalization.
+    Misc,
+    ParamEnv,
+    AliasBound,
 }
 
 /// Additional constraints returned on success.

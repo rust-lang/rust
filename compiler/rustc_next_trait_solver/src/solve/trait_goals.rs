@@ -4,7 +4,7 @@ use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::solve::{CanonicalResponse, SizedTraitKind};
+use rustc_type_ir::solve::{CanonicalResponse, SizedTraitKind, TraitGoalProvenVia};
 use rustc_type_ir::{
     self as ty, Interner, Movability, TraitPredicate, TraitRef, TypeVisitableExt as _, TypingMode,
     Upcast as _, elaborate,
@@ -1278,28 +1278,6 @@ where
     }
 }
 
-/// How we've proven this trait goal.
-///
-/// This is used by `NormalizesTo` goals to only normalize
-/// by using the same 'kind of candidate' we've used to prove
-/// its corresponding trait goal. Most notably, we do not
-/// normalize by using an impl if the trait goal has been
-/// proven via a `ParamEnv` candidate.
-///
-/// This is necessary to avoid unnecessary region constraints,
-/// see trait-system-refactor-initiative#125 for more details.
-#[derive(Debug, Clone, Copy)]
-pub(super) enum TraitGoalProvenVia {
-    /// We've proven the trait goal by something which is
-    /// is not a non-global where-bound or an alias-bound.
-    ///
-    /// This means we don't disable any candidates during
-    /// normalization.
-    Misc,
-    ParamEnv,
-    AliasBound,
-}
-
 impl<D, I> EvalCtxt<'_, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -1433,9 +1411,12 @@ where
     pub(super) fn compute_trait_goal(
         &mut self,
         goal: Goal<I, TraitPredicate<I>>,
-    ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
+    ) -> Result<CanonicalResponse<I>, NoSolution> {
         let candidates = self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
-        self.merge_trait_candidates(candidates)
+        self.merge_trait_candidates(candidates).map(|(mut r, proven_via)| {
+            r.value.trait_goal_proven_via = proven_via;
+            r
+        })
     }
 
     fn try_stall_coroutine_witness(

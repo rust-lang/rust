@@ -9,6 +9,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::PathKind;
+use rustc_type_ir::solve::TraitGoalProvenVia;
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -233,6 +234,7 @@ where
             I::Span::dummy(),
             |ecx| {
                 ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal, stalled_on)
+                    .map(|(n, _, r)| (n, r))
             },
         )
     }
@@ -460,10 +462,25 @@ where
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
-        let (normalization_nested_goals, goal_evaluation) =
+        let (normalization_nested_goals, _, goal_evaluation) =
             self.evaluate_goal_raw(goal_evaluation_kind, source, goal, stalled_on)?;
         assert!(normalization_nested_goals.is_empty());
         Ok(goal_evaluation)
+    }
+
+    pub(super) fn trait_goal_proven_via(
+        &mut self,
+        goal: Goal<I, I::Predicate>,
+    ) -> Result<Option<TraitGoalProvenVia>, NoSolution> {
+        let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
+        let canonical_response = EvalCtxt::evaluate_canonical_goal(
+            self.cx(),
+            self.search_graph,
+            canonical_goal,
+            self.step_kind_for_source(GoalSource::Misc),
+            &mut ProofTreeBuilder::new_noop(),
+        );
+        canonical_response.map(|r| r.value.trait_goal_proven_via)
     }
 
     /// Recursively evaluates `goal`, returning the nested goals in case
@@ -479,7 +496,10 @@ where
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
-    ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolution> {
+    ) -> Result<
+        (NestedNormalizationGoals<I>, Option<TraitGoalProvenVia>, GoalEvaluation<I>),
+        NoSolution,
+    > {
         // If we have run this goal before, and it was stalled, check that any of the goal's
         // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
         // stalled, since it'll canonicalize the same way and evaluation is pure.
@@ -492,6 +512,7 @@ where
             {
                 return Ok((
                     NestedNormalizationGoals::empty(),
+                    None,
                     GoalEvaluation {
                         certainty: Certainty::Maybe(stalled_on.stalled_cause),
                         has_changed: HasChanged::No,
@@ -522,7 +543,7 @@ where
         let has_changed =
             if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
-        let (normalization_nested_goals, certainty) =
+        let (normalization_nested_goals, trait_goal_proven_via, certainty) =
             self.instantiate_and_apply_query_response(goal.param_env, &orig_values, response);
         self.inspect.goal_evaluation(goal_evaluation);
 
@@ -582,7 +603,11 @@ where
             },
         };
 
-        Ok((normalization_nested_goals, GoalEvaluation { certainty, has_changed, stalled_on }))
+        Ok((
+            normalization_nested_goals,
+            trait_goal_proven_via,
+            GoalEvaluation { certainty, has_changed, stalled_on },
+        ))
     }
 
     fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
@@ -591,7 +616,7 @@ where
         if let Some(kind) = kind.no_bound_vars() {
             match kind {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
-                    self.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
+                    self.compute_trait_goal(Goal { param_env, predicate })
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
                     self.compute_host_effect_goal(Goal { param_env, predicate })
@@ -715,6 +740,7 @@ where
 
                 let (
                     NestedNormalizationGoals(nested_goals),
+                    _proven_via,
                     GoalEvaluation { certainty, stalled_on, has_changed: _ },
                 ) = self.evaluate_goal_raw(
                     GoalEvaluationKind::Nested,

@@ -8,14 +8,13 @@ use std::ops::ControlFlow;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::solve::SizedTraitKind;
+use rustc_type_ir::solve::{SizedTraitKind, TraitGoalProvenVia};
 use rustc_type_ir::{
     self as ty, Interner, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _,
     TypeVisitor, TypingMode, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument};
 
-use super::trait_goals::TraitGoalProvenVia;
 use super::{has_only_region_constraints, inspect};
 use crate::delegate::SolverDelegate;
 use crate::solve::inspect::ProbeKind;

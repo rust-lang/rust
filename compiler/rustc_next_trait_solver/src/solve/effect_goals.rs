@@ -394,11 +394,8 @@ where
         &mut self,
         goal: Goal<I, ty::HostEffectPredicate<I>>,
     ) -> QueryResult<I> {
-        let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
-            let trait_goal: Goal<I, ty::TraitPredicate<I>> =
-                goal.with(ecx.cx(), goal.predicate.trait_ref);
-            ecx.compute_trait_goal(trait_goal)
-        })?;
+        let trait_goal = goal.with(self.cx(), goal.predicate.trait_ref);
+        let proven_via = self.trait_goal_proven_via(trait_goal)?;
         self.assemble_and_merge_candidates(proven_via, goal, |_ecx| Err(NoSolution))
     }
 }

@@ -246,7 +246,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         ProofTreeBuilder::new(DebugSolver::Root)
     }
 
-    fn new_noop() -> ProofTreeBuilder<D> {
+    pub(crate) fn new_noop() -> ProofTreeBuilder<D> {
         ProofTreeBuilder { state: None, _infcx: PhantomData }
     }
 

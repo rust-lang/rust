@@ -365,6 +365,7 @@ fn response_no_constraints_raw<I: Interner>(
             var_values: ty::CanonicalVarValues::make_identity(cx, variables),
             // FIXME: maybe we should store the "no response" version in cx, like
             // we do for cx.types and stuff.
+            trait_goal_proven_via: None,
             external_constraints: cx.mk_external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
