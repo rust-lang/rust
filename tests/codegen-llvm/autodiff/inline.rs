@@ -3,6 +3,7 @@
 //@ needs-enzyme
 
 #![feature(autodiff)]
+#![feature(intrinsics)]
 
 use std::autodiff::autodiff_reverse;
 
