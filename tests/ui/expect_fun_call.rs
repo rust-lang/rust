@@ -90,6 +90,10 @@ fn main() {
             "foo"
         }
 
+        const fn const_evaluable() -> &'static str {
+            "foo"
+        }
+
         Some("foo").expect(&get_string());
         //~^ expect_fun_call
         Some("foo").expect(get_string().as_ref());
@@ -101,6 +105,8 @@ fn main() {
         //~^ expect_fun_call
         Some("foo").expect(get_non_static_str(&0));
         //~^ expect_fun_call
+
+        Some("foo").expect(const_evaluable());
     }
 
     //Issue #3839
@@ -122,4 +128,15 @@ fn main() {
     let format_capture_and_value: Option<i32> = None;
     format_capture_and_value.expect(&format!("{error_code}, {}", 1));
     //~^ expect_fun_call
+
+    // Issue #15056
+    let a = false;
+    Some(5).expect(if a { "a" } else { "b" });
+
+    let return_in_expect: Option<i32> = None;
+    return_in_expect.expect(if true {
+        "Error"
+    } else {
+        return;
+    });
 }

@@ -38,55 +38,55 @@ LL |     Some("foo").expect(format!("{} {}", 1, 2).as_ref());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{} {}", 1, 2))`
 
 error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:93:21
-   |
-LL |         Some("foo").expect(&get_string());
-   |                     ^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| { panic!("{}", get_string()) })`
-
-error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:95:21
-   |
-LL |         Some("foo").expect(get_string().as_ref());
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| { panic!("{}", get_string()) })`
-
-error: function call inside of `expect`
   --> tests/ui/expect_fun_call.rs:97:21
    |
-LL |         Some("foo").expect(get_string().as_str());
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| { panic!("{}", get_string()) })`
+LL |         Some("foo").expect(&get_string());
+   |                     ^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", get_string()))`
 
 error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:100:21
+  --> tests/ui/expect_fun_call.rs:99:21
+   |
+LL |         Some("foo").expect(get_string().as_ref());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", get_string()))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:101:21
+   |
+LL |         Some("foo").expect(get_string().as_str());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", get_string()))`
+
+error: function call inside of `expect`
+  --> tests/ui/expect_fun_call.rs:104:21
    |
 LL |         Some("foo").expect(get_static_str());
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| { panic!("{}", get_static_str()) })`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", get_static_str()))`
 
 error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:102:21
+  --> tests/ui/expect_fun_call.rs:106:21
    |
 LL |         Some("foo").expect(get_non_static_str(&0));
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| { panic!("{}", get_non_static_str(&0).to_string()) })`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{}", get_non_static_str(&0)))`
 
 error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:107:16
+  --> tests/ui/expect_fun_call.rs:113:16
    |
 LL |     Some(true).expect(&format!("key {}, {}", 1, 2));
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("key {}, {}", 1, 2))`
 
 error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:114:17
+  --> tests/ui/expect_fun_call.rs:120:17
    |
 LL |         opt_ref.expect(&format!("{:?}", opt_ref));
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{:?}", opt_ref))`
 
 error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:119:20
+  --> tests/ui/expect_fun_call.rs:125:20
    |
 LL |     format_capture.expect(&format!("{error_code}"));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{error_code}"))`
 
 error: function call inside of `expect`
-  --> tests/ui/expect_fun_call.rs:123:30
+  --> tests/ui/expect_fun_call.rs:129:30
    |
 LL |     format_capture_and_value.expect(&format!("{error_code}, {}", 1));
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("{error_code}, {}", 1))`
