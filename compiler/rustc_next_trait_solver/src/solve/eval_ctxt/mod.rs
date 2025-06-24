@@ -472,7 +472,7 @@ where
         &mut self,
         goal: Goal<I, I::Predicate>,
     ) -> Result<Option<TraitGoalProvenVia>, NoSolution> {
-        let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
+        let (_, canonical_goal) = self.canonicalize_goal(goal);
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
             self.cx(),
             self.search_graph,

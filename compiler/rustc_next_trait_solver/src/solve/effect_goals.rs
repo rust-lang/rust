@@ -5,7 +5,6 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::SizedTraitKind;
-use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{self as ty, Interner, elaborate};
 use tracing::instrument;
 
