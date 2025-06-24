@@ -593,6 +593,7 @@ fn module_codegen(
     let producer = crate::debuginfo::producer(tcx.sess);
 
     let profiler = tcx.prof.clone();
+    let invocation_temp = tcx.sess.invocation_temp.clone();
 
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
         profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
@@ -618,7 +619,7 @@ fn module_codegen(
                     &global_asm_config,
                     &cgu_name,
                     &cx.global_asm,
-                    cx.invocation_temp.as_deref(),
+                    invocation_temp.as_deref(),
                 )
             })?;
 
@@ -626,7 +627,7 @@ fn module_codegen(
             profiler.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
                 emit_cgu(
                     &global_asm_config.output_filenames,
-                    cx.invocation_temp.as_deref(),
+                    invocation_temp.as_deref(),
                     &profiler,
                     cgu_name,
                     module,

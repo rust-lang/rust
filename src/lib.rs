@@ -126,7 +126,6 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 /// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
 struct CodegenCx {
     output_filenames: Arc<OutputFilenames>,
-    invocation_temp: Option<String>,
     should_write_ir: bool,
     global_asm: String,
     debug_context: Option<DebugContext>,
@@ -144,7 +143,6 @@ impl CodegenCx {
         };
         CodegenCx {
             output_filenames: tcx.output_filenames(()).clone(),
-            invocation_temp: tcx.sess.invocation_temp.clone(),
             should_write_ir: crate::pretty_clif::should_write_ir(tcx),
             global_asm: String::new(),
             debug_context,
