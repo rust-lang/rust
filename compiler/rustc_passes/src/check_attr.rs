@@ -30,11 +30,13 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
+use rustc_session::lint;
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition;
 use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, edition, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
@@ -403,6 +405,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_used(attrs, target, span);
         self.check_rustc_force_inline(hir_id, attrs, span, target);
+        self.check_mix_no_mangle_export(hir_id, attrs);
     }
 
     fn inline_attr_str_error_with_macro_def(&self, hir_id: HirId, attr_span: Span, sym: &str) {
@@ -2625,6 +2628,36 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.dcx().emit_err(errors::RustcForceInline { attr_span, span });
             }
             (_, None) => (),
+        }
+    }
+
+    fn check_mix_no_mangle_export(&self, hir_id: HirId, attrs: &[Attribute]) {
+        if let Some(export_name_span) = find_attr!(attrs, AttributeKind::ExportName { span: export_name_span, .. } => *export_name_span)
+            && let Some(no_mangle_span) =
+                find_attr!(attrs, AttributeKind::NoMangle(no_mangle_span) => *no_mangle_span)
+        {
+            let no_mangle_attr = if no_mangle_span.edition() >= Edition::Edition2024 {
+                "#[unsafe(no_mangle)]"
+            } else {
+                "#[no_mangle]"
+            };
+            let export_name_attr = if export_name_span.edition() >= Edition::Edition2024 {
+                "#[unsafe(export_name)]"
+            } else {
+                "#[export_name]"
+            };
+
+            self.tcx.emit_node_span_lint(
+                lint::builtin::UNUSED_ATTRIBUTES,
+                hir_id,
+                no_mangle_span,
+                errors::MixedExportNameAndNoMangle {
+                    no_mangle_span,
+                    export_name_span,
+                    no_mangle_attr,
+                    export_name_attr,
+                },
+            );
         }
     }
 
