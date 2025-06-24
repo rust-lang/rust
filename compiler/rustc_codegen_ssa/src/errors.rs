@@ -1200,18 +1200,6 @@ pub(crate) struct ErrorCreatingImportLibrary<'a> {
 #[diag(codegen_ssa_aix_strip_not_used)]
 pub(crate) struct AixStripNotUsed;
 
-#[derive(LintDiagnostic)]
-#[diag(codegen_ssa_mixed_export_name_and_no_mangle)]
-pub(crate) struct MixedExportNameAndNoMangle {
-    #[label]
-    pub no_mangle: Span,
-    pub no_mangle_attr: String,
-    #[note]
-    pub export_name: Span,
-    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
-    pub removal_span: Span,
-}
-
 #[derive(Diagnostic, Debug)]
 pub(crate) enum XcrunError {
     #[diag(codegen_ssa_xcrun_failed_invoking)]
