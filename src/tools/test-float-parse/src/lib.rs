@@ -119,7 +119,6 @@ pub fn register_tests(cfg: &Config) -> Vec<TestInfo> {
 
     // Register normal generators for all floats.
 
-    #[cfg(not(bootstrap))]
     #[cfg(target_has_reliable_f16)]
     register_float::<f16>(&mut tests, cfg);
     register_float::<f32>(&mut tests, cfg);
