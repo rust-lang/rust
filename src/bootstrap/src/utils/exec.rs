@@ -101,6 +101,11 @@ impl<'a> BootstrapCommand {
         self.should_cache
     }
 
+    pub fn cache_never(&mut self) -> &mut Self {
+        self.should_cache = false;
+        self
+    }
+
     pub fn args<I, S>(&mut self, args: I) -> &mut Self
     where
         I: IntoIterator<Item = S>,
@@ -203,10 +208,11 @@ impl<'a> BootstrapCommand {
     /// Provides access to the stdlib Command inside.
     /// FIXME: This function should be eventually removed from bootstrap.
     pub fn as_command_mut(&mut self) -> &mut Command {
-        // We don't know what will happen with the returned command, so we need to mark this
-        // command as executed proactively.
+        // We proactively mark this command as executed since we can't be certain how the returned
+        // command will be handled. Caching must also be avoided here, as the inner command could be
+        // modified externally without us being aware.
         self.mark_as_executed();
-        self.should_cache = false;
+        self.cache_never();
         &mut self.command
     }
 
