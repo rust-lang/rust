@@ -1,11 +1,10 @@
 use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
-use rustc_abi::Primitive::Pointer;
 use rustc_abi::{self as abi, HasDataLayout};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, MiscCodegenMethods, StaticCodegenMethods,
 };
 use rustc_middle::mir::Mutability;
-use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
+use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{Instance, SymbolName};
 use rustc_session::PointerAuthSchema;
@@ -167,7 +166,7 @@ pub fn type_is_pointer(typ: Type<'_>) -> bool {
     typ.get_pointee().is_some()
 }
 
-impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn const_null(&self, typ: Type<'gcc>) -> RValue<'gcc> {
         if type_is_pointer(typ) { self.context.new_null(typ) } else { self.const_int(typ, 0) }
     }
@@ -282,64 +281,32 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
         None
     }
 
-    fn scalar_to_backend_with_pac(
-        &self,
-        cv: Scalar,
-        layout: abi::Scalar,
-        ty: Type<'gcc>,
-        _schema: Option<&PointerAuthSchema>,
-    ) -> RValue<'gcc> {
-        let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
-        match cv {
-            Scalar::Int(int) => {
-                let data = int.to_bits(layout.size(self));
-                let value = self.const_uint_big(self.type_ix(bitsize), data);
-                let bytesize = layout.size(self).bytes();
-                if bitsize > 1 && ty.is_integral() && bytesize as u32 == ty.get_size() {
-                    // NOTE: since the intrinsic _xabort is called with a bitcast, which
-                    // is non-const, but expects a constant, do a normal cast instead of a bitcast.
-                    // FIXME(antoyo): fix bitcast to work in constant contexts.
-                    // FIXME(antoyo): perhaps only use bitcast for pointers?
-                    self.context.new_cast(None, value, ty)
-                } else {
-                    // FIXME(bjorn3): assert size is correct
-                    self.const_bitcast(value, ty)
-                }
-            }
-            Scalar::Ptr(ptr, _size) => {
-                let (prov, offset) = ptr.prov_and_relative_offset();
-                let alloc_id = prov.alloc_id();
-                let base_addr = match self.alloc_to_backend(self.tcx.global_alloc(alloc_id), false)
-                {
-                    Ok((base_addr, _)) => base_addr,
-                    Err(base_addr) => {
-                        let val = base_addr.wrapping_add(offset.bytes());
-                        let val = self.const_usize(self.tcx.truncate_to_target_usize(val));
-                        return if matches!(layout.primitive(), Pointer(_)) {
-                            self.context.new_cast(None, val, ty)
-                        } else {
-                            self.const_bitcast(val, ty)
-                        };
-                    }
-                };
-                let ptr_type = base_addr.get_type();
-                let base_addr = self.context.new_cast(None, base_addr, self.usize_type);
-                let offset =
-                    self.context.new_rvalue_from_long(self.usize_type, offset.bytes() as i64);
-                let ptr = self.context.new_cast(None, base_addr + offset, ptr_type);
-                if !matches!(layout.primitive(), Pointer(_)) {
-                    self.const_bitcast(ptr.dereference(None).to_rvalue(), ty)
-                } else {
-                    self.context.new_cast(None, ptr, ty)
-                }
-            }
-        }
-    }
-
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {
         self.context
             .new_array_access(None, base_addr, self.const_usize(offset.bytes()))
             .get_address(None)
+    }
+    fn const_bitcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value {
+        self.const_bitcast(val, ty)
+    }
+    fn const_pointercast(&self, val: Self::Value, ty: Self::Type) -> Self::Value {
+        self.context.new_cast(None, val, ty)
+    }
+    fn const_int_to_ptr(&self, val: Self::Value, ty: Self::Type) -> Self::Value {
+        self.context.new_cast(None, val, ty)
+    }
+    fn const_ptr_to_int(&self, val: Self::Value, ty: Self::Type) -> Self::Value {
+        self.context.new_cast(None, val, ty)
+    }
+
+    fn alloc_to_backend(
+        &self,
+        global_alloc: GlobalAlloc<'tcx>,
+        need_symbol_name: bool,
+        // FIXME(codegen_gcc): pass schema down
+        _schema: Option<&PointerAuthSchema>,
+    ) -> Result<Self::Value, u64> {
+        Ok(self.alloc_to_backend(global_alloc, need_symbol_name)?.0)
     }
 }
 

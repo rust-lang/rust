@@ -1569,7 +1569,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         let filename_str = format!("{}\0", loc.file.name.prefer_local_unconditionally());
         let filename_val = cx.const_bytes(filename_str.as_bytes());
-        let filename_ptr = cx.static_addr_of_impl(filename_val, Align::ONE, None);
+        let filename_ptr = cx.static_addr_of_const(filename_val, Align::ONE, None);
 
         // SourceLocation UBSan struct: { const char *filename, uint32_t line, uint32_t column }
         let source_location = cx.const_struct(
@@ -1590,7 +1590,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             cx.const_struct(&[cx.const_i16(0xffffu16 as i16), cx.const_i16(0), ty_name_val], false);
 
         let type_descriptor_ptr =
-            cx.static_addr_of_impl(type_descriptor, Align::from_bytes(2).unwrap(), None);
+            cx.static_addr_of_const(type_descriptor, Align::from_bytes(2).unwrap(), None);
 
         // CFICheckFailData UBSan struct: { uint8_t CheckKind, SourceLocation Loc, TypeDescriptor *Type }
         let cfi_check_fail_data = cx

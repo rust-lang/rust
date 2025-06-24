@@ -1,10 +1,20 @@
-use rustc_abi as abi;
-use rustc_middle::mir::interpret::Scalar;
+use rustc_abi::Primitive::Pointer;
+use rustc_abi::{self as abi, HasDataLayout, Primitive};
+use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic as _, Scalar};
+use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_session::PointerAuthSchema;
 
-use super::BackendTypes;
+use super::BaseTypeCodegenMethods;
+use crate::traits::{MiscCodegenMethods, StaticCodegenMethods};
 
-pub trait ConstCodegenMethods: BackendTypes {
+pub trait ConstCodegenMethods<'tcx>:
+    BaseTypeCodegenMethods
+    + HasDataLayout
+    + HasTyCtxt<'tcx>
+    + MiscCodegenMethods<'tcx>
+    + StaticCodegenMethods
+    + Sized
+{
     // Constant constructors
     fn const_null(&self, t: Self::Type) -> Self::Value;
     /// Generate an uninitialized value (matching uninitialized memory in MIR).
@@ -39,16 +49,69 @@ pub trait ConstCodegenMethods: BackendTypes {
     fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;
     fn const_to_opt_u128(&self, v: Self::Value, sign_ext: bool) -> Option<u128>;
 
+    fn const_bitcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
+    fn const_pointercast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
+    fn const_int_to_ptr(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
+    fn const_ptr_to_int(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
+
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: Self::Type) -> Self::Value {
         self.scalar_to_backend_with_pac(cv, layout, llty, None)
     }
+
     fn scalar_to_backend_with_pac(
         &self,
         cv: Scalar,
         layout: abi::Scalar,
-        llty: Self::Type,
+        ty: Self::Type,
         schema: Option<&PointerAuthSchema>,
-    ) -> Self::Value;
+    ) -> Self::Value {
+        let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
+        match cv {
+            Scalar::Int(int) => {
+                let data = int.to_bits(layout.size(self));
+                let val = self.const_uint_big(self.type_ix(bitsize), data);
+                if matches!(layout.primitive(), Primitive::Pointer(_)) {
+                    self.const_int_to_ptr(val, ty)
+                } else {
+                    self.const_bitcast(val, ty)
+                }
+            }
+            Scalar::Ptr(ptr, _size) => {
+                let (prov, offset) = ptr.prov_and_relative_offset();
+                let global_alloc = self.tcx().global_alloc(prov.alloc_id());
+                let base_addr_space = global_alloc.address_space(self);
+                let base_addr = match self.alloc_to_backend(global_alloc, false, schema) {
+                    Ok(base_addr) => base_addr,
+                    Err(base_addr) => {
+                        let val = base_addr.wrapping_add(offset.bytes());
+                        let val = self.const_usize(self.tcx().truncate_to_target_usize(val));
+                        return if matches!(layout.primitive(), Pointer(_)) {
+                            self.const_int_to_ptr(val, ty)
+                        } else {
+                            self.const_bitcast(val, ty)
+                        };
+                    }
+                };
+
+                // Cast to the required address space if necessary
+                let val = self.const_pointercast(base_addr, self.type_ptr_ext(base_addr_space));
+                let val = self.const_ptr_byte_offset(val, offset);
+
+                if !matches!(layout.primitive(), Primitive::Pointer(_)) {
+                    self.const_ptr_to_int(val, ty)
+                } else {
+                    self.const_bitcast(val, ty)
+                }
+            }
+        }
+    }
+
+    fn alloc_to_backend(
+        &self,
+        global_alloc: GlobalAlloc<'tcx>,
+        need_symbol_name: bool,
+        schema: Option<&PointerAuthSchema>,
+    ) -> Result<Self::Value, u64>;
 
     fn const_ptr_byte_offset(&self, val: Self::Value, offset: abi::Size) -> Self::Value;
 }

@@ -196,6 +196,13 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             self.add_retained_global(global);
         }
     }
+
+    fn set_value_name(&self, _val: Self::Value, _gen_name: impl FnOnce() -> String) {
+        // FIXME(antoyo)
+    }
+    fn get_static(&self, def_id: DefId) -> Self::Value {
+        self.get_static(def_id).get_address(None)
+    }
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {

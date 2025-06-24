@@ -4,7 +4,7 @@
 use gccjit::{BinaryOp, ComparisonOp, RValue, ToRValue, Type, UnaryOp};
 use rustc_abi::Size;
 use rustc_codegen_ssa::common::AtomicRmwBinOp;
-use rustc_codegen_ssa::traits::BuilderMethods;
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods as _, BuilderMethods};
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_span::Symbol;
 use rustc_target::spec::Arch;

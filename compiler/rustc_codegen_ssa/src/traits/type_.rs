@@ -27,6 +27,8 @@ pub trait BaseTypeCodegenMethods: BackendTypes {
     fn type_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::FunctionSignature;
     fn type_ptr(&self) -> Self::Type;
     fn type_ptr_ext(&self, address_space: AddressSpace) -> Self::Type;
+    /// Creates an integer type with the given number of bits, e.g., i24
+    fn type_ix(&self, num_bits: u64) -> Self::Type;
 
     /// Returns the element type of `ty` if it is a vector type, otherwise returns `None`.
     fn vector_element_type(&self, ty: Self::Type) -> Option<Self::Type> {

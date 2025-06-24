@@ -3,7 +3,6 @@
 use std::borrow::Borrow;
 
 use libc::c_uint;
-use rustc_abi::Primitive::Pointer;
 use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::traits::*;
@@ -12,7 +11,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash128;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
+use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_session::{PointerAuthAddressDiscriminator, PointerAuthSchema};
 use rustc_span::bug;
@@ -173,8 +172,8 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 }
 
-impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
-    pub(crate) fn alloc_to_backend(
+impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn alloc_to_backend(
         &self,
         global_alloc: GlobalAlloc<'tcx>,
         need_symbol_name: bool,
@@ -246,7 +245,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let value = match alloc.mutability {
             Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
-            _ => self.static_addr_of_impl(init, alloc.align, None),
+            _ => self.static_addr_of_const(init, alloc.align, None),
         };
         if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty() {
             let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
@@ -259,9 +258,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         Ok(value)
     }
-}
 
-impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
     fn const_null(&self, t: Type<'ll>) -> Value<'ll> {
         unsafe { llvm::LLVMConstNull(t) }
     }
@@ -399,58 +396,6 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         })
     }
 
-    fn scalar_to_backend_with_pac(
-        &self,
-        cv: Scalar,
-        layout: abi::Scalar,
-        llty: Type<'ll>,
-        schema: Option<&PointerAuthSchema>,
-    ) -> Value<'ll> {
-        let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
-        match cv {
-            Scalar::Int(int) => {
-                let data = int.to_bits(layout.size(self));
-                let llval = self.const_uint_big(self.type_ix(bitsize), data);
-                if matches!(layout.primitive(), Pointer(_)) {
-                    unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
-                } else {
-                    self.const_bitcast(llval, llty)
-                }
-            }
-            Scalar::Ptr(ptr, _size) => {
-                let (prov, offset) = ptr.prov_and_relative_offset();
-                let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                let base_addr_space = global_alloc.address_space(self);
-                let base_addr = match self.alloc_to_backend(global_alloc, false, schema) {
-                    Ok(base_addr) => base_addr,
-                    Err(base_addr) => {
-                        let val = base_addr.wrapping_add(offset.bytes());
-                        let llval = self.const_usize(self.tcx.truncate_to_target_usize(val));
-                        return if matches!(layout.primitive(), Pointer(_)) {
-                            unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
-                        } else {
-                            self.const_bitcast(llval, llty)
-                        };
-                    }
-                };
-                let llval = unsafe {
-                    llvm::LLVMConstInBoundsGEP2(
-                        self.type_i8(),
-                        // Cast to the required address space if necessary
-                        self.const_pointercast(base_addr, self.type_ptr_ext(base_addr_space)),
-                        &self.const_usize(offset.bytes()),
-                        1,
-                    )
-                };
-                if !matches!(layout.primitive(), Pointer(_)) {
-                    unsafe { llvm::LLVMConstPtrToInt(llval, llty) }
-                } else {
-                    self.const_bitcast(llval, llty)
-                }
-            }
-        }
-    }
-
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {
         unsafe {
             llvm::LLVMConstInBoundsGEP2(
@@ -460,6 +405,19 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                 1,
             )
         }
+    }
+
+    fn const_bitcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value {
+        unsafe { llvm::LLVMConstBitCast(val, ty) }
+    }
+    fn const_pointercast(&self, val: Self::Value, ty: Self::Type) -> Self::Value {
+        unsafe { llvm::LLVMConstPointerCast(val, ty) }
+    }
+    fn const_int_to_ptr(&self, val: Self::Value, ty: Self::Type) -> Self::Value {
+        unsafe { llvm::LLVMConstIntToPtr(val, ty) }
+    }
+    fn const_ptr_to_int(&self, val: Self::Value, ty: Self::Type) -> Self::Value {
+        unsafe { llvm::LLVMConstPtrToInt(val, ty) }
     }
 }
 
