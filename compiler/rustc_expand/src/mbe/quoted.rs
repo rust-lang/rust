@@ -117,9 +117,9 @@ pub(super) fn parse(
                 sess.dcx().emit_err(errors::InvalidFragmentSpecifier {
                     span,
                     fragment,
-                    help: VALID_FRAGMENT_NAMES_MSG.into(),
+                    help: VALID_FRAGMENT_NAMES_MSG,
                 });
-                NonterminalKind::Ident
+                NonterminalKind::TT
             });
             result.push(TokenTree::MetaVarDecl { span, name: ident, kind });
         } else {

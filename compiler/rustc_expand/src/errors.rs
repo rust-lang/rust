@@ -444,7 +444,7 @@ pub(crate) struct InvalidFragmentSpecifier {
     #[primary_span]
     pub span: Span,
     pub fragment: Ident,
-    pub help: String,
+    pub help: &'static str,
 }
 
 #[derive(Diagnostic)]
