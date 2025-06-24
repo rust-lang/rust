@@ -900,14 +900,17 @@ pub(crate) fn folding_range(
         FoldKind::Comment => Some(lsp_types::FoldingRangeKind::Comment),
         FoldKind::Imports => Some(lsp_types::FoldingRangeKind::Imports),
         FoldKind::Region => Some(lsp_types::FoldingRangeKind::Region),
-        FoldKind::Mods
+        FoldKind::Modules
         | FoldKind::Block
         | FoldKind::ArgList
         | FoldKind::Consts
         | FoldKind::Statics
+        | FoldKind::TypeAliases
         | FoldKind::WhereClause
         | FoldKind::ReturnType
         | FoldKind::Array
+        | FoldKind::TraitAliases
+        | FoldKind::ExternCrates
         | FoldKind::MatchArm => None,
     };
 
