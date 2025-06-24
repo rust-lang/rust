@@ -805,7 +805,7 @@ fn named_associated_type_shorthand_candidates<R>(
 ) -> Option<R> {
     let mut search = |t| {
         all_super_trait_refs(db, t, |t| {
-            let data = db.trait_items(t.hir_trait_id());
+            let data = t.hir_trait_id().trait_items(db);
 
             for (name, assoc_id) in &data.items {
                 if let AssocItemId::TypeAliasId(alias) = assoc_id {
@@ -957,7 +957,7 @@ pub(crate) fn generic_predicates_for_param_query(
                     };
 
                     all_super_traits(db, tr).iter().any(|tr| {
-                        db.trait_items(*tr).items.iter().any(|(name, item)| {
+                        tr.trait_items(db).items.iter().any(|(name, item)| {
                             matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name
                         })
                     })

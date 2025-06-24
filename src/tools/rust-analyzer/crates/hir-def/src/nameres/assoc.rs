@@ -38,16 +38,18 @@ pub struct TraitItems {
     pub macro_calls: ThinVec<(AstId<ast::Item>, MacroCallId)>,
 }
 
+#[salsa::tracked]
 impl TraitItems {
     #[inline]
-    pub(crate) fn trait_items_query(db: &dyn DefDatabase, tr: TraitId) -> Arc<TraitItems> {
-        db.trait_items_with_diagnostics(tr).0
+    pub(crate) fn query(db: &dyn DefDatabase, tr: TraitId) -> &TraitItems {
+        &Self::query_with_diagnostics(db, tr).0
     }
 
-    pub(crate) fn trait_items_with_diagnostics_query(
+    #[salsa::tracked(returns(ref))]
+    pub fn query_with_diagnostics(
         db: &dyn DefDatabase,
         tr: TraitId,
-    ) -> (Arc<TraitItems>, DefDiagnostics) {
+    ) -> (TraitItems, DefDiagnostics) {
         let ItemLoc { container: module_id, id: ast_id } = tr.lookup(db);
 
         let collector =
@@ -55,7 +57,7 @@ impl TraitItems {
         let source = ast_id.with_value(collector.ast_id_map.get(ast_id.value)).to_node(db);
         let (items, macro_calls, diagnostics) = collector.collect(source.assoc_item_list());
 
-        (Arc::new(TraitItems { macro_calls, items }), DefDiagnostics::new(diagnostics))
+        (TraitItems { macro_calls, items }, DefDiagnostics::new(diagnostics))
     }
 
     pub fn associated_types(&self) -> impl Iterator<Item = TypeAliasId> + '_ {

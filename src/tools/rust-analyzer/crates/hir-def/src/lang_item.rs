@@ -9,8 +9,10 @@ use triomphe::Arc;
 
 use crate::{
     AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
-    StaticId, StructId, TraitId, TypeAliasId, UnionId, db::DefDatabase, expr_store::path::Path,
-    nameres::crate_def_map,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    db::DefDatabase,
+    expr_store::path::Path,
+    nameres::{assoc::TraitItems, crate_def_map},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -113,14 +115,16 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
             match def {
                 ModuleDefId::TraitId(trait_) => {
                     lang_items.collect_lang_item(db, trait_, LangItemTarget::Trait);
-                    db.trait_items(trait_).items.iter().for_each(|&(_, assoc_id)| match assoc_id {
-                        AssocItemId::FunctionId(f) => {
-                            lang_items.collect_lang_item(db, f, LangItemTarget::Function);
+                    TraitItems::query(db, trait_).items.iter().for_each(|&(_, assoc_id)| {
+                        match assoc_id {
+                            AssocItemId::FunctionId(f) => {
+                                lang_items.collect_lang_item(db, f, LangItemTarget::Function);
+                            }
+                            AssocItemId::TypeAliasId(alias) => {
+                                lang_items.collect_lang_item(db, alias, LangItemTarget::TypeAlias)
+                            }
+                            AssocItemId::ConstId(_) => {}
                         }
-                        AssocItemId::TypeAliasId(alias) => {
-                            lang_items.collect_lang_item(db, alias, LangItemTarget::TypeAlias)
-                        }
-                        AssocItemId::ConstId(_) => {}
                     });
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
