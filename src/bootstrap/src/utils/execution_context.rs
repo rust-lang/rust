@@ -40,6 +40,7 @@ enum CommandState<'a> {
     },
 }
 
+#[must_use]
 pub struct DeferredCommand<'a> {
     state: CommandState<'a>,
 }
@@ -122,11 +123,11 @@ impl ExecutionContext {
         stdout: OutputMode,
         stderr: OutputMode,
     ) -> DeferredCommand<'a> {
-        command.mark_as_executed();
         let cache_key = command.cache_key();
 
         if let Some(cached_output) = cache_key.as_ref().and_then(|key| self.command_cache.get(key))
         {
+            command.mark_as_executed();
             self.verbose(|| println!("Cache hit: {command:?}"));
             return DeferredCommand { state: CommandState::Cached(cached_output) };
         }
@@ -244,6 +245,8 @@ impl<'a> DeferredCommand<'a> {
         executed_at: &'a std::panic::Location<'a>,
         exec_ctx: &ExecutionContext,
     ) -> CommandOutput {
+        command.mark_as_executed();
+
         let process = match process.take() {
             Some(p) => p,
             None => return CommandOutput::default(),
