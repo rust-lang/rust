@@ -1423,7 +1423,7 @@ impl<'db> SourceAnalyzer<'db> {
         method_name: &Name,
     ) -> Option<(TraitId, FunctionId)> {
         let trait_id = lang_trait.resolve_trait(db, self.resolver.krate())?;
-        let fn_id = db.trait_items(trait_id).method_by_name(method_name)?;
+        let fn_id = trait_id.trait_items(db).method_by_name(method_name)?;
         Some((trait_id, fn_id))
     }
 
@@ -1580,7 +1580,7 @@ fn resolve_hir_path_(
         // within the trait's associated types.
         if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
             if let Some(type_alias_id) =
-                db.trait_items(trait_id).associated_type_by_name(unresolved.name)
+                trait_id.trait_items(db).associated_type_by_name(unresolved.name)
             {
                 return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
             }
@@ -1731,7 +1731,7 @@ fn resolve_hir_path_qualifier(
         // within the trait's associated types.
         if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
             if let Some(type_alias_id) =
-                db.trait_items(trait_id).associated_type_by_name(unresolved.name)
+                trait_id.trait_items(db).associated_type_by_name(unresolved.name)
             {
                 return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
             }
