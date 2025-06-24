@@ -44,9 +44,10 @@ use crate::attributes::stability::{
 };
 use crate::attributes::test_attrs::IgnoreParser;
 use crate::attributes::traits::{
-    CoinductiveParser, ConstTraitParser, DenyExplicitImplParser, DoNotImplementViaObjectParser,
-    FundamentalParser, MarkerParser, ParenSugarParser, SkipDuringMethodDispatchParser,
-    SpecializationTraitParser, TypeConstParser, UnsafeSpecializationMarkerParser,
+    AllowIncoherentImplParser, CoinductiveParser, ConstTraitParser, DenyExplicitImplParser,
+    DoNotImplementViaObjectParser, FundamentalParser, MarkerParser, ParenSugarParser,
+    SkipDuringMethodDispatchParser, SpecializationTraitParser, TypeConstParser,
+    UnsafeSpecializationMarkerParser,
 };
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
@@ -150,6 +151,7 @@ attribute_parsers!(
         Single<RustcObjectLifetimeDefaultParser>,
         Single<SkipDuringMethodDispatchParser>,
         Single<TransparencyParser>,
+        Single<WithoutArgs<AllowIncoherentImplParser>>,
         Single<WithoutArgs<AsPtrParser>>,
         Single<WithoutArgs<CoinductiveParser>>,
         Single<WithoutArgs<ColdParser>>,

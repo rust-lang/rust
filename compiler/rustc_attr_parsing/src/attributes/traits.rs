@@ -125,6 +125,13 @@ impl<S: Stage> NoArgsAttributeParser<S> for CoinductiveParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::Coinductive;
 }
 
+pub(crate) struct AllowIncoherentImplParser;
+impl<S: Stage> NoArgsAttributeParser<S> for AllowIncoherentImplParser {
+    const PATH: &[Symbol] = &[sym::rustc_allow_incoherent_impl];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::AllowIncoherentImpl;
+}
+
 pub(crate) struct FundamentalParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FundamentalParser {
     const PATH: &[Symbol] = &[sym::fundamental];

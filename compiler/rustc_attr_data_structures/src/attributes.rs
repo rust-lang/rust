@@ -198,6 +198,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_allow_const_fn_unstable]`.
     AllowConstFnUnstable(ThinVec<Symbol>, Span),
 
+    /// Represents `#[rustc_allow_incoherent_impl]`.
+    AllowIncoherentImpl(Span),
+
     /// Represents `#[allow_internal_unstable]`.
     AllowInternalUnstable(ThinVec<(Symbol, Span)>, Span),
 

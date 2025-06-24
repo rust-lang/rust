@@ -146,6 +146,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Fundamental) => {
                     // FIXME: add validation
                 }
+                &Attribute::Parsed(AttributeKind::AllowIncoherentImpl(attr_span)) => {
+                    self.check_allow_incoherent_impl(attr_span, span, target)
+                }
                 Attribute::Parsed(AttributeKind::Confusables { first_span, .. }) => {
                     self.check_confusables(*first_span, target);
                 }
@@ -319,9 +322,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::rustc_must_implement_one_of, ..] => self.check_must_be_applied_to_trait(attr.span(), span, target),
                         [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                         [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
-                        [sym::rustc_allow_incoherent_impl, ..] => {
-                            self.check_allow_incoherent_impl(attr, span, target)
-                        }
                         [sym::rustc_has_incoherent_inherent_impls, ..] => {
                             self.check_has_incoherent_inherent_impls(attr, span, target)
                         }
@@ -1498,11 +1498,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_allow_incoherent_impl(&self, attr: &Attribute, span: Span, target: Target) {
+    fn check_allow_incoherent_impl(&self, attr_span: Span, span: Span, target: Target) {
         match target {
             Target::Method(MethodKind::Inherent) => {}
             _ => {
-                self.dcx().emit_err(errors::AllowIncoherentImpl { attr_span: attr.span(), span });
+                self.dcx().emit_err(errors::AllowIncoherentImpl { attr_span, span });
             }
         }
     }
