@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::hash::{BuildHasher, Hash};
-use std::marker::PhantomData;
+use std::marker::{PhantomData, PointeeSized};
 use std::num::NonZero;
 use std::path;
 use std::rc::Rc;
@@ -164,7 +164,7 @@ pub trait Decoder {
 ///   `rustc_metadata::rmeta::Lazy`.
 /// * `TyEncodable` should be used for types that are only serialized in crate
 ///   metadata or the incremental cache. This is most types in `rustc_middle`.
-pub trait Encodable<S: Encoder>: crate::PointeeSized {
+pub trait Encodable<S: Encoder>: PointeeSized {
     fn encode(&self, s: &mut S);
 }
 
@@ -220,7 +220,7 @@ direct_serialize_impls! {
     char emit_char read_char
 }
 
-impl<S: Encoder, T: ?Sized + crate::PointeeSized> Encodable<S> for &T
+impl<S: Encoder, T: ?Sized + PointeeSized> Encodable<S> for &T
 where
     T: Encodable<S>,
 {

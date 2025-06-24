@@ -70,7 +70,6 @@ stack-cache-consistency-check = ["stack-cache"]
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(bootstrap)']
 
 # Be aware that this file is inside a workspace when used via the
 # submodule in the rustc repo. That means there are many cargo features
