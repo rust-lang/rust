@@ -285,4 +285,18 @@ declare_features! (
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
     // -------------------------------------------------------------------------
+
+
+    // -------------------------------------------------------------------------
+    // feature-group-start: removed library features
+    // -------------------------------------------------------------------------
+    //
+    // FIXME(#141617): we should have a better way to track removed library features, but we reuse
+    // the infrastructure here so users still get hints. The symbols used here can be remove from
+    // `symbol.rs` when that happens.
+    (removed, concat_idents, "CURRENT_RUSTC_VERSION", Some(29599),
+     Some("use the `${concat(..)}` metavariable expression instead"), 142704),
+    // -------------------------------------------------------------------------
+    // feature-group-end: removed library features
+    // -------------------------------------------------------------------------
 );

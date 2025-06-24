@@ -11,7 +11,6 @@
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(builtin_syntax)]
-#![feature(concat_idents)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
@@ -343,7 +342,6 @@ mod expressions {
 
 
 
-        // concat_idents is deprecated
 
 
 
@@ -685,8 +683,12 @@ mod types {
     /** there is no syntax for this */
     fn ty_implicit_self() { }
     /// TyKind::MacCall
-    #[expect(deprecated)]
-    fn ty_mac_call() { let _: T; let _: T; let _: T; }
+    fn ty_mac_call() {
+        macro_rules! ty { ($ty:ty) => { $ty } }
+        let _: T;
+        let _: T;
+        let _: T;
+    }
     /// TyKind::CVarArgs
     /** FIXME: todo */
     fn ty_c_var_args() { }

@@ -1,17 +1,17 @@
 error[E0697]: closures cannot be static
-  --> $DIR/exhaustive.rs:211:9
+  --> $DIR/exhaustive.rs:210:9
    |
 LL |         static || value;
    |         ^^^^^^^^^
 
 error[E0697]: closures cannot be static
-  --> $DIR/exhaustive.rs:212:9
+  --> $DIR/exhaustive.rs:211:9
    |
 LL |         static move || value;
    |         ^^^^^^^^^^^^^^
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/exhaustive.rs:241:13
+  --> $DIR/exhaustive.rs:240:13
    |
 LL |     fn expr_await() {
    |     --------------- this is not `async`
@@ -20,19 +20,19 @@ LL |         fut.await;
    |             ^^^^^ only allowed inside `async` functions and blocks
 
 error: in expressions, `_` can only be used on the left-hand side of an assignment
-  --> $DIR/exhaustive.rs:290:9
+  --> $DIR/exhaustive.rs:289:9
    |
 LL |         _;
    |         ^ `_` not allowed here
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/exhaustive.rs:300:9
+  --> $DIR/exhaustive.rs:299:9
    |
 LL |         x::();
    |         ^^^^^ only `Fn` traits may use parentheses
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/exhaustive.rs:301:9
+  --> $DIR/exhaustive.rs:300:9
    |
 LL |         x::(T, T) -> T;
    |         ^^^^^^^^^^^^^^ only `Fn` traits may use parentheses
@@ -44,31 +44,31 @@ LL +         x::<T, T> -> T;
    |
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/exhaustive.rs:302:9
+  --> $DIR/exhaustive.rs:301:9
    |
 LL |         crate::() -> ()::expressions::() -> ()::expr_path;
    |         ^^^^^^^^^^^^^^^ only `Fn` traits may use parentheses
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/exhaustive.rs:302:26
+  --> $DIR/exhaustive.rs:301:26
    |
 LL |         crate::() -> ()::expressions::() -> ()::expr_path;
    |                          ^^^^^^^^^^^^^^^^^^^^^ only `Fn` traits may use parentheses
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/exhaustive.rs:305:9
+  --> $DIR/exhaustive.rs:304:9
    |
 LL |         core::()::marker::()::PhantomData;
    |         ^^^^^^^^ only `Fn` traits may use parentheses
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/exhaustive.rs:305:19
+  --> $DIR/exhaustive.rs:304:19
    |
 LL |         core::()::marker::()::PhantomData;
    |                   ^^^^^^^^^^ only `Fn` traits may use parentheses
 
 error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
-  --> $DIR/exhaustive.rs:392:9
+  --> $DIR/exhaustive.rs:391:9
    |
 LL |         yield;
    |         ^^^^^
@@ -79,7 +79,7 @@ LL |     #[coroutine] fn expr_yield() {
    |     ++++++++++++
 
 error[E0703]: invalid ABI: found `C++`
-  --> $DIR/exhaustive.rs:472:23
+  --> $DIR/exhaustive.rs:471:23
    |
 LL |         unsafe extern "C++" {}
    |                       ^^^^^ invalid ABI
@@ -87,7 +87,7 @@ LL |         unsafe extern "C++" {}
    = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
 
 error: `..` patterns are not allowed here
-  --> $DIR/exhaustive.rs:679:13
+  --> $DIR/exhaustive.rs:678:13
    |
 LL |         let ..;
    |             ^^
@@ -95,13 +95,13 @@ LL |         let ..;
    = note: only allowed in tuple, tuple struct, and slice patterns
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/exhaustive.rs:794:16
+  --> $DIR/exhaustive.rs:793:16
    |
 LL |         let _: T() -> !;
    |                ^^^^^^^^ only `Fn` traits may use parentheses
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/exhaustive.rs:809:16
+  --> $DIR/exhaustive.rs:808:16
    |
 LL |         let _: impl Send;
    |                ^^^^^^^^^
@@ -112,7 +112,7 @@ LL |         let _: impl Send;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/exhaustive.rs:810:16
+  --> $DIR/exhaustive.rs:809:16
    |
 LL |         let _: impl Send + 'static;
    |                ^^^^^^^^^^^^^^^^^^^
@@ -123,7 +123,7 @@ LL |         let _: impl Send + 'static;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/exhaustive.rs:811:16
+  --> $DIR/exhaustive.rs:810:16
    |
 LL |         let _: impl 'static + Send;
    |                ^^^^^^^^^^^^^^^^^^^
@@ -134,7 +134,7 @@ LL |         let _: impl 'static + Send;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/exhaustive.rs:812:16
+  --> $DIR/exhaustive.rs:811:16
    |
 LL |         let _: impl ?Sized;
    |                ^^^^^^^^^^^
@@ -145,7 +145,7 @@ LL |         let _: impl ?Sized;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/exhaustive.rs:813:16
+  --> $DIR/exhaustive.rs:812:16
    |
 LL |         let _: impl ~const Clone;
    |                ^^^^^^^^^^^^^^^^^
@@ -156,7 +156,7 @@ LL |         let _: impl ~const Clone;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/exhaustive.rs:814:16
+  --> $DIR/exhaustive.rs:813:16
    |
 LL |         let _: impl for<'a> Send;
    |                ^^^^^^^^^^^^^^^^^

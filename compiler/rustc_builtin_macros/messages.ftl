@@ -118,10 +118,6 @@ builtin_macros_concat_bytes_oob = numeric literal is out of bounds
 builtin_macros_concat_bytestr = cannot concatenate a byte string literal
 builtin_macros_concat_c_str_lit = cannot concatenate a C string literal
 
-builtin_macros_concat_idents_ident_args = `concat_idents!()` requires ident args
-
-builtin_macros_concat_idents_missing_args = `concat_idents!()` takes 1 or more arguments
-builtin_macros_concat_idents_missing_comma = `concat_idents!()` expecting comma
 builtin_macros_concat_missing_literal = expected a literal
     .note = only literals (like `"foo"`, `-42` and `3.14`) can be passed to `concat!()`
 
