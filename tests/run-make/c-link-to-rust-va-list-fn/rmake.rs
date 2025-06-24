@@ -5,6 +5,7 @@
 
 //@ needs-target-std
 //@ ignore-android: FIXME(#142855)
+//@ ignore-sgx: (x86 machine code cannot be directly executed)
 
 use run_make_support::{cc, extra_c_flags, run, rustc, static_lib_name};
 
