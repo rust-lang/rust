@@ -290,6 +290,7 @@ pub fn check_builtin_meta_item(
                 | sym::rustc_specialization_trait
                 | sym::rustc_unsafe_specialization_marker
                 | sym::rustc_allow_incoherent_impl
+                | sym::rustc_coherence_is_core
                 | sym::marker
                 | sym::fundamental
                 | sym::rustc_paren_sugar

@@ -19,6 +19,7 @@ impl AttributeKind {
             AllowInternalUnstable(..) => Yes,
             AsPtr(..) => Yes,
             BodyStability { .. } => No,
+            CoherenceIsCore => No,
             Coinductive(..) => No,
             Cold(..) => No,
             Confusables { .. } => Yes,
