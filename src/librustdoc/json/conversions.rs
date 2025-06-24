@@ -194,22 +194,25 @@ impl FromClean<attrs::Deprecation> for Deprecation {
 }
 
 impl FromClean<clean::GenericArgs> for Option<Box<GenericArgs>> {
-    fn from_clean(args: &clean::GenericArgs, renderer: &JsonRenderer<'_>) -> Self {
+    fn from_clean(generic_args: &clean::GenericArgs, renderer: &JsonRenderer<'_>) -> Self {
         use clean::GenericArgs::*;
-        if args.is_empty() {
-            return None;
-        }
-        Some(Box::new(match args {
-            AngleBracketed { args, constraints } => GenericArgs::AngleBracketed {
-                args: args.into_json(renderer),
-                constraints: constraints.into_json(renderer),
-            },
-            Parenthesized { inputs, output } => GenericArgs::Parenthesized {
+        match generic_args {
+            AngleBracketed { args, constraints } => {
+                if generic_args.is_empty() {
+                    None
+                } else {
+                    Some(Box::new(GenericArgs::AngleBracketed {
+                        args: args.into_json(renderer),
+                        constraints: constraints.into_json(renderer),
+                    }))
+                }
+            }
+            Parenthesized { inputs, output } => Some(Box::new(GenericArgs::Parenthesized {
                 inputs: inputs.into_json(renderer),
                 output: output.into_json(renderer),
-            },
-            ReturnTypeNotation => GenericArgs::ReturnTypeNotation,
-        }))
+            })),
+            ReturnTypeNotation => Some(Box::new(GenericArgs::ReturnTypeNotation)),
+        }
     }
 }
 
