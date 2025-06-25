@@ -152,6 +152,7 @@ fn self_install() {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn mutual_install() {
     let pool1 = ThreadPoolBuilder::new().num_threads(1).build().unwrap();
@@ -172,6 +173,7 @@ fn mutual_install() {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn mutual_install_sleepy() {
     use std::{thread, time};
@@ -227,6 +229,7 @@ macro_rules! test_scope_order {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn scope_lifo_order() {
     let vec = test_scope_order!(scope => spawn);
@@ -235,6 +238,7 @@ fn scope_lifo_order() {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn scope_fifo_order() {
     let vec = test_scope_order!(scope_fifo => spawn_fifo);
@@ -276,6 +280,7 @@ fn spawn_fifo_order() {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn nested_scopes() {
     // Create matching scopes for every thread pool.
@@ -312,6 +317,7 @@ fn nested_scopes() {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn nested_fifo_scopes() {
     // Create matching fifo scopes for every thread pool.

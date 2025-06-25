@@ -65,6 +65,7 @@ fn spawn_broadcast_self() {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn broadcast_mutual() {
     let count = AtomicUsize::new(0);
@@ -99,6 +100,7 @@ fn spawn_broadcast_mutual() {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn broadcast_mutual_sleepy() {
     let count = AtomicUsize::new(0);

@@ -1,8 +1,10 @@
 [package]
 name = "rustc_thread_pool"
 version = "0.0.0"
-authors = ["Niko Matsakis <niko@alum.mit.edu>",
-           "Josh Stone <cuviper@gmail.com>"]
+authors = [
+    "Niko Matsakis <niko@alum.mit.edu>",
+    "Josh Stone <cuviper@gmail.com>",
+]
 description = "Core APIs for Rayon - fork for rustc"
 license = "MIT OR Apache-2.0"
 rust-version = "1.63"
@@ -14,6 +16,8 @@ categories = ["concurrency"]
 [dependencies]
 crossbeam-deque = "0.8"
 crossbeam-utils = "0.8"
+indexmap = "2.4.0"
+smallvec = "1.8.1"
 
 [dev-dependencies]
 rand = "0.9"

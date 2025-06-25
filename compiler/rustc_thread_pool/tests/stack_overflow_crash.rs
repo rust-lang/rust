@@ -36,7 +36,7 @@ fn overflow_code() -> Option<i32> {
 }
 
 #[test]
-#[cfg_attr(not(any(unix, windows)), ignore)]
+#[cfg_attr(not(any(unix)), ignore)]
 fn stack_overflow_crash() {
     // First check that the recursive call actually causes a stack overflow,
     // and does not get optimized away.

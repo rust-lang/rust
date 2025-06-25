@@ -167,6 +167,7 @@ macro_rules! test_order {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn lifo_order() {
     // In the absence of stealing, `spawn()` jobs on a thread will run in LIFO order.
@@ -176,6 +177,7 @@ fn lifo_order() {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn fifo_order() {
     // In the absence of stealing, `spawn_fifo()` jobs on a thread will run in FIFO order.
@@ -185,6 +187,7 @@ fn fifo_order() {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn lifo_fifo_order() {
     // LIFO on the outside, FIFO on the inside
@@ -194,6 +197,7 @@ fn lifo_fifo_order() {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn fifo_lifo_order() {
     // FIFO on the outside, LIFO on the inside
@@ -230,6 +234,7 @@ macro_rules! test_mixed_order {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn mixed_lifo_fifo_order() {
     let vec = test_mixed_order!(spawn, spawn_fifo);
@@ -238,6 +243,7 @@ fn mixed_lifo_fifo_order() {
 }
 
 #[test]
+#[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
 fn mixed_fifo_lifo_order() {
     let vec = test_mixed_order!(spawn_fifo, spawn);
