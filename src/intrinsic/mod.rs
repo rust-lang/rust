@@ -1484,10 +1484,9 @@ fn gen_fn<'a, 'gcc, 'tcx>(
     // FIXME(eddyb) find a nicer way to do this.
     cx.linkage.set(FunctionType::Internal);
     let func = cx.declare_fn(name, fn_abi);
-    let func_val = unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) };
-    cx.set_frame_pointer_type(func_val);
-    cx.apply_target_cpu_attr(func_val);
-    let block = Builder::append_block(cx, func_val, "entry-block");
+    cx.set_frame_pointer_type(func);
+    cx.apply_target_cpu_attr(func);
+    let block = Builder::append_block(cx, func, "entry-block");
     let bx = Builder::build(cx, block);
     codegen(bx);
     (return_type, func)

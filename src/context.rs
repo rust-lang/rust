@@ -382,8 +382,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Value = RValue<'gcc>;
     type Metadata = RValue<'gcc>;
-    // TODO(antoyo): change to Function<'gcc>.
-    type Function = RValue<'gcc>;
+    type Function = Function<'gcc>;
 
     type BasicBlock = Block<'gcc>;
     type Type = Type<'gcc>;
@@ -401,11 +400,10 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         &self.vtables
     }
 
-    fn get_fn(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
+    fn get_fn(&self, instance: Instance<'tcx>) -> Function<'gcc> {
         let func = get_fn(self, instance);
         *self.current_func.borrow_mut() = Some(func);
-        // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
-        unsafe { std::mem::transmute(func) }
+        func
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
@@ -494,11 +492,11 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.codegen_unit
     }
 
-    fn set_frame_pointer_type(&self, _llfn: RValue<'gcc>) {
+    fn set_frame_pointer_type(&self, _llfn: Function<'gcc>) {
         // TODO(antoyo)
     }
 
-    fn apply_target_cpu_attr(&self, _llfn: RValue<'gcc>) {
+    fn apply_target_cpu_attr(&self, _llfn: Function<'gcc>) {
         // TODO(antoyo)
     }
 
