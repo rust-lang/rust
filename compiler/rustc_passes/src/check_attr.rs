@@ -175,6 +175,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Naked(attr_span)) => {
                     self.check_naked(hir_id, *attr_span, span, target)
                 }
+                Attribute::Parsed(AttributeKind::TrackCaller(attr_span)) => {
+                    self.check_track_caller(hir_id, *attr_span, attrs, span, target)
+                }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
@@ -211,9 +214,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             self.check_target_feature(hir_id, attr, span, target, attrs)
                         }
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
-                        [sym::track_caller, ..] => {
-                            self.check_track_caller(hir_id, attr.span(), attrs, span, target)
-                        }
                         [sym::doc, ..] => self.check_doc_attrs(
                             attr,
                             attr_item.style,
@@ -728,9 +728,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                for attr in attrs {
-                    self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "track_caller");
-                }
+                self.inline_attr_str_error_with_macro_def(hir_id, attr_span, "track_caller");
             }
             _ => {
                 self.dcx().emit_err(errors::TrackedCallerWrongLocation {
