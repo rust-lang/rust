@@ -581,11 +581,28 @@ impl<'a> TyLoweringContext<'a> {
         match bound {
             &TypeBound::Path(path, TraitBoundModifier::None) | &TypeBound::ForLifetime(_, path) => {
                 // FIXME Don't silently drop the hrtb lifetimes here
-                if let Some((trait_ref, ctx)) = self.lower_trait_ref_from_path(path, self_ty) {
-                    if !ignore_bindings {
-                        assoc_bounds = ctx.assoc_type_bindings_from_type_bound(trait_ref.clone());
+                if let Some((trait_ref, mut ctx)) =
+                    self.lower_trait_ref_from_path(path, self_ty.clone())
+                {
+                    // FIXME(sized-hierarchy): Remove this bound modifications once we have implemented
+                    // sized-hierarchy correctly.
+                    let meta_sized = LangItem::MetaSized
+                        .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
+                    let pointee_sized = LangItem::PointeeSized
+                        .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
+                    if meta_sized.is_some_and(|it| it == trait_ref.hir_trait_id()) {
+                        // Ignore this bound
+                    } else if pointee_sized.is_some_and(|it| it == trait_ref.hir_trait_id()) {
+                        // Regard this as `?Sized` bound
+                        ctx.ty_ctx().unsized_types.insert(self_ty);
+                    } else {
+                        if !ignore_bindings {
+                            assoc_bounds =
+                                ctx.assoc_type_bindings_from_type_bound(trait_ref.clone());
+                        }
+                        clause =
+                            Some(crate::wrap_empty_binders(WhereClause::Implemented(trait_ref)));
                     }
-                    clause = Some(crate::wrap_empty_binders(WhereClause::Implemented(trait_ref)));
                 }
             }
             &TypeBound::Path(path, TraitBoundModifier::Maybe) => {
@@ -945,8 +962,32 @@ pub(crate) fn generic_predicates_for_param_query(
         | WherePredicate::TypeBound { target, bound, .. } => {
             let invalid_target = { ctx.lower_ty_only_param(*target) != Some(param_id) };
             if invalid_target {
-                // If this is filtered out without lowering, `?Sized` is not gathered into `ctx.unsized_types`
-                if let TypeBound::Path(_, TraitBoundModifier::Maybe) = bound {
+                // FIXME(sized-hierarchy): Revisit and adjust this properly once we have implemented
+                // sized-hierarchy correctly.
+                // If this is filtered out without lowering, `?Sized` or `PointeeSized` is not gathered into
+                // `ctx.unsized_types`
+                let lower = || -> bool {
+                    match bound {
+                        TypeBound::Path(_, TraitBoundModifier::Maybe) => true,
+                        TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
+                            let TypeRef::Path(path) = &ctx.store[path.type_ref()] else {
+                                return false;
+                            };
+                            let Some(pointee_sized) =
+                                LangItem::PointeeSized.resolve_trait(ctx.db, ctx.resolver.krate())
+                            else {
+                                return false;
+                            };
+                            // Lower the path directly with `Resolver` instead of PathLoweringContext`
+                            // to prevent diagnostics duplications.
+                            ctx.resolver.resolve_path_in_type_ns_fully(ctx.db, path).is_some_and(
+                                |it| matches!(it, TypeNs::TraitId(tr) if tr == pointee_sized),
+                            )
+                        }
+                        _ => false,
+                    }
+                }();
+                if lower {
                     ctx.lower_where_predicate(pred, true).for_each(drop);
                 }
                 return false;
