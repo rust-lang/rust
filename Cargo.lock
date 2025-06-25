@@ -4116,6 +4116,7 @@ dependencies = [
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
+ "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
