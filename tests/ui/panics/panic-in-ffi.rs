@@ -1,4 +1,4 @@
-//@ run-fail
+//@ run-crash
 //@ exec-env:RUST_BACKTRACE=0
 //@ check-run-results
 //@ error-pattern: panic in a function that cannot unwind
