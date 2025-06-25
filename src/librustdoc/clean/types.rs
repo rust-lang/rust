@@ -755,8 +755,11 @@ impl Item {
             .filter_map(|attr| {
                 // NoMangle is special cased, as it appears in HTML output, and we want to show it in source form, not HIR printing.
                 // It is also used by cargo-semver-checks.
-                if matches!(attr, hir::Attribute::Parsed(AttributeKind::NoMangle(..))) {
+                if let hir::Attribute::Parsed(AttributeKind::NoMangle(..)) = attr {
                     Some("#[no_mangle]".to_string())
+                } else if let hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) = attr
+                {
+                    Some(format!("#[export_name = \"{name}\"]"))
                 } else if is_json {
                     match attr {
                         // rustdoc-json stores this in `Item::deprecation`, so we
