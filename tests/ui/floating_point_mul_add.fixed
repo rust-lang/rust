@@ -69,3 +69,23 @@ fn _issue11831() {
 
     let _ = a + b * c;
 }
+
+fn _issue12331() {
+    let x = 1.0;
+    let _ = x * 2.0 + 0.5; // should not suggest mul_add
+    let _ = 0.5 + x * 2.0; // should not suggest mul_add
+
+    let _ = 2.0f64.mul_add(x, 0.5);
+    //~^ suboptimal_flops
+    let _ = 2.0f64.mul_add(x, 0.5);
+    //~^ suboptimal_flops
+
+    let _ = 2.0f64.mul_add(4.0, x);
+    //~^ suboptimal_flops
+
+    let y: f64 = 1.0;
+    let _ = y.mul_add(2.0, 0.5);
+    //~^ suboptimal_flops
+    let _ = 1.0f64.mul_add(2.0, 0.5);
+    //~^ suboptimal_flops
+}

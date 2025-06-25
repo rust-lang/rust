@@ -7,7 +7,8 @@ use clippy_utils::{
 };
 use rustc_ast::ast;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
+use rustc_hir::def::Res;
+use rustc_hir::{BinOpKind, Expr, ExprKind, Node, PathSegment, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
@@ -455,7 +456,32 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'
     None
 }
 
-// TODO: Fix rust-lang/rust-clippy#4735
+// Check if any variable in an expression has an ambiguous type (could be f32 or f64)
+fn has_ambiguous_float_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    match &expr.kind {
+        ExprKind::Path(qpath) => {
+            if let Res::Local(hir_id) = cx.qpath_res(qpath, expr.hir_id) {
+                if let Node::LetStmt(local) = cx.tcx.parent_hir_node(hir_id) {
+                    // If the local has no type annotation and the initializer is an unsuffixed float literal,
+                    // then the type is ambiguous
+                    if local.ty.is_none() {
+                        if let Some(init) = local.init {
+                            if let ExprKind::Lit(lit) = &init.kind {
+                                if let ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) = lit.node {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            false
+        },
+        ExprKind::Binary(_, lhs, rhs) => has_ambiguous_float_type(cx, lhs) || has_ambiguous_float_type(cx, rhs),
+        _ => false,
+    }
+}
+
 fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Binary(
         Spanned {
@@ -490,6 +516,12 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
         } else {
             return;
         };
+
+        // Check if any variable in the expression has an ambiguous type (could be f32 or f64)
+        // see: https://github.com/rust-lang/rust-clippy/issues/14897
+        if has_ambiguous_float_type(cx, recv) {
+            return;
+        }
 
         span_lint_and_sugg(
             cx,
