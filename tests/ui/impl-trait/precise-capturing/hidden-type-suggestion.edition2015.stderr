@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/hidden-type-suggestion.rs:3:5
+  --> $DIR/hidden-type-suggestion.rs:6:5
    |
 LL | fn lifetime<'a, 'b>(x: &'a ()) -> impl Sized + use<'b> {
    |             --                    -------------------- opaque type defined here
@@ -15,7 +15,7 @@ LL | fn lifetime<'a, 'b>(x: &'a ()) -> impl Sized + use<'b, 'a> {
    |                                                      ++++
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/hidden-type-suggestion.rs:9:5
+  --> $DIR/hidden-type-suggestion.rs:12:5
    |
 LL | fn param<'a, T>(x: &'a ()) -> impl Sized + use<T> {
    |          --                   ------------------- opaque type defined here
@@ -31,7 +31,7 @@ LL | fn param<'a, T>(x: &'a ()) -> impl Sized + use<'a, T> {
    |                                                +++
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/hidden-type-suggestion.rs:15:5
+  --> $DIR/hidden-type-suggestion.rs:18:5
    |
 LL | fn empty<'a>(x: &'a ()) -> impl Sized + use<> {
    |          --                ------------------ opaque type defined here
@@ -47,7 +47,7 @@ LL | fn empty<'a>(x: &'a ()) -> impl Sized + use<'a> {
    |                                             ++
 
 error[E0700]: hidden type for `impl Captures<'captured>` captures lifetime that does not appear in bounds
-  --> $DIR/hidden-type-suggestion.rs:24:5
+  --> $DIR/hidden-type-suggestion.rs:27:5
    |
 LL | fn missing<'a, 'captured, 'not_captured, Captured>(x: &'a ()) -> impl Captures<'captured> {
    |            --                                                    ------------------------ opaque type defined here
@@ -63,7 +63,7 @@ LL | fn missing<'a, 'captured, 'not_captured, Captured>(x: &'a ()) -> impl Captu
    |                                                                                           ++++++++++++++++++++++++++++++
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/hidden-type-suggestion.rs:30:5
+  --> $DIR/hidden-type-suggestion.rs:33:5
    |
 LL | fn no_params_yet(_: impl Sized, y: &()) -> impl Sized {
    |                                    ---     ---------- opaque type defined here
@@ -74,7 +74,7 @@ LL |     y
    |     ^
    |
 note: you could use a `use<...>` bound to explicitly capture `'_`, but argument-position `impl Trait`s are not nameable
-  --> $DIR/hidden-type-suggestion.rs:28:21
+  --> $DIR/hidden-type-suggestion.rs:31:21
    |
 LL | fn no_params_yet(_: impl Sized, y: &()) -> impl Sized {
    |                     ^^^^^^^^^^
@@ -85,7 +85,7 @@ LL + fn no_params_yet<T: Sized>(_: T, y: &()) -> impl Sized + use<'_, T> {
    |
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/hidden-type-suggestion.rs:36:5
+  --> $DIR/hidden-type-suggestion.rs:39:5
    |
 LL | fn yes_params_yet<'a, T>(_: impl Sized, y: &'a ()) -> impl Sized {
    |                   --                                  ---------- opaque type defined here
@@ -96,7 +96,7 @@ LL |     y
    |     ^
    |
 note: you could use a `use<...>` bound to explicitly capture `'a`, but argument-position `impl Trait`s are not nameable
-  --> $DIR/hidden-type-suggestion.rs:34:29
+  --> $DIR/hidden-type-suggestion.rs:37:29
    |
 LL | fn yes_params_yet<'a, T>(_: impl Sized, y: &'a ()) -> impl Sized {
    |                             ^^^^^^^^^^

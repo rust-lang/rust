@@ -1,5 +1,5 @@
 error: expected one of `!`, `(`, `::`, `<`, `where`, or `{`, found keyword `use`
-  --> $DIR/dyn-use.rs:1:26
+  --> $DIR/dyn-use.rs:4:26
    |
 LL | fn dyn() -> &'static dyn use<> { &() }
    |                          ^^^ expected one of `!`, `(`, `::`, `<`, `where`, or `{`

@@ -1,3 +1,7 @@
+//@revisions: edition2015 edition2021
+//@[edition2015] edition:2015
+//@[edition2021] edition:2021
+
 type A = [u8; 4]::AssocTy;
 //~^ ERROR missing angle brackets in associated item path
 //~| ERROR ambiguous associated type
@@ -31,9 +35,10 @@ type G = dyn 'static + (Send)::AssocTy;
 // This is actually a legal path with fn-like generic arguments in the middle!
 // Recovery should not apply in this context.
 type H = Fn(u8) -> (u8)::Output;
-//~^ ERROR ambiguous associated type
-//~| WARN trait objects without an explicit `dyn` are deprecated
-//~| WARN this is accepted in the current edition
+//[edition2015]~^ ERROR ambiguous associated type
+//[edition2015]~| WARN trait objects without an explicit `dyn` are deprecated
+//[edition2015]~| WARN this is accepted in the current edition
+//[edition2021]~^^^^ ERROR expected a type, found a trait
 
 macro_rules! ty {
     ($ty: ty) => ($ty::AssocTy);
