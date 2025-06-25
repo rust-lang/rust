@@ -26,7 +26,7 @@
 //!     deref: sized
 //!     derive:
 //!     discriminant:
-//!     drop:
+//!     drop: sized
 //!     env: option
 //!     eq: sized
 //!     error: fmt
@@ -37,7 +37,7 @@
 //!     future: pin
 //!     coroutine: pin
 //!     dispatch_from_dyn: unsize, pin
-//!     hash:
+//!     hash: sized
 //!     include:
 //!     index: sized
 //!     infallible:
@@ -80,24 +80,18 @@ pub mod marker {
     #[lang = "pointee_sized"]
     #[fundamental]
     #[rustc_specialization_trait]
-    #[rustc_deny_explicit_impl]
-    #[rustc_do_not_implement_via_object]
     #[rustc_coinductive]
     pub trait PointeeSized {}
 
     #[lang = "meta_sized"]
     #[fundamental]
     #[rustc_specialization_trait]
-    #[rustc_deny_explicit_impl]
-    #[rustc_do_not_implement_via_object]
     #[rustc_coinductive]
     pub trait MetaSized: PointeeSized {}
 
     #[lang = "sized"]
     #[fundamental]
     #[rustc_specialization_trait]
-    #[rustc_deny_explicit_impl]
-    #[rustc_do_not_implement_via_object]
     #[rustc_coinductive]
     pub trait Sized: MetaSized {}
     // endregion:sized
@@ -139,7 +133,7 @@ pub mod marker {
     // endregion:derive
 
     mod copy_impls {
-        use super::Copy;
+        use super::{Copy, PointeeSized};
 
         macro_rules! impl_copy {
             ($($t:ty)*) => {
@@ -225,6 +219,8 @@ pub mod default {
 
 // region:hash
 pub mod hash {
+    use crate::marker::PointeeSized;
+
     pub trait Hasher {}
 
     pub trait Hash: PointeeSized {
@@ -240,6 +236,7 @@ pub mod hash {
 
 // region:cell
 pub mod cell {
+    use crate::marker::PointeeSized;
     use crate::mem;
 
     #[lang = "unsafe_cell"]
@@ -376,7 +373,7 @@ pub mod convert {
     // endregion:from
 
     // region:as_ref
-    pub trait AsRef<T: PointeeSized>: PointeeSized {
+    pub trait AsRef<T: crate::marker::PointeeSized>: crate::marker::PointeeSized {
         fn as_ref(&self) -> &T;
     }
     // endregion:as_ref
@@ -387,6 +384,8 @@ pub mod convert {
 
 pub mod mem {
     // region:manually_drop
+    use crate::marker::PointeeSized;
+
     #[lang = "manually_drop"]
     #[repr(transparent)]
     pub struct ManuallyDrop<T: PointeeSized> {
@@ -447,7 +446,7 @@ pub mod mem {
 pub mod ptr {
     // region:drop
     #[lang = "drop_in_place"]
-    pub unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T) {
+    pub unsafe fn drop_in_place<T: crate::marker::PointeeSized>(to_drop: *mut T) {
         unsafe { drop_in_place(to_drop) }
     }
     pub const unsafe fn read<T>(src: *const T) -> T {
@@ -463,7 +462,7 @@ pub mod ptr {
     // region:pointee
     #[lang = "pointee_trait"]
     #[rustc_deny_explicit_impl(implement_via_object = false)]
-    pub trait Pointee: PointeeSized {
+    pub trait Pointee: crate::marker::PointeeSized {
         #[lang = "metadata_type"]
         type Metadata: Copy + Send + Sync + Ord + Hash + Unpin;
     }
@@ -471,12 +470,14 @@ pub mod ptr {
     // region:non_null
     #[rustc_layout_scalar_valid_range_start(1)]
     #[rustc_nonnull_optimization_guaranteed]
-    pub struct NonNull<T: PointeeSized> {
+    pub struct NonNull<T: crate::marker::PointeeSized> {
         pointer: *const T,
     }
     // region:coerce_unsized
-    impl<T: PointeeSized, U: PointeeSized> crate::ops::CoerceUnsized<NonNull<U>> for NonNull<T> where
-        T: crate::marker::Unsize<U>
+    impl<T: crate::marker::PointeeSized, U: crate::marker::PointeeSized>
+        crate::ops::CoerceUnsized<NonNull<U>> for NonNull<T>
+    where
+        T: crate::marker::Unsize<U>,
     {
     }
     // endregion:coerce_unsized
@@ -497,7 +498,7 @@ pub mod ptr {
 pub mod ops {
     // region:coerce_unsized
     mod unsize {
-        use crate::marker::Unsize;
+        use crate::marker::{PointeeSized, Unsize};
 
         #[lang = "coerce_unsized"]
         pub trait CoerceUnsized<T> {}
@@ -519,6 +520,8 @@ pub mod ops {
 
     // region:deref
     mod deref {
+        use crate::marker::PointeeSized;
+
         #[lang = "deref"]
         pub trait Deref: PointeeSized {
             #[lang = "deref_target"]
@@ -1025,7 +1028,7 @@ pub mod ops {
 
     // region:dispatch_from_dyn
     mod dispatch_from_dyn {
-        use crate::marker::Unsize;
+        use crate::marker::{PointeeSized, Unsize};
 
         #[lang = "dispatch_from_dyn"]
         pub trait DispatchFromDyn<T> {}
@@ -1044,6 +1047,8 @@ pub mod ops {
 
 // region:eq
 pub mod cmp {
+    use crate::marker::PointeeSized;
+
     #[lang = "eq"]
     pub trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
         fn eq(&self, other: &Rhs) -> bool;
@@ -1090,6 +1095,8 @@ pub mod cmp {
 
 // region:fmt
 pub mod fmt {
+    use crate::marker::PointeeSized;
+
     pub struct Error;
     pub type Result = crate::result::Result<(), Error>;
     pub struct Formatter<'a>;
@@ -1531,6 +1538,8 @@ pub mod iter {
 
     mod traits {
         mod iterator {
+            use crate::marker::PointeeSized;
+
             #[doc(notable_trait)]
             #[lang = "iterator"]
             pub trait Iterator {
