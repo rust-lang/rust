@@ -626,6 +626,7 @@ macro_rules! rem_impl_float {
         /// assert_eq!(x % y, remainder);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
         impl Rem for $t {
             type Output = $t;
 
