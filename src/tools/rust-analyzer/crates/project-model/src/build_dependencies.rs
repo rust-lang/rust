@@ -356,7 +356,7 @@ impl WorkspaceBuildScripts {
                         });
                     }
                     Message::CompilerMessage(message) => {
-                        progress(message.target.name);
+                        progress(format!("received compiler message for: {}", message.target.name));
 
                         if let Some(diag) = message.message.rendered.as_deref() {
                             push_err(diag);
