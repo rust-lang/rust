@@ -437,7 +437,7 @@ auto:
   - name: dist-x86_64-apple
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
-      RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin --set rust.codegen-units=1
+      RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin --set llvm.enzyme=true --set rust.codegen-units=1
       # Ensure that host tooling is built to support our minimum support macOS version.
       MACOSX_DEPLOYMENT_TARGET: 10.12
       MACOSX_STD_DEPLOYMENT_TARGET: 10.12
@@ -454,7 +454,7 @@ auto:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim,aarch64-apple-ios-macabi,x86_64-apple-ios-macabi
       # Mac Catalyst cannot currently compile the sanitizer:
       # https://github.com/rust-lang/rust/issues/129069
-      RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc --set target.aarch64-apple-ios-macabi.sanitizers=false --set target.x86_64-apple-ios-macabi.sanitizers=false
+      RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc --set target.aarch64-apple-ios-macabi.sanitizers=false --set target.x86_64-apple-ios-macabi.sanitizers=false --set llvm.enzyme=true
       # Ensure that host tooling is built to support our minimum support macOS version.
       # FIXME(madsmtm): This might be redundant, as we're not building host tooling here (?)
       MACOSX_DEPLOYMENT_TARGET: 10.12
@@ -485,6 +485,7 @@ auto:
         --enable-profiler
         --set rust.jemalloc
         --set llvm.ninja=false
+        --set llvm.enzyme=true
         --set rust.lto=thin
         --set rust.codegen-units=1
       SELECT_XCODE: /Applications/Xcode_15.4.app

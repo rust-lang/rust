@@ -89,6 +89,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.thin-lto=true \
       --set llvm.libzstd=true \
       --set llvm.ninja=false \
+      --set llvm.enzyme=true \
       --set rust.debug-assertions=false \
       --set rust.jemalloc \
       --set rust.use-lld=true \

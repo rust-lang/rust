@@ -29,5 +29,6 @@ ENV RUST_CONFIGURE_ARGS \
  --enable-sanitizers \
  --enable-profiler \
  --enable-compiler-docs \
- --set llvm.libzstd=true
+ --set llvm.libzstd=true \
+ --set llvm.enzyme=true
 ENV SCRIPT python3 ../x.py --stage 2 test
