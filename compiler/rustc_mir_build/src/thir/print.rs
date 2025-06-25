@@ -629,7 +629,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         print_indented!(self, "Arm {", depth_lvl);
 
         let arm = &self.thir.arms[arm_id];
-        let Arm { pattern, guard, body, lint_level, scope, span } = arm;
+        let Arm { pattern, guard, body, lint_level, scope, span, is_cold } = arm;
 
         print_indented!(self, "pattern: ", depth_lvl + 1);
         self.print_pat(pattern, depth_lvl + 2);
@@ -646,6 +646,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         print_indented!(self, format!("lint_level: {:?}", lint_level), depth_lvl + 1);
         print_indented!(self, format!("scope: {:?}", scope), depth_lvl + 1);
         print_indented!(self, format!("span: {:?}", span), depth_lvl + 1);
+        print_indented!(self, format!("is_cold: {:?}", is_cold), depth_lvl + 1);
         print_indented!(self, "}", depth_lvl);
     }
 

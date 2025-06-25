@@ -471,7 +471,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         opt_scrutinee_place,
                     );
 
-                    let arm_block = this.bind_pattern(
+                    let mut arm_block = this.bind_pattern(
                         outer_source_info,
                         branch,
                         &built_match_tree.fake_borrow_temps,
@@ -479,6 +479,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some((arm, match_scope)),
                         EmitStorageLive::Yes,
                     );
+
+                    if arm.is_cold
+                        && let Some(cold_path_def) = this.tcx.get_diagnostic_item(sym::cold_path)
+                    {
+                        let cold_path_ty = this.tcx.type_of(cold_path_def).instantiate_identity();
+                        let cold_path = Operand::Constant(Box::new(ConstOperand {
+                            span: arm.span,
+                            user_ty: None,
+                            const_: Const::from_value(ConstValue::ZeroSized, cold_path_ty),
+                        }));
+                        let new_arm_block = this.cfg.start_new_block();
+                        let cold_path_result =
+                            this.local_decls.push(LocalDecl::new(this.tcx.types.unit, arm.span));
+                        this.cfg.terminate(
+                            arm_block,
+                            this.source_info(arm.span),
+                            TerminatorKind::Call {
+                                func: cold_path,
+                                args: Box::new([]),
+                                destination: Place::from(cold_path_result),
+                                target: Some(new_arm_block),
+                                unwind: UnwindAction::Unreachable,
+                                call_source: CallSource::Misc,
+                                fn_span: arm.span,
+                            },
+                        );
+                        arm_block = new_arm_block;
+                    }
 
                     this.fixed_temps_scope = old_dedup_scope;
 
