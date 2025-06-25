@@ -113,7 +113,7 @@ impl Bootstrap {
             "library/std",
         ])
         .env("RUST_BACKTRACE", "full");
-        let mut cmd = add_shared_x_flags(env, cmd);
+        let cmd = add_shared_x_flags(env, cmd);
 
         Self { cmd, metrics_path }
     }
@@ -193,7 +193,7 @@ impl Bootstrap {
     }
 }
 
-fn add_shared_x_flags(env: &Environment, mut cmd: CmdBuilder) -> CmdBuilder {
+fn add_shared_x_flags(env: &Environment, cmd: CmdBuilder) -> CmdBuilder {
     if env.is_fast_try_build() {
         // Skip things that cannot be skipped through `x ... --skip`
         cmd.arg("--set")
