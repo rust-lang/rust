@@ -587,7 +587,7 @@ fn thin_lto(
 }
 
 fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
-    for &val in ad {
+    for val in ad {
         // We intentionally don't use a wildcard, to not forget handling anything new.
         match val {
             config::AutoDiff::PrintPerf => {
@@ -598,6 +598,10 @@ fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
             }
             config::AutoDiff::PrintTA => {
                 llvm::set_print_type(true);
+            }
+            config::AutoDiff::PrintTAFn(fun) => {
+                llvm::set_print_type(true); // Enable general type printing
+                llvm::set_print_type_fun(&fun); // Set specific function to analyze
             }
             config::AutoDiff::Inline => {
                 llvm::set_inline(true);
