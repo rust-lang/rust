@@ -1,8 +1,8 @@
-error[E0570]: "thiscall" is not a supported ABI for the current target
-  --> $DIR/unsupported-abi-transmute.rs:13:53
+error[E0570]: "rust-invalid" is not a supported ABI for the current target
+  --> $DIR/unsupported-abi-transmute.rs:10:53
    |
-LL |     let a = unsafe { mem::transmute::<usize, extern "thiscall" fn(i32)>(4) }(2);
-   |                                                     ^^^^^^^^^^
+LL |     let a = unsafe { mem::transmute::<usize, extern "rust-invalid" fn(i32)>(4) }(2);
+   |                                                     ^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
