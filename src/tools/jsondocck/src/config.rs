@@ -4,11 +4,11 @@ use getopts::Options;
 pub struct Config {
     /// The directory documentation output was generated in.
     pub doc_dir: String,
-    /// The file documentation was generated for, with docck directives to check.
+    /// The file documentation was generated for, with `jsondocck` directives to check.
     pub template: String,
 }
 
-/// Create a Config from a vector of command-line arguments.
+/// Create [`Config`] from a vector of command-line arguments.
 pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
     opts.reqopt("", "doc-dir", "Path to the documentation output directory.", "PATH")
