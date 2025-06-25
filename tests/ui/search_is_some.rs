@@ -87,3 +87,18 @@ fn is_none() {
     let _ = (0..1).find(some_closure).is_none();
     //~^ search_is_some
 }
+
+#[allow(clippy::match_like_matches_macro)]
+fn issue15102() {
+    let values = [None, Some(3)];
+    let has_even = values
+        //~^ search_is_some
+        .iter()
+        .find(|v| match v {
+            Some(x) if x % 2 == 0 => true,
+            _ => false,
+        })
+        .is_some();
+
+    println!("{has_even}");
+}
