@@ -1,21 +1,21 @@
 error: function pointer types may not have generic parameters
-  --> $DIR/generics.rs:14:42
+  --> $DIR/generics.rs:14:40
    |
-LL |     f1: extern "C-cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
-   |                                          ^^^^^^^^^
+LL |     f1: extern "cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
+   |                                        ^^^^^^^^^
 
 error[E0412]: cannot find type `U` in this scope
-  --> $DIR/generics.rs:14:52
+  --> $DIR/generics.rs:14:50
    |
 LL | struct Test<T: Copy> {
    |             - similarly named type parameter `T` defined here
-LL |     f1: extern "C-cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
-   |                                                    ^
+LL |     f1: extern "cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
+   |                                                  ^
    |
 help: a type parameter with a similar name exists
    |
-LL -     f1: extern "C-cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
-LL +     f1: extern "C-cmse-nonsecure-call" fn<U: Copy>(T, u32, u32, u32) -> u64,
+LL -     f1: extern "cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
+LL +     f1: extern "cmse-nonsecure-call" fn<U: Copy>(T, u32, u32, u32) -> u64,
    |
 help: you might be missing a type parameter
    |
@@ -23,57 +23,57 @@ LL | struct Test<T: Copy, U> {
    |                    +++
 
 error[E0562]: `impl Trait` is not allowed in `fn` pointer parameters
-  --> $DIR/generics.rs:17:43
+  --> $DIR/generics.rs:17:41
    |
-LL |     f2: extern "C-cmse-nonsecure-call" fn(impl Copy, u32, u32, u32) -> u64,
-   |                                           ^^^^^^^^^
+LL |     f2: extern "cmse-nonsecure-call" fn(impl Copy, u32, u32, u32) -> u64,
+   |                                         ^^^^^^^^^
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error[E0798]: function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
+error[E0798]: function pointers with the `"cmse-nonsecure-call"` ABI cannot contain generics in their type
   --> $DIR/generics.rs:19:9
    |
-LL |     f3: extern "C-cmse-nonsecure-call" fn(T, u32, u32, u32) -> u64,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     f3: extern "cmse-nonsecure-call" fn(T, u32, u32, u32) -> u64,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0798]: function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
+error[E0798]: function pointers with the `"cmse-nonsecure-call"` ABI cannot contain generics in their type
   --> $DIR/generics.rs:20:9
    |
-LL |     f4: extern "C-cmse-nonsecure-call" fn(Wrapper<T>, u32, u32, u32) -> u64,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     f4: extern "cmse-nonsecure-call" fn(Wrapper<T>, u32, u32, u32) -> u64,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
-  --> $DIR/generics.rs:26:73
+error[E0798]: return value of `"cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/generics.rs:26:71
    |
-LL | type WithTraitObject = extern "C-cmse-nonsecure-call" fn(&dyn Trait) -> &dyn Trait;
-   |                                                                         ^^^^^^^^^^ this type doesn't fit in the available registers
+LL | type WithTraitObject = extern "cmse-nonsecure-call" fn(&dyn Trait) -> &dyn Trait;
+   |                                                                       ^^^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
+   = note: functions with the `"cmse-nonsecure-call"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
-  --> $DIR/generics.rs:30:62
+error[E0798]: return value of `"cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/generics.rs:30:60
    |
-LL |     extern "C-cmse-nonsecure-call" fn(&'static dyn Trait) -> &'static dyn Trait;
-   |                                                              ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
+LL |     extern "cmse-nonsecure-call" fn(&'static dyn Trait) -> &'static dyn Trait;
+   |                                                            ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
+   = note: functions with the `"cmse-nonsecure-call"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-error[E0798]: return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
-  --> $DIR/generics.rs:37:62
+error[E0798]: return value of `"cmse-nonsecure-call"` function too large to pass via registers
+  --> $DIR/generics.rs:37:60
    |
-LL |     extern "C-cmse-nonsecure-call" fn(WrapperTransparent) -> WrapperTransparent;
-   |                                                              ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
+LL |     extern "cmse-nonsecure-call" fn(WrapperTransparent) -> WrapperTransparent;
+   |                                                            ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
    |
-   = note: functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
+   = note: functions with the `"cmse-nonsecure-call"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-error[E0045]: C-variadic functions with the "C-cmse-nonsecure-call" calling convention are not supported
+error[E0045]: C-variadic functions with the "cmse-nonsecure-call" calling convention are not supported
   --> $DIR/generics.rs:40:20
    |
-LL | type WithVarArgs = extern "C-cmse-nonsecure-call" fn(u32, ...);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
+LL | type WithVarArgs = extern "cmse-nonsecure-call" fn(u32, ...);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
 
 error: aborting due to 9 previous errors
 

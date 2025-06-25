@@ -73,10 +73,10 @@ hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are fo
     .label = `for<...>` is here
 
 hir_analysis_cmse_call_generic =
-    function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
+    function pointers with the `"cmse-nonsecure-call"` ABI cannot contain generics in their type
 
 hir_analysis_cmse_entry_generic =
-    functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
 
 hir_analysis_cmse_inputs_stack_spill =
     arguments for `{$abi}` function too large to pass via registers
