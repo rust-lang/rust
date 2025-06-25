@@ -6,7 +6,8 @@
 
 use std::fmt::Debug;
 
-use super::Bridge;
+use super::context::SmirCtxt;
+use super::{Bridge, Tables};
 
 pub trait SmirError {
     fn new(msg: String) -> Self;
@@ -15,6 +16,17 @@ pub trait SmirError {
 
 pub trait Prov<B: Bridge> {
     fn new(aid: B::AllocId) -> Self;
+}
+
+pub trait Allocation<B: Bridge> {
+    fn new<'tcx>(
+        bytes: Vec<Option<u8>>,
+        ptrs: Vec<(usize, rustc_middle::mir::interpret::AllocId)>,
+        align: u64,
+        mutability: rustc_middle::mir::Mutability,
+        tables: &mut Tables<'tcx, B>,
+        cx: &SmirCtxt<'tcx, B>,
+    ) -> Self;
 }
 
 macro_rules! make_bridge_trait {

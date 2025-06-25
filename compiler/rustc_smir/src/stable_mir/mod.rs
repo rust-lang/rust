@@ -28,13 +28,18 @@ use std::fmt::Debug;
 use std::{fmt, io};
 
 pub(crate) use rustc_smir::IndexedVal;
+use rustc_smir::Tables;
+use rustc_smir::context::SmirCtxt;
 use serde::Serialize;
 use stable_mir::compiler_interface::with;
 pub use stable_mir::crate_def::{CrateDef, CrateDefItems, CrateDefType, DefId};
 pub use stable_mir::error::*;
 use stable_mir::mir::mono::StaticDef;
 use stable_mir::mir::{Body, Mutability};
-use stable_mir::ty::{AssocItem, FnDef, ForeignModuleDef, ImplDef, Span, TraitDef, Ty};
+use stable_mir::ty::{
+    AssocItem, FnDef, ForeignModuleDef, ImplDef, ProvenanceMap, Span, TraitDef, Ty,
+};
+use stable_mir::unstable::Stable;
 
 use crate::{rustc_smir, stable_mir};
 
@@ -275,5 +280,25 @@ bridge_impl!(StaticDef, stable_mir::mir::mono::StaticDef);
 impl rustc_smir::bridge::Prov<compiler_interface::BridgeTys> for stable_mir::ty::Prov {
     fn new(aid: stable_mir::mir::alloc::AllocId) -> Self {
         Self(aid)
+    }
+}
+
+impl rustc_smir::bridge::Allocation<compiler_interface::BridgeTys> for stable_mir::ty::Allocation {
+    fn new<'tcx>(
+        bytes: Vec<Option<u8>>,
+        ptrs: Vec<(usize, rustc_middle::mir::interpret::AllocId)>,
+        align: u64,
+        mutability: rustc_middle::mir::Mutability,
+        tables: &mut Tables<'tcx, compiler_interface::BridgeTys>,
+        cx: &SmirCtxt<'tcx, compiler_interface::BridgeTys>,
+    ) -> Self {
+        Self {
+            bytes,
+            provenance: ProvenanceMap {
+                ptrs: ptrs.iter().map(|(i, aid)| (*i, tables.prov(*aid))).collect(),
+            },
+            align,
+            mutability: mutability.stable(tables, cx),
+        }
     }
 }
