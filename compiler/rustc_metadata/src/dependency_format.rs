@@ -314,7 +314,7 @@ fn add_library(
                     crate_name: tcx.crate_name(cnum),
                     non_static_deps: unavailable_as_static
                         .drain(..)
-                        .map(|cnum| NonStaticCrateDep { crate_name: tcx.crate_name(cnum) })
+                        .map(|cnum| NonStaticCrateDep { crate_name_: tcx.crate_name(cnum) })
                         .collect(),
                     rustc_driver_help: linking_to_rustc_driver.then_some(RustcDriverHelp),
                 });

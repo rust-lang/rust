@@ -1089,6 +1089,7 @@ pub(crate) struct DeprecatedLintNameFromCommandLine<'a> {
 #[diag(lint_renamed_lint)]
 pub(crate) struct RenamedLint<'a> {
     pub name: &'a str,
+    pub replace: &'a str,
     #[subdiagnostic]
     pub suggestion: RenamedLintSuggestion<'a>,
 }
@@ -1109,6 +1110,7 @@ pub(crate) enum RenamedLintSuggestion<'a> {
 #[diag(lint_renamed_lint)]
 pub(crate) struct RenamedLintFromCommandLine<'a> {
     pub name: &'a str,
+    pub replace: &'a str,
     #[subdiagnostic]
     pub suggestion: RenamedLintSuggestion<'a>,
     #[subdiagnostic]
@@ -3244,7 +3246,7 @@ pub(crate) enum MismatchedLifetimeSyntaxesSuggestion {
     },
 
     Explicit {
-        lifetime_name: String,
+        lifetime_name_sugg: String,
         suggestions: Vec<(Span, String)>,
         tool_only: bool,
     },
@@ -3298,13 +3300,12 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
                 );
             }
 
-            Explicit { lifetime_name, suggestions, tool_only } => {
-                diag.arg("lifetime_name", lifetime_name);
-
+            Explicit { lifetime_name_sugg, suggestions, tool_only } => {
+                diag.arg("lifetime_name_sugg", lifetime_name_sugg);
                 let msg = diag.eagerly_translate(
                     fluent::lint_mismatched_lifetime_syntaxes_suggestion_explicit,
                 );
-
+                diag.remove_arg("lifetime_name_sugg");
                 diag.multipart_suggestion_with_style(
                     msg,
                     suggestions,
