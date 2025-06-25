@@ -1126,6 +1126,7 @@ pub enum Abi {
     RustCold,
     RiscvInterruptM,
     RiscvInterruptS,
+    RustInvalid,
     Custom,
 }
 

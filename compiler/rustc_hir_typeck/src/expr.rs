@@ -690,7 +690,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_named_place_expr(oprnd);
                 Ty::new_ptr(self.tcx, ty, mutbl)
             }
-            hir::BorrowKind::Ref => {
+            hir::BorrowKind::Ref | hir::BorrowKind::Pin => {
                 // Note: at this point, we cannot say what the best lifetime
                 // is to use for resulting pointer. We want to use the
                 // shortest lifetime possible so as to avoid spurious borrowck
@@ -706,7 +706,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // whose address was taken can actually be made to live as long
                 // as it needs to live.
                 let region = self.next_region_var(infer::BorrowRegion(expr.span));
-                Ty::new_ref(self.tcx, region, ty, mutbl)
+                match kind {
+                    hir::BorrowKind::Ref => Ty::new_ref(self.tcx, region, ty, mutbl),
+                    hir::BorrowKind::Pin => Ty::new_pinned_ref(self.tcx, region, ty, mutbl),
+                    _ => unreachable!(),
+                }
             }
         }
     }

@@ -82,10 +82,13 @@ passes_collapse_debuginfo =
 passes_confusables = attribute should be applied to an inherent method
     .label = not an inherent method
 
+passes_const_continue_attr =
+    `#[const_continue]` should be applied to a break expression
+    .label = not a break expression
+
 passes_const_stable_not_stable =
     attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
     .label = attribute specified here
-
 
 passes_coroutine_on_non_closure =
     attribute should be applied to closures
@@ -445,6 +448,10 @@ passes_link_section =
 passes_linkage =
     attribute should be applied to a function or static
     .label = not a function definition or static
+
+passes_loop_match_attr =
+    `#[loop_match]` should be applied to a loop
+    .label = not a loop
 
 passes_macro_export =
     `#[macro_export]` only has an effect on macro definitions

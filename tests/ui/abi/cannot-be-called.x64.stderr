@@ -1,71 +1,71 @@
 error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:38:8
+  --> $DIR/cannot-be-called.rs:37:8
    |
 LL | extern "msp430-interrupt" fn msp430() {}
    |        ^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "avr-interrupt" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:40:8
+  --> $DIR/cannot-be-called.rs:39:8
    |
 LL | extern "avr-interrupt" fn avr() {}
    |        ^^^^^^^^^^^^^^^
 
 error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:42:8
+  --> $DIR/cannot-be-called.rs:41:8
    |
 LL | extern "riscv-interrupt-m" fn riscv_m() {}
    |        ^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "riscv-interrupt-s" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:44:8
+  --> $DIR/cannot-be-called.rs:43:8
    |
 LL | extern "riscv-interrupt-s" fn riscv_s() {}
    |        ^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:65:25
-   |
-LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-   |                         ^^^^^^^^^^^^^^^^^^
-
 error[E0570]: "avr-interrupt" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:71:22
+  --> $DIR/cannot-be-called.rs:64:22
    |
 LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
    |                      ^^^^^^^^^^^^^^^
 
+error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:70:25
+   |
+LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
+   |                         ^^^^^^^^^^^^^^^^^^
+
 error[E0570]: "riscv-interrupt-m" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:77:26
+  --> $DIR/cannot-be-called.rs:76:26
    |
 LL | fn riscv_m_ptr(f: extern "riscv-interrupt-m" fn()) {
    |                          ^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "riscv-interrupt-s" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:83:26
+  --> $DIR/cannot-be-called.rs:82:26
    |
 LL | fn riscv_s_ptr(f: extern "riscv-interrupt-s" fn()) {
    |                          ^^^^^^^^^^^^^^^^^^^
 
 error: functions with the "x86-interrupt" ABI cannot be called
-  --> $DIR/cannot-be-called.rs:59:5
+  --> $DIR/cannot-be-called.rs:58:5
    |
 LL |     x86();
    |     ^^^^^
    |
 note: an `extern "x86-interrupt"` function can only be called using inline assembly
-  --> $DIR/cannot-be-called.rs:59:5
+  --> $DIR/cannot-be-called.rs:58:5
    |
 LL |     x86();
    |     ^^^^^
 
 error: functions with the "x86-interrupt" ABI cannot be called
-  --> $DIR/cannot-be-called.rs:91:5
+  --> $DIR/cannot-be-called.rs:90:5
    |
 LL |     f()
    |     ^^^
    |
 note: an `extern "x86-interrupt"` function can only be called using inline assembly
-  --> $DIR/cannot-be-called.rs:91:5
+  --> $DIR/cannot-be-called.rs:90:5
    |
 LL |     f()
    |     ^^^

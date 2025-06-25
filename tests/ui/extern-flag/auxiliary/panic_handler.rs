@@ -12,4 +12,12 @@ pub fn begin_panic_handler(_info: &core::panic::PanicInfo<'_>) -> ! {
 }
 
 #[lang = "eh_personality"]
-extern "C" fn eh_personality() {}
+extern "C" fn eh_personality(
+    _version: i32,
+    _actions: i32,
+    _exception_class: u64,
+    _exception_object: *mut (),
+    _context: *mut (),
+) -> i32 {
+    loop {}
+}

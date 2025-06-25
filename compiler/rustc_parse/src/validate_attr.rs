@@ -301,6 +301,7 @@ fn emit_malformed_attribute(
             | sym::naked
             | sym::no_mangle
             | sym::must_use
+            | sym::track_caller
     ) {
         return;
     }

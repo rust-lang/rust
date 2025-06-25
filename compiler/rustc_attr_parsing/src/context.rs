@@ -15,11 +15,14 @@ use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
-use crate::attributes::codegen_attrs::{ColdParser, NakedParser, NoMangleParser, OptimizeParser};
+use crate::attributes::codegen_attrs::{
+    ColdParser, NakedParser, NoMangleParser, OptimizeParser, TrackCallerParser,
+};
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
 use crate::attributes::lint_helpers::{AsPtrParser, PubTransparentParser};
+use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::repr::{AlignParser, ReprParser};
 use crate::attributes::semantics::MayDangleParser;
@@ -111,9 +114,11 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Single<AsPtrParser>,
         Single<ColdParser>,
+        Single<ConstContinueParser>,
         Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
         Single<InlineParser>,
+        Single<LoopMatchParser>,
         Single<MayDangleParser>,
         Single<MustUseParser>,
         Single<NoMangleParser>,
@@ -121,6 +126,7 @@ attribute_parsers!(
         Single<PubTransparentParser>,
         Single<RustcForceInlineParser>,
         Single<SkipDuringMethodDispatchParser>,
+        Single<TrackCallerParser>,
         Single<TransparencyParser>,
         // tidy-alphabetical-end
     ];

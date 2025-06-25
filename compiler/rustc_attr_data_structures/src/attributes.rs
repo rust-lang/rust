@@ -212,6 +212,9 @@ pub enum AttributeKind {
         first_span: Span,
     },
 
+    /// Represents `#[const_continue]`.
+    ConstContinue(Span),
+
     /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
     ConstStability {
         stability: PartialConstStability,
@@ -230,6 +233,9 @@ pub enum AttributeKind {
 
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
+
+    /// Represents `#[loop_match]`.
+    LoopMatch(Span),
 
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
@@ -268,5 +274,8 @@ pub enum AttributeKind {
         /// Span of the attribute.
         span: Span,
     },
+
+    /// Represents `#[track_caller]`
+    TrackCaller(Span),
     // tidy-alphabetical-end
 }

@@ -600,11 +600,13 @@ impl<'tcx> NonConstOp<'tcx> for EscapingMutBorrow {
                 kind: ccx.const_kind(),
                 teach: ccx.tcx.sess.teach(E0764),
             }),
-            hir::BorrowKind::Ref => ccx.dcx().create_err(errors::MutableRefEscaping {
-                span,
-                kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(E0764),
-            }),
+            hir::BorrowKind::Ref | hir::BorrowKind::Pin => {
+                ccx.dcx().create_err(errors::MutableRefEscaping {
+                    span,
+                    kind: ccx.const_kind(),
+                    teach: ccx.tcx.sess.teach(E0764),
+                })
+            }
         }
     }
 }

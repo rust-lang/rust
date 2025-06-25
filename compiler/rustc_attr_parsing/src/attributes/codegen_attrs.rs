@@ -1,7 +1,7 @@
 use rustc_attr_data_structures::{AttributeKind, OptimizeAttr};
 use rustc_feature::{AttributeTemplate, template};
 use rustc_session::parse::feature_err;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use super::{AcceptMapping, AttributeOrder, AttributeParser, OnDuplicate, SingleAttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
@@ -11,7 +11,7 @@ use crate::session_diagnostics::NakedFunctionIncompatibleAttribute;
 pub(crate) struct OptimizeParser;
 
 impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
-    const PATH: &[rustc_span::Symbol] = &[sym::optimize];
+    const PATH: &[Symbol] = &[sym::optimize];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(List: "size|speed|none");
@@ -44,7 +44,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
 pub(crate) struct ColdParser;
 
 impl<S: Stage> SingleAttributeParser<S> for ColdParser {
-    const PATH: &[rustc_span::Symbol] = &[sym::cold];
+    const PATH: &[Symbol] = &[sym::cold];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const TEMPLATE: AttributeTemplate = template!(Word);
@@ -163,6 +163,24 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
         }
 
         Some(AttributeKind::Naked(span))
+    }
+}
+
+pub(crate) struct TrackCallerParser;
+
+impl<S: Stage> SingleAttributeParser<S> for TrackCallerParser {
+    const PATH: &[Symbol] = &[sym::track_caller];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const TEMPLATE: AttributeTemplate = template!(Word);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
+            return None;
+        }
+
+        Some(AttributeKind::TrackCaller(cx.attr_span))
     }
 }
 
