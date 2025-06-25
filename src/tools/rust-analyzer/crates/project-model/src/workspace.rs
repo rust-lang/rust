@@ -408,11 +408,17 @@ impl ProjectWorkspace {
             ))
         });
 
-        let (rustc_cfg, data_layout, rustc, loaded_sysroot, cargo_metadata, cargo_config_extra_env) =
-            match join {
-                Ok(it) => it,
-                Err(e) => std::panic::resume_unwind(e),
-            };
+        let (
+            rustc_cfg,
+            data_layout,
+            mut rustc,
+            loaded_sysroot,
+            cargo_metadata,
+            cargo_config_extra_env,
+        ) = match join {
+            Ok(it) => it,
+            Err(e) => std::panic::resume_unwind(e),
+        };
 
         let (meta, error) = cargo_metadata.with_context(|| {
             format!(
@@ -423,6 +429,14 @@ impl ProjectWorkspace {
         if let Some(loaded_sysroot) = loaded_sysroot {
             tracing::info!(src_root = ?sysroot.rust_lib_src_root(), root = %loaded_sysroot, "Loaded sysroot");
             sysroot.set_workspace(loaded_sysroot);
+        }
+
+        if !cargo.requires_rustc_private() {
+            if let Err(e) = &mut rustc {
+                // We don't need the rustc sources here,
+                // so just discard the error.
+                _ = e.take();
+            }
         }
 
         Ok(ProjectWorkspace {
@@ -1208,14 +1222,10 @@ fn cargo_to_crate_graph(
     // Mapping of a package to its library target
     let mut pkg_to_lib_crate = FxHashMap::default();
     let mut pkg_crates = FxHashMap::default();
-    // Does any crate signal to rust-analyzer that they need the rustc_private crates?
-    let mut has_private = false;
     let workspace_proc_macro_cwd = Arc::new(cargo.workspace_root().to_path_buf());
 
     // Next, create crates for each package, target pair
     for pkg in cargo.packages() {
-        has_private |= cargo[pkg].metadata.rustc_private;
-
         let cfg_options = {
             let mut cfg_options = cfg_options.clone();
 
@@ -1360,7 +1370,7 @@ fn cargo_to_crate_graph(
         add_dep(crate_graph, from, name, to);
     }
 
-    if has_private {
+    if cargo.requires_rustc_private() {
         // If the user provided a path to rustc sources, we add all the rustc_private crates
         // and create dependencies on them for the crates which opt-in to that
         if let Some((rustc_workspace, rustc_build_scripts)) = rustc {
