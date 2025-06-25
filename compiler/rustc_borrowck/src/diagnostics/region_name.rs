@@ -289,7 +289,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         debug!("give_region_a_name: error_region = {:?}", error_region);
         match error_region.kind() {
-            ty::ReEarlyParam(ebr) => ebr.has_name().then(|| {
+            ty::ReEarlyParam(ebr) => ebr.is_named().then(|| {
                 let def_id = tcx.generics_of(self.mir_def_id()).region_param(ebr, tcx).def_id;
                 let span = tcx.hir_span_if_local(def_id).unwrap_or(DUMMY_SP);
                 RegionName { name: ebr.name, source: RegionNameSource::NamedEarlyParamRegion(span) }
@@ -895,7 +895,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let ty::ReEarlyParam(region) = self.to_error_region(fr)?.kind() else {
             return None;
         };
-        if region.has_name() {
+        if region.is_named() {
             return None;
         };
 
@@ -930,7 +930,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let ty::ReEarlyParam(region) = self.to_error_region(fr)?.kind() else {
             return None;
         };
-        if region.has_name() {
+        if region.is_named() {
             return None;
         };
 

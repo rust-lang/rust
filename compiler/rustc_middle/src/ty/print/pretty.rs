@@ -2545,7 +2545,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         match region.kind() {
-            ty::ReEarlyParam(ref data) => data.has_name(),
+            ty::ReEarlyParam(ref data) => data.is_named(),
 
             ty::ReLateParam(ty::LateParamRegion { kind, .. }) => kind.is_named(self.tcx),
             ty::ReBound(_, ty::BoundRegion { kind: br, .. })

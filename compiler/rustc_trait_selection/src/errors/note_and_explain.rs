@@ -32,7 +32,7 @@ impl<'a> DescriptionCtx<'a> {
                 } else {
                     tcx.def_span(scope)
                 };
-                if br.has_name() {
+                if br.is_named() {
                     (Some(span), "as_defined", br.name.to_string())
                 } else {
                     (Some(span), "as_defined_anon", String::new())

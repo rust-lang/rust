@@ -165,7 +165,7 @@ impl<'tcx> Region<'tcx> {
 
     pub fn get_name(self, tcx: TyCtxt<'tcx>) -> Option<Symbol> {
         match self.kind() {
-            ty::ReEarlyParam(ebr) => Some(ebr.name),
+            ty::ReEarlyParam(ebr) => ebr.is_named().then_some(ebr.name),
             ty::ReBound(_, br) => br.kind.get_name(tcx),
             ty::ReLateParam(fr) => fr.kind.get_name(tcx),
             ty::ReStatic => Some(kw::StaticLifetime),
@@ -184,7 +184,7 @@ impl<'tcx> Region<'tcx> {
     /// Is this region named by the user?
     pub fn has_name(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
-            ty::ReEarlyParam(ebr) => ebr.has_name(),
+            ty::ReEarlyParam(ebr) => ebr.is_named(),
             ty::ReBound(_, br) => br.kind.is_named(tcx),
             ty::ReLateParam(fr) => fr.kind.is_named(tcx),
             ty::ReStatic => true,
