@@ -978,7 +978,7 @@ pub(crate) fn check_associated_item(
                 let sig = tcx.fn_sig(item.def_id).instantiate_identity();
                 let hir_sig =
                     tcx.hir_node_by_def_id(item_id).fn_sig().expect("bad signature for method");
-                check_fn_or_method(wfcx, sig, hir_sig.decl, item.def_id.expect_local());
+                check_fn_or_method(wfcx, sig, hir_sig.decl, item_id);
                 check_method_receiver(wfcx, hir_sig, item, self_ty)
             }
             ty::AssocKind::Type { .. } => {
@@ -1655,17 +1655,18 @@ fn check_method_receiver<'tcx>(
     }
 
     let span = fn_sig.decl.inputs[0].span;
+    let loc = Some(WellFormedLoc::Param { function: method.def_id.expect_local(), param_idx: 0 });
 
     let sig = tcx.fn_sig(method.def_id).instantiate_identity();
     let sig = tcx.liberate_late_bound_regions(method.def_id, sig);
-    let sig = wfcx.normalize(span, None, sig);
+    let sig = wfcx.normalize(DUMMY_SP, loc, sig);
 
     debug!("check_method_receiver: sig={:?}", sig);
 
-    let self_ty = wfcx.normalize(span, None, self_ty);
+    let self_ty = wfcx.normalize(DUMMY_SP, loc, self_ty);
 
     let receiver_ty = sig.inputs()[0];
-    let receiver_ty = wfcx.normalize(span, None, receiver_ty);
+    let receiver_ty = wfcx.normalize(DUMMY_SP, loc, receiver_ty);
 
     // If the receiver already has errors reported, consider it valid to avoid
     // unnecessary errors (#58712).
