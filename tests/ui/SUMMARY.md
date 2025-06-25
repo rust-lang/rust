@@ -208,14 +208,14 @@ Tests targeted at how we deduce the types of closure arguments. This process is 
 
 Any closure-focused tests that does not fit in the other more specific closure subdirectories belong here. E.g. syntax, `move`, lifetimes.
 
-## `tests/ui/cmse-nonsecure/`: `C-cmse-nonsecure` ABIs
+## `tests/ui/cmse-nonsecure/`: `cmse-nonsecure` ABIs
 
-Tests for `cmse_nonsecure_entry` and `abi_c_cmse_nonsecure_call` ABIs. Used specifically for the Armv8-M architecture, the former marks Secure functions with additional behaviours, such as adding a special symbol and constraining the number of parameters, while the latter alters function pointers to indicate they are non-secure and to handle them differently than usual.
+Tests for `extern "cmse-nonsecure-call"` and `extern "cmse-nonsecure-entry"` functions. Used specifically for the Armv8-M architecture, the former marks Secure functions with additional behaviours, such as adding a special symbol and constraining the number of parameters, while the latter alters function pointers to indicate they are non-secure and to handle them differently than usual.
 
 See:
 
-- [`cmse_nonsecure_entry` | The Unstable book](https://doc.rust-lang.org/unstable-book/language-features/cmse-nonsecure-entry.html)
-- [`abi_c_cmse_nonsecure_call` | The Unstable book](https://doc.rust-lang.org/beta/unstable-book/language-features/abi-c-cmse-nonsecure-call.html)
+- [`cmse_nonsecure_entry` | The Unstable book](https://doc.rust-lang.org/nightly/unstable-book/language-features/cmse-nonsecure-entry.html)
+- [`abi_cmse_nonsecure_call` | The Unstable book](https://doc.rust-lang.org/nightly/unstable-book/language-features/abi-cmse-nonsecure-call.html)
 
 ## `tests/ui/codegen/`: Code Generation
 

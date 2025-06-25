@@ -1,6 +1,4 @@
 C
-C-cmse-nonsecure-call
-C-cmse-nonsecure-entry
 C-unwind
 Rust
 aapcs
@@ -9,6 +7,8 @@ avr-interrupt
 avr-non-blocking-interrupt
 cdecl
 cdecl-unwind
+cmse-nonsecure-call
+cmse-nonsecure-entry
 custom
 efiapi
 fastcall

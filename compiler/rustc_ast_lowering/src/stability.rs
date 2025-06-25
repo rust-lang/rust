@@ -127,12 +127,12 @@ pub fn extern_abi_stability(abi: ExternAbi) -> Result<(), UnstableAbi> {
             feature: sym::abi_riscv_interrupt,
             explain: GateReason::Experimental,
         }),
-        ExternAbi::CCmseNonSecureCall => Err(UnstableAbi {
+        ExternAbi::CmseNonSecureCall => Err(UnstableAbi {
             abi,
-            feature: sym::abi_c_cmse_nonsecure_call,
+            feature: sym::abi_cmse_nonsecure_call,
             explain: GateReason::Experimental,
         }),
-        ExternAbi::CCmseNonSecureEntry => Err(UnstableAbi {
+        ExternAbi::CmseNonSecureEntry => Err(UnstableAbi {
             abi,
             feature: sym::cmse_nonsecure_entry,
             explain: GateReason::Experimental,
