@@ -228,7 +228,10 @@ pub(crate) enum AttributeOrder {
     KeepLast,
 }
 
-type ConvertFn<E> = fn(ThinVec<E>) -> AttributeKind;
+pub(crate) enum ConvertFn<E> {
+    Simple(fn(ThinVec<E>) -> AttributeKind),
+    WithFirstAttributeSpan(fn(ThinVec<E>, Span) -> AttributeKind),
+}
 
 /// Alternative to [`AttributeParser`] that automatically handles state management.
 /// If multiple attributes appear on an element, combines the values of each into a
@@ -262,11 +265,12 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
 pub(crate) struct Combine<T: CombineAttributeParser<S>, S: Stage>(
     PhantomData<(S, T)>,
     ThinVec<<T as CombineAttributeParser<S>>::Item>,
+    Option<Span>,
 );
 
 impl<T: CombineAttributeParser<S>, S: Stage> Default for Combine<T, S> {
     fn default() -> Self {
-        Self(Default::default(), Default::default())
+        Self(Default::default(), Default::default(), Default::default())
     }
 }
 
@@ -274,10 +278,23 @@ impl<T: CombineAttributeParser<S>, S: Stage> AttributeParser<S> for Combine<T, S
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         T::PATH,
         <T as CombineAttributeParser<S>>::TEMPLATE,
-        |group: &mut Combine<T, S>, cx, args| group.1.extend(T::extend(cx, args)),
+        |group: &mut Combine<T, S>, cx, args| {
+            // Keep track of the span of the first attribute, for diagnostics
+            if group.2.is_none() {
+                group.2 = Some(cx.attr_span);
+            }
+            group.1.extend(T::extend(cx, args))
+        },
     )];
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
-        if self.1.is_empty() { None } else { Some(T::CONVERT(self.1)) }
+        if let Some(first_span) = self.2 {
+            Some(match T::CONVERT {
+                ConvertFn::Simple(f) => f(self.1),
+                ConvertFn::WithFirstAttributeSpan(f) => f(self.1, first_span),
+            })
+        } else {
+            None
+        }
     }
 }

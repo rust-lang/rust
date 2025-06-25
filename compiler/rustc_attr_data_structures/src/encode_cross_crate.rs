@@ -38,6 +38,7 @@ impl AttributeKind {
             Optimize(..) => No,
             PubTransparent(..) => Yes,
             SkipDuringMethodDispatch { .. } => No,
+            TargetFeature(..) => No,
             TrackCaller(..) => Yes,
             Used { .. } => No,
         }

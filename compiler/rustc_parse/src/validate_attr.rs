@@ -298,6 +298,7 @@ fn emit_malformed_attribute(
             | sym::deprecated
             | sym::optimize
             | sym::cold
+            | sym::target_feature
             | sym::naked
             | sym::no_mangle
             | sym::must_use

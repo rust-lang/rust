@@ -146,19 +146,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::ConstContinue(attr_span)) => {
                     self.check_const_continue(hir_id, *attr_span, target)
                 }
-                Attribute::Parsed(AttributeKind::AllowInternalUnstable(syms)) => self
-                    .check_allow_internal_unstable(
-                        hir_id,
-                        syms.first().unwrap().1,
-                        span,
-                        target,
-                        attrs,
-                    ),
+                Attribute::Parsed(AttributeKind::AllowInternalUnstable(_, first_span)) => {
+                    self.check_allow_internal_unstable(hir_id, *first_span, span, target, attrs)
+                }
                 Attribute::Parsed(AttributeKind::AllowConstFnUnstable { .. }) => {
                     self.check_rustc_allow_const_fn_unstable(hir_id, attr, span, target)
                 }
                 Attribute::Parsed(AttributeKind::Deprecation { .. }) => {
                     self.check_deprecated(hir_id, attr, span, target)
+                }
+                Attribute::Parsed(AttributeKind::TargetFeature(_, attr_span)) => {
+                    self.check_target_feature(hir_id, *attr_span, span, target, attrs)
                 }
                 Attribute::Parsed(AttributeKind::DocComment { .. }) => { /* `#[doc]` is actually a lot more than just doc comments, so is checked below*/
                 }
@@ -221,9 +219,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target, item),
                         [sym::marker, ..] => self.check_marker(hir_id, attr, span, target),
-                        [sym::target_feature, ..] => {
-                            self.check_target_feature(hir_id, attr, span, target, attrs)
-                        }
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
                         [sym::doc, ..] => self.check_doc_attrs(
                             attr,
@@ -813,7 +808,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_target_feature(
         &self,
         hir_id: HirId,
-        attr: &Attribute,
+        attr_span: Span,
         span: Span,
         target: Target,
         attrs: &[Attribute],
@@ -831,7 +826,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
 
                     self.dcx().emit_err(errors::LangItemWithTargetFeature {
-                        attr_span: attr.span(),
+                        attr_span,
                         name: lang_item,
                         sig_span: sig.span,
                     });
@@ -843,7 +838,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
                     hir_id,
-                    attr.span(),
+                    attr_span,
                     errors::TargetFeatureOnStatement,
                 );
             }
@@ -852,11 +847,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "target_feature");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr_span, "target_feature");
             }
             _ => {
                 self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                    attr_span: attr.span(),
+                    attr_span,
                     defn_span: span,
                     on_crate: hir_id == CRATE_HIR_ID,
                 });
@@ -2333,8 +2328,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     }
                     return;
                 }
+                AttributeKind::TargetFeature(features, span) if features.len() == 0 => {
+                    self.tcx.emit_node_span_lint(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        *span,
+                        errors::Unused {
+                            attr_span: *span,
+                            note: errors::UnusedNote::EmptyList { name: sym::target_feature },
+                        },
+                    );
+                    return;
+                }
                 _ => {}
-            }
+            };
         }
 
         // Warn on useless empty attributes.
@@ -2346,7 +2353,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::deny,
             sym::forbid,
             sym::feature,
-            sym::target_feature,
         ]) && attr.meta_item_list().is_some_and(|list| list.is_empty())
         {
             errors::UnusedNote::EmptyList { name: attr.name().unwrap() }

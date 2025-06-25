@@ -201,7 +201,7 @@ pub enum AttributeKind {
     AllowConstFnUnstable(ThinVec<Symbol>),
 
     /// Represents `#[allow_internal_unstable]`.
-    AllowInternalUnstable(ThinVec<(Symbol, Span)>),
+    AllowInternalUnstable(ThinVec<(Symbol, Span)>, Span),
 
     /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     AsPtr(Span),
@@ -296,6 +296,9 @@ pub enum AttributeKind {
         /// Span of the attribute.
         span: Span,
     },
+
+    /// Represents `#[target_feature(enable = "...")]`
+    TargetFeature(ThinVec<(Symbol, Span)>, Span),
 
     /// Represents `#[track_caller]`
     TrackCaller(Span),

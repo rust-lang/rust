@@ -2,6 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
@@ -1621,7 +1622,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let safety = self.lower_safety(h.safety, default_safety);
 
         // Treat safe `#[target_feature]` functions as unsafe, but also remember that we did so.
-        let safety = if attrs.iter().any(|attr| attr.has_name(sym::target_feature))
+        let safety = if find_attr!(attrs, AttributeKind::TargetFeature { .. })
             && safety.is_safe()
             && !self.tcx.sess.target.is_like_wasm
         {
