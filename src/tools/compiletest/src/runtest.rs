@@ -17,10 +17,10 @@ use tracing::*;
 
 use crate::common::{
     Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap, CoverageRun, Crashes,
-    DebugInfo, Debugger, FailMode, Incremental, MirOpt, PassMode, Pretty, RunMake, Rustdoc,
-    RustdocJs, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
-    UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path, incremental_dir,
-    output_base_dir, output_base_name, output_testname_unique,
+    DebugInfo, Debugger, FailMode, Incremental, MirOpt, PassMode, Pretty, RunFailMode, RunMake,
+    Rustdoc, RustdocJs, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR,
+    UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path,
+    incremental_dir, output_base_dir, output_base_name, output_testname_unique,
 };
 use crate::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
 use crate::errors::{Error, ErrorKind, load_errors};
@@ -277,7 +277,11 @@ impl<'test> TestCx<'test> {
 
     fn should_run(&self, pm: Option<PassMode>) -> WillExecute {
         let test_should_run = match self.config.mode {
-            Ui if pm == Some(PassMode::Run) || self.props.fail_mode == Some(FailMode::Run) => true,
+            Ui if pm == Some(PassMode::Run)
+                || matches!(self.props.fail_mode, Some(FailMode::Run(_))) =>
+            {
+                true
+            }
             MirOpt if pm == Some(PassMode::Run) => true,
             Ui | MirOpt => false,
             mode => panic!("unimplemented for mode {:?}", mode),

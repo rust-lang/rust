@@ -1,4 +1,4 @@
-//@ run-fail
+//@ run-crash
 //@ compile-flags: -Zcontract-checks=yes
 
 #![feature(contracts)]

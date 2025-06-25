@@ -1,4 +1,4 @@
-//@ run-fail
+//@ run-crash
 //@ only-windows
 
 fn main() {
