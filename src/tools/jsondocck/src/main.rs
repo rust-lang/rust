@@ -68,7 +68,7 @@ fn main() -> ExitCode {
         lineno += 1;
 
         if DEPRECATED_LINE_PATTERN.is_match(line) {
-            error_reporter.print("Deprecated directive syntax, replace `// @` with `//@ `", lineno);
+            error_reporter.print("deprecated directive syntax, replace `// @` with `//@ `", lineno);
 
             continue;
         }
