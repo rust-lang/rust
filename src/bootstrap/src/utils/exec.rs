@@ -544,7 +544,7 @@ impl ExecutionContext {
         let created_at = command.get_created_location();
         let executed_at = std::panic::Location::caller();
 
-        if self.dry_run() && !command.run_always {
+        if self.dry_run() && !command.run_in_dry_run {
             return DeferredCommand {
                 state: CommandState::Deferred {
                     process: None,
@@ -635,7 +635,7 @@ impl<'a> DeferredCommand<'a> {
                 let output =
                     Self::finish_process(process, command, stdout, stderr, executed_at, exec_ctx);
 
-                if (!exec_ctx.dry_run() || command.run_always)
+                if (!exec_ctx.dry_run() || command.run_in_dry_run)
                     && let (Some(cache_key), Some(_)) = (&cache_key, output.status())
                 {
                     exec_ctx.command_cache.insert(cache_key.clone(), output.clone());
