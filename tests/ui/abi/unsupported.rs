@@ -25,7 +25,7 @@
     abi_gpu_kernel,
     abi_x86_interrupt,
     abi_riscv_interrupt,
-    abi_c_cmse_nonsecure_call,
+    abi_cmse_nonsecure_call,
     abi_vectorcall,
     cmse_nonsecure_entry
 )]
@@ -117,18 +117,18 @@ fn vectorcall_ptr(f: extern "vectorcall" fn()) {
 extern "vectorcall" {}
 //[arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
 
-fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
+fn cmse_call_ptr(f: extern "cmse-nonsecure-call" fn()) {
 //~^ ERROR is not a supported ABI
     f()
 }
 
-extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
+extern "cmse-nonsecure-entry" fn cmse_entry() {}
 //~^ ERROR is not a supported ABI
-fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
+fn cmse_entry_ptr(f: extern "cmse-nonsecure-entry" fn()) {
 //~^ ERROR is not a supported ABI
     f()
 }
-extern "C-cmse-nonsecure-entry" {}
+extern "cmse-nonsecure-entry" {}
 //~^ ERROR is not a supported ABI
 
 #[cfg(windows)]
@@ -136,27 +136,3 @@ extern "C-cmse-nonsecure-entry" {}
 extern "cdecl" {}
 //[x64_win]~^ WARN unsupported_calling_conventions
 //[x64_win]~^^ WARN this was previously accepted
-
-struct FnPtrBearer {
-    ptr: extern "thiscall" fn(),
-    //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ ERROR: is not a supported ABI
-}
-
-impl FnPtrBearer {
-    pub extern "thiscall" fn inherent_fn(self) {
-        //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ ERROR: is not a supported ABI
-        (self.ptr)()
-    }
-}
-
-trait Trait {
-    extern "thiscall" fn trait_fn(self);
-    //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ ERROR: is not a supported ABI
-}
-
-impl Trait for FnPtrBearer {
-    extern "thiscall" fn trait_fn(self) {
-        //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ ERROR: is not a supported ABI
-        self.inherent_fn()
-    }
-}

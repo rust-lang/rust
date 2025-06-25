@@ -59,9 +59,9 @@ pub enum ExternAbi {
         unwind: bool,
     },
     /// extremely constrained barely-C ABI for TrustZone
-    CCmseNonSecureCall,
+    CmseNonSecureCall,
     /// extremely constrained barely-C ABI for TrustZone
-    CCmseNonSecureEntry,
+    CmseNonSecureEntry,
 
     /* gpu */
     /// An entry-point function called by the GPU's host
@@ -140,8 +140,6 @@ macro_rules! abi_impls {
 abi_impls! {
     ExternAbi = {
             C { unwind: false } =><= "C",
-            CCmseNonSecureCall =><= "C-cmse-nonsecure-call",
-            CCmseNonSecureEntry =><= "C-cmse-nonsecure-entry",
             C { unwind: true } =><= "C-unwind",
             Rust =><= "Rust",
             Aapcs { unwind: false } =><= "aapcs",
@@ -150,6 +148,8 @@ abi_impls! {
             AvrNonBlockingInterrupt =><= "avr-non-blocking-interrupt",
             Cdecl { unwind: false } =><= "cdecl",
             Cdecl { unwind: true } =><= "cdecl-unwind",
+            CmseNonSecureCall =><= "cmse-nonsecure-call",
+            CmseNonSecureEntry =><= "cmse-nonsecure-entry",
             Custom =><= "custom",
             EfiApi =><= "efiapi",
             Fastcall { unwind: false } =><= "fastcall",

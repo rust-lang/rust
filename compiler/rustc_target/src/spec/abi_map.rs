@@ -85,24 +85,35 @@ impl AbiMap {
             (ExternAbi::System { .. }, _) => CanonAbi::C,
 
             // fallible lowerings
+            /* multi-platform */
+            // always and forever
+            (ExternAbi::RustInvalid, _) => return AbiMapping::Invalid,
+
             (ExternAbi::EfiApi, Arch::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
             (ExternAbi::EfiApi, Arch::X86_64) => CanonAbi::X86(X86Call::Win64),
             (ExternAbi::EfiApi, Arch::Aarch64 | Arch::Riscv | Arch::X86) => CanonAbi::C,
             (ExternAbi::EfiApi, _) => return AbiMapping::Invalid,
 
+            /* arm */
             (ExternAbi::Aapcs { .. }, Arch::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
             (ExternAbi::Aapcs { .. }, _) => return AbiMapping::Invalid,
 
-            (ExternAbi::CCmseNonSecureCall, Arch::Arm(ArmVer::ThumbV8M)) => {
+            (ExternAbi::CmseNonSecureCall, Arch::Arm(ArmVer::ThumbV8M)) => {
                 CanonAbi::Arm(ArmCall::CCmseNonSecureCall)
             }
-            (ExternAbi::CCmseNonSecureEntry, Arch::Arm(ArmVer::ThumbV8M)) => {
+            (ExternAbi::CmseNonSecureEntry, Arch::Arm(ArmVer::ThumbV8M)) => {
                 CanonAbi::Arm(ArmCall::CCmseNonSecureEntry)
             }
-            (ExternAbi::CCmseNonSecureCall | ExternAbi::CCmseNonSecureEntry, ..) => {
+            (ExternAbi::CmseNonSecureCall | ExternAbi::CmseNonSecureEntry, ..) => {
                 return AbiMapping::Invalid;
             }
 
+            /* gpu */
+            (ExternAbi::PtxKernel, Arch::Nvptx) => CanonAbi::GpuKernel,
+            (ExternAbi::GpuKernel, Arch::Amdgpu | Arch::Nvptx) => CanonAbi::GpuKernel,
+            (ExternAbi::PtxKernel | ExternAbi::GpuKernel, _) => return AbiMapping::Invalid,
+
+            /* x86 */
             (ExternAbi::Cdecl { .. }, Arch::X86) => CanonAbi::C,
             (ExternAbi::Cdecl { .. }, _) => return AbiMapping::Deprecated(CanonAbi::C),
 
@@ -130,10 +141,7 @@ impl AbiMap {
             (ExternAbi::Win64 { .. }, Arch::X86_64) => CanonAbi::X86(X86Call::Win64),
             (ExternAbi::SysV64 { .. } | ExternAbi::Win64 { .. }, _) => return AbiMapping::Invalid,
 
-            (ExternAbi::PtxKernel, Arch::Nvptx) => CanonAbi::GpuKernel,
-            (ExternAbi::GpuKernel, Arch::Amdgpu | Arch::Nvptx) => CanonAbi::GpuKernel,
-            (ExternAbi::PtxKernel | ExternAbi::GpuKernel, _) => return AbiMapping::Invalid,
-
+            /* interrupts */
             (ExternAbi::AvrInterrupt, Arch::Avr) => CanonAbi::Interrupt(InterruptKind::Avr),
             (ExternAbi::AvrNonBlockingInterrupt, Arch::Avr) => {
                 CanonAbi::Interrupt(InterruptKind::AvrNonBlocking)
@@ -156,8 +164,7 @@ impl AbiMap {
                 | ExternAbi::Msp430Interrupt
                 | ExternAbi::RiscvInterruptM
                 | ExternAbi::RiscvInterruptS
-                | ExternAbi::X86Interrupt
-                | ExternAbi::RustInvalid,
+                | ExternAbi::X86Interrupt,
                 _,
             ) => return AbiMapping::Invalid,
         };

@@ -1516,7 +1516,7 @@ pub(crate) struct EnumVariantSameName<'tcx> {
     #[primary_span]
     pub variant_span: Span,
     pub dead_name: Symbol,
-    pub descr: &'tcx str,
+    pub dead_descr: &'tcx str,
 }
 
 #[derive(Subdiagnostic)]
@@ -1714,6 +1714,7 @@ impl Subdiagnostic for UnusedVariableStringInterp {
 #[derive(LintDiagnostic)]
 #[diag(passes_unused_variable_try_ignore)]
 pub(crate) struct UnusedVarTryIgnore {
+    pub name: String,
     #[subdiagnostic]
     pub sugg: UnusedVarTryIgnoreSugg,
 }

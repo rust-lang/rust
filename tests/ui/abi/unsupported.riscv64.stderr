@@ -126,53 +126,29 @@ error[E0570]: "vectorcall" is not a supported ABI for the current target
 LL | extern "vectorcall" {}
    |        ^^^^^^^^^^^^
 
-error[E0570]: "C-cmse-nonsecure-call" is not a supported ABI for the current target
+error[E0570]: "cmse-nonsecure-call" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:120:28
    |
-LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn cmse_call_ptr(f: extern "cmse-nonsecure-call" fn()) {
+   |                            ^^^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:125:8
    |
-LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "cmse-nonsecure-entry" fn cmse_entry() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:127:29
    |
-LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn cmse_entry_ptr(f: extern "cmse-nonsecure-entry" fn()) {
+   |                             ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: "C-cmse-nonsecure-entry" is not a supported ABI for the current target
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:131:8
    |
-LL | extern "C-cmse-nonsecure-entry" {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: "thiscall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:141:17
-   |
-LL |     ptr: extern "thiscall" fn(),
-   |                 ^^^^^^^^^^
-
-error[E0570]: "thiscall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:146:16
-   |
-LL |     pub extern "thiscall" fn inherent_fn(self) {
-   |                ^^^^^^^^^^
-
-error[E0570]: "thiscall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:153:12
-   |
-LL |     extern "thiscall" fn trait_fn(self);
-   |            ^^^^^^^^^^
-
-error[E0570]: "thiscall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:158:12
-   |
-LL |     extern "thiscall" fn trait_fn(self) {
-   |            ^^^^^^^^^^
+LL | extern "cmse-nonsecure-entry" {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: "cdecl" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:99:17
@@ -215,6 +191,6 @@ LL | extern "cdecl" fn cdecl() {}
    = note: for more information, see issue #137018 <https://github.com/rust-lang/rust/issues/137018>
    = help: use `extern "C"` instead
 
-error: aborting due to 28 previous errors; 4 warnings emitted
+error: aborting due to 24 previous errors; 4 warnings emitted
 
 For more information about this error, try `rustc --explain E0570`.
