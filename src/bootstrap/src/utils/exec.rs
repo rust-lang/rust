@@ -66,7 +66,7 @@ pub struct BootstrapCommand {
     command: Command,
     pub failure_behavior: BehaviorOnFailure,
     // Run the command even during dry run
-    pub run_always: bool,
+    pub run_in_dry_run: bool,
     // This field makes sure that each command is executed (or disarmed) before it is dropped,
     // to avoid forgetting to execute a command.
     drop_bomb: DropBomb,
@@ -138,8 +138,8 @@ impl<'a> BootstrapCommand {
         Self { failure_behavior: BehaviorOnFailure::Ignore, ..self }
     }
 
-    pub fn run_always(&mut self) -> &mut Self {
-        self.run_always = true;
+    pub fn run_in_dry_run(&mut self) -> &mut Self {
+        self.run_in_dry_run = true;
         self
     }
 
@@ -228,7 +228,7 @@ impl From<Command> for BootstrapCommand {
         Self {
             command,
             failure_behavior: BehaviorOnFailure::Exit,
-            run_always: false,
+            run_in_dry_run: false,
             drop_bomb: DropBomb::arm(program),
         }
     }

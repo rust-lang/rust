@@ -66,19 +66,22 @@ impl GitInfo {
             .arg("-1")
             .arg("--date=short")
             .arg("--pretty=format:%cd")
-            .run_always()
+            .run_in_dry_run()
             .start_capture_stdout(&exec_ctx);
 
         let mut git_hash_cmd = helpers::git(Some(dir));
-        let ver_hash =
-            git_hash_cmd.arg("rev-parse").arg("HEAD").run_always().start_capture_stdout(&exec_ctx);
+        let ver_hash = git_hash_cmd
+            .arg("rev-parse")
+            .arg("HEAD")
+            .run_in_dry_run()
+            .start_capture_stdout(&exec_ctx);
 
         let mut git_short_hash_cmd = helpers::git(Some(dir));
         let short_ver_hash = git_short_hash_cmd
             .arg("rev-parse")
             .arg("--short=9")
             .arg("HEAD")
-            .run_always()
+            .run_in_dry_run()
             .start_capture_stdout(&exec_ctx);
 
         GitInfo::Present(Some(Info {
