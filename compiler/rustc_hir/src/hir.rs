@@ -408,7 +408,7 @@ impl<'hir> PathSegment<'hir> {
 /// versus const args that are literals or have arbitrary computations (e.g., `{ 1 + 3 }`).
 ///
 /// For an explanation of the `Unambig` generic parameter see the dev-guide:
-/// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
+/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 #[repr(C)]
 pub struct ConstArg<'hir, Unambig = ()> {
@@ -420,15 +420,12 @@ pub struct ConstArg<'hir, Unambig = ()> {
 impl<'hir> ConstArg<'hir, AmbigArg> {
     /// Converts a `ConstArg` in an ambiguous position to one in an unambiguous position.
     ///
-    /// Functions accepting an unambiguous consts may expect the [`ConstArgKind::Infer`] variant
+    /// Functions accepting unambiguous consts may expect the [`ConstArgKind::Infer`] variant
     /// to be used. Care should be taken to separately handle infer consts when calling this
     /// function as it cannot be handled by downstream code making use of the returned const.
     ///
     /// In practice this may mean overriding the [`Visitor::visit_infer`][visit_infer] method on hir visitors, or
     /// specifically matching on [`GenericArg::Infer`] when handling generic arguments.
-    ///
-    /// For an explanation of what it means for a const arg to be ambig or unambig, see the dev-guide:
-    /// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
     ///
     /// [visit_infer]: [rustc_hir::intravisit::Visitor::visit_infer]
     pub fn as_unambig_ct(&self) -> &ConstArg<'hir> {
@@ -445,9 +442,6 @@ impl<'hir> ConstArg<'hir> {
     ///
     /// Functions accepting ambiguous consts will not handle the [`ConstArgKind::Infer`] variant, if
     /// infer consts are relevant to you then care should be taken to handle them separately.
-    ///
-    /// For an explanation of what it means for a const arg to be ambig or unambig, see the dev-guide:
-    /// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
     pub fn try_as_ambig_ct(&self) -> Option<&ConstArg<'hir, AmbigArg>> {
         if let ConstArgKind::Infer(_, ()) = self.kind {
             return None;
@@ -479,9 +473,6 @@ impl<'hir, Unambig> ConstArg<'hir, Unambig> {
 }
 
 /// See [`ConstArg`].
-///
-/// For an explanation of the `Unambig` generic parameter see the dev-guide:
-/// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 #[repr(u8, C)]
 pub enum ConstArgKind<'hir, Unambig = ()> {
@@ -3305,12 +3296,12 @@ impl<'hir> AssocItemConstraintKind<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum AmbigArg {}
 
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-#[repr(C)]
 /// Represents a type in the `HIR`.
 ///
 /// For an explanation of the `Unambig` generic parameter see the dev-guide:
-/// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
+/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+#[repr(C)]
 pub struct Ty<'hir, Unambig = ()> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
@@ -3328,9 +3319,6 @@ impl<'hir> Ty<'hir, AmbigArg> {
     /// In practice this may mean overriding the [`Visitor::visit_infer`][visit_infer] method on hir visitors, or
     /// specifically matching on [`GenericArg::Infer`] when handling generic arguments.
     ///
-    /// For an explanation of what it means for a type to be ambig or unambig, see the dev-guide:
-    /// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
-    ///
     /// [visit_infer]: [rustc_hir::intravisit::Visitor::visit_infer]
     pub fn as_unambig_ty(&self) -> &Ty<'hir> {
         // SAFETY: `Ty` is `repr(C)` and `TyKind` is marked `repr(u8)` so that the layout is
@@ -3346,9 +3334,6 @@ impl<'hir> Ty<'hir> {
     ///
     /// Functions accepting ambiguous types will not handle the [`TyKind::Infer`] variant, if
     /// infer types are relevant to you then care should be taken to handle them separately.
-    ///
-    /// For an explanation of what it means for a type to be ambig or unambig, see the dev-guide:
-    /// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
     pub fn try_as_ambig_ty(&self) -> Option<&Ty<'hir, AmbigArg>> {
         if let TyKind::Infer(()) = self.kind {
             return None;
@@ -3653,7 +3638,7 @@ pub enum InferDelegationKind {
 /// The various kinds of types recognized by the compiler.
 ///
 /// For an explanation of the `Unambig` generic parameter see the dev-guide:
-/// https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html
+/// <https://rustc-dev-guide.rust-lang.org/hir/ambig-unambig-ty-and-consts.html>
 // SAFETY: `repr(u8)` is required so that `TyKind<()>` and `TyKind<!>` are layout compatible
 #[repr(u8, C)]
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
