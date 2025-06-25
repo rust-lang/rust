@@ -274,5 +274,8 @@ pub enum AttributeKind {
         /// Span of the attribute.
         span: Span,
     },
+
+    /// Represents `#[track_caller]`
+    TrackCaller(Span),
     // tidy-alphabetical-end
 }
