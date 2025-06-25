@@ -74,6 +74,20 @@ fn _issue14897() {
     let x = 1.0;
     let _ = x * 2.0 + 0.5; // should not suggest mul_add
     let _ = 0.5 + x * 2.0; // should not suggest mul_add
+    let _ = 0.5 + x * 1.2; // should not suggest mul_add
+    let _ = 1.2 + x * 1.2; // should not suggest mul_add
+
+    let x = -1.0;
+    let _ = 0.5 + x * 1.2; // should not suggest mul_add
+
+    let x = { 4.0 };
+    let _ = 0.5 + x * 1.2; // should not suggest mul_add
+
+    let x = if 1 > 2 { 1.0 } else { 2.0 };
+    let _ = 0.5 + x * 1.2; // should not suggest mul_add
+
+    let x = 2.4 + 1.2;
+    let _ = 0.5 + x * 1.2; // should not suggest mul_add
 
     let _ = 0.5 + 2.0 * x;
     //~^ suboptimal_flops

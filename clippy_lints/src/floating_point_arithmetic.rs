@@ -462,22 +462,51 @@ fn has_ambiguous_float_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         ExprKind::Path(qpath) => {
             if let Res::Local(hir_id) = cx.qpath_res(qpath, expr.hir_id) {
                 if let Node::LetStmt(local) = cx.tcx.parent_hir_node(hir_id) {
-                    // If the local has no type annotation and the initializer is an unsuffixed float literal,
-                    // then the type is ambiguous
+                    // If the local has no type annotation, check if the initializer has ambiguous float literals
                     if local.ty.is_none() {
                         if let Some(init) = local.init {
-                            if let ExprKind::Lit(lit) = &init.kind {
-                                if let ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) = lit.node {
-                                    return true;
-                                }
-                            }
+                            return has_ambiguous_float_literal_in_expr(cx, init);
                         }
                     }
                 }
             }
             false
         },
-        ExprKind::Binary(_, lhs, rhs) => has_ambiguous_float_type(cx, lhs) || has_ambiguous_float_type(cx, rhs),
+        _ => false, // only check path
+    }
+}
+
+// Recursively check if an expression contains any unsuffixed float literals
+fn has_ambiguous_float_literal_in_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    match &expr.kind {
+        ExprKind::Lit(lit) => {
+            if let ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) = lit.node {
+                return true;
+            }
+            false
+        },
+        ExprKind::Binary(_, lhs, rhs) => {
+            has_ambiguous_float_literal_in_expr(cx, lhs) || has_ambiguous_float_literal_in_expr(cx, rhs)
+        },
+        ExprKind::Unary(_, expr) => has_ambiguous_float_literal_in_expr(cx, expr),
+        ExprKind::If(_, then, else_) => {
+            has_ambiguous_float_literal_in_expr(cx, then)
+                || else_
+                    .as_ref()
+                    .map_or(false, |else_expr| has_ambiguous_float_literal_in_expr(cx, else_expr))
+        },
+        ExprKind::Block(block, _) => block
+            .expr
+            .as_ref()
+            .map_or(false, |expr| has_ambiguous_float_literal_in_expr(cx, expr)),
+        ExprKind::MethodCall(_, receiver, args, _) => {
+            has_ambiguous_float_literal_in_expr(cx, receiver)
+                || args.iter().any(|arg| has_ambiguous_float_literal_in_expr(cx, arg))
+        },
+        ExprKind::Call(func, args) => {
+            has_ambiguous_float_literal_in_expr(cx, func)
+                || args.iter().any(|arg| has_ambiguous_float_literal_in_expr(cx, arg))
+        },
         _ => false,
     }
 }
