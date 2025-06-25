@@ -353,8 +353,8 @@ declare_features! (
 
     /// Allows `extern "avr-interrupt" fn()` and `extern "avr-non-blocking-interrupt" fn()`.
     (unstable, abi_avr_interrupt, "1.45.0", Some(69664)),
-    /// Allows `extern "C-cmse-nonsecure-call" fn()`.
-    (unstable, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391)),
+    /// Allows `extern "cmse-nonsecure-call" fn()`.
+    (unstable, abi_cmse_nonsecure_call, "CURRENT_RUSTC_VERSION", Some(81391)),
     /// Allows `extern "custom" fn()`.
     (unstable, abi_custom, "CURRENT_RUSTC_VERSION", Some(140829)),
     /// Allows `extern "gpu-kernel" fn()`.
@@ -431,7 +431,7 @@ declare_features! (
     (unstable, closure_lifetime_binder, "1.64.0", Some(97362)),
     /// Allows `#[track_caller]` on closures and coroutines.
     (unstable, closure_track_caller, "1.57.0", Some(87417)),
-    /// Allows `extern "C-cmse-nonsecure-entry" fn()`.
+    /// Allows `extern "cmse-nonsecure-entry" fn()`.
     (unstable, cmse_nonsecure_entry, "1.48.0", Some(75835)),
     /// Allows `async {}` expressions in const contexts.
     (unstable, const_async_blocks, "1.53.0", Some(85368)),

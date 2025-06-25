@@ -93,13 +93,13 @@ impl AbiMap {
             (ExternAbi::Aapcs { .. }, Arch::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
             (ExternAbi::Aapcs { .. }, _) => return AbiMapping::Invalid,
 
-            (ExternAbi::CCmseNonSecureCall, Arch::Arm(ArmVer::ThumbV8M)) => {
+            (ExternAbi::CmseNonSecureCall, Arch::Arm(ArmVer::ThumbV8M)) => {
                 CanonAbi::Arm(ArmCall::CCmseNonSecureCall)
             }
-            (ExternAbi::CCmseNonSecureEntry, Arch::Arm(ArmVer::ThumbV8M)) => {
+            (ExternAbi::CmseNonSecureEntry, Arch::Arm(ArmVer::ThumbV8M)) => {
                 CanonAbi::Arm(ArmCall::CCmseNonSecureEntry)
             }
-            (ExternAbi::CCmseNonSecureCall | ExternAbi::CCmseNonSecureEntry, ..) => {
+            (ExternAbi::CmseNonSecureCall | ExternAbi::CmseNonSecureEntry, ..) => {
                 return AbiMapping::Invalid;
             }
 
