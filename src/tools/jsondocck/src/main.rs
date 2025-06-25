@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::process::ExitCode;
 use std::sync::LazyLock;
 use std::{env, fs};
@@ -7,41 +8,10 @@ use regex::{Regex, RegexBuilder};
 mod cache;
 mod config;
 mod directive;
-mod error;
 
 use cache::Cache;
-use config::parse_config;
+use config::Config;
 use directive::{Directive, DirectiveKind};
-use error::CkError;
-
-fn main() -> ExitCode {
-    let Some(config) = parse_config(env::args()) else {
-        return ExitCode::FAILURE;
-    };
-
-    let mut failed = Vec::new();
-    let mut cache = Cache::new(&config);
-    let Ok(directives) = get_directives(&config.template) else {
-        eprintln!("Jsondocck failed for {}", &config.template);
-        return ExitCode::FAILURE;
-    };
-
-    for directive in directives {
-        if let Err(message) = directive.check(&mut cache) {
-            failed.push(CkError { directive, message });
-        }
-    }
-
-    if failed.is_empty() {
-        ExitCode::SUCCESS
-    } else {
-        for i in failed {
-            eprintln!("{}:{}, directive failed", config.template, i.directive.lineno);
-            eprintln!("{}", i.message)
-        }
-        ExitCode::FAILURE
-    }
-}
 
 static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new(
@@ -58,30 +28,38 @@ static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     .unwrap()
 });
 
-static DEPRECATED_LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    RegexBuilder::new(
-        r#"//\s+@"#,
-    )
-    .build()
-    .unwrap()
-});
+static DEPRECATED_LINE_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| RegexBuilder::new(r#"//\s+@"#).build().unwrap());
 
-fn print_err(msg: &str, lineno: usize) {
-    eprintln!("Invalid directive: {} on line {}", msg, lineno)
+struct ErrorReporter<'a> {
+    /// See [`Config::template`].
+    template: &'a str,
+    errors: bool,
 }
 
-/// Get a list of directives from a file.
-fn get_directives(template: &str) -> Result<Vec<Directive>, ()> {
-    let mut directives = Vec::new();
-    let mut errors = false;
+impl ErrorReporter<'_> {
+    fn print(&mut self, msg: impl Display, lineno: usize) {
+        self.errors = true;
+
+        eprintln!("{}:{lineno}: {msg}", self.template);
+    }
+}
+
+fn main() -> ExitCode {
+    let Some(config @ Config { template, .. }) = &Config::parse(env::args()) else {
+        return ExitCode::FAILURE;
+    };
+
+    let mut cache = Cache::new(config);
+    let mut error_reporter = ErrorReporter { errors: false, template };
     let file = fs::read_to_string(template).unwrap();
 
     for (mut lineno, line) in file.split('\n').enumerate() {
         lineno += 1;
 
         if DEPRECATED_LINE_PATTERN.is_match(line) {
-            print_err("Deprecated directive syntax, replace `// @` with `//@ `", lineno);
-            errors = true;
+            error_reporter.print("Deprecated directive syntax, replace `// @` with `//@ `", lineno);
+
             continue;
         }
 
@@ -93,15 +71,20 @@ fn get_directives(template: &str) -> Result<Vec<Directive>, ()> {
 
         let args_str = &cap["args"];
         let Some(args) = shlex::split(args_str) else {
-            print_err(&format!("Invalid arguments to shlex::split: `{args_str}`",), lineno);
-            errors = true;
+            error_reporter
+                .print(&format!("Invalid arguments to shlex::split: `{args_str}`",), lineno);
+
             continue;
         };
 
         if let Some((kind, path)) = DirectiveKind::parse(&cap["directive"], negated, &args) {
-            directives.push(Directive { kind, lineno, path: path.to_owned() })
+            let directive = Directive { kind, lineno, path: path.to_owned() };
+
+            if let Err(message) = directive.check(&mut cache) {
+                error_reporter.print(format_args!("directive failed: {message}"), directive.lineno);
+            }
         }
     }
 
-    if !errors { Ok(directives) } else { Err(()) }
+    if error_reporter.errors { ExitCode::FAILURE } else { ExitCode::SUCCESS }
 }
