@@ -9,7 +9,7 @@ use std::cell::Cell;
 use std::collections::hash_map::Entry;
 
 use rustc_abi::{Align, ExternAbi, Size};
-use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, ast};
+use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, ast};
 use rustc_attr_data_structures::{AttributeKind, InlineAttr, ReprAttr, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
@@ -184,6 +184,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_track_caller(hir_id, *attr_span, attrs, span, target)
                 }
                 Attribute::Parsed(
+                    AttributeKind::RustcLayoutScalarValidRangeStart(_num, attr_span)
+                    | AttributeKind::RustcLayoutScalarValidRangeEnd(_num, attr_span),
+                ) => self.check_rustc_layout_scalar_valid_range(*attr_span, span, target),
+                Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
                     | AttributeKind::MacroTransparency(_),
@@ -228,10 +232,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             &mut doc_aliases,
                         ),
                         [sym::no_link, ..] => self.check_no_link(hir_id, attr, span, target),
-                        [sym::rustc_layout_scalar_valid_range_start, ..]
-                        | [sym::rustc_layout_scalar_valid_range_end, ..] => {
-                            self.check_rustc_layout_scalar_valid_range(attr, span, target)
-                        }
                         [sym::debugger_visualizer, ..] => self.check_debugger_visualizer(attr, target),
                         [sym::rustc_std_internal_symbol, ..] => {
                             self.check_rustc_std_internal_symbol(attr, span, target)
@@ -1675,23 +1675,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_rustc_layout_scalar_valid_range(&self, attr: &Attribute, span: Span, target: Target) {
+    fn check_rustc_layout_scalar_valid_range(&self, attr_span: Span, span: Span, target: Target) {
         if target != Target::Struct {
-            self.dcx().emit_err(errors::RustcLayoutScalarValidRangeNotStruct {
-                attr_span: attr.span(),
-                span,
-            });
+            self.dcx().emit_err(errors::RustcLayoutScalarValidRangeNotStruct { attr_span, span });
             return;
-        }
-
-        let Some(list) = attr.meta_item_list() else {
-            return;
-        };
-
-        if !matches!(&list[..], &[MetaItemInner::Lit(MetaItemLit { kind: LitKind::Int(..), .. })]) {
-            self.tcx
-                .dcx()
-                .emit_err(errors::RustcLayoutScalarValidRangeArg { attr_span: attr.span() });
         }
     }
 

@@ -36,6 +36,8 @@ impl AttributeKind {
             NoMangle(..) => No,
             Optimize(..) => No,
             PubTransparent(..) => Yes,
+            RustcLayoutScalarValidRangeEnd(..) => Yes,
+            RustcLayoutScalarValidRangeStart(..) => Yes,
             SkipDuringMethodDispatch { .. } => No,
             TrackCaller(..) => Yes,
         }
