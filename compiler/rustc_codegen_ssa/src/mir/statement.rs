@@ -142,13 +142,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             (place_ref.val, layout, &place.projection[1..])
                         }
                         _ => {
-                            // If the address cannot be computed, use poison to indicate that the value has been optimized out.
-                            let ty = self.monomorphize(self.mir.local_decls[*dest].ty);
-                            let layout = bx.cx().layout_of(ty);
-                            let to_backend_ty = bx.cx().immediate_backend_type(layout);
-                            let place_ref =
-                                PlaceRef::new_sized(bx.cx().const_poison(to_backend_ty), layout);
-                            (place_ref.val, layout, [].as_slice())
+                            return;
                         }
                     };
                 self.debug_new_value_to_local(bx, *dest, val, layout, projection);
