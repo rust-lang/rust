@@ -225,6 +225,8 @@ pub trait Bridge: Sized {
     type OpaqueDef: OpaqueDef<Self>;
     type Prov: Prov<Self>;
     type StaticDef: StaticDef<Self>;
+
+    type Allocation: Allocation<Self>;
 }
 
 pub trait IndexedVal {

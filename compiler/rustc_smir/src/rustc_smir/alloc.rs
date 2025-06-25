@@ -10,7 +10,8 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::ty::{Ty, layout};
 
-use super::SmirCtxt;
+use super::{SmirCtxt, Tables};
+use crate::rustc_smir::bridge::Allocation as _;
 use crate::rustc_smir::{Bridge, SmirError};
 
 pub fn create_ty_and_layout<'tcx, B: Bridge>(
@@ -70,10 +71,12 @@ pub fn try_new_indirect<'tcx, B: Bridge>(
 }
 
 /// Creates an `Allocation` only from information within the `AllocRange`.
-pub fn allocation_filter(
+pub fn allocation_filter<'tcx, B: Bridge>(
     alloc: &rustc_middle::mir::interpret::Allocation,
     alloc_range: AllocRange,
-) -> (Vec<Option<u8>>, Vec<(usize, AllocId)>) {
+    tables: &mut Tables<'tcx, B>,
+    cx: &SmirCtxt<'tcx, B>,
+) -> B::Allocation {
     let mut bytes: Vec<Option<u8>> = alloc
         .inspect_with_uninit_and_ptr_outside_interpreter(
             alloc_range.start.bytes_usize()..alloc_range.end().bytes_usize(),
@@ -97,5 +100,5 @@ pub fn allocation_filter(
         ptrs.push((offset.bytes_usize() - alloc_range.start.bytes_usize(), prov.alloc_id()));
     }
 
-    (bytes, ptrs)
+    B::Allocation::new(bytes, ptrs, alloc.align.bytes(), alloc.mutability, tables, cx)
 }

@@ -63,6 +63,8 @@ impl Bridge for BridgeTys {
     type OpaqueDef = stable_mir::ty::OpaqueDef;
     type Prov = stable_mir::ty::Prov;
     type StaticDef = stable_mir::mir::mono::StaticDef;
+
+    type Allocation = stable_mir::ty::Allocation;
 }
 
 /// Stable public API for querying compiler information.

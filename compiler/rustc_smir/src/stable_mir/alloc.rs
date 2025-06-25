@@ -73,12 +73,5 @@ pub(super) fn allocation_filter<'tcx>(
     tables: &mut Tables<'tcx, BridgeTys>,
     cx: &SmirCtxt<'tcx, BridgeTys>,
 ) -> Allocation {
-    let (bytes, ptrs) = alloc::allocation_filter(alloc, alloc_range);
-    let ptrs = ptrs.iter().map(|(i, aid)| (*i, tables.prov(*aid))).collect();
-    Allocation {
-        bytes,
-        provenance: ProvenanceMap { ptrs },
-        align: alloc.align.bytes(),
-        mutability: alloc.mutability.stable(tables, cx),
-    }
+    alloc::allocation_filter(alloc, alloc_range, tables, cx)
 }
