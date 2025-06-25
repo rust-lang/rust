@@ -1109,7 +1109,7 @@ fn msg_span_from_named_region<'tcx>(
         ty::ReEarlyParam(br) => {
             let param_def_id = tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id;
             let span = tcx.def_span(param_def_id);
-            let text = if br.has_name() {
+            let text = if br.is_named() {
                 format!("the lifetime `{}` as defined here", br.name)
             } else {
                 "the anonymous lifetime as defined here".to_string()
