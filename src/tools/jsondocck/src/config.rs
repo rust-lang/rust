@@ -11,8 +11,8 @@ pub struct Config {
 /// Create a Config from a vector of command-line arguments.
 pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
-    opts.reqopt("", "doc-dir", "Path to the documentation directory.", "PATH")
-        .reqopt("", "template", "Path to the template file.", "PATH")
+    opts.reqopt("", "doc-dir", "Path to the documentation output directory.", "PATH")
+        .reqopt("", "template", "Path to the input template file.", "PATH")
         .optflag("h", "help", "Show this message.");
 
     let (argv0, args_) = args.split_first().unwrap();
