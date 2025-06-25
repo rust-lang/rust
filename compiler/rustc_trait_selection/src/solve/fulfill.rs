@@ -10,7 +10,8 @@ use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
 use rustc_middle::ty::{
-    self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, TypingMode,
+    self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode,
 };
 use rustc_next_trait_solver::delegate::SolverDelegate as _;
 use rustc_next_trait_solver::solve::{
@@ -332,10 +333,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for StalledOnCoroutines<'tcx> {
         if let ty::CoroutineWitness(def_id, _) = *ty.kind()
             && def_id.as_local().is_some_and(|def_id| self.stalled_generators.contains(&def_id))
         {
-            return ControlFlow::Break(());
+            ControlFlow::Break(())
+        } else if ty.has_coroutines() {
+            ty.super_visit_with(self)
+        } else {
+            ControlFlow::Continue(())
         }
-
-        ty.super_visit_with(self)
     }
 }
 
