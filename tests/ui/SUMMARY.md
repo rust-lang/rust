@@ -8,6 +8,8 @@ For now, only immediate subdirectories under `tests/ui/` are described, but thes
 
 These tests deal with *Application Binary Interfaces* (ABI), mostly relating to function name mangling (and the `#[no_mangle]` attribute), calling conventions, or compiler flags which affect ABI.
 
+Tests for unsupported ABIs can be made cross-platform by using the `extern "rust-invalid"` ABI, which is considered unsupported on every platform.
+
 ## `tests/ui/allocator`
 
 These tests exercise `#![feature(allocator_api)]` and the `#[global_allocator]` attribute.

@@ -1,5 +1,5 @@
 error[E0570]: "aapcs" is not a supported ABI for the current target
-  --> $DIR/unsupported-varargs-fnptr.rs:13:20
+  --> $DIR/unsupported-varargs-fnptr.rs:14:20
    |
 LL | fn aapcs(f: extern "aapcs" fn(usize, ...)) {
    |                    ^^^^^^^

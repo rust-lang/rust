@@ -59,6 +59,11 @@ The output is normalized to ignore unwanted differences, see the
 [Normalization](#normalization) section. If the file is missing, then
 compiletest expects the corresponding output to be empty.
 
+A common reason to use normalization, revisions, and most of the other following tools,
+is to account for platform differences. Consider alternatives to these tools, like
+e.g. using the `extern "rust-invalid"` ABI that is invalid on every platform
+instead of fixing the test to use cross-compilation and testing every possibly-invalid ABI.
+
 There can be multiple stdout/stderr files. The general form is:
 
 ```text
