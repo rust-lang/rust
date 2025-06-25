@@ -1451,29 +1451,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         placeholder: ty::PlaceholderRegion,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
-        debug!("check_bound_universal_region(fr={:?}, placeholder={:?})", longer_fr, placeholder,);
-
         let longer_fr_scc = self.constraint_sccs.scc(longer_fr);
-        debug!("check_bound_universal_region: longer_fr_scc={:?}", longer_fr_scc,);
 
-        // FIXME(amandasystems): This is an inlined version of elements_contained_in, without
-        // placeholders, which are handled separately. Later, when placeholders are removed
-        // from scc_values, this part will just be elements_contained_in():
-        let mut non_placeholder_regions_in = self
-            .scc_values
-            .locations_outlived_by(longer_fr_scc)
-            .map(RegionElement::Location)
-            .chain(
-                self.scc_values
-                    .universal_regions_outlived_by(longer_fr_scc)
-                    .map(RegionElement::RootUniversalRegion),
-            );
+        debug!(
+            "check_bound_universal_region(fr={:?}, placeholder={:?}, scc={:?})",
+            longer_fr, placeholder, longer_fr_scc
+        );
 
-        // If we have some bound universal region `'a`, then the only
-        // elements it can contain is itself -- we don't know anything
-        // else about it!
-        if let Some(error_element) = non_placeholder_regions_in.next() {
-            // Stop after the first error, it gets too noisy otherwise, and does not provide more information.
+        // If we have some bound universal region `'a`, then the only elements it can contain
+        // is itself -- we don't know anything else about it!
+        //
+        // Stop after the first error, it gets too noisy otherwise, and does not provide more information.
+        if let Some(error_element) = self.scc_values.elements_contained_in(longer_fr_scc).next() {
             errors_buffer.push(RegionErrorKind::PlaceholderOutlivesLocationOrUniversal {
                 longer_fr,
                 error_element,
