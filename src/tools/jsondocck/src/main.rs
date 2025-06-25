@@ -31,6 +31,16 @@ static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
 static DEPRECATED_LINE_PATTERN: LazyLock<Regex> =
     LazyLock::new(|| RegexBuilder::new(r#"//\s+@"#).build().unwrap());
 
+/// ```
+/// // Directive on its own line
+/// //@ correct-directive
+///
+/// // Directive on a line after code
+/// struct S; //@ ignored-directive
+/// ```
+static MIXED_LINE: LazyLock<Regex> =
+    LazyLock::new(|| RegexBuilder::new(r#".*\S.*//@"#).build().unwrap());
+
 struct ErrorReporter<'a> {
     /// See [`Config::template`].
     template: &'a str,
@@ -61,6 +71,13 @@ fn main() -> ExitCode {
             error_reporter.print("Deprecated directive syntax, replace `// @` with `//@ `", lineno);
 
             continue;
+        }
+
+        if MIXED_LINE.is_match(line) {
+            error_reporter.print(
+                "directives must be on their own line, directives after code are ignored",
+                lineno,
+            );
         }
 
         let Some(cap) = LINE_PATTERN.captures(line) else {
