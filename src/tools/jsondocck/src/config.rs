@@ -2,18 +2,18 @@ use getopts::Options;
 
 #[derive(Debug)]
 pub struct Config {
-    /// The directory documentation output was generated in
+    /// The directory documentation output was generated in.
     pub doc_dir: String,
-    /// The file documentation was generated for, with docck directives to check
+    /// The file documentation was generated for, with docck directives to check.
     pub template: String,
 }
 
-/// Create a Config from a vector of command-line arguments
+/// Create a Config from a vector of command-line arguments.
 pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
-    opts.reqopt("", "doc-dir", "Path to the documentation directory", "PATH")
-        .reqopt("", "template", "Path to the template file", "PATH")
-        .optflag("h", "help", "show this message");
+    opts.reqopt("", "doc-dir", "Path to the documentation directory.", "PATH")
+        .reqopt("", "template", "Path to the template file.", "PATH")
+        .optflag("h", "help", "Show this message.");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 {
