@@ -15,13 +15,13 @@ use directive::{Directive, DirectiveKind};
 
 static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new(
-        r#"
+        r"
         ^\s*
         //@\s+
         (?P<negated>!?)
         (?P<directive>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
         (?P<args>.*)$
-    "#,
+    ",
     )
     .ignore_whitespace(true)
     .build()
@@ -29,7 +29,7 @@ static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 static DEPRECATED_LINE_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| RegexBuilder::new(r#"//\s+@"#).build().unwrap());
+    LazyLock::new(|| RegexBuilder::new(r"//\s+@").build().unwrap());
 
 /// ```
 /// // Directive on its own line
@@ -39,7 +39,7 @@ static DEPRECATED_LINE_PATTERN: LazyLock<Regex> =
 /// struct S; //@ ignored-directive
 /// ```
 static MIXED_LINE: LazyLock<Regex> =
-    LazyLock::new(|| RegexBuilder::new(r#".*\S.*//@"#).build().unwrap());
+    LazyLock::new(|| RegexBuilder::new(r".*\S.*//@").build().unwrap());
 
 struct ErrorReporter<'a> {
     /// See [`Config::template`].
