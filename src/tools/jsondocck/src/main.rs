@@ -54,7 +54,6 @@ static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     "#,
     )
     .ignore_whitespace(true)
-    .unicode(true)
     .build()
     .unwrap()
 });
@@ -66,7 +65,6 @@ static DEPRECATED_LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     "#,
     )
     .ignore_whitespace(true)
-    .unicode(true)
     .build()
     .unwrap()
 });
