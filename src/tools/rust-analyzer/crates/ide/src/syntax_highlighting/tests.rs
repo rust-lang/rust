@@ -447,7 +447,7 @@ fn test_string_highlighting() {
 //- minicore: fmt, assert, asm, concat, panic
 macro_rules! println {
     ($($arg:tt)*) => ({
-        $crate::io::_print(std::format_args_nl!($($arg)*));
+        $crate::io::_print(format_args_nl!($($arg)*));
     })
 }
 
