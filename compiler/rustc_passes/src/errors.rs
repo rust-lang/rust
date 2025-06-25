@@ -642,13 +642,6 @@ pub(crate) struct UsedStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_used_compiler_linker)]
-pub(crate) struct UsedCompilerLinker {
-    #[primary_span]
-    pub spans: Vec<Span>,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_allow_internal_unstable)]
 pub(crate) struct AllowInternalUnstable {
     #[primary_span]
