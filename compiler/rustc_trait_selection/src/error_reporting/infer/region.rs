@@ -713,14 +713,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         let labeled_user_string = match bound_kind {
-            GenericKind::Param(ref p) => format!("the parameter type `{p}`"),
-            GenericKind::Placeholder(ref p) => format!("the placeholder type `{p:?}`"),
-            GenericKind::Alias(ref p) => match p.kind(self.tcx) {
+            GenericKind::Param(_) => format!("the parameter type `{bound_kind}`"),
+            GenericKind::Placeholder(_) => format!("the placeholder type `{bound_kind}`"),
+            GenericKind::Alias(p) => match p.kind(self.tcx) {
                 ty::Projection | ty::Inherent => {
-                    format!("the associated type `{p}`")
+                    format!("the associated type `{bound_kind}`")
                 }
-                ty::Free => format!("the type alias `{p}`"),
-                ty::Opaque => format!("the opaque type `{p}`"),
+                ty::Free => format!("the type alias `{bound_kind}`"),
+                ty::Opaque => format!("the opaque type `{bound_kind}`"),
             },
         };
 

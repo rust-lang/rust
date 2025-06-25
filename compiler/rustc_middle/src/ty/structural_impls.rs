@@ -272,7 +272,6 @@ TrivialTypeTraversalImpls! {
     crate::ty::BoundVar,
     crate::ty::InferConst,
     crate::ty::Placeholder<crate::ty::BoundRegion>,
-    crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::Placeholder<ty::BoundVar>,
     crate::ty::UserTypeAnnotationIndex,
     crate::ty::ValTree<'tcx>,
@@ -303,6 +302,7 @@ TrivialTypeTraversalAndLiftImpls! {
     // tidy-alphabetical-start
     crate::ty::ParamConst,
     crate::ty::ParamTy,
+    crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::instance::ReifyReason,
     rustc_hir::def_id::DefId,
     // tidy-alphabetical-end

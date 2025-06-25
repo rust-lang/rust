@@ -822,13 +822,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Alias(ty::Projection | ty::Inherent | ty::Free, ref data) => {
                 p!(print(data))
             }
-            ty::Placeholder(placeholder) => match placeholder.bound.kind {
-                ty::BoundTyKind::Anon => p!(write("{placeholder:?}")),
-                ty::BoundTyKind::Param(def_id) => match self.should_print_verbose() {
-                    true => p!(write("{:?}", ty.kind())),
-                    false => p!(write("{}", self.tcx().item_name(def_id))),
-                },
-            },
+            ty::Placeholder(placeholder) => p!(print(placeholder)),
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                 // We use verbose printing in 'NO_QUERIES' mode, to
                 // avoid needing to call `predicates_of`. This should
@@ -3371,6 +3365,16 @@ define_print_and_forward_display! {
 
     ty::ParamTy {
         p!(write("{}", self.name))
+    }
+
+    ty::PlaceholderType {
+        match self.bound.kind {
+            ty::BoundTyKind::Anon => p!(write("{self:?}")),
+            ty::BoundTyKind::Param(def_id) => match cx.should_print_verbose() {
+                true => p!(write("{self:?}")),
+                false => p!(write("{}", cx.tcx().item_name(def_id))),
+            },
+        }
     }
 
     ty::ParamConst {
