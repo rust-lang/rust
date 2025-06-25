@@ -153,6 +153,10 @@ impl StepMetadata {
         Self::new(name, target, Kind::Build)
     }
 
+    pub fn check(name: &'static str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Check)
+    }
+
     pub fn doc(name: &'static str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Doc)
     }

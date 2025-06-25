@@ -1234,6 +1234,171 @@ mod snapshot {
     }
 
     #[test]
+    fn check_compiler_no_explicit_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiler")
+                .render_steps(), @r"
+        [check] std <host>
+        [build] llvm <host>
+        [check] rustc <host>
+        ");
+
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("rustc")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_compiler_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("check").path("compiler").stage(0).run();
+    }
+
+    #[test]
+    fn check_compiler_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiler")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [check] rustc <host>
+        ");
+    }
+
+    #[test]
+    fn check_compiler_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiler")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [check] rustc <host>
+        ");
+    }
+
+    #[test]
+    fn check_library_no_explicit_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("library")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [check] std <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_library_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("check").path("library").stage(0).run();
+    }
+
+    #[test]
+    fn check_library_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("library")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [check] std <host>
+        ");
+    }
+
+    #[test]
+    fn check_library_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("library")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [check] std <host>
+        ");
+    }
+
+    #[test]
+    fn check_miri_no_explicit_stage() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("miri")
+                .render_steps(), @r"
+        [check] std <host>
+        [build] llvm <host>
+        [check] rustc <host>
+        [check] Miri <host>
+        ");
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_miri_stage_0() {
+        let ctx = TestCtx::new();
+        ctx.config("check").path("miri").stage(0).run();
+    }
+
+    #[test]
+    fn check_miri_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("miri")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [check] rustc <host>
+        [check] Miri <host>
+        ");
+    }
+
+    #[test]
+    fn check_miri_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("miri")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [check] rustc <host>
+        [check] Miri <host>
+        ");
+    }
+
+    #[test]
     fn test_exclude() {
         let ctx = TestCtx::new();
         let steps = ctx.config("test").args(&["--skip", "src/tools/tidy"]).get_steps();
