@@ -60,11 +60,8 @@ static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
 
 static DEPRECATED_LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new(
-        r#"
-        //\s+@
-    "#,
+        r#"//\s+@"#,
     )
-    .ignore_whitespace(true)
     .build()
     .unwrap()
 });
