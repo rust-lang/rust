@@ -859,7 +859,7 @@ impl<'a> InferenceTable<'a> {
         ] {
             let krate = self.trait_env.krate;
             let fn_trait = fn_trait_name.get_id(self.db, krate)?;
-            let trait_data = self.db.trait_items(fn_trait);
+            let trait_data = fn_trait.trait_items(self.db);
             let output_assoc_type =
                 trait_data.associated_type_by_name(&Name::new_symbol_root(output_assoc_name))?;
 

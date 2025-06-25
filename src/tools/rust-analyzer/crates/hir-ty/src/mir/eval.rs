@@ -657,12 +657,12 @@ impl Evaluator<'_> {
             cached_ptr_size,
             cached_fn_trait_func: LangItem::Fn
                 .resolve_trait(db, crate_id)
-                .and_then(|x| db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call))),
+                .and_then(|x| x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call))),
             cached_fn_mut_trait_func: LangItem::FnMut.resolve_trait(db, crate_id).and_then(|x| {
-                db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call_mut))
+                x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call_mut))
             }),
             cached_fn_once_trait_func: LangItem::FnOnce.resolve_trait(db, crate_id).and_then(|x| {
-                db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call_once))
+                x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call_once))
             }),
         })
     }
@@ -2808,7 +2808,7 @@ impl Evaluator<'_> {
     ) -> Result<()> {
         let Some(drop_fn) = (|| {
             let drop_trait = LangItem::Drop.resolve_trait(self.db, self.crate_id)?;
-            self.db.trait_items(drop_trait).method_by_name(&Name::new_symbol_root(sym::drop))
+            drop_trait.trait_items(self.db).method_by_name(&Name::new_symbol_root(sym::drop))
         })() else {
             // in some tests we don't have drop trait in minicore, and
             // we can ignore drop in them.
@@ -2918,7 +2918,7 @@ pub fn render_const_using_debug_impl(
         not_supported!("core::fmt::Debug not found");
     };
     let Some(debug_fmt_fn) =
-        db.trait_items(debug_trait).method_by_name(&Name::new_symbol_root(sym::fmt))
+        debug_trait.trait_items(db).method_by_name(&Name::new_symbol_root(sym::fmt))
     else {
         not_supported!("core::fmt::Debug::fmt not found");
     };
