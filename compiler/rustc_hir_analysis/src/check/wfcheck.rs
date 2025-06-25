@@ -196,7 +196,7 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
         hir::Node::Crate(_) => bug!("check_well_formed cannot be applied to the crate root"),
         hir::Node::Item(item) => check_item(tcx, item),
         hir::Node::TraitItem(..) => Ok(()),
-        hir::Node::ImplItem(item) => check_impl_item(tcx, item),
+        hir::Node::ImplItem(..) => Ok(()),
         hir::Node::ForeignItem(item) => check_foreign_item(tcx, item),
         hir::Node::ConstBlock(_) | hir::Node::Expr(_) | hir::Node::OpaqueTy(_) => Ok(()),
         _ => unreachable!("{node:?}"),
@@ -329,7 +329,7 @@ pub(crate) fn check_trait_item<'tcx>(
     // Check that an item definition in a subtrait is shadowing a supertrait item.
     lint_item_shadowing_supertrait_item(tcx, def_id);
 
-    let mut res = check_associated_item(tcx, def_id);
+    let mut res = Ok(());
 
     if matches!(tcx.def_kind(def_id), DefKind::AssocFn) {
         for &assoc_ty_def_id in tcx.associated_types_for_impl_traits_in_associated_fn(def_id) {
@@ -812,13 +812,6 @@ fn lint_item_shadowing_supertrait_item<'tcx>(tcx: TyCtxt<'tcx>, trait_item_def_i
     }
 }
 
-fn check_impl_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_item: &'tcx hir::ImplItem<'tcx>,
-) -> Result<(), ErrorGuaranteed> {
-    check_associated_item(tcx, impl_item.owner_id.def_id)
-}
-
 fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), ErrorGuaranteed> {
     match param.kind {
         // We currently only check wf of const params here.
@@ -945,7 +938,10 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
 }
 
 #[instrument(level = "debug", skip(tcx))]
-fn check_associated_item(tcx: TyCtxt<'_>, item_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn check_associated_item(
+    tcx: TyCtxt<'_>,
+    item_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
     let loc = Some(WellFormedLoc::Ty(item_id));
     enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
         let item = tcx.associated_item(item_id);
