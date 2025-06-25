@@ -467,7 +467,7 @@ impl CStr {
     /// // 💀 this violates `CStr::from_ptr`'s safety contract
     /// // 💀 leading to a dereference of a dangling pointer,
     /// // 💀 which is immediate undefined behavior.
-    /// // 💀 *BOOM*, you're dead, you're entire program has no meaning.
+    /// // 💀 *BOOM*, you're dead, your entire program has no meaning.
     /// dbg!(unsafe { CStr::from_ptr(ptr) });
     /// ```
     ///
