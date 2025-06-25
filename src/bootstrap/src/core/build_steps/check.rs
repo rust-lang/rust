@@ -5,7 +5,7 @@ use crate::core::build_steps::compile::{
 };
 use crate::core::build_steps::tool::{COMPILETEST_ALLOW_FEATURES, SourceType, prepare_tool_cargo};
 use crate::core::builder::{
-    self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, crate_description,
+    self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
@@ -124,6 +124,10 @@ impl Step for Std {
         let _guard = builder.msg_check("library test/bench/example targets", target, Some(stage));
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("std", self.target).built_by(self.build_compiler))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -214,6 +218,10 @@ impl Step for Rustc {
         let libdir = builder.sysroot_target_libdir(compiler, target);
         let hostdir = builder.sysroot_target_libdir(compiler, compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &stamp);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("rustc", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -423,6 +431,10 @@ macro_rules! tool_check_step {
             fn run(self, builder: &Builder<'_>) {
                 let Self { target } = self;
                 run_tool_check_step(builder, target, stringify!($name), $path);
+            }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                Some(StepMetadata::check(stringify!($name), self.target))
             }
         }
     }
