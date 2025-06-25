@@ -1195,7 +1195,6 @@ macro_rules! tool_extended {
                 Some(
                     StepMetadata::build($tool_name, self.target)
                         .built_by(self.compiler.with_stage(self.compiler.stage.saturating_sub(1)))
-                        .stage(self.compiler.stage)
                 )
             }
         }
