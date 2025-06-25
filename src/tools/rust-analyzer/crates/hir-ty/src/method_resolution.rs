@@ -1302,7 +1302,7 @@ fn iterate_trait_method_candidates(
         // trait, but if we find out it doesn't, we'll skip the rest of the
         // iteration
         let mut known_implemented = false;
-        for &(_, item) in db.trait_items(t).items.iter() {
+        for &(_, item) in t.trait_items(db).items.iter() {
             // Don't pass a `visible_from_module` down to `is_valid_candidate`,
             // since only inherent methods should be included into visibility checking.
             let visible =
@@ -1429,7 +1429,7 @@ fn iterate_inherent_methods(
     ) -> ControlFlow<()> {
         let db = table.db;
         for t in traits {
-            let data = db.trait_items(t);
+            let data = t.trait_items(db);
             for &(_, item) in data.items.iter() {
                 // We don't pass `visible_from_module` as all trait items should be visible.
                 let visible = match is_valid_trait_method_candidate(

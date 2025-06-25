@@ -89,7 +89,9 @@ use crate::{
     db::DefDatabase,
     hir::generics::{LocalLifetimeParamId, LocalTypeOrConstParamId},
     nameres::{
-        LocalDefMap, assoc::ImplItems, block_def_map, crate_def_map, crate_local_def_map,
+        LocalDefMap,
+        assoc::{ImplItems, TraitItems},
+        block_def_map, crate_def_map, crate_local_def_map,
         diagnostics::DefDiagnostics,
     },
     signatures::{EnumVariants, InactiveEnumVariantCode, VariantFields},
@@ -281,6 +283,13 @@ impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
 
 pub type TraitLoc = ItemLoc<ast::Trait>;
 impl_intern!(TraitId, TraitLoc, intern_trait, lookup_intern_trait);
+
+impl TraitId {
+    #[inline]
+    pub fn trait_items(self, db: &dyn DefDatabase) -> &TraitItems {
+        TraitItems::query(db, self)
+    }
+}
 
 pub type TraitAliasLoc = ItemLoc<ast::TraitAlias>;
 impl_intern!(TraitAliasId, TraitAliasLoc, intern_trait_alias, lookup_intern_trait_alias);
