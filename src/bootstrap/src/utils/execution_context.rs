@@ -93,7 +93,7 @@ impl ExecutionContext {
         let created_at = command.get_created_location();
         let executed_at = std::panic::Location::caller();
 
-        if self.dry_run() && !command.run_always {
+        if self.dry_run() && !command.run_in_dry_run {
             return DeferredCommand { process: None, stdout, stderr, command, executed_at };
         }
 
