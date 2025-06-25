@@ -22,8 +22,7 @@ use crate::core::build_steps::{
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
 use crate::utils::cache::Cache;
-use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::execution_context::ExecutionContext;
+use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
 use crate::{Build, Crate, trace};
 

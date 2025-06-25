@@ -47,8 +47,7 @@ use crate::core::config::{
 };
 use crate::core::download::is_download_ci_available;
 use crate::utils::channel;
-use crate::utils::exec::command;
-use crate::utils::execution_context::ExecutionContext;
+use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, get_host_target};
 use crate::{GitInfo, OnceLock, TargetSelection, check_ci_llvm, helpers, t};
 

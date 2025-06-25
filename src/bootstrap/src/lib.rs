@@ -31,12 +31,12 @@ use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
-use utils::execution_context::ExecutionContext;
+use utils::exec::ExecutionContext;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, TargetSelection, flags};
-use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
+use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
     self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir,
 };
