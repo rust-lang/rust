@@ -373,7 +373,7 @@ impl Step for Compiletest {
         );
 
         if mode != Mode::ToolBootstrap {
-            builder.ensure(Rustc::new(self.target, builder));
+            builder.std(compiler, self.target);
         }
 
         let mut cargo = prepare_tool_cargo(
@@ -396,6 +396,10 @@ impl Step for Compiletest {
 
         let _guard = builder.msg_check("compiletest artifacts", self.target, None);
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("compiletest", self.target))
     }
 }
 

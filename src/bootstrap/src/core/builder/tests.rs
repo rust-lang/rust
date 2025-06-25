@@ -1392,6 +1392,30 @@ mod snapshot {
     }
 
     #[test]
+    fn check_compiletest() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiletest")
+                .render_steps(), @"[check] compiletest <host>");
+    }
+
+    #[test]
+    fn check_compiletest_stage1_libtest() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("compiletest")
+                .args(&["--set", "build.compiletest-use-stage0-libtest=false"])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [check] compiletest <host>
+        ");
+    }
+
+    #[test]
     fn test_exclude() {
         let ctx = TestCtx::new();
         let steps = ctx.config("test").args(&["--skip", "src/tools/tidy"]).get_steps();
