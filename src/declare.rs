@@ -94,7 +94,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         _fn_type: Type<'gcc>,
         #[cfg(feature = "master")] callconv: Option<FnAttribute<'gcc>>,
         #[cfg(not(feature = "master"))] callconv: Option<()>,
-    ) -> RValue<'gcc> {
+    ) -> Function<'gcc> {
         // TODO(antoyo): use the fn_type parameter.
         let const_string = self.context.new_type::<u8>().make_pointer().make_pointer();
         let return_type = self.type_i32();
@@ -111,8 +111,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         // NOTE: it is needed to set the current_func here as well, because get_fn() is not called
         // for the main function.
         *self.current_func.borrow_mut() = Some(func);
-        // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
-        unsafe { std::mem::transmute(func) }
+        func
     }
 
     pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Function<'gcc> {
