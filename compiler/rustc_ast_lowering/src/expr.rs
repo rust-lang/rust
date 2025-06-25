@@ -176,6 +176,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         recovered: *recovered,
                     }))
                 }
+                ExprKind::Is(scrutinee, pat) => {
+                    // TODO: properly desugar `is` outside of `if`/`while`
+                    hir::ExprKind::Let(self.arena.alloc(hir::LetExpr {
+                        span: self.lower_span(e.span),
+                        pat: self.lower_pat(pat),
+                        ty: None,
+                        init: self.lower_expr(scrutinee),
+                        recovered: Recovered::No,
+                    }))
+                }
                 ExprKind::If(cond, then, else_opt) => {
                     self.lower_expr_if(cond, then, else_opt.as_deref())
                 }

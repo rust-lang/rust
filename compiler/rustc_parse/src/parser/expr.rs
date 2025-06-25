@@ -1962,6 +1962,7 @@ impl<'a> Parser<'a> {
                 sym::unwrap_binder => {
                     Some(this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Unwrap)?)
                 }
+                sym::is => Some(this.parse_expr_is(lo)?),
                 _ => None,
             })
         })
@@ -2044,6 +2045,17 @@ impl<'a> Parser<'a> {
         let ty = if self.eat(exp!(Comma)) { Some(self.parse_ty()?) } else { None };
         let span = lo.to(self.token.span);
         Ok(self.mk_expr(span, ExprKind::UnsafeBinderCast(kind, expr, ty)))
+    }
+
+    /// Parse placeholder built-in syntax for `is` (rfcs#3573)
+    fn parse_expr_is(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
+        let scrutinee = self.parse_expr()?;
+        self.expect_keyword(exp!(Is))?;
+        // Likely this will need to be `parse_pat_no_top_alt` for the final syntax.
+        // FIXME(is): If so, we'll want a `PatternLocation` variant for `is` for diagnostics.
+        let pat = self.parse_pat_no_top_alt(None, None)?;
+        let span = lo.to(self.token.span);
+        Ok(self.mk_expr(span, ExprKind::Is(scrutinee, pat)))
     }
 
     /// Returns a string literal if the next token is a string literal.
@@ -3436,6 +3448,10 @@ impl<'a> Parser<'a> {
     fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<P<Expr>>> {
         // Used to check the `if_let_guard` feature mostly by scanning
         // `&&` tokens.
+        // FIXME(is): This can't catch `is` expressions. In order to implement placeholder
+        // macro-based syntax for `is`, `is` within a macro expansion is treated as part of whatever
+        // condition it expands into. As such, gating `is` in match guards would need to be part of
+        // the `feature_gate` AST pass.
         fn has_let_expr(expr: &Expr) -> bool {
             match &expr.kind {
                 ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
@@ -4122,6 +4138,16 @@ impl MutVisitor for CondChecker<'_> {
                         }
                     }
                 }
+            }
+            ExprKind::Is(_, _) => {
+                // FIXME(is): Handle edition-dependent rules for `is` in `&&`-chains. Currently,
+                // `is` desugars to `let` where `let`-chains are permitted, and otherwise desugars
+                // to `if let`. In the latter case, we could change the desugaring to rescope its
+                // temporaries to work on all Editions. For `is` inside an existing `if`
+                // expression's condition, however, temporaries in the condition live too long to
+                // permit all `&&` chains in Editions ≤ 2021. Since `is` will be a new keyword, it
+                // may only be possible for this to arise through the use of mixed-edition macro
+                // expansion or raw keywords (rfcs#3098).
             }
             ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, _, _) => {
                 mut_visit::walk_expr(self, e);
