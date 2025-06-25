@@ -1,8 +1,7 @@
 # Troubleshooting
 
-First, search the [troubleshooting FAQ](troubleshooting/faq.html). If
-your problem appears there (and the proposed solution works for you),
-great! Otherwise, read on.
+First, search the [troubleshooting FAQ](faq.html). If your problem appears
+there (and the proposed solution works for you), great! Otherwise, read on.
 
 Start with looking at the rust-analyzer version. Try **rust-analyzer:
 Show RA Version** in VS Code (using **Command Palette** feature
