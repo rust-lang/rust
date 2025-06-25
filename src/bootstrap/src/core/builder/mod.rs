@@ -178,6 +178,12 @@ impl StepMetadata {
         self.stage = Some(stage);
         self
     }
+
+    pub fn get_stage(&self) -> Option<u32> {
+        self.stage.or(self
+            .built_by
+            .map(|compiler| if self.name == "std" { compiler.stage } else { compiler.stage + 1 }))
+    }
 }
 
 pub struct RunConfig<'a> {

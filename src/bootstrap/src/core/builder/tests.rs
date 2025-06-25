@@ -863,7 +863,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("build")
                 .path("opt-dist")
-                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist <host>");
+                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist 1 <host>");
     }
 
     #[test]
@@ -880,7 +880,7 @@ mod snapshot {
             ctx.config("build")
                 .path("opt-dist")
                 .stage(1)
-                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist <host>");
+                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist 1 <host>");
     }
 
     #[test]
@@ -890,7 +890,7 @@ mod snapshot {
             ctx.config("build")
                 .path("opt-dist")
                 .stage(2)
-                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist <host>");
+                .render_steps(), @"[build] rustc 0 <host> -> OptimizedDist 1 <host>");
     }
 
     #[test]
@@ -984,8 +984,8 @@ mod snapshot {
             ctx
                 .config("dist")
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen <host>
-        [build] rustc 0 <host> -> Rustbook <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
@@ -993,14 +993,14 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [doc] std 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 0 <host> -> LintDocs <host>
-        [build] rustc 0 <host> -> RustInstaller <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [doc] std 2 <host>
         [dist] mingw <host>
-        [build] rustc 0 <host> -> GenerateCopyright <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
-        [dist] rustc 1 <host> -> std <host>
+        [dist] rustc 1 <host> -> std 1 <host>
         [dist] src <>
         "
         );
@@ -1014,25 +1014,25 @@ mod snapshot {
                 .config("dist")
                 .args(&["--set", "build.extended=true"])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen <host>
-        [build] rustc 0 <host> -> Rustbook <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> WasmComponentLd <host>
+        [build] rustc 0 <host> -> WasmComponentLd 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> WasmComponentLd <host>
+        [build] rustc 1 <host> -> WasmComponentLd 2 <host>
         [build] rustdoc 1 <host>
         [doc] std 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 0 <host> -> LintDocs <host>
-        [build] rustc 0 <host> -> RustInstaller <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [doc] std 2 <host>
         [dist] mingw <host>
-        [build] rustc 0 <host> -> GenerateCopyright <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
-        [dist] rustc 1 <host> -> std <host>
+        [dist] rustc 1 <host> -> std 1 <host>
         [dist] src <>
         [build] rustc 0 <host> -> rustfmt 1 <host>
         [build] rustc 0 <host> -> cargo-fmt 1 <host>
@@ -1052,8 +1052,8 @@ mod snapshot {
                 .hosts(&[&host_target()])
                 .targets(&[&host_target(), TEST_TRIPLE_1])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen <host>
-        [build] rustc 0 <host> -> Rustbook <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
@@ -1062,19 +1062,19 @@ mod snapshot {
         [doc] std 2 <host>
         [doc] std 2 <target1>
         [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 0 <host> -> LintDocs <host>
-        [build] rustc 0 <host> -> RustInstaller <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [dist] docs <target1>
         [doc] std 2 <host>
         [doc] std 2 <target1>
         [dist] mingw <host>
         [dist] mingw <target1>
-        [build] rustc 0 <host> -> GenerateCopyright <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
-        [dist] rustc 1 <host> -> std <host>
+        [dist] rustc 1 <host> -> std 1 <host>
         [build] rustc 2 <host> -> std 2 <target1>
-        [dist] rustc 2 <host> -> std <target1>
+        [dist] rustc 2 <host> -> std 2 <target1>
         [dist] src <>
         "
         );
@@ -1089,8 +1089,8 @@ mod snapshot {
                 .hosts(&[&host_target(), TEST_TRIPLE_1])
                 .targets(&[&host_target()])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen <host>
-        [build] rustc 0 <host> -> Rustbook <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
@@ -1098,20 +1098,20 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [doc] std 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 0 <host> -> LintDocs <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 2 <host> -> std 2 <target1>
-        [build] rustc 0 <host> -> RustInstaller <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [doc] std 2 <host>
         [dist] mingw <host>
-        [build] rustc 0 <host> -> GenerateCopyright <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustdoc 1 <target1>
         [dist] rustc <target1>
-        [dist] rustc 1 <host> -> std <host>
+        [dist] rustc 1 <host> -> std 1 <host>
         [dist] src <>
         "
         );
@@ -1126,8 +1126,8 @@ mod snapshot {
                 .hosts(&[&host_target(), TEST_TRIPLE_1])
                 .targets(&[&host_target(), TEST_TRIPLE_1])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen <host>
-        [build] rustc 0 <host> -> Rustbook <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
@@ -1136,24 +1136,24 @@ mod snapshot {
         [doc] std 2 <host>
         [doc] std 2 <target1>
         [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 0 <host> -> LintDocs <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 2 <host> -> std 2 <target1>
-        [build] rustc 0 <host> -> RustInstaller <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [dist] docs <target1>
         [doc] std 2 <host>
         [doc] std 2 <target1>
         [dist] mingw <host>
         [dist] mingw <target1>
-        [build] rustc 0 <host> -> GenerateCopyright <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustdoc 1 <target1>
         [dist] rustc <target1>
-        [dist] rustc 1 <host> -> std <host>
-        [dist] rustc 1 <host> -> std <target1>
+        [dist] rustc 1 <host> -> std 1 <host>
+        [dist] rustc 1 <host> -> std 1 <target1>
         [dist] src <>
         "
         );
@@ -1168,8 +1168,8 @@ mod snapshot {
                 .hosts(&[])
                 .targets(&[TEST_TRIPLE_1])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen <host>
-        [build] rustc 0 <host> -> Rustbook <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
@@ -1177,12 +1177,12 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [doc] std 2 <target1>
         [build] rustc 2 <host> -> std 2 <host>
-        [build] rustc 0 <host> -> RustInstaller <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
         [doc] std 2 <target1>
         [dist] mingw <target1>
         [build] rustc 2 <host> -> std 2 <target1>
-        [dist] rustc 2 <host> -> std <target1>
+        [dist] rustc 2 <host> -> std 2 <target1>
         ");
     }
 
@@ -1198,31 +1198,31 @@ mod snapshot {
                 .targets(&[TEST_TRIPLE_1])
                 .args(&["--set", "rust.channel=nightly", "--set", "build.extended=true"])
                 .render_steps(), @r"
-        [build] rustc 0 <host> -> UnstableBookGen <host>
-        [build] rustc 0 <host> -> Rustbook <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [build] rustc 0 <host> -> WasmComponentLd <host>
+        [build] rustc 0 <host> -> WasmComponentLd 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> WasmComponentLd <host>
+        [build] rustc 1 <host> -> WasmComponentLd 2 <host>
         [build] rustdoc 1 <host>
         [doc] std 2 <target1>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 2 <host> -> std 2 <target1>
-        [build] rustc 0 <host> -> LintDocs <host>
-        [build] rustc 0 <host> -> RustInstaller <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
         [doc] std 2 <target1>
         [dist] mingw <target1>
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
-        [build] rustc 1 <host> -> WasmComponentLd <target1>
+        [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
         [build] rustdoc 1 <target1>
-        [build] rustc 0 <host> -> GenerateCopyright <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <target1>
-        [dist] rustc 1 <host> -> std <target1>
+        [dist] rustc 1 <host> -> std 1 <target1>
         [dist] src <>
         [build] rustc 0 <host> -> rustfmt 1 <target1>
         [build] rustc 0 <host> -> cargo-fmt 1 <target1>
@@ -1384,7 +1384,8 @@ fn render_metadata(metadata: &StepMetadata) -> String {
     if let Some(compiler) = metadata.built_by {
         write!(record, "{} -> ", render_compiler(compiler));
     }
-    let stage = if let Some(stage) = metadata.stage { format!("{stage} ") } else { "".to_string() };
+    let stage =
+        if let Some(stage) = metadata.get_stage() { format!("{stage} ") } else { "".to_string() };
     write!(record, "{} {stage}<{}>", metadata.name, normalize_target(metadata.target));
     record
 }
