@@ -816,8 +816,13 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 return (true, suggested_candidates, candidates);
             }
 
-            // If the first argument in call is `self` suggest calling a method.
-            if let Some((call_span, args_span)) = self.call_has_self_arg(source) {
+            // If the first argument in call is `self` suggest calling a method,
+            // even if we didn't find an associated item. However, only suggest
+            // this if there's no `Res`, since if there was a resolution but it
+            // was invalid, it's more likely not a typo of this form.
+            if let Some((call_span, args_span)) = self.call_has_self_arg(source)
+                && res.is_none()
+            {
                 let mut args_snippet = String::new();
                 if let Some(args_span) = args_span {
                     if let Ok(snippet) = self.r.tcx.sess.source_map().span_to_snippet(args_span) {
@@ -829,7 +834,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     call_span,
                     format!("try calling `{ident}` as a method"),
                     format!("self.{path_str}({args_snippet})"),
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                 );
                 return (true, suggested_candidates, candidates);
             }
