@@ -213,8 +213,7 @@ impl ProjectWorkspace {
         config: &CargoConfig,
         progress: &(dyn Fn(String) + Sync),
     ) -> Result<ProjectWorkspace, anyhow::Error> {
-        progress("Discovering sysroot".to_owned());
-
+        progress("discovering sysroot".to_owned());
         let CargoConfig {
             features,
             rustc_source,
@@ -270,7 +269,7 @@ impl ProjectWorkspace {
         let workspace_dir = cargo_toml.parent();
 
         tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.rust_lib_src_root(), root = ?sysroot.root(), "Using sysroot");
-        progress("Querying project metadata".to_owned());
+        progress("querying project metadata".to_owned());
         let toolchain_config = QueryConfig::Cargo(&sysroot, cargo_toml);
         let targets =
             target_tuple::get(toolchain_config, target.as_deref(), extra_env).unwrap_or_default();
@@ -461,12 +460,12 @@ impl ProjectWorkspace {
         config: &CargoConfig,
         progress: &(dyn Fn(String) + Sync),
     ) -> ProjectWorkspace {
-        progress("Discovering sysroot".to_owned());
+        progress("discovering sysroot".to_owned());
         let mut sysroot =
             Sysroot::new(project_json.sysroot.clone(), project_json.sysroot_src.clone());
 
         tracing::info!(workspace = %project_json.manifest_or_root(), src_root = ?sysroot.rust_lib_src_root(), root = ?sysroot.root(), "Using sysroot");
-        progress("Querying project metadata".to_owned());
+        progress("querying project metadata".to_owned());
         let sysroot_project = project_json.sysroot_project.take();
         let query_config = QueryConfig::Rustc(&sysroot, project_json.path().as_ref());
         let targets = target_tuple::get(query_config, config.target.as_deref(), &config.extra_env)
