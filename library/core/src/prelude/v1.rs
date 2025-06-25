@@ -59,6 +59,7 @@ pub use crate::hash::macros::Hash;
 
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
+#[allow(deprecated)]
 pub use crate::{
     assert, assert_eq, assert_ne, cfg, column, compile_error, concat, debug_assert, debug_assert_eq, debug_assert_ne, file, format_args, include, include_bytes, include_str, line, matches, module_path, option_env, stringify, todo, r#try, unimplemented, unreachable, write, writeln,
 };
@@ -76,9 +77,9 @@ mod ambiguous_macro_only {
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 pub use self::ambiguous_macro_only::{env, panic};
 
-#[unstable(feature = "cfg_match", issue = "115585")]
+#[unstable(feature = "cfg_select", issue = "115585")]
 #[doc(no_inline)]
-pub use crate::cfg_match;
+pub use crate::cfg_select;
 
 #[unstable(
     feature = "concat_bytes",
@@ -87,14 +88,6 @@ pub use crate::cfg_match;
 )]
 #[doc(no_inline)]
 pub use crate::concat_bytes;
-
-#[unstable(
-    feature = "concat_idents",
-    issue = "29599",
-    reason = "`concat_idents` is not stable enough for use and is subject to change"
-)]
-#[doc(no_inline)]
-pub use crate::concat_idents;
 
 #[unstable(feature = "const_format_args", issue = "none")]
 #[doc(no_inline)]
