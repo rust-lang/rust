@@ -18,9 +18,14 @@ export async function selectRunnable(
     prevRunnable?: RunnableQuickPick,
     debuggeeOnly = false,
     showButtons: boolean = true,
+    mode?: "cursor",
 ): Promise<RunnableQuickPick | undefined> {
     const editor = ctx.activeRustEditor ?? ctx.activeCargoTomlEditor;
     if (!editor) return;
+
+    if (mode === "cursor") {
+        return selectRunnableAtCursor(ctx, editor, prevRunnable);
+    }
 
     // show a placeholder while we get the runnables from the server
     const quickPick = vscode.window.createQuickPick();
@@ -51,6 +56,58 @@ export async function selectRunnable(
         runnables,
         ctx,
         showButtons,
+    );
+}
+
+async function selectRunnableAtCursor(
+    ctx: CtxInit,
+    editor: RustEditor,
+    prevRunnable?: RunnableQuickPick,
+): Promise<RunnableQuickPick | undefined> {
+    const runnableQuickPicks = await getRunnables(ctx.client, editor, prevRunnable, false);
+    let runnableQuickPickAtCursor = null;
+    const cursorPosition = ctx.client.code2ProtocolConverter.asPosition(editor.selection.active);
+    for (const runnableQuickPick of runnableQuickPicks) {
+        if (!runnableQuickPick.runnable.location?.targetRange) {
+            continue;
+        }
+        const runnableQuickPickRange = runnableQuickPick.runnable.location.targetRange;
+        if (
+            runnableQuickPickAtCursor?.runnable?.location?.targetRange != null &&
+            rangeContainsOtherRange(
+                runnableQuickPickRange,
+                runnableQuickPickAtCursor.runnable.location.targetRange,
+            )
+        ) {
+            continue;
+        }
+        if (rangeContainsPosition(runnableQuickPickRange, cursorPosition)) {
+            runnableQuickPickAtCursor = runnableQuickPick;
+        }
+    }
+    if (runnableQuickPickAtCursor == null) {
+        return;
+    }
+    return Promise.resolve(runnableQuickPickAtCursor);
+}
+
+function rangeContainsPosition(range: lc.Range, position: lc.Position): boolean {
+    return (
+        (position.line > range.start.line ||
+            (position.line === range.start.line && position.character >= range.start.character)) &&
+        (position.line < range.end.line ||
+            (position.line === range.end.line && position.character <= range.end.character))
+    );
+}
+
+function rangeContainsOtherRange(range: lc.Range, otherRange: lc.Range) {
+    return (
+        (range.start.line < otherRange.start.line ||
+            (range.start.line === otherRange.start.line &&
+                range.start.character <= otherRange.start.character)) &&
+        (range.end.line > otherRange.end.line ||
+            (range.end.line === otherRange.end.line &&
+                range.end.character >= otherRange.end.character))
     );
 }
 
