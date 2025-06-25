@@ -446,4 +446,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Added new option `build.tidy-extra-checks` to specify a default value for the --extra-checks cli flag.",
     },
+    ChangeInfo {
+        change_id: 143048,
+        severity: ChangeSeverity::Warning,
+        summary: "The default check stage has been changed to 1. It is no longer possible to `x check` with stage 0. All check commands have to be on stage 1+.",
+    },
 ];
