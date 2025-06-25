@@ -1284,8 +1284,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         && !spans.is_empty()
                     {
                         let mut span: MultiSpan = spans.clone().into();
+                        err.arg("ty", param_ty.to_string());
+                        let msg = err.dcx.eagerly_translate_to_string(
+                            fluent::borrowck_moved_a_fn_once_in_call_def,
+                            err.args.iter(),
+                        );
+                        err.remove_arg("ty");
                         for sp in spans {
-                            span.push_span_label(sp, fluent::borrowck_moved_a_fn_once_in_call_def);
+                            span.push_span_label(sp, msg.clone());
                         }
                         span.push_span_label(
                             fn_call_span,

@@ -294,7 +294,7 @@ passes_duplicate_lang_item_crate_depends =
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
 passes_enum_variant_same_name =
-    it is impossible to refer to the {$descr} `{$dead_name}` because it is shadowed by this enum variant with the same name
+    it is impossible to refer to the {$dead_descr} `{$dead_name}` because it is shadowed by this enum variant with the same name
 
 passes_export_name =
     attribute should be applied to a free function, impl method or static
