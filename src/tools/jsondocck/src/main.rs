@@ -76,8 +76,8 @@ fn get_directives(template: &str) -> Result<Vec<Directive>, ()> {
     let mut errors = false;
     let file = fs::read_to_string(template).unwrap();
 
-    for (lineno, line) in file.split('\n').enumerate() {
-        let lineno = lineno + 1;
+    for (mut lineno, line) in file.split('\n').enumerate() {
+        lineno += 1;
 
         if DEPRECATED_LINE_PATTERN.is_match(line) {
             print_err("Deprecated directive syntax, replace `// @` with `//@ `", lineno);
