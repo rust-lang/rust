@@ -1,19 +1,24 @@
-ast_passes_abi_custom_coroutine =
-    functions with the `"custom"` ABI cannot be `{$coroutine_kind_str}`
+ast_passes_abi_cannot_be_coroutine =
+    functions with the {$abi} ABI cannot be `{$coroutine_kind_str}`
     .suggestion = remove the `{$coroutine_kind_str}` keyword from this definiton
 
-ast_passes_abi_custom_invalid_signature =
-    invalid signature for `extern "custom"` function
-    .note = functions with the `"custom"` ABI cannot have any parameters or return type
-    .suggestion = remove the parameters and return type
-
 ast_passes_abi_custom_safe_foreign_function =
-    foreign functions with the `"custom"` ABI cannot be safe
+    foreign functions with the "custom" ABI cannot be safe
     .suggestion = remove the `safe` keyword from this definition
 
 ast_passes_abi_custom_safe_function =
-    functions with the `"custom"` ABI must be unsafe
+    functions with the "custom" ABI must be unsafe
     .suggestion = add the `unsafe` keyword to this definition
+
+ast_passes_abi_must_not_have_parameters_or_return_type=
+    invalid signature for `extern {$abi}` function
+    .note = functions with the {$abi} ABI cannot have any parameters or return type
+    .suggestion = remove the parameters and return type
+
+ast_passes_abi_must_not_have_return_type=
+    invalid signature for `extern {$abi}` function
+    .note = functions with the "custom" ABI cannot have a return type
+    .help = remove the return type
 
 ast_passes_assoc_const_without_body =
     associated constant in `impl` without body
