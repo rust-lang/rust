@@ -703,11 +703,19 @@ mod snapshot {
     }
 
     #[test]
-    fn build_compiler_no_stage() {
+    fn build_compiler_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("build")
                 .path("compiler")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        ");
+
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("rustc")
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
@@ -750,7 +758,7 @@ mod snapshot {
     }
 
     #[test]
-    fn build_library_no_stage() {
+    fn build_library_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("build")
@@ -800,7 +808,7 @@ mod snapshot {
     }
 
     #[test]
-    fn build_miri_no_stage() {
+    fn build_miri_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("build")
@@ -808,6 +816,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> miri 1 <host>
         ");
     }
 
@@ -828,6 +837,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> miri 1 <host>
         ");
     }
 
@@ -843,11 +853,12 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> miri 2 <host>
         ");
     }
 
     #[test]
-    fn build_bootstrap_tool_no_stage() {
+    fn build_bootstrap_tool_no_explicit_stage() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("build")
@@ -901,6 +912,30 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         ");
 
+        insta::assert_snapshot!(ctx.config("build")
+            .paths(&["std"])
+            .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+
+        insta::assert_snapshot!(ctx.config("build")
+            .paths(&["core"])
+            .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+
+        insta::assert_snapshot!(ctx.config("build")
+            .paths(&["alloc"])
+            .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        ");
+
         insta::assert_snapshot!(ctx.config("doc")
             .paths(&["library", "core"])
             .render_steps(), @r"
@@ -943,6 +978,8 @@ mod snapshot {
     #[test]
     fn dist_baseline() {
         let ctx = TestCtx::new();
+        // Note that stdlib is uplifted, that is why `[dist] rustc 1 <host> -> std <host>` is in
+        // the output.
         insta::assert_snapshot!(
             ctx
                 .config("dist")
@@ -997,6 +1034,12 @@ mod snapshot {
         [dist] rustc <host>
         [dist] rustc 1 <host> -> std <host>
         [dist] src <>
+        [build] rustc 0 <host> -> rustfmt 1 <host>
+        [build] rustc 0 <host> -> cargo-fmt 1 <host>
+        [build] rustc 0 <host> -> clippy-driver 1 <host>
+        [build] rustc 0 <host> -> cargo-clippy 1 <host>
+        [build] rustc 0 <host> -> miri 1 <host>
+        [build] rustc 0 <host> -> cargo-miri 1 <host>
         ");
     }
 
@@ -1181,6 +1224,12 @@ mod snapshot {
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std <target1>
         [dist] src <>
+        [build] rustc 0 <host> -> rustfmt 1 <target1>
+        [build] rustc 0 <host> -> cargo-fmt 1 <target1>
+        [build] rustc 0 <host> -> clippy-driver 1 <target1>
+        [build] rustc 0 <host> -> cargo-clippy 1 <target1>
+        [build] rustc 0 <host> -> miri 1 <target1>
+        [build] rustc 0 <host> -> cargo-miri 1 <target1>
         ");
     }
 

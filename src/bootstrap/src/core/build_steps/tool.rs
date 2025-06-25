@@ -1188,6 +1188,16 @@ macro_rules! tool_extended {
                     None $( .or(Some($add_features)) )?,
                 )
             }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                // FIXME: refactor extended tool steps to make the build_compiler explicit,
+                // it is offset by one now for rustc tools
+                Some(
+                    StepMetadata::build($tool_name, self.target)
+                        .built_by(self.compiler.with_stage(self.compiler.stage.saturating_sub(1)))
+                        .stage(self.compiler.stage)
+                )
+            }
         }
     }
 }
