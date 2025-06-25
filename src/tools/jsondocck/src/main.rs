@@ -15,7 +15,9 @@ use directive::{Directive, DirectiveKind};
 use error::CkError;
 
 fn main() -> ExitCode {
-    let config = parse_config(env::args().collect());
+    let Some(config) = parse_config(env::args()) else {
+        return ExitCode::FAILURE;
+    };
 
     let mut failed = Vec::new();
     let mut cache = Cache::new(&config);
