@@ -344,7 +344,6 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         mut member_constraints,
         universe_causes,
         type_tests,
-        ..
     } = constraints;
 
     if let Some(guar) = universal_regions.tainted_by_errors() {

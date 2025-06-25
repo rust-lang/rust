@@ -14,7 +14,9 @@ use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use tracing::{debug, instrument};
 use type_op::TypeOpOutput;
 
-use crate::type_check::{Locations, MirTypeckRegionConstraints, constraint_conversion};
+use crate::type_check::{
+    Locations, MirTypeckRegionConstraints, PlaceholderToRegion, constraint_conversion,
+};
 use crate::universal_regions::UniversalRegions;
 
 #[derive(Debug)]
@@ -51,6 +53,7 @@ pub(crate) fn create<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
+    placeholder_to_region: &mut PlaceholderToRegion<'tcx>,
 ) -> CreateResult<'tcx> {
     UniversalRegionRelationsBuilder {
         infcx,
@@ -60,6 +63,7 @@ pub(crate) fn create<'tcx>(
         region_bound_pairs: Default::default(),
         outlives: Default::default(),
         inverse_outlives: Default::default(),
+        placeholder_to_region,
     }
     .create()
 }
@@ -181,6 +185,7 @@ struct UniversalRegionRelationsBuilder<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+    placeholder_to_region: &'a mut PlaceholderToRegion<'tcx>,
 
     // outputs:
     outlives: TransitiveRelationBuilder<RegionVid>,
@@ -324,6 +329,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 span,
                 ConstraintCategory::Internal,
                 self.constraints,
+                self.placeholder_to_region,
             )
             .convert_all(c);
         }

@@ -110,7 +110,6 @@ pub(crate) fn type_check<'tcx>(
     location_map: Rc<DenseLocationMap>,
 ) -> MirTypeckResults<'tcx> {
     let mut constraints = MirTypeckRegionConstraints {
-        placeholder_to_region: FxHashMap::default(),
         liveness_constraints: LivenessValues::with_specific_points(Rc::clone(&location_map)),
         outlives_constraints: OutlivesConstraintSet::default(),
         member_constraints: MemberConstraintSet::default(),
@@ -118,12 +117,24 @@ pub(crate) fn type_check<'tcx>(
         universe_causes: FxIndexMap::default(),
     };
 
+    // FIXME: I strongly suspect this follows the case of being mutated for a while
+    // and then settling, but I don't know enough about the type inference parts to know
+    // when this happens and if this can be exploited to simplify some of the downstream
+    // code. -- @amandasystems.
+    let mut placeholder_to_region = Default::default();
+
     let CreateResult {
         universal_region_relations,
         region_bound_pairs,
         normalized_inputs_and_output,
         known_type_outlives_obligations,
-    } = free_region_relations::create(infcx, infcx.param_env, universal_regions, &mut constraints);
+    } = free_region_relations::create(
+        infcx,
+        infcx.param_env,
+        universal_regions,
+        &mut constraints,
+        &mut placeholder_to_region,
+    );
 
     let pre_obligations = infcx.take_registered_region_obligations();
     assert!(
@@ -155,6 +166,7 @@ pub(crate) fn type_check<'tcx>(
         borrow_set,
         constraints: &mut constraints,
         polonius_liveness,
+        placeholder_to_region,
     };
 
     typeck.check_user_type_annotations();
@@ -221,6 +233,7 @@ struct TypeChecker<'a, 'tcx> {
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
     polonius_liveness: Option<PoloniusLivenessContext>,
+    placeholder_to_region: PlaceholderToRegion<'tcx>,
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -232,14 +245,30 @@ pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) polonius_context: Option<PoloniusContext>,
 }
 
+/// For each placeholder we create a corresponding representative region vid.
+/// This map tracks those. This way, when we convert the same `ty::RePlaceholder(p)`
+/// twice, we can map to the same underlying `RegionVid`.
+#[derive(Default)]
+pub(crate) struct PlaceholderToRegion<'tcx>(FxHashMap<ty::PlaceholderRegion, ty::Region<'tcx>>);
+
+impl<'tcx> PlaceholderToRegion<'tcx> {
+    /// Creates a `Region` for a given `PlaceholderRegion`, or returns the
+    /// region that corresponds to a previously created one.
+    fn placeholder_region(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        placeholder: ty::PlaceholderRegion,
+    ) -> ty::Region<'tcx> {
+        *self.0.entry(placeholder).or_insert_with(|| {
+            let origin = NllRegionVariableOrigin::Placeholder(placeholder);
+            infcx.next_nll_region_var_in_universe(origin, placeholder.universe)
+        })
+    }
+}
+
 /// A collection of region constraints that must be satisfied for the
 /// program to be considered well-typed.
 pub(crate) struct MirTypeckRegionConstraints<'tcx> {
-    /// For each placeholder we create a corresponding representative region vid.
-    /// This map tracks those. This way, when we convert the same `ty::RePlaceholder(p)`
-    /// twice, we can map to the same underlying `RegionVid`.
-    placeholder_to_region: FxHashMap<ty::PlaceholderRegion, ty::Region<'tcx>>,
-
     /// In general, the type-checker is not responsible for enforcing
     /// liveness constraints; this job falls to the region inferencer,
     /// which performs a liveness analysis. However, in some limited
@@ -256,21 +285,6 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     pub(crate) universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
-}
-
-impl<'tcx> MirTypeckRegionConstraints<'tcx> {
-    /// Creates a `Region` for a given `PlaceholderRegion`, or returns the
-    /// region that corresponds to a previously created one.
-    fn placeholder_region(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        placeholder: ty::PlaceholderRegion,
-    ) -> ty::Region<'tcx> {
-        *self.placeholder_to_region.entry(placeholder).or_insert_with(|| {
-            let origin = NllRegionVariableOrigin::Placeholder(placeholder);
-            infcx.next_nll_region_var_in_universe(origin, placeholder.universe)
-        })
-    }
 }
 
 /// The `Locations` type summarizes *where* region constraints are
@@ -350,7 +364,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> RegionVid {
         if let ty::RePlaceholder(placeholder) = r.kind() {
-            self.constraints.placeholder_region(self.infcx, placeholder).as_var()
+            self.placeholder_to_region.placeholder_region(self.infcx, placeholder).as_var()
         } else {
             self.universal_regions.to_region_vid(r)
         }
@@ -398,6 +412,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             locations.span(self.body),
             category,
             self.constraints,
+            &mut self.placeholder_to_region,
         )
         .convert_all(data);
     }
@@ -2487,6 +2502,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.body.span,             // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
                 self.constraints,
+                &mut self.placeholder_to_region,
             )
             .apply_closure_requirements(closure_requirements, def_id, args);
         }
