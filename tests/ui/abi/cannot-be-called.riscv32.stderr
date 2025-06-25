@@ -1,83 +1,83 @@
 error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:38:8
+  --> $DIR/cannot-be-called.rs:37:8
    |
 LL | extern "msp430-interrupt" fn msp430() {}
    |        ^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "avr-interrupt" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:40:8
+  --> $DIR/cannot-be-called.rs:39:8
    |
 LL | extern "avr-interrupt" fn avr() {}
    |        ^^^^^^^^^^^^^^^
 
 error[E0570]: "x86-interrupt" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:46:8
+  --> $DIR/cannot-be-called.rs:45:8
    |
 LL | extern "x86-interrupt" fn x86() {}
    |        ^^^^^^^^^^^^^^^
 
-error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:65:25
-   |
-LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
-   |                         ^^^^^^^^^^^^^^^^^^
-
 error[E0570]: "avr-interrupt" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:71:22
+  --> $DIR/cannot-be-called.rs:64:22
    |
 LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
    |                      ^^^^^^^^^^^^^^^
 
+error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
+  --> $DIR/cannot-be-called.rs:70:25
+   |
+LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
+   |                         ^^^^^^^^^^^^^^^^^^
+
 error[E0570]: "x86-interrupt" is not a supported ABI for the current target
-  --> $DIR/cannot-be-called.rs:89:22
+  --> $DIR/cannot-be-called.rs:88:22
    |
 LL | fn x86_ptr(f: extern "x86-interrupt" fn()) {
    |                      ^^^^^^^^^^^^^^^
 
 error: functions with the "riscv-interrupt-m" ABI cannot be called
-  --> $DIR/cannot-be-called.rs:55:5
+  --> $DIR/cannot-be-called.rs:54:5
    |
 LL |     riscv_m();
    |     ^^^^^^^^^
    |
 note: an `extern "riscv-interrupt-m"` function can only be called using inline assembly
-  --> $DIR/cannot-be-called.rs:55:5
+  --> $DIR/cannot-be-called.rs:54:5
    |
 LL |     riscv_m();
    |     ^^^^^^^^^
 
 error: functions with the "riscv-interrupt-s" ABI cannot be called
-  --> $DIR/cannot-be-called.rs:57:5
+  --> $DIR/cannot-be-called.rs:56:5
    |
 LL |     riscv_s();
    |     ^^^^^^^^^
    |
 note: an `extern "riscv-interrupt-s"` function can only be called using inline assembly
-  --> $DIR/cannot-be-called.rs:57:5
+  --> $DIR/cannot-be-called.rs:56:5
    |
 LL |     riscv_s();
    |     ^^^^^^^^^
 
 error: functions with the "riscv-interrupt-m" ABI cannot be called
-  --> $DIR/cannot-be-called.rs:79:5
+  --> $DIR/cannot-be-called.rs:78:5
    |
 LL |     f()
    |     ^^^
    |
 note: an `extern "riscv-interrupt-m"` function can only be called using inline assembly
-  --> $DIR/cannot-be-called.rs:79:5
+  --> $DIR/cannot-be-called.rs:78:5
    |
 LL |     f()
    |     ^^^
 
 error: functions with the "riscv-interrupt-s" ABI cannot be called
-  --> $DIR/cannot-be-called.rs:85:5
+  --> $DIR/cannot-be-called.rs:84:5
    |
 LL |     f()
    |     ^^^
    |
 note: an `extern "riscv-interrupt-s"` function can only be called using inline assembly
-  --> $DIR/cannot-be-called.rs:85:5
+  --> $DIR/cannot-be-called.rs:84:5
    |
 LL |     f()
    |     ^^^
