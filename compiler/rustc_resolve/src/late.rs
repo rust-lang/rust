@@ -61,6 +61,7 @@ struct BindingInfo {
 pub(crate) enum PatternSource {
     Match,
     Let,
+    Is,
     For,
     FnParam,
 }
@@ -88,6 +89,7 @@ impl PatternSource {
         match self {
             PatternSource::Match => "match binding",
             PatternSource::Let => "let binding",
+            PatternSource::Is => "is binding",
             PatternSource::For => "for binding",
             PatternSource::FnParam => "function parameter",
         }
@@ -4842,6 +4844,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     }
                 }
                 self.apply_pattern_bindings(bindings);
+            }
+
+            ExprKind::Is(ref scrutinee, ref pat) => {
+                // TODO: handle `is` outside of `if`/`while`: we'll need to introduce a new rib for
+                // the `is`'s `&&`-chain.
+                self.visit_expr(scrutinee);
+                self.resolve_pattern_top(pat, PatternSource::Is);
             }
 
             ExprKind::If(ref cond, ref then, ref opt_else) => {

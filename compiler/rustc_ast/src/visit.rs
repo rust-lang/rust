@@ -1705,6 +1705,10 @@ macro_rules! common_visitor_and_walkers {
                     try_visit!(vis.visit_expr(expr));
                     try_visit!(visit_span(vis, span))
                 }
+                ExprKind::Is(expr, pat) => {
+                    try_visit!(vis.visit_expr(expr));
+                    try_visit!(vis.visit_pat(pat));
+                }
                 ExprKind::If(head_expression, if_block, optional_else) => {
                     try_visit!(vis.visit_expr(head_expression));
                     try_visit!(vis.visit_block(if_block));
