@@ -179,12 +179,14 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
 /// ```
 #[lang = "sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_ops", issue = "90080")]
 #[rustc_on_unimplemented(
     message = "cannot subtract `{Rhs}` from `{Self}`",
     label = "no implementation for `{Self} - {Rhs}`",
     append_const_msg
 )]
 #[doc(alias = "-")]
+#[const_trait]
 pub trait Sub<Rhs = Self> {
     /// The resulting type after applying the `-` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -206,7 +208,8 @@ pub trait Sub<Rhs = Self> {
 macro_rules! sub_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl Sub for $t {
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        impl const Sub for $t {
             type Output = $t;
 
             #[inline]
@@ -310,11 +313,13 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
 /// ```
 #[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_ops", issue = "90080")]
 #[diagnostic::on_unimplemented(
     message = "cannot multiply `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} * {Rhs}`"
 )]
 #[doc(alias = "*")]
+#[const_trait]
 pub trait Mul<Rhs = Self> {
     /// The resulting type after applying the `*` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -336,7 +341,8 @@ pub trait Mul<Rhs = Self> {
 macro_rules! mul_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl Mul for $t {
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        impl const Mul for $t {
             type Output = $t;
 
             #[inline]
@@ -444,11 +450,13 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
 /// ```
 #[lang = "div"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_ops", issue = "90080")]
 #[diagnostic::on_unimplemented(
     message = "cannot divide `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} / {Rhs}`"
 )]
 #[doc(alias = "/")]
+#[const_trait]
 pub trait Div<Rhs = Self> {
     /// The resulting type after applying the `/` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -476,7 +484,8 @@ macro_rules! div_impl_integer {
         ///
         #[doc = $panic]
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl Div for $t {
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        impl const Div for $t {
             type Output = $t;
 
             #[inline]
@@ -496,7 +505,8 @@ div_impl_integer! {
 macro_rules! div_impl_float {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl Div for $t {
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        impl const Div for $t {
             type Output = $t;
 
             #[inline]
@@ -546,11 +556,13 @@ div_impl_float! { f16 f32 f64 f128 }
 /// ```
 #[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_ops", issue = "90080")]
 #[diagnostic::on_unimplemented(
     message = "cannot calculate the remainder of `{Self}` divided by `{Rhs}`",
     label = "no implementation for `{Self} % {Rhs}`"
 )]
 #[doc(alias = "%")]
+#[const_trait]
 pub trait Rem<Rhs = Self> {
     /// The resulting type after applying the `%` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -578,7 +590,8 @@ macro_rules! rem_impl_integer {
         ///
         #[doc = $panic]
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl Rem for $t {
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        impl const Rem for $t {
             type Output = $t;
 
             #[inline]
@@ -613,6 +626,7 @@ macro_rules! rem_impl_float {
         /// assert_eq!(x % y, remainder);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
         impl Rem for $t {
             type Output = $t;
 
