@@ -460,7 +460,6 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
 pub trait Div<Rhs = Self> {
     /// The resulting type after applying the `/` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
     type Output;
 
     /// Performs the `/` operation.
@@ -485,6 +484,7 @@ macro_rules! div_impl_integer {
         ///
         #[doc = $panic]
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
         impl const Div for $t {
             type Output = $t;
 
@@ -505,6 +505,7 @@ div_impl_integer! {
 macro_rules! div_impl_float {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
         impl const Div for $t {
             type Output = $t;
 
@@ -589,6 +590,7 @@ macro_rules! rem_impl_integer {
         ///
         #[doc = $panic]
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
         impl const Rem for $t {
             type Output = $t;
 
