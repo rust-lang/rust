@@ -264,7 +264,7 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for Without
     }
 }
 
-type ConvertFn<E> = fn(ThinVec<E>) -> AttributeKind;
+type ConvertFn<E> = fn(ThinVec<E>, Span) -> AttributeKind;
 
 /// Alternative to [`AttributeParser`] that automatically handles state management.
 /// If multiple attributes appear on an element, combines the values of each into a
@@ -295,14 +295,21 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
 
 /// Use in combination with [`CombineAttributeParser`].
 /// `Combine<T: CombineAttributeParser>` implements [`AttributeParser`].
-pub(crate) struct Combine<T: CombineAttributeParser<S>, S: Stage>(
-    PhantomData<(S, T)>,
-    ThinVec<<T as CombineAttributeParser<S>>::Item>,
-);
+pub(crate) struct Combine<T: CombineAttributeParser<S>, S: Stage> {
+    phantom: PhantomData<(S, T)>,
+    /// A list of all items produced by parsing attributes so far. One attribute can produce any amount of items.
+    items: ThinVec<<T as CombineAttributeParser<S>>::Item>,
+    /// The full span of the first attribute that was encountered.
+    first_span: Option<Span>,
+}
 
 impl<T: CombineAttributeParser<S>, S: Stage> Default for Combine<T, S> {
     fn default() -> Self {
-        Self(Default::default(), Default::default())
+        Self {
+            phantom: Default::default(),
+            items: Default::default(),
+            first_span: Default::default(),
+        }
     }
 }
 
@@ -310,10 +317,18 @@ impl<T: CombineAttributeParser<S>, S: Stage> AttributeParser<S> for Combine<T, S
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         T::PATH,
         <T as CombineAttributeParser<S>>::TEMPLATE,
-        |group: &mut Combine<T, S>, cx, args| group.1.extend(T::extend(cx, args)),
+        |group: &mut Combine<T, S>, cx, args| {
+            // Keep track of the span of the first attribute, for diagnostics
+            group.first_span.get_or_insert(cx.attr_span);
+            group.items.extend(T::extend(cx, args))
+        },
     )];
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
-        if self.1.is_empty() { None } else { Some(T::CONVERT(self.1)) }
+        if let Some(first_span) = self.first_span {
+            Some(T::CONVERT(self.items, first_span))
+        } else {
+            None
+        }
     }
 }

@@ -42,6 +42,7 @@ impl AttributeKind {
             RustcLayoutScalarValidRangeStart(..) => Yes,
             RustcObjectLifetimeDefault => No,
             SkipDuringMethodDispatch { .. } => No,
+            TargetFeature(..) => No,
             TrackCaller(..) => Yes,
             Used { .. } => No,
         }

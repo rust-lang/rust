@@ -7,7 +7,7 @@ use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_attr_data_structures::{
-    AttributeKind, ConstStability, Deprecation, Stability, StableSince,
+    AttributeKind, ConstStability, Deprecation, Stability, StableSince, find_attr,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -24,7 +24,7 @@ use rustc_resolve::rustdoc::{
 };
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, FileName, Loc};
 use thin_vec::ThinVec;
 use tracing::{debug, trace};
@@ -770,6 +770,17 @@ impl Item {
                         hir::Attribute::Parsed(AttributeKind::Deprecation { .. }) => None,
                         // We have separate pretty-printing logic for `#[repr(..)]` attributes.
                         hir::Attribute::Parsed(AttributeKind::Repr(..)) => None,
+                        // target_feature is special-cased because cargo-semver-checks uses it
+                        hir::Attribute::Parsed(AttributeKind::TargetFeature(features, _)) => {
+                            let mut output = String::new();
+                            for (i, (feature, _)) in features.iter().enumerate() {
+                                if i != 0 {
+                                    output.push_str(", ");
+                                }
+                                output.push_str(&format!("enable=\"{}\"", feature.as_str()));
+                            }
+                            Some(format!("#[target_feature({output})]"))
+                        }
                         _ => Some({
                             let mut s = rustc_hir_pretty::attribute_to_string(&tcx, attr);
                             assert_eq!(s.pop(), Some('\n'));
@@ -1075,16 +1086,10 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     // treat #[target_feature(enable = "feat")] attributes as if they were
     // #[doc(cfg(target_feature = "feat"))] attributes as well
-    for attr in hir_attr_lists(attrs, sym::target_feature) {
-        if attr.has_name(sym::enable) && attr.value_str().is_some() {
-            // Clone `enable = "feat"`, change to `target_feature = "feat"`.
-            // Unwrap is safe because `value_str` succeeded above.
-            let mut meta = attr.meta_item().unwrap().clone();
-            meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
-
-            if let Ok(feat_cfg) = Cfg::parse(&ast::MetaItemInner::MetaItem(meta)) {
-                cfg &= feat_cfg;
-            }
+    if let Some(features) = find_attr!(attrs, AttributeKind::TargetFeature(features, _) => features)
+    {
+        for (feature, _) in features {
+            cfg &= Cfg::Cfg(sym::target_feature, Some(*feature));
         }
     }
 

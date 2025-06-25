@@ -82,7 +82,7 @@ pub fn rustc_allow_const_fn_unstable(
 ) -> bool {
     let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
 
-    attrs::find_attr!(attrs, attrs::AttributeKind::AllowConstFnUnstable(syms) if syms.contains(&feature_gate))
+    attrs::find_attr!(attrs, attrs::AttributeKind::AllowConstFnUnstable(syms, _) if syms.contains(&feature_gate))
 }
 
 /// Returns `true` if the given `def_id` (trait or function) is "safe to expose on stable".

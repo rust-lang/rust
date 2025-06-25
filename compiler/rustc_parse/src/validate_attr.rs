@@ -298,6 +298,8 @@ fn emit_malformed_attribute(
             | sym::deprecated
             | sym::optimize
             | sym::cold
+            | sym::target_feature
+            | sym::rustc_allow_const_fn_unstable
             | sym::naked
             | sym::no_mangle
             | sym::must_use
