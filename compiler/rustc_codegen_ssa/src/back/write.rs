@@ -41,7 +41,7 @@ use tracing::debug;
 use super::link::{self, ensure_removed};
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
-use crate::errors::{AutodiffWithoutLto, ErrorCreatingRemarkDir};
+use crate::errors::{AutodiffLibraryBuild, AutodiffWithoutLto, ErrorCreatingRemarkDir};
 use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
@@ -419,7 +419,12 @@ fn generate_lto_work<B: ExtraBackendMethods>(
     } else {
         if !autodiff.is_empty() {
             let dcx = cgcx.create_dcx();
-            dcx.handle().emit_fatal(AutodiffWithoutLto {});
+            if cgcx.crate_types.contains(&CrateType::Rlib) {
+                dcx.handle().emit_fatal(AutodiffLibraryBuild {});
+            }
+            if cgcx.lto != Lto::Fat {
+                dcx.handle().emit_fatal(AutodiffWithoutLto {});
+            }
         }
         assert!(needs_fat_lto.is_empty());
         let (lto_modules, copy_jobs) = B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules)
@@ -1456,6 +1461,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     if needs_fat_lto.is_empty()
                         && needs_thin_lto.is_empty()
                         && lto_import_only_modules.is_empty()
+                        && autodiff_items.is_empty()
                     {
                         // Nothing more to do!
                         break;
@@ -1469,13 +1475,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert!(!started_lto);
                     started_lto = true;
 
+                    let autodiff_items = mem::take(&mut autodiff_items);
                     let needs_fat_lto = mem::take(&mut needs_fat_lto);
                     let needs_thin_lto = mem::take(&mut needs_thin_lto);
                     let import_only_modules = mem::take(&mut lto_import_only_modules);
 
                     for (work, cost) in generate_lto_work(
                         &cgcx,
-                        autodiff_items.clone(),
+                        autodiff_items,
                         needs_fat_lto,
                         needs_thin_lto,
                         import_only_modules,
