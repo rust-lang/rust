@@ -103,18 +103,6 @@ LL | #[export_name = "exported_symbol_name2"]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: unused attribute
-  --> $DIR/unused-attr-duplicate.rs:102:1
-   |
-LL | #[used]
-   | ^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/unused-attr-duplicate.rs:101:1
-   |
-LL | #[used]
-   | ^^^^^^^
-
-error: unused attribute
   --> $DIR/unused-attr-duplicate.rs:86:5
    |
 LL |     #[link_name = "this_does_not_exist"]
@@ -288,6 +276,18 @@ note: attribute also specified here
    |
 LL | #[no_mangle]
    | ^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr-duplicate.rs:102:1
+   |
+LL | #[used]
+   | ^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unused-attr-duplicate.rs:101:1
+   |
+LL | #[used]
+   | ^^^^^^^
 
 error: aborting due to 23 previous errors
 
