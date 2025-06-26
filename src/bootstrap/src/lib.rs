@@ -408,7 +408,7 @@ impl Build {
                 .strip_prefix(&config.initial_sysroot)
                 .unwrap_or_else(|_| {
                     panic!(
-                        "Couldn’t resolve the initial relative libdir from {}",
+                        "Couldn't resolve the initial relative libdir from {}",
                         initial_target_dir.display()
                     )
                 })
@@ -543,7 +543,17 @@ impl Build {
             // Left over from a previous build; overwrite it.
             // This matters if `build.build` has changed between invocations.
             #[cfg(windows)]
-            t!(fs::remove_dir(&host));
+            {
+                // On Windows, symlinks (including junctions) can fail to be removed with
+                // `fs::remove_dir` if the target is invalid, causing error 267
+                // "The directory name is invalid". This can happen when the symlink
+                // points to a non-existent or corrupted target.
+                // We try removing as a file first (works for invalid symlinks),
+                // then fall back to removing as a directory if needed.
+                if let Err(_) = fs::remove_file(&host) {
+                    t!(fs::remove_dir(&host));
+                }
+            }
             #[cfg(not(windows))]
             t!(fs::remove_file(&host));
         }
