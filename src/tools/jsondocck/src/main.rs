@@ -11,17 +11,21 @@ mod directive;
 
 use cache::Cache;
 use config::Config;
-use directive::{Directive, DirectiveKind};
+
+use crate::directive::Directive;
 
 static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new(
         r"
-        ^\s*
-        //@\s+
-        (?P<negated>!?)
-        (?P<directive>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
-        (?P<args>.*)$
-    ",
+            # Any number of whitespaces.
+            \s*
+            # The directive prefix (`//@`) and 1 or more whitespaces after.
+            //@\s+
+            # The directive itself (1 or more word or `-` characters).
+            (?P<directive>[\w-]+)
+            # The optional remainder (1 non-word character and 0 or more of any characters after).
+            (?P<args>\W.*)?
+        ",
     )
     .ignore_whitespace(true)
     .build()
@@ -48,7 +52,7 @@ struct ErrorReporter<'a> {
 }
 
 impl ErrorReporter<'_> {
-    fn print(&mut self, msg: impl Display, lineno: usize) {
+    fn print(&mut self, lineno: usize, msg: impl Display) {
         self.errors = true;
 
         eprintln!("{}:{lineno}: {msg}", self.template);
@@ -68,38 +72,37 @@ fn main() -> ExitCode {
         lineno += 1;
 
         if DEPRECATED_LINE_PATTERN.is_match(line) {
-            error_reporter.print("deprecated directive syntax, replace `// @` with `//@ `", lineno);
+            error_reporter.print(lineno, "deprecated directive syntax, replace `// @` with `//@ `");
 
             continue;
         }
 
         if MIXED_LINE.is_match(line) {
             error_reporter.print(
-                "directives must be on their own line, directives after code are ignored",
                 lineno,
+                "directives must be on their own line, directives after code are ignored",
             );
+
+            continue;
         }
 
         let Some(cap) = LINE_PATTERN.captures(line) else {
             continue;
         };
 
-        let negated = &cap["negated"] == "!";
+        let directive = match Directive::parse(&cap["directive"], &cap["args"]) {
+            Ok(Some(directive)) => directive,
+            Ok(None) => continue,
+            Err(message) => {
+                error_reporter
+                    .print(lineno, format_args!("failed to parse a directive: {message}"));
 
-        let args_str = &cap["args"];
-        let Some(args) = shlex::split(args_str) else {
-            error_reporter
-                .print(&format!("Invalid arguments to shlex::split: `{args_str}`",), lineno);
-
-            continue;
+                continue;
+            }
         };
 
-        if let Some((kind, path)) = DirectiveKind::parse(&cap["directive"], negated, &args) {
-            let directive = Directive { kind, lineno, path: path.to_owned() };
-
-            if let Err(message) = directive.check(&mut cache) {
-                error_reporter.print(format_args!("directive failed: {message}"), directive.lineno);
-            }
+        if let Err(message) = directive.process(&mut cache) {
+            error_reporter.print(lineno, format_args!("directive failed: {message}"));
         }
     }
 
