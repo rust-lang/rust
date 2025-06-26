@@ -1617,6 +1617,7 @@ symbols! {
         pie,
         pin,
         pin_ergonomics,
+        pin_macro,
         platform_intrinsics,
         plugin,
         plugin_registrar,
