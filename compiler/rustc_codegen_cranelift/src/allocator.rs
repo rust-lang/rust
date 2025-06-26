@@ -3,7 +3,7 @@
 
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use rustc_ast::expand::allocator::{
-    ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
+    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
     alloc_error_handler_name, default_fn_name, global_fn_name,
 };
 use rustc_codegen_ssa::base::allocator_kind_for_codegen;
@@ -80,7 +80,7 @@ fn codegen_inner(
     crate::common::create_wrapper_function(
         module,
         sig,
-        &mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
+        &mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
         &mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind)),
     );
 

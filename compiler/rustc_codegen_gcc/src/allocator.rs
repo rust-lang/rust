@@ -2,7 +2,7 @@ use gccjit::{Context, FunctionType, GlobalKind, ToRValue, Type};
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute};
 use rustc_ast::expand::allocator::{
-    ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
+    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
     alloc_error_handler_name, default_fn_name, global_fn_name,
 };
 use rustc_middle::bug;
@@ -65,7 +65,7 @@ pub(crate) unsafe fn codegen(
     create_wrapper_function(
         tcx,
         context,
-        &mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
+        &mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
         Some(&mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind))),
         &[usize, usize],
         None,
