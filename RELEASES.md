@@ -54,8 +54,8 @@ Stabilized APIs
 ---------------
 
 - [`Cell::update`](https://doc.rust-lang.org/stable/std/cell/struct.Cell.html#method.update)
-- [`impl Default for *const T`](https://doc.rust-lang.org/nightly/std/primitive.pointer.html#impl-Default-for-*const+T)
-- [`impl Default for *mut T`](https://doc.rust-lang.org/nightly/std/primitive.pointer.html#impl-Default-for-*mut+T)
+- [`impl Default for *const T`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#impl-Default-for-*const+T)
+- [`impl Default for *mut T`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#impl-Default-for-*mut+T)
 - [`HashMap::extract_if`](https://doc.rust-lang.org/stable/std/collections/struct.HashMap.html#method.extract_if)
 - [`HashSet::extract_if`](https://doc.rust-lang.org/stable/std/collections/struct.HashSet.html#method.extract_if)
 - [`proc_macro::Span::line`](https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.line)
