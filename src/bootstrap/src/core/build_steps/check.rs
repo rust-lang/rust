@@ -144,7 +144,7 @@ fn default_compiler_for_checking_rustc(builder: &Builder<'_>) -> Compiler {
 }
 
 /// Checks rustc using `build_compiler` and copies the built
-/// .rmeta files into the sysroot of `build_copoiler`.
+/// .rmeta files into the sysroot of `build_compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     /// Compiler that will check this rustc.
@@ -249,8 +249,19 @@ impl Step for Rustc {
     }
 }
 
+/// Prepares a build compiler sysroot that will check a `Mode::ToolRustc` tool.
+/// Also checks rustc using this compiler, to prepare .rmetas that the tool will link to.
+fn prepare_compiler_for_tool_rustc(builder: &Builder<'_>, target: TargetSelection) -> Compiler {
+    // When we check tool stage N, we check it with compiler stage N-1
+    let build_compiler = builder.compiler(builder.top_stage - 1, builder.config.host_target);
+    builder.ensure(Rustc::new(builder, build_compiler, target));
+    build_compiler
+}
+
+/// Checks a single codegen backend.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CodegenBackend {
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
     pub backend: &'static str,
 }
@@ -265,8 +276,10 @@ impl Step for CodegenBackend {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // FIXME: only check the backend(s) that were actually selected in run.paths
+        let build_compiler = prepare_compiler_for_tool_rustc(run.builder, run.target);
         for &backend in &["cranelift", "gcc"] {
-            run.builder.ensure(CodegenBackend { target: run.target, backend });
+            run.builder.ensure(CodegenBackend { build_compiler, target: run.target, backend });
         }
     }
 
@@ -277,15 +290,13 @@ impl Step for CodegenBackend {
             return;
         }
 
-        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        let build_compiler = self.build_compiler;
         let target = self.target;
         let backend = self.backend;
 
-        builder.ensure(Rustc::new(target, builder));
-
         let mut cargo = builder::Cargo::new(
             builder,
-            compiler,
+            build_compiler,
             Mode::Codegen,
             SourceType::InTree,
             target,
@@ -295,14 +306,18 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
-        rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+        rustc_cargo_env(builder, &mut cargo, target, build_compiler.stage);
 
-        let _guard = builder.msg_check(backend, target, None);
+        let _guard = builder.msg_check(&format!("rustc_codegen_{backend}"), target, None);
 
-        let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, backend)
+        let stamp = build_stamp::codegen_backend_stamp(builder, build_compiler, target, backend)
             .with_prefix("check");
 
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check(self.backend, self.target).built_by(self.build_compiler))
     }
 }
 

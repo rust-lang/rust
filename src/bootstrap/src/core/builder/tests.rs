@@ -1242,6 +1242,8 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> cranelift 1 <host>
+        [check] rustc 0 <host> -> gcc 1 <host>
         ");
 
         insta::assert_snapshot!(
@@ -1270,6 +1272,8 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> cranelift 1 <host>
+        [check] rustc 0 <host> -> gcc 1 <host>
         ");
     }
 
@@ -1285,6 +1289,8 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [check] rustc 1 <host> -> rustc 2 <host>
+        [check] rustc 1 <host> -> cranelift 2 <host>
+        [check] rustc 1 <host> -> gcc 2 <host>
         ");
     }
 
@@ -1412,6 +1418,20 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [check] compiletest <host>
+        ");
+    }
+
+    #[test]
+    fn check_codegen() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("rustc_codegen_cranelift")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [check] rustc 0 <host> -> cranelift 1 <host>
+        [check] rustc 0 <host> -> gcc 1 <host>
         ");
     }
 
