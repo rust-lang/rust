@@ -521,13 +521,18 @@ impl SelfProfilerRef {
             let builder = EventIdBuilder::new(&profiler.profiler);
             let thread_id = get_thread_id();
             for (query_invocation, hit_count) in query_hits.iter().enumerate() {
-                let event_id = builder.from_label(StringId::new_virtual(query_invocation as u64));
-                profiler.profiler.record_integer_event(
-                    profiler.query_cache_hit_count_event_kind,
-                    event_id,
-                    thread_id,
-                    hit_count.load(Ordering::Relaxed),
-                );
+                let hit_count = hit_count.load(Ordering::Relaxed);
+                // No need to record empty cache hit counts
+                if hit_count > 0 {
+                    let event_id =
+                        builder.from_label(StringId::new_virtual(query_invocation as u64));
+                    profiler.profiler.record_integer_event(
+                        profiler.query_cache_hit_count_event_kind,
+                        event_id,
+                        thread_id,
+                        hit_count,
+                    );
+                }
             }
         }
     }
