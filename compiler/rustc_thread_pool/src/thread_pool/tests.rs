@@ -151,6 +151,7 @@ fn self_install() {
     assert!(pool.install(|| pool.install(|| true)));
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -172,6 +173,7 @@ fn mutual_install() {
     assert!(ok);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -228,6 +230,7 @@ macro_rules! test_scope_order {
     }};
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -237,6 +240,7 @@ fn scope_lifo_order() {
     assert_eq!(vec, expected);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -279,6 +283,7 @@ fn spawn_fifo_order() {
     assert_eq!(vec, expected);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -316,6 +321,7 @@ fn nested_scopes() {
     assert_eq!(counter.into_inner(), pools.len());
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]

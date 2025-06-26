@@ -64,6 +64,7 @@ fn spawn_broadcast_self() {
     assert!(v.into_iter().eq(0..7));
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -99,6 +100,7 @@ fn spawn_broadcast_mutual() {
     assert_eq!(rx.into_iter().count(), 3 * 7);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]

@@ -35,6 +35,7 @@ fn overflow_code() -> Option<i32> {
     ExitStatus::from_raw(0xc00000fd /*STATUS_STACK_OVERFLOW*/).code()
 }
 
+// FIXME: We should fix or remove this test on Windows.
 #[test]
 #[cfg_attr(not(any(unix)), ignore)]
 fn stack_overflow_crash() {

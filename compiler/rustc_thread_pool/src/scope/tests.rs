@@ -289,6 +289,7 @@ macro_rules! test_order {
     }};
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -299,6 +300,7 @@ fn lifo_order() {
     assert_eq!(vec, expected);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -335,6 +337,7 @@ macro_rules! test_nested_order {
     }};
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -345,6 +348,7 @@ fn nested_lifo_order() {
     assert_eq!(vec, expected);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -355,6 +359,7 @@ fn nested_fifo_order() {
     assert_eq!(vec, expected);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -365,6 +370,7 @@ fn nested_lifo_fifo_order() {
     assert_eq!(vec, expected);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -407,6 +413,7 @@ macro_rules! test_mixed_order {
     }};
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -418,6 +425,7 @@ fn mixed_lifo_order() {
     assert_eq!(vec, expected);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -427,6 +435,7 @@ fn mixed_fifo_order() {
     assert_eq!(vec, expected);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -438,6 +447,7 @@ fn mixed_lifo_fifo_order() {
     assert_eq!(vec, expected);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 #[cfg_attr(any(target_os = "emscripten", target_family = "wasm"), ignore)]
@@ -553,6 +563,7 @@ fn scope_fifo_spawn_broadcast() {
     assert_eq!(sum.into_inner(), n * (n - 1) / 2);
 }
 
+// FIXME: We should fix or remove this ignored test.
 #[test]
 #[ignore]
 fn scope_spawn_broadcast_nested() {
