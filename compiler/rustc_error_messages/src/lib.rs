@@ -8,7 +8,7 @@
 
 use std::borrow::Cow;
 use std::error::Error;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, LazyLock};
 use std::{fmt, fs, io};
 
@@ -18,10 +18,9 @@ pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
 use fluent_syntax::parser::ParserError;
 use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
 use intl_memoizer::concurrent::IntlLangMemoizer;
-use rustc_data_structures::sync::IntoDynSyncSend;
+use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
-use smallvec::SmallVec;
 use tracing::{instrument, trace};
 pub use unic_langid::{LanguageIdentifier, langid};
 
@@ -107,7 +106,7 @@ impl From<Vec<FluentError>> for TranslationBundleError {
 /// (overriding any conflicting messages).
 #[instrument(level = "trace")]
 pub fn fluent_bundle(
-    sysroot_candidates: SmallVec<[PathBuf; 2]>,
+    sysroot_candidates: &[&Path],
     requested_locale: Option<LanguageIdentifier>,
     additional_ftl_path: Option<&Path>,
     with_directionality_markers: bool,
@@ -141,7 +140,8 @@ pub fn fluent_bundle(
     // If the user requests the default locale then don't try to load anything.
     if let Some(requested_locale) = requested_locale {
         let mut found_resources = false;
-        for mut sysroot in sysroot_candidates {
+        for sysroot in sysroot_candidates {
+            let mut sysroot = sysroot.to_path_buf();
             sysroot.push("share");
             sysroot.push("locale");
             sysroot.push(requested_locale.to_string());
@@ -204,16 +204,16 @@ fn register_functions(bundle: &mut FluentBundle) {
 
 /// Type alias for the result of `fallback_fluent_bundle` - a reference-counted pointer to a lazily
 /// evaluated fluent bundle.
-pub type LazyFallbackBundle = Arc<LazyLock<FluentBundle, impl FnOnce() -> FluentBundle>>;
+pub type LazyFallbackBundle =
+    Arc<LazyLock<FluentBundle, Box<dyn FnOnce() -> FluentBundle + DynSend>>>;
 
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
 #[instrument(level = "trace", skip(resources))]
-#[define_opaque(LazyFallbackBundle)]
 pub fn fallback_fluent_bundle(
     resources: Vec<&'static str>,
     with_directionality_markers: bool,
 ) -> LazyFallbackBundle {
-    Arc::new(LazyLock::new(move || {
+    Arc::new(LazyLock::new(Box::new(move || {
         let mut fallback_bundle = new_bundle(vec![langid!("en-US")]);
 
         register_functions(&mut fallback_bundle);
@@ -228,7 +228,7 @@ pub fn fallback_fluent_bundle(
         }
 
         fallback_bundle
-    }))
+    })))
 }
 
 /// Identifier for the Fluent message/attribute corresponding to a diagnostic message.

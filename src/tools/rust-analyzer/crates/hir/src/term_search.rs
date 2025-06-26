@@ -22,20 +22,20 @@ enum NewTypesKey {
 /// Helper enum to squash big number of alternative trees into `Many` variant as there is too many
 /// to take into account.
 #[derive(Debug)]
-enum AlternativeExprs {
+enum AlternativeExprs<'db> {
     /// There are few trees, so we keep track of them all
-    Few(FxHashSet<Expr>),
+    Few(FxHashSet<Expr<'db>>),
     /// There are too many trees to keep track of
     Many,
 }
 
-impl AlternativeExprs {
+impl<'db> AlternativeExprs<'db> {
     /// Construct alternative trees
     ///
     /// # Arguments
     /// `threshold` - threshold value for many trees (more than that is many)
     /// `exprs` - expressions iterator
-    fn new(threshold: usize, exprs: impl Iterator<Item = Expr>) -> AlternativeExprs {
+    fn new(threshold: usize, exprs: impl Iterator<Item = Expr<'db>>) -> AlternativeExprs<'db> {
         let mut it = AlternativeExprs::Few(Default::default());
         it.extend_with_threshold(threshold, exprs);
         it
@@ -45,7 +45,7 @@ impl AlternativeExprs {
     ///
     /// # Arguments
     /// `ty` - Type of expressions queried (this is used to give type to `Expr::Many`)
-    fn exprs(&self, ty: &Type) -> Vec<Expr> {
+    fn exprs(&self, ty: &Type<'db>) -> Vec<Expr<'db>> {
         match self {
             AlternativeExprs::Few(exprs) => exprs.iter().cloned().collect(),
             AlternativeExprs::Many => vec![Expr::Many(ty.clone())],
@@ -57,7 +57,7 @@ impl AlternativeExprs {
     /// # Arguments
     /// `threshold` - threshold value for many trees (more than that is many)
     /// `exprs` - expressions iterator
-    fn extend_with_threshold(&mut self, threshold: usize, exprs: impl Iterator<Item = Expr>) {
+    fn extend_with_threshold(&mut self, threshold: usize, exprs: impl Iterator<Item = Expr<'db>>) {
         match self {
             AlternativeExprs::Few(tts) => {
                 for it in exprs {
@@ -88,20 +88,20 @@ impl AlternativeExprs {
 /// Both of them are to speed up the term search by leaving out types / ScopeDefs that likely do
 /// not produce any new results.
 #[derive(Default, Debug)]
-struct LookupTable {
+struct LookupTable<'db> {
     /// All the `Expr`s in "value" produce the type of "key"
-    data: FxHashMap<Type, AlternativeExprs>,
+    data: FxHashMap<Type<'db>, AlternativeExprs<'db>>,
     /// New types reached since last query by the `NewTypesKey`
-    new_types: FxHashMap<NewTypesKey, Vec<Type>>,
+    new_types: FxHashMap<NewTypesKey, Vec<Type<'db>>>,
     /// Types queried but not present
-    types_wishlist: FxHashSet<Type>,
+    types_wishlist: FxHashSet<Type<'db>>,
     /// Threshold to squash trees to `Many`
     many_threshold: usize,
 }
 
-impl LookupTable {
+impl<'db> LookupTable<'db> {
     /// Initialize lookup table
-    fn new(many_threshold: usize, goal: Type) -> Self {
+    fn new(many_threshold: usize, goal: Type<'db>) -> Self {
         let mut res = Self { many_threshold, ..Default::default() };
         res.new_types.insert(NewTypesKey::ImplMethod, Vec::new());
         res.new_types.insert(NewTypesKey::StructProjection, Vec::new());
@@ -110,7 +110,7 @@ impl LookupTable {
     }
 
     /// Find all `Expr`s that unify with the `ty`
-    fn find(&mut self, db: &dyn HirDatabase, ty: &Type) -> Option<Vec<Expr>> {
+    fn find(&mut self, db: &'db dyn HirDatabase, ty: &Type<'db>) -> Option<Vec<Expr<'db>>> {
         let res = self
             .data
             .iter()
@@ -135,7 +135,7 @@ impl LookupTable {
     ///
     /// For example if we have type `i32` in data and we query for `&i32` it map all the type
     /// trees we have for `i32` with `Expr::Reference` and returns them.
-    fn find_autoref(&mut self, db: &dyn HirDatabase, ty: &Type) -> Option<Vec<Expr>> {
+    fn find_autoref(&mut self, db: &'db dyn HirDatabase, ty: &Type<'db>) -> Option<Vec<Expr<'db>>> {
         let res = self
             .data
             .iter()
@@ -174,7 +174,7 @@ impl LookupTable {
     /// Note that the types have to be the same, unification is not enough as unification is not
     /// transitive. For example Vec<i32> and FxHashSet<i32> both unify with Iterator<Item = i32>,
     /// but they clearly do not unify themselves.
-    fn insert(&mut self, ty: Type, exprs: impl Iterator<Item = Expr>) {
+    fn insert(&mut self, ty: Type<'db>, exprs: impl Iterator<Item = Expr<'db>>) {
         match self.data.get_mut(&ty) {
             Some(it) => {
                 it.extend_with_threshold(self.many_threshold, exprs);
@@ -192,14 +192,14 @@ impl LookupTable {
     }
 
     /// Iterate all the reachable types
-    fn iter_types(&self) -> impl Iterator<Item = Type> + '_ {
+    fn iter_types(&self) -> impl Iterator<Item = Type<'db>> + '_ {
         self.data.keys().cloned()
     }
 
     /// Query new types reached since last query by key
     ///
     /// Create new key if you wish to query it to avoid conflicting with existing queries.
-    fn new_types(&mut self, key: NewTypesKey) -> Vec<Type> {
+    fn new_types(&mut self, key: NewTypesKey) -> Vec<Type<'db>> {
         match self.new_types.get_mut(&key) {
             Some(it) => std::mem::take(it),
             None => Vec::new(),
@@ -207,20 +207,20 @@ impl LookupTable {
     }
 
     /// Types queried but not found
-    fn types_wishlist(&mut self) -> &FxHashSet<Type> {
+    fn types_wishlist(&mut self) -> &FxHashSet<Type<'db>> {
         &self.types_wishlist
     }
 }
 
 /// Context for the `term_search` function
 #[derive(Debug)]
-pub struct TermSearchCtx<'a, DB: HirDatabase> {
+pub struct TermSearchCtx<'db, DB: HirDatabase> {
     /// Semantics for the program
-    pub sema: &'a Semantics<'a, DB>,
+    pub sema: &'db Semantics<'db, DB>,
     /// Semantic scope, captures context for the term search
-    pub scope: &'a SemanticsScope<'a>,
+    pub scope: &'db SemanticsScope<'db>,
     /// Target / expected output type
-    pub goal: Type,
+    pub goal: Type<'db>,
     /// Configuration for term search
     pub config: TermSearchConfig,
 }
@@ -263,7 +263,7 @@ impl Default for TermSearchConfig {
 /// Note that there are usually more ways we can get to the `goal` type but some are discarded to
 /// reduce the memory consumption. It is also unlikely anyone is willing ti browse through
 /// thousands of possible responses so we currently take first 10 from every tactic.
-pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
+pub fn term_search<'db, DB: HirDatabase>(ctx: &'db TermSearchCtx<'db, DB>) -> Vec<Expr<'db>> {
     let module = ctx.scope.module();
     let mut defs = FxHashSet::default();
     defs.insert(ScopeDef::ModuleDef(ModuleDef::Module(module)));
@@ -285,7 +285,7 @@ pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
     };
 
     // Try trivial tactic first, also populates lookup table
-    let mut solutions: Vec<Expr> = tactics::trivial(ctx, &defs, &mut lookup).collect();
+    let mut solutions: Vec<Expr<'db>> = tactics::trivial(ctx, &defs, &mut lookup).collect();
     // Use well known types tactic before iterations as it does not depend on other tactics
     solutions.extend(tactics::famous_types(ctx, &defs, &mut lookup));
     solutions.extend(tactics::assoc_const(ctx, &defs, &mut lookup));

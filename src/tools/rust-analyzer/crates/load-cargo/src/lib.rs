@@ -42,7 +42,7 @@ pub fn load_workspace_at(
     root: &Path,
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
-    progress: &dyn Fn(String),
+    progress: &(dyn Fn(String) + Sync),
 ) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroClient>)> {
     let root = AbsPathBuf::assert_utf8(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;

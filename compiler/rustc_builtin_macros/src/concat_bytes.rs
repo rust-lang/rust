@@ -1,6 +1,6 @@
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{ExprKind, LitIntType, LitKind, UintTy, token};
+use rustc_ast::{ExprKind, LitIntType, LitKind, StrStyle, UintTy, token};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_session::errors::report_lit_error;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -21,15 +21,32 @@ fn invalid_type_err(
     let snippet = cx.sess.source_map().span_to_snippet(span).ok();
     let dcx = cx.dcx();
     match LitKind::from_token_lit(token_lit) {
-        Ok(LitKind::CStr(_, _)) => {
+        Ok(LitKind::CStr(_, style)) => {
             // Avoid ambiguity in handling of terminal `NUL` by refusing to
             // concatenate C string literals as bytes.
-            dcx.emit_err(errors::ConcatCStrLit { span })
+            let sugg = if let Some(mut as_bstr) = snippet
+                && style == StrStyle::Cooked
+                && as_bstr.starts_with('c')
+                && as_bstr.ends_with('"')
+            {
+                // Suggest`c"foo"` -> `b"foo\0"` if we can
+                as_bstr.replace_range(0..1, "b");
+                as_bstr.pop();
+                as_bstr.push_str(r#"\0""#);
+                Some(ConcatBytesInvalidSuggestion::CStrLit { span, as_bstr })
+            } else {
+                // No suggestion for a missing snippet, raw strings, or if for some reason we have
+                // a span that doesn't match `c"foo"` (possible if a proc macro assigns a span
+                // that doesn't actually point to a C string).
+                None
+            };
+            // We can only provide a suggestion if we have a snip and it is not a raw string
+            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "C string", sugg, cs_note: Some(()) })
         }
         Ok(LitKind::Char(_)) => {
             let sugg =
                 snippet.map(|snippet| ConcatBytesInvalidSuggestion::CharLit { span, snippet });
-            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "character", sugg })
+            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "character", sugg, cs_note: None })
         }
         Ok(LitKind::Str(_, _)) => {
             // suggestion would be invalid if we are nested
@@ -38,18 +55,21 @@ fn invalid_type_err(
             } else {
                 None
             };
-            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "string", sugg })
+            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "string", sugg, cs_note: None })
         }
         Ok(LitKind::Float(_, _)) => {
-            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "float", sugg: None })
+            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "float", sugg: None, cs_note: None })
         }
-        Ok(LitKind::Bool(_)) => {
-            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "boolean", sugg: None })
-        }
+        Ok(LitKind::Bool(_)) => dcx.emit_err(ConcatBytesInvalid {
+            span,
+            lit_kind: "boolean",
+            sugg: None,
+            cs_note: None,
+        }),
         Ok(LitKind::Int(_, _)) if !is_nested => {
             let sugg =
                 snippet.map(|snippet| ConcatBytesInvalidSuggestion::IntLit { span, snippet });
-            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "numeric", sugg })
+            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "numeric", sugg, cs_note: None })
         }
         Ok(LitKind::Int(val, LitIntType::Unsuffixed | LitIntType::Unsigned(UintTy::U8))) => {
             assert!(val.get() > u8::MAX.into()); // must be an error

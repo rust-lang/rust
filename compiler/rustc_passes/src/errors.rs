@@ -31,6 +31,24 @@ pub(crate) struct AutoDiffAttr {
     pub attr_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_loop_match_attr)]
+pub(crate) struct LoopMatchAttr {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub node_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_const_continue_attr)]
+pub(crate) struct ConstContinueAttr {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub node_span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]
 pub(crate) struct OuterCrateLevelAttr;
@@ -1071,17 +1089,6 @@ pub(crate) struct FeaturePreviouslyDeclared<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_naked_functions_incompatible_attribute, code = E0736)]
-pub(crate) struct NakedFunctionIncompatibleAttribute {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(passes_naked_attribute)]
-    pub naked_span: Span,
-    pub attr: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_attr_only_in_functions)]
 pub(crate) struct AttrOnlyInFunctions {
     #[primary_span]
@@ -1308,13 +1315,6 @@ pub(crate) enum AttrApplication {
         #[label]
         span: Span,
     },
-    #[diag(passes_attr_application_struct_enum_function_method_union, code = E0517)]
-    StructEnumFunctionMethodUnion {
-        #[primary_span]
-        hint_span: Span,
-        #[label]
-        span: Span,
-    },
 }
 
 #[derive(Diagnostic)]
@@ -1516,7 +1516,7 @@ pub(crate) struct EnumVariantSameName<'tcx> {
     #[primary_span]
     pub variant_span: Span,
     pub dead_name: Symbol,
-    pub descr: &'tcx str,
+    pub dead_descr: &'tcx str,
 }
 
 #[derive(Subdiagnostic)]
@@ -1714,6 +1714,7 @@ impl Subdiagnostic for UnusedVariableStringInterp {
 #[derive(LintDiagnostic)]
 #[diag(passes_unused_variable_try_ignore)]
 pub(crate) struct UnusedVarTryIgnore {
+    pub name: String,
     #[subdiagnostic]
     pub sugg: UnusedVarTryIgnoreSugg,
 }
@@ -1815,4 +1816,27 @@ pub(crate) enum UnexportableItem<'a> {
         vis_note: Span,
         field_name: &'a str,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_repr_align_should_be_align)]
+pub(crate) struct ReprAlignShouldBeAlign {
+    #[primary_span]
+    #[help]
+    pub span: Span,
+    pub item: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_align_should_be_repr_align)]
+pub(crate) struct AlignShouldBeReprAlign {
+    #[primary_span]
+    #[suggestion(
+        style = "verbose",
+        applicability = "machine-applicable",
+        code = "#[repr(align({align_bytes}))]"
+    )]
+    pub span: Span,
+    pub item: &'static str,
+    pub align_bytes: u64,
 }

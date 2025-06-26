@@ -11,6 +11,7 @@ use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
 use rustc_data_structures::{parallel, thousands};
+use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -192,7 +193,7 @@ fn configure_and_expand(
         // Create the config for macro expansion
         let recursion_limit = get_recursion_limit(pre_configured_attrs, sess);
         let cfg = rustc_expand::expand::ExpansionConfig {
-            crate_name: crate_name.to_string(),
+            crate_name,
             features,
             recursion_limit,
             trace_mac: sess.opts.unstable_opts.trace_macros,
@@ -354,9 +355,9 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
             "{prefix} {:<name_w$}{:>uses_w$}{:>lines_w$}{:>avg_lines_w$}{:>bytes_w$}{:>avg_bytes_w$}",
             name,
             thousands::usize_with_underscores(uses),
-            thousands::isize_with_underscores(lines),
+            thousands::usize_with_underscores(lines),
             thousands::f64p1_with_underscores(avg_lines),
-            thousands::isize_with_underscores(bytes),
+            thousands::usize_with_underscores(bytes),
             thousands::f64p1_with_underscores(avg_bytes),
         );
     }
@@ -370,7 +371,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
-        input_stats::print_ast_stats(krate, "POST EXPANSION AST STATS", "ast-stats");
+        input_stats::print_ast_stats(tcx, krate);
     }
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
@@ -1011,8 +1012,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
     // Prefetch this to prevent multiple threads from blocking on it later.
     // This is needed since the `hir_id_validator::check_crate` call above is not guaranteed
-    // to use `hir_crate`.
-    tcx.ensure_done().hir_crate(());
+    // to use `hir_crate_items`.
+    tcx.ensure_done().hir_crate_items(());
 
     let sess = tcx.sess;
     sess.time("misc_checking_1", || {
@@ -1176,6 +1177,8 @@ pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
 ) -> (Box<dyn Any>, EncodedMetadata) {
+    tcx.sess.timings.start_section(tcx.sess.dcx(), TimingSection::Codegen);
+
     // Hook for tests.
     if let Some((def_id, _)) = tcx.entry_fn(())
         && tcx.has_attr(def_id, sym::rustc_delayed_bug_from_inside_query)

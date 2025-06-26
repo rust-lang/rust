@@ -15,11 +15,11 @@ unsafe extern "custom" fn f7() {
 trait Tr {
     extern "custom" fn m7();
     //~^ ERROR "custom" ABI is experimental
-    //~| ERROR functions with the `"custom"` ABI must be unsafe
+    //~| ERROR functions with the "custom" ABI must be unsafe
     #[unsafe(naked)]
     extern "custom" fn dm7() {
         //~^ ERROR "custom" ABI is experimental
-        //~| ERROR functions with the `"custom"` ABI must be unsafe
+        //~| ERROR functions with the "custom" ABI must be unsafe
         naked_asm!("")
     }
 }
@@ -31,7 +31,7 @@ impl Tr for S {
     #[unsafe(naked)]
     extern "custom" fn m7() {
         //~^ ERROR "custom" ABI is experimental
-        //~| ERROR functions with the `"custom"` ABI must be unsafe
+        //~| ERROR functions with the "custom" ABI must be unsafe
         naked_asm!("")
     }
 }
@@ -41,7 +41,7 @@ impl S {
     #[unsafe(naked)]
     extern "custom" fn im7() {
         //~^ ERROR "custom" ABI is experimental
-        //~| ERROR functions with the `"custom"` ABI must be unsafe
+        //~| ERROR functions with the "custom" ABI must be unsafe
         naked_asm!("")
     }
 }

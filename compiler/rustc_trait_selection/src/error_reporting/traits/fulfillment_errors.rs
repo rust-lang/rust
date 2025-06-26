@@ -1850,7 +1850,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let trait_def_id = trait_pred.def_id();
         let trait_name = self.tcx.item_name(trait_def_id);
         let crate_name = self.tcx.crate_name(trait_def_id.krate);
-        if let Some(other_trait_def_id) = self.tcx.all_traits().find(|def_id| {
+        if let Some(other_trait_def_id) = self.tcx.all_traits_including_private().find(|def_id| {
             trait_name == self.tcx.item_name(trait_def_id)
                 && trait_def_id.krate != def_id.krate
                 && crate_name == self.tcx.crate_name(def_id.krate)

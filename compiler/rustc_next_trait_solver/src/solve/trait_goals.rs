@@ -103,15 +103,12 @@ where
             // We currently elaborate all supertrait outlives obligations from impls.
             // This can be removed when we actually do coinduction correctly, and prove
             // all supertrait obligations unconditionally.
-            let goal_clause: I::Clause = goal.predicate.upcast(cx);
-            for clause in elaborate::elaborate(cx, [goal_clause]) {
-                if matches!(
-                    clause.kind().skip_binder(),
-                    ty::ClauseKind::TypeOutlives(..) | ty::ClauseKind::RegionOutlives(..)
-                ) {
-                    ecx.add_goal(GoalSource::Misc, goal.with(cx, clause));
-                }
-            }
+            ecx.add_goals(
+                GoalSource::Misc,
+                cx.impl_super_outlives(impl_def_id)
+                    .iter_instantiated(cx, impl_args)
+                    .map(|pred| goal.with(cx, pred)),
+            );
 
             ecx.evaluate_added_goals_and_make_canonical_response(maximal_certainty)
         })

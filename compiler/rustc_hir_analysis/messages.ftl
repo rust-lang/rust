@@ -1,5 +1,5 @@
 hir_analysis_abi_custom_clothed_function =
-    items with the `"custom"` ABI can only be declared externally or defined via naked functions
+    items with the "custom" ABI can only be declared externally or defined via naked functions
     .suggestion = convert this to an `#[unsafe(naked)]` function
 
 hir_analysis_ambiguous_assoc_item = ambiguous associated {$assoc_kind} `{$assoc_ident}` in bounds of `{$qself}`
@@ -46,6 +46,9 @@ hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the {$
 
 hir_analysis_associated_type_trait_uninferred_generic_params_multipart_suggestion = use a fully qualified path with explicit lifetimes
 
+hir_analysis_async_drop_without_sync_drop = `AsyncDrop` impl without `Drop` impl
+    .help = type implementing `AsyncDrop` trait must also implement `Drop` trait to be used in sync context and unwinds
+
 hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit while auto-dereferencing `{$ty}`
     .label = deref recursion limit reached
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
@@ -70,10 +73,10 @@ hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are fo
     .label = `for<...>` is here
 
 hir_analysis_cmse_call_generic =
-    function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
+    function pointers with the `"cmse-nonsecure-call"` ABI cannot contain generics in their type
 
 hir_analysis_cmse_entry_generic =
-    functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
 
 hir_analysis_cmse_inputs_stack_spill =
     arguments for `{$abi}` function too large to pass via registers

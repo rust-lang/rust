@@ -95,7 +95,7 @@ impl<'a> AssistContext<'a> {
         }
     }
 
-    pub(crate) fn db(&self) -> &RootDatabase {
+    pub(crate) fn db(&self) -> &'a RootDatabase {
         self.sema.db
     }
 

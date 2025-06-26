@@ -390,7 +390,6 @@ macro_rules! bootstrap_tool {
         ;
     )+) => {
         #[derive(PartialEq, Eq, Clone)]
-        #[allow(dead_code)]
         pub enum Tool {
             $(
                 $name,
@@ -716,7 +715,7 @@ impl Step for Rustdoc {
             && target_compiler.stage > 0
             && builder.rust_info().is_managed_git_subrepository()
         {
-            let files_to_track = &["src/librustdoc", "src/tools/rustdoc"];
+            let files_to_track = &["src/librustdoc", "src/tools/rustdoc", "src/rustdoc-json-types"];
 
             // Check if unchanged
             if !builder.config.has_changes_from_upstream(files_to_track) {
@@ -1129,6 +1128,7 @@ macro_rules! tool_extended {
             tool_name: $tool_name:expr,
             stable: $stable:expr
             $( , add_bins_to_sysroot: $add_bins_to_sysroot:expr )?
+            $( , add_features: $add_features:expr )?
             $( , )?
         }
     ) => {
@@ -1168,6 +1168,7 @@ macro_rules! tool_extended {
                     $tool_name,
                     $path,
                     None $( .or(Some(&$add_bins_to_sysroot)) )?,
+                    None $( .or(Some($add_features)) )?,
                 )
             }
         }
@@ -1205,7 +1206,13 @@ fn run_tool_build_step(
     tool_name: &'static str,
     path: &'static str,
     add_bins_to_sysroot: Option<&[&str]>,
+    add_features: Option<fn(&Builder<'_>, TargetSelection, &mut Vec<String>)>,
 ) -> ToolBuildResult {
+    let mut extra_features = Vec::new();
+    if let Some(func) = add_features {
+        func(builder, target, &mut extra_features);
+    }
+
     let ToolBuildResult { tool_path, build_compiler, target_compiler } =
         builder.ensure(ToolBuild {
             compiler,
@@ -1213,7 +1220,7 @@ fn run_tool_build_step(
             tool: tool_name,
             mode: Mode::ToolRustc,
             path,
-            extra_features: vec![],
+            extra_features,
             source_type: SourceType::InTree,
             allow_features: "",
             cargo_args: vec![],
@@ -1256,7 +1263,12 @@ tool_extended!(Clippy {
     path: "src/tools/clippy",
     tool_name: "clippy-driver",
     stable: true,
-    add_bins_to_sysroot: ["clippy-driver"]
+    add_bins_to_sysroot: ["clippy-driver"],
+    add_features: |builder, target, features| {
+        if builder.config.jemalloc(target) {
+            features.push("jemalloc".to_string());
+        }
+    }
 });
 tool_extended!(Miri {
     path: "src/tools/miri",

@@ -18,7 +18,7 @@ macro_rules! format_ty {
 // Diagnostic: invalid-cast
 //
 // This diagnostic is triggered if the code contains an illegal cast
-pub(crate) fn invalid_cast(ctx: &DiagnosticsContext<'_>, d: &hir::InvalidCast) -> Diagnostic {
+pub(crate) fn invalid_cast(ctx: &DiagnosticsContext<'_>, d: &hir::InvalidCast<'_>) -> Diagnostic {
     let display_range = ctx.sema.diagnostics_display_range(d.expr.map(|it| it.into()));
     let (code, message) = match d.error {
         CastError::CastToBool => (
@@ -106,7 +106,10 @@ pub(crate) fn invalid_cast(ctx: &DiagnosticsContext<'_>, d: &hir::InvalidCast) -
 // Diagnostic: cast-to-unsized
 //
 // This diagnostic is triggered when casting to an unsized type
-pub(crate) fn cast_to_unsized(ctx: &DiagnosticsContext<'_>, d: &hir::CastToUnsized) -> Diagnostic {
+pub(crate) fn cast_to_unsized(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::CastToUnsized<'_>,
+) -> Diagnostic {
     let display_range = ctx.sema.diagnostics_display_range(d.expr.map(|it| it.into()));
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0620"),

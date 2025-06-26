@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 
+use rustc_abi::ExternAbi;
 use rustc_ast::Label;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -29,8 +30,6 @@ pub(crate) struct BaseExpressionDoubleDot {
         style = "verbose"
     )]
     pub default_field_values_suggestion: Option<Span>,
-    #[subdiagnostic]
-    pub default_field_values_help: Option<BaseExpressionDoubleDotEnableDefaultFieldValues>,
     #[subdiagnostic]
     pub add_expr: Option<BaseExpressionDoubleDotAddExpr>,
     #[subdiagnostic]
@@ -60,10 +59,6 @@ pub(crate) struct BaseExpressionDoubleDotAddExpr {
     #[primary_span]
     pub span: Span,
 }
-
-#[derive(Subdiagnostic)]
-#[help(hir_typeck_base_expression_double_dot_enable_default_field_values)]
-pub(crate) struct BaseExpressionDoubleDotEnableDefaultFieldValues;
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_field_multiply_specified_in_initializer, code = E0062)]
@@ -1165,8 +1160,17 @@ pub(crate) struct NakedFunctionsMustNakedAsm {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_abi_custom_call)]
-pub(crate) struct AbiCustomCall {
+#[diag(hir_typeck_abi_cannot_be_called)]
+pub(crate) struct AbiCannotBeCalled {
+    #[primary_span]
+    #[note]
+    pub span: Span,
+    pub abi: ExternAbi,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_const_continue_bad_label)]
+pub(crate) struct ConstContinueBadLabel {
     #[primary_span]
     pub span: Span,
 }

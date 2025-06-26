@@ -122,10 +122,10 @@ impl<'a> RenderContext<'a> {
 
 pub(crate) fn render_field(
     ctx: RenderContext<'_>,
-    dot_access: &DotAccess,
+    dot_access: &DotAccess<'_>,
     receiver: Option<SmolStr>,
     field: hir::Field,
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
 ) -> CompletionItem {
     let db = ctx.db();
     let is_deprecated = ctx.is_deprecated(field);
@@ -204,7 +204,7 @@ pub(crate) fn render_tuple_field(
     ctx: RenderContext<'_>,
     receiver: Option<SmolStr>,
     field: usize,
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
 ) -> CompletionItem {
     let mut item = CompletionItem::new(
         SymbolKind::Field,
@@ -241,7 +241,7 @@ pub(crate) fn render_type_inference(
 
 pub(crate) fn render_path_resolution(
     ctx: RenderContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
     local_name: hir::Name,
     resolution: ScopeDef,
 ) -> Builder {
@@ -259,7 +259,7 @@ pub(crate) fn render_pattern_resolution(
 
 pub(crate) fn render_resolution_with_import(
     ctx: RenderContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
     import_edit: LocatedImport,
 ) -> Option<Builder> {
     let resolution = ScopeDef::from(import_edit.original_item);
@@ -282,10 +282,10 @@ pub(crate) fn render_resolution_with_import_pat(
 
 pub(crate) fn render_expr(
     ctx: &CompletionContext<'_>,
-    expr: &hir::term_search::Expr,
+    expr: &hir::term_search::Expr<'_>,
 ) -> Option<Builder> {
     let mut i = 1;
-    let mut snippet_formatter = |ty: &hir::Type| {
+    let mut snippet_formatter = |ty: &hir::Type<'_>| {
         let arg_name = ty
             .as_adt()
             .map(|adt| stdx::to_lower_snake_case(adt.name(ctx.db).as_str()))
@@ -295,7 +295,7 @@ pub(crate) fn render_expr(
         res
     };
 
-    let mut label_formatter = |ty: &hir::Type| {
+    let mut label_formatter = |ty: &hir::Type<'_>| {
         ty.as_adt()
             .map(|adt| stdx::to_lower_snake_case(adt.name(ctx.db).as_str()))
             .unwrap_or_else(|| String::from("..."))
@@ -391,7 +391,7 @@ fn render_resolution_pat(
 
 fn render_resolution_path(
     ctx: RenderContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
     local_name: hir::Name,
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
@@ -460,7 +460,7 @@ fn render_resolution_path(
         }
     }
 
-    let mut set_item_relevance = |ty: Type| {
+    let mut set_item_relevance = |ty: Type<'_>| {
         if !ty.is_unknown() {
             item.detail(ty.display(db, krate).to_string());
         }
@@ -593,8 +593,8 @@ fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> boo
 // FIXME: This checks types without possible coercions which some completions might want to do
 fn match_types(
     ctx: &CompletionContext<'_>,
-    ty1: &hir::Type,
-    ty2: &hir::Type,
+    ty1: &hir::Type<'_>,
+    ty2: &hir::Type<'_>,
 ) -> Option<CompletionRelevanceTypeMatch> {
     if ty1 == ty2 {
         Some(CompletionRelevanceTypeMatch::Exact)
@@ -607,7 +607,7 @@ fn match_types(
 
 fn compute_type_match(
     ctx: &CompletionContext<'_>,
-    completion_ty: &hir::Type,
+    completion_ty: &hir::Type<'_>,
 ) -> Option<CompletionRelevanceTypeMatch> {
     let expected_type = ctx.expected_type.as_ref()?;
 
@@ -626,7 +626,7 @@ fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) 
 
 fn compute_ref_match(
     ctx: &CompletionContext<'_>,
-    completion_ty: &hir::Type,
+    completion_ty: &hir::Type<'_>,
 ) -> Option<CompletionItemRefMode> {
     let expected_type = ctx.expected_type.as_ref()?;
     let expected_without_ref = expected_type.remove_ref();
@@ -658,8 +658,8 @@ fn compute_ref_match(
 
 fn path_ref_match(
     completion: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx,
-    ty: &hir::Type,
+    path_ctx: &PathCompletionCtx<'_>,
+    ty: &hir::Type<'_>,
     item: &mut Builder,
 ) {
     if let Some(original_path) = &path_ctx.original_path {
@@ -733,7 +733,7 @@ mod tests {
     ) {
         let mut actual = get_all_items(TEST_CONFIG, ra_fixture, None);
         actual.retain(|it| kinds.contains(&it.kind));
-        actual.sort_by_key(|it| cmp::Reverse(it.relevance.score()));
+        actual.sort_by_key(|it| (cmp::Reverse(it.relevance.score()), it.label.primary.clone()));
         check_relevance_(actual, expect);
     }
 
@@ -743,7 +743,7 @@ mod tests {
         actual.retain(|it| it.kind != CompletionItemKind::Snippet);
         actual.retain(|it| it.kind != CompletionItemKind::Keyword);
         actual.retain(|it| it.kind != CompletionItemKind::BuiltinType);
-        actual.sort_by_key(|it| cmp::Reverse(it.relevance.score()));
+        actual.sort_by_key(|it| (cmp::Reverse(it.relevance.score()), it.label.primary.clone()));
         check_relevance_(actual, expect);
     }
 
@@ -824,9 +824,9 @@ fn main() {
                 st dep::test_mod_b::Struct {…} dep::test_mod_b::Struct {  } [type_could_unify]
                 ex dep::test_mod_b::Struct {  }  [type_could_unify]
                 st Struct Struct [type_could_unify+requires_import]
+                md dep  []
                 fn main() fn() []
                 fn test(…) fn(Struct) []
-                md dep  []
                 st Struct Struct [requires_import]
             "#]],
         );
@@ -862,9 +862,9 @@ fn main() {
 "#,
             expect![[r#"
                 un Union Union [type_could_unify+requires_import]
+                md dep  []
                 fn main() fn() []
                 fn test(…) fn(Union) []
-                md dep  []
                 en Union Union [requires_import]
             "#]],
         );
@@ -900,9 +900,9 @@ fn main() {
                 ev dep::test_mod_b::Enum::variant dep::test_mod_b::Enum::variant [type_could_unify]
                 ex dep::test_mod_b::Enum::variant  [type_could_unify]
                 en Enum Enum [type_could_unify+requires_import]
+                md dep  []
                 fn main() fn() []
                 fn test(…) fn(Enum) []
-                md dep  []
                 en Enum Enum [requires_import]
             "#]],
         );
@@ -937,9 +937,9 @@ fn main() {
             expect![[r#"
                 ev dep::test_mod_b::Enum::Variant dep::test_mod_b::Enum::Variant [type_could_unify]
                 ex dep::test_mod_b::Enum::Variant  [type_could_unify]
+                md dep  []
                 fn main() fn() []
                 fn test(…) fn(Enum) []
-                md dep  []
             "#]],
         );
     }
@@ -967,9 +967,9 @@ fn main() {
 }
 "#,
             expect![[r#"
+                md dep  []
                 fn main() fn() []
                 fn test(…) fn(fn(usize) -> i32) []
-                md dep  []
                 fn function fn(usize) -> i32 [requires_import]
                 fn function(…) fn(isize) -> i32 [requires_import]
             "#]],
@@ -1000,9 +1000,9 @@ fn main() {
 "#,
             expect![[r#"
                 ct CONST i32 [type_could_unify+requires_import]
+                md dep  []
                 fn main() fn() []
                 fn test(…) fn(i32) []
-                md dep  []
                 ct CONST i64 [requires_import]
             "#]],
         );
@@ -1032,9 +1032,9 @@ fn main() {
 "#,
             expect![[r#"
                 sc STATIC i32 [type_could_unify+requires_import]
+                md dep  []
                 fn main() fn() []
                 fn test(…) fn(i32) []
-                md dep  []
                 sc STATIC i64 [requires_import]
             "#]],
         );
@@ -1090,8 +1090,8 @@ fn func(input: Struct) { }
 
 "#,
             expect![[r#"
-                st Struct Struct [type]
                 st Self Self [type]
+                st Struct Struct [type]
                 sp Self Struct [type]
                 st Struct Struct [type]
                 ex Struct  [type]
@@ -1119,9 +1119,9 @@ fn main() {
 "#,
             expect![[r#"
                 lc input bool [type+name+local]
+                ex false  [type]
                 ex input  [type]
                 ex true  [type]
-                ex false  [type]
                 lc inputbad i32 [local]
                 fn main() fn() []
                 fn test(…) fn(bool) []
@@ -2088,9 +2088,9 @@ fn f() { A { bar: b$0 }; }
 "#,
             expect![[r#"
                 fn bar() fn() -> u8 [type+name]
+                ex bar()  [type]
                 fn baz() fn() -> u8 [type]
                 ex baz()  [type]
-                ex bar()  [type]
                 st A A []
                 fn f() fn() []
             "#]],
@@ -2199,8 +2199,8 @@ fn main() {
                 lc s S [type+name+local]
                 st S S [type]
                 st S S [type]
-                ex s  [type]
                 ex S  [type]
+                ex s  [type]
                 fn foo(…) fn(&mut S) []
                 fn main() fn() []
             "#]],
@@ -2218,8 +2218,8 @@ fn main() {
                 st S S [type]
                 lc ssss S [type+local]
                 st S S [type]
-                ex ssss  [type]
                 ex S  [type]
+                ex ssss  [type]
                 fn foo(…) fn(&mut S) []
                 fn main() fn() []
             "#]],
@@ -2252,11 +2252,11 @@ fn main() {
                 ex Foo  [type]
                 lc foo &Foo [local]
                 lc *foo [type+local]
-                fn bar(…) fn(Foo) []
-                fn main() fn() []
-                md core  []
                 tt Clone  []
                 tt Copy  []
+                fn bar(…) fn(Foo) []
+                md core  []
+                fn main() fn() []
             "#]],
         );
     }
@@ -2297,9 +2297,9 @@ fn main() {
                 st &S [type]
                 st T T []
                 st &T [type]
+                md core  []
                 fn foo(…) fn(&S) []
                 fn main() fn() []
-                md core  []
             "#]],
         )
     }
@@ -2346,9 +2346,9 @@ fn main() {
                 st &mut S [type]
                 st T T []
                 st &mut T [type]
+                md core  []
                 fn foo(…) fn(&mut S) []
                 fn main() fn() []
-                md core  []
             "#]],
         )
     }
@@ -2364,8 +2364,8 @@ fn foo(bar: u32) {
 }
 "#,
             expect![[r#"
-                lc baz i32 [local]
                 lc bar u32 [local]
+                lc baz i32 [local]
                 fn foo(…) fn(u32) []
             "#]],
         );
@@ -2449,9 +2449,9 @@ fn main() {
                 st &T [type]
                 fn bar() fn() -> T []
                 fn &bar() [type]
+                md core  []
                 fn foo(…) fn(&S) []
                 fn main() fn() []
-                md core  []
             "#]],
         )
     }
@@ -2702,8 +2702,8 @@ fn test() {
                 fn fn_builder() fn() -> FooBuilder [type_could_unify]
                 fn fn_ctr_wrapped() fn() -> Option<Foo<T>> [type_could_unify]
                 fn fn_ctr_wrapped_2() fn() -> Result<Foo<T>, u32> [type_could_unify]
-                me fn_returns_unit(…) fn(&self) [type_could_unify]
                 fn fn_other() fn() -> Option<u32> [type_could_unify]
+                me fn_returns_unit(…) fn(&self) [type_could_unify]
             "#]],
         );
     }
@@ -2965,12 +2965,12 @@ fn foo() {
                 ev Foo::B Foo::B [type_could_unify]
                 ev Foo::A(…) Foo::A(T) [type_could_unify]
                 lc foo Foo<u32> [type+local]
-                ex foo  [type]
                 ex Foo::B  [type]
+                ex foo  [type]
                 en Foo Foo<{unknown}> [type_could_unify]
-                fn foo() fn() []
                 fn bar() fn() -> Foo<u8> []
                 fn baz() fn() -> Foo<T> []
+                fn foo() fn() []
             "#]],
         );
     }
@@ -3000,19 +3000,19 @@ fn main() {
             expect![[r#"
                 sn not !expr [snippet]
                 me not() fn(self) -> <Self as Not>::Output [type_could_unify+requires_import]
-                sn if if expr {} []
-                sn while while expr {} []
-                sn ref &expr []
-                sn refm &mut expr []
-                sn deref *expr []
-                sn unsafe unsafe {} []
-                sn const const {} []
-                sn match match expr {} []
                 sn box Box::new(expr) []
+                sn call function(expr) []
+                sn const const {} []
                 sn dbg dbg!(expr) []
                 sn dbgr dbg!(&expr) []
-                sn call function(expr) []
+                sn deref *expr []
+                sn if if expr {} []
+                sn match match expr {} []
+                sn ref &expr []
+                sn refm &mut expr []
                 sn return return expr []
+                sn unsafe unsafe {} []
+                sn while while expr {} []
             "#]],
         );
     }
@@ -3033,19 +3033,19 @@ fn main() {
             &[CompletionItemKind::Snippet, CompletionItemKind::SymbolKind(SymbolKind::Method)],
             expect![[r#"
                 me f() fn(&self) []
-                sn ref &expr []
-                sn refm &mut expr []
-                sn deref *expr []
-                sn unsafe unsafe {} []
-                sn const const {} []
-                sn match match expr {} []
                 sn box Box::new(expr) []
+                sn call function(expr) []
+                sn const const {} []
                 sn dbg dbg!(expr) []
                 sn dbgr dbg!(&expr) []
-                sn call function(expr) []
+                sn deref *expr []
                 sn let let []
                 sn letm let mut []
+                sn match match expr {} []
+                sn ref &expr []
+                sn refm &mut expr []
                 sn return return expr []
+                sn unsafe unsafe {} []
             "#]],
         );
     }

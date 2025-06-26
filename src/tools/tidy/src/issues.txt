@@ -305,7 +305,6 @@ ui/borrowck/issue-104639-lifetime-order.rs
 ui/borrowck/issue-10876.rs
 ui/borrowck/issue-109271-pass-self-into-closure.rs
 ui/borrowck/issue-111554.rs
-ui/borrowck/issue-114374-invalid-help-fmt-args.rs
 ui/borrowck/issue-11493.rs
 ui/borrowck/issue-115259-suggest-iter-mut.rs
 ui/borrowck/issue-119915-bad-clone-suggestion.rs
@@ -2071,7 +2070,6 @@ ui/issues/issue-32782.rs
 ui/issues/issue-32797.rs
 ui/issues/issue-32805.rs
 ui/issues/issue-3290.rs
-ui/issues/issue-32950.rs
 ui/issues/issue-32995-2.rs
 ui/issues/issue-32995.rs
 ui/issues/issue-33202.rs
@@ -2341,7 +2339,6 @@ ui/issues/issue-49934.rs
 ui/issues/issue-49955.rs
 ui/issues/issue-49973.rs
 ui/issues/issue-50187.rs
-ui/issues/issue-50403.rs
 ui/issues/issue-50411.rs
 ui/issues/issue-50415.rs
 ui/issues/issue-50442.rs

@@ -20,7 +20,6 @@ use std::ops::Range;
 pub use Alignment::*;
 pub use Count::*;
 pub use Position::*;
-use rustc_literal_escaper::{Mode, unescape_unicode};
 
 /// The type of format string that we are parsing.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -320,7 +319,7 @@ impl<'input> Parser<'input> {
                     let without_quotes = &snippet[1..snippet.len() - 1];
                     let (mut ok, mut vec) = (true, vec![]);
                     let mut chars = input.chars();
-                    unescape_unicode(without_quotes, Mode::Str, &mut |range, res| match res {
+                    rustc_literal_escaper::unescape_str(without_quotes, |range, res| match res {
                         Ok(ch) if ok && chars.next().is_some_and(|c| ch == c) => {
                             vec.push((range, ch));
                         }

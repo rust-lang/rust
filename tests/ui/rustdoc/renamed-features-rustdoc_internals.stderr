@@ -1,19 +1,19 @@
 error[E0557]: feature has been removed
-  --> $DIR/renamed-features-rustdoc_internals.rs:3:12
+  --> $DIR/renamed-features-rustdoc_internals.rs:1:12
    |
 LL | #![feature(doc_keyword)]
    |            ^^^^^^^^^^^ feature has been removed
    |
-   = note: removed in 1.58.0 (you are using $RUSTC_VERSION); see <https://github.com/rust-lang/rust/pull/90420> for more information
+   = note: removed in 1.58.0; see <https://github.com/rust-lang/rust/pull/90420> for more information
    = note: merged into `#![feature(rustdoc_internals)]`
 
 error[E0557]: feature has been removed
-  --> $DIR/renamed-features-rustdoc_internals.rs:4:12
+  --> $DIR/renamed-features-rustdoc_internals.rs:2:12
    |
 LL | #![feature(doc_primitive)]
    |            ^^^^^^^^^^^^^ feature has been removed
    |
-   = note: removed in 1.58.0 (you are using $RUSTC_VERSION); see <https://github.com/rust-lang/rust/pull/90420> for more information
+   = note: removed in 1.58.0; see <https://github.com/rust-lang/rust/pull/90420> for more information
    = note: merged into `#![feature(rustdoc_internals)]`
 
 error: aborting due to 2 previous errors

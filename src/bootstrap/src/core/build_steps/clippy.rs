@@ -217,7 +217,7 @@ impl Step for Rustc {
                 builder.ensure(compile::Std::new(compiler, compiler.host));
                 builder.ensure(compile::Std::new(compiler, target));
             } else {
-                builder.ensure(check::Std::new(target).build_kind(Some(Kind::Check)));
+                builder.ensure(check::Std::new(target));
             }
         }
 
@@ -289,7 +289,7 @@ macro_rules! lint_any {
                 let target = self.target;
 
                 if !builder.download_rustc() {
-                    builder.ensure(check::Rustc::new(target, builder).build_kind(Some(Kind::Check)));
+                    builder.ensure(check::Rustc::new(target, builder));
                 };
 
                 let cargo = prepare_tool_cargo(

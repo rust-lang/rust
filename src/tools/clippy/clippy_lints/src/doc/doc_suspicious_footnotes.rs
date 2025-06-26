@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use rustc_ast::attr::AttributeExt as _;
 use rustc_ast::token::CommentKind;
 use rustc_errors::Applicability;
 use rustc_hir::{AttrStyle, Attribute};
@@ -43,13 +44,19 @@ pub fn check(cx: &LateContext<'_>, doc: &str, range: Range<usize>, fragments: &F
                 "looks like a footnote ref, but has no matching footnote",
                 |diag| {
                     if this_fragment.kind == DocFragmentKind::SugaredDoc {
-                        let (doc_attr, (_, doc_attr_comment_kind)) = attrs
+                        let (doc_attr, (_, doc_attr_comment_kind), attr_style) = attrs
                             .iter()
                             .filter(|attr| attr.span().overlaps(this_fragment.span))
                             .rev()
-                            .find_map(|attr| Some((attr, attr.doc_str_and_comment_kind()?)))
+                            .find_map(|attr| {
+                                Some((
+                                    attr,
+                                    attr.doc_str_and_comment_kind()?,
+                                    attr.doc_resolution_scope()?,
+                                ))
+                            })
                             .unwrap();
-                        let (to_add, terminator) = match (doc_attr_comment_kind, doc_attr.style()) {
+                        let (to_add, terminator) = match (doc_attr_comment_kind, attr_style) {
                             (CommentKind::Line, AttrStyle::Outer) => ("\n///\n/// ", ""),
                             (CommentKind::Line, AttrStyle::Inner) => ("\n//!\n//! ", ""),
                             (CommentKind::Block, AttrStyle::Outer) => ("\n/** ", " */"),

@@ -437,6 +437,15 @@ pub(crate) struct IllFormedAttributeInput {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_ill_formed_attribute_input)]
+pub(crate) struct MustUseIllFormedAttributeInput {
+    #[primary_span]
+    pub span: Span,
+    pub num_suggestions: usize,
+    pub suggestions: DiagArgValue,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_stability_outside_std, code = E0734)]
 pub(crate) struct StabilityOutsideStd {
     #[primary_span]
@@ -448,6 +457,14 @@ pub(crate) struct StabilityOutsideStd {
 pub(crate) struct EmptyConfusables {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_invalid_alignment_value, code = E0589)]
+pub(crate) struct InvalidAlignmentValue {
+    #[primary_span]
+    pub span: Span,
+    pub error_part: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -465,8 +482,21 @@ pub(crate) struct UnrecognizedReprHint {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(attr_parsing_naked_functions_incompatible_attribute, code = E0736)]
+pub(crate) struct NakedFunctionIncompatibleAttribute {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(attr_parsing_naked_attribute)]
+    pub naked_span: Span,
+    pub attr: String,
+}
+
 pub(crate) enum AttributeParseErrorReason {
+    ExpectedNoArgs,
     ExpectedStringLiteral { byte_string: Option<Span> },
+    ExpectedAtLeastOneArgument,
     ExpectedSingleArgument,
     ExpectedList,
     UnexpectedLiteral,
@@ -510,6 +540,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                 diag.span_label(self.span, "expected a single argument here");
                 diag.code(E0805);
             }
+            AttributeParseErrorReason::ExpectedAtLeastOneArgument => {
+                diag.span_label(self.span, "expected at least 1 argument here");
+            }
             AttributeParseErrorReason::ExpectedList => {
                 diag.span_label(self.span, "expected this to be a list");
             }
@@ -519,6 +552,10 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
             }
             AttributeParseErrorReason::UnexpectedLiteral => {
                 diag.span_label(self.span, format!("didn't expect a literal here"));
+                diag.code(E0565);
+            }
+            AttributeParseErrorReason::ExpectedNoArgs => {
+                diag.span_label(self.span, format!("didn't expect any arguments here"));
                 diag.code(E0565);
             }
             AttributeParseErrorReason::ExpectedNameValue(None) => {

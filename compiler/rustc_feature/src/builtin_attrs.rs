@@ -5,6 +5,7 @@ use std::sync::LazyLock;
 use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
+use rustc_attr_data_structures::EncodeCrossCrate;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::edition::Edition;
 use rustc_span::{Symbol, sym};
@@ -368,12 +369,6 @@ macro_rules! experimental {
     };
 }
 
-#[derive(PartialEq)]
-pub enum EncodeCrossCrate {
-    Yes,
-    No,
-}
-
 pub struct BuiltinAttribute {
     pub name: Symbol,
     /// Whether this attribute is encode cross crate.
@@ -495,6 +490,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(no_link, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(repr, Normal, template!(List: "C"), DuplicatesOk, EncodeCrossCrate::No),
+    gated!(align, Normal, template!(List: "alignment"), DuplicatesOk, EncodeCrossCrate::No, fn_align, experimental!(align)),
     ungated!(unsafe(Edition2024) export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
     ungated!(unsafe(Edition2024) link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, EncodeCrossCrate::No),
     ungated!(unsafe(Edition2024) no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
@@ -656,6 +652,19 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
     ),
 
+    // The `#[loop_match]` and `#[const_continue]` attributes are part of the
+    // lang experiment for RFC 3720 tracked in:
+    //
+    // - https://github.com/rust-lang/rust/issues/132306
+    gated!(
+        const_continue, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::No, loop_match, experimental!(const_continue)
+    ),
+    gated!(
+        loop_match, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::No, loop_match, experimental!(loop_match)
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
@@ -709,7 +718,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_pub_transparent, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes,
+        ErrorFollowing, EncodeCrossCrate::Yes,
         "used internally to mark types with a `transparent` representation when it is guaranteed by the documentation",
     ),
 
@@ -1082,7 +1091,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[rustc_main]` attribute is used internally to specify test entry point function",
     ),
     rustc_attr!(
-        rustc_skip_during_method_dispatch, Normal, template!(List: "array, boxed_slice"), WarnFollowing,
+        rustc_skip_during_method_dispatch, Normal, template!(List: "array, boxed_slice"), ErrorFollowing,
         EncodeCrossCrate::No,
         "the `#[rustc_skip_during_method_dispatch]` attribute is used to exclude a trait \
         from method dispatch when the receiver is of the following type, for compatibility in \

@@ -15,18 +15,18 @@ pub(crate) struct ResolutionScope<'db> {
     node: SyntaxNode,
 }
 
-pub(crate) struct ResolvedRule {
-    pub(crate) pattern: ResolvedPattern,
-    pub(crate) template: Option<ResolvedPattern>,
+pub(crate) struct ResolvedRule<'db> {
+    pub(crate) pattern: ResolvedPattern<'db>,
+    pub(crate) template: Option<ResolvedPattern<'db>>,
     pub(crate) index: usize,
 }
 
-pub(crate) struct ResolvedPattern {
+pub(crate) struct ResolvedPattern<'db> {
     pub(crate) placeholders_by_stand_in: FxHashMap<SmolStr, parsing::Placeholder>,
     pub(crate) node: SyntaxNode,
     // Paths in `node` that we've resolved.
     pub(crate) resolved_paths: FxHashMap<SyntaxNode, ResolvedPath>,
-    pub(crate) ufcs_function_calls: FxHashMap<SyntaxNode, UfcsCallInfo>,
+    pub(crate) ufcs_function_calls: FxHashMap<SyntaxNode, UfcsCallInfo<'db>>,
     pub(crate) contains_self: bool,
 }
 
@@ -36,18 +36,18 @@ pub(crate) struct ResolvedPath {
     pub(crate) depth: u32,
 }
 
-pub(crate) struct UfcsCallInfo {
+pub(crate) struct UfcsCallInfo<'db> {
     pub(crate) call_expr: ast::CallExpr,
     pub(crate) function: hir::Function,
-    pub(crate) qualifier_type: Option<hir::Type>,
+    pub(crate) qualifier_type: Option<hir::Type<'db>>,
 }
 
-impl ResolvedRule {
+impl<'db> ResolvedRule<'db> {
     pub(crate) fn new(
         rule: parsing::ParsedRule,
-        resolution_scope: &ResolutionScope<'_>,
+        resolution_scope: &ResolutionScope<'db>,
         index: usize,
-    ) -> Result<ResolvedRule, SsrError> {
+    ) -> Result<ResolvedRule<'db>, SsrError> {
         let resolver =
             Resolver { resolution_scope, placeholders_by_stand_in: rule.placeholders_by_stand_in };
         let resolved_template = match rule.template {
@@ -74,8 +74,8 @@ struct Resolver<'a, 'db> {
     placeholders_by_stand_in: FxHashMap<SmolStr, parsing::Placeholder>,
 }
 
-impl Resolver<'_, '_> {
-    fn resolve_pattern_tree(&self, pattern: SyntaxNode) -> Result<ResolvedPattern, SsrError> {
+impl<'db> Resolver<'_, 'db> {
+    fn resolve_pattern_tree(&self, pattern: SyntaxNode) -> Result<ResolvedPattern<'db>, SsrError> {
         use syntax::ast::AstNode;
         use syntax::{SyntaxElement, T};
         let mut resolved_paths = FxHashMap::default();
@@ -250,7 +250,7 @@ impl<'db> ResolutionScope<'db> {
         }
     }
 
-    fn qualifier_type(&self, path: &SyntaxNode) -> Option<hir::Type> {
+    fn qualifier_type(&self, path: &SyntaxNode) -> Option<hir::Type<'db>> {
         use syntax::ast::AstNode;
         if let Some(path) = ast::Path::cast(path.clone()) {
             if let Some(qualifier) = path.qualifier() {

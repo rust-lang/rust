@@ -1,4 +1,6 @@
+use super::super::windows_prefix::*;
 use super::*;
+use crate::path::Prefix;
 
 #[test]
 fn test_parse_next_component() {
