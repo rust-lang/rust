@@ -29,6 +29,9 @@ Current stable, released 2025-06-26
   [#14160](https://github.com/rust-lang/rust-clippy/pull/14160)
 * [`match_on_vec_items`] deprecated in favor of [`indexing_slicing`]
   [#14217](https://github.com/rust-lang/rust-clippy/pull/14217)
+* Removed superseded lints: `transmute_float_to_int`, `transmute_int_to_char`,
+  `transmute_int_to_float`, `transmute_num_to_bytes` (now in rustc)
+  [#14703](https://github.com/rust-lang/rust-clippy/pull/14703)
 
 ### Enhancements
 
@@ -51,6 +54,10 @@ Current stable, released 2025-06-26
   [#14481](https://github.com/rust-lang/rust-clippy/pull/14481)
 * [`match_single_binding`] now allows macros in scrutinee and patterns
   [#14635](https://github.com/rust-lang/rust-clippy/pull/14635)
+* [`needless_borrow`] does not contradict the compiler's
+  `dangerous_implicit_autorefs` lint even though the references
+  are not mandatory
+  [#14810](https://github.com/rust-lang/rust-clippy/pull/14810)
 
 ### False Positive Fixes
 
@@ -68,6 +75,13 @@ Current stable, released 2025-06-26
   [#14381](https://github.com/rust-lang/rust-clippy/pull/14381)
 * [`redundant_clone`] fixed FP on enum cast
   [#14395](https://github.com/rust-lang/rust-clippy/pull/14395)
+* [`collapsible_if`] fixed FP on block stmt before expr
+  [#14730](https://github.com/rust-lang/rust-clippy/pull/14730)
+
+### ICE Fixes
+
+* [`missing_const_for_fn`] fix ICE with `-Z validate-mir` compilation option
+  [#14776](https://github.com/rust-lang/rust-clippy/pull/14776)
 
 ### Documentation Improvements
 
@@ -78,6 +92,8 @@ Current stable, released 2025-06-26
 
 * We're testing with edition 2024 now
   [#14602](https://github.com/rust-lang/rust-clippy/pull/14602)
+* Don't warn about unloaded crates in `clippy.toml` disallowed paths
+  [#14733](https://github.com/rust-lang/rust-clippy/pull/14733)
 
 ## Rust 1.87
 
