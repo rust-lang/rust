@@ -489,7 +489,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         trace!("visit_frozen(place={:?}, size={:?})", *place, size);
         debug_assert_eq!(
             size,
-            this.size_and_align_of_mplace(place)?
+            this.size_and_align_of_val(place)?
                 .map(|(size, _)| size)
                 .unwrap_or_else(|| place.layout.size)
         );
@@ -530,7 +530,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     trace!("unsafe_cell_action on {:?}", place.ptr());
                     // We need a size to go on.
                     let unsafe_cell_size = this
-                        .size_and_align_of_mplace(place)?
+                        .size_and_align_of_val(place)?
                         .map(|(size, _)| size)
                         // for extern types, just cover what we can
                         .unwrap_or_else(|| place.layout.size);

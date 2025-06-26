@@ -493,7 +493,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         }
         // Make sure this is dereferenceable and all.
         let size_and_align = try_validation!(
-            self.ecx.size_and_align_of_mplace(&place),
+            self.ecx.size_and_align_of_val(&place),
             self.path,
             Ub(InvalidMeta(msg)) => match msg {
                 InvalidMetaKind::SliceTooBig => InvalidMetaSliceTooLarge { ptr_kind },
@@ -906,7 +906,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         let (_prov, start_offset) = mplace.ptr().into_parts();
         let (size, _align) = self
             .ecx
-            .size_and_align_of_mplace(&mplace)?
+            .size_and_align_of_val(&mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // If there is no padding at all, we can skip the rest: check for
         // a single data range covering the entire value.
@@ -1088,10 +1088,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
         if self.ctfe_mode.is_some_and(|c| !c.allow_immutable_unsafe_cell()) {
             // Unsized unions are currently not a thing, but let's keep this code consistent with
             // the check in `visit_value`.
-            let zst = self
-                .ecx
-                .size_and_align_of(&val.meta(), &val.layout)?
-                .is_some_and(|(s, _a)| s.bytes() == 0);
+            let zst = self.ecx.size_and_align_of_val(val)?.is_some_and(|(s, _a)| s.bytes() == 0);
             if !zst && !val.layout.ty.is_freeze(*self.ecx.tcx, self.ecx.typing_env) {
                 if !self.in_mutable_memory(val) {
                     throw_validation_failure!(self.path, UnsafeCellInImmutable);
@@ -1138,10 +1135,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
         if self.ctfe_mode.is_some_and(|c| !c.allow_immutable_unsafe_cell()) {
             // Exclude ZST values. We need to compute the dynamic size/align to properly
             // handle slices and trait objects.
-            let zst = self
-                .ecx
-                .size_and_align_of(&val.meta(), &val.layout)?
-                .is_some_and(|(s, _a)| s.bytes() == 0);
+            let zst = self.ecx.size_and_align_of_val(val)?.is_some_and(|(s, _a)| s.bytes() == 0);
             if !zst
                 && let Some(def) = val.layout.ty.ty_adt_def()
                 && def.is_unsafe_cell()

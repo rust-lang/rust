@@ -814,7 +814,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         info: RetagInfo, // diagnostics info about this retag
     ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
         let this = self.eval_context_mut();
-        let size = this.size_and_align_of_mplace(place)?.map(|(size, _)| size);
+        let size = this.size_and_align_of_val(place)?.map(|(size, _)| size);
         // FIXME: If we cannot determine the size (because the unsized tail is an `extern type`),
         // bail out -- we cannot reasonably figure out which memory range to reborrow.
         // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
