@@ -50,7 +50,7 @@ impl Step for Std {
     fn make_run(run: RunConfig<'_>) {
         let crates = std_crates_for_run_make(&run);
         run.builder.ensure(Std {
-            build_compiler: run.builder.compiler(run.builder.top_stage, run.target),
+            build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Std),
             target: run.target,
             crates,
         });
@@ -138,11 +138,6 @@ impl Step for Std {
     }
 }
 
-fn default_compiler_for_checking_rustc(builder: &Builder<'_>) -> Compiler {
-    // When checking the stage N compiler, we want to do it with the stage N-1 compiler,
-    builder.compiler(builder.top_stage - 1, builder.config.host_target)
-}
-
 /// Checks rustc using `build_compiler` and copies the built
 /// .rmeta files into the sysroot of `build_compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -182,7 +177,7 @@ impl Step for Rustc {
         let crates = run.make_run_crates(Alias::Compiler);
         run.builder.ensure(Rustc {
             target: run.target,
-            build_compiler: default_compiler_for_checking_rustc(run.builder),
+            build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Rustc),
             crates,
         });
     }
@@ -193,11 +188,6 @@ impl Step for Rustc {
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
     fn run(self, builder: &Builder<'_>) {
-        if builder.top_stage < 2 && builder.config.host_target != self.target {
-            eprintln!("Cannot do a cross-compilation check on stage 1, use stage 2");
-            exit!(1);
-        }
-
         let build_compiler = self.build_compiler;
         let target = self.target;
 
@@ -249,13 +239,45 @@ impl Step for Rustc {
     }
 }
 
-/// Prepares a build compiler sysroot that will check a `Mode::ToolRustc` tool.
-/// Also checks rustc using this compiler, to prepare .rmetas that the tool will link to.
-fn prepare_compiler_for_tool_rustc(builder: &Builder<'_>, target: TargetSelection) -> Compiler {
-    // When we check tool stage N, we check it with compiler stage N-1
-    let build_compiler = builder.compiler(builder.top_stage - 1, builder.config.host_target);
-    builder.ensure(Rustc::new(builder, build_compiler, target));
-    build_compiler
+/// Prepares a compiler that will check something with the given `mode`.
+fn prepare_compiler_for_check(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    mode: Mode,
+) -> Compiler {
+    let host = builder.host_target;
+    match mode {
+        Mode::ToolBootstrap => builder.compiler(0, host),
+        Mode::ToolStd => {
+            // A small number of tools rely on in-tree standard
+            // library crates (e.g. compiletest needs libtest).
+            let build_compiler = builder.compiler(builder.top_stage, host);
+            builder.std(build_compiler, host);
+            builder.std(build_compiler, target);
+            build_compiler
+        }
+        Mode::ToolRustc | Mode::Codegen => {
+            // When checking tool stage N, we check it with compiler stage N-1
+            let build_compiler = builder.compiler(builder.top_stage - 1, host);
+            builder.ensure(Rustc::new(builder, build_compiler, target));
+            build_compiler
+        }
+        Mode::Rustc => {
+            if builder.top_stage < 2 && host != target {
+                eprintln!("Cannot do a cross-compilation check of rustc on stage 1, use stage 2");
+                exit!(1);
+            }
+
+            // When checking the stage N compiler, we want to do it with the stage N-1 compiler
+            builder.compiler(builder.top_stage - 1, host)
+        }
+        Mode::Std => {
+            // When checking std stage N, we want to do it with the stage N compiler
+            // Note: we don't need to build the host stdlib here, because when compiling std, the
+            // stage 0 stdlib is used to compile build scripts and proc macros.
+            builder.compiler(builder.top_stage, host)
+        }
+    }
 }
 
 /// Checks a single codegen backend.
@@ -277,7 +299,7 @@ impl Step for CodegenBackend {
 
     fn make_run(run: RunConfig<'_>) {
         // FIXME: only check the backend(s) that were actually selected in run.paths
-        let build_compiler = prepare_compiler_for_tool_rustc(run.builder, run.target);
+        let build_compiler = prepare_compiler_for_check(run.builder, run.target, Mode::Codegen);
         for &backend in &["cranelift", "gcc"] {
             run.builder.ensure(CodegenBackend { build_compiler, target: run.target, backend });
         }
@@ -345,7 +367,7 @@ impl Step for RustAnalyzer {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let build_compiler = prepare_compiler_for_tool_rustc(run.builder, run.target);
+        let build_compiler = prepare_compiler_for_check(run.builder, run.target, Mode::ToolRustc);
         run.builder.ensure(RustAnalyzer { build_compiler, target: run.target });
     }
 
@@ -410,19 +432,11 @@ impl Step for Compiletest {
         } else {
             Mode::ToolStd
         };
-
-        let compiler = builder.compiler(
-            if mode == Mode::ToolBootstrap { 0 } else { builder.top_stage },
-            builder.config.host_target,
-        );
-
-        if mode != Mode::ToolBootstrap {
-            builder.std(compiler, self.target);
-        }
+        let build_compiler = prepare_compiler_for_check(builder, self.target, mode);
 
         let mut cargo = prepare_tool_cargo(
             builder,
-            compiler,
+            build_compiler,
             mode,
             self.target,
             builder.kind,
@@ -435,7 +449,7 @@ impl Step for Compiletest {
 
         cargo.arg("--all-targets");
 
-        let stamp = BuildStamp::new(&builder.cargo_out(compiler, mode, self.target))
+        let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, self.target))
             .with_prefix("compiletest-check");
 
         let _guard = builder.msg_check("compiletest artifacts", self.target, None);
@@ -475,23 +489,8 @@ macro_rules! tool_check_step {
             }
 
             fn make_run(run: RunConfig<'_>) {
-                let host = run.builder.config.host_target;
                 let target = run.target;
-                let build_compiler = match $mode {
-                    Mode::ToolBootstrap => run.builder.compiler(0, host),
-                    Mode::ToolStd => {
-                        // A small number of tools rely on in-tree standard
-                        // library crates (e.g. compiletest needs libtest).
-                        let build_compiler = run.builder.compiler(run.builder.top_stage, host);
-                        run.builder.std(build_compiler, host);
-                        run.builder.std(build_compiler, target);
-                        build_compiler
-                    }
-                    Mode::ToolRustc => {
-                        prepare_compiler_for_tool_rustc(run.builder, target)
-                    }
-                    _ => panic!("unexpected mode for tool check step: {:?}", $mode),
-                };
+                let build_compiler = prepare_compiler_for_check(run.builder, target, $mode);
                 run.builder.ensure($name { target, build_compiler });
             }
 
