@@ -231,7 +231,6 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         item.name = ? tcx.def_path_str(def_id)
     );
     crate::collect::lower_item(tcx, item.item_id());
-    crate::collect::reject_placeholder_type_signatures_in_item(tcx, item);
 
     let res = match item.kind {
         // Right now we check that every default trait implementation

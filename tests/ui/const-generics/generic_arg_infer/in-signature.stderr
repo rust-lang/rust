@@ -103,24 +103,28 @@ LL + static TY_STATIC_MIXED: Bar<i32, 3> = Bar::<i32, 3>(0);
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/in-signature.rs:50:23
+  --> $DIR/in-signature.rs:51:23
    |
 LL |     type Assoc = [u8; _];
    |                       ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/in-signature.rs:54:27
+  --> $DIR/in-signature.rs:55:27
    |
 LL |     type Assoc = Bar<i32, _>;
    |                           ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/in-signature.rs:58:22
+  --> $DIR/in-signature.rs:59:22
    |
 LL |     type Assoc = Bar<_, _>;
-   |                      ^  ^ not allowed in type signatures
-   |                      |
-   |                      not allowed in type signatures
+   |                      ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
+  --> $DIR/in-signature.rs:59:25
+   |
+LL |     type Assoc = Bar<_, _>;
+   |                         ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
   --> $DIR/in-signature.rs:34:21
@@ -138,10 +142,14 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/in-signature.rs:42:20
    |
 LL |     const ARR: Bar<_, _>;
-   |                    ^  ^ not allowed in type signatures
-   |                    |
-   |                    not allowed in type signatures
+   |                    ^ not allowed in type signatures
 
-error: aborting due to 15 previous errors
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
+  --> $DIR/in-signature.rs:42:23
+   |
+LL |     const ARR: Bar<_, _>;
+   |                       ^ not allowed in type signatures
+
+error: aborting due to 17 previous errors
 
 For more information about this error, try `rustc --explain E0121`.
