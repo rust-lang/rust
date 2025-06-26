@@ -54,44 +54,31 @@ unsafe trait GenericRadix: Sized {
     /// Converts an integer to corresponding radix digit.
     fn digit(x: u8) -> u8;
 
-    /// Format an integer using the radix using a formatter.
+    /// Format an unsigned integer using the radix using a formatter.
     fn fmt_int<T: DisplayInt>(&self, mut x: T, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // The radix can be as low as 2, so we need a buffer of at least 128
         // characters for a base 2 number.
         let zero = T::zero();
-        let is_nonnegative = x >= zero;
         let mut buf = [MaybeUninit::<u8>::uninit(); 128];
         let mut offset = buf.len();
         let base = T::from_u8(Self::BASE);
-        if is_nonnegative {
-            // Accumulate each digit of the number from the least significant
-            // to the most significant figure.
-            loop {
-                let n = x % base; // Get the current place value.
-                x = x / base; // Deaccumulate the number.
-                offset -= 1;
-                buf[offset].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
-                if x == zero {
-                    // No more digits left to accumulate.
-                    break;
-                };
-            }
-        } else {
-            // Do the same as above, but accounting for two's complement.
-            loop {
-                let n = zero - (x % base); // Get the current place value.
-                x = x / base; // Deaccumulate the number.
-                offset -= 1;
-                buf[offset].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
-                if x == zero {
-                    // No more digits left to accumulate.
-                    break;
-                };
-            }
+
+        // Accumulate each digit of the number from the least significant
+        // to the most significant figure.
+        loop {
+            let n = x % base; // Get the current place value.
+            x = x / base; // Deaccumulate the number.
+            offset -= 1;
+            buf[offset].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
+            if x == zero {
+                // No more digits left to accumulate.
+                break;
+            };
         }
+
         // SAFETY: Starting from `offset`, all elements of the slice have been set.
-        let buf_slice = unsafe { slice_buffer_to_str(&buf, offset) };
-        f.pad_integral(is_nonnegative, Self::PREFIX, buf_slice)
+        let digits = unsafe { slice_buffer_to_str(&buf, offset) };
+        f.pad_integral(true, Self::PREFIX, digits)
     }
 }
 
@@ -132,11 +119,11 @@ radix! { LowerHex, 16, "0x", x @  0 ..=  9 => b'0' + x, x @ 10 ..= 15 => b'a' + 
 radix! { UpperHex, 16, "0x", x @  0 ..=  9 => b'0' + x, x @ 10 ..= 15 => b'A' + (x - 10) }
 
 macro_rules! int_base {
-    (fmt::$Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
+    (fmt::$Trait:ident for $T:ident -> $Radix:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::$Trait for $T {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                $Radix.fmt_int(*self as $U, f)
+                $Radix.fmt_int(*self, f)
             }
         }
     };
@@ -144,15 +131,36 @@ macro_rules! int_base {
 
 macro_rules! integer {
     ($Int:ident, $Uint:ident) => {
-        int_base! { fmt::Binary   for $Int as $Uint  -> Binary }
-        int_base! { fmt::Octal    for $Int as $Uint  -> Octal }
-        int_base! { fmt::LowerHex for $Int as $Uint  -> LowerHex }
-        int_base! { fmt::UpperHex for $Int as $Uint  -> UpperHex }
+        int_base! { fmt::Binary   for $Uint -> Binary }
+        int_base! { fmt::Octal    for $Uint -> Octal }
+        int_base! { fmt::LowerHex for $Uint -> LowerHex }
+        int_base! { fmt::UpperHex for $Uint -> UpperHex }
 
-        int_base! { fmt::Binary   for $Uint as $Uint -> Binary }
-        int_base! { fmt::Octal    for $Uint as $Uint -> Octal }
-        int_base! { fmt::LowerHex for $Uint as $Uint -> LowerHex }
-        int_base! { fmt::UpperHex for $Uint as $Uint -> UpperHex }
+        // Format signed integers as unsigned (two’s complement representation).
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::Binary for $Int {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Binary::fmt(&self.cast_unsigned(), f)
+            }
+        }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::Octal for $Int {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Octal::fmt(&self.cast_unsigned(), f)
+            }
+        }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::LowerHex for $Int {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::LowerHex::fmt(&self.cast_unsigned(), f)
+            }
+        }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::UpperHex for $Int {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::UpperHex::fmt(&self.cast_unsigned(), f)
+            }
+        }
     };
 }
 integer! { isize, usize }
