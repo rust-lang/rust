@@ -583,69 +583,8 @@ tool_check_step!(RunMakeSupport {
     default: false
 });
 
-/// Check step for the `coverage-dump` bootstrap tool. The coverage-dump tool
-/// is used internally by coverage tests.
-///
-/// FIXME(Zalathar): This is temporarily separate from the other tool check
-/// steps so that it can use the stage 0 compiler instead of `top_stage`,
-/// without introducing conflicts with the stage 0 redesign (#119899).
-///
-/// After the stage 0 redesign lands, we can look into using the stage 0
-/// compiler to check all bootstrap tools (#139170).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct CoverageDump;
-
-impl CoverageDump {
-    const PATH: &str = "src/tools/coverage-dump";
-}
-
-impl Step for CoverageDump {
-    type Output = ();
-
-    /// Most contributors won't care about coverage-dump, so don't make their
-    /// check builds slower unless they opt in and check it explicitly.
-    const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path(Self::PATH)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Self {});
-    }
-
-    fn run(self, builder: &Builder<'_>) -> Self::Output {
-        // Make sure we haven't forgotten any fields, if there are any.
-        let Self {} = self;
-        let display_name = "coverage-dump";
-        let host = builder.config.host_target;
-        let target = host;
-        let mode = Mode::ToolBootstrap;
-
-        let compiler = builder.compiler(0, host);
-        let cargo = prepare_tool_cargo(
-            builder,
-            compiler,
-            mode,
-            target,
-            builder.kind,
-            Self::PATH,
-            SourceType::InTree,
-            &[],
-        );
-
-        let stamp = BuildStamp::new(&builder.cargo_out(compiler, mode, target))
-            .with_prefix(&format!("{display_name}-check"));
-
-        let _guard = builder.msg_tool(
-            builder.kind,
-            mode,
-            display_name,
-            compiler.stage,
-            &compiler.host,
-            &target,
-        );
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
-    }
-}
+tool_check_step!(CoverageDump {
+    path: "src/tools/coverage-dump",
+    mode: Mode::ToolBootstrap,
+    default: false
+});
