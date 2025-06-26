@@ -3,24 +3,12 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL |     fn f(self: _) {}
    |                ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL -     fn f(self: _) {}
-LL +     fn f<T>(self: T) {}
-   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/self-infer.rs:5:17
    |
 LL |     fn g(self: &_) {}
    |                 ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL -     fn g(self: &_) {}
-LL +     fn g<T>(self: &T) {}
-   |
 
 error: aborting due to 2 previous errors
 

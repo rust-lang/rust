@@ -3,12 +3,6 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL |     fn bar(s: _) {}
    |               ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL -     fn bar(s: _) {}
-LL +     fn bar<T>(s: T) {}
-   |
 
 error[E0050]: method `bar` has 1 parameter but the declaration in trait `Foo::bar` has 0
   --> $DIR/bad-infer-in-trait-impl.rs:6:15
