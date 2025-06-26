@@ -375,7 +375,7 @@ pub(crate) fn layout_of_ty_cycle_result(
 fn struct_tail_erasing_lifetimes(db: &dyn HirDatabase, pointee: Ty) -> Ty {
     match pointee.kind(Interner) {
         &TyKind::Adt(AdtId(hir_def::AdtId::StructId(i)), ref subst) => {
-            let data = db.variant_fields(i.into());
+            let data = i.fields(db);
             let mut it = data.fields().iter().rev();
             match it.next() {
                 Some((f, _)) => {
