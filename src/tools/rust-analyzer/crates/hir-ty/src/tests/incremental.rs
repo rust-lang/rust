@@ -596,6 +596,7 @@ fn main() {
                 "struct_signature_with_source_map_shim",
                 "generic_predicates_shim",
                 "value_ty_shim",
+                "firewall_",
                 "query_",
                 "lang_item",
                 "inherent_impls_in_crate_shim",

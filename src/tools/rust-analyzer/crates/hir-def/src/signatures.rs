@@ -734,11 +734,11 @@ pub struct VariantFields {
 
 #[salsa::tracked]
 impl VariantFields {
-    #[salsa::tracked(returns(ref))]
+    #[salsa::tracked(returns(clone))]
     pub(crate) fn query(
         db: &dyn DefDatabase,
         id: VariantId,
-    ) -> (Self, Arc<ExpressionStoreSourceMap>) {
+    ) -> (Arc<Self>, Arc<ExpressionStoreSourceMap>) {
         let (shape, result) = match id {
             VariantId::EnumVariantId(id) => {
                 let loc = id.lookup(db);
@@ -775,18 +775,24 @@ impl VariantFields {
             }
         };
         match result {
-            Some((fields, store, source_map)) => {
-                (VariantFields { fields, store: Arc::new(store), shape }, Arc::new(source_map))
-            }
+            Some((fields, store, source_map)) => (
+                Arc::new(VariantFields { fields, store: Arc::new(store), shape }),
+                Arc::new(source_map),
+            ),
             None => (
-                VariantFields {
+                Arc::new(VariantFields {
                     fields: Arena::default(),
                     store: ExpressionStore::empty_singleton(),
                     shape,
-                },
+                }),
                 ExpressionStoreSourceMap::empty_singleton(),
             ),
         }
+    }
+
+    #[salsa::tracked(returns(deref))]
+    pub(crate) fn firewall(db: &dyn DefDatabase, id: VariantId) -> Arc<Self> {
+        Self::query(db, id).0
     }
 }
 
