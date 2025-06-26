@@ -24,7 +24,6 @@ use rustc_traits::{type_op_ascribe_user_type_with_span, type_op_prove_predicate_
 use tracing::{debug, instrument};
 
 use crate::MirBorrowckCtxt;
-use crate::region_infer::values::RegionElement;
 use crate::session_diagnostics::{
     HigherRankedErrorCause, HigherRankedLifetimeError, HigherRankedSubtypeError,
 };
@@ -49,11 +48,12 @@ impl<'tcx> UniverseInfo<'tcx> {
         UniverseInfo::RelateTys { expected, found }
     }
 
+    /// Report an error where an element erroneously made its way into `placeholder`.
     pub(crate) fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
-        error_element: RegionElement,
+        error_element: Option<ty::PlaceholderRegion>,
         cause: ObligationCause<'tcx>,
     ) {
         match *self {
@@ -145,52 +145,54 @@ pub(crate) trait TypeOpInfo<'tcx> {
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<Diag<'infcx>>;
 
-    /// Constraints require that `error_element` appear in the
-    ///  values of `placeholder`, but this cannot be proven to
-    /// hold. Report an error.
+    /// Turn a placeholder region into a Region with its universe adjusted by
+    /// the base universe.
+    fn region_with_adjusted_universe(
+        &self,
+        placeholder: ty::PlaceholderRegion,
+        tcx: TyCtxt<'tcx>,
+    ) -> ty::Region<'tcx> {
+        let Some(adjusted_universe) =
+            placeholder.universe.as_u32().checked_sub(self.base_universe().as_u32())
+        else {
+            unreachable!(
+                "Could not adjust universe {:?} of {placeholder:?} by base universe {:?}",
+                placeholder.universe,
+                self.base_universe()
+            );
+        };
+        ty::Region::new_placeholder(
+            tcx,
+            ty::Placeholder { universe: adjusted_universe.into(), bound: placeholder.bound },
+        )
+    }
+
+    /// Report an error where an erroneous element reaches `placeholder`.
+    /// The erroneous element is either another placeholder that we provide,
+    /// or we reverse engineer what happened later anyway.
     #[instrument(level = "debug", skip(self, mbcx))]
     fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
-        error_element: RegionElement,
+        error_element: Option<ty::PlaceholderRegion>,
         cause: ObligationCause<'tcx>,
     ) {
         let tcx = mbcx.infcx.tcx;
-        let base_universe = self.base_universe();
-        debug!(?base_universe);
 
-        let Some(adjusted_universe) =
-            placeholder.universe.as_u32().checked_sub(base_universe.as_u32())
-        else {
-            mbcx.buffer_error(self.fallback_error(tcx, cause.span));
-            return;
-        };
-
-        let placeholder_region = ty::Region::new_placeholder(
-            tcx,
-            ty::Placeholder { universe: adjusted_universe.into(), bound: placeholder.bound },
-        );
-
-        let error_region = if let RegionElement::PlaceholderRegion(error_placeholder) =
-            error_element
-        {
-            let adjusted_universe =
-                error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
-            adjusted_universe.map(|adjusted| {
-                ty::Region::new_placeholder(
-                    tcx,
-                    ty::Placeholder { universe: adjusted.into(), bound: error_placeholder.bound },
-                )
-            })
-        } else {
-            None
-        };
+        // FIXME: these adjusted universes are not (always) the same ones as we compute
+        // earlier. They probably should be, but the logic downstream is complicated,
+        // and assumes they use whatever this is.
+        //
+        // In fact, this  function throws away a lot of interesting information that would
+        // probably allow bypassing lots of logic downstream for a much simpler flow.
+        let placeholder_region = self.region_with_adjusted_universe(placeholder, tcx);
+        let error_element = error_element.map(|e| self.region_with_adjusted_universe(e, tcx));
 
         debug!(?placeholder_region);
 
         let span = cause.span;
-        let nice_error = self.nice_error(mbcx, cause, placeholder_region, error_region);
+        let nice_error = self.nice_error(mbcx, cause, placeholder_region, error_element);
 
         debug!(?nice_error);
         mbcx.buffer_error(nice_error.unwrap_or_else(|| self.fallback_error(tcx, span)));

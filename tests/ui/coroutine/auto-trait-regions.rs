@@ -20,6 +20,19 @@ impl<'a> Foo for &'a OnlyFooIfRef {}
 
 fn assert_foo<T: Foo>(f: T) {}
 
+fn other_assertion() {
+    // Disallow impls which relates lifetimes in the coroutine interior
+    let gen = #[coroutine] move || {
+        let a = A(&mut true, &mut true, No);
+        //~^ ERROR borrow may still be in use when coroutine yields
+        //~| ERROR borrow may still be in use when coroutine yields
+        yield;
+        assert_foo(a);
+    };
+    assert_foo(gen);
+    //~^ ERROR not general enough
+}
+
 fn main() {
     // Make sure 'static is erased for coroutine interiors so we can't match it in trait selection
     let x: &'static _ = &OnlyFooIfStaticRef(No);
@@ -39,15 +52,4 @@ fn main() {
         assert_foo(x);
     };
     assert_foo(gen); // ok
-
-    // Disallow impls which relates lifetimes in the coroutine interior
-    let gen = #[coroutine] move || {
-        let a = A(&mut true, &mut true, No);
-        //~^ ERROR borrow may still be in use when coroutine yields
-        //~| ERROR borrow may still be in use when coroutine yields
-        yield;
-        assert_foo(a);
-    };
-    assert_foo(gen);
-    //~^ ERROR not general enough
 }
