@@ -790,14 +790,6 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let operand = codegen_operand(fx, operand);
                     crate::unsize::coerce_unsized_into(fx, operand, lval);
                 }
-                Rvalue::Cast(
-                    CastKind::PointerCoercion(PointerCoercion::DynStar, _),
-                    ref operand,
-                    _,
-                ) => {
-                    let operand = codegen_operand(fx, operand);
-                    crate::unsize::coerce_dyn_star(fx, operand, lval);
-                }
                 Rvalue::Cast(CastKind::Transmute, ref operand, _to_ty) => {
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue_transmute(fx, operand);
