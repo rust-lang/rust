@@ -101,6 +101,17 @@ fn f6(i: NestedInput) -> f32 {
     i.x + i.y.z * i.y.z
 }
 
+// CHECK: ; abi_handling::f7
+// CHECK-NEXT: ; Function Attrs: {{.*}}noinline{{.*}}
+// debug-NEXT: define internal float @_ZN12abi_handling2f717h44e3cff234e3b2d5E
+// debug-SAME: (ptr align 4 %x.0, ptr align 4 %x.1)
+// release-NEXT: define internal fastcc noundef float @_ZN12abi_handling2f717h44e3cff234e3b2d5E
+// release-SAME: (float %x.0.0.val, float %x.1.0.val)
+#[autodiff_forward(df7, Dual, Dual)]
+fn f7(x: (&f32, &f32)) -> f32 {
+    x.0 * x.1
+}
+
 // df1
 // release: define internal fastcc { float, float }
 // release-SAME: @fwddiffe_ZN12abi_handling2f117h536ac8081c1e4101E
@@ -117,12 +128,12 @@ fn f6(i: NestedInput) -> f32 {
 // debug-NEXT: start:
 // debug-NEXT: %"'ipg" = getelementptr inbounds float, ptr %"x'", i64 0
 // debug-NEXT: %0 = getelementptr inbounds nuw float, ptr %x, i64 0
-// debug-NEXT: %"_2'ipl" = load float, ptr %"'ipg", align 4, !alias.scope !4, !noalias !7
-// debug-NEXT: %_2 = load float, ptr %0, align 4, !alias.scope !7, !noalias !4
+// debug-NEXT: %"_2'ipl" = load float, ptr %"'ipg", align 4
+// debug-NEXT: %_2 = load float, ptr %0, align 4
 // debug-NEXT: %"'ipg2" = getelementptr inbounds float, ptr %"x'", i64 1
 // debug-NEXT: %1 = getelementptr inbounds nuw float, ptr %x, i64 1
-// debug-NEXT: %"_5'ipl" = load float, ptr %"'ipg2", align 4, !alias.scope !4, !noalias !7
-// debug-NEXT: %_5 = load float, ptr %1, align 4, !alias.scope !7, !noalias !4
+// debug-NEXT: %"_5'ipl" = load float, ptr %"'ipg2", align 4
+// debug-NEXT: %_5 = load float, ptr %1, align 4
 // debug-NEXT: %_0 = fadd float %_2, %_5
 // debug-NEXT: %2 = fadd fast float %"_2'ipl", %"_5'ipl"
 // debug-NEXT: %3 = insertvalue { float, float } undef, float %_0, 0
@@ -147,7 +158,7 @@ fn f6(i: NestedInput) -> f32 {
 // debug-NEXT: %"x'de" = alloca float, align 4
 // debug-NEXT: store float 0.000000e+00, ptr %"x'de", align 4
 // debug-NEXT: %toreturn = alloca float, align 4
-// debug-NEXT: %_0 = call float %f(float %x) #12
+// debug-NEXT: %_0 = call float %f(float %x)
 // debug-NEXT: store float %_0, ptr %toreturn, align 4
 // debug-NEXT: br label %invertstart
 // debug-EMPTY:
@@ -172,10 +183,10 @@ fn f6(i: NestedInput) -> f32 {
 // debug: define internal { float, float } @fwddiffe_ZN12abi_handling2f317h9cd1fc602b0815a4E
 // debug-SAME: (ptr align 4 %x, ptr align 4 %"x'", ptr align 4 %y, ptr align 4 %"y'")
 // debug-NEXT: start:
-// debug-NEXT: %"_3'ipl" = load float, ptr %"x'", align 4, !alias.scope !9, !noalias !12
-// debug-NEXT: %_3 = load float, ptr %x, align 4, !alias.scope !12, !noalias !9
-// debug-NEXT: %"_4'ipl" = load float, ptr %"y'", align 4, !alias.scope !14, !noalias !17
-// debug-NEXT: %_4 = load float, ptr %y, align 4, !alias.scope !17, !noalias !14
+// debug-NEXT: %"_3'ipl" = load float, ptr %"x'", align 4
+// debug-NEXT: %_3 = load float, ptr %x, align 4
+// debug-NEXT: %"_4'ipl" = load float, ptr %"y'", align 4
+// debug-NEXT: %_4 = load float, ptr %y, align 4
 // debug-NEXT: %_0 = fmul float %_3, %_4
 // debug-NEXT: %0 = fmul fast float %"_3'ipl", %_4
 // debug-NEXT: %1 = fmul fast float %"_4'ipl", %_3
@@ -257,6 +268,28 @@ fn f6(i: NestedInput) -> f32 {
 // debug-NEXT: ret { float, float } %5
 // debug-NEXT: }
 
+// df7
+// release: define internal fastcc { float, float }
+// release-SAME: @fwddiffe_ZN12abi_handling2f717h44e3cff234e3b2d5E
+// release-SAME: (float %x.0.0.val, float %"x.0'.0.val")
+// release-NEXT: start:
+// release-NEXT: %0 = insertvalue { float, float } undef, float %x.0.0.val, 0
+// release-NEXT: %1 = insertvalue { float, float } %0, float %"x.0'.0.val", 1
+// release-NEXT: ret { float, float } %1
+// release-NEXT: }
+
+// debug: define internal { float, float }
+// debug-SAME: @fwddiffe_ZN12abi_handling2f717h44e3cff234e3b2d5E
+// debug-SAME: (ptr align 4 %x.0, ptr align 4 %"x.0'", ptr align 4 %x.1, ptr align 4 %"x.1'")
+// debug-NEXT: start:
+// debug-NEXT: %0 = call fast { float, float } @"fwddiffe_ZN49_{{.*}}"
+// debug-NEXT: %1 = extractvalue { float, float } %0, 0
+// debug-NEXT: %2 = extractvalue { float, float } %0, 1
+// debug-NEXT: %3 = insertvalue { float, float } undef, float %1, 0
+// debug-NEXT: %4 = insertvalue { float, float } %3, float %2, 1
+// debug-NEXT: ret { float, float } %4
+// debug-NEXT: }
+
 fn main() {
     let x = std::hint::black_box(2.0);
     let y = std::hint::black_box(3.0);
@@ -290,4 +323,9 @@ fn main() {
     dbg!(f6(in_f6));
     let res_f6 = df6(in_f6, NestedInput { x, y: Wrapper { z } });
     dbg!(res_f6);
+
+    let in_f7 = (&x, &y);
+    dbg!(f7(in_f7));
+    let res_f7 = df7(in_f7, (&1.0, &0.0));
+    dbg!(res_f7);
 }

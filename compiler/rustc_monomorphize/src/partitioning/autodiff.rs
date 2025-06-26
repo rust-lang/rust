@@ -84,11 +84,15 @@ fn adjust_activity_to_abi<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec
 
         let is_product = |t: Ty<'tcx>| matches!(t.kind(), ty::Tuple(_) | ty::Adt(_, _));
 
+        // NOTE: When an ADT (Algebraic Data Type) has fewer than two fields and a total size less than pointer_size * 2,
+        // LLVM will pass its fields separately instead of as a single aggregate.
         if layout.size() <= pointer_size * 2 && is_product(*ty) {
-            let n_scalars = count_scalar_fields(tcx, *ty);
-            for _ in 0..n_scalars.saturating_sub(1) {
-                new_activities.push(da[i].clone());
-                new_positions.push(i + 1);
+            let n_scalars = count_leaf_fields(tcx, *ty);
+            if n_scalars <= 2 {
+                for _ in 0..n_scalars.saturating_sub(1) {
+                    new_activities.push(da[i].clone());
+                    new_positions.push(i + 1);
+                }
             }
         }
     }
@@ -101,16 +105,25 @@ fn adjust_activity_to_abi<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec
     }
 }
 
-fn count_scalar_fields<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> usize {
+fn count_leaf_fields<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> usize {
     match ty.kind() {
-        ty::Float(_) | ty::Int(_) | ty::Uint(_) => 1,
+        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::FnPtr(_, _) => 1,
+        ty::RawPtr(ty, _) => count_leaf_fields(tcx, *ty),
+        ty::Ref(_, ty, _) => count_leaf_fields(tcx, *ty),
+        ty::Array(ty, len) => {
+            if let Some(len) = len.try_to_target_usize(tcx) {
+                count_leaf_fields(tcx, *ty) * len as usize
+            } else {
+                1 // Not sure about how to handle this case
+            }
+        }
         ty::Adt(def, substs) if def.is_struct() => def
             .non_enum_variant()
             .fields
             .iter()
-            .map(|f| count_scalar_fields(tcx, f.ty(tcx, substs)))
+            .map(|f| count_leaf_fields(tcx, f.ty(tcx, substs)))
             .sum(),
-        ty::Tuple(substs) => substs.iter().map(|t| count_scalar_fields(tcx, t)).sum(),
+        ty::Tuple(substs) => substs.iter().map(|t| count_leaf_fields(tcx, t)).sum(),
         _ => 0,
     }
 }
