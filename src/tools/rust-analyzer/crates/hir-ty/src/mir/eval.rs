@@ -1749,8 +1749,7 @@ impl Evaluator<'_> {
                         AdtId::UnionId(_) => not_supported!("unsizing unions"),
                         AdtId::EnumId(_) => not_supported!("unsizing enums"),
                     };
-                    let Some((last_field, _)) =
-                        self.db.variant_fields(id.into()).fields().iter().next_back()
+                    let Some((last_field, _)) = id.fields(self.db).fields().iter().next_back()
                     else {
                         not_supported!("unsizing struct without field");
                     };
@@ -2232,7 +2231,7 @@ impl Evaluator<'_> {
                 }
                 chalk_ir::TyKind::Adt(adt, subst) => match adt.0 {
                     AdtId::StructId(s) => {
-                        let data = this.db.variant_fields(s.into());
+                        let data = s.fields(this.db);
                         let layout = this.layout(ty)?;
                         let field_types = this.db.field_types(s.into());
                         for (f, _) in data.fields().iter() {
@@ -2261,7 +2260,7 @@ impl Evaluator<'_> {
                             bytes,
                             e,
                         ) {
-                            let data = &this.db.variant_fields(v.into());
+                            let data = v.fields(this.db);
                             let field_types = this.db.field_types(v.into());
                             for (f, _) in data.fields().iter() {
                                 let offset =
@@ -2838,7 +2837,7 @@ impl Evaluator<'_> {
                             return Ok(());
                         }
                         let layout = self.layout_adt(id.0, subst.clone())?;
-                        let variant_fields = self.db.variant_fields(s.into());
+                        let variant_fields = s.fields(self.db);
                         match variant_fields.shape {
                             FieldsShape::Record | FieldsShape::Tuple => {
                                 let field_types = self.db.field_types(s.into());

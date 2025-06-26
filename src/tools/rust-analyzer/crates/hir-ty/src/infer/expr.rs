@@ -542,7 +542,7 @@ impl InferenceContext<'_> {
                     _ if fields.is_empty() => {}
                     Some(def) => {
                         let field_types = self.db.field_types(def);
-                        let variant_data = def.variant_data(self.db);
+                        let variant_data = def.fields(self.db);
                         let visibilities = self.db.field_visibilities(def);
                         for field in fields.iter() {
                             let field_def = {
@@ -1566,12 +1566,12 @@ impl InferenceContext<'_> {
                     });
                 }
                 &TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), ref parameters) => {
-                    let local_id = self.db.variant_fields(s.into()).field(name)?;
+                    let local_id = s.fields(self.db).field(name)?;
                     let field = FieldId { parent: s.into(), local_id };
                     (field, parameters.clone())
                 }
                 &TyKind::Adt(AdtId(hir_def::AdtId::UnionId(u)), ref parameters) => {
-                    let local_id = self.db.variant_fields(u.into()).field(name)?;
+                    let local_id = u.fields(self.db).field(name)?;
                     let field = FieldId { parent: u.into(), local_id };
                     (field, parameters.clone())
                 }

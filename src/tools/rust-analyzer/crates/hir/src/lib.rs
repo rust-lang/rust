@@ -668,25 +668,25 @@ impl Module {
                         Adt::Struct(s) => {
                             let source_map = db.struct_signature_with_source_map(s.id).1;
                             expr_store_diagnostics(db, acc, &source_map);
-                            let source_map = db.variant_fields_with_source_map(s.id.into()).1;
-                            expr_store_diagnostics(db, acc, &source_map);
+                            let source_map = &s.id.fields_with_source_map(db).1;
+                            expr_store_diagnostics(db, acc, source_map);
                             push_ty_diagnostics(
                                 db,
                                 acc,
                                 db.field_types_with_diagnostics(s.id.into()).1,
-                                &source_map,
+                                source_map,
                             );
                         }
                         Adt::Union(u) => {
                             let source_map = db.union_signature_with_source_map(u.id).1;
                             expr_store_diagnostics(db, acc, &source_map);
-                            let source_map = db.variant_fields_with_source_map(u.id.into()).1;
-                            expr_store_diagnostics(db, acc, &source_map);
+                            let source_map = &u.id.fields_with_source_map(db).1;
+                            expr_store_diagnostics(db, acc, source_map);
                             push_ty_diagnostics(
                                 db,
                                 acc,
                                 db.field_types_with_diagnostics(u.id.into()).1,
-                                &source_map,
+                                source_map,
                             );
                         }
                         Adt::Enum(e) => {
@@ -711,14 +711,14 @@ impl Module {
                                 }
                             }
                             for &(v, _, _) in &variants.variants {
-                                let source_map = db.variant_fields_with_source_map(v.into()).1;
+                                let source_map = &v.fields_with_source_map(db).1;
                                 push_ty_diagnostics(
                                     db,
                                     acc,
                                     db.field_types_with_diagnostics(v.into()).1,
-                                    &source_map,
+                                    source_map,
                                 );
-                                expr_store_diagnostics(db, acc, &source_map);
+                                expr_store_diagnostics(db, acc, source_map);
                             }
                         }
                     }
@@ -1311,7 +1311,7 @@ impl AstNode for FieldSource {
 
 impl Field {
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
-        db.variant_fields(self.parent.into()).fields()[self.id].name.clone()
+        VariantId::from(self.parent).fields(db).fields()[self.id].name.clone()
     }
 
     pub fn index(&self) -> usize {
@@ -1380,7 +1380,7 @@ impl Field {
 
 impl HasVisibility for Field {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let variant_data = db.variant_fields(self.parent.into());
+        let variant_data = VariantId::from(self.parent).fields(db);
         let visibility = &variant_data.fields()[self.id].visibility;
         let parent_id: hir_def::VariantId = self.parent.into();
         // FIXME: RawVisibility::Public doesn't need to construct a resolver
@@ -1403,7 +1403,8 @@ impl Struct {
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
-        db.variant_fields(self.id.into())
+        self.id
+            .fields(db)
             .fields()
             .iter()
             .map(|(id, _)| Field { parent: self.into(), id })
@@ -1434,8 +1435,8 @@ impl Struct {
         }
     }
 
-    fn variant_fields(self, db: &dyn HirDatabase) -> Arc<VariantFields> {
-        db.variant_fields(self.id.into())
+    fn variant_fields(self, db: &dyn HirDatabase) -> &VariantFields {
+        self.id.fields(db)
     }
 
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
@@ -1478,7 +1479,7 @@ impl Union {
     }
 
     pub fn kind(self, db: &dyn HirDatabase) -> StructKind {
-        match db.variant_fields(self.id.into()).shape {
+        match self.id.fields(db).shape {
             hir_def::item_tree::FieldsShape::Record => StructKind::Record,
             hir_def::item_tree::FieldsShape::Tuple => StructKind::Tuple,
             hir_def::item_tree::FieldsShape::Unit => StructKind::Unit,
@@ -1486,7 +1487,8 @@ impl Union {
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
-        db.variant_fields(self.id.into())
+        self.id
+            .fields(db)
             .fields()
             .iter()
             .map(|(id, _)| Field { parent: self.into(), id })
@@ -1626,7 +1628,8 @@ impl Variant {
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
-        db.variant_fields(self.id.into())
+        self.id
+            .fields(db)
             .fields()
             .iter()
             .map(|(id, _)| Field { parent: self.into(), id })
@@ -1634,7 +1637,7 @@ impl Variant {
     }
 
     pub fn kind(self, db: &dyn HirDatabase) -> StructKind {
-        match db.variant_fields(self.id.into()).shape {
+        match self.id.fields(db).shape {
             hir_def::item_tree::FieldsShape::Record => StructKind::Record,
             hir_def::item_tree::FieldsShape::Tuple => StructKind::Tuple,
             hir_def::item_tree::FieldsShape::Unit => StructKind::Unit,

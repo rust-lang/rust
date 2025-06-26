@@ -9,7 +9,10 @@ pub mod scope;
 #[cfg(test)]
 mod tests;
 
-use std::ops::{Deref, Index};
+use std::{
+    ops::{Deref, Index},
+    sync::LazyLock,
+};
 
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
@@ -19,6 +22,7 @@ use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{Edition, SyntaxContext};
 use syntax::{AstPtr, SyntaxNodePtr, ast};
+use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
@@ -220,6 +224,12 @@ impl ExpressionStoreBuilder {
 }
 
 impl ExpressionStore {
+    pub fn empty_singleton() -> Arc<Self> {
+        static EMPTY: LazyLock<Arc<ExpressionStore>> =
+            LazyLock::new(|| Arc::new(ExpressionStoreBuilder::default().finish()));
+        EMPTY.clone()
+    }
+
     /// Returns an iterator over all block expressions in this store that define inner items.
     pub fn blocks<'a>(
         &'a self,
@@ -636,6 +646,12 @@ impl Index<PathId> for ExpressionStore {
 // FIXME: Change `node_` prefix to something more reasonable.
 // Perhaps `expr_syntax` and `expr_id`?
 impl ExpressionStoreSourceMap {
+    pub fn empty_singleton() -> Arc<Self> {
+        static EMPTY: LazyLock<Arc<ExpressionStoreSourceMap>> =
+            LazyLock::new(|| Arc::new(ExpressionStoreSourceMap::default()));
+        EMPTY.clone()
+    }
+
     pub fn expr_or_pat_syntax(&self, id: ExprOrPatId) -> Result<ExprOrPatSource, SyntheticSyntax> {
         match id {
             ExprOrPatId::ExprId(id) => self.expr_syntax(id),

@@ -404,7 +404,7 @@ impl HirDisplay for TupleField {
 impl HirDisplay for Variant {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write!(f, "{}", self.name(f.db).display(f.db, f.edition()))?;
-        let data = f.db.variant_fields(self.id.into());
+        let data = self.id.fields(f.db);
         match data.shape {
             FieldsShape::Unit => {}
             FieldsShape::Tuple => {

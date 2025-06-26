@@ -883,7 +883,7 @@ pub(crate) fn field_types_with_diagnostics_query(
     db: &dyn HirDatabase,
     variant_id: VariantId,
 ) -> (Arc<ArenaMap<LocalFieldId, Binders<Ty>>>, Diagnostics) {
-    let var_data = db.variant_fields(variant_id);
+    let var_data = variant_id.fields(db);
     let fields = var_data.fields();
     if fields.is_empty() {
         return (Arc::new(ArenaMap::default()), None);
@@ -1435,7 +1435,7 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
 
 /// Build the type of a tuple struct constructor.
 fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Option<Binders<Ty>> {
-    let struct_data = db.variant_fields(def.into());
+    let struct_data = def.fields(db);
     match struct_data.shape {
         FieldsShape::Record => None,
         FieldsShape::Unit => Some(type_for_adt(db, def.into())),
@@ -1468,7 +1468,7 @@ fn type_for_enum_variant_constructor(
     def: EnumVariantId,
 ) -> Option<Binders<Ty>> {
     let e = def.lookup(db).parent;
-    match db.variant_fields(def.into()).shape {
+    match def.fields(db).shape {
         FieldsShape::Record => None,
         FieldsShape::Unit => Some(type_for_adt(db, e.into())),
         FieldsShape::Tuple => {

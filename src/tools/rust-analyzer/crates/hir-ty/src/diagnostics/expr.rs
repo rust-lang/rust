@@ -558,7 +558,7 @@ pub fn record_literal_missing_fields(
         return None;
     }
 
-    let variant_data = variant_def.variant_data(db);
+    let variant_data = variant_def.fields(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data
@@ -588,7 +588,7 @@ pub fn record_pattern_missing_fields(
         return None;
     }
 
-    let variant_data = variant_def.variant_data(db);
+    let variant_data = variant_def.fields(db);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data
