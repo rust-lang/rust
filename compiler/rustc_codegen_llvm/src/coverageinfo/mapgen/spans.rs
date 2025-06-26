@@ -1,8 +1,8 @@
+use rustc_llvm::ffi;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Pos, SourceFile, Span};
 use tracing::debug;
 
-use crate::coverageinfo::ffi;
 use crate::coverageinfo::mapgen::LocalFileId;
 
 /// Line and byte-column coordinates of a source code span within some file.
@@ -20,11 +20,14 @@ pub(crate) struct Coords {
 }
 
 impl Coords {
-    /// Attaches a local file ID to these coordinates to produce an `ffi::CoverageSpan`.
-    pub(crate) fn make_coverage_span(&self, local_file_id: LocalFileId) -> ffi::CoverageSpan {
+    /// Attaches a local file ID to these coordinates to produce an `ffi::coverageinfo::CoverageSpan`.
+    pub(crate) fn make_coverage_span(
+        &self,
+        local_file_id: LocalFileId,
+    ) -> ffi::coverageinfo::CoverageSpan {
         let &Self { start_line, start_col, end_line, end_col } = self;
         let file_id = local_file_id.as_u32();
-        ffi::CoverageSpan { file_id, start_line, start_col, end_line, end_col }
+        ffi::coverageinfo::CoverageSpan { file_id, start_line, start_col, end_line, end_col }
     }
 }
 

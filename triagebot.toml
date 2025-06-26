@@ -164,12 +164,7 @@ trigger_labels = [
     "regression-from-stable-to-nightly",
     "I-unsound",
 ]
-exclude_labels = [
-    "P-*",
-    "T-infra",
-    "T-release",
-    "requires-nightly",
-]
+exclude_labels = ["P-*", "T-infra", "T-release", "requires-nightly"]
 
 [autolabel."T-rustdoc"]
 trigger_files = [
@@ -198,9 +193,7 @@ trigger_files = [
     "src/doc/rustdoc.md",
     "src/doc/rustdoc/",
 ]
-exclude_labels = [
-    "T-*",
-]
+exclude_labels = ["T-*"]
 
 trigger_labels = [
     "A-rustdoc-json",
@@ -230,9 +223,7 @@ trigger_files = [
 ]
 
 [autolabel."A-compiler-builtins"]
-trigger_files = [
-    "library/compiler-builtins",
-]
+trigger_files = ["library/compiler-builtins"]
 
 [autolabel."F-autodiff"]
 trigger_files = [
@@ -241,15 +232,11 @@ trigger_files = [
     "compiler/rustc_ast/src/expand/autodiff_attrs.rs",
     "compiler/rustc_monomorphize/src/partitioning/autodiff.rs",
     "compiler/rustc_codegen_llvm/src/builder/autodiff.rs",
-    "compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs",
+    "compiler/rustc_llvm/src/ffi/enzyme/mod.rs",
 ]
 
 [autolabel."T-rustdoc-frontend"]
-trigger_labels = [
-    "A-rustdoc-search",
-    "A-rustdoc-ui",
-    "A-rustdoc-js",
-]
+trigger_labels = ["A-rustdoc-search", "A-rustdoc-ui", "A-rustdoc-js"]
 
 trigger_files = [
     "src/librustdoc/html/",
@@ -267,9 +254,7 @@ trigger_files = [
     "tests/rustdoc-js-std",
 ]
 
-trigger_labels = [
-    "A-type-based-search",
-]
+trigger_labels = ["A-type-based-search"]
 
 [autolabel."T-compiler"]
 trigger_files = [
@@ -293,26 +278,17 @@ trigger_files = [
     "tests/ui",
     "tests/ui-fulldeps",
 ]
-exclude_labels = [
-    "T-*",
-]
+exclude_labels = ["T-*"]
 
-trigger_labels = [
-    "D-*",
-    "A-diagnostics",
-]
+trigger_labels = ["D-*", "A-diagnostics"]
 
 [autolabel."A-diagnostics"]
 
-trigger_labels = [
-    "D-*",
-]
+trigger_labels = ["D-*"]
 
 [autolabel."A-lints"]
 
-trigger_labels = [
-    "L-*",
-]
+trigger_labels = ["L-*"]
 
 [autolabel."T-libs"]
 trigger_files = [
@@ -324,14 +300,10 @@ trigger_files = [
     "library/stdarch",
     "library/test",
 ]
-exclude_labels = [
-    "T-*",
-]
+exclude_labels = ["T-*"]
 
 [autolabel."O-android"]
-trigger_files = [
-    "library/std/src/os/android"
-]
+trigger_files = ["library/std/src/os/android"]
 
 [autolabel."O-apple"]
 trigger_files = [
@@ -341,86 +313,58 @@ trigger_files = [
 ]
 
 [autolabel."O-fuchsia"]
-trigger_files = [
-    "library/std/src/os/fuchsia"
-]
+trigger_files = ["library/std/src/os/fuchsia"]
 
 [autolabel."O-hermit"]
-trigger_files = [
-    "library/std/src/sys/pal/hermit",
-    "library/std/src/os/hermit"
-]
+trigger_files = ["library/std/src/sys/pal/hermit", "library/std/src/os/hermit"]
 
 [autolabel."O-ios"]
-trigger_files = [
-    "library/std/src/os/ios"
-]
+trigger_files = ["library/std/src/os/ios"]
 
 [autolabel."O-itron"]
-trigger_files = [
-    "library/std/src/sys/pal/itron"
-]
+trigger_files = ["library/std/src/sys/pal/itron"]
 
 [autolabel."O-linux"]
-trigger_files = [
-    "library/std/src/os/linux"
-]
+trigger_files = ["library/std/src/os/linux"]
 
 [autolabel."O-macos"]
-trigger_files = [
-    "library/std/src/os/macos",
-]
+trigger_files = ["library/std/src/os/macos"]
 
 [autolabel."O-netbsd"]
-trigger_files = [
-    "library/std/src/os/netbsd"
-]
+trigger_files = ["library/std/src/os/netbsd"]
 
 [autolabel."O-redox"]
-trigger_files = [
-    "library/std/src/os/redox"
-]
+trigger_files = ["library/std/src/os/redox"]
 
 [autolabel."O-SGX"]
 trigger_files = [
     "library/std/src/sys/pal/sgx",
-    "library/std/src/os/fortanix_sgx"
+    "library/std/src/os/fortanix_sgx",
 ]
 
 [autolabel."O-solaris"]
-trigger_files = [
-    "library/std/src/os/solaris"
-]
+trigger_files = ["library/std/src/os/solaris"]
 
 [autolabel."O-solid"]
-trigger_files = [
-    "library/std/src/sys/pal/solid",
-    "library/std/src/os/solid"
-]
+trigger_files = ["library/std/src/sys/pal/solid", "library/std/src/os/solid"]
 
 [autolabel."O-unix"]
-trigger_files = [
-    "library/std/src/sys/pal/unix",
-    "library/std/src/os/unix"
-]
+trigger_files = ["library/std/src/sys/pal/unix", "library/std/src/os/unix"]
 
 [autolabel."O-wasi"]
-trigger_files = [
-    "library/std/src/sys/pal/wasi",
-    "library/std/src/os/wasi"
-]
+trigger_files = ["library/std/src/sys/pal/wasi", "library/std/src/os/wasi"]
 
 [autolabel."O-wasm"]
 trigger_files = [
     "library/std/src/sys/pal/wasm",
     "library/std/src/os/wasi",
-    "library/std/src/os/wasip2"
+    "library/std/src/os/wasip2",
 ]
 
 [autolabel."O-windows"]
 trigger_files = [
     "library/std/src/sys/pal/windows",
-    "library/std/src/os/windows"
+    "library/std/src/os/windows",
 ]
 
 [autolabel."T-bootstrap"]
@@ -439,13 +383,11 @@ trigger_files = [
     "src/tools/libcxx-version",
     "x.py",
     "x",
-    "x.ps1"
+    "x.ps1",
 ]
 
 [autolabel."A-bootstrap-stamp"]
-trigger_files = [
-    "src/bootstrap/src/utils/build_stamp.rs",
-]
+trigger_files = ["src/bootstrap/src/utils/build_stamp.rs"]
 
 [autolabel."T-infra"]
 trigger_files = [
@@ -456,22 +398,20 @@ trigger_files = [
 ]
 
 [autolabel."T-style"]
-trigger_files = [
-    "src/doc/style-guide",
-]
+trigger_files = ["src/doc/style-guide"]
 
 [autolabel."A-translation"]
 trigger_files = [
     "compiler/rustc_error_messages",
     "compiler/rustc_errors/src/translation.rs",
-    "compiler/rustc_macros/src/diagnostics"
+    "compiler/rustc_macros/src/diagnostics",
 ]
 
 [autolabel."A-query-system"]
 trigger_files = [
     "compiler/rustc_query_system",
     "compiler/rustc_query_impl",
-    "compiler/rustc_macros/src/query.rs"
+    "compiler/rustc_macros/src/query.rs",
 ]
 
 [autolabel."A-testsuite"]
@@ -488,9 +428,7 @@ trigger_files = [
 ]
 
 [autolabel."A-tidy"]
-trigger_files = [
-    "src/tools/tidy",
-]
+trigger_files = ["src/tools/tidy"]
 
 [autolabel."A-meta"]
 trigger_files = [
@@ -507,25 +445,18 @@ trigger_files = [
     "REUSE.toml",
     ".mailmap",
     ".git-blame-ignore-revs",
-    ".editorconfig"
+    ".editorconfig",
 ]
 
 [autolabel."T-release"]
-trigger_files = [
-    "RELEASES.md",
-    "src/stage0",
-    "src/version"
-]
+trigger_files = ["RELEASES.md", "src/stage0", "src/version"]
 
 [autolabel."S-waiting-on-review"]
 new_pr = true
 
 [autolabel."needs-triage"]
 new_issue = true
-exclude_labels = [
-    "C-tracking-issue",
-    "A-diagnostics",
-]
+exclude_labels = ["C-tracking-issue", "A-diagnostics"]
 
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
@@ -551,29 +482,20 @@ trigger_files = [
     "tests/codegen/stack-probes-inline.rs",
     "tests/codegen/stack-protector.rs",
     "tests/ui/sanitizer",
-    "tests/ui/stack-protector"
+    "tests/ui/stack-protector",
 ]
 
 [autolabel."A-run-make"]
-trigger_files = [
-    "tests/run-make",
-    "src/tools/run-make-support"
-]
+trigger_files = ["tests/run-make", "src/tools/run-make-support"]
 
 [autolabel."A-compiletest"]
-trigger_files = [
-    "src/tools/compiletest"
-]
+trigger_files = ["src/tools/compiletest"]
 
 [autolabel."A-test-infra-minicore"]
-trigger_files = [
-    "tests/auxiliary/minicore.rs",
-]
+trigger_files = ["tests/auxiliary/minicore.rs"]
 
 [autolabel."A-rustc-dev-guide"]
-trigger_files = [
-    "src/doc/rustc-dev-guide",
-]
+trigger_files = ["src/doc/rustc-dev-guide"]
 
 [autolabel."A-LLVM"]
 trigger_files = [
@@ -600,28 +522,25 @@ message_on_reopen = "Issue #{number} has been reopened."
 
 [notify-zulip."beta-nominated".rustdoc]
 required_labels = ["T-rustdoc"]
-zulip_stream = 266220 # #t-rustdoc
+zulip_stream = 266220               # #t-rustdoc
 topic = "beta-nominated: #{number}"
 # Zulip polls may not be preceded by any other text and pings & short links inside
 # the title of a poll don't get recognized. Therefore we need to send two messages.
-message_on_add = [
-    """\
+message_on_add = ["""\
 @*T-rustdoc* PR #{number} "{title}" has been nominated for beta backport.
-""",
-    """\
+""", """\
 /poll Approve beta backport of #{number}?
 approve
 decline
 don't know
-""",
-]
+"""]
 message_on_remove = "PR #{number}'s beta-nomination has been removed."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
 [notify-zulip."beta-accepted".rustdoc]
 required_labels = ["T-rustdoc"]
-zulip_stream = 266220 # #t-rustdoc
+zulip_stream = 266220           # #t-rustdoc
 # Put it in the same thread as beta-nominated.
 topic = "beta-nominated: #{number}"
 message_on_add = "PR #{number} has been **accepted** for beta backport."
@@ -631,29 +550,26 @@ message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
 [notify-zulip."stable-nominated".rustdoc]
 required_labels = ["T-rustdoc"]
-zulip_stream = 266220 # #t-rustdoc
+zulip_stream = 266220                 # #t-rustdoc
 topic = "stable-nominated: #{number}"
 # Zulip polls may not be preceded by any other text and pings & short links inside
 # the title of a poll don't get recognized. Therefore we need to send two messages.
-message_on_add = [
-    """\
+message_on_add = ["""\
 @*T-rustdoc* PR #{number} "{title}" has been nominated for stable backport.
-""",
-    """\
+""", """\
 /poll Approve stable backport of #{number}?
 approve
 approve (but does not justify new dot release on its own)
 decline
 don't know
-""",
-]
+"""]
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
 [notify-zulip."stable-accepted".rustdoc]
 required_labels = ["T-rustdoc"]
-zulip_stream = 266220 # #t-rustdoc
+zulip_stream = 266220           # #t-rustdoc
 # Put it in the same thread as stable-nominated.
 topic = "stable-nominated: #{number}"
 message_on_add = "PR #{number} has been **accepted** for stable backport."
@@ -675,35 +591,29 @@ message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
 topic = "#{number}: beta-nominated"
-message_on_add = [
-    """\
+message_on_add = ["""\
 @**channel** PR #{number} "{title}" has been nominated for beta backport.
-""",
-    """\
+""", """\
 /poll Approve beta backport of #{number}?
 approve
 decline
 don't know
-""",
-]
+"""]
 message_on_remove = "PR #{number}'s beta-nomination has been removed."
 
 [notify-zulip."stable-nominated".compiler]
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
 topic = "#{number}: stable-nominated"
-message_on_add = [
-    """\
+message_on_add = ["""\
 @**channel** PR #{number} "{title}" has been nominated for stable backport.
-""",
-    """\
+""", """\
 /poll Approve stable backport of #{number}?
 approve
 approve (but does not justify new dot release on its own)
 decline
 don't know
-""",
-]
+"""]
 message_on_remove = "PR #{number}'s stable-nomination has been removed."
 
 [notify-zulip."beta-nominated".bootstrap]
@@ -887,7 +797,13 @@ message = """
 Some changes occurred to the platform-builtins intrinsics. Make sure the
 LLVM backend as well as portable-simd gets adapted for the changes.
 """
-cc = ["@antoyo", "@GuillaumeGomez", "@bjorn3", "@calebzulawski", "@programmerjake"]
+cc = [
+    "@antoyo",
+    "@GuillaumeGomez",
+    "@bjorn3",
+    "@calebzulawski",
+    "@programmerjake",
+]
 
 [mentions."library/core/src/intrinsics"]
 message = """
@@ -915,11 +831,7 @@ instead of editing the library source file manually.
 
 [mentions."src/librustdoc/html/static"]
 message = "Some changes occurred in HTML/CSS/JS."
-cc = [
-    "@GuillaumeGomez",
-    "@jsha",
-    "@lolbinarycat",
-]
+cc = ["@GuillaumeGomez", "@jsha", "@lolbinarycat"]
 
 [mentions."tests/rustdoc-gui/"]
 message = "Some changes occurred in GUI tests."
@@ -939,12 +851,7 @@ rustdoc-json-types is a **public** (although nightly-only) API. \
 If possible, consider changing `src/librustdoc/json/conversions.rs`; \
 otherwise, make sure you bump the `FORMAT_VERSION` constant.
 """
-cc = [
-    "@CraftSpider",
-    "@aDotInTheVoid",
-    "@Enselic",
-    "@obi1kenobi",
-]
+cc = ["@CraftSpider", "@aDotInTheVoid", "@Enselic", "@obi1kenobi"]
 
 [mentions."src/tools/cargo"]
 cc = ["@ehuss"]
@@ -1193,7 +1100,7 @@ cc = ["@ZuseZ4"]
 cc = ["@ZuseZ4"]
 [mentions."compiler/rustc_codegen_llvm/src/builder/autodiff.rs"]
 cc = ["@ZuseZ4"]
-[mentions."compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs"]
+[mentions."compiler/rustc_llvm/src/ffi/enzyme/mod.rs"]
 cc = ["@ZuseZ4"]
 
 [mentions."library/core/src/fmt/rt.rs"]
@@ -1214,10 +1121,7 @@ title = "[stable"
 branch = "stable"
 
 [assign.adhoc_groups]
-compiler_leads = [
-    "@davidtwco",
-    "@wesleywiser",
-]
+compiler_leads = ["@davidtwco", "@wesleywiser"]
 compiler = [
     "@BoxyUwU",
     "@compiler-errors",
@@ -1284,26 +1188,10 @@ parser = [
     "@petrochenkov",
     "@spastorino",
 ]
-lexer = [
-    "@nnethercote",
-    "@petrochenkov",
-    "@chenyukang",
-]
-arena = [
-    "@nnethercote",
-    "@spastorino",
-]
-mir = [
-    "@davidtwco",
-    "@oli-obk",
-    "@matthewjasper",
-    "@saethlin",
-]
-mir-opt = [
-    "@oli-obk",
-    "@wesleywiser",
-    "@saethlin",
-]
+lexer = ["@nnethercote", "@petrochenkov", "@chenyukang"]
+arena = ["@nnethercote", "@spastorino"]
+mir = ["@davidtwco", "@oli-obk", "@matthewjasper", "@saethlin"]
+mir-opt = ["@oli-obk", "@wesleywiser", "@saethlin"]
 types = [
     "@compiler-errors",
     "@jackh726",
@@ -1312,127 +1200,115 @@ types = [
     "@spastorino",
     "@BoxyUwU",
 ]
-borrowck = [
-    "@davidtwco",
-    "@matthewjasper"
-]
-ast_lowering = [
-    "@compiler-errors",
-    "@spastorino",
-]
-debuginfo = [
-    "@davidtwco"
-]
-fallback = [
-    "@Mark-Simulacrum"
-]
-style-team = [
-    "@calebcartwright",
-    "@compiler-errors",
-    "@joshtriplett",
-    "@yaahc",
-]
-project-const-traits = [
-    "@compiler-errors",
-    "@fee1-dead",
-    "@fmease",
-    "@oli-obk",
-]
-project-stable-mir = [
-    "@celinval",
-    "@oli-obk",
-    "@scottmcm",
-]
-project-exploit-mitigations = [
-    "@cuviper",
-    "@rcvalle",
-]
-compiletest = [
-    "@jieyouxu",
-]
+borrowck = ["@davidtwco", "@matthewjasper"]
+ast_lowering = ["@compiler-errors", "@spastorino"]
+debuginfo = ["@davidtwco"]
+fallback = ["@Mark-Simulacrum"]
+style-team = ["@calebcartwright", "@compiler-errors", "@joshtriplett", "@yaahc"]
+project-const-traits = ["@compiler-errors", "@fee1-dead", "@fmease", "@oli-obk"]
+project-stable-mir = ["@celinval", "@oli-obk", "@scottmcm"]
+project-exploit-mitigations = ["@cuviper", "@rcvalle"]
+compiletest = ["@jieyouxu"]
 
 [assign.owners]
-"/.github/workflows" =                                   ["infra-ci"]
-"/Cargo.lock" =                                          ["@Mark-Simulacrum"]
-"/Cargo.toml" =                                          ["@Mark-Simulacrum"]
-"/compiler" =                                            ["compiler"]
-"/compiler/rustc_abi" =                                  ["compiler", "codegen"]
-"/compiler/rustc_arena" =                                ["compiler", "arena"]
-"/compiler/rustc_ast" =                                  ["compiler", "parser"]
-"/compiler/rustc_ast_lowering" =                         ["compiler", "ast_lowering"]
-"/compiler/rustc_data_structures/src/stable_hasher.rs" = ["compiler", "incremental"]
-"/compiler/rustc_hir_analysis" =                         ["compiler", "types"]
-"/compiler/rustc_incremental" =                          ["compiler", "incremental"]
-"/compiler/rustc_borrowck" =                             ["compiler", "borrowck"]
-"/compiler/rustc_lexer" =                                ["compiler", "lexer"]
-"/compiler/rustc_llvm" =                                 ["@cuviper"]
-"/compiler/rustc_codegen_llvm/src/debuginfo" =           ["compiler", "debuginfo"]
-"/compiler/rustc_codegen_ssa" =                          ["compiler", "codegen"]
-"/compiler/rustc_middle/src/mir" =                       ["compiler", "mir"]
-"/compiler/rustc_middle/src/traits" =                    ["compiler", "types"]
-"/compiler/rustc_middle/src/ty" =                        ["compiler", "types"]
-"/compiler/rustc_const_eval/src/interpret" =             ["compiler", "mir"]
-"/compiler/rustc_mir_build/src/builder" =                ["compiler", "mir"]
-"/compiler/rustc_mir_transform" =                        ["compiler", "mir", "mir-opt"]
-"/compiler/rustc_smir" =                                 ["project-stable-mir"]
-"/compiler/rustc_parse" =                                ["compiler", "parser"]
-"/compiler/rustc_parse/src/lexer" =                      ["compiler", "lexer"]
-"/compiler/rustc_query_impl" =                           ["compiler", "query-system"]
-"/compiler/rustc_query_system" =                         ["compiler", "query-system"]
-"/compiler/rustc_query_system/src/dep_graph" =           ["compiler", "incremental", "query-system"]
-"/compiler/rustc_query_system/src/ich" =                 ["compiler", "incremental", "query-system"]
-"/compiler/rustc_trait_selection" =                      ["compiler", "types"]
-"/compiler/rustc_traits" =                               ["compiler", "types"]
-"/compiler/rustc_type_ir" =                              ["compiler", "types"]
-"/compiler/stable_mir" =                                 ["project-stable-mir"]
-"/library/alloc" =                                       ["libs"]
-"/library/core" =                                        ["libs", "@scottmcm"]
-"/library/panic_abort" =                                 ["libs"]
-"/library/panic_unwind" =                                ["libs"]
-"/library/proc_macro" =                                  ["@petrochenkov"]
-"/library/std" =                                         ["libs", "@ChrisDenton"]
-"/library/std/src/sys/pal/windows" =                     ["@ChrisDenton"]
-"/library/stdarch" =                                     ["libs"]
-"/library/test" =                                        ["libs"]
-"/src/bootstrap" =                                       ["bootstrap"]
-"/src/ci" =                                              ["infra-ci"]
-"/src/doc" =                                             ["docs"]
-"/src/doc/book" =                                        ["@ehuss"]
-"/src/doc/edition-guide" =                               ["@ehuss"]
-"/src/doc/embedded-book" =                               ["@ehuss"]
-"/src/doc/nomicon" =                                     ["@ehuss"]
-"/src/doc/reference" =                                   ["@ehuss"]
-"/src/doc/rust-by-example" =                             ["@ehuss"]
-"/src/doc/rustc" =                                       ["compiler", "@ehuss"]
-"/src/doc/rustc-dev-guide" =                             ["compiler"]
-"/src/doc/rustdoc" =                                     ["rustdoc"]
-"/src/doc/style-guide" =                                 ["style-team"]
-"/src/doc/unstable-book" =                               ["compiler"]
-"/src/etc" =                                             ["@Mark-Simulacrum"]
-"/src/librustdoc" =                                      ["rustdoc"]
-"/src/llvm-project" =                                    ["@cuviper"]
-"/src/rustdoc-json-types" =                              ["rustdoc"]
-"/src/stage0" =                                          ["bootstrap"]
-"/tests/run-make" =                                      ["@jieyouxu"]
-"/tests/rustdoc" =                                       ["rustdoc"]
-"/tests/rustdoc-gui" =                                   ["rustdoc"]
-"/tests/rustdoc-js-std" =                                ["rustdoc"]
-"/tests/rustdoc-js/" =                                   ["rustdoc"]
-"/tests/rustdoc-json" =                                  ["@aDotInTheVoid"]
-"/tests/rustdoc-ui" =                                    ["rustdoc"]
-"/tests/ui" =                                            ["compiler"]
-"/src/tools/cargo" =                                     ["@ehuss"]
-"/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors", "@jieyouxu"]
-"/src/tools/linkchecker" =                               ["@ehuss"]
-"/src/tools/opt-dist" =                                  ["@kobzol"]
-"/src/tools/run-make-support" =                          ["@jieyouxu"]
-"/src/tools/rust-installer" =                            ["bootstrap"]
-"/src/tools/rustbook" =                                  ["@ehuss"]
-"/src/tools/rustdoc" =                                   ["rustdoc"]
-"/src/tools/rustdoc-js" =                                ["rustdoc"]
-"/src/tools/rustdoc-themes" =                            ["rustdoc"]
-"/src/tools/tidy" =                                      ["bootstrap"]
-"/src/tools/x" =                                         ["bootstrap"]
+"/.github/workflows" = ["infra-ci"]
+"/Cargo.lock" = ["@Mark-Simulacrum"]
+"/Cargo.toml" = ["@Mark-Simulacrum"]
+"/compiler" = ["compiler"]
+"/compiler/rustc_abi" = ["compiler", "codegen"]
+"/compiler/rustc_arena" = ["compiler", "arena"]
+"/compiler/rustc_ast" = ["compiler", "parser"]
+"/compiler/rustc_ast_lowering" = ["compiler", "ast_lowering"]
+"/compiler/rustc_data_structures/src/stable_hasher.rs" = [
+    "compiler",
+    "incremental",
+]
+"/compiler/rustc_hir_analysis" = ["compiler", "types"]
+"/compiler/rustc_incremental" = ["compiler", "incremental"]
+"/compiler/rustc_borrowck" = ["compiler", "borrowck"]
+"/compiler/rustc_lexer" = ["compiler", "lexer"]
+"/compiler/rustc_llvm" = ["@cuviper"]
+"/compiler/rustc_codegen_llvm/src/debuginfo" = ["compiler", "debuginfo"]
+"/compiler/rustc_codegen_ssa" = ["compiler", "codegen"]
+"/compiler/rustc_middle/src/mir" = ["compiler", "mir"]
+"/compiler/rustc_middle/src/traits" = ["compiler", "types"]
+"/compiler/rustc_middle/src/ty" = ["compiler", "types"]
+"/compiler/rustc_const_eval/src/interpret" = ["compiler", "mir"]
+"/compiler/rustc_mir_build/src/builder" = ["compiler", "mir"]
+"/compiler/rustc_mir_transform" = ["compiler", "mir", "mir-opt"]
+"/compiler/rustc_smir" = ["project-stable-mir"]
+"/compiler/rustc_parse" = ["compiler", "parser"]
+"/compiler/rustc_parse/src/lexer" = ["compiler", "lexer"]
+"/compiler/rustc_query_impl" = ["compiler", "query-system"]
+"/compiler/rustc_query_system" = ["compiler", "query-system"]
+"/compiler/rustc_query_system/src/dep_graph" = [
+    "compiler",
+    "incremental",
+    "query-system",
+]
+"/compiler/rustc_query_system/src/ich" = [
+    "compiler",
+    "incremental",
+    "query-system",
+]
+"/compiler/rustc_trait_selection" = ["compiler", "types"]
+"/compiler/rustc_traits" = ["compiler", "types"]
+"/compiler/rustc_type_ir" = ["compiler", "types"]
+"/compiler/stable_mir" = ["project-stable-mir"]
+"/library/alloc" = ["libs"]
+"/library/core" = ["libs", "@scottmcm"]
+"/library/panic_abort" = ["libs"]
+"/library/panic_unwind" = ["libs"]
+"/library/proc_macro" = ["@petrochenkov"]
+"/library/std" = ["libs", "@ChrisDenton"]
+"/library/std/src/sys/pal/windows" = ["@ChrisDenton"]
+"/library/stdarch" = ["libs"]
+"/library/test" = ["libs"]
+"/src/bootstrap" = ["bootstrap"]
+"/src/ci" = ["infra-ci"]
+"/src/doc" = ["docs"]
+"/src/doc/book" = ["@ehuss"]
+"/src/doc/edition-guide" = ["@ehuss"]
+"/src/doc/embedded-book" = ["@ehuss"]
+"/src/doc/nomicon" = ["@ehuss"]
+"/src/doc/reference" = ["@ehuss"]
+"/src/doc/rust-by-example" = ["@ehuss"]
+"/src/doc/rustc" = ["compiler", "@ehuss"]
+"/src/doc/rustc-dev-guide" = ["compiler"]
+"/src/doc/rustdoc" = ["rustdoc"]
+"/src/doc/style-guide" = ["style-team"]
+"/src/doc/unstable-book" = ["compiler"]
+"/src/etc" = ["@Mark-Simulacrum"]
+"/src/librustdoc" = ["rustdoc"]
+"/src/llvm-project" = ["@cuviper"]
+"/src/rustdoc-json-types" = ["rustdoc"]
+"/src/stage0" = ["bootstrap"]
+"/tests/run-make" = ["@jieyouxu"]
+"/tests/rustdoc" = ["rustdoc"]
+"/tests/rustdoc-gui" = ["rustdoc"]
+"/tests/rustdoc-js-std" = ["rustdoc"]
+"/tests/rustdoc-js/" = ["rustdoc"]
+"/tests/rustdoc-json" = ["@aDotInTheVoid"]
+"/tests/rustdoc-ui" = ["rustdoc"]
+"/tests/ui" = ["compiler"]
+"/src/tools/cargo" = ["@ehuss"]
+"/src/tools/compiletest" = [
+    "bootstrap",
+    "@wesleywiser",
+    "@oli-obk",
+    "@compiler-errors",
+    "@jieyouxu",
+]
+"/src/tools/linkchecker" = ["@ehuss"]
+"/src/tools/opt-dist" = ["@kobzol"]
+"/src/tools/run-make-support" = ["@jieyouxu"]
+"/src/tools/rust-installer" = ["bootstrap"]
+"/src/tools/rustbook" = ["@ehuss"]
+"/src/tools/rustdoc" = ["rustdoc"]
+"/src/tools/rustdoc-js" = ["rustdoc"]
+"/src/tools/rustdoc-themes" = ["rustdoc"]
+"/src/tools/tidy" = ["bootstrap"]
+"/src/tools/x" = ["bootstrap"]
 "/src/tools/rustdoc-gui-test" =                          ["bootstrap"]
 "/src/tools/libcxx-version" =                            ["bootstrap"]
 

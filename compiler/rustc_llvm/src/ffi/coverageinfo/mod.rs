@@ -3,7 +3,7 @@ use rustc_middle::mir::coverage::{CounterId, CovTerm, ExpressionId};
 /// Must match the layout of `LLVMRustCounterKind`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub(crate) enum CounterKind {
+pub enum CounterKind {
     Zero = 0,
     CounterValueReference = 1,
     Expression = 2,
@@ -23,27 +23,27 @@ pub(crate) enum CounterKind {
 /// Must match the layout of `LLVMRustCounter`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub(crate) struct Counter {
+pub struct Counter {
     // Important: The layout (order and types of fields) must match its C++ counterpart.
-    pub(crate) kind: CounterKind,
+    pub kind: CounterKind,
     id: u32,
 }
 
 impl Counter {
     /// A `Counter` of kind `Zero`. For this counter kind, the `id` is not used.
-    pub(crate) const ZERO: Self = Self { kind: CounterKind::Zero, id: 0 };
+    pub const ZERO: Self = Self { kind: CounterKind::Zero, id: 0 };
 
     /// Constructs a new `Counter` of kind `CounterValueReference`.
-    pub(crate) fn counter_value_reference(counter_id: CounterId) -> Self {
+    pub fn counter_value_reference(counter_id: CounterId) -> Self {
         Self { kind: CounterKind::CounterValueReference, id: counter_id.as_u32() }
     }
 
     /// Constructs a new `Counter` of kind `Expression`.
-    pub(crate) fn expression(expression_id: ExpressionId) -> Self {
+    pub fn expression(expression_id: ExpressionId) -> Self {
         Self { kind: CounterKind::Expression, id: expression_id.as_u32() }
     }
 
-    pub(crate) fn from_term(term: CovTerm) -> Self {
+    pub fn from_term(term: CovTerm) -> Self {
         match term {
             CovTerm::Zero => Self::ZERO,
             CovTerm::Counter(id) => Self::counter_value_reference(id),
@@ -57,7 +57,7 @@ impl Counter {
 /// Must match the layout of `LLVMRustCounterExprKind`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub(crate) enum ExprKind {
+pub enum ExprKind {
     Subtract = 0,
     Add = 1,
 }
@@ -67,19 +67,19 @@ pub(crate) enum ExprKind {
 /// Must match the layout of `LLVMRustCounterExpression`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub(crate) struct CounterExpression {
-    pub(crate) kind: ExprKind,
-    pub(crate) lhs: Counter,
-    pub(crate) rhs: Counter,
+pub struct CounterExpression {
+    pub kind: ExprKind,
+    pub lhs: Counter,
+    pub rhs: Counter,
 }
 
-pub(crate) mod mcdc {
+pub mod mcdc {
     use rustc_middle::mir::coverage::{ConditionId, ConditionInfo, DecisionInfo};
 
     /// Must match the layout of `LLVMRustMCDCDecisionParameters`.
     #[repr(C)]
     #[derive(Clone, Copy, Debug, Default)]
-    pub(crate) struct DecisionParameters {
+    pub struct DecisionParameters {
         bitmap_idx: u32,
         num_conditions: u16,
     }
@@ -89,7 +89,7 @@ pub(crate) mod mcdc {
     /// Must match the layout of `LLVMRustMCDCBranchParameters`.
     #[repr(C)]
     #[derive(Clone, Copy, Debug, Default)]
-    pub(crate) struct BranchParameters {
+    pub struct BranchParameters {
         condition_id: LLVMConditionId,
         condition_ids: [LLVMConditionId; 2],
     }
@@ -120,20 +120,20 @@ pub(crate) mod mcdc {
 /// Must match the layout of `LLVMRustCoverageSpan`.
 #[derive(Clone, Debug)]
 #[repr(C)]
-pub(crate) struct CoverageSpan {
+pub struct CoverageSpan {
     /// Local index into the function's local-to-global file ID table.
     /// The value at that index is itself an index into the coverage filename
     /// table in the CGU's `__llvm_covmap` section.
-    pub(crate) file_id: u32,
+    pub file_id: u32,
 
     /// 1-based starting line of the source code span.
-    pub(crate) start_line: u32,
+    pub start_line: u32,
     /// 1-based starting column of the source code span.
-    pub(crate) start_col: u32,
+    pub start_col: u32,
     /// 1-based ending line of the source code span.
-    pub(crate) end_line: u32,
+    pub end_line: u32,
     /// 1-based ending column of the source code span. High bit must be unset.
-    pub(crate) end_col: u32,
+    pub end_col: u32,
 }
 
 /// Holds tables of the various region types in one struct.
@@ -144,17 +144,17 @@ pub(crate) struct CoverageSpan {
 /// Each field name has a `_regions` suffix for improved readability after
 /// exhaustive destructing, which ensures that all region types are handled.
 #[derive(Clone, Debug, Default)]
-pub(crate) struct Regions {
-    pub(crate) code_regions: Vec<CodeRegion>,
-    pub(crate) expansion_regions: Vec<ExpansionRegion>,
-    pub(crate) branch_regions: Vec<BranchRegion>,
-    pub(crate) mcdc_branch_regions: Vec<MCDCBranchRegion>,
-    pub(crate) mcdc_decision_regions: Vec<MCDCDecisionRegion>,
+pub struct Regions {
+    pub code_regions: Vec<CodeRegion>,
+    pub expansion_regions: Vec<ExpansionRegion>,
+    pub branch_regions: Vec<BranchRegion>,
+    pub mcdc_branch_regions: Vec<MCDCBranchRegion>,
+    pub mcdc_decision_regions: Vec<MCDCDecisionRegion>,
 }
 
 impl Regions {
     /// Returns true if none of this structure's tables contain any regions.
-    pub(crate) fn has_no_regions(&self) -> bool {
+    pub fn has_no_regions(&self) -> bool {
         let Self {
             code_regions,
             expansion_regions,
@@ -174,42 +174,42 @@ impl Regions {
 /// Must match the layout of `LLVMRustCoverageCodeRegion`.
 #[derive(Clone, Debug)]
 #[repr(C)]
-pub(crate) struct CodeRegion {
-    pub(crate) cov_span: CoverageSpan,
-    pub(crate) counter: Counter,
+pub struct CodeRegion {
+    pub cov_span: CoverageSpan,
+    pub counter: Counter,
 }
 
 /// Must match the layout of `LLVMRustCoverageExpansionRegion`.
 #[derive(Clone, Debug)]
 #[repr(C)]
-pub(crate) struct ExpansionRegion {
-    pub(crate) cov_span: CoverageSpan,
-    pub(crate) expanded_file_id: u32,
+pub struct ExpansionRegion {
+    pub cov_span: CoverageSpan,
+    pub expanded_file_id: u32,
 }
 
 /// Must match the layout of `LLVMRustCoverageBranchRegion`.
 #[derive(Clone, Debug)]
 #[repr(C)]
-pub(crate) struct BranchRegion {
-    pub(crate) cov_span: CoverageSpan,
-    pub(crate) true_counter: Counter,
-    pub(crate) false_counter: Counter,
+pub struct BranchRegion {
+    pub cov_span: CoverageSpan,
+    pub true_counter: Counter,
+    pub false_counter: Counter,
 }
 
 /// Must match the layout of `LLVMRustCoverageMCDCBranchRegion`.
 #[derive(Clone, Debug)]
 #[repr(C)]
-pub(crate) struct MCDCBranchRegion {
-    pub(crate) cov_span: CoverageSpan,
-    pub(crate) true_counter: Counter,
-    pub(crate) false_counter: Counter,
-    pub(crate) mcdc_branch_params: mcdc::BranchParameters,
+pub struct MCDCBranchRegion {
+    pub cov_span: CoverageSpan,
+    pub true_counter: Counter,
+    pub false_counter: Counter,
+    pub mcdc_branch_params: mcdc::BranchParameters,
 }
 
 /// Must match the layout of `LLVMRustCoverageMCDCDecisionRegion`.
 #[derive(Clone, Debug)]
 #[repr(C)]
-pub(crate) struct MCDCDecisionRegion {
-    pub(crate) cov_span: CoverageSpan,
-    pub(crate) mcdc_decision_params: mcdc::DecisionParameters,
+pub struct MCDCDecisionRegion {
+    pub cov_span: CoverageSpan,
+    pub mcdc_decision_params: mcdc::DecisionParameters,
 }

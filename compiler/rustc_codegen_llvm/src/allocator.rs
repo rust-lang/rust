@@ -11,7 +11,7 @@ use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::builder::SBuilder;
 use crate::declare::declare_simple_fn;
-use crate::llvm::{self, False, True, Type};
+use crate::llvm::{self, AttributeExt as _, False, True, Type};
 use crate::{SimpleCx, attributes, debuginfo};
 
 pub(crate) unsafe fn codegen(

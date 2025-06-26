@@ -29,7 +29,7 @@ use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, build_string};
+use crate::llvm::{self, AttributeExt as _, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
 
 /// We keep track of the computed LTO cache keys from the previous
