@@ -46,8 +46,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{
-    IfExpressionCause, ImplSource, MatchExpressionArmCause, Obligation, PredicateObligation,
-    PredicateObligations, SelectionError,
+    MatchExpressionArmCause, Obligation, PredicateObligation, PredicateObligations, SelectionError,
 };
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
@@ -59,7 +58,7 @@ use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
+    self, ImplSource, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -1719,14 +1718,17 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             );
                         }
                     }
-                    ObligationCauseCode::IfExpression(box IfExpressionCause {
-                        then_id,
-                        else_id,
-                        then_ty,
-                        else_ty,
+                    ObligationCauseCode::IfExpression {
+                        expr_id,
                         tail_defines_return_position_impl_trait: Some(rpit_def_id),
-                        ..
-                    }) => {
+                    } => {
+                        let hir::Node::Expr(hir::Expr {
+                            kind: hir::ExprKind::If(_, then_expr, Some(else_expr)),
+                            ..
+                        }) = fcx.tcx.hir_node(expr_id)
+                        else {
+                            unreachable!();
+                        };
                         err = fcx.err_ctxt().report_mismatched_types(
                             cause,
                             fcx.param_env,
@@ -1734,24 +1736,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             found,
                             coercion_error,
                         );
-                        let then_span = fcx.find_block_span_from_hir_id(then_id);
-                        let else_span = fcx.find_block_span_from_hir_id(else_id);
-                        // don't suggest wrapping either blocks in `if .. {} else {}`
-                        let is_empty_arm = |id| {
-                            let hir::Node::Block(blk) = fcx.tcx.hir_node(id) else {
-                                return false;
-                            };
-                            if blk.expr.is_some() || !blk.stmts.is_empty() {
-                                return false;
-                            }
-                            let Some((_, hir::Node::Expr(expr))) =
-                                fcx.tcx.hir_parent_iter(id).nth(1)
-                            else {
-                                return false;
-                            };
-                            matches!(expr.kind, hir::ExprKind::If(..))
-                        };
-                        if !is_empty_arm(then_id) && !is_empty_arm(else_id) {
+                        let then_span = fcx.find_block_span_from_hir_id(then_expr.hir_id);
+                        let else_span = fcx.find_block_span_from_hir_id(else_expr.hir_id);
+                        // Don't suggest wrapping whole block in `Box::new`.
+                        if then_span != then_expr.span && else_span != else_expr.span {
+                            let then_ty = fcx.typeck_results.borrow().expr_ty(then_expr);
+                            let else_ty = fcx.typeck_results.borrow().expr_ty(else_expr);
                             self.suggest_boxing_tail_for_return_position_impl_trait(
                                 fcx,
                                 &mut err,
