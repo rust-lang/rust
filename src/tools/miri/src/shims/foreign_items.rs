@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::Path;
 
 use rustc_abi::{Align, AlignFromBytesError, CanonAbi, Size};
-use rustc_ast::expand::allocator::alloc_error_handler_name;
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
@@ -51,6 +51,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Some shims forward to other MIR bodies.
         match link_name.as_str() {
+            // FIXME should use global_fn_name, but mangle_internal_symbol requires a static str.
             name if name == this.mangle_internal_symbol("__rust_alloc_error_handler") => {
                 // Forward to the right symbol that implements this function.
                 let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {
@@ -59,12 +60,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "`__rust_alloc_error_handler` cannot be called when no alloc error handler is set"
                     );
                 };
-                let name = Symbol::intern(
-                    this.mangle_internal_symbol(alloc_error_handler_name(handler_kind)),
-                );
-                let handler =
-                    this.lookup_exported_symbol(name)?.expect("missing alloc error handler symbol");
-                return interp_ok(Some(handler));
+                if handler_kind == AllocatorKind::Default {
+                    let name =
+                        Symbol::intern(this.mangle_internal_symbol("__rdl_alloc_error_handler"));
+                    let handler = this
+                        .lookup_exported_symbol(name)?
+                        .expect("missing alloc error handler symbol");
+                    return interp_ok(Some(handler));
+                }
             }
             _ => {}
         }

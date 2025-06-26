@@ -2,8 +2,8 @@
 use gccjit::FnAttribute;
 use gccjit::{Context, FunctionType, RValue, ToRValue, Type};
 use rustc_ast::expand::allocator::{
-    ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
-    alloc_error_handler_name, default_fn_name, global_fn_name,
+    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
+    default_fn_name, global_fn_name,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
@@ -61,15 +61,17 @@ pub(crate) unsafe fn codegen(
         }
     }
 
-    // FIXME(bjorn3): Add noreturn attribute
-    create_wrapper_function(
-        tcx,
-        context,
-        &mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
-        Some(&mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind))),
-        &[usize, usize],
-        None,
-    );
+    if alloc_error_handler_kind == AllocatorKind::Default {
+        // FIXME(bjorn3): Add noreturn attribute
+        create_wrapper_function(
+            tcx,
+            context,
+            &mangle_internal_symbol(tcx, &global_fn_name(ALLOC_ERROR_HANDLER)),
+            Some(&mangle_internal_symbol(tcx, &default_fn_name(ALLOC_ERROR_HANDLER))),
+            &[usize, usize],
+            None,
+        );
+    }
 
     create_const_value_function(
         tcx,
