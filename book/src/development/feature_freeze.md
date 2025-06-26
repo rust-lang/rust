@@ -26,6 +26,9 @@ adding additional load into our reviewing schedules.
 Thanks a lot to everyone who wants to help Clippy become better software in this feature freeze period!
 If you'd like to help, making a bugfix, making sure that it works, and opening a PR is a great step!
 
+To find things to fix, go to the [tracking issue][tracking_issue], find an issue that you like, go there and claim that
+issue with `@rustbot claim`.
+
 As a general metric and always taking into account your skill and knowledge level, you can use this guide:
 
 - 🟥 [ICEs][search_ice], these are compiler errors that causes Clippy to panic and crash. Usually involves high-level
@@ -49,3 +52,4 @@ trench coat.
 [sugg_causes_bug]: https://github.com/rust-lang/rust-clippy/issues?q=sort%3Aupdated-desc%20state%3Aopen%20label%3AI-suggestion-causes-bug
 [sugg_causes_error]: https://github.com/rust-lang/rust-clippy/issues?q=sort%3Aupdated-desc%20state%3Aopen%20label%3AI-suggestion-causes-error%20
 [false_positive]: https://github.com/rust-lang/rust-clippy/issues?q=sort%3Aupdated-desc%20state%3Aopen%20label%3AI-false-positive
+[tracking_issue]: https://github.com/rust-lang/rust-clippy/issues/15086
