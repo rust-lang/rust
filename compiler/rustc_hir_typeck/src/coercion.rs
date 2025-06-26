@@ -279,8 +279,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     /// fall back to subtyping (`unify_and`).
     fn coerce_from_inference_variable(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         debug!("coerce_from_inference_variable(a={:?}, b={:?})", a, b);
-        assert!(a.is_ty_var() && self.shallow_resolve(a) == a);
-        assert!(self.shallow_resolve(b) == b);
+        debug_assert!(a.is_ty_var() && self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
 
         if b.is_ty_var() {
             // Two unresolved type variables: create a `Coerce` predicate.
@@ -324,6 +324,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         mutbl_b: hir::Mutability,
     ) -> CoerceResult<'tcx> {
         debug!("coerce_borrowed_pointer(a={:?}, b={:?})", a, b);
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
 
         // If we have a parameter of type `&M T_a` and the value
         // provided is `expr`, we will be adding an implicit borrow,
@@ -515,10 +517,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     ///
     /// [unsized coercion](https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions)
     #[instrument(skip(self), level = "debug")]
-    fn coerce_unsized(&self, mut source: Ty<'tcx>, mut target: Ty<'tcx>) -> CoerceResult<'tcx> {
-        source = self.shallow_resolve(source);
-        target = self.shallow_resolve(target);
+    fn coerce_unsized(&self, source: Ty<'tcx>, target: Ty<'tcx>) -> CoerceResult<'tcx> {
         debug!(?source, ?target);
+        debug_assert!(self.shallow_resolve(source) == source);
+        debug_assert!(self.shallow_resolve(target) == target);
 
         // We don't apply any coercions incase either the source or target
         // aren't sufficiently well known but tend to instead just equate
@@ -801,6 +803,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     /// - `Pin<Box<T>>` as `Pin<&mut T>`
     #[instrument(skip(self), level = "trace")]
     fn coerce_pin_ref(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
+
         // We need to make sure the two types are compatible for coercion.
         // Then we will build a ReborrowPin adjustment and return that as an InferOk.
 
@@ -849,6 +854,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         b: Ty<'tcx>,
         adjustment: Option<Adjust>,
     ) -> CoerceResult<'tcx> {
+        debug_assert!(self.shallow_resolve(b) == b);
+
         self.commit_if_ok(|snapshot| {
             let outer_universe = self.infcx.universe();
 
@@ -889,24 +896,19 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         fn_ty_a: ty::PolyFnSig<'tcx>,
         b: Ty<'tcx>,
     ) -> CoerceResult<'tcx> {
-        //! Attempts to coerce from the type of a Rust function item
-        //! into a closure or a `proc`.
-        //!
-
-        let b = self.shallow_resolve(b);
         debug!(?fn_ty_a, ?b, "coerce_from_fn_pointer");
+        debug_assert!(self.shallow_resolve(b) == b);
 
         self.coerce_from_safe_fn(fn_ty_a, b, None)
     }
 
     fn coerce_from_fn_item(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
-        //! Attempts to coerce from the type of a Rust function item
-        //! into a closure or a `proc`.
+        debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
 
-        let b = self.shallow_resolve(b);
         let InferOk { value: b, mut obligations } =
             self.at(&self.cause, self.param_env).normalize(b);
-        debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
 
         match b.kind() {
             ty::FnPtr(_, b_hdr) => {
@@ -956,6 +958,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
+    /// Attempts to coerce from the type of a non-capturing closure
+    /// into a function pointer.
     fn coerce_closure_to_fn(
         &self,
         a: Ty<'tcx>,
@@ -963,11 +967,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         args_a: GenericArgsRef<'tcx>,
         b: Ty<'tcx>,
     ) -> CoerceResult<'tcx> {
-        //! Attempts to coerce from the type of a non-capturing closure
-        //! into a function pointer.
-        //!
-
-        let b = self.shallow_resolve(b);
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
 
         match b.kind() {
             // At this point we haven't done capture analysis, which means
@@ -1011,6 +1012,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         mutbl_b: hir::Mutability,
     ) -> CoerceResult<'tcx> {
         debug!("coerce_raw_ptr(a={:?}, b={:?})", a, b);
+        debug_assert!(self.shallow_resolve(a) == a);
+        debug_assert!(self.shallow_resolve(b) == b);
 
         let (is_ref, mt_a) = match *a.kind() {
             ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
