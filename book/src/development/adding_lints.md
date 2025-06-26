@@ -1,5 +1,8 @@
 # Adding a new lint
 
+[### IMPORTANT NOTE FOR CONTRIBUTORS ================](feature_freeze.md)
+
+
 You are probably here because you want to add a new lint to Clippy. If this is
 the first time you're contributing to Clippy, this document guides you through
 creating an example lint from scratch.
