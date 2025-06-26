@@ -909,11 +909,11 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 }
             }
             (GenericArgKind::Const(inner_ct), TermKind::Const(target_ct)) => {
-                use ty::InferConst::*;
                 match (inner_ct.kind(), target_ct.kind()) {
-                    (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) => {
-                        self.tecx.root_const_var(a_vid) == self.tecx.root_const_var(b_vid)
-                    }
+                    (
+                        ty::ConstKind::Infer(ty::InferConst::Var(a_vid)),
+                        ty::ConstKind::Infer(ty::InferConst::Var(b_vid)),
+                    ) => self.tecx.root_const_var(a_vid) == self.tecx.root_const_var(b_vid),
                     _ => false,
                 }
             }
