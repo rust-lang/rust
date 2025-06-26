@@ -53,15 +53,16 @@ fn main() {
     let bad = std::sync::Arc::new(AtomicBool::new(bad));
 
     let drain_handles = |handles: &mut VecDeque<ScopedJoinHandle<'_, ()>>| {
-        // poll all threads for completion before awaiting the oldest one
-        for i in (0..handles.len()).rev() {
-            if handles[i].is_finished() {
-                handles.swap_remove_back(i).unwrap().join().unwrap();
-            }
-        }
-
         while handles.len() >= concurrency.get() {
-            handles.pop_front().unwrap().join().unwrap();
+            // Wait for any thread to finish, not just the oldest one. This prevents
+            // a long-running check from blocking the start of shorter checks.
+            if let Some(pos) = handles.iter().position(|h| h.is_finished()) {
+                // A thread is finished, so we can join and remove it.
+                handles.swap_remove_back(pos).unwrap().join().unwrap();
+            } else {
+                // No threads are finished yet; yield to avoid busy-waiting.
+                std::thread::yield_now();
+            }
         }
     };
 
