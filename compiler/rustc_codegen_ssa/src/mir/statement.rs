@@ -101,54 +101,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub(crate) fn codegen_stmt_debuginfo(&mut self, bx: &mut Bx, debuginfo: &StmtDebugInfo<'tcx>) {
-        match debuginfo {
-            StmtDebugInfo::AssignRef(dest, place) => {
-                let place_ref = match self.locals[place.local] {
-                    LocalRef::Place(place_ref) | LocalRef::UnsizedPlace(place_ref) => {
-                        Some(place_ref)
-                    }
-                    LocalRef::Operand(operand_ref) => match operand_ref.val {
-                        OperandValue::Ref(_place_value) => {
-                            todo!("supports OperandValue::Ref")
-                        }
-                        OperandValue::Immediate(v) => {
-                            // FIXME: add ref to layout?
-                            Some(PlaceRef::new_sized(v, operand_ref.layout))
-                        }
-                        OperandValue::Pair(_, _) => None,
-                        OperandValue::ZeroSized => None,
-                    },
-                    LocalRef::PendingOperand => None,
-                }
-                .filter(|place_ref| {
-                    // Drop unsupported projections.
-                    // FIXME: Add a test case.
-                    place.projection.iter().all(|p| p.can_use_in_debuginfo()) &&
-                    // Only pointers can calculate addresses.
-                    bx.type_kind(bx.val_ty(place_ref.val.llval)) == TypeKind::Pointer
-                });
-                let (val, layout, projection) =
-                    match (place_ref, place.is_indirect_first_projection()) {
-                        (Some(place_ref), false) => {
-                            (place_ref.val, place_ref.layout, place.projection.as_slice())
-                        }
-                        (Some(place_ref), true) => {
-                            let projected_ty =
-                                place_ref.layout.ty.builtin_deref(true).unwrap_or_else(|| {
-                                    bug!("deref of non-pointer {:?}", place_ref)
-                                });
-                            let layout = bx.cx().layout_of(projected_ty);
-                            (place_ref.val, layout, &place.projection[1..])
-                        }
-                        _ => {
-                            return;
-                        }
-                    };
-                self.debug_new_value_to_local(bx, *dest, val, layout, projection);
-            }
-        }
-    }
+    pub(crate) fn codegen_stmt_debuginfo(&mut self, _bx: &mut Bx, _debuginfo: &StmtDebugInfo<'tcx>) {}
+
     pub(crate) fn codegen_stmt_debuginfos(
         &mut self,
         bx: &mut Bx,
