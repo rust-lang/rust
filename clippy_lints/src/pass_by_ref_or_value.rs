@@ -5,7 +5,7 @@ use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
 use clippy_utils::{is_self, is_self_ty};
 use core::ops::ControlFlow;
 use rustc_abi::ExternAbi;
-use rustc_ast::attr;
+use rustc_attr_data_structures::{AttributeKind, InlineAttr, find_attr};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -270,11 +270,13 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                     return;
                 }
                 let attrs = cx.tcx.hir_attrs(hir_id);
+                if find_attr!(attrs, AttributeKind::Inline(InlineAttr::Always, _)) {
+                    return;
+                }
+
                 for a in attrs {
-                    if let Some(meta_items) = a.meta_item_list()
-                        && (a.has_name(sym::proc_macro_derive)
-                            || (a.has_name(sym::inline) && attr::list_contains_name(&meta_items, sym::always)))
-                    {
+                    // FIXME(jdonszelmann): make part of the find_attr above
+                    if a.has_name(sym::proc_macro_derive) {
                         return;
                     }
                 }

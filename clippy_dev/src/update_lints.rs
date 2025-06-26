@@ -386,17 +386,13 @@ pub fn read_deprecated_lints() -> (Vec<DeprecatedLint>, Vec<RenamedLint>) {
 
 /// Removes the line splices and surrounding quotes from a string literal
 fn parse_str_lit(s: &str) -> String {
-    let (s, mode) = if let Some(s) = s.strip_prefix("r") {
-        (s.trim_matches('#'), rustc_literal_escaper::Mode::RawStr)
-    } else {
-        (s, rustc_literal_escaper::Mode::Str)
-    };
+    let s = s.strip_prefix("r").unwrap_or(s).trim_matches('#');
     let s = s
         .strip_prefix('"')
         .and_then(|s| s.strip_suffix('"'))
         .unwrap_or_else(|| panic!("expected quoted string, found `{s}`"));
     let mut res = String::with_capacity(s.len());
-    rustc_literal_escaper::unescape_unicode(s, mode, &mut |_, ch| {
+    rustc_literal_escaper::unescape_str(s, &mut |_, ch| {
         if let Ok(ch) = ch {
             res.push(ch);
         }
