@@ -141,7 +141,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn next_region_infer(&self) -> ty::Region<'tcx> {
-        self.next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
+        self.next_region_var(RegionVariableOrigin::Misc(DUMMY_SP))
     }
 
     fn next_ty_infer(&self) -> Ty<'tcx> {
