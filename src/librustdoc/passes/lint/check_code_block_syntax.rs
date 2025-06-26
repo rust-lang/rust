@@ -87,7 +87,7 @@ fn check_rust_syntax(
         &code_block.range,
         &item.attrs.doc_strings,
     ) {
-        Some(sp) => (sp, true),
+        Some((sp, _)) => (sp, true),
         None => (item.attr_span(cx.tcx), false),
     };
 
