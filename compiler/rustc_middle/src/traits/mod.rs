@@ -332,7 +332,11 @@ pub enum ObligationCauseCode<'tcx> {
     },
 
     /// Computing common supertype in an if expression
-    IfExpression(Box<IfExpressionCause<'tcx>>),
+    IfExpression {
+        expr_id: HirId,
+        // Is the expectation of this match expression an RPIT?
+        tail_defines_return_position_impl_trait: Option<LocalDefId>,
+    },
 
     /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,
@@ -548,18 +552,6 @@ pub struct PatternOriginExpr {
     /// Does the peeled expression need to be wrapped in parentheses for
     /// a prefix suggestion (i.e., dereference) to be valid.
     pub peeled_prefix_suggestion_parentheses: bool,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[derive(TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
-pub struct IfExpressionCause<'tcx> {
-    pub then_id: HirId,
-    pub else_id: HirId,
-    pub then_ty: Ty<'tcx>,
-    pub else_ty: Ty<'tcx>,
-    pub outer_span: Option<Span>,
-    // Is the expectation of this match expression an RPIT?
-    pub tail_defines_return_position_impl_trait: Option<LocalDefId>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
