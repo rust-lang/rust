@@ -1352,9 +1352,8 @@ mod snapshot {
                 .path("miri")
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
         [check] rustc 0 <host> -> rustc 1 <host>
-        [check] Miri <host>
+        [check] rustc 0 <host> -> Miri 1 <host>
         ");
     }
 
@@ -1374,9 +1373,8 @@ mod snapshot {
                 .stage(1)
                 .render_steps(), @r"
         [build] llvm <host>
-        [build] rustc 0 <host> -> rustc 1 <host>
         [check] rustc 0 <host> -> rustc 1 <host>
-        [check] Miri <host>
+        [check] rustc 0 <host> -> Miri 1 <host>
         ");
     }
 
@@ -1391,9 +1389,8 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> rustc 2 <host>
         [check] rustc 1 <host> -> rustc 2 <host>
-        [check] Miri <host>
+        [check] rustc 1 <host> -> Miri 2 <host>
         ");
     }
 
@@ -1446,6 +1443,15 @@ mod snapshot {
         [check] rustc 0 <host> -> rustc 1 <host>
         [check] rustc 0 <host> -> rust-analyzer 1 <host>
         ");
+    }
+
+    #[test]
+    fn check_bootstrap_tool() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("check")
+                .path("run-make-support")
+                .render_steps(), @"[check] rustc 0 <host> -> RunMakeSupport 1 <host>");
     }
 
     #[test]
