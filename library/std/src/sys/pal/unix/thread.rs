@@ -321,6 +321,9 @@ impl Drop for Thread {
 pub(crate) fn current_os_id() -> Option<u64> {
     // Most Unix platforms have a way to query an integer ID of the current thread, all with
     // slightly different spellings.
+    //
+    // The OS thread ID is used rather than `pthread_self` so as to match what will be displayed
+    // for process inspection (debuggers, trace, `top`, etc.).
     cfg_if::cfg_if! {
         // Most platforms have a function returning a `pid_t` or int, which is an `i32`.
         if #[cfg(any(target_os = "android", target_os = "linux"))] {
@@ -348,6 +351,11 @@ pub(crate) fn current_os_id() -> Option<u64> {
         } else if #[cfg(target_os = "netbsd")] {
             // SAFETY: FFI call with no preconditions.
             let id: libc::lwpid_t = unsafe { libc::_lwp_self() };
+            Some(id as u64)
+        } else if #[cfg(target_os = "illumos")] {
+            // On Illumos, the `pthread_t` is the same as the OS thread ID.
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::pthread_t = unsafe { libc::pthread_self() };
             Some(id as u64)
         } else if #[cfg(target_vendor = "apple")] {
             // Apple allows querying arbitrary thread IDs, `thread=NULL` queries the current thread.
