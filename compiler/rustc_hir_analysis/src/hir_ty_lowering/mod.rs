@@ -2433,7 +2433,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 } else {
                     let repr = match repr {
                         TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
-                        TraitObjectSyntax::DynStar => ty::DynStar,
                     };
                     self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
                 }

@@ -643,13 +643,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             break self.ref_to_mplace(&val)?;
                         }
                         ty::Dynamic(.., ty::Dyn) => break receiver.assert_mem_place(), // no immediate unsized values
-                        ty::Dynamic(.., ty::DynStar) => {
-                            // Not clear how to handle this, so far we assume the receiver is always a pointer.
-                            span_bug!(
-                                self.cur_span(),
-                                "by-value calls on a `dyn*`... are those a thing?"
-                            );
-                        }
                         _ => {
                             // Not there yet, search for the only non-ZST field.
                             // (The rules for `DispatchFromDyn` ensure there's exactly one such field.)
@@ -662,39 +655,23 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 // Obtain the underlying trait we are working on, and the adjusted receiver argument.
-                let (trait_, dyn_ty, adjusted_recv) = if let ty::Dynamic(data, _, ty::DynStar) =
-                    receiver_place.layout.ty.kind()
-                {
-                    let recv = self.unpack_dyn_star(&receiver_place, data)?;
-
-                    (data.principal(), recv.layout.ty, recv.ptr())
-                } else {
-                    // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
-                    // (For that reason we also cannot use `unpack_dyn_trait`.)
-                    let receiver_tail =
-                        self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.typing_env);
-                    let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
-                        span_bug!(
-                            self.cur_span(),
-                            "dynamic call on non-`dyn` type {}",
-                            receiver_tail
-                        )
-                    };
-                    assert!(receiver_place.layout.is_unsized());
-
-                    // Get the required information from the vtable.
-                    let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
-                    let dyn_ty = self.get_ptr_vtable_ty(vptr, Some(receiver_trait))?;
-
-                    // It might be surprising that we use a pointer as the receiver even if this
-                    // is a by-val case; this works because by-val passing of an unsized `dyn
-                    // Trait` to a function is actually desugared to a pointer.
-                    (receiver_trait.principal(), dyn_ty, receiver_place.ptr())
+                // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
+                // (For that reason we also cannot use `unpack_dyn_trait`.)
+                let receiver_tail =
+                    self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.typing_env);
+                let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
+                    span_bug!(self.cur_span(), "dynamic call on non-`dyn` type {}", receiver_tail)
                 };
+                assert!(receiver_place.layout.is_unsized());
+
+                // Get the required information from the vtable.
+                let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
+                let dyn_ty = self.get_ptr_vtable_ty(vptr, Some(receiver_trait))?;
+                let adjusted_recv = receiver_place.ptr();
 
                 // Now determine the actual method to call. Usually we use the easy way of just
                 // looking up the method at index `idx`.
-                let vtable_entries = self.vtable_entries(trait_, dyn_ty);
+                let vtable_entries = self.vtable_entries(receiver_trait.principal(), dyn_ty);
                 let Some(ty::VtblEntry::Method(fn_inst)) = vtable_entries.get(idx).copied() else {
                     // FIXME(fee1-dead) these could be variants of the UB info enum instead of this
                     throw_ub_custom!(fluent::const_eval_dyn_call_not_a_method);
@@ -829,10 +806,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             ty::Dynamic(data, _, ty::Dyn) => {
                 // Dropping a trait object. Need to find actual drop fn.
                 self.unpack_dyn_trait(&place, data)?
-            }
-            ty::Dynamic(data, _, ty::DynStar) => {
-                // Dropping a `dyn*`. Need to find actual drop fn.
-                self.unpack_dyn_star(&place, data)?
             }
             _ => {
                 debug_assert_eq!(

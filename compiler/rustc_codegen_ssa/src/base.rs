@@ -262,28 +262,6 @@ pub(crate) fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-/// Coerces `src` to `dst_ty` which is guaranteed to be a `dyn*` type.
-pub(crate) fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    src: Bx::Value,
-    src_ty_and_layout: TyAndLayout<'tcx>,
-    dst_ty: Ty<'tcx>,
-    old_info: Option<Bx::Value>,
-) -> (Bx::Value, Bx::Value) {
-    debug!("cast_to_dyn_star: {:?} => {:?}", src_ty_and_layout.ty, dst_ty);
-    assert!(
-        matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
-        "destination type must be a dyn*"
-    );
-    let src = match bx.cx().type_kind(bx.cx().backend_type(src_ty_and_layout)) {
-        TypeKind::Pointer => src,
-        TypeKind::Integer => bx.inttoptr(src, bx.type_ptr()),
-        // FIXME(dyn-star): We probably have to do a bitcast first, then inttoptr.
-        kind => bug!("unexpected TypeKind for left-hand side of `dyn*` cast: {kind:?}"),
-    };
-    (src, unsized_info(bx, src_ty_and_layout.ty, dst_ty, old_info))
-}
-
 /// Coerces `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty`, and stores the result in `dst`.
 pub(crate) fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(

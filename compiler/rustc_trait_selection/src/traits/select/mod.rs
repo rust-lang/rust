@@ -2121,7 +2121,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
-            | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
                 // safe for everything
                 Where(ty::Binder::dummy(Vec::new()))

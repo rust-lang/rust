@@ -369,7 +369,6 @@ impl RustcInternal for DynKind {
     fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
         match self {
             DynKind::Dyn => rustc_ty::DynKind::Dyn,
-            DynKind::DynStar => rustc_ty::DynKind::DynStar,
         }
     }
 }

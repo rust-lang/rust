@@ -420,7 +420,6 @@ impl<'a> State<'a> {
                 let syntax = lifetime.tag();
                 match syntax {
                     ast::TraitObjectSyntax::Dyn => self.word_nbsp("dyn"),
-                    ast::TraitObjectSyntax::DynStar => self.word_nbsp("dyn*"),
                     ast::TraitObjectSyntax::None => {}
                 }
                 let mut first = true;
