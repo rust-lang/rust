@@ -382,7 +382,7 @@ fn pointer_kind(ty: &Ty, table: &mut InferenceTable<'_>) -> Result<Option<Pointe
                 return Err(());
             };
 
-            let struct_data = table.db.variant_fields(id.into());
+            let struct_data = id.fields(table.db);
             if let Some((last_field, _)) = struct_data.fields().iter().last() {
                 let last_field_ty =
                     table.db.field_types(id.into())[last_field].clone().substitute(Interner, subst);

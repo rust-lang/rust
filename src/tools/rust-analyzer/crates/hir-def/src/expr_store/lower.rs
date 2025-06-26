@@ -2250,7 +2250,7 @@ impl ExprCollector<'_> {
                         Some(ModuleDefId::ConstId(_)) => (None, Pat::Path(name.into())),
                         Some(ModuleDefId::EnumVariantId(variant))
                         // FIXME: This can cause a cycle if the user is writing invalid code
-                            if self.db.variant_fields(variant.into()).shape != FieldsShape::Record =>
+                            if variant.fields(self.db).shape != FieldsShape::Record =>
                         {
                             (None, Pat::Path(name.into()))
                         }

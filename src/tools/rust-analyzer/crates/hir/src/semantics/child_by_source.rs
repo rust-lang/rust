@@ -191,7 +191,7 @@ impl ChildBySource for VariantId {
                 Either::Right(source) => res[keys::RECORD_FIELD].insert(AstPtr::new(&source), id),
             }
         }
-        let (_, sm) = db.variant_fields_with_source_map(*self);
+        let (_, sm) = self.fields_with_source_map(db);
         sm.expansions().for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
     }
 }

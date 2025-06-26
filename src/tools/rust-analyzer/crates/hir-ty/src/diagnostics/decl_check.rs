@@ -307,7 +307,7 @@ impl<'a> DeclValidator<'a> {
 
     /// Check incorrect names for struct fields.
     fn validate_struct_fields(&mut self, struct_id: StructId) {
-        let data = self.db.variant_fields(struct_id.into());
+        let data = struct_id.fields(self.db);
         if data.shape != FieldsShape::Record {
             return;
         };
@@ -468,7 +468,7 @@ impl<'a> DeclValidator<'a> {
 
     /// Check incorrect names for fields of enum variant.
     fn validate_enum_variant_fields(&mut self, variant_id: EnumVariantId) {
-        let variant_data = self.db.variant_fields(variant_id.into());
+        let variant_data = variant_id.fields(self.db);
         if variant_data.shape != FieldsShape::Record {
             return;
         };

@@ -87,6 +87,7 @@ use crate::{
     attr::Attrs,
     builtin_type::BuiltinType,
     db::DefDatabase,
+    expr_store::ExpressionStoreSourceMap,
     hir::generics::{LocalLifetimeParamId, LocalTypeOrConstParamId},
     nameres::{
         LocalDefMap,
@@ -254,8 +255,34 @@ impl_intern!(FunctionId, FunctionLoc, intern_function, lookup_intern_function);
 type StructLoc = ItemLoc<ast::Struct>;
 impl_intern!(StructId, StructLoc, intern_struct, lookup_intern_struct);
 
+impl StructId {
+    pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
+        &VariantFields::query(db, self.into()).0
+    }
+
+    pub fn fields_with_source_map(
+        self,
+        db: &dyn DefDatabase,
+    ) -> &(VariantFields, Arc<ExpressionStoreSourceMap>) {
+        VariantFields::query(db, self.into())
+    }
+}
+
 pub type UnionLoc = ItemLoc<ast::Union>;
 impl_intern!(UnionId, UnionLoc, intern_union, lookup_intern_union);
+
+impl UnionId {
+    pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
+        &VariantFields::query(db, self.into()).0
+    }
+
+    pub fn fields_with_source_map(
+        self,
+        db: &dyn DefDatabase,
+    ) -> &(VariantFields, Arc<ExpressionStoreSourceMap>) {
+        VariantFields::query(db, self.into())
+    }
+}
 
 pub type EnumLoc = ItemLoc<ast::Enum>;
 impl_intern!(EnumId, EnumLoc, intern_enum, lookup_intern_enum);
@@ -337,6 +364,20 @@ pub struct EnumVariantLoc {
 }
 impl_intern!(EnumVariantId, EnumVariantLoc, intern_enum_variant, lookup_intern_enum_variant);
 impl_loc!(EnumVariantLoc, id: Variant, parent: EnumId);
+
+impl EnumVariantId {
+    pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
+        &VariantFields::query(db, self.into()).0
+    }
+
+    pub fn fields_with_source_map(
+        self,
+        db: &dyn DefDatabase,
+    ) -> &(VariantFields, Arc<ExpressionStoreSourceMap>) {
+        VariantFields::query(db, self.into())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Macro2Loc {
     pub container: ModuleId,
@@ -1024,8 +1065,15 @@ pub enum VariantId {
 impl_from!(EnumVariantId, StructId, UnionId for VariantId);
 
 impl VariantId {
-    pub fn variant_data(self, db: &dyn DefDatabase) -> Arc<VariantFields> {
-        db.variant_fields(self)
+    pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
+        &VariantFields::query(db, self).0
+    }
+
+    pub fn fields_with_source_map(
+        self,
+        db: &dyn DefDatabase,
+    ) -> &(VariantFields, Arc<ExpressionStoreSourceMap>) {
+        VariantFields::query(db, self)
     }
 
     pub fn file_id(self, db: &dyn DefDatabase) -> HirFileId {
