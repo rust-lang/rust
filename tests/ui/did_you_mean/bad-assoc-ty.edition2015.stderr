@@ -1,5 +1,5 @@
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:1:10
+  --> $DIR/bad-assoc-ty.rs:5:10
    |
 LL | type A = [u8; 4]::AssocTy;
    |          ^^^^^^^
@@ -10,7 +10,7 @@ LL | type A = <[u8; 4]>::AssocTy;
    |          +       +
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:5:10
+  --> $DIR/bad-assoc-ty.rs:9:10
    |
 LL | type B = [u8]::AssocTy;
    |          ^^^^
@@ -21,7 +21,7 @@ LL | type B = <[u8]>::AssocTy;
    |          +    +
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:9:10
+  --> $DIR/bad-assoc-ty.rs:13:10
    |
 LL | type C = (u8)::AssocTy;
    |          ^^^^
@@ -32,7 +32,7 @@ LL | type C = <(u8)>::AssocTy;
    |          +    +
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:13:10
+  --> $DIR/bad-assoc-ty.rs:17:10
    |
 LL | type D = (u8, u8)::AssocTy;
    |          ^^^^^^^^
@@ -43,7 +43,7 @@ LL | type D = <(u8, u8)>::AssocTy;
    |          +        +
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:17:10
+  --> $DIR/bad-assoc-ty.rs:21:10
    |
 LL | type E = _::AssocTy;
    |          ^
@@ -54,7 +54,7 @@ LL | type E = <_>::AssocTy;
    |          + +
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:21:19
+  --> $DIR/bad-assoc-ty.rs:25:19
    |
 LL | type F = &'static (u8)::AssocTy;
    |                   ^^^^
@@ -65,7 +65,7 @@ LL | type F = &'static <(u8)>::AssocTy;
    |                   +    +
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:27:10
+  --> $DIR/bad-assoc-ty.rs:31:10
    |
 LL | type G = dyn 'static + (Send)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^^^^
@@ -76,7 +76,7 @@ LL | type G = <dyn 'static + (Send)>::AssocTy;
    |          +                    +
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:46:10
+  --> $DIR/bad-assoc-ty.rs:51:10
    |
 LL | type I = ty!()::AssocTy;
    |          ^^^^^
@@ -87,7 +87,7 @@ LL | type I = <ty!()>::AssocTy;
    |          +     +
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:39:19
+  --> $DIR/bad-assoc-ty.rs:44:19
    |
 LL |     ($ty: ty) => ($ty::AssocTy);
    |                   ^^^
@@ -102,7 +102,7 @@ LL |     ($ty: ty) => (<$ty>::AssocTy);
    |                   +   +
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:1:10
+  --> $DIR/bad-assoc-ty.rs:5:10
    |
 LL | type A = [u8; 4]::AssocTy;
    |          ^^^^^^^^^^^^^^^^
@@ -114,7 +114,7 @@ LL + type A = <[u8; 4] as Example>::AssocTy;
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:5:10
+  --> $DIR/bad-assoc-ty.rs:9:10
    |
 LL | type B = [u8]::AssocTy;
    |          ^^^^^^^^^^^^^
@@ -126,7 +126,7 @@ LL + type B = <[u8] as Example>::AssocTy;
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:9:10
+  --> $DIR/bad-assoc-ty.rs:13:10
    |
 LL | type C = (u8)::AssocTy;
    |          ^^^^^^^^^^^^^
@@ -138,7 +138,7 @@ LL + type C = <u8 as Example>::AssocTy;
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:13:10
+  --> $DIR/bad-assoc-ty.rs:17:10
    |
 LL | type D = (u8, u8)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^
@@ -150,13 +150,13 @@ LL + type D = <(u8, u8) as Example>::AssocTy;
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for type aliases
-  --> $DIR/bad-assoc-ty.rs:17:10
+  --> $DIR/bad-assoc-ty.rs:21:10
    |
 LL | type E = _::AssocTy;
    |          ^ not allowed in type signatures
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:21:19
+  --> $DIR/bad-assoc-ty.rs:25:19
    |
 LL | type F = &'static (u8)::AssocTy;
    |                   ^^^^^^^^^^^^^
@@ -168,7 +168,7 @@ LL + type F = &'static <u8 as Example>::AssocTy;
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:27:10
+  --> $DIR/bad-assoc-ty.rs:31:10
    |
 LL | type G = dyn 'static + (Send)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -180,7 +180,7 @@ LL + type G = <(dyn Send + 'static) as Example>::AssocTy;
    |
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/bad-assoc-ty.rs:33:10
+  --> $DIR/bad-assoc-ty.rs:37:10
    |
 LL | type H = Fn(u8) -> (u8)::Output;
    |          ^^^^^^^^^^^^^^
@@ -194,7 +194,7 @@ LL | type H = <dyn Fn(u8) -> (u8)>::Output;
    |          ++++               +
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:33:10
+  --> $DIR/bad-assoc-ty.rs:37:10
    |
 LL | type H = Fn(u8) -> (u8)::Output;
    |          ^^^^^^^^^^^^^^^^^^^^^^
@@ -209,7 +209,7 @@ LL + type H = <(dyn Fn(u8) -> u8 + 'static) as IntoFuture>::Output;
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:39:19
+  --> $DIR/bad-assoc-ty.rs:44:19
    |
 LL |     ($ty: ty) => ($ty::AssocTy);
    |                   ^^^^^^^^^^^^
@@ -225,7 +225,7 @@ LL +     ($ty: ty) => (<u8 as Example>::AssocTy);
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:46:10
+  --> $DIR/bad-assoc-ty.rs:51:10
    |
 LL | type I = ty!()::AssocTy;
    |          ^^^^^^^^^^^^^^
@@ -237,7 +237,7 @@ LL + type I = <u8 as Example>::AssocTy;
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:51:13
+  --> $DIR/bad-assoc-ty.rs:56:13
    |
 LL | fn foo<X: K<_, _>>(x: X) {}
    |             ^  ^ not allowed in type signatures
@@ -245,7 +245,7 @@ LL | fn foo<X: K<_, _>>(x: X) {}
    |             not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:54:34
+  --> $DIR/bad-assoc-ty.rs:59:34
    |
 LL | fn bar<F>(_: F) where F: Fn() -> _ {}
    |                                  ^ not allowed in type signatures
@@ -257,7 +257,7 @@ LL + fn bar<F, T>(_: F) where F: Fn() -> T {}
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:57:19
+  --> $DIR/bad-assoc-ty.rs:62:19
    |
 LL | fn baz<F: Fn() -> _>(_: F) {}
    |                   ^ not allowed in type signatures
@@ -269,7 +269,7 @@ LL + fn baz<F: Fn() -> T, T>(_: F) {}
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
-  --> $DIR/bad-assoc-ty.rs:60:33
+  --> $DIR/bad-assoc-ty.rs:65:33
    |
 LL | struct L<F>(F) where F: Fn() -> _;
    |                                 ^ not allowed in type signatures
@@ -281,7 +281,7 @@ LL + struct L<F, T>(F) where F: Fn() -> T;
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:82:38
+  --> $DIR/bad-assoc-ty.rs:87:38
    |
 LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
    |                                      ^ not allowed in type signatures
@@ -293,7 +293,7 @@ LL +     fn foo<F, T>(_: F) where F: Fn() -> T {}
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
-  --> $DIR/bad-assoc-ty.rs:62:30
+  --> $DIR/bad-assoc-ty.rs:67:30
    |
 LL | struct M<F> where F: Fn() -> _ {
    |                              ^ not allowed in type signatures
@@ -305,7 +305,7 @@ LL + struct M<F, T> where F: Fn() -> T {
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for enums
-  --> $DIR/bad-assoc-ty.rs:66:28
+  --> $DIR/bad-assoc-ty.rs:71:28
    |
 LL | enum N<F> where F: Fn() -> _ {
    |                            ^ not allowed in type signatures
@@ -317,7 +317,7 @@ LL + enum N<F, T> where F: Fn() -> T {
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for unions
-  --> $DIR/bad-assoc-ty.rs:71:29
+  --> $DIR/bad-assoc-ty.rs:76:29
    |
 LL | union O<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
@@ -329,7 +329,7 @@ LL + union O<F, T> where F: Fn() -> T {
    |
 
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/bad-assoc-ty.rs:73:5
+  --> $DIR/bad-assoc-ty.rs:78:5
    |
 LL |     foo: F,
    |     ^^^^^^
@@ -341,7 +341,7 @@ LL |     foo: std::mem::ManuallyDrop<F>,
    |          +++++++++++++++++++++++ +
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for traits
-  --> $DIR/bad-assoc-ty.rs:77:29
+  --> $DIR/bad-assoc-ty.rs:82:29
    |
 LL | trait P<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
