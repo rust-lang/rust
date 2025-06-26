@@ -16,7 +16,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
     let tcx = cx.tcx;
     let report_diag = |msg: String, range: &Range<usize>, is_open_tag: bool| {
         let sp = match source_span_for_markdown_range(tcx, dox, range, &item.attrs.doc_strings) {
-            Some(sp) => sp,
+            Some((sp, _)) => sp,
             None => item.attr_span(tcx),
         };
         tcx.node_span_lint(crate::lint::INVALID_HTML_TAGS, hir_id, sp, |lint| {
@@ -55,7 +55,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                     &(generics_start..generics_end),
                     &item.attrs.doc_strings,
                 ) {
-                    Some(sp) => sp,
+                    Some((sp, _)) => sp,
                     None => item.attr_span(tcx),
                 };
                 // Sometimes, we only extract part of a path. For example, consider this:
