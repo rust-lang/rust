@@ -423,6 +423,7 @@ pub fn compile_declarative_macro(
         .pop()
         .unwrap();
         check_emission(check_rhs(sess, &rhs_tt));
+        check_emission(macro_check::check_meta_variables(&sess.psess, node_id, &lhs_tt, &rhs_tt));
         lhses.push(lhs_tt);
         rhses.push(rhs_tt);
         if p.token == token::Eof {
@@ -437,8 +438,6 @@ pub fn compile_declarative_macro(
         let guar = sess.dcx().span_err(span, "macros must contain at least one rule");
         return dummy_syn_ext(guar);
     }
-
-    check_emission(macro_check::check_meta_variables(&sess.psess, node_id, span, &lhses, &rhses));
 
     let transparency = find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
         .unwrap_or(Transparency::fallback(macro_rules));
