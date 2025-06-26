@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{cmp, env, iter};
 
-use rustc_ast::expand::allocator::{AllocatorKind, alloc_error_handler_name, global_fn_name};
+use rustc_ast::expand::allocator::{ALLOC_ERROR_HANDLER, AllocatorKind, global_fn_name};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
@@ -1067,17 +1067,17 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 }
                 spans => !spans.is_empty(),
             };
-        self.cstore.has_alloc_error_handler = match &*fn_spans(
-            krate,
-            Symbol::intern(alloc_error_handler_name(AllocatorKind::Global)),
-        ) {
-            [span1, span2, ..] => {
-                self.dcx()
-                    .emit_err(errors::NoMultipleAllocErrorHandler { span2: *span2, span1: *span1 });
-                true
-            }
-            spans => !spans.is_empty(),
-        };
+        self.cstore.has_alloc_error_handler =
+            match &*fn_spans(krate, Symbol::intern(ALLOC_ERROR_HANDLER)) {
+                [span1, span2, ..] => {
+                    self.dcx().emit_err(errors::NoMultipleAllocErrorHandler {
+                        span2: *span2,
+                        span1: *span1,
+                    });
+                    true
+                }
+                spans => !spans.is_empty(),
+            };
 
         // Check to see if we actually need an allocator. This desire comes
         // about through the `#![needs_allocator]` attribute and is typically

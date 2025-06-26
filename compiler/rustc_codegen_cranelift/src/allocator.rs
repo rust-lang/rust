@@ -3,8 +3,8 @@
 
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
-    alloc_error_handler_name, default_fn_name, global_fn_name,
+    ALLOC_ERROR_HANDLER, ALLOC_ERROR_HANDLER_DEFAULT, ALLOCATOR_METHODS, AllocatorKind,
+    AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE, default_fn_name, global_fn_name,
 };
 use rustc_codegen_ssa::base::allocator_kind_for_codegen;
 use rustc_session::config::OomStrategy;
@@ -72,17 +72,19 @@ fn codegen_inner(
         }
     }
 
-    let sig = Signature {
-        call_conv: module.target_config().default_call_conv,
-        params: vec![AbiParam::new(usize_ty), AbiParam::new(usize_ty)],
-        returns: vec![],
-    };
-    crate::common::create_wrapper_function(
-        module,
-        sig,
-        &mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
-        &mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind)),
-    );
+    if alloc_error_handler_kind == AllocatorKind::Default {
+        let sig = Signature {
+            call_conv: module.target_config().default_call_conv,
+            params: vec![AbiParam::new(usize_ty), AbiParam::new(usize_ty)],
+            returns: vec![],
+        };
+        crate::common::create_wrapper_function(
+            module,
+            sig,
+            &mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
+            &mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER_DEFAULT),
+        );
+    }
 
     let data_id = module
         .declare_data(

@@ -2,8 +2,8 @@ use gccjit::{Context, FunctionType, GlobalKind, ToRValue, Type};
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute};
 use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
-    alloc_error_handler_name, default_fn_name, global_fn_name,
+    ALLOC_ERROR_HANDLER, ALLOC_ERROR_HANDLER_DEFAULT, ALLOCATOR_METHODS, AllocatorKind,
+    AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE, default_fn_name, global_fn_name,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
@@ -61,15 +61,17 @@ pub(crate) unsafe fn codegen(
         }
     }
 
-    // FIXME(bjorn3): Add noreturn attribute
-    create_wrapper_function(
-        tcx,
-        context,
-        &mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
-        Some(&mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind))),
-        &[usize, usize],
-        None,
-    );
+    if alloc_error_handler_kind == AllocatorKind::Default {
+        // FIXME(bjorn3): Add noreturn attribute
+        create_wrapper_function(
+            tcx,
+            context,
+            &mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
+            Some(&mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER_DEFAULT)),
+            &[usize, usize],
+            None,
+        );
+    }
 
     let name = mangle_internal_symbol(tcx, OomStrategy::SYMBOL);
     let global = context.new_global(None, GlobalKind::Exported, i8, name);

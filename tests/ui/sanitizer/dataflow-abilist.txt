@@ -494,7 +494,6 @@ fun:__rdl_alloc=uninstrumented
 fun:__rdl_alloc_zeroed=uninstrumented
 fun:__rdl_dealloc=uninstrumented
 fun:__rdl_realloc=uninstrumented
-fun:__rg_oom=uninstrumented
 fun:__rust_alloc=uninstrumented
 fun:__rust_alloc_error_handler=uninstrumented
 fun:__rust_alloc_zeroed=uninstrumented

@@ -1,7 +1,7 @@
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
-    alloc_error_handler_name, default_fn_name, global_fn_name,
+    ALLOC_ERROR_HANDLER, ALLOC_ERROR_HANDLER_DEFAULT, ALLOCATOR_METHODS, AllocatorKind,
+    AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE, default_fn_name, global_fn_name,
 };
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
@@ -61,16 +61,18 @@ pub(crate) unsafe fn codegen(
         }
     }
 
-    // rust alloc error handler
-    create_wrapper_function(
-        tcx,
-        &cx,
-        &mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
-        Some(&mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind))),
-        &[usize, usize], // size, align
-        None,
-        true,
-    );
+    if alloc_error_handler_kind == AllocatorKind::Default {
+        // rust alloc error handler
+        create_wrapper_function(
+            tcx,
+            &cx,
+            &mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
+            Some(&mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER_DEFAULT)),
+            &[usize, usize], // size, align
+            None,
+            true,
+        );
+    }
 
     unsafe {
         // __rust_alloc_error_handler_should_panic
