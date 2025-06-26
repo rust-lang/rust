@@ -312,7 +312,9 @@ impl WorkspaceBuildScripts {
                 match message {
                     Message::BuildScriptExecuted(mut message) => {
                         with_output_for(&message.package_id.repr, &mut |name, data| {
-                            progress(format!("running build-script: {name}"));
+                            progress(format!(
+                                "building compile-time-deps: build script {name} run"
+                            ));
                             let cfgs = {
                                 let mut acc = Vec::new();
                                 for cfg in &message.cfgs {
@@ -343,7 +345,9 @@ impl WorkspaceBuildScripts {
                     }
                     Message::CompilerArtifact(message) => {
                         with_output_for(&message.package_id.repr, &mut |name, data| {
-                            progress(format!("building proc-macros: {name}"));
+                            progress(format!(
+                                "building compile-time-deps: proc-macro {name} built"
+                            ));
                             if message.target.kind.contains(&cargo_metadata::TargetKind::ProcMacro)
                             {
                                 // Skip rmeta file

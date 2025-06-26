@@ -6,6 +6,7 @@ use std::{fmt, io, process::Command, time::Duration};
 use cargo_metadata::PackageId;
 use crossbeam_channel::{Receiver, Sender, select_biased, unbounded};
 use ide_db::FxHashSet;
+use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize as _;
@@ -379,7 +380,11 @@ impl FlycheckActor {
                             package_id = msg.package_id.repr,
                             "artifact received"
                         );
-                        self.report_progress(Progress::DidCheckCrate(msg.target.name));
+                        self.report_progress(Progress::DidCheckCrate(format!(
+                            "{} ({})",
+                            msg.target.name,
+                            msg.target.kind.iter().format_with(", ", |kind, f| f(&kind)),
+                        )));
                         let package_id = Arc::new(msg.package_id);
                         if self.diagnostics_cleared_for.insert(package_id.clone()) {
                             tracing::trace!(
