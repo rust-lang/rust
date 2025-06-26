@@ -612,6 +612,9 @@ impl<'db> InferenceResult<'db> {
     pub fn placeholder_types(&self) -> impl Iterator<Item = (TypeRefId, &Ty<'db>)> {
         self.type_of_type_placeholder.iter()
     }
+    pub fn type_of_type_placeholder(&self, type_ref: TypeRefId) -> Option<Ty<'db>> {
+        self.type_of_type_placeholder.get(type_ref).copied()
+    }
     pub fn closure_info(&self, closure: InternedClosureId) -> &(Vec<CapturedItem<'db>>, FnTrait) {
         self.closure_info.get(&closure).unwrap()
     }
