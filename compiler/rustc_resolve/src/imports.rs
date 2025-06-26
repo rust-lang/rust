@@ -174,7 +174,14 @@ pub(crate) struct ImportData<'ra> {
 
     pub parent_scope: ParentScope<'ra>,
     pub module_path: Vec<Segment>,
-    /// The resolution of `module_path`.
+    /// The resolution of `module_path`:
+    ///
+    /// | `module_path` | `imported_module` | remark |
+    /// |-|-|-|
+    /// |`use prefix::foo`| `ModuleOrUniformRoot::Module(prefix)`               | - |
+    /// |`use ::foo`      | `ModuleOrUniformRoot::ExternPrelude`                | 2018+ editions |
+    /// |`use ::foo`      | `ModuleOrUniformRoot::CrateRootAndExternPrelude`    | a special case in 2015 edition |
+    /// |`use foo`        | `ModuleOrUniformRoot::CurrentScope`                 | - |
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'ra>>>,
     pub vis: ty::Visibility,
 }
