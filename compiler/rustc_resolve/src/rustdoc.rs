@@ -49,6 +49,9 @@ pub struct DocFragment {
     pub doc: Symbol,
     pub kind: DocFragmentKind,
     pub indent: usize,
+    /// Because we tamper with the spans context, this information cannot be correctly retrieved
+    /// later on. So instead, we compute it and store it here.
+    pub from_expansion: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -208,17 +211,18 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
     for (attr, item_id) in attrs {
         if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
             let doc = beautify_doc_string(doc_str, comment_kind);
-            let (span, kind) = if attr.is_doc_comment() {
-                (attr.span(), DocFragmentKind::SugaredDoc)
+            let (span, kind, from_expansion) = if attr.is_doc_comment() {
+                let span = attr.span();
+                (span, DocFragmentKind::SugaredDoc, span.from_expansion())
             } else {
-                (
-                    attr.value_span()
-                        .map(|i| i.with_ctxt(attr.span().ctxt()))
-                        .unwrap_or(attr.span()),
-                    DocFragmentKind::RawDoc,
-                )
+                let attr_span = attr.span();
+                let (span, from_expansion) = match attr.value_span() {
+                    Some(sp) => (sp.with_ctxt(attr_span.ctxt()), sp.from_expansion()),
+                    None => (attr_span, attr_span.from_expansion()),
+                };
+                (span, DocFragmentKind::RawDoc, from_expansion)
             };
-            let fragment = DocFragment { span, doc, kind, item_id, indent: 0 };
+            let fragment = DocFragment { span, doc, kind, item_id, indent: 0, from_expansion };
             doc_fragments.push(fragment);
         } else if !doc_only {
             other_attrs.push(attr.clone());
@@ -505,17 +509,26 @@ fn collect_link_data<'input, F: BrokenLinkCallback<'input>>(
     display_text.map(String::into_boxed_str)
 }
 
+/// Returns a tuple containing a span encompassing all the document fragments and a boolean that is
+/// `true` if any of the fragments are from a macro expansion.
+pub fn span_of_fragments_with_expansion(fragments: &[DocFragment]) -> Option<(Span, bool)> {
+    let (first_fragment, last_fragment) = match fragments {
+        [] => return None,
+        [first, .., last] => (first, last),
+        [first] => (first, first),
+    };
+    if first_fragment.span == DUMMY_SP {
+        return None;
+    }
+    Some((
+        first_fragment.span.to(last_fragment.span),
+        fragments.iter().any(|frag| frag.from_expansion),
+    ))
+}
+
 /// Returns a span encompassing all the document fragments.
 pub fn span_of_fragments(fragments: &[DocFragment]) -> Option<Span> {
-    if fragments.is_empty() {
-        return None;
-    }
-    let start = fragments[0].span;
-    if start == DUMMY_SP {
-        return None;
-    }
-    let end = fragments.last().expect("no doc strings provided").span;
-    Some(start.to(end))
+    span_of_fragments_with_expansion(fragments).map(|(sp, _)| sp)
 }
 
 /// Attempts to match a range of bytes from parsed markdown to a `Span` in the source code.
@@ -529,18 +542,22 @@ pub fn span_of_fragments(fragments: &[DocFragment]) -> Option<Span> {
 /// This method will return `Some` only if one of the following is true:
 ///
 /// - The doc is made entirely from sugared doc comments, which cannot contain escapes
-/// - The doc is entirely from a single doc fragment with a string literal exactly equal to `markdown`.
+/// - The doc is entirely from a single doc fragment with a string literal exactly equal to
+///   `markdown`.
 /// - The doc comes from `include_str!`
-/// - The doc includes exactly one substring matching `markdown[md_range]` which is contained in a single doc fragment.
+/// - The doc includes exactly one substring matching `markdown[md_range]` which is contained in a
+///   single doc fragment.
 ///
-/// This function is defined in the compiler so it can be used by
-/// both `rustdoc` and `clippy`.
+/// This function is defined in the compiler so it can be used by both `rustdoc` and `clippy`.
+///
+/// It returns a tuple containing a span encompassing all the document fragments and a boolean that
+/// is `true` if any of the *matched* fragments are from a macro expansion.
 pub fn source_span_for_markdown_range(
     tcx: TyCtxt<'_>,
     markdown: &str,
     md_range: &Range<usize>,
     fragments: &[DocFragment],
-) -> Option<Span> {
+) -> Option<(Span, bool)> {
     let map = tcx.sess.source_map();
     source_span_for_markdown_range_inner(map, markdown, md_range, fragments)
 }
@@ -551,7 +568,7 @@ pub fn source_span_for_markdown_range_inner(
     markdown: &str,
     md_range: &Range<usize>,
     fragments: &[DocFragment],
-) -> Option<Span> {
+) -> Option<(Span, bool)> {
     use rustc_span::BytePos;
 
     if let &[fragment] = &fragments
@@ -562,11 +579,14 @@ pub fn source_span_for_markdown_range_inner(
         && let Ok(md_range_hi) = u32::try_from(md_range.end)
     {
         // Single fragment with string that contains same bytes as doc.
-        return Some(Span::new(
-            fragment.span.lo() + rustc_span::BytePos(md_range_lo),
-            fragment.span.lo() + rustc_span::BytePos(md_range_hi),
-            fragment.span.ctxt(),
-            fragment.span.parent(),
+        return Some((
+            Span::new(
+                fragment.span.lo() + rustc_span::BytePos(md_range_lo),
+                fragment.span.lo() + rustc_span::BytePos(md_range_hi),
+                fragment.span.ctxt(),
+                fragment.span.parent(),
+            ),
+            fragment.from_expansion,
         ));
     }
 
@@ -598,19 +618,21 @@ pub fn source_span_for_markdown_range_inner(
                 {
                     match_data = Some((i, match_start));
                 } else {
-                    // Heirustic produced ambiguity, return nothing.
+                    // Heuristic produced ambiguity, return nothing.
                     return None;
                 }
             }
         }
         if let Some((i, match_start)) = match_data {
-            let sp = fragments[i].span;
+            let fragment = &fragments[i];
+            let sp = fragment.span;
             // we need to calculate the span start,
             // then use that in our calulations for the span end
             let lo = sp.lo() + BytePos(match_start as u32);
-            return Some(
+            return Some((
                 sp.with_lo(lo).with_hi(lo + BytePos((md_range.end - md_range.start) as u32)),
-            );
+                fragment.from_expansion,
+            ));
         }
         return None;
     }
@@ -664,8 +686,13 @@ pub fn source_span_for_markdown_range_inner(
         }
     }
 
-    Some(span_of_fragments(fragments)?.from_inner(InnerSpan::new(
+    let (span, _) = span_of_fragments_with_expansion(fragments)?;
+    let src_span = span.from_inner(InnerSpan::new(
         md_range.start + start_bytes,
         md_range.end + start_bytes + end_bytes,
-    )))
+    ));
+    Some((
+        src_span,
+        fragments.iter().any(|frag| frag.span.overlaps(src_span) && frag.from_expansion),
+    ))
 }
