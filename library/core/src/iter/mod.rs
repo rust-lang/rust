@@ -420,7 +420,7 @@ pub use self::adapters::{Intersperse, IntersperseWith};
     issue = "42168"
 )]
 pub use self::range::Step;
-#[unstable(feature = "iter_macro", issue = "none", reason = "generators are unstable")]
+#[unstable(feature = "iter_macro", issue = "142269", reason = "generators are unstable")]
 pub use self::sources::iter;
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub use self::sources::{Empty, empty};
