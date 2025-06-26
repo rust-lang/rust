@@ -358,9 +358,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             // arrays/slices
             ty::Array(..) | ty::Slice(..) => PathElem::ArrayElem(field),
 
-            // dyn* vtables
-            ty::Dynamic(_, _, ty::DynKind::DynStar) if field == 1 => PathElem::Vtable,
-
             // dyn traits
             ty::Dynamic(..) => {
                 assert_eq!(field, 0);

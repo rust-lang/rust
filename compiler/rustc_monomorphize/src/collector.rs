@@ -694,8 +694,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
             mir::Rvalue::Cast(
-                mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _)
-                | mir::CastKind::PointerCoercion(PointerCoercion::DynStar, _),
+                mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _),
                 ref operand,
                 target_ty,
             ) => {
@@ -710,9 +709,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 // This could also be a different Unsize instruction, like
                 // from a fixed sized array to a slice. But we are only
                 // interested in things that produce a vtable.
-                if (target_ty.is_trait() && !source_ty.is_trait())
-                    || (target_ty.is_dyn_star() && !source_ty.is_dyn_star())
-                {
+                if target_ty.is_trait() && !source_ty.is_trait() {
                     create_mono_items_for_vtable_methods(
                         self.tcx,
                         target_ty,
@@ -1109,14 +1106,6 @@ fn find_tails_for_unsizing<'tcx>(
             find_tails_for_unsizing(tcx, source_field, target_field)
         }
 
-        // `T` as `dyn* Trait` unsizes *directly*.
-        //
-        // FIXME(dyn_star): This case is a bit awkward, b/c we're not really computing
-        // a tail here. We probably should handle this separately in the *caller* of
-        // this function, rather than returning something that is semantically different
-        // than what we return above.
-        (_, &ty::Dynamic(_, _, ty::DynStar)) => (source_ty, target_ty),
-
         _ => bug!(
             "find_vtable_types_for_unsizing: invalid coercion {:?} -> {:?}",
             source_ty,
@@ -1344,9 +1333,7 @@ fn visit_mentioned_item<'tcx>(
             // This could also be a different Unsize instruction, like
             // from a fixed sized array to a slice. But we are only
             // interested in things that produce a vtable.
-            if (target_ty.is_trait() && !source_ty.is_trait())
-                || (target_ty.is_dyn_star() && !source_ty.is_dyn_star())
-            {
+            if target_ty.is_trait() && !source_ty.is_trait() {
                 create_mono_items_for_vtable_methods(tcx, target_ty, source_ty, span, output);
             }
         }
