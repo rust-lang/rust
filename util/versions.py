@@ -6,11 +6,11 @@ import os
 import sys
 
 def key(v):
-    if v == "master":
-        return sys.maxsize
     if v == "stable":
-        return sys.maxsize - 1
+        return sys.maxsize 
     if v == "beta":
+        return sys.maxsize - 1
+    if v == "master":
         return sys.maxsize - 2
     if v == "pre-1.29.0":
         return -1
