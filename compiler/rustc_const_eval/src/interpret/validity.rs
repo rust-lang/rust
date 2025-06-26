@@ -1364,8 +1364,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         })
     }
 
-    /// This function checks the data at `op` to be const-valid.
-    /// `op` is assumed to cover valid memory if it is an indirect operand.
+    /// This function checks the data at `val` to be const-valid.
+    /// `val` is assumed to cover valid memory if it is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     ///
     /// `ref_tracking` is used to record references that we encounter so that they
@@ -1391,8 +1391,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         )
     }
 
-    /// This function checks the data at `op` to be runtime-valid.
-    /// `op` is assumed to cover valid memory if it is an indirect operand.
+    /// This function checks the data at `val` to be runtime-valid.
+    /// `val` is assumed to cover valid memory if it is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     #[inline(always)]
     pub fn validate_operand(
