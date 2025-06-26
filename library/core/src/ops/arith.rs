@@ -627,7 +627,7 @@ macro_rules! rem_impl_float {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl Rem for $t {
+        impl const Rem for $t {
             type Output = $t;
 
             #[inline]
