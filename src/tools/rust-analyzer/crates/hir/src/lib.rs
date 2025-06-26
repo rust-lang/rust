@@ -3043,8 +3043,15 @@ pub struct BuiltinType {
 }
 
 impl BuiltinType {
+    // Constructors are added on demand, feel free to add more.
     pub fn str() -> BuiltinType {
         BuiltinType { inner: hir_def::builtin_type::BuiltinType::Str }
+    }
+
+    pub fn i32() -> BuiltinType {
+        BuiltinType {
+            inner: hir_def::builtin_type::BuiltinType::Int(hir_ty::primitive::BuiltinInt::I32),
+        }
     }
 
     pub fn ty<'db>(self, db: &'db dyn HirDatabase) -> Type<'db> {
