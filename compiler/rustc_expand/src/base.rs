@@ -1118,6 +1118,10 @@ pub trait ResolverExpand {
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate>;
+
+    /// Record the name of an opaque `Ty::ImplTrait` pre-expansion so that it can be used
+    /// to generate an item name later that does not reference placeholder macros.
+    fn insert_impl_trait_name(&mut self, id: NodeId, name: Symbol);
 }
 
 pub trait LintStoreExpand {
