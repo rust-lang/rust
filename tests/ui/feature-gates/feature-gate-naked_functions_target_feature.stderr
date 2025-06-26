@@ -1,8 +1,8 @@
 error[E0658]: `#[target_feature(/* ... */)]` is currently unstable on `#[naked]` functions
-  --> $DIR/feature-gate-naked_functions_target_feature.rs:7:1
+  --> $DIR/feature-gate-naked_functions_target_feature.rs:7:3
    |
 LL | #[target_feature(enable = "avx2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
    = note: see issue #138568 <https://github.com/rust-lang/rust/issues/138568> for more information
    = help: add `#![feature(naked_functions_target_feature)]` to the crate attributes to enable

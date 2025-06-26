@@ -384,26 +384,7 @@ pub struct BlockLoc {
     /// The containing module.
     pub module: ModuleId,
 }
-#[salsa_macros::tracked(debug)]
-#[derive(PartialOrd, Ord)]
-pub struct BlockIdLt<'db> {
-    pub loc: BlockLoc,
-}
-pub type BlockId = BlockIdLt<'static>;
-impl hir_expand::Intern for BlockLoc {
-    type Database = dyn DefDatabase;
-    type ID = BlockId;
-    fn intern(self, db: &Self::Database) -> Self::ID {
-        unsafe { std::mem::transmute::<BlockIdLt<'_>, BlockId>(BlockIdLt::new(db, self)) }
-    }
-}
-impl hir_expand::Lookup for BlockId {
-    type Database = dyn DefDatabase;
-    type Data = BlockLoc;
-    fn lookup(&self, db: &Self::Database) -> Self::Data {
-        self.loc(db)
-    }
-}
+impl_intern!(BlockId, BlockLoc, intern_block, lookup_intern_block);
 
 /// A `ModuleId` that is always a crate's root module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

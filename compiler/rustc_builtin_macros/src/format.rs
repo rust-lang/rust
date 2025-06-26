@@ -606,6 +606,7 @@ fn make_format_args(
         template,
         arguments: args,
         uncooked_fmt_str,
+        is_source_literal,
     }))
 }
 

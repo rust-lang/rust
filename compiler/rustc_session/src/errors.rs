@@ -501,20 +501,3 @@ pub(crate) struct SoftFloatIgnored;
 #[note]
 #[note(session_soft_float_deprecated_issue)]
 pub(crate) struct SoftFloatDeprecated;
-
-#[derive(Diagnostic)]
-#[diag(session_forbidden_ctarget_feature)]
-#[note]
-#[note(session_forbidden_ctarget_feature_issue)]
-pub(crate) struct ForbiddenCTargetFeature<'a> {
-    pub feature: &'a str,
-    pub enabled: &'a str,
-    pub reason: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(session_unstable_ctarget_feature)]
-#[note]
-pub(crate) struct UnstableCTargetFeature<'a> {
-    pub feature: &'a str,
-}

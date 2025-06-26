@@ -1,4 +1,3 @@
-use std::cell::Cell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::thread;
 
@@ -6,6 +5,7 @@ use rand::RngCore;
 
 use super::*;
 use crate::testing::crash_test::{CrashTestDummy, Panic};
+use crate::testing::macros::struct_with_counted_drop;
 use crate::vec::Vec;
 
 #[test]
@@ -1008,22 +1008,6 @@ fn extract_if_drop_panic_leak() {
     assert_eq!(d5.dropped(), 1);
     assert_eq!(d6.dropped(), 1);
     assert_eq!(d7.dropped(), 1);
-}
-
-macro_rules! struct_with_counted_drop {
-    ($struct_name:ident$(($elt_ty:ty))?, $drop_counter:ident $(=> $drop_stmt:expr)?) => {
-        thread_local! {static $drop_counter: Cell<u32> = Cell::new(0);}
-
-        struct $struct_name$(($elt_ty))?;
-
-        impl Drop for $struct_name {
-            fn drop(&mut self) {
-                $drop_counter.set($drop_counter.get() + 1);
-
-                $($drop_stmt(self))?
-            }
-        }
-    };
 }
 
 #[test]

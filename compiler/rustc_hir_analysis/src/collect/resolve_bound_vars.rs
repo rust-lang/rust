@@ -2177,84 +2177,80 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     /// Walk the generics of the item for a trait bound whose self type
     /// corresponds to the expected res, and return the trait def id.
     fn for_each_trait_bound_on_res(&self, expected_res: Res) -> impl Iterator<Item = DefId> {
-        std::iter::from_coroutine(
-            #[coroutine]
-            move || {
-                let mut scope = self.scope;
-                loop {
-                    let hir_id = match *scope {
-                        Scope::Binder { hir_id, .. } => Some(hir_id),
-                        Scope::Root { opt_parent_item: Some(parent_def_id) } => {
-                            Some(self.tcx.local_def_id_to_hir_id(parent_def_id))
-                        }
-                        Scope::Body { .. }
-                        | Scope::ObjectLifetimeDefault { .. }
-                        | Scope::Supertrait { .. }
-                        | Scope::TraitRefBoundary { .. }
-                        | Scope::LateBoundary { .. }
-                        | Scope::Opaque { .. }
-                        | Scope::Root { opt_parent_item: None } => None,
-                    };
+        gen move {
+            let mut scope = self.scope;
+            loop {
+                let hir_id = match *scope {
+                    Scope::Binder { hir_id, .. } => Some(hir_id),
+                    Scope::Root { opt_parent_item: Some(parent_def_id) } => {
+                        Some(self.tcx.local_def_id_to_hir_id(parent_def_id))
+                    }
+                    Scope::Body { .. }
+                    | Scope::ObjectLifetimeDefault { .. }
+                    | Scope::Supertrait { .. }
+                    | Scope::TraitRefBoundary { .. }
+                    | Scope::LateBoundary { .. }
+                    | Scope::Opaque { .. }
+                    | Scope::Root { opt_parent_item: None } => None,
+                };
 
-                    if let Some(hir_id) = hir_id {
-                        let node = self.tcx.hir_node(hir_id);
-                        // If this is a `Self` bound in a trait, yield the trait itself.
-                        // Specifically, we don't need to look at any supertraits since
-                        // we already do that in `BoundVarContext::supertrait_hrtb_vars`.
-                        if let Res::SelfTyParam { trait_: _ } = expected_res
-                            && let hir::Node::Item(item) = node
-                            && let hir::ItemKind::Trait(..) = item.kind
-                        {
-                            // Yield the trait's def id. Supertraits will be
-                            // elaborated from that.
-                            yield item.owner_id.def_id.to_def_id();
-                        } else if let Some(generics) = node.generics() {
-                            for pred in generics.predicates {
-                                let hir::WherePredicateKind::BoundPredicate(pred) = pred.kind
-                                else {
-                                    continue;
-                                };
-                                let hir::TyKind::Path(hir::QPath::Resolved(None, bounded_path)) =
-                                    pred.bounded_ty.kind
-                                else {
-                                    continue;
-                                };
-                                // Match the expected res.
-                                if bounded_path.res != expected_res {
-                                    continue;
-                                }
-                                for pred in pred.bounds {
-                                    match pred {
-                                        hir::GenericBound::Trait(poly_trait_ref) => {
-                                            if let Some(def_id) =
-                                                poly_trait_ref.trait_ref.trait_def_id()
-                                            {
-                                                yield def_id;
-                                            }
+                if let Some(hir_id) = hir_id {
+                    let node = self.tcx.hir_node(hir_id);
+                    // If this is a `Self` bound in a trait, yield the trait itself.
+                    // Specifically, we don't need to look at any supertraits since
+                    // we already do that in `BoundVarContext::supertrait_hrtb_vars`.
+                    if let Res::SelfTyParam { trait_: _ } = expected_res
+                        && let hir::Node::Item(item) = node
+                        && let hir::ItemKind::Trait(..) = item.kind
+                    {
+                        // Yield the trait's def id. Supertraits will be
+                        // elaborated from that.
+                        yield item.owner_id.def_id.to_def_id();
+                    } else if let Some(generics) = node.generics() {
+                        for pred in generics.predicates {
+                            let hir::WherePredicateKind::BoundPredicate(pred) = pred.kind else {
+                                continue;
+                            };
+                            let hir::TyKind::Path(hir::QPath::Resolved(None, bounded_path)) =
+                                pred.bounded_ty.kind
+                            else {
+                                continue;
+                            };
+                            // Match the expected res.
+                            if bounded_path.res != expected_res {
+                                continue;
+                            }
+                            for pred in pred.bounds {
+                                match pred {
+                                    hir::GenericBound::Trait(poly_trait_ref) => {
+                                        if let Some(def_id) =
+                                            poly_trait_ref.trait_ref.trait_def_id()
+                                        {
+                                            yield def_id;
                                         }
-                                        hir::GenericBound::Outlives(_)
-                                        | hir::GenericBound::Use(_, _) => {}
                                     }
+                                    hir::GenericBound::Outlives(_)
+                                    | hir::GenericBound::Use(_, _) => {}
                                 }
                             }
                         }
                     }
-
-                    match *scope {
-                        Scope::Binder { s, .. }
-                        | Scope::Body { s, .. }
-                        | Scope::ObjectLifetimeDefault { s, .. }
-                        | Scope::Supertrait { s, .. }
-                        | Scope::TraitRefBoundary { s }
-                        | Scope::LateBoundary { s, .. }
-                        | Scope::Opaque { s, .. } => {
-                            scope = s;
-                        }
-                        Scope::Root { .. } => break,
-                    }
                 }
-            },
-        )
+
+                match *scope {
+                    Scope::Binder { s, .. }
+                    | Scope::Body { s, .. }
+                    | Scope::ObjectLifetimeDefault { s, .. }
+                    | Scope::Supertrait { s, .. }
+                    | Scope::TraitRefBoundary { s }
+                    | Scope::LateBoundary { s, .. }
+                    | Scope::Opaque { s, .. } => {
+                        scope = s;
+                    }
+                    Scope::Root { .. } => break,
+                }
+            }
+        }
     }
 }
 

@@ -1,33 +1,35 @@
 //@ revisions: align16 align1024
-//@ compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0
+//@ compile-flags: -C no-prepopulate-passes -Z mir-opt-level=0 -Clink-dead-code
 //@ [align16] compile-flags: -Zmin-function-alignment=16
 //@ [align1024] compile-flags: -Zmin-function-alignment=1024
 
 #![crate_type = "lib"]
 #![feature(fn_align)]
 
-// functions without explicit alignment use the global minimum
+// Functions without explicit alignment use the global minimum.
 //
-// CHECK-LABEL: @no_explicit_align
+// NOTE: this function deliberately has zero (0) attributes! That is to make sure that
+// `-Zmin-function-alignment` is applied regardless of whether attributes are used.
+//
+// CHECK-LABEL: no_explicit_align
 // align16: align 16
 // align1024: align 1024
-#[no_mangle]
 pub fn no_explicit_align() {}
 
 // CHECK-LABEL: @lower_align
 // align16: align 16
 // align1024: align 1024
 #[no_mangle]
-#[repr(align(8))]
+#[align(8)]
 pub fn lower_align() {}
 
-// the higher value of min-function-alignment and repr(align) wins out
+// the higher value of min-function-alignment and the align attribute wins out
 //
 // CHECK-LABEL: @higher_align
 // align16: align 32
 // align1024: align 1024
 #[no_mangle]
-#[repr(align(32))]
+#[align(32)]
 pub fn higher_align() {}
 
 // cold functions follow the same rules as other functions

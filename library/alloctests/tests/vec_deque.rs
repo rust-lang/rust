@@ -1,6 +1,3 @@
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#![allow(static_mut_refs)]
-
 use core::num::NonZero;
 use std::assert_matches::assert_matches;
 use std::collections::TryReserveErrorKind::*;
@@ -14,6 +11,7 @@ use Taggy::*;
 use Taggypar::*;
 
 use crate::hash;
+use crate::testing::macros::struct_with_counted_drop;
 
 #[test]
 fn test_simple() {
@@ -719,15 +717,7 @@ fn test_show() {
 
 #[test]
 fn test_drop() {
-    static mut DROPS: i32 = 0;
-    struct Elem;
-    impl Drop for Elem {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-        }
-    }
+    struct_with_counted_drop!(Elem, DROPS);
 
     let mut ring = VecDeque::new();
     ring.push_back(Elem);
@@ -736,20 +726,12 @@ fn test_drop() {
     ring.push_front(Elem);
     drop(ring);
 
-    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(DROPS.get(), 4);
 }
 
 #[test]
 fn test_drop_with_pop() {
-    static mut DROPS: i32 = 0;
-    struct Elem;
-    impl Drop for Elem {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-        }
-    }
+    struct_with_counted_drop!(Elem, DROPS);
 
     let mut ring = VecDeque::new();
     ring.push_back(Elem);
@@ -759,23 +741,15 @@ fn test_drop_with_pop() {
 
     drop(ring.pop_back());
     drop(ring.pop_front());
-    assert_eq!(unsafe { DROPS }, 2);
+    assert_eq!(DROPS.get(), 2);
 
     drop(ring);
-    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(DROPS.get(), 4);
 }
 
 #[test]
 fn test_drop_clear() {
-    static mut DROPS: i32 = 0;
-    struct Elem;
-    impl Drop for Elem {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-        }
-    }
+    struct_with_counted_drop!(Elem, DROPS);
 
     let mut ring = VecDeque::new();
     ring.push_back(Elem);
@@ -783,30 +757,16 @@ fn test_drop_clear() {
     ring.push_back(Elem);
     ring.push_front(Elem);
     ring.clear();
-    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(DROPS.get(), 4);
 
     drop(ring);
-    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(DROPS.get(), 4);
 }
 
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_drop_panic() {
-    static mut DROPS: i32 = 0;
-
-    struct D(bool);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-
-            if self.0 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
+    struct_with_counted_drop!(D(bool), DROPS => |this: &D| if this.0 { panic!("panic in `drop`"); } );
 
     let mut q = VecDeque::new();
     q.push_back(D(false));
@@ -820,7 +780,7 @@ fn test_drop_panic() {
 
     catch_unwind(move || drop(q)).ok();
 
-    assert_eq!(unsafe { DROPS }, 8);
+    assert_eq!(DROPS.get(), 8);
 }
 
 #[test]
@@ -1655,21 +1615,7 @@ fn test_try_rfold_moves_iter() {
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn truncate_leak() {
-    static mut DROPS: i32 = 0;
-
-    struct D(bool);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-
-            if self.0 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
+    struct_with_counted_drop!(D(bool), DROPS => |this: &D| if this.0 { panic!("panic in `drop`"); } );
 
     let mut q = VecDeque::new();
     q.push_back(D(false));
@@ -1683,27 +1629,13 @@ fn truncate_leak() {
 
     catch_unwind(AssertUnwindSafe(|| q.truncate(1))).ok();
 
-    assert_eq!(unsafe { DROPS }, 7);
+    assert_eq!(DROPS.get(), 7);
 }
 
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn truncate_front_leak() {
-    static mut DROPS: i32 = 0;
-
-    struct D(bool);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-
-            if self.0 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
+    struct_with_counted_drop!(D(bool), DROPS => |this: &D| if this.0 { panic!("panic in `drop`"); } );
 
     let mut q = VecDeque::new();
     q.push_back(D(false));
@@ -1717,28 +1649,13 @@ fn truncate_front_leak() {
 
     catch_unwind(AssertUnwindSafe(|| q.truncate_front(1))).ok();
 
-    assert_eq!(unsafe { DROPS }, 7);
+    assert_eq!(DROPS.get(), 7);
 }
 
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_drain_leak() {
-    static mut DROPS: i32 = 0;
-
-    #[derive(Debug, PartialEq)]
-    struct D(u32, bool);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-
-            if self.1 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
+    struct_with_counted_drop!(D(u32, bool), DROPS => |this: &D| if this.1 { panic!("panic in `drop`"); } );
 
     let mut v = VecDeque::new();
     v.push_back(D(4, false));
@@ -1754,10 +1671,10 @@ fn test_drain_leak() {
     }))
     .ok();
 
-    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(DROPS.get(), 4);
     assert_eq!(v.len(), 3);
     drop(v);
-    assert_eq!(unsafe { DROPS }, 7);
+    assert_eq!(DROPS.get(), 7);
 }
 
 #[test]

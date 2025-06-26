@@ -150,7 +150,9 @@ pr:
       DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-aarch64-linux
   - name: x86_64-gnu-tools
-    <<: *job-linux-36c-codebuild
+    <<: *job-linux-4c
+  - name: x86_64-gnu-miri
+    <<: *job-linux-4c
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
@@ -423,6 +425,9 @@ auto:
   - name: x86_64-gnu-tools
     env:
       DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
+    <<: *job-linux-4c
+
+  - name: x86_64-gnu-miri
     <<: *job-linux-4c
 
   ####################

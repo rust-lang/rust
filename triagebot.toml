@@ -1023,6 +1023,10 @@ Otherwise, you can ignore this comment.
 [mentions."src/tools/x"]
 message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
 
+[mentions."src/tools/tidy"]
+message = "There are changes to the `tidy` tool."
+cc = ["@jieyouxu"]
+
 [mentions."src/tools/tidy/src/deps.rs"]
 message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
 cc = ["@davidtwco", "@wesleywiser"]
@@ -1164,7 +1168,7 @@ cc = ["@ehuss"]
 
 [mentions."src/doc/rustc-dev-guide"]
 message = "The rustc-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
-cc = ["@BoxyUwU", "@jieyouxu", "@kobzol"]
+cc = ["@BoxyUwU", "@jieyouxu", "@kobzol", "@tshepang"]
 
 [mentions."compiler/rustc_codegen_ssa/src/codegen_attrs.rs"]
 cc = ["@jdonszelmann"]

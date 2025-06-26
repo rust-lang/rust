@@ -60,7 +60,7 @@ exclude = [
   "obj",
 ]
 
-[profile.release.package.rustc-rayon-core]
+[profile.release.package.rustc_thread_pool]
 # The rustc fork of Rayon has deadlock detection code which intermittently
 # causes overflows in the CI (see https://github.com/rust-lang/rust/issues/90227)
 # so we turn overflow checks off for now.
@@ -89,3 +89,8 @@ codegen-units = 1
 # FIXME: LTO cannot be enabled for binaries in a workspace
 # <https://github.com/rust-lang/cargo/issues/9330>
 # lto = true
+
+# If you want to use a crate with local modifications, you can set a path or git dependency here.
+# For git dependencies, also add your source to ALLOWED_SOURCES in src/tools/tidy/src/extdeps.rs.
+#[patch.crates-io]
+

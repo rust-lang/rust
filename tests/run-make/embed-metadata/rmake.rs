@@ -1,5 +1,6 @@
-//@ needs-target-std
-//
+//@ ignore-cross-compile
+//@ needs-crate-type: dylib
+
 // Tests the -Zembed-metadata compiler flag.
 // Tracking issue: https://github.com/rust-lang/rust/issues/139165
 

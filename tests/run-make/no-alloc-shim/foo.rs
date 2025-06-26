@@ -12,7 +12,13 @@ fn panic_handler(_: &core::panic::PanicInfo) -> ! {
 }
 
 #[no_mangle]
-extern "C" fn rust_eh_personality() {
+extern "C" fn rust_eh_personality(
+    _version: i32,
+    _actions: i32,
+    _exception_class: u64,
+    _exception_object: *mut (),
+    _context: *mut (),
+) -> i32 {
     loop {}
 }
 

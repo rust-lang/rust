@@ -877,12 +877,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if let Some(fn_val) = self.get_fn_alloc(id) {
             let align = match fn_val {
                 FnVal::Instance(instance) => {
-                    // Function alignment can be set globally with the `-Zmin-function-alignment=<n>` flag;
-                    // the alignment from a `#[repr(align(<n>))]` is used if it specifies a higher alignment.
-                    let fn_align = self.tcx.codegen_fn_attrs(instance.def_id()).alignment;
-                    let global_align = self.tcx.sess.opts.unstable_opts.min_function_alignment;
-
-                    Ord::max(global_align, fn_align).unwrap_or(Align::ONE)
+                    self.tcx.codegen_fn_attrs(instance.def_id()).alignment.unwrap_or(Align::ONE)
                 }
                 // Machine-specific extra functions currently do not support alignment restrictions.
                 FnVal::Other(_) => Align::ONE,
@@ -1412,8 +1407,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let src_alloc = self.get_alloc_raw(src_alloc_id)?;
         let src_range = alloc_range(src_offset, size);
         assert!(!self.memory.validation_in_progress.get(), "we can't be copying during validation");
-        // For the overlapping case, it is crucial that we trigger the read hook
+
+        // Trigger read hooks.
+        // For the overlapping case, it is crucial that we trigger the read hooks
         // before the write hook -- the aliasing model cares about the order.
+        if let Ok((alloc_id, ..)) = self.ptr_try_get_alloc_id(src, size.bytes() as i64) {
+            M::before_alloc_read(self, alloc_id)?;
+        }
         M::before_memory_read(
             tcx,
             &self.machine,

@@ -127,6 +127,7 @@ pub(crate) enum AssocItemNotFoundSugg<'a> {
     SimilarInOtherTrait {
         #[primary_span]
         span: Span,
+        trait_name: &'a str,
         assoc_kind: &'static str,
         suggested_name: Symbol,
     },
@@ -1711,4 +1712,12 @@ pub(crate) struct AbiCustomClothedFunction {
         style = "short"
     )]
     pub naked_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_async_drop_without_sync_drop)]
+#[help]
+pub(crate) struct AsyncDropWithoutSyncDrop {
+    #[primary_span]
+    pub span: Span,
 }

@@ -12,7 +12,7 @@ LL |     ( $( any_token $field_rust_type:spec )* ) => {};
    |                                    +++++
 
 error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:10:7
+  --> $DIR/macro-missing-fragment.rs:9:7
    |
 LL |     ( $name ) => {};
    |       ^^^^^
@@ -25,7 +25,7 @@ LL |     ( $name:spec ) => {};
    |            +++++
 
 error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:14:7
+  --> $DIR/macro-missing-fragment.rs:13:7
    |
 LL |     ( $name ) => {};
    |       ^^^^^
@@ -37,11 +37,5 @@ help: try adding a specifier here
 LL |     ( $name:spec ) => {};
    |            +++++
 
-error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:4:20
-   |
-LL |     ( $( any_token $field_rust_type )* ) => {};
-   |                    ^^^^^^^^^^^^^^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

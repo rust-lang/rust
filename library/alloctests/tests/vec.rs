@@ -1,6 +1,3 @@
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#![allow(static_mut_refs)]
-
 use core::alloc::{Allocator, Layout};
 use core::num::NonZero;
 use core::ptr::NonNull;
@@ -19,6 +16,8 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::vec::{Drain, IntoIter};
+
+use crate::testing::macros::struct_with_counted_drop;
 
 struct DropCounter<'a> {
     count: &'a mut u32,
@@ -548,32 +547,25 @@ fn test_cmp() {
 
 #[test]
 fn test_vec_truncate_drop() {
-    static mut DROPS: u32 = 0;
-    struct Elem(#[allow(dead_code)] i32);
-    impl Drop for Elem {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-        }
-    }
+    struct_with_counted_drop!(Elem(i32), DROPS);
 
     let mut v = vec![Elem(1), Elem(2), Elem(3), Elem(4), Elem(5)];
-    assert_eq!(unsafe { DROPS }, 0);
+
+    assert_eq!(DROPS.get(), 0);
     v.truncate(3);
-    assert_eq!(unsafe { DROPS }, 2);
+    assert_eq!(DROPS.get(), 2);
     v.truncate(0);
-    assert_eq!(unsafe { DROPS }, 5);
+    assert_eq!(DROPS.get(), 5);
 }
 
 #[test]
 #[should_panic]
 fn test_vec_truncate_fail() {
     struct BadElem(i32);
+
     impl Drop for BadElem {
         fn drop(&mut self) {
-            let BadElem(ref mut x) = *self;
-            if *x == 0xbadbeef {
+            if let BadElem(0xbadbeef) = self {
                 panic!("BadElem panic: 0xbadbeef")
             }
         }
@@ -812,22 +804,7 @@ fn test_drain_end_overflow() {
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_drain_leak() {
-    static mut DROPS: i32 = 0;
-
-    #[derive(Debug, PartialEq)]
-    struct D(u32, bool);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-
-            if self.1 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
+    struct_with_counted_drop!(D(u32, bool), DROPS => |this: &D| if this.1 { panic!("panic in `drop`"); });
 
     let mut v = vec![
         D(0, false),
@@ -844,7 +821,7 @@ fn test_drain_leak() {
     }))
     .ok();
 
-    assert_eq!(unsafe { DROPS }, 4);
+    assert_eq!(DROPS.get(), 4);
     assert_eq!(v, vec![D(0, false), D(1, false), D(6, false),]);
 }
 
@@ -1057,27 +1034,13 @@ fn test_into_iter_clone() {
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_into_iter_leak() {
-    static mut DROPS: i32 = 0;
-
-    struct D(bool);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-
-            if self.0 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
+    struct_with_counted_drop!(D(bool), DROPS => |this: &D| if this.0 { panic!("panic in `drop`"); });
 
     let v = vec![D(false), D(true), D(false)];
 
     catch_unwind(move || drop(v.into_iter())).ok();
 
-    assert_eq!(unsafe { DROPS }, 3);
+    assert_eq!(DROPS.get(), 3);
 }
 
 #[test]
@@ -1274,55 +1237,31 @@ fn test_from_iter_specialization_panic_during_iteration_drops() {
 
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#[allow(static_mut_refs)]
 fn test_from_iter_specialization_panic_during_drop_doesnt_leak() {
-    static mut DROP_COUNTER_OLD: [usize; 5] = [0; 5];
-    static mut DROP_COUNTER_NEW: [usize; 2] = [0; 2];
-
-    #[derive(Debug)]
-    struct Old(usize);
-
-    impl Drop for Old {
-        fn drop(&mut self) {
-            unsafe {
-                DROP_COUNTER_OLD[self.0] += 1;
+    struct_with_counted_drop!(
+        Old(usize), DROP_COUNTER_OLD[|this: &Old| this.0, usize] =>
+            |this: &Old| {
+                if this.0 == 3 { panic!(); } println!("Dropped Old: {}", this.0)
             }
-
-            if self.0 == 3 {
-                panic!();
-            }
-
-            println!("Dropped Old: {}", self.0);
-        }
-    }
-
-    #[derive(Debug)]
-    struct New(usize);
-
-    impl Drop for New {
-        fn drop(&mut self) {
-            unsafe {
-                DROP_COUNTER_NEW[self.0] += 1;
-            }
-
-            println!("Dropped New: {}", self.0);
-        }
-    }
+    );
+    struct_with_counted_drop!(
+        New(usize), DROP_COUNTER_NEW[|this: &New| this.0, usize] =>
+            |this: &New| println!("Dropped New: {}", this.0)
+    );
 
     let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
         let v = vec![Old(0), Old(1), Old(2), Old(3), Old(4)];
         let _ = v.into_iter().map(|x| New(x.0)).take(2).collect::<Vec<_>>();
     }));
 
-    assert_eq!(unsafe { DROP_COUNTER_OLD[0] }, 1);
-    assert_eq!(unsafe { DROP_COUNTER_OLD[1] }, 1);
-    assert_eq!(unsafe { DROP_COUNTER_OLD[2] }, 1);
-    assert_eq!(unsafe { DROP_COUNTER_OLD[3] }, 1);
-    assert_eq!(unsafe { DROP_COUNTER_OLD[4] }, 1);
+    DROP_COUNTER_OLD.with_borrow(|c| assert_eq!(c.get(&0), Some(&1)));
+    DROP_COUNTER_OLD.with_borrow(|c| assert_eq!(c.get(&1), Some(&1)));
+    DROP_COUNTER_OLD.with_borrow(|c| assert_eq!(c.get(&2), Some(&1)));
+    DROP_COUNTER_OLD.with_borrow(|c| assert_eq!(c.get(&3), Some(&1)));
+    DROP_COUNTER_OLD.with_borrow(|c| assert_eq!(c.get(&4), Some(&1)));
 
-    assert_eq!(unsafe { DROP_COUNTER_NEW[0] }, 1);
-    assert_eq!(unsafe { DROP_COUNTER_NEW[1] }, 1);
+    DROP_COUNTER_NEW.with_borrow(|c| assert_eq!(c.get(&0), Some(&1)));
+    DROP_COUNTER_NEW.with_borrow(|c| assert_eq!(c.get(&1), Some(&1)));
 }
 
 // regression test for issue #85322. Peekable previously implemented InPlaceIterable,

@@ -83,20 +83,24 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 
 use std::mem;
 
+use interpret::ErrorHandled;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
-use rustc_middle::mir::*;
-use rustc_middle::thir::{ExprId, LintLevel};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::mir::{self, *};
+use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind, LintLevel};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
 use rustc_middle::{bug, span_bug};
+use rustc_pattern_analysis::rustc::RustcPatCtxt;
 use rustc_session::lint::Level;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
+use super::matches::BuiltMatchTree;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
+use crate::errors::{ConstContinueBadConst, ConstContinueUnknownJumpTarget};
 
 #[derive(Debug)]
 pub(crate) struct Scopes<'tcx> {
@@ -104,6 +108,8 @@ pub(crate) struct Scopes<'tcx> {
 
     /// The current set of breakable scopes. See module comment for more details.
     breakable_scopes: Vec<BreakableScope<'tcx>>,
+
+    const_continuable_scopes: Vec<ConstContinuableScope<'tcx>>,
 
     /// The scope of the innermost if-then currently being lowered.
     if_then_scope: Option<IfThenScope>,
@@ -172,6 +178,20 @@ struct BreakableScope<'tcx> {
     break_drops: DropTree,
     /// Drops that happen on the `continue` path.
     continue_drops: Option<DropTree>,
+}
+
+#[derive(Debug)]
+struct ConstContinuableScope<'tcx> {
+    /// The scope for the `#[loop_match]` which its `#[const_continue]`s will jump to.
+    region_scope: region::Scope,
+    /// The place of the state of a `#[loop_match]`, which a `#[const_continue]` must update.
+    state_place: Place<'tcx>,
+
+    arms: Box<[ArmId]>,
+    built_match_tree: BuiltMatchTree<'tcx>,
+
+    /// Drops that happen on a `#[const_continue]`
+    const_continue_drops: DropTree,
 }
 
 #[derive(Debug)]
@@ -461,6 +481,7 @@ impl<'tcx> Scopes<'tcx> {
         Self {
             scopes: Vec::new(),
             breakable_scopes: Vec::new(),
+            const_continuable_scopes: Vec::new(),
             if_then_scope: None,
             unwind_drops: DropTree::new(),
             coroutine_drops: DropTree::new(),
@@ -535,6 +556,59 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (Some(block), None) | (None, Some(block)) => block,
             (None, None) => self.cfg.start_new_block().unit(),
             (Some(normal_block), Some(exit_block)) => {
+                let target = self.cfg.start_new_block();
+                let source_info = self.source_info(span);
+                self.cfg.terminate(
+                    normal_block.into_block(),
+                    source_info,
+                    TerminatorKind::Goto { target },
+                );
+                self.cfg.terminate(
+                    exit_block.into_block(),
+                    source_info,
+                    TerminatorKind::Goto { target },
+                );
+                target.unit()
+            }
+        }
+    }
+
+    /// Start a const-continuable scope, which tracks where `#[const_continue] break` should
+    /// branch to.
+    pub(crate) fn in_const_continuable_scope<F>(
+        &mut self,
+        arms: Box<[ArmId]>,
+        built_match_tree: BuiltMatchTree<'tcx>,
+        state_place: Place<'tcx>,
+        span: Span,
+        f: F,
+    ) -> BlockAnd<()>
+    where
+        F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<()>,
+    {
+        let region_scope = self.scopes.topmost();
+        let scope = ConstContinuableScope {
+            region_scope,
+            state_place,
+            const_continue_drops: DropTree::new(),
+            arms,
+            built_match_tree,
+        };
+        self.scopes.const_continuable_scopes.push(scope);
+        let normal_exit_block = f(self);
+        let const_continue_scope = self.scopes.const_continuable_scopes.pop().unwrap();
+        assert!(const_continue_scope.region_scope == region_scope);
+
+        let break_block = self.build_exit_tree(
+            const_continue_scope.const_continue_drops,
+            region_scope,
+            span,
+            None,
+        );
+
+        match (normal_exit_block, break_block) {
+            (block, None) => block,
+            (normal_block, Some(exit_block)) => {
                 let target = self.cfg.start_new_block();
                 let source_info = self.source_info(span);
                 self.cfg.terminate(
@@ -740,6 +814,190 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
 
         self.cfg.start_new_block().unit()
+    }
+
+    /// Based on `FunctionCx::eval_unevaluated_mir_constant_to_valtree`.
+    fn eval_unevaluated_mir_constant_to_valtree(
+        &self,
+        constant: ConstOperand<'tcx>,
+    ) -> Result<(ty::ValTree<'tcx>, Ty<'tcx>), interpret::ErrorHandled> {
+        assert!(!constant.const_.ty().has_param());
+        let (uv, ty) = match constant.const_ {
+            mir::Const::Unevaluated(uv, ty) => (uv.shrink(), ty),
+            mir::Const::Ty(_, c) => match c.kind() {
+                // A constant that came from a const generic but was then used as an argument to
+                // old-style simd_shuffle (passing as argument instead of as a generic param).
+                ty::ConstKind::Value(cv) => return Ok((cv.valtree, cv.ty)),
+                other => span_bug!(constant.span, "{other:#?}"),
+            },
+            mir::Const::Val(mir::ConstValue::Scalar(mir::interpret::Scalar::Int(val)), ty) => {
+                return Ok((ValTree::from_scalar_int(self.tcx, val), ty));
+            }
+            // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
+            // a constant and write that value back into `Operand`s. This could happen, but is
+            // unlikely. Also: all users of `simd_shuffle` are on unstable and already need to take
+            // a lot of care around intrinsics. For an issue to happen here, it would require a
+            // macro expanding to a `simd_shuffle` call without wrapping the constant argument in a
+            // `const {}` block, but the user pass through arbitrary expressions.
+
+            // FIXME(oli-obk): Replace the magic const generic argument of `simd_shuffle` with a
+            // real const generic, and get rid of this entire function.
+            other => span_bug!(constant.span, "{other:#?}"),
+        };
+
+        match self.tcx.const_eval_resolve_for_typeck(self.typing_env(), uv, constant.span) {
+            Ok(Ok(valtree)) => Ok((valtree, ty)),
+            Ok(Err(ty)) => span_bug!(constant.span, "could not convert {ty:?} to a valtree"),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Sets up the drops for jumping from `block` to `scope`.
+    pub(crate) fn break_const_continuable_scope(
+        &mut self,
+        mut block: BasicBlock,
+        value: ExprId,
+        scope: region::Scope,
+        source_info: SourceInfo,
+    ) -> BlockAnd<()> {
+        let span = source_info.span;
+
+        // A break can only break out of a scope, so the value should be a scope.
+        let rustc_middle::thir::ExprKind::Scope { value, .. } = self.thir[value].kind else {
+            span_bug!(span, "break value must be a scope")
+        };
+
+        let constant = match &self.thir[value].kind {
+            ExprKind::Adt(box AdtExpr { variant_index, fields, base, .. }) => {
+                assert!(matches!(base, AdtExprBase::None));
+                assert!(fields.is_empty());
+                ConstOperand {
+                    span: self.thir[value].span,
+                    user_ty: None,
+                    const_: Const::Ty(
+                        self.thir[value].ty,
+                        ty::Const::new_value(
+                            self.tcx,
+                            ValTree::from_branches(
+                                self.tcx,
+                                [ValTree::from_scalar_int(self.tcx, variant_index.as_u32().into())],
+                            ),
+                            self.thir[value].ty,
+                        ),
+                    ),
+                }
+            }
+            _ => self.as_constant(&self.thir[value]),
+        };
+
+        let break_index = self
+            .scopes
+            .const_continuable_scopes
+            .iter()
+            .rposition(|const_continuable_scope| const_continuable_scope.region_scope == scope)
+            .unwrap_or_else(|| span_bug!(span, "no enclosing const-continuable scope found"));
+
+        let scope = &self.scopes.const_continuable_scopes[break_index];
+
+        let state_decl = &self.local_decls[scope.state_place.as_local().unwrap()];
+        let state_ty = state_decl.ty;
+        let (discriminant_ty, rvalue) = match state_ty.kind() {
+            ty::Adt(adt_def, _) if adt_def.is_enum() => {
+                (state_ty.discriminant_ty(self.tcx), Rvalue::Discriminant(scope.state_place))
+            }
+            ty::Uint(_) | ty::Int(_) | ty::Float(_) | ty::Bool | ty::Char => {
+                (state_ty, Rvalue::Use(Operand::Copy(scope.state_place)))
+            }
+            _ => span_bug!(state_decl.source_info.span, "unsupported #[loop_match] state"),
+        };
+
+        // The `PatCtxt` is normally used in pattern exhaustiveness checking, but reused
+        // here because it performs normalization and const evaluation.
+        let dropless_arena = rustc_arena::DroplessArena::default();
+        let typeck_results = self.tcx.typeck(self.def_id);
+        let cx = RustcPatCtxt {
+            tcx: self.tcx,
+            typeck_results,
+            module: self.tcx.parent_module(self.hir_id).to_def_id(),
+            // FIXME(#132279): We're in a body, should handle opaques.
+            typing_env: rustc_middle::ty::TypingEnv::non_body_analysis(self.tcx, self.def_id),
+            dropless_arena: &dropless_arena,
+            match_lint_level: self.hir_id,
+            whole_match_span: Some(rustc_span::Span::default()),
+            scrut_span: rustc_span::Span::default(),
+            refutable: true,
+            known_valid_scrutinee: true,
+        };
+
+        let valtree = match self.eval_unevaluated_mir_constant_to_valtree(constant) {
+            Ok((valtree, ty)) => {
+                // Defensively check that the type is monomorphic.
+                assert!(!ty.has_param());
+
+                valtree
+            }
+            Err(ErrorHandled::Reported(..)) => return self.cfg.start_new_block().unit(),
+            Err(ErrorHandled::TooGeneric(_)) => {
+                self.tcx.dcx().emit_fatal(ConstContinueBadConst { span: constant.span });
+            }
+        };
+
+        let Some(real_target) =
+            self.static_pattern_match(&cx, valtree, &*scope.arms, &scope.built_match_tree)
+        else {
+            self.tcx.dcx().emit_fatal(ConstContinueUnknownJumpTarget { span })
+        };
+
+        self.block_context.push(BlockFrame::SubExpr);
+        let state_place = scope.state_place;
+        block = self.expr_into_dest(state_place, block, value).into_block();
+        self.block_context.pop();
+
+        let discr = self.temp(discriminant_ty, source_info.span);
+        let scope_index = self
+            .scopes
+            .scope_index(self.scopes.const_continuable_scopes[break_index].region_scope, span);
+        let scope = &mut self.scopes.const_continuable_scopes[break_index];
+        self.cfg.push_assign(block, source_info, discr, rvalue);
+        let drop_and_continue_block = self.cfg.start_new_block();
+        let imaginary_target = self.cfg.start_new_block();
+        self.cfg.terminate(
+            block,
+            source_info,
+            TerminatorKind::FalseEdge { real_target: drop_and_continue_block, imaginary_target },
+        );
+
+        let drops = &mut scope.const_continue_drops;
+
+        let drop_idx = self.scopes.scopes[scope_index + 1..]
+            .iter()
+            .flat_map(|scope| &scope.drops)
+            .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
+
+        drops.add_entry_point(imaginary_target, drop_idx);
+
+        self.cfg.terminate(imaginary_target, source_info, TerminatorKind::UnwindResume);
+
+        let region_scope = scope.region_scope;
+        let scope_index = self.scopes.scope_index(region_scope, span);
+        let mut drops = DropTree::new();
+
+        let drop_idx = self.scopes.scopes[scope_index + 1..]
+            .iter()
+            .flat_map(|scope| &scope.drops)
+            .fold(ROOT_NODE, |drop_idx, &drop| drops.add_drop(drop, drop_idx));
+
+        drops.add_entry_point(drop_and_continue_block, drop_idx);
+
+        // `build_drop_trees` doesn't have access to our source_info, so we
+        // create a dummy terminator now. `TerminatorKind::UnwindResume` is used
+        // because MIR type checking will panic if it hasn't been overwritten.
+        // (See `<ExitScopes as DropTreeBuilder>::link_entry_point`.)
+        self.cfg.terminate(drop_and_continue_block, source_info, TerminatorKind::UnwindResume);
+
+        self.build_exit_tree(drops, region_scope, span, Some(real_target));
+
+        return self.cfg.start_new_block().unit();
     }
 
     /// Sets up the drops for breaking from `block` due to an `if` condition

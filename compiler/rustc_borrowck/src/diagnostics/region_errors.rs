@@ -664,14 +664,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
             self.body,
-            &self.local_names,
+            &self.local_names(),
             &self.upvars,
             errci.fr,
         );
         let outlived_fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
             self.body,
-            &self.local_names,
+            &self.local_names(),
             &self.upvars,
             errci.outlived_fr,
         );

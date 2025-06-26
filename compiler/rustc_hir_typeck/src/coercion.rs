@@ -46,7 +46,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{
-    IfExpressionCause, MatchExpressionArmCause, Obligation, PredicateObligation,
+    IfExpressionCause, ImplSource, MatchExpressionArmCause, Obligation, PredicateObligation,
     PredicateObligations, SelectionError,
 };
 use rustc_middle::span_bug;
@@ -704,6 +704,19 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // be silent, as it causes a type mismatch later.
                 }
 
+                Ok(Some(ImplSource::UserDefined(impl_source))) => {
+                    queue.extend(impl_source.nested);
+                    // Certain incoherent `CoerceUnsized` implementations may cause ICEs,
+                    // so check the impl's validity. Taint the body so that we don't try
+                    // to evaluate these invalid coercions in CTFE. We only need to do this
+                    // for local impls, since upstream impls should be valid.
+                    if impl_source.impl_def_id.is_local()
+                        && let Err(guar) =
+                            self.tcx.ensure_ok().coerce_unsized_info(impl_source.impl_def_id)
+                    {
+                        self.fcx.set_tainted_by_errors(guar);
+                    }
+                }
                 Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
             }
         }

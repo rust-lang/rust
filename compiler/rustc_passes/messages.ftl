@@ -13,6 +13,10 @@ passes_abi_ne =
 passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
+passes_align_should_be_repr_align =
+    `#[align(...)]` is not supported on {$item} items
+    .suggestion = use `#[repr(align(...))]` instead
+
 passes_allow_incoherent_impl =
     `rustc_allow_incoherent_impl` attribute should be applied to impl items
     .label = the only currently supported targets are inherent methods
@@ -28,10 +32,6 @@ passes_attr_application_enum =
 passes_attr_application_struct =
     attribute should be applied to a struct
     .label = not a struct
-
-passes_attr_application_struct_enum_function_method_union =
-    attribute should be applied to a struct, enum, function, associated function, or union
-    .label = not a struct, enum, function, associated function, or union
 
 passes_attr_application_struct_enum_union =
     attribute should be applied to a struct, enum, or union
@@ -82,10 +82,13 @@ passes_collapse_debuginfo =
 passes_confusables = attribute should be applied to an inherent method
     .label = not an inherent method
 
+passes_const_continue_attr =
+    `#[const_continue]` should be applied to a break expression
+    .label = not a break expression
+
 passes_const_stable_not_stable =
     attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
     .label = attribute specified here
-
 
 passes_coroutine_on_non_closure =
     attribute should be applied to closures
@@ -291,7 +294,7 @@ passes_duplicate_lang_item_crate_depends =
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
 passes_enum_variant_same_name =
-    it is impossible to refer to the {$descr} `{$dead_name}` because it is shadowed by this enum variant with the same name
+    it is impossible to refer to the {$dead_descr} `{$dead_name}` because it is shadowed by this enum variant with the same name
 
 passes_export_name =
     attribute should be applied to a free function, impl method or static
@@ -446,6 +449,10 @@ passes_linkage =
     attribute should be applied to a function or static
     .label = not a function definition or static
 
+passes_loop_match_attr =
+    `#[loop_match]` should be applied to a loop
+    .label = not a loop
+
 passes_macro_export =
     `#[macro_export]` only has an effect on macro definitions
 
@@ -490,11 +497,6 @@ passes_must_not_suspend =
 
 passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
-
-passes_naked_functions_incompatible_attribute =
-    attribute incompatible with `#[unsafe(naked)]`
-    .label = the `{$attr}` attribute is incompatible with `#[unsafe(naked)]`
-    .naked_attribute = function marked with `#[unsafe(naked)]` here
 
 passes_no_link =
     attribute should be applied to an `extern crate` item
@@ -583,12 +585,13 @@ passes_remove_fields =
      *[other] fields
     }
 
-passes_repr_align_function =
-    `repr(align)` attributes on functions are unstable
-
 passes_repr_align_greater_than_target_max =
     alignment must not be greater than `isize::MAX` bytes
     .note = `isize::MAX` is {$size} for the current target
+
+passes_repr_align_should_be_align =
+    `#[repr(align(...))]` is not supported on {$item} items
+    .help = use `#[align(...)]` instead
 
 passes_repr_conflicting =
     conflicting representation hints

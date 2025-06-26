@@ -1,5 +1,7 @@
-//@ needs-target-std
-//
+//@ ignore-cross-compile
+//@ needs-dynamic-linking
+//@ needs-crate-type: dylib
+
 // This test makes sure all generic instances get re-exported from Rust dylibs for use by
 // `-Zshare-generics`. There are two rlibs (`instance_provider_a` and `instance_provider_b`)
 // which both provide an instance of `Cell<i32>::set`. There is `instance_user_dylib` which is

@@ -134,6 +134,13 @@ pub fn name_ref(name_ref: &str) -> ast::NameRef {
         }
     }
 }
+pub fn name_ref_self_ty() -> ast::NameRef {
+    quote! {
+        NameRef {
+            [Self]
+        }
+    }
+}
 fn raw_ident_esc(ident: &str) -> &'static str {
     if is_raw_identifier(ident, Edition::CURRENT) { "r#" } else { "" }
 }

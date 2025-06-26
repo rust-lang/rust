@@ -13,21 +13,21 @@ use syntax::{
 use crate::RootDatabase;
 
 #[derive(Debug)]
-pub struct ActiveParameter {
-    pub ty: Type,
+pub struct ActiveParameter<'db> {
+    pub ty: Type<'db>,
     pub src: Option<InFile<Either<ast::SelfParam, ast::Param>>>,
 }
 
-impl ActiveParameter {
+impl<'db> ActiveParameter<'db> {
     /// Returns information about the call argument this token is part of.
-    pub fn at_token(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> Option<Self> {
+    pub fn at_token(sema: &Semantics<'db, RootDatabase>, token: SyntaxToken) -> Option<Self> {
         let (signature, active_parameter) = callable_for_token(sema, token)?;
         Self::from_signature_and_active_parameter(sema, signature, active_parameter)
     }
 
     /// Returns information about the call argument this token is part of.
     pub fn at_arg(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &'db Semantics<'db, RootDatabase>,
         list: ast::ArgList,
         at: TextSize,
     ) -> Option<Self> {
@@ -36,8 +36,8 @@ impl ActiveParameter {
     }
 
     fn from_signature_and_active_parameter(
-        sema: &Semantics<'_, RootDatabase>,
-        signature: hir::Callable,
+        sema: &Semantics<'db, RootDatabase>,
+        signature: hir::Callable<'db>,
         active_parameter: Option<usize>,
     ) -> Option<Self> {
         let idx = active_parameter?;
@@ -63,10 +63,10 @@ impl ActiveParameter {
 }
 
 /// Returns a [`hir::Callable`] this token is a part of and its argument index of said callable.
-pub fn callable_for_token(
-    sema: &Semantics<'_, RootDatabase>,
+pub fn callable_for_token<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     token: SyntaxToken,
-) -> Option<(hir::Callable, Option<usize>)> {
+) -> Option<(hir::Callable<'db>, Option<usize>)> {
     let offset = token.text_range().start();
     // Find the calling expression and its NameRef
     let parent = token.parent()?;
@@ -79,21 +79,21 @@ pub fn callable_for_token(
 }
 
 /// Returns a [`hir::Callable`] this token is a part of and its argument index of said callable.
-pub fn callable_for_arg_list(
-    sema: &Semantics<'_, RootDatabase>,
+pub fn callable_for_arg_list<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     arg_list: ast::ArgList,
     at: TextSize,
-) -> Option<(hir::Callable, Option<usize>)> {
+) -> Option<(hir::Callable<'db>, Option<usize>)> {
     debug_assert!(arg_list.syntax().text_range().contains(at));
     let callable = arg_list.syntax().parent().and_then(ast::CallableExpr::cast)?;
     callable_for_node(sema, &callable, at)
 }
 
-pub fn callable_for_node(
-    sema: &Semantics<'_, RootDatabase>,
+pub fn callable_for_node<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     calling_node: &ast::CallableExpr,
     offset: TextSize,
-) -> Option<(hir::Callable, Option<usize>)> {
+) -> Option<(hir::Callable<'db>, Option<usize>)> {
     let callable = match calling_node {
         ast::CallableExpr::Call(call) => sema.resolve_expr_as_callable(&call.expr()?),
         ast::CallableExpr::MethodCall(call) => sema.resolve_method_call_as_callable(call),

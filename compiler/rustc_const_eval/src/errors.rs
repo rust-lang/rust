@@ -136,9 +136,7 @@ pub(crate) struct UnstableIntrinsic {
         code = "#![feature({feature})]\n",
         applicability = "machine-applicable"
     )]
-    pub suggestion: Option<Span>,
-    #[help(const_eval_unstable_intrinsic_suggestion)]
-    pub help: bool,
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
@@ -293,6 +291,9 @@ impl Subdiagnostic for FrameNote {
             span.push_span_label(self.span, fluent::const_eval_frame_note_last);
         }
         let msg = diag.eagerly_translate(fluent::const_eval_frame_note);
+        diag.remove_arg("times");
+        diag.remove_arg("where_");
+        diag.remove_arg("instance");
         diag.span_note(span, msg);
     }
 }

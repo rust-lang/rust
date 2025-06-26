@@ -463,12 +463,12 @@ fn oneshot_single_thread_recv_timeout() {
 fn stress_recv_timeout_two_threads() {
     let (tx, rx) = channel();
     let stress = stress_factor() + 50;
-    let timeout = Duration::from_millis(5);
+    let timeout = Duration::from_millis(10);
 
     thread::spawn(move || {
         for i in 0..stress {
             if i % 2 == 0 {
-                thread::sleep(timeout * 2);
+                thread::sleep(timeout * 4);
             }
             tx.send(1usize).unwrap();
         }

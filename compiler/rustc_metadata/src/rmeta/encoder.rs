@@ -5,7 +5,7 @@ use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use rustc_ast::attr::AttributeExt;
+use rustc_attr_data_structures::EncodeCrossCrate;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{join, par_for_each_in};
@@ -762,6 +762,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         assert_eq!(total_bytes, computed_total_bytes);
 
         if tcx.sess.opts.unstable_opts.meta_stats {
+            use std::fmt::Write;
+
             self.opaque.flush();
 
             // Rewind and re-read all the metadata to count the zero bytes we wrote.
@@ -777,31 +779,44 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             assert_eq!(self.opaque.file().stream_position().unwrap(), pos_before_rewind);
 
             stats.sort_by_key(|&(_, usize)| usize);
+            stats.reverse(); // bigger items first
 
             let prefix = "meta-stats";
             let perc = |bytes| (bytes * 100) as f64 / total_bytes as f64;
 
-            eprintln!("{prefix} METADATA STATS");
-            eprintln!("{} {:<23}{:>10}", prefix, "Section", "Size");
-            eprintln!("{prefix} ----------------------------------------------------------------");
+            let section_w = 23;
+            let size_w = 10;
+            let banner_w = 64;
+
+            // We write all the text into a string and print it with a single
+            // `eprint!`. This is an attempt to minimize interleaved text if multiple
+            // rustc processes are printing macro-stats at the same time (e.g. with
+            // `RUSTFLAGS='-Zmeta-stats' cargo build`). It still doesn't guarantee
+            // non-interleaving, though.
+            let mut s = String::new();
+            _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
+            _ = writeln!(s, "{prefix} METADATA STATS: {}", tcx.crate_name(LOCAL_CRATE));
+            _ = writeln!(s, "{prefix} {:<section_w$}{:>size_w$}", "Section", "Size");
+            _ = writeln!(s, "{prefix} {}", "-".repeat(banner_w));
             for (label, size) in stats {
-                eprintln!(
-                    "{} {:<23}{:>10} ({:4.1}%)",
-                    prefix,
+                _ = writeln!(
+                    s,
+                    "{prefix} {:<section_w$}{:>size_w$} ({:4.1}%)",
                     label,
                     usize_with_underscores(size),
                     perc(size)
                 );
             }
-            eprintln!("{prefix} ----------------------------------------------------------------");
-            eprintln!(
-                "{} {:<23}{:>10} (of which {:.1}% are zero bytes)",
-                prefix,
+            _ = writeln!(s, "{prefix} {}", "-".repeat(banner_w));
+            _ = writeln!(
+                s,
+                "{prefix} {:<section_w$}{:>size_w$} (of which {:.1}% are zero bytes)",
                 "Total",
                 usize_with_underscores(total_bytes),
                 perc(zero_bytes)
             );
-            eprintln!("{prefix}");
+            _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
+            eprint!("{s}");
         }
 
         root
@@ -824,9 +839,13 @@ struct AnalyzeAttrState<'a> {
 /// visibility: this is a piece of data that can be computed once per defid, and not once per
 /// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
-fn analyze_attr(attr: &impl AttributeExt, state: &mut AnalyzeAttrState<'_>) -> bool {
+fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState<'_>) -> bool {
     let mut should_encode = false;
-    if let Some(name) = attr.name()
+    if let hir::Attribute::Parsed(p) = attr
+        && p.encode_cross_crate() == EncodeCrossCrate::No
+    {
+        // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
+    } else if let Some(name) = attr.name()
         && !rustc_feature::encode_cross_crate(name)
     {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.

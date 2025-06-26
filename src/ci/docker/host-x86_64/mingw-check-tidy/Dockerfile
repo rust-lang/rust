@@ -39,7 +39,6 @@ RUN pip3 install --no-deps --no-cache-dir --require-hashes -r /tmp/reuse-require
     && pip3 install virtualenv
 
 COPY host-x86_64/mingw-check-1/validate-toolstate.sh /scripts/
-COPY host-x86_64/mingw-check-1/validate-error-codes.sh /scripts/
 
 RUN bash -c 'npm install -g eslint@$(cat /tmp/eslint.version)'
 

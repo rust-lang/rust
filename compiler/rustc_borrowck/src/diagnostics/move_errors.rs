@@ -465,11 +465,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         if let PlaceRef { local, projection: [] } = deref_base {
             let decl = &self.body.local_decls[local];
+            let local_name = self.local_name(local).map(|sym| format!("`{sym}`"));
             if decl.is_ref_for_guard() {
                 return self
                     .cannot_move_out_of(
                         span,
-                        &format!("`{}` in pattern guard", self.local_names[local].unwrap()),
+                        &format!(
+                            "{} in pattern guard",
+                            local_name.as_deref().unwrap_or("the place")
+                        ),
                     )
                     .with_note(
                         "variables bound in patterns cannot be moved from \
@@ -825,7 +829,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             if binds_to.len() == 1 {
-                let place_desc = &format!("`{}`", self.local_names[*local].unwrap());
+                let place_desc = self.local_name(*local).map(|sym| format!("`{sym}`"));
 
                 if let Some(expr) = self.find_expr(binding_span) {
                     self.suggest_cloning(err, bind_to.ty, expr, None);
@@ -834,7 +838,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                     is_partial_move: false,
                     ty: bind_to.ty,
-                    place: place_desc,
+                    place: place_desc.as_deref().unwrap_or("the place"),
                     span: binding_span,
                 });
             }

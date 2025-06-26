@@ -16,3 +16,8 @@ pub struct SinceAndNote;
 
 #[deprecated(note = "here's why this is deprecated", since = "1.2.3")]
 pub struct FlippedOrder;
+
+pub fn f() {
+    // Attribute is ignored here (with a warning), but still preserved in HIR
+    #[deprecated] 0
+}

@@ -1,4 +1,3 @@
-#![feature(concat_idents)]
 #![allow(nonstandard_style)]
 /// Generate 250 items that all match the query, starting with the longest.
 /// Those long items should be dropped from the result set, and the short ones

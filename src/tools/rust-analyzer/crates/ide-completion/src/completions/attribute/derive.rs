@@ -13,7 +13,7 @@ use crate::{
 pub(crate) fn complete_derive_path(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
     existing_derives: &ExistingDerives,
 ) {
     let core = ctx.famous_defs().core();

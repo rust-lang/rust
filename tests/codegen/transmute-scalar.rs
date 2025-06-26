@@ -55,3 +55,48 @@ pub fn ptr_to_int(p: *mut u16) -> usize {
 pub fn int_to_ptr(i: usize) -> *mut u16 {
     unsafe { std::mem::transmute(i) }
 }
+
+// This is the one case where signedness matters to transmuting:
+// the LLVM type is `i8` here because of `repr(i8)`,
+// whereas below with the `repr(u8)` it's `i1` in LLVM instead.
+#[repr(i8)]
+pub enum FakeBoolSigned {
+    False = 0,
+    True = 1,
+}
+
+// CHECK-LABEL: define{{.*}}i8 @bool_to_fake_bool_signed(i1 zeroext %b)
+// CHECK: %_0 = zext i1 %b to i8
+// CHECK-NEXT: ret i8 %_0
+#[no_mangle]
+pub fn bool_to_fake_bool_signed(b: bool) -> FakeBoolSigned {
+    unsafe { std::mem::transmute(b) }
+}
+
+// CHECK-LABEL: define{{.*}}i1 @fake_bool_signed_to_bool(i8 %b)
+// CHECK: %_0 = trunc nuw i8 %b to i1
+// CHECK-NEXT: ret i1 %_0
+#[no_mangle]
+pub fn fake_bool_signed_to_bool(b: FakeBoolSigned) -> bool {
+    unsafe { std::mem::transmute(b) }
+}
+
+#[repr(u8)]
+pub enum FakeBoolUnsigned {
+    False = 0,
+    True = 1,
+}
+
+// CHECK-LABEL: define{{.*}}i1 @bool_to_fake_bool_unsigned(i1 zeroext %b)
+// CHECK: ret i1 %b
+#[no_mangle]
+pub fn bool_to_fake_bool_unsigned(b: bool) -> FakeBoolUnsigned {
+    unsafe { std::mem::transmute(b) }
+}
+
+// CHECK-LABEL: define{{.*}}i1 @fake_bool_unsigned_to_bool(i1 zeroext %b)
+// CHECK: ret i1 %b
+#[no_mangle]
+pub fn fake_bool_unsigned_to_bool(b: FakeBoolUnsigned) -> bool {
+    unsafe { std::mem::transmute(b) }
+}

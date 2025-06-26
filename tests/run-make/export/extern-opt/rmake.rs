@@ -1,4 +1,8 @@
-//@ needs-target-std
+//@ ignore-cross-compile
+
+// NOTE: `sdylib`'s platform support is basically that of `dylib`.
+//@ needs-crate-type: dylib
+
 use run_make_support::{dynamic_lib_name, rustc};
 
 fn main() {
