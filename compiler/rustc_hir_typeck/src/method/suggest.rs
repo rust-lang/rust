@@ -3477,9 +3477,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         item_name: Ident,
-        valid_out_of_scope_traits: Vec<DefId>,
+        mut valid_out_of_scope_traits: Vec<DefId>,
         explain: bool,
     ) -> bool {
+        valid_out_of_scope_traits.retain(|id| !self.tcx.is_private_dep(id.krate));
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
             candidates.sort_by_key(|id| self.tcx.def_path_str(id));

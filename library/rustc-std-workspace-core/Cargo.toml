@@ -1,3 +1,5 @@
+cargo-features = ["public-dependency"]
+
 [package]
 name = "rustc-std-workspace-core"
 version = "1.99.0"
