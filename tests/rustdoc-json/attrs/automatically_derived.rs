@@ -9,5 +9,6 @@ impl Default for Manual {
     }
 }
 
-//@ is '$.index[?(@.inner.impl.for.resolved_path.path == "Derive" && @.inner.impl.trait.path == "Default")].attrs' '["#[automatically_derived]"]'
-//@ is '$.index[?(@.inner.impl.for.resolved_path.path == "Manual" && @.inner.impl.trait.path == "Default")].attrs' '[]'
+//@ arg default [.index[] | select(.inner.impl.trait?.path == "Default")]
+//@ eq $default[] | select(.inner.impl.for?.resolved_path?.path == "Derive").attrs | ., ["#[automatically_derived]"]
+//@ eq $default[] | select(.inner.impl.for?.resolved_path?.path == "Manual").attrs | ., []
