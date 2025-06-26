@@ -452,7 +452,7 @@ impl WorkspaceBuildScripts {
         // available in current toolchain's cargo, use it to build compile time deps only.
         const COMP_TIME_DEPS_MIN_TOOLCHAIN_VERSION: semver::Version = semver::Version {
             major: 1,
-            minor: 90,
+            minor: 89,
             patch: 0,
             pre: semver::Prerelease::EMPTY,
             build: semver::BuildMetadata::EMPTY,
