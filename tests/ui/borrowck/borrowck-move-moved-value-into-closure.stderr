@@ -12,6 +12,12 @@ LL |     call_f(move|| { *t + 1 });
    |            ^^^^^^   -- use occurs due to use in closure
    |            |
    |            value used here after move
+   |
+help: consider cloning the value before moving it into the closure
+   |
+LL ~     let value = t.clone();
+LL ~     call_f(move|| { value + 1 });
+   |
 
 error: aborting due to 1 previous error
 
