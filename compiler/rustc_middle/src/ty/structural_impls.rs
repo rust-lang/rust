@@ -230,9 +230,9 @@ TrivialLiftImpls! {
     usize,
     u64,
     // tidy-alphabetical-start
+    crate::mir::Promoted,
     crate::mir::interpret::AllocId,
     crate::mir::interpret::Scalar,
-    crate::mir::Promoted,
     rustc_abi::ExternAbi,
     rustc_abi::Size,
     rustc_hir::Safety,
@@ -267,9 +267,6 @@ TrivialTypeTraversalImpls! {
     crate::mir::SwitchTargets,
     crate::traits::IsConstable,
     crate::traits::OverflowError,
-    crate::ty::abstract_const::NotConstEvaluatable,
-    crate::ty::adjustment::AutoBorrowMutability,
-    crate::ty::adjustment::PointerCoercion,
     crate::ty::AdtKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
@@ -281,15 +278,18 @@ TrivialTypeTraversalImpls! {
     crate::ty::Placeholder<ty::BoundVar>,
     crate::ty::UserTypeAnnotationIndex,
     crate::ty::ValTree<'tcx>,
+    crate::ty::abstract_const::NotConstEvaluatable,
+    crate::ty::adjustment::AutoBorrowMutability,
+    crate::ty::adjustment::PointerCoercion,
     rustc_abi::FieldIdx,
     rustc_abi::VariantIdx,
     rustc_ast::InlineAsmOptions,
     rustc_ast::InlineAsmTemplatePiece,
     rustc_hir::CoroutineKind,
-    rustc_hir::def_id::LocalDefId,
     rustc_hir::HirId,
     rustc_hir::MatchSource,
     rustc_hir::RangeEnd,
+    rustc_hir::def_id::LocalDefId,
     rustc_span::Ident,
     rustc_span::Span,
     rustc_span::Symbol,
@@ -303,9 +303,9 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     // tidy-alphabetical-start
-    crate::ty::instance::ReifyReason,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
+    crate::ty::instance::ReifyReason,
     rustc_hir::def_id::DefId,
     // tidy-alphabetical-end
 }

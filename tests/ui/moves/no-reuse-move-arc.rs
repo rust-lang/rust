@@ -1,3 +1,4 @@
+//@ run-rustfix
 use std::sync::Arc;
 use std::thread;
 
