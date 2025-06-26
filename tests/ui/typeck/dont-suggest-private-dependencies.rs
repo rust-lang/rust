@@ -5,6 +5,11 @@
 //@ forbid-output: compiler_builtins
 //@ forbid-output: object
 
+// Check a custom trait to withstand changes in above crates
+//@ aux-crate:public_dep=public-dep.rs
+//@ compile-flags: -Zunstable-options
+//@ forbid-output: private_dep
+
 struct VecReader(Vec<u8>);
 
 impl std::io::Read for VecReader {
@@ -14,7 +19,12 @@ impl std::io::Read for VecReader {
     }
 }
 
+extern crate public_dep;
+use public_dep::B;
+
 fn main() {
     let _ = u8::cast_from_lossy(9);
     //~^ ERROR no function or associated item named `cast_from_lossy` found for type `u8`
+    let _ = B::foo();
+    //~^ ERROR no function or associated item named `foo` found for struct `B`
 }
