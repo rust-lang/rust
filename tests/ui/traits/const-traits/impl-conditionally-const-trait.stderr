@@ -1,5 +1,5 @@
 error: expected identifier, found `]`
-  --> $DIR/impl-tilde-const-trait.rs:6:12
+  --> $DIR/impl-conditionally-const-trait.rs:9:12
    |
 LL | impl [const] T for S {}
    |            ^ expected identifier

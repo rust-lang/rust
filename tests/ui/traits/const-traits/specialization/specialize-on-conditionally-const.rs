@@ -1,4 +1,5 @@
 // Tests that `[const]` trait bounds can be used to specialize const trait impls.
+// cc #95186
 
 //@ check-pass
 

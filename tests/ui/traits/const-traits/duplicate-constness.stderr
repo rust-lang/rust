@@ -1,5 +1,5 @@
 error: expected identifier, found `]`
-  --> $DIR/tilde-twice.rs:5:27
+  --> $DIR/duplicate-constness.rs:5:27
    |
 LL | struct S<T: [const] [const] Tr>;
    |                           ^ expected identifier
