@@ -321,8 +321,10 @@ impl Step for CodegenBackend {
     }
 }
 
+/// Checks Rust analyzer that links to .rmetas from a checked rustc.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RustAnalyzer {
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -343,18 +345,17 @@ impl Step for RustAnalyzer {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustAnalyzer { target: run.target });
+        let build_compiler = prepare_compiler_for_tool_rustc(run.builder, run.target);
+        run.builder.ensure(RustAnalyzer { build_compiler, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
+        let build_compiler = self.build_compiler;
         let target = self.target;
-
-        builder.ensure(Rustc::new(target, builder));
 
         let mut cargo = prepare_tool_cargo(
             builder,
-            compiler,
+            build_compiler,
             Mode::ToolRustc,
             target,
             builder.kind,
@@ -371,11 +372,15 @@ impl Step for RustAnalyzer {
 
         // Cargo's output path in a given stage, compiled by a particular
         // compiler for the specified target.
-        let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+        let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::ToolRustc, target))
             .with_prefix("rust-analyzer-check");
 
         let _guard = builder.msg_check("rust-analyzer artifacts", target, None);
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("rust-analyzer", self.target).built_by(self.build_compiler))
     }
 }
 
