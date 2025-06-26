@@ -32,6 +32,10 @@ order to get feedback.
 
 Delete this line and everything above before opening your PR.
 
+Note that we are currently not taking in new PRs that add new lints. We are in a
+feature freeze. Check out the book for more information. If you open a
+feature-adding pull request, its review will be delayed.
+
 ---
 
 *Please write a short comment explaining your change (or "none" for internal only changes)*

@@ -543,3 +543,21 @@ mod issue_13073 {
         //~^ redundant_closure
     }
 }
+
+fn issue_14789() {
+    _ = Some(1u8).map(
+        #[expect(clippy::redundant_closure)]
+        |a| foo(a),
+    );
+
+    _ = Some("foo").map(
+        #[expect(clippy::redundant_closure_for_method_calls)]
+        |s| s.to_owned(),
+    );
+
+    let _: Vec<u8> = None.map_or_else(
+        #[expect(clippy::redundant_closure)]
+        || vec![],
+        std::convert::identity,
+    );
+}

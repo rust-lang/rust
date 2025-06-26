@@ -179,7 +179,7 @@ error: inequality checks against true can be replaced by a negation
   --> tests/ui/nonminimal_bool.rs:186:8
    |
 LL |     if !b != true {}
-   |        ^^^^^^^^^^ help: try simplifying it as shown: `!(!b)`
+   |        ^^^^^^^^^^ help: try simplifying it as shown: `!!b`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:189:8
@@ -209,7 +209,7 @@ error: inequality checks against true can be replaced by a negation
   --> tests/ui/nonminimal_bool.rs:193:8
    |
 LL |     if true != !b {}
-   |        ^^^^^^^^^^ help: try simplifying it as shown: `!(!b)`
+   |        ^^^^^^^^^^ help: try simplifying it as shown: `!!b`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:196:8

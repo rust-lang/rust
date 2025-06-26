@@ -1,4 +1,3 @@
-
 use clippy_config::Conf;
 use clippy_config::types::{DisallowedPath, create_disallowed_map};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
@@ -40,6 +39,9 @@ declare_clippy_lint! {
     ///     # When using an inline table, can add a `reason` for why the macro
     ///     # is disallowed.
     ///     { path = "serde::Serialize", reason = "no serializing" },
+    ///     # This would normally error if the path is incorrect, but with `allow-invalid` = `true`,
+    ///     # it will be silently ignored
+    ///     { path = "std::invalid_macro", reason = "use alternative instead", allow-invalid = true }
     /// ]
     /// ```
     /// ```no_run

@@ -105,20 +105,20 @@ LL | |         .unwrap_or_default();
 error: called `.map() == Ok()`
   --> tests/ui/manual_is_variant_and.rs:108:13
    |
-LL |     let _ = Ok::<usize, ()>(2).map(|x| x % 2 == 0) == Ok(true);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `Ok::<usize, ()>(2).is_ok_and(|x| x % 2 == 0)`
+LL |     let _ = Ok::<usize, ()>(2).map(|x| x.is_multiple_of(2)) == Ok(true);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `Ok::<usize, ()>(2).is_ok_and(|x| x.is_multiple_of(2))`
 
 error: called `.map() != Ok()`
   --> tests/ui/manual_is_variant_and.rs:110:13
    |
-LL |     let _ = Ok::<usize, ()>(2).map(|x| x % 2 == 0) != Ok(true);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `!Ok::<usize, ()>(2).is_ok_and(|x| x % 2 == 0)`
+LL |     let _ = Ok::<usize, ()>(2).map(|x| x.is_multiple_of(2)) != Ok(true);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `!Ok::<usize, ()>(2).is_ok_and(|x| x.is_multiple_of(2))`
 
 error: called `.map() != Ok()`
   --> tests/ui/manual_is_variant_and.rs:112:13
    |
-LL |     let _ = Ok::<usize, ()>(2).map(|x| x % 2 == 0) != Ok(true);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `!Ok::<usize, ()>(2).is_ok_and(|x| x % 2 == 0)`
+LL |     let _ = Ok::<usize, ()>(2).map(|x| x.is_multiple_of(2)) != Ok(true);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `!Ok::<usize, ()>(2).is_ok_and(|x| x.is_multiple_of(2))`
 
 error: called `map(<f>).unwrap_or_default()` on a `Result` value
   --> tests/ui/manual_is_variant_and.rs:119:18
