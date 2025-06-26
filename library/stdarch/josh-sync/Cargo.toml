@@ -1,0 +1,11 @@
+[package]
+name = "josh-sync"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.95"
+clap = { version = "4.5.21", features = ["derive"] }
+directories = "5"
+xshell = "0.2.6"
+
+[workspace]
