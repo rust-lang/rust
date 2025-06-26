@@ -35,6 +35,7 @@ use super::{
     Machine, MemPlaceMeta, PlaceTy, Pointer, Projectable, Scalar, ValueVisitor, err_ub,
     format_interp_error,
 };
+use crate::enter_trace_span;
 
 // for the validation errors
 #[rustfmt::skip]
@@ -1401,6 +1402,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         recursive: bool,
         reset_provenance_and_padding: bool,
     ) -> InterpResult<'tcx> {
+        let _span = enter_trace_span!(
+            M,
+            "validate_operand",
+            "recursive={recursive}, reset_provenance_and_padding={reset_provenance_and_padding}, val={val:?}"
+        );
+
         // Note that we *could* actually be in CTFE here with `-Zextra-const-ub-checks`, but it's
         // still correct to not use `ctfe_mode`: that mode is for validation of the final constant
         // value, it rules out things like `UnsafeCell` in awkward places.
