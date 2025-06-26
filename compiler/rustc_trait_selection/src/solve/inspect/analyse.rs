@@ -37,7 +37,7 @@ pub struct InspectGoal<'a, 'tcx> {
     orig_values: Vec<ty::GenericArg<'tcx>>,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     result: Result<Certainty, NoSolution>,
-    evaluation_kind: inspect::CanonicalGoalEvaluationKind<TyCtxt<'tcx>>,
+    evaluation_kind: inspect::GoalEvaluationKind<TyCtxt<'tcx>>,
     normalizes_to_term_hack: Option<NormalizesToTermHack<'tcx>>,
     source: GoalSource,
 }
@@ -393,8 +393,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         let mut candidates = vec![];
         let last_eval_step = match &self.evaluation_kind {
             // An annoying edge case in case the recursion limit is 0.
-            inspect::CanonicalGoalEvaluationKind::Overflow => return vec![],
-            inspect::CanonicalGoalEvaluationKind::Evaluation { final_revision } => final_revision,
+            inspect::GoalEvaluationKind::Overflow => return vec![],
+            inspect::GoalEvaluationKind::Evaluation { final_revision } => final_revision,
         };
 
         let mut nested_goals = vec![];
@@ -426,10 +426,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
     ) -> Self {
         let infcx = <&SolverDelegate<'tcx>>::from(infcx);
 
-        let inspect::GoalEvaluation { uncanonicalized_goal, orig_values, evaluation } = root;
+        let inspect::GoalEvaluation { uncanonicalized_goal, orig_values, kind, result } = root;
         // If there's a normalizes-to goal, AND the evaluation result with the result of
         // constraining the normalizes-to RHS and computing the nested goals.
-        let result = evaluation.result.and_then(|ok| {
+        let result = result.and_then(|ok| {
             let nested_goals_certainty =
                 term_hack_and_nested_certainty.map_or(Ok(Certainty::Yes), |(_, c)| c)?;
             Ok(ok.value.certainty.and(nested_goals_certainty))
@@ -441,7 +441,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             orig_values,
             goal: eager_resolve_vars(infcx, uncanonicalized_goal),
             result,
-            evaluation_kind: evaluation.kind,
+            evaluation_kind: kind,
             normalizes_to_term_hack: term_hack_and_nested_certainty.map(|(n, _)| n),
             source,
         }
