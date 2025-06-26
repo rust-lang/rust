@@ -60,8 +60,8 @@ fn main() {
                 // A thread is finished, so we can join and remove it.
                 handles.swap_remove_back(pos).unwrap().join().unwrap();
             } else {
-                // No threads are finished yet; yield to avoid busy-waiting.
-                std::thread::yield_now();
+                // No threads are finished yet; 10ms sleep to avoid busy-waiting.
+                std::thread::sleep(std::time::Duration::from_millis(10));
             }
         }
     };
