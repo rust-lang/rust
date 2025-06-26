@@ -3,7 +3,6 @@
 #![feature(postfix_match)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
 extern crate std;
 
 use std::ops::Add;

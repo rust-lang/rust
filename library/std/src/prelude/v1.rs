@@ -43,14 +43,38 @@ pub use crate::option::Option::{self, None, Some};
 #[doc(no_inline)]
 pub use crate::result::Result::{self, Err, Ok};
 
-// Re-exported built-in macros
+// Re-exported built-in macros and traits
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
+#[allow(deprecated)]
 pub use core::prelude::v1::{
-    assert, cfg, column, compile_error, concat, env, file, format_args,
-    format_args_nl, include, include_bytes, include_str, line, log_syntax, module_path, option_env,
-    stringify, trace_macros, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
+    assert, assert_eq, assert_ne, cfg, column, compile_error, concat, debug_assert, debug_assert_eq, debug_assert_ne, env, file, format_args, include, include_bytes, include_str, line, matches,
+    module_path, option_env, stringify, todo, r#try, unimplemented, unreachable, write,
+    writeln, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
 };
+
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[doc(no_inline)]
+pub use crate::{
+    dbg, eprint, eprintln, format, is_x86_feature_detected, print, println, thread_local
+};
+
+// These macros needs special handling, so that we don't export it *and* the modules of the same
+// name. We only want the macro in the prelude.
+mod ambiguous_macro_only_std {
+    #[allow(hidden_glob_reexports)]
+    mod vec {}
+    #[allow(hidden_glob_reexports)]
+    mod panic {}
+    #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+    pub use crate::*;
+}
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+pub use self::ambiguous_macro_only_std::{vec, panic};
+
+#[unstable(feature = "cfg_select", issue = "115585")]
+#[doc(no_inline)]
+pub use core::prelude::v1::cfg_select;
 
 #[unstable(
     feature = "concat_bytes",
@@ -59,6 +83,26 @@ pub use core::prelude::v1::{
 )]
 #[doc(no_inline)]
 pub use core::prelude::v1::concat_bytes;
+
+#[unstable(feature = "const_format_args", issue = "none")]
+#[doc(no_inline)]
+pub use core::prelude::v1::const_format_args;
+
+#[unstable(
+    feature = "log_syntax",
+    issue = "29598",
+    reason = "`log_syntax!` is not stable enough for use and is subject to change"
+)]
+#[doc(no_inline)]
+pub use core::prelude::v1::log_syntax;
+
+#[unstable(
+    feature = "trace_macros",
+    issue = "29598",
+    reason = "`trace_macros` is not stable enough for use and is subject to change"
+)]
+#[doc(no_inline)]
+pub use core::prelude::v1::trace_macros;
 
 // Do not `doc(no_inline)` so that they become doc items on their own
 // (no public module for them to be re-exported from).
