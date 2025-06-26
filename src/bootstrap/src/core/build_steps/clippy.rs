@@ -141,8 +141,6 @@ impl Step for Std {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.require_submodule("library/stdarch", None);
-
         let target = self.target;
         let compiler = builder.compiler(builder.top_stage, builder.config.host_target);
 
