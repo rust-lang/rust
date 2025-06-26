@@ -1,7 +1,7 @@
 use rustc_abi::WrappingRange;
-use rustc_middle::bug;
 use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::sym;
 
@@ -97,6 +97,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let discr = ord.valtree.unwrap_branch()[0].unwrap_leaf();
             discr.to_atomic_ordering()
         };
+
+        if args.is_empty() {
+            match name {
+                sym::abort
+                | sym::unreachable
+                | sym::cold_path
+                | sym::breakpoint
+                | sym::assert_zero_valid
+                | sym::assert_mem_uninitialized_valid
+                | sym::assert_inhabited
+                | sym::ub_checks
+                | sym::contract_checks
+                | sym::atomic_fence
+                | sym::atomic_singlethreadfence
+                | sym::caller_location => {}
+                _ => {
+                    span_bug!(span, "nullary intrinsic {name} must either be in a const block or explicitly opted out because it is inherently a runtime intrinsic
+");
+                }
+            }
+        }
 
         let llval = match name {
             sym::abort => {
