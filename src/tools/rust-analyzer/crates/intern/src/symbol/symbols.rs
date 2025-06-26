@@ -438,6 +438,8 @@ define_symbols! {
     shr,
     simd,
     sized,
+    meta_sized,
+    pointee_sized,
     skip,
     slice_len_fn,
     Some,
