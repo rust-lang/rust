@@ -669,7 +669,7 @@ TypeBoundList =
 
 TypeBound =
   Lifetime
-| ('~' 'const' | 'const')? 'async'? '?'? Type
+| ('~' 'const' | '[' 'const' ']' | 'const')? 'async'? '?'? Type
 | 'use' UseBoundGenericArgs
 
 UseBoundGenericArgs =
