@@ -326,11 +326,10 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
             let kind_ty = args.kind_ty();
             let sig = args.coroutine_closure_sig().skip_binder();
 
-            // FIXME: let_chains
-            let kind = kind_ty.to_opt_closure_kind();
-            let coroutine_ty = if kind.is_some() && !args.tupled_upvars_ty().is_ty_var() {
-                let closure_kind = kind.unwrap();
-                if !closure_kind.extends(goal_kind) {
+            let coroutine_ty = if let Some(kind) = kind_ty.to_opt_closure_kind()
+                && !args.tupled_upvars_ty().is_ty_var()
+            {
+                if !kind.extends(goal_kind) {
                     return Err(NoSolution);
                 }
 
@@ -435,10 +434,10 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             let sig = args.coroutine_closure_sig().skip_binder();
             let mut nested = vec![];
 
-            // FIXME: let_chains
-            let kind = kind_ty.to_opt_closure_kind();
-            let coroutine_ty = if kind.is_some() && !args.tupled_upvars_ty().is_ty_var() {
-                if !kind.unwrap().extends(goal_kind) {
+            let coroutine_ty = if let Some(kind) = kind_ty.to_opt_closure_kind()
+                && !args.tupled_upvars_ty().is_ty_var()
+            {
+                if !kind.extends(goal_kind) {
                     return Err(NoSolution);
                 }
 
