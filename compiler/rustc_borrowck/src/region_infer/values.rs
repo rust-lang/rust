@@ -1,23 +1,17 @@
 use std::fmt::Debug;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::Idx;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
 use rustc_middle::mir::{BasicBlock, Location};
-use rustc_middle::ty::{self, RegionVid};
+use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use tracing::debug;
 
 use crate::BorrowIndex;
 use crate::polonius::LiveLoans;
-
-rustc_index::newtype_index! {
-    /// A single integer representing a `ty::Placeholder`.
-    #[debug_format = "PlaceholderIndex({})"]
-    pub(crate) struct PlaceholderIndex {}
-}
 
 /// An individual element in a region value -- the value of a
 /// particular region variable consists of a set of these elements.
@@ -29,10 +23,6 @@ pub(crate) enum RegionElement {
     /// A universally quantified region from the root universe (e.g.,
     /// a lifetime parameter).
     RootUniversalRegion(RegionVid),
-
-    /// A placeholder (e.g., instantiated from a `for<'a> fn(&'a u32)`
-    /// type).
-    PlaceholderRegion(ty::PlaceholderRegion),
 }
 
 /// Records the CFG locations where each region is live. When we initially compute liveness, we use
@@ -190,37 +180,6 @@ impl LivenessValues {
     }
 }
 
-/// Maps from `ty::PlaceholderRegion` values that are used in the rest of
-/// rustc to the internal `PlaceholderIndex` values that are used in
-/// NLL.
-#[derive(Debug, Default)]
-pub(crate) struct PlaceholderIndices {
-    indices: FxIndexSet<ty::PlaceholderRegion>,
-}
-
-impl PlaceholderIndices {
-    /// Returns the `PlaceholderIndex` for the inserted `PlaceholderRegion`
-    pub(crate) fn insert(&mut self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
-        let (index, _) = self.indices.insert_full(placeholder);
-        index.into()
-    }
-
-    pub(crate) fn lookup_index(&self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
-        self.indices.get_index_of(&placeholder).unwrap().into()
-    }
-
-    pub(crate) fn lookup_placeholder(
-        &self,
-        placeholder: PlaceholderIndex,
-    ) -> ty::PlaceholderRegion {
-        self.indices[placeholder.index()]
-    }
-
-    pub(crate) fn len(&self) -> usize {
-        self.indices.len()
-    }
-}
-
 /// Stores the full values for a set of regions (in contrast to
 /// `LivenessValues`, which only stores those points in the where a
 /// region is live). The full value for a region may contain points in
@@ -241,32 +200,20 @@ impl PlaceholderIndices {
 /// it would also contain various points from within the function.
 pub(crate) struct RegionValues<N: Idx> {
     location_map: Rc<DenseLocationMap>,
-    placeholder_indices: PlaceholderIndices,
     points: SparseIntervalMatrix<N, PointIndex>,
     free_regions: SparseBitMatrix<N, RegionVid>,
-
-    /// Placeholders represent bound regions -- so something like `'a`
-    /// in `for<'a> fn(&'a u32)`.
-    placeholders: SparseBitMatrix<N, PlaceholderIndex>,
 }
 
 impl<N: Idx> RegionValues<N> {
     /// Creates a new set of "region values" that tracks causal information.
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
-    pub(crate) fn new(
-        location_map: Rc<DenseLocationMap>,
-        num_universal_regions: usize,
-        placeholder_indices: PlaceholderIndices,
-    ) -> Self {
+    pub(crate) fn new(location_map: Rc<DenseLocationMap>, num_universal_regions: usize) -> Self {
         let num_points = location_map.num_points();
-        let num_placeholders = placeholder_indices.len();
         Self {
             location_map,
             points: SparseIntervalMatrix::new(num_points),
-            placeholder_indices,
             free_regions: SparseBitMatrix::new(num_universal_regions),
-            placeholders: SparseBitMatrix::new(num_placeholders),
         }
     }
 
@@ -285,9 +232,7 @@ impl<N: Idx> RegionValues<N> {
     /// Adds all elements in `r_from` to `r_to` (because e.g., `r_to:
     /// r_from`).
     pub(crate) fn add_region(&mut self, r_to: N, r_from: N) -> bool {
-        self.points.union_rows(r_from, r_to)
-            | self.free_regions.union_rows(r_from, r_to)
-            | self.placeholders.union_rows(r_from, r_to)
+        self.points.union_rows(r_from, r_to) | self.free_regions.union_rows(r_from, r_to)
     }
 
     /// Returns `true` if the region `r` contains the given element.
@@ -354,28 +299,16 @@ impl<N: Idx> RegionValues<N> {
     }
 
     /// Returns all the elements contained in a given region's value.
-    pub(crate) fn placeholders_contained_in(
-        &self,
+    pub(crate) fn elements_contained_in<'a>(
+        &'a self,
         r: N,
-    ) -> impl Iterator<Item = ty::PlaceholderRegion> {
-        self.placeholders
-            .row(r)
-            .into_iter()
-            .flat_map(|set| set.iter())
-            .map(move |p| self.placeholder_indices.lookup_placeholder(p))
-    }
-
-    /// Returns all the elements contained in a given region's value.
-    pub(crate) fn elements_contained_in(&self, r: N) -> impl Iterator<Item = RegionElement> {
+    ) -> impl Iterator<Item = RegionElement> + 'a {
         let points_iter = self.locations_outlived_by(r).map(RegionElement::Location);
 
         let free_regions_iter =
             self.universal_regions_outlived_by(r).map(RegionElement::RootUniversalRegion);
 
-        let placeholder_universes_iter =
-            self.placeholders_contained_in(r).map(RegionElement::PlaceholderRegion);
-
-        points_iter.chain(free_regions_iter).chain(placeholder_universes_iter)
+        points_iter.chain(free_regions_iter)
     }
 
     /// Returns a "pretty" string value of the region. Meant for debugging.
@@ -409,18 +342,6 @@ impl ToElementIndex for RegionVid {
 
     fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
         values.free_regions.contains(row, self)
-    }
-}
-
-impl ToElementIndex for ty::PlaceholderRegion {
-    fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
-        let index = values.placeholder_indices.lookup_index(self);
-        values.placeholders.insert(row, index)
-    }
-
-    fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
-        let index = values.placeholder_indices.lookup_index(self);
-        values.placeholders.contains(row, index)
     }
 }
 
@@ -482,17 +403,6 @@ fn pretty_print_region_elements(elements: impl IntoIterator<Item = RegionElement
 
                 push_sep(&mut result);
                 result.push_str(&format!("{fr:?}"));
-            }
-
-            RegionElement::PlaceholderRegion(placeholder) => {
-                if let Some((location1, location2)) = open_location {
-                    push_sep(&mut result);
-                    push_location_range(&mut result, location1, location2);
-                    open_location = None;
-                }
-
-                push_sep(&mut result);
-                result.push_str(&format!("{placeholder:?}"));
             }
         }
     }

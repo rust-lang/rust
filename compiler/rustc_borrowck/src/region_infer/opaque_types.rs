@@ -190,17 +190,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             ty::ReVar(vid) => {
                 let scc = self.constraint_sccs.scc(vid);
 
-                // Special handling of higher-ranked regions.
-                if !self.max_nameable_universe(scc).is_root() {
-                    match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
-                        // If the region contains a single placeholder then they're equal.
-                        Some((0, placeholder)) => {
-                            return ty::Region::new_placeholder(tcx, placeholder);
-                        }
-
-                        // Fallback: this will produce a cryptic error message.
-                        _ => return region,
-                    }
+                if let Some(representative) = self.placeholder_representative(scc) {
+                    return ty::Region::new_placeholder(tcx, representative);
                 }
 
                 // Find something that we can name

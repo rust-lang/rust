@@ -62,7 +62,7 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
             | ConstraintCategory::Internal
-            | ConstraintCategory::IllegalUniverse => "",
+            | ConstraintCategory::IllegalPlaceholder(..) => "",
         }
     }
 }
@@ -120,8 +120,31 @@ pub(crate) enum RegionErrorKind<'tcx> {
         member_region: ty::Region<'tcx>,
     },
 
-    /// Higher-ranked subtyping error.
-    BoundUniversalRegionError {
+    /// 'a outlives 'b, and both are placeholders.
+    PlaceholderOutlivesPlaceholder {
+        rvid_a: RegionVid,
+        rvid_b: RegionVid,
+        origin_a: ty::PlaceholderRegion,
+        origin_b: ty::PlaceholderRegion,
+    },
+
+    /// Indicates that a placeholder has a universe too large for one
+    /// of its member existentials, or, equivalently, that there is
+    /// a path through the outlives constraint graph from a placeholder
+    /// to an existential region that cannot name it.
+    PlaceholderOutlivesExistentialThatCannotNameIt {
+        /// the placeholder that transitively outlives an
+        /// existential that shouldn't leak into it
+        longer_fr: RegionVid,
+        /// The existential leaking into `longer_fr`.
+        existental_that_cannot_name_longer: RegionVid,
+        // `longer_fr`'s originating placeholder region.
+        placeholder: ty::PlaceholderRegion,
+    },
+
+    /// Higher-ranked subtyping error. A placeholder outlives
+    /// either a location or a universal region.
+    PlaceholderOutlivesLocationOrUniversal {
         /// The placeholder free region.
         longer_fr: RegionVid,
         /// The region element that erroneously must be outlived by `longer_fr`.
@@ -217,49 +240,39 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         &self,
         diag: &mut Diag<'_>,
         lower_bound: RegionVid,
-    ) {
+    ) -> Option<()> {
         let mut suggestions = vec![];
         let tcx = self.infcx.tcx;
 
-        // find generic associated types in the given region 'lower_bound'
-        let gat_id_and_generics = self
-            .regioncx
-            .placeholders_contained_in(lower_bound)
-            .map(|placeholder| {
-                if let Some(id) = placeholder.bound.kind.get_id()
-                    && let Some(placeholder_id) = id.as_local()
-                    && let gat_hir_id = tcx.local_def_id_to_hir_id(placeholder_id)
-                    && let Some(generics_impl) =
-                        tcx.parent_hir_node(tcx.parent_hir_id(gat_hir_id)).generics()
-                {
-                    Some((gat_hir_id, generics_impl))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        debug!(?gat_id_and_generics);
-
         // find higher-ranked trait bounds bounded to the generic associated types
+        let scc = self.regioncx.constraint_sccs().scc(lower_bound);
+
+        let placeholder: ty::PlaceholderRegion = self.regioncx.placeholder_representative(scc)?;
+
+        let placeholder_id = placeholder.bound.kind.get_id()?.as_local()?;
+        let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id);
+        let generics_impl =
+            self.infcx.tcx.parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id)).generics()?;
+
         let mut hrtb_bounds = vec![];
-        gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
-            for pred in generics.predicates {
-                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
-                    pred.kind
-                else {
-                    continue;
-                };
-                if bound_generic_params
-                    .iter()
-                    .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
-                    .is_some()
-                {
-                    for bound in *bounds {
-                        hrtb_bounds.push(bound);
-                    }
+
+        for pred in generics_impl.predicates {
+            let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
+                pred.kind
+            else {
+                continue;
+            };
+            if bound_generic_params
+                .iter()
+                .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                .is_some()
+            {
+                for bound in *bounds {
+                    hrtb_bounds.push(bound);
                 }
             }
-        });
+        }
+
         debug!(?hrtb_bounds);
 
         hrtb_bounds.iter().for_each(|bound| {
@@ -304,6 +317,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
+        Some(())
     }
 
     /// Produces nice borrowck error diagnostics for all the errors collected in `nll_errors`.
@@ -388,25 +402,55 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                 }
 
-                RegionErrorKind::BoundUniversalRegionError {
+                RegionErrorKind::PlaceholderOutlivesLocationOrUniversal {
                     longer_fr,
                     placeholder,
                     error_element,
+                } => self.report_erroneous_rvid_reaches_placeholder(
+                    longer_fr,
+                    placeholder,
+                    self.regioncx.region_from_element(longer_fr, &error_element),
+                ),
+                RegionErrorKind::PlaceholderOutlivesPlaceholder {
+                    rvid_a,
+                    rvid_b,
+                    origin_a,
+                    origin_b,
                 } => {
-                    let error_vid = self.regioncx.region_from_element(longer_fr, &error_element);
-
-                    // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-                    let (_, cause) = self.regioncx.find_outlives_blame_span(
-                        longer_fr,
-                        NllRegionVariableOrigin::Placeholder(placeholder),
-                        error_vid,
+                    debug!(
+                        "Placeholder mismatch: {rvid_a:?} ({origin_a:?}) reaches {rvid_b:?} ({origin_b:?})"
                     );
 
-                    let universe = placeholder.universe;
-                    let universe_info = self.regioncx.universe_info(universe);
+                    let cause = self
+                        .regioncx
+                        .best_blame_constraint(
+                            rvid_a,
+                            NllRegionVariableOrigin::Placeholder(origin_a),
+                            rvid_b,
+                        )
+                        .0
+                        .cause;
 
-                    universe_info.report_erroneous_element(self, placeholder, error_element, cause);
+                    // FIXME We may be able to shorten the code path here, and immediately
+                    // report a `RegionResolutionError::UpperBoundUniverseConflict`, but
+                    // that's left for a future refactoring.
+                    self.regioncx.universe_info(origin_a.universe).report_erroneous_element(
+                        self,
+                        origin_a,
+                        Some(origin_b),
+                        cause,
+                    );
                 }
+
+                RegionErrorKind::PlaceholderOutlivesExistentialThatCannotNameIt {
+                    longer_fr,
+                    existental_that_cannot_name_longer,
+                    placeholder,
+                } => self.report_erroneous_rvid_reaches_placeholder(
+                    longer_fr,
+                    placeholder,
+                    existental_that_cannot_name_longer,
+                ),
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
                     if is_reported {
@@ -456,9 +500,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (blame_constraint, path) = self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
-            self.regioncx.provides_universal_region(r, fr, outlived_fr)
-        });
+        let (blame_constraint, path) =
+            self.regioncx.best_blame_constraint(fr, fr_origin, outlived_fr);
         let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
 
         debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
