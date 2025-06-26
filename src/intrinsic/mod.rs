@@ -426,7 +426,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 match int_type_width_signed(ty, self) {
                     Some((width, signed)) => match name {
                         sym::ctlz | sym::cttz => {
-                            let func = self.current_func.borrow().expect("func");
+                            let func = self.current_func();
                             let then_block = func.new_block("then");
                             let else_block = func.new_block("else");
                             let after_block = func.new_block("after");
@@ -1108,7 +1108,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // for (int counter = 0; value != 0; counter++) {
         //     value &= value - 1;
         // }
-        let func = self.current_func.borrow().expect("func");
+        let func = self.current_func();
         let loop_head = func.new_block("head");
         let loop_body = func.new_block("body");
         let loop_tail = func.new_block("tail");
@@ -1187,7 +1187,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let result_type = lhs.get_type();
         if signed {
             // Based on algorithm from: https://stackoverflow.com/a/56531252/389119
-            let func = self.current_func.borrow().expect("func");
+            let func = self.current_func();
             let res = func.new_local(self.location, result_type, "saturating_sum");
             let supports_native_type = self.is_native_int_type(result_type);
             let overflow = if supports_native_type {
@@ -1258,7 +1258,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let result_type = lhs.get_type();
         if signed {
             // Based on algorithm from: https://stackoverflow.com/a/56531252/389119
-            let func = self.current_func.borrow().expect("func");
+            let func = self.current_func();
             let res = func.new_local(self.location, result_type, "saturating_diff");
             let supports_native_type = self.is_native_int_type(result_type);
             let overflow = if supports_native_type {
