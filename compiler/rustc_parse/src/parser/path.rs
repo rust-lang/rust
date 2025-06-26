@@ -126,7 +126,7 @@ impl<'a> Parser<'a> {
     /// ```
     fn recover_colon_before_qpath_proj(&mut self) -> bool {
         if !self.check_noexpect(&TokenKind::Colon)
-            || self.look_ahead(1, |t| !t.is_ident() || t.is_reserved_ident())
+            || self.look_ahead(1, |t| !t.is_non_reserved_ident())
         {
             return false;
         }
@@ -260,7 +260,7 @@ impl<'a> Parser<'a> {
                 if self.may_recover()
                     && style == PathStyle::Expr // (!)
                     && self.token == token::Colon
-                    && self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
+                    && self.look_ahead(1, |token| token.is_non_reserved_ident())
                 {
                     // Emit a special error message for `a::b:c` to help users
                     // otherwise, `a: c` might have meant to introduce a new binding
@@ -334,9 +334,7 @@ impl<'a> Parser<'a> {
                     self.expect_gt().map_err(|mut err| {
                         // Try to recover a `:` into a `::`
                         if self.token == token::Colon
-                            && self.look_ahead(1, |token| {
-                                token.is_ident() && !token.is_reserved_ident()
-                            })
+                            && self.look_ahead(1, |token| token.is_non_reserved_ident())
                         {
                             err.cancel();
                             err = self.dcx().create_err(PathSingleColon {
