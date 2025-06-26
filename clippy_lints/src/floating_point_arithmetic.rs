@@ -2,13 +2,12 @@ use clippy_utils::consts::Constant::{F32, F64, Int};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{
-    eq_expr_value, get_parent_expr, higher, is_in_const_context, is_inherent_method_call, is_no_std_crate,
-    numeric_literal, peel_blocks, sugg, sym,
+    eq_expr_value, get_parent_expr, has_ambiguous_literal_in_expr, higher, is_in_const_context,
+    is_inherent_method_call, is_no_std_crate, numeric_literal, peel_blocks, sugg, sym,
 };
 use rustc_ast::ast;
 use rustc_errors::Applicability;
-use rustc_hir::def::Res;
-use rustc_hir::{BinOpKind, Expr, ExprKind, Node, PathSegment, UnOp};
+use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
@@ -456,61 +455,6 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'
     None
 }
 
-// Check if any variable in an expression has an ambiguous type (could be f32 or f64)
-fn has_ambiguous_float_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match &expr.kind {
-        ExprKind::Path(qpath) => {
-            if let Res::Local(hir_id) = cx.qpath_res(qpath, expr.hir_id) {
-                if let Node::LetStmt(local) = cx.tcx.parent_hir_node(hir_id) {
-                    // If the local has no type annotation, check if the initializer has ambiguous float literals
-                    if local.ty.is_none() {
-                        if let Some(init) = local.init {
-                            return has_ambiguous_float_literal_in_expr(cx, init);
-                        }
-                    }
-                }
-            }
-            false
-        },
-        _ => false, // only check path
-    }
-}
-
-// Recursively check if an expression contains any unsuffixed float literals
-fn has_ambiguous_float_literal_in_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match &expr.kind {
-        ExprKind::Lit(lit) => {
-            if let ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) = lit.node {
-                return true;
-            }
-            false
-        },
-        ExprKind::Binary(_, lhs, rhs) => {
-            has_ambiguous_float_literal_in_expr(cx, lhs) || has_ambiguous_float_literal_in_expr(cx, rhs)
-        },
-        ExprKind::Unary(_, expr) => has_ambiguous_float_literal_in_expr(cx, expr),
-        ExprKind::If(_, then, else_) => {
-            has_ambiguous_float_literal_in_expr(cx, then)
-                || else_
-                    .as_ref()
-                    .map_or(false, |else_expr| has_ambiguous_float_literal_in_expr(cx, else_expr))
-        },
-        ExprKind::Block(block, _) => block
-            .expr
-            .as_ref()
-            .map_or(false, |expr| has_ambiguous_float_literal_in_expr(cx, expr)),
-        ExprKind::MethodCall(_, receiver, args, _) => {
-            has_ambiguous_float_literal_in_expr(cx, receiver)
-                || args.iter().any(|arg| has_ambiguous_float_literal_in_expr(cx, arg))
-        },
-        ExprKind::Call(func, args) => {
-            has_ambiguous_float_literal_in_expr(cx, func)
-                || args.iter().any(|arg| has_ambiguous_float_literal_in_expr(cx, arg))
-        },
-        _ => false,
-    }
-}
-
 fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Binary(
         Spanned {
@@ -548,7 +492,9 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
         // Check if any variable in the expression has an ambiguous type (could be f32 or f64)
         // see: https://github.com/rust-lang/rust-clippy/issues/14897
-        if has_ambiguous_float_type(cx, recv) {
+        if (matches!(recv.kind, ExprKind::Path(_)) || matches!(recv.kind, ExprKind::Call(_, _)))
+            && has_ambiguous_literal_in_expr(cx, recv)
+        {
             return;
         }
 
