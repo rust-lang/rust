@@ -19,7 +19,9 @@
 //! If a line ends with an opening delimiter, we effectively join the following line to it before
 //! checking it. E.g. `foo(\nbar)` is treated like `foo(bar)`.
 
+use std::cmp::Ordering;
 use std::fmt::Display;
+use std::iter::Peekable;
 use std::path::Path;
 
 use crate::walk::{filter_dirs, walk};
@@ -99,9 +101,9 @@ fn check_section<'a>(
             continue;
         }
 
-        let prev_line_trimmed_lowercase = prev_line.trim_start_matches(' ').to_lowercase();
+        let prev_line_trimmed_lowercase = prev_line.trim_start_matches(' ');
 
-        if trimmed_line.to_lowercase() < prev_line_trimmed_lowercase {
+        if version_sort(&trimmed_line, &prev_line_trimmed_lowercase).is_lt() {
             tidy_error_ext!(err, bad, "{file}:{}: line not in alphabetical order", idx + 1);
         }
 
@@ -142,4 +144,57 @@ pub fn check(path: &Path, bad: &mut bool) {
         let lines = contents.lines().enumerate();
         check_lines(file, lines, &mut crate::tidy_error, bad)
     });
+}
+
+fn consume_numeric_prefix<I: Iterator<Item = char>>(it: &mut Peekable<I>) -> String {
+    let mut result = String::new();
+
+    while let Some(&c) = it.peek() {
+        if !c.is_numeric() {
+            break;
+        }
+
+        result.push(c);
+        it.next();
+    }
+
+    result
+}
+
+// A sorting function that is case-sensitive, and sorts sequences of digits by their numeric value,
+// so that `9` sorts before `12`.
+fn version_sort(a: &str, b: &str) -> Ordering {
+    let mut it1 = a.chars().peekable();
+    let mut it2 = b.chars().peekable();
+
+    while let (Some(x), Some(y)) = (it1.peek(), it2.peek()) {
+        match (x.is_numeric(), y.is_numeric()) {
+            (true, true) => {
+                let num1: String = consume_numeric_prefix(it1.by_ref());
+                let num2: String = consume_numeric_prefix(it2.by_ref());
+
+                let int1: u64 = num1.parse().unwrap();
+                let int2: u64 = num2.parse().unwrap();
+
+                // Compare strings when the numeric value is equal to handle "00" versus "0".
+                match int1.cmp(&int2).then_with(|| num1.cmp(&num2)) {
+                    Ordering::Equal => continue,
+                    different => return different,
+                }
+            }
+            (false, false) => match x.cmp(y) {
+                Ordering::Equal => {
+                    it1.next();
+                    it2.next();
+                    continue;
+                }
+                different => return different,
+            },
+            (false, true) | (true, false) => {
+                return x.cmp(y);
+            }
+        }
+    }
+
+    it1.next().cmp(&it2.next())
 }

@@ -4992,9 +4992,9 @@ mod size_asserts {
     static_assert_size!(LetStmt<'_>, 72);
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 72);
+    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Path<'_>, 40);
     static_assert_size!(PathSegment<'_>, 48);
-    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(QPath<'_>, 24);
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);
