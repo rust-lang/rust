@@ -2,7 +2,10 @@
 
 use crate::helpers::mod_path_to_ast;
 use either::Either;
-use hir::{AsAssocItem, HirDisplay, ImportPathConfig, ModuleDef, SemanticsScope};
+use hir::{
+    AsAssocItem, HirDisplay, HirFileId, ImportPathConfig, ModuleDef, SemanticsScope,
+    prettify_macro_expansion,
+};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use span::Edition;
@@ -136,6 +139,25 @@ impl<'a> PathTransform<'a> {
         }
     }
 
+    fn prettify_target_node(&self, node: SyntaxNode) -> SyntaxNode {
+        match self.target_scope.file_id() {
+            HirFileId::FileId(_) => node,
+            HirFileId::MacroFile(file_id) => {
+                let db = self.target_scope.db;
+                prettify_macro_expansion(
+                    db,
+                    node,
+                    &db.expansion_span_map(file_id),
+                    self.target_scope.module().krate().into(),
+                )
+            }
+        }
+    }
+
+    fn prettify_target_ast<N: AstNode>(&self, node: N) -> N {
+        N::cast(self.prettify_target_node(node.syntax().clone())).unwrap()
+    }
+
     fn build_ctx(&self) -> Ctx<'a> {
         let db = self.source_scope.db;
         let target_module = self.target_scope.module();
@@ -163,7 +185,7 @@ impl<'a> PathTransform<'a> {
             .for_each(|(k, v)| match (k.split(db), v) {
                 (Either::Right(k), Some(TypeOrConst::Either(v))) => {
                     if let Some(ty) = v.ty() {
-                        type_substs.insert(k, ty);
+                        type_substs.insert(k, self.prettify_target_ast(ty));
                     }
                 }
                 (Either::Right(k), None) => {
@@ -178,7 +200,7 @@ impl<'a> PathTransform<'a> {
                 }
                 (Either::Left(k), Some(TypeOrConst::Either(v))) => {
                     if let Some(ty) = v.ty() {
-                        const_substs.insert(k, ty.syntax().clone());
+                        const_substs.insert(k, self.prettify_target_node(ty.syntax().clone()));
                     }
                 }
                 (Either::Left(k), Some(TypeOrConst::Const(v))) => {
@@ -189,7 +211,7 @@ impl<'a> PathTransform<'a> {
                         // and sometimes require slight modifications; see
                         // https://doc.rust-lang.org/reference/statements.html#expression-statements
                         // (default values in curly brackets can cause the same problem)
-                        const_substs.insert(k, expr.syntax().clone());
+                        const_substs.insert(k, self.prettify_target_node(expr.syntax().clone()));
                     }
                 }
                 (Either::Left(k), None) => {
@@ -204,6 +226,7 @@ impl<'a> PathTransform<'a> {
                 }
                 _ => (), // ignore mismatching params
             });
+        // No need to prettify lifetimes, there's nothing to prettify.
         let lifetime_substs: FxHashMap<_, _> = self
             .generic_def
             .into_iter()

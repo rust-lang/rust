@@ -550,3 +550,30 @@ fn inside_extern_blocks() {
         "#]],
     )
 }
+
+#[test]
+fn tokens_from_macro() {
+    check_edit(
+        "fn as_ref",
+        r#"
+//- proc_macros: identity
+//- minicore: as_ref
+struct Foo;
+
+#[proc_macros::identity]
+impl<'a> AsRef<&'a i32> for Foo {
+    $0
+}
+    "#,
+        r#"
+struct Foo;
+
+#[proc_macros::identity]
+impl<'a> AsRef<&'a i32> for Foo {
+    fn as_ref(&self) -> &&'a i32 {
+    $0
+}
+}
+    "#,
+    );
+}
