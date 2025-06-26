@@ -27,17 +27,25 @@
 use std::fmt::Debug;
 use std::{fmt, io};
 
+pub(crate) use rustc_smir::IndexedVal;
+use rustc_smir::Tables;
+use rustc_smir::context::SmirCtxt;
 use serde::Serialize;
 use stable_mir::compiler_interface::with;
 pub use stable_mir::crate_def::{CrateDef, CrateDefItems, CrateDefType, DefId};
 pub use stable_mir::error::*;
 use stable_mir::mir::mono::StaticDef;
 use stable_mir::mir::{Body, Mutability};
-use stable_mir::ty::{AssocItem, FnDef, ForeignModuleDef, ImplDef, IndexedVal, Span, TraitDef, Ty};
+use stable_mir::ty::{
+    AssocItem, FnDef, ForeignModuleDef, ImplDef, ProvenanceMap, Span, TraitDef, Ty,
+};
+use stable_mir::unstable::Stable;
 
-use crate::stable_mir;
+use crate::{rustc_smir, stable_mir};
 
 pub mod abi;
+mod alloc;
+pub(crate) mod unstable;
 #[macro_use]
 pub mod crate_def;
 pub mod compiler_interface;
@@ -236,4 +244,61 @@ impl std::fmt::Debug for Opaque {
 
 pub fn opaque<T: Debug>(value: &T) -> Opaque {
     Opaque(format!("{value:?}"))
+}
+
+macro_rules! bridge_impl {
+    ($name: ident, $ty: ty) => {
+        impl rustc_smir::bridge::$name<compiler_interface::BridgeTys> for $ty {
+            fn new(def: stable_mir::DefId) -> Self {
+                Self(def)
+            }
+        }
+    };
+}
+
+bridge_impl!(CrateItem, stable_mir::CrateItem);
+bridge_impl!(AdtDef, stable_mir::ty::AdtDef);
+bridge_impl!(ForeignModuleDef, stable_mir::ty::ForeignModuleDef);
+bridge_impl!(ForeignDef, stable_mir::ty::ForeignDef);
+bridge_impl!(FnDef, stable_mir::ty::FnDef);
+bridge_impl!(ClosureDef, stable_mir::ty::ClosureDef);
+bridge_impl!(CoroutineDef, stable_mir::ty::CoroutineDef);
+bridge_impl!(CoroutineClosureDef, stable_mir::ty::CoroutineClosureDef);
+bridge_impl!(AliasDef, stable_mir::ty::AliasDef);
+bridge_impl!(ParamDef, stable_mir::ty::ParamDef);
+bridge_impl!(BrNamedDef, stable_mir::ty::BrNamedDef);
+bridge_impl!(TraitDef, stable_mir::ty::TraitDef);
+bridge_impl!(GenericDef, stable_mir::ty::GenericDef);
+bridge_impl!(ConstDef, stable_mir::ty::ConstDef);
+bridge_impl!(ImplDef, stable_mir::ty::ImplDef);
+bridge_impl!(RegionDef, stable_mir::ty::RegionDef);
+bridge_impl!(CoroutineWitnessDef, stable_mir::ty::CoroutineWitnessDef);
+bridge_impl!(AssocDef, stable_mir::ty::AssocDef);
+bridge_impl!(OpaqueDef, stable_mir::ty::OpaqueDef);
+bridge_impl!(StaticDef, stable_mir::mir::mono::StaticDef);
+
+impl rustc_smir::bridge::Prov<compiler_interface::BridgeTys> for stable_mir::ty::Prov {
+    fn new(aid: stable_mir::mir::alloc::AllocId) -> Self {
+        Self(aid)
+    }
+}
+
+impl rustc_smir::bridge::Allocation<compiler_interface::BridgeTys> for stable_mir::ty::Allocation {
+    fn new<'tcx>(
+        bytes: Vec<Option<u8>>,
+        ptrs: Vec<(usize, rustc_middle::mir::interpret::AllocId)>,
+        align: u64,
+        mutability: rustc_middle::mir::Mutability,
+        tables: &mut Tables<'tcx, compiler_interface::BridgeTys>,
+        cx: &SmirCtxt<'tcx, compiler_interface::BridgeTys>,
+    ) -> Self {
+        Self {
+            bytes,
+            provenance: ProvenanceMap {
+                ptrs: ptrs.iter().map(|(i, aid)| (*i, tables.prov(*aid))).collect(),
+            },
+            align,
+            mutability: mutability.stable(tables, cx),
+        }
+    }
 }
