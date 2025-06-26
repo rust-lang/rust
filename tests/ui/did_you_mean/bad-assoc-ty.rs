@@ -31,7 +31,7 @@ type G = dyn 'static + (Send)::AssocTy;
 // This is actually a legal path with fn-like generic arguments in the middle!
 // Recovery should not apply in this context.
 type H = Fn(u8) -> (u8)::Output;
-//~^ ERROR ambiguous associated type
+//~^ ERROR the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
 //~| WARN trait objects without an explicit `dyn` are deprecated
 //~| WARN this is accepted in the current edition
 
