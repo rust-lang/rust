@@ -353,7 +353,7 @@ pub(crate) fn run_global_ctxt(
     rustc_passes::stability::check_unused_or_stable_features(tcx);
 
     let auto_traits =
-        tcx.all_traits().filter(|&trait_def_id| tcx.trait_is_auto(trait_def_id)).collect();
+        tcx.visible_traits().filter(|&trait_def_id| tcx.trait_is_auto(trait_def_id)).collect();
 
     let mut ctxt = DocContext {
         tcx,

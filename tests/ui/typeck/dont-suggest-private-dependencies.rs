@@ -1,4 +1,9 @@
 // Don't suggest importing a function from a private dependency.
+// Issues: #138191, #142676
+
+// Avoid suggesting traits from std-private deps
+//@ forbid-output: compiler_builtins
+//@ forbid-output: object
 
 struct VecReader(Vec<u8>);
 

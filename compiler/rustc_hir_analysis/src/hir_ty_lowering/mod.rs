@@ -1588,7 +1588,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &infcx_
         };
 
-        tcx.all_traits()
+        tcx.all_traits_including_private()
             .filter(|trait_def_id| {
                 // Consider only traits with the associated type
                 tcx.associated_items(*trait_def_id)

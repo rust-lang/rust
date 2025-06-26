@@ -2318,7 +2318,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// All traits in the crate graph, including those not visible to the user.
-    pub fn all_traits(self) -> impl Iterator<Item = DefId> {
+    pub fn all_traits_including_private(self) -> impl Iterator<Item = DefId> {
         iter::once(LOCAL_CRATE)
             .chain(self.crates(()).iter().copied())
             .flat_map(move |cnum| self.traits(cnum).iter().copied())
