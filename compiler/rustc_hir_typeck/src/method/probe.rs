@@ -12,7 +12,7 @@ use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
-use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
@@ -995,7 +995,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             ty::AssocKind::Fn { .. } => self.probe(|_| {
                 let args = self.fresh_args_for_item(self.span, method.def_id);
                 let fty = self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args);
-                let fty = self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, fty);
+                let fty = self.instantiate_binder_with_fresh_vars(
+                    self.span,
+                    BoundRegionConversionTime::FnCall,
+                    fty,
+                );
                 self.can_eq(self.param_env, fty.output(), expected)
             }),
             _ => false,
@@ -1756,8 +1760,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 CandidateSource::Trait(candidate.item.container_id(self.tcx))
             }
             TraitCandidate(trait_ref) => self.probe(|_| {
-                let trait_ref =
-                    self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, trait_ref);
+                let trait_ref = self.instantiate_binder_with_fresh_vars(
+                    self.span,
+                    BoundRegionConversionTime::FnCall,
+                    trait_ref,
+                );
                 let (xform_self_ty, _) =
                     self.xform_self_ty(candidate.item, trait_ref.self_ty(), trait_ref.args);
                 // Guide the trait selection to show impls that have methods whose type matches
@@ -1873,7 +1880,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                     let trait_ref = self.instantiate_binder_with_fresh_vars(
                         self.span,
-                        infer::FnCall,
+                        BoundRegionConversionTime::FnCall,
                         poly_trait_ref,
                     );
                     let trait_ref = ocx.normalize(cause, self.param_env, trait_ref);
@@ -1936,7 +1943,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 ObjectCandidate(poly_trait_ref) | WhereClauseCandidate(poly_trait_ref) => {
                     let trait_ref = self.instantiate_binder_with_fresh_vars(
                         self.span,
-                        infer::FnCall,
+                        BoundRegionConversionTime::FnCall,
                         poly_trait_ref,
                     );
                     (xform_self_ty, xform_ret_ty) =
