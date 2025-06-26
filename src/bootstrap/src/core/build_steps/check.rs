@@ -1,6 +1,5 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
-use crate::core::build_steps::compile;
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
@@ -87,7 +86,7 @@ impl Step for Std {
             }
 
             // Reuse the stage0 libstd
-            builder.ensure(compile::Std::new(compiler, target));
+            builder.std(compiler, target);
             return;
         }
 
@@ -221,8 +220,8 @@ impl Step for Rustc {
             // the sysroot for the compiler to find. Otherwise, we're going to
             // fail when building crates that need to generate code (e.g., build
             // scripts and their dependencies).
-            builder.ensure(crate::core::build_steps::compile::Std::new(compiler, compiler.host));
-            builder.ensure(crate::core::build_steps::compile::Std::new(compiler, target));
+            builder.std(compiler, compiler.host);
+            builder.std(compiler, target);
         } else {
             builder.ensure(Std::new(target));
         }

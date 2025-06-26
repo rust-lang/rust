@@ -211,7 +211,7 @@ impl Step for Std {
         {
             trace!(?compiler_to_use, ?compiler, "compiler != compiler_to_use, uplifting library");
 
-            builder.ensure(Std::new(compiler_to_use, target));
+            builder.std(compiler_to_use, target);
             let msg = if compiler_to_use.host == target {
                 format!(
                     "Uplifting library (stage{} -> stage{})",
@@ -688,7 +688,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct StdLink {
+pub struct StdLink {
     pub compiler: Compiler,
     pub target_compiler: Compiler,
     pub target: TargetSelection,
@@ -699,7 +699,7 @@ struct StdLink {
 }
 
 impl StdLink {
-    fn from_std(std: Std, host_compiler: Compiler) -> Self {
+    pub fn from_std(std: Std, host_compiler: Compiler) -> Self {
         Self {
             compiler: host_compiler,
             target_compiler: std.compiler,
@@ -1020,6 +1020,12 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // If only `compiler` was passed, do not run this step.
+        // Instead the `Assemble` step will take care of compiling Rustc.
+        if run.builder.paths == vec![PathBuf::from("compiler")] {
+            return;
+        }
+
         let crates = run.cargo_crates_in_set();
         run.builder.ensure(Rustc {
             build_compiler: run
@@ -1065,7 +1071,7 @@ impl Step for Rustc {
 
         // Build a standard library for `target` using the `build_compiler`.
         // This will be the standard library that the rustc which we build *links to*.
-        builder.ensure(Std::new(build_compiler, target));
+        builder.std(build_compiler, target);
 
         if builder.config.keep_stage.contains(&build_compiler.stage) {
             trace!(stage = build_compiler.stage, "`keep-stage` requested");
@@ -1106,10 +1112,10 @@ impl Step for Rustc {
         // build scripts and proc macros.
         // If we are not cross-compiling, the Std build above will be the same one as the one we
         // prepare here.
-        builder.ensure(Std::new(
+        builder.std(
             builder.compiler(self.build_compiler.stage, builder.config.host_target),
             builder.config.host_target,
-        ));
+        );
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -2077,7 +2083,7 @@ impl Step for Assemble {
         if builder.download_rustc() {
             trace!("`download-rustc` requested, reusing CI compiler for stage > 0");
 
-            builder.ensure(Std::new(target_compiler, target_compiler.host));
+            builder.std(target_compiler, target_compiler.host);
             let sysroot =
                 builder.ensure(Sysroot { compiler: target_compiler, force_recompile: false });
             // Ensure that `libLLVM.so` ends up in the newly created target directory,
@@ -2085,7 +2091,7 @@ impl Step for Assemble {
             dist::maybe_install_llvm_target(builder, target_compiler.host, &sysroot);
             // Lower stages use `ci-rustc-sysroot`, not stageN
             if target_compiler.stage == builder.top_stage {
-                builder.info(&format!("Creating a sysroot for stage{stage} compiler (use `rustup toolchain link 'name' build/host/stage{stage}`)", stage=target_compiler.stage));
+                builder.info(&format!("Creating a sysroot for stage{stage} compiler (use `rustup toolchain link 'name' build/host/stage{stage}`)", stage = target_compiler.stage));
             }
 
             let mut precompiled_compiler = target_compiler;

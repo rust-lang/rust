@@ -45,7 +45,7 @@ COPY host-x86_64/mingw-check-1/validate-toolstate.sh /scripts/
 # We also skip the x86_64-unknown-linux-gnu target as it is well-tested by other jobs.
 ENV SCRIPT \
            /scripts/check-default-config-profiles.sh && \
-           python3 ../x.py build --stage 0 src/tools/build-manifest && \
+           python3 ../x.py build --stage 1 src/tools/build-manifest && \
            python3 ../x.py test --stage 0 src/tools/compiletest && \
            python3 ../x.py check compiletest --set build.compiletest-use-stage0-libtest=true && \
            python3 ../x.py check --stage 1 --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \

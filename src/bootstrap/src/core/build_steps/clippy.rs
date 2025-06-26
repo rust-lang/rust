@@ -1,8 +1,8 @@
 //! Implementation of running clippy on the compiler, standard library and various tools.
 
+use super::check;
 use super::compile::{run_cargo, rustc_cargo, std_cargo};
 use super::tool::{SourceType, prepare_tool_cargo};
-use super::{check, compile};
 use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::compile::std_crates_for_run_make;
 use crate::core::builder;
@@ -212,8 +212,8 @@ impl Step for Rustc {
                 // the sysroot for the compiler to find. Otherwise, we're going to
                 // fail when building crates that need to generate code (e.g., build
                 // scripts and their dependencies).
-                builder.ensure(compile::Std::new(compiler, compiler.host));
-                builder.ensure(compile::Std::new(compiler, target));
+                builder.std(compiler, compiler.host);
+                builder.std(compiler, target);
             } else {
                 builder.ensure(check::Std::new(target));
             }

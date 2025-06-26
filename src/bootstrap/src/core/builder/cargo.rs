@@ -3,8 +3,8 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
 use super::{Builder, Kind};
+use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
-use crate::core::build_steps::{compile, test};
 use crate::core::config::SplitDebuginfo;
 use crate::core::config::flags::Color;
 use crate::utils::build_stamp;
@@ -843,7 +843,7 @@ impl Builder<'_> {
 
         // If this is for `miri-test`, prepare the sysroots.
         if cmd_kind == Kind::MiriTest {
-            self.ensure(compile::Std::new(compiler, compiler.host));
+            self.std(compiler, compiler.host);
             let host_sysroot = self.sysroot(compiler);
             let miri_sysroot = test::Miri::build_miri_sysroot(self, compiler, target);
             cargo.env("MIRI_SYSROOT", &miri_sysroot);

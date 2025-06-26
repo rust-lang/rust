@@ -6,7 +6,7 @@ LINUX_VERSION=v6.16-rc1
 
 # Build rustc, rustdoc, cargo, clippy-driver and rustfmt
 ../x.py build --stage 2 library rustdoc clippy rustfmt
-../x.py build --stage 0 cargo
+../x.py build --stage 1 cargo
 
 BUILD_DIR=$(realpath ./build/x86_64-unknown-linux-gnu)
 
