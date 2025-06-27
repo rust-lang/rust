@@ -78,6 +78,8 @@ const_eval_dealloc_kind_mismatch =
 
 const_eval_deref_function_pointer =
     accessing {$allocation} which contains a function
+const_eval_deref_typeid_pointer =
+    accessing {$allocation} which contains a `TypeId`
 const_eval_deref_vtable_pointer =
     accessing {$allocation} which contains a vtable
 const_eval_division_by_zero =
@@ -270,9 +272,6 @@ const_eval_non_const_try_block_from_output =
 
 const_eval_not_enough_caller_args =
     calling a function with fewer arguments than it requires
-
-const_eval_nullary_intrinsic_fail =
-    could not evaluate nullary intrinsic
 
 const_eval_offset_from_different_allocations =
     `{$name}` called on two different pointers that are not both derived from the same allocation

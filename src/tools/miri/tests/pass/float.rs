@@ -1358,7 +1358,7 @@ fn test_min_max_nondet() {
     /// Ensure that if we call the closure often enough, we see both `true` and `false.`
     #[track_caller]
     fn ensure_both(f: impl Fn() -> bool) {
-        let rounds = 16;
+        let rounds = 32;
         let first = f();
         for _ in 1..rounds {
             if f() != first {

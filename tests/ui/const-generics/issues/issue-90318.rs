@@ -1,5 +1,6 @@
 #![feature(const_type_id)]
 #![feature(generic_const_exprs)]
+#![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
 #![allow(incomplete_features)]
 
@@ -13,7 +14,6 @@ fn consume<T: 'static>(_val: T)
 where
     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
     //~^ ERROR overly complex generic constant
-    //~| ERROR: cannot call
 {
 }
 
@@ -21,7 +21,6 @@ fn test<T: 'static>()
 where
     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
     //~^ ERROR overly complex generic constant
-    //~| ERROR: cannot call
 {
 }
 
