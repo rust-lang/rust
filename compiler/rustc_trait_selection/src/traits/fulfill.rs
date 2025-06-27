@@ -12,7 +12,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt, TypingMode};
-use thin_vec::ThinVec;
+use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, debug_span, instrument};
 
 use super::effects::{self, HostEffectObligation};
@@ -336,7 +336,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
         let infcx = self.selcx.infcx;
 
         if sizedness_fast_path(infcx.tcx, obligation.predicate) {
-            return ProcessResult::Changed(thin_vec::thin_vec![]);
+            return ProcessResult::Changed(thin_vec![]);
         }
 
         if obligation.predicate.has_aliases() {
@@ -543,6 +543,10 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                    if term.is_trivially_wf(self.selcx.tcx()) {
+                        return ProcessResult::Changed(thin_vec![]);
+                    }
+
                     match wf::obligations(
                         self.selcx.infcx,
                         obligation.param_env,

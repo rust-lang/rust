@@ -652,6 +652,13 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
+    pub fn is_trivially_wf(&self, tcx: TyCtxt<'tcx>) -> bool {
+        match self.kind() {
+            TermKind::Ty(ty) => ty.is_trivially_wf(tcx),
+            TermKind::Const(ct) => ct.is_trivially_wf(),
+        }
+    }
+
     /// Iterator that walks `self` and any types reachable from
     /// `self`, in depth-first order. Note that just walks the types
     /// that appear in `self`, it does not descend into the fields of
