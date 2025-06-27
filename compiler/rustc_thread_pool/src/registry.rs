@@ -800,8 +800,8 @@ impl WorkerThread {
         unsafe { self.wait_or_steal_until(latch, false) };
     }
 
-    // Wait until the latch is set. Executes local jobs if `is_job` is true for them and
-    // `all_jobs_started` still returns false.
+    /// Wait until the latch is set. Executes local jobs if `is_job` is true for them and
+    /// `all_jobs_started` still returns false.
     #[inline]
     pub(super) unsafe fn wait_for_jobs<L: AsCoreLatch + ?Sized, const BROADCAST_JOBS: bool>(
         &self,
