@@ -2731,7 +2731,7 @@ impl<'a> Parser<'a> {
             return first_pat;
         }
         if !matches!(first_pat.kind, PatKind::Ident(_, _, None) | PatKind::Path(..))
-            || !self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
+            || !self.look_ahead(1, |token| token.is_non_reserved_ident())
         {
             let mut snapshot_type = self.create_snapshot_for_diagnostic();
             snapshot_type.bump(); // `:`
