@@ -847,6 +847,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
+                ty::CoroutineWitness(def_id, _) => {
+                    if self.should_stall_coroutine_witness(def_id) {
+                        candidates.ambiguous = true;
+                    } else {
+                        candidates.vec.push(AutoImplCandidate);
+                    }
+                }
+
                 ty::Bool
                 | ty::Char
                 | ty::Int(_)
@@ -866,7 +874,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Coroutine(..)
                 | ty::Never
                 | ty::Tuple(_)
-                | ty::CoroutineWitness(..)
                 | ty::UnsafeBinder(_) => {
                     // Only consider auto impls of unsafe traits when there are
                     // no unsafe fields.
