@@ -344,7 +344,7 @@ fn check_opaque_meets_bounds<'tcx>(
     let misc_cause = ObligationCause::misc(span, def_id);
     // FIXME: We should just register the item bounds here, rather than equating.
     // FIXME(const_trait_impl): When we do that, please make sure to also register
-    // the `~const` bounds.
+    // the `[const]` bounds.
     match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
         Ok(()) => {}
         Err(ty_err) => {

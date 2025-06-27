@@ -10,7 +10,7 @@ trait Foo {
 struct Bar<T>(T);
 
 impl<T> Bar<T> {
-    const fn foo(&self) where T: ~const Foo {
+    const fn foo(&self) where T: [const] Foo {
         self.0.foo()
     }
 }

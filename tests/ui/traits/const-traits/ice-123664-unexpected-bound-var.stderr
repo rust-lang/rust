@@ -1,19 +1,19 @@
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/ice-123664-unexpected-bound-var.rs:4:27
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/ice-123664-unexpected-bound-var.rs:4:25
    |
-LL | const fn with_positive<F: ~const Fn()>() {}
-   |                           ^^^^^^ can't be applied to `Fn`
+LL | const fn with_positive<F: [const] Fn()>() {}
+   |                         ^^^^^^^^^ can't be applied to `Fn`
    |
-note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/ice-123664-unexpected-bound-var.rs:4:27
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/ice-123664-unexpected-bound-var.rs:4:25
    |
-LL | const fn with_positive<F: ~const Fn()>() {}
-   |                           ^^^^^^ can't be applied to `Fn`
+LL | const fn with_positive<F: [const] Fn()>() {}
+   |                         ^^^^^^^^^ can't be applied to `Fn`
    |
-note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

@@ -1,9 +1,9 @@
 #![feature(const_trait_impl)]
 
-const fn test() -> impl ~const Fn() {
-    //~^ ERROR `~const` can only be applied to `#[const_trait]` traits
-    //~| ERROR `~const` can only be applied to `#[const_trait]` traits
-    //~| ERROR `~const` can only be applied to `#[const_trait]` traits
+const fn test() -> impl [const] Fn() {
+    //~^ ERROR `[const]` can only be applied to `#[const_trait]` traits
+    //~| ERROR `[const]` can only be applied to `#[const_trait]` traits
+    //~| ERROR `[const]` can only be applied to `#[const_trait]` traits
     const move || { //~ ERROR const closures are experimental
         let sl: &[u8] = b"foo";
 

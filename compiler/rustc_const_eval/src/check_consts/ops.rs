@@ -149,7 +149,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         debug!(?param_ty);
                         if let Some(generics) = tcx.hir_node_by_def_id(caller).generics() {
                             let constraint = with_no_trimmed_paths!(format!(
-                                "~const {}",
+                                "[const] {}",
                                 trait_ref.print_trait_sugared(),
                             ));
                             suggest_constraining_type_param(

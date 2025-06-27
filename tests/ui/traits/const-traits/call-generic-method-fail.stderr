@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: ~const PartialEq` is not satisfied
+error[E0277]: the trait bound `T: [const] PartialEq` is not satisfied
   --> $DIR/call-generic-method-fail.rs:5:5
    |
 LL |     *t == *t

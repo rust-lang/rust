@@ -2,5 +2,5 @@
 
 #![feature(const_trait_impl)]
 
-struct S<T: ~const ~const Tr>;
-//~^ ERROR expected identifier, found `~`
+struct S<T: [const] [const] Tr>;
+//~^ ERROR expected identifier, found `]`

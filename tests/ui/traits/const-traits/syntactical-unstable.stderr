@@ -1,43 +1,43 @@
 error[E0658]: use of unstable const library feature `unstable`
-  --> $DIR/syntactical-unstable.rs:13:19
+  --> $DIR/syntactical-unstable.rs:13:20
    |
-LL | trait Foo: ~const MyTrait {
-   |            ------ ^^^^^^^
-   |            |
-   |            trait is not stable as const yet
-   |
-   = help: add `#![feature(unstable)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable const library feature `unstable`
-  --> $DIR/syntactical-unstable.rs:19:44
-   |
-LL | const fn where_clause<T>() where T: ~const MyTrait {}
-   |                                     ------ ^^^^^^^
-   |                                     |
-   |                                     trait is not stable as const yet
+LL | trait Foo: [const] MyTrait {
+   |          --------- ^^^^^^^
+   |          |
+   |          trait is not stable as const yet
    |
    = help: add `#![feature(unstable)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable const library feature `unstable`
-  --> $DIR/syntactical-unstable.rs:22:52
+  --> $DIR/syntactical-unstable.rs:19:45
    |
-LL | const fn nested<T>() where T: Deref<Target: ~const MyTrait> {}
-   |                                             ------ ^^^^^^^
-   |                                             |
-   |                                             trait is not stable as const yet
+LL | const fn where_clause<T>() where T: [const] MyTrait {}
+   |                                   --------- ^^^^^^^
+   |                                   |
+   |                                   trait is not stable as const yet
    |
    = help: add `#![feature(unstable)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable const library feature `unstable`
-  --> $DIR/syntactical-unstable.rs:25:32
+  --> $DIR/syntactical-unstable.rs:22:53
    |
-LL | const fn rpit() -> impl ~const MyTrait { Local }
-   |                         ------ ^^^^^^^
-   |                         |
-   |                         trait is not stable as const yet
+LL | const fn nested<T>() where T: Deref<Target: [const] MyTrait> {}
+   |                                           --------- ^^^^^^^
+   |                                           |
+   |                                           trait is not stable as const yet
+   |
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable const library feature `unstable`
+  --> $DIR/syntactical-unstable.rs:25:33
+   |
+LL | const fn rpit() -> impl [const] MyTrait { Local }
+   |                    ------------ ^^^^^^^
+   |                    |
+   |                    trait is not stable as const yet
    |
    = help: add `#![feature(unstable)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
@@ -52,12 +52,12 @@ LL | impl const MyTrait for Local {
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable const library feature `unstable`
-  --> $DIR/syntactical-unstable.rs:15:23
+  --> $DIR/syntactical-unstable.rs:15:24
    |
-LL |     type Item: ~const MyTrait;
-   |                ------ ^^^^^^^
-   |                |
-   |                trait is not stable as const yet
+LL |     type Item: [const] MyTrait;
+   |              --------- ^^^^^^^
+   |              |
+   |              trait is not stable as const yet
    |
    = help: add `#![feature(unstable)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

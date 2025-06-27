@@ -87,7 +87,7 @@ declare_features! (
      Some("at compile-time, pointers do not have an integer value, so these casts cannot be properly supported"), 87020),
     /// Allows `T: ?const Trait` syntax in bounds.
     (removed, const_trait_bound_opt_out, "1.56.0", Some(67794),
-     Some("Removed in favor of `~const` bound in #![feature(const_trait_impl)]"), 88328),
+     Some("Removed in favor of `[const]` bound in #![feature(const_trait_impl)]"), 88328),
     /// Allows using `crate` as visibility modifier, synonymous with `pub(crate)`.
     (removed, crate_visibility_modifier, "1.63.0", Some(53120), Some("removed in favor of `pub(crate)`"), 97254),
     /// Allows using custom attributes (RFC 572).
@@ -123,7 +123,7 @@ declare_features! (
     /// [^1]: Formerly known as "object safe".
     (removed, dyn_compatible_for_dispatch, "1.87.0", Some(43561),
      Some("removed, not used heavily and represented additional complexity in dyn compatibility"), 136522),
-    /// Uses generic effect parameters for ~const bounds
+    /// Uses generic effect parameters for [const] bounds
     (removed, effects, "1.84.0", Some(102090),
      Some("removed, redundant with `#![feature(const_trait_impl)]`"), 132479),
     /// Allows defining `existential type`s.

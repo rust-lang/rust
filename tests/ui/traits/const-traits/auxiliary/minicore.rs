@@ -86,14 +86,14 @@ enum ControlFlow<B, C = ()> {
 #[const_trait]
 #[lang = "fn"]
 #[rustc_paren_sugar]
-pub trait Fn<Args: Tuple>: ~const FnMut<Args> {
+pub trait Fn<Args: Tuple>: [const] FnMut<Args> {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
 }
 
 #[const_trait]
 #[lang = "fn_mut"]
 #[rustc_paren_sugar]
-pub trait FnMut<Args: Tuple>: ~const FnOnce<Args> {
+pub trait FnMut<Args: Tuple>: [const] FnOnce<Args> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
@@ -142,7 +142,7 @@ pub trait Drop {
 
 #[const_trait]
 pub trait Residual<O> {
-    type TryType: ~const Try<Output = O, Residual = Self> + Try<Output = O, Residual = Self>;
+    type TryType: [const] Try<Output = O, Residual = Self> + Try<Output = O, Residual = Self>;
 }
 
 const fn size_of<T>() -> usize {
@@ -183,7 +183,7 @@ pub unsafe trait SliceIndex<T: PointeeSized> {
 
 impl<T, I> const Index<I> for [T]
 where
-    I: ~const SliceIndex<[T]>,
+    I: [const] SliceIndex<[T]>,
 {
     type Output = I::Output;
 
@@ -195,7 +195,7 @@ where
 
 impl<T, I, const N: usize> const Index<I> for [T; N]
 where
-    [T]: ~const Index<I>,
+    [T]: [const] Index<I>,
 {
     type Output = <[T] as Index<I>>::Output;
 
@@ -265,7 +265,7 @@ use Option::*;
 
 const fn as_deref<T>(opt: &Option<T>) -> Option<&T::Target>
 where
-    T: ~const Deref,
+    T: [const] Deref,
 {
     match opt {
         Option::Some(t) => Option::Some(t.deref()),
@@ -285,7 +285,7 @@ pub trait From<T>: Sized {
 
 impl<T, U> const Into<U> for T
 where
-    U: ~const From<T>,
+    U: [const] From<T>,
 {
     fn into(self) -> U {
         U::from(self)
@@ -323,7 +323,7 @@ pub trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
 
 impl<A: PointeeSized, B: PointeeSized> const PartialEq<&B> for &A
 where
-    A: ~const PartialEq<B>,
+    A: [const] PartialEq<B>,
 {
     fn eq(&self, other: &&B) -> bool {
         PartialEq::eq(*self, *other)
@@ -373,7 +373,7 @@ impl<'a, T: PointeeSized> Pin<&'a T> {
 impl<P: Deref> Pin<P> {
     const fn as_ref(&self) -> Pin<&P::Target>
     where
-        P: ~const Deref,
+        P: [const] Deref,
     {
         unsafe { Pin::new_unchecked(&*self.pointer) }
     }
@@ -403,7 +403,7 @@ impl<T> Option<T> {
     }
 }
 
-impl<P: ~const Deref> const Deref for Pin<P> {
+impl<P: [const] Deref> const Deref for Pin<P> {
     type Target = P::Target;
     fn deref(&self) -> &P::Target {
         Pin::get_ref(Pin::as_ref(self))
@@ -467,7 +467,7 @@ pub trait Clone: Sized {
     fn clone(&self) -> Self;
     fn clone_from(&mut self, source: &Self)
     where
-        Self: ~const Destruct,
+        Self: [const] Destruct,
     {
         *self = source.clone()
     }
@@ -476,7 +476,7 @@ pub trait Clone: Sized {
 #[lang = "structural_peq"]
 pub trait StructuralPartialEq {}
 
-pub const fn drop<T: ~const Destruct>(_: T) {}
+pub const fn drop<T: [const] Destruct>(_: T) {}
 
 #[rustc_intrinsic]
 const fn const_eval_select<ARG: Tuple, F, G, RET>(

@@ -809,7 +809,7 @@ mod types {
         let _: impl Send + 'static;     //[hir]~ ERROR `impl Trait` is not allowed
         let _: impl 'static + Send;     //[hir]~ ERROR `impl Trait` is not allowed
         let _: impl ?Sized;             //[hir]~ ERROR `impl Trait` is not allowed
-        let _: impl ~const Clone;       //[hir]~ ERROR `impl Trait` is not allowed
+        let _: impl [const] Clone;       //[hir]~ ERROR `impl Trait` is not allowed
         let _: impl for<'a> Send;       //[hir]~ ERROR `impl Trait` is not allowed
     }
 

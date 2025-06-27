@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: const Foo` is not satisfied
-  --> $DIR/call-const-in-tilde-const.rs:9:13
+  --> $DIR/call-const-in-conditionally-const.rs:9:13
    |
 LL |     const { T::foo() }
    |             ^

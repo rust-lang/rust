@@ -1,4 +1,5 @@
-// Tests that `~const` trait bounds can be used to specialize const trait impls.
+// Tests that `[const]` trait bounds can be used to specialize const trait impls.
+// cc #95186
 
 //@ check-pass
 
@@ -21,7 +22,7 @@ impl<T> const Foo for T {
 
 impl<T> const Foo for T
 where
-    T: ~const Specialize,
+    T: [const] Specialize,
 {
     fn foo() {}
 }
@@ -33,15 +34,15 @@ trait Bar {
 
 impl<T> const Bar for T
 where
-    T: ~const Foo,
+    T: [const] Foo,
 {
     default fn bar() {}
 }
 
 impl<T> const Bar for T
 where
-    T: ~const Foo,
-    T: ~const Specialize,
+    T: [const] Foo,
+    T: [const] Specialize,
 {
     fn bar() {}
 }

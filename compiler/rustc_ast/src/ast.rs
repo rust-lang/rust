@@ -323,7 +323,7 @@ impl ParenthesizedArgs {
 
 pub use crate::node_id::{CRATE_NODE_ID, DUMMY_NODE_ID, NodeId};
 
-/// Modifiers on a trait bound like `~const`, `?` and `!`.
+/// Modifiers on a trait bound like `[const]`, `?` and `!`.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
 pub struct TraitBoundModifiers {
     pub constness: BoundConstness,
@@ -3115,7 +3115,7 @@ pub enum BoundConstness {
     Never,
     /// `Type: const Trait`
     Always(Span),
-    /// `Type: ~const Trait`
+    /// `Type: [const] Trait`
     Maybe(Span),
 }
 
@@ -3124,7 +3124,7 @@ impl BoundConstness {
         match self {
             Self::Never => "",
             Self::Always(_) => "const",
-            Self::Maybe(_) => "~const",
+            Self::Maybe(_) => "[const]",
         }
     }
 }

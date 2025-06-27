@@ -1,4 +1,4 @@
-// Tests that `T: ~const Foo` in a specializing impl is treated as equivalent to
+// Tests that `T: [const] Foo` in a specializing impl is treated as equivalent to
 // `T: Foo` in the default impl for the purposes of specialization (i.e., it
 // does not think that the user is attempting to specialize on trait `Foo`).
 
@@ -28,7 +28,7 @@ where
 
 impl<T> const Bar for T
 where
-    T: ~const Foo,
+    T: [const] Foo,
     T: Specialize,
 {
     fn bar() {}
@@ -48,7 +48,7 @@ where
 
 impl<T> const Baz for T
 where
-    T: ~const Foo,
+    T: [const] Foo,
     T: Specialize,
 {
     fn baz() {}
