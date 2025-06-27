@@ -37,7 +37,9 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
                 ty::ConstKind::Unevaluated(uv) => {
                     infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
                 }
-                ty::ConstKind::Param(param_ct) => param_ct.find_ty_from_env(obligation.param_env),
+                ty::ConstKind::Param(param_ct) => {
+                    param_ct.find_const_ty_from_env(obligation.param_env)
+                }
                 ty::ConstKind::Value(cv) => cv.ty,
                 kind => span_bug!(
                     obligation.cause.span,
