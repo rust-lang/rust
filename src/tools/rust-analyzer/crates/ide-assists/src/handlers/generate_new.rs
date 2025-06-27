@@ -149,8 +149,35 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         .clone_for_update();
         fn_.indent(1.into());
 
-        // Add a tabstop before the name
         if let Some(cap) = ctx.config.snippet_cap {
+            match strukt.kind() {
+                StructKind::Tuple(_) => {
+                    let struct_args = fn_
+                        .body()
+                        .unwrap()
+                        .syntax()
+                        .descendants()
+                        .filter(|it| syntax::ast::ArgList::can_cast(it.kind()))
+                        .flat_map(|args| args.children())
+                        .filter(|it| syntax::ast::PathExpr::can_cast(it.kind()))
+                        .enumerate()
+                        .filter_map(|(i, node)| {
+                            if trivial_constructors[i].is_none() { Some(node) } else { None }
+                        });
+                    if let Some(fn_params) = fn_.param_list() {
+                        for (struct_arg, fn_param) in struct_args.zip(fn_params.params()) {
+                            if let Some(fn_pat) = fn_param.pat() {
+                                let fn_pat = fn_pat.syntax().clone();
+                                builder
+                                    .add_placeholder_snippet_group(cap, vec![struct_arg, fn_pat]);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            // Add a tabstop before the name
             if let Some(name) = fn_.name() {
                 builder.add_tabstop_before(cap, name);
             }
@@ -765,8 +792,8 @@ struct Empty;
 struct Foo(String, Empty);
 
 impl Foo {
-    fn $0new(_0: String) -> Self {
-        Self(_0, Empty)
+    fn $0new(${1:_0}: String) -> Self {
+        Self(${1:_0}, Empty)
     }
 }
 "#,
@@ -805,8 +832,8 @@ struct Empty {}
 struct Foo(Empty);
 
 impl Foo {
-    fn $0new(_0: Empty) -> Self {
-        Self(_0)
+    fn $0new(${1:empty}: Empty) -> Self {
+        Self(${1:empty})
     }
 }
 "#,
@@ -824,8 +851,8 @@ enum Empty { Bar {} }
 struct Foo(Empty);
 
 impl Foo {
-    fn $0new(_0: Empty) -> Self {
-        Self(_0)
+    fn $0new(${1:empty}: Empty) -> Self {
+        Self(${1:empty})
     }
 }
 "#,
@@ -888,8 +915,8 @@ struct Foo(String$0);
 struct Foo(String);
 
 impl Foo {
-    fn $0new(_0: String) -> Self {
-        Self(_0)
+    fn $0new(${1:_0}: String) -> Self {
+        Self(${1:_0})
     }
 }
 "#,
@@ -897,14 +924,16 @@ impl Foo {
         check_assist(
             generate_new,
             r#"
+struct Vec<T> { };
 struct Foo(String, Vec<i32>$0);
 "#,
             r#"
+struct Vec<T> { };
 struct Foo(String, Vec<i32>);
 
 impl Foo {
-    fn $0new(_0: String, _1: Vec<i32>) -> Self {
-        Self(_0, _1)
+    fn $0new(${1:_0}: String, ${2:items}: Vec<i32>) -> Self {
+        Self(${1:_0}, ${2:items})
     }
 }
 "#,
@@ -916,14 +945,16 @@ impl Foo {
         check_assist(
             generate_new,
             r#"
+struct Vec<T> { };
 struct Foo(pub String, pub Vec<i32>$0);
 "#,
             r#"
+struct Vec<T> { };
 struct Foo(pub String, pub Vec<i32>);
 
 impl Foo {
-    fn $0new(_0: String, _1: Vec<i32>) -> Self {
-        Self(_0, _1)
+    fn $0new(${1:_0}: String, ${2:items}: Vec<i32>) -> Self {
+        Self(${1:_0}, ${2:items})
     }
 }
 "#,
@@ -1013,8 +1044,8 @@ impl<N: AstNode> AstId<N> {
 pub struct Source<T>(pub HirFileId, pub T);
 
 impl<T> Source<T> {
-    pub fn $0new(_0: HirFileId, _1: T) -> Self {
-        Self(_0, _1)
+    pub fn $0new(${1:_0}: HirFileId, ${2:_1}: T) -> Self {
+        Self(${1:_0}, ${2:_1})
     }
 
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
