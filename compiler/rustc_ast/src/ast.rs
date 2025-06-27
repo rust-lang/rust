@@ -1391,6 +1391,7 @@ impl Expr {
                 path.clone(),
                 TraitBoundModifiers::NONE,
                 self.span,
+                false,
             ))),
             _ => None,
         }
@@ -3372,6 +3373,9 @@ pub struct PolyTraitRef {
     pub trait_ref: TraitRef,
 
     pub span: Span,
+
+    /// Whether first and last character of `span` are an opening and a closing paren.
+    pub parens: bool,
 }
 
 impl PolyTraitRef {
@@ -3380,12 +3384,14 @@ impl PolyTraitRef {
         path: Path,
         modifiers: TraitBoundModifiers,
         span: Span,
+        parens: bool,
     ) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
             modifiers,
             trait_ref: TraitRef { path, ref_id: DUMMY_NODE_ID },
             span,
+            parens,
         }
     }
 }

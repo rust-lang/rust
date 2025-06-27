@@ -305,8 +305,13 @@ impl<'a> Parser<'a> {
                     let removal_span = kw.span.with_hi(self.token.span.lo());
                     let path = self.parse_path(PathStyle::Type)?;
                     let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
-                    let kind =
-                        self.parse_remaining_bounds_path(lifetime_defs, path, lo, parse_plus)?;
+                    let kind = self.parse_remaining_bounds_path(
+                        lifetime_defs,
+                        path,
+                        lo,
+                        parse_plus,
+                        false,
+                    )?;
                     let err = self.dcx().create_err(errors::TransposeDynOrImpl {
                         span: kw.span,
                         kw: kw.name.as_str(),
@@ -333,7 +338,7 @@ impl<'a> Parser<'a> {
                 } else {
                     let path = self.parse_path(PathStyle::Type)?;
                     let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
-                    self.parse_remaining_bounds_path(lifetime_defs, path, lo, parse_plus)?
+                    self.parse_remaining_bounds_path(lifetime_defs, path, lo, parse_plus, false)?
                 }
             }
         } else if self.eat_keyword(exp!(Impl)) {
@@ -414,7 +419,7 @@ impl<'a> Parser<'a> {
             match ty.kind {
                 // `(TY_BOUND_NOPAREN) + BOUND + ...`.
                 TyKind::Path(None, path) if maybe_bounds => {
-                    self.parse_remaining_bounds_path(ThinVec::new(), path, lo, true)
+                    self.parse_remaining_bounds_path(ThinVec::new(), path, lo, true, true)
                 }
                 // For `('a) + …`, we know that `'a` in type position already lead to an error being
                 // emitted. To reduce output, let's indirectly suppress E0178 (bad `+` in type) and
@@ -495,12 +500,14 @@ impl<'a> Parser<'a> {
         path: ast::Path,
         lo: Span,
         parse_plus: bool,
+        has_parens: bool,
     ) -> PResult<'a, TyKind> {
         let poly_trait_ref = PolyTraitRef::new(
             generic_params,
             path,
             TraitBoundModifiers::NONE,
             lo.to(self.prev_token.span),
+            has_parens,
         );
         let bounds = vec![GenericBound::Trait(poly_trait_ref)];
         self.parse_remaining_bounds(bounds, parse_plus)
@@ -832,7 +839,7 @@ impl<'a> Parser<'a> {
             Ok(TyKind::MacCall(P(MacCall { path, args: self.parse_delim_args()? })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
             // `Trait1 + Trait2 + 'a`
-            self.parse_remaining_bounds_path(ThinVec::new(), path, lo, true)
+            self.parse_remaining_bounds_path(ThinVec::new(), path, lo, true, false)
         } else {
             // Just a type path.
             Ok(TyKind::Path(None, path))
@@ -1190,8 +1197,13 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let poly_trait =
-            PolyTraitRef::new(lifetime_defs, path, modifiers, lo.to(self.prev_token.span));
+        let poly_trait = PolyTraitRef::new(
+            lifetime_defs,
+            path,
+            modifiers,
+            lo.to(self.prev_token.span),
+            has_parens,
+        );
         Ok(GenericBound::Trait(poly_trait))
     }
 
