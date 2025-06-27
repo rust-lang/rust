@@ -27,10 +27,6 @@ COPY scripts/nodejs.sh /scripts/
 RUN sh /scripts/nodejs.sh /node
 ENV PATH="/node/bin:${PATH}"
 
-# Install es-check
-# Pin its version to prevent unrelated CI failures due to future es-check versions.
-RUN npm install es-check@6.1.1 eslint@8.6.0 typescript@5.7.3 -g
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 

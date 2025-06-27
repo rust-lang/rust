@@ -50,7 +50,6 @@ pub fn check(
     ci_info: &CiInfo,
     librustdoc_path: &Path,
     tools_path: &Path,
-    src_path: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -62,7 +61,6 @@ pub fn check(
         ci_info,
         librustdoc_path,
         tools_path,
-        src_path,
         bless,
         extra_checks,
         pos_args,
@@ -77,7 +75,6 @@ fn check_impl(
     ci_info: &CiInfo,
     librustdoc_path: &Path,
     tools_path: &Path,
-    src_path: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -295,13 +292,17 @@ fn check_impl(
         spellcheck_runner(&args)?;
     }
 
+    if js_lint || js_typecheck {
+        rustdoc_js::npm_install(root_path, outdir)?;
+    }
+
     if js_lint {
-        rustdoc_js::lint(librustdoc_path, tools_path, src_path)?;
-        rustdoc_js::es_check(librustdoc_path)?;
+        rustdoc_js::lint(outdir, librustdoc_path, tools_path)?;
+        rustdoc_js::es_check(outdir, librustdoc_path)?;
     }
 
     if js_typecheck {
-        rustdoc_js::typecheck(librustdoc_path)?;
+        rustdoc_js::typecheck(outdir, librustdoc_path)?;
     }
 
     Ok(())
