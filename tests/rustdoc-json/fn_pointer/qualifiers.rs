@@ -1,9 +1,5 @@
-//@ is "$.index[?(@.name=='FnPointer')].inner.type_alias.type.function_pointer.header.is_unsafe" false
-//@ is "$.index[?(@.name=='FnPointer')].inner.type_alias.type.function_pointer.header.is_const" false
-//@ is "$.index[?(@.name=='FnPointer')].inner.type_alias.type.function_pointer.header.is_async" false
+//@ jq .index[] | select(.name == "FnPointer").inner.type_alias.type?.function_pointer.header? | [.is_unsafe, .is_const, .is_async] == [false, false, false]
 pub type FnPointer = fn();
 
-//@ is "$.index[?(@.name=='UnsafePointer')].inner.type_alias.type.function_pointer.header.is_unsafe" true
-//@ is "$.index[?(@.name=='UnsafePointer')].inner.type_alias.type.function_pointer.header.is_const" false
-//@ is "$.index[?(@.name=='UnsafePointer')].inner.type_alias.type.function_pointer.header.is_async" false
+//@ jq .index[] | select(.name == "UnsafePointer").inner.type_alias.type?.function_pointer.header? | [.is_unsafe, .is_const, .is_async] == [true, false, false]
 pub type UnsafePointer = unsafe fn();
