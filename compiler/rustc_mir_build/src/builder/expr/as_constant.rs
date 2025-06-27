@@ -121,9 +121,15 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
     let value = match (lit, lit_ty.kind()) {
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
             let s = s.as_str();
-            let allocation = Allocation::from_bytes_byte_aligned_immutable(s.as_bytes(), ());
+            let allocation = if !s.contains('\0') {
+                let mut s = s.as_bytes().to_owned();
+                s.extend(b"\xff\0");
+                Allocation::from_bytes_byte_aligned_immutable(s, ())
+            } else {
+                Allocation::from_bytes_byte_aligned_immutable(s.as_bytes(), ())
+            };
             let allocation = tcx.mk_const_alloc(allocation);
-            ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
+            ConstValue::Slice { data: allocation, meta: s.len().try_into().unwrap() }
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>
