@@ -9,9 +9,8 @@ struct Used;
 #[derive(Default)]
 enum E { //~ NOTE variants in this enum
     #[default]
-    A, //~ ERROR variants `A` and `B` are never constructed
-    //~^ NOTE `E` has a derived impl for the trait `Default`, but this is intentionally ignored during dead code analysis
-    B,
+    A,
+    B, //~ ERROR variant `B` is never constructed
 }
 
 // external crate can call T2::default() to construct T2,
