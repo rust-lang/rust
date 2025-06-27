@@ -469,7 +469,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // - if the pointer is not reborrowed (raw pointer) then we override the size
         //   to do a zero-length reborrow.
         let reborrow_size = this
-            .size_and_align_of_mplace(place)?
+            .size_and_align_of_val(place)?
             .map(|(size, _)| size)
             .unwrap_or(place.layout.size);
         trace!("Creating new permission: {:?} with size {:?}", new_perm, reborrow_size);

@@ -383,7 +383,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Returns the actual dynamic size and alignment of the place at the given type.
     /// Only the "meta" (metadata) part of the place matters.
     /// This can fail to provide an answer for extern types.
-    pub(super) fn size_and_align_of(
+    pub(super) fn size_and_align_from_meta(
         &self,
         metadata: &MemPlaceMeta<M::Provenance>,
         layout: &TyAndLayout<'tcx>,
@@ -409,7 +409,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1);
                 let Some((unsized_size, mut unsized_align)) =
-                    self.size_and_align_of(metadata, &field)?
+                    self.size_and_align_from_meta(metadata, &field)?
                 else {
                     // A field with an extern type. We don't know the actual dynamic size
                     // or the alignment.
@@ -471,11 +471,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
     #[inline]
-    pub fn size_and_align_of_mplace(
+    pub fn size_and_align_of_val(
         &self,
-        mplace: &MPlaceTy<'tcx, M::Provenance>,
+        val: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        self.size_and_align_of(&mplace.meta(), &mplace.layout)
+        self.size_and_align_from_meta(&val.meta(), &val.layout())
     }
 
     /// Jump to the given block.
