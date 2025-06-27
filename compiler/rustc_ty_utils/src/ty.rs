@@ -38,8 +38,7 @@ fn sizedness_constraint_for_ty<'tcx>(
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
-        | ty::Never
-        | ty::Dynamic(_, _, ty::DynStar) => None,
+        | ty::Never => None,
 
         ty::Str | ty::Slice(..) | ty::Dynamic(_, _, ty::Dyn) => match sizedness {
             // Never `Sized`
@@ -383,8 +382,7 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
         | ty::Bound(_, _)
         | ty::Placeholder(_)
         | ty::Infer(_)
-        | ty::Error(_)
-        | ty::Dynamic(_, _, ty::DynStar) => false,
+        | ty::Error(_) => false,
     }
 }
 

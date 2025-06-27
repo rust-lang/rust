@@ -135,7 +135,6 @@ where
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Never
-        | ty::Dynamic(_, _, ty::DynStar)
         | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
         // impl {Meta,}Sized for str, [T], dyn Trait
