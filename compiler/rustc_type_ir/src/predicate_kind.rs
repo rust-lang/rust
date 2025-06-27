@@ -46,6 +46,9 @@ pub enum ClauseKind<I: Interner> {
     /// corresponding trait clause; this just enforces the *constness* of that
     /// implementation.
     HostEffect(ty::HostEffectPredicate<I>),
+
+    /// Support marking impl as unstable.
+    UnstableFeature(I::Symbol),
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
@@ -133,6 +136,9 @@ impl<I: Interner> fmt::Debug for ClauseKind<I> {
             ClauseKind::WellFormed(data) => write!(f, "WellFormed({data:?})"),
             ClauseKind::ConstEvaluatable(ct) => {
                 write!(f, "ConstEvaluatable({ct:?})")
+            }
+            ClauseKind::UnstableFeature(feature_name) => {
+                write!(f, "UnstableFeature({feature_name:?})")
             }
         }
     }
