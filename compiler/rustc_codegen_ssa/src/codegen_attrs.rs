@@ -396,7 +396,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
-    // Apply the minimum function alignment here, so that individual backends don't have to.
+    // Apply the minimum function alignment here. This ensures that a function's alignment is
+    // determined by the `-C` flags of the crate it is defined in, not the `-C` flags of the crate
+    // it happens to be codegen'd (or const-eval'd) in.
     codegen_fn_attrs.alignment =
         Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
 
