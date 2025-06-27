@@ -11,7 +11,7 @@ use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::layout::{LayoutCx, LayoutOf};
+use rustc_middle::ty::layout::LayoutCx;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::EntryFnType;
 

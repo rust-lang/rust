@@ -1,6 +1,5 @@
 use rustc_abi::FieldIdx;
 use rustc_hir::LangItem;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Symbol;

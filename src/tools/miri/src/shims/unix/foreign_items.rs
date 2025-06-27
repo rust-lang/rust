@@ -3,7 +3,6 @@ use std::str;
 
 use rustc_abi::{CanonAbi, ExternAbi, Size};
 use rustc_middle::ty::Ty;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
