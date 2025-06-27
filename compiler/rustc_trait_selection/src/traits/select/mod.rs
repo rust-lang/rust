@@ -844,6 +844,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                    // Iterate through all goals in param_env to find the one that has the same symbol.
+                    for pred in obligation.param_env.caller_bounds().iter() {
+                        if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
+                            if sym == symbol {
+                                return Ok(EvaluatedToOk);
+                            }
+                        }
+                    }
+
+                    // During codegen we must assume that all feature bounds hold as we may be
+                    // monomorphizing a body from an upstream crate which had an unstable feature
+                    // enabled that we do not.
+                    //
+                    // Note: we don't not consider a feature to be enabled
+                    // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
+                    if (!self.tcx().features().staged_api()
+                        && self.tcx().features().enabled(symbol))
+                        || (self.infcx.typing_mode() == TypingMode::PostAnalysis)
+                    {
+                        return Ok(EvaluatedToOk);
+                    } else {
+                        return Ok(EvaluatedToAmbig);
+                    }
+                }
+
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.infcx,

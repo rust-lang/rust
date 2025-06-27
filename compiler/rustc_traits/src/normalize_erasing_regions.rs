@@ -57,6 +57,7 @@ fn not_outlives_predicate(p: ty::Predicate<'_>) -> bool {
         | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
         | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..))
         | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
+        | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_))
         | ty::PredicateKind::NormalizesTo(..)
         | ty::PredicateKind::AliasRelate(..)
         | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
