@@ -1,15 +1,15 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/104942>
 
-//@ set Color = "$.index[?(@.name == 'Color')].id"
+//@ arg color .index[] | select(.name == "Color").id
 pub enum Color {
     Red,
     Green,
     Blue,
 }
 
-//@ set use_Color = "$.index[?(@.inner.use)].id"
-//@ is "$.index[?(@.inner.use)].inner.use.id" $Color
-//@ is "$.index[?(@.inner.use)].inner.use.is_glob" true
+//@ arg use_color .index[] | select(.inner.use)
+//@ jq $use_color.inner.use.id? == $color
+//@ jq $use_color.inner.use.is_glob? == true
 pub use Color::*;
 
-//@ ismany "$.index[?(@.name == 'use_glob')].inner.module.items[*]" $Color $use_Color
+//@ jq .index["\(.root)"].inner.module.items? == [$color, $use_color.id]

@@ -15,24 +15,14 @@ pub enum Foo {
     Vll9,
 }
 
-//@ set 0 = '$.index[?(@.name == "Ews0")].id'
-//@ set 1 = '$.index[?(@.name == "Dik1")].id'
-//@ set 2 = '$.index[?(@.name == "Hsk2")].id'
-//@ set 3 = '$.index[?(@.name == "Djt3")].id'
-//@ set 4 = '$.index[?(@.name == "Jnr4")].id'
-//@ set 5 = '$.index[?(@.name == "Dfs5")].id'
-//@ set 6 = '$.index[?(@.name == "Bja6")].id'
-//@ set 7 = '$.index[?(@.name == "Lyc7")].id'
-//@ set 8 = '$.index[?(@.name == "Yqd8")].id'
-//@ set 9 = '$.index[?(@.name == "Vll9")].id'
-
-//@ is '$.index[?(@.name == "Foo")].inner.enum.variants[0]' $0
-//@ is '$.index[?(@.name == "Foo")].inner.enum.variants[1]' $1
-//@ is '$.index[?(@.name == "Foo")].inner.enum.variants[2]' $2
-//@ is '$.index[?(@.name == "Foo")].inner.enum.variants[3]' $3
-//@ is '$.index[?(@.name == "Foo")].inner.enum.variants[4]' $4
-//@ is '$.index[?(@.name == "Foo")].inner.enum.variants[5]' $5
-//@ is '$.index[?(@.name == "Foo")].inner.enum.variants[6]' $6
-//@ is '$.index[?(@.name == "Foo")].inner.enum.variants[7]' $7
-//@ is '$.index[?(@.name == "Foo")].inner.enum.variants[8]' $8
-//@ is '$.index[?(@.name == "Foo")].inner.enum.variants[9]' $9
+//@ arg foo .index[] | select(.name == "Foo").inner.enum.variants?
+//@ jq .index[] | select(.name == "Ews0").id == $foo[0]
+//@ jq .index[] | select(.name == "Dik1").id == $foo[1]
+//@ jq .index[] | select(.name == "Hsk2").id == $foo[2]
+//@ jq .index[] | select(.name == "Djt3").id == $foo[3]
+//@ jq .index[] | select(.name == "Jnr4").id == $foo[4]
+//@ jq .index[] | select(.name == "Dfs5").id == $foo[5]
+//@ jq .index[] | select(.name == "Bja6").id == $foo[6]
+//@ jq .index[] | select(.name == "Lyc7").id == $foo[7]
+//@ jq .index[] | select(.name == "Yqd8").id == $foo[8]
+//@ jq .index[] | select(.name == "Vll9").id == $foo[9]

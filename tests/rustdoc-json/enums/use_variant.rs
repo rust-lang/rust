@@ -1,12 +1,12 @@
-//@ set AlwaysNone = "$.index[?(@.name == 'AlwaysNone')].id"
+//@ arg always_none .index[] | select(.name == "AlwaysNone")
 pub enum AlwaysNone {
-    //@ set None = "$.index[?(@.name == 'None')].id"
+    //@ arg none .index[] | select(.name == "None").id
     None,
 }
-//@ is "$.index[?(@.name == 'AlwaysNone')].inner.enum.variants[*]" $None
+//@ jq $always_none.inner.enum.variants? == [$none]
 
-//@ set use_None = "$.index[?(@.inner.use)].id"
-//@ is "$.index[?(@.inner.use)].inner.use.id" $None
+//@ arg use_none .index[] | select(.inner.use)
+//@ jq $use_none.inner.use.id? == $none
 pub use AlwaysNone::None;
 
-//@ ismany "$.index[?(@.name == 'use_variant')].inner.module.items[*]" $AlwaysNone $use_None
+//@ jq .index["\(.root)"].inner.module.items? == [$always_none.id, $use_none.id]
