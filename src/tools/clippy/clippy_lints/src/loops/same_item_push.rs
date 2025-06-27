@@ -163,15 +163,14 @@ impl<'tcx> Visitor<'tcx> for SameItemPushVisitor<'_, 'tcx> {
                 StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(expr),
                 _ => {},
             }
+        }
+        // Current statement is a push ...check whether another
+        // push had been previously done
+        else if self.vec_push.is_none() {
+            self.vec_push = vec_push_option;
         } else {
-            // Current statement is a push ...check whether another
-            // push had been previously done
-            if self.vec_push.is_none() {
-                self.vec_push = vec_push_option;
-            } else {
-                // There are multiple pushes ... don't lint
-                self.multiple_pushes = true;
-            }
+            // There are multiple pushes ... don't lint
+            self.multiple_pushes = true;
         }
     }
 }

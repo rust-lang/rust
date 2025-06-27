@@ -1,4 +1,4 @@
-use clippy_utils::consts::{ConstEvalCtxt, Constant};
+use clippy_utils::consts::is_zero_integer_const;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::is_else_clause;
 use clippy_utils::source::{HasSession, indent_of, reindent_multiline, snippet};
@@ -48,13 +48,6 @@ declare_clippy_lint! {
 
 declare_lint_pass!(IfNotElse => [IF_NOT_ELSE]);
 
-fn is_zero_const(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
-    if let Some(value) = ConstEvalCtxt::new(cx).eval_simple(expr) {
-        return Constant::Int(0) == value;
-    }
-    false
-}
-
 impl LateLintPass<'_> for IfNotElse {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
         if let ExprKind::If(cond, cond_inner, Some(els)) = e.kind
@@ -68,7 +61,7 @@ impl LateLintPass<'_> for IfNotElse {
                 ),
                 // Don't lint on `… != 0`, as these are likely to be bit tests.
                 // For example, `if foo & 0x0F00 != 0 { … } else { … }` is already in the "proper" order.
-                ExprKind::Binary(op, _, rhs) if op.node == BinOpKind::Ne && !is_zero_const(rhs, cx) => (
+                ExprKind::Binary(op, _, rhs) if op.node == BinOpKind::Ne && !is_zero_integer_const(cx, rhs) => (
                     "unnecessary `!=` operation",
                     "change to `==` and swap the blocks of the `if`/`else`",
                 ),

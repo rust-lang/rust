@@ -109,7 +109,7 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
     });
 }
 
-/// Same as `span_lint` but with an extra `help` message.
+/// Same as [`span_lint`] but with an extra `help` message.
 ///
 /// Use this if you want to provide some general help but
 /// can't provide a specific machine applicable suggestion.
@@ -166,7 +166,7 @@ pub fn span_lint_and_help<T: LintContext>(
     });
 }
 
-/// Like `span_lint` but with a `note` section instead of a `help` message.
+/// Like [`span_lint`] but with a `note` section instead of a `help` message.
 ///
 /// The `note` message is presented separately from the main lint message
 /// and is attached to a specific span:
@@ -226,7 +226,7 @@ pub fn span_lint_and_note<T: LintContext>(
     });
 }
 
-/// Like `span_lint` but allows to add notes, help and suggestions using a closure.
+/// Like [`span_lint`] but allows to add notes, help and suggestions using a closure.
 ///
 /// If you need to customize your lint output a lot, use this function.
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`

@@ -124,8 +124,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 // Note that we do not want to deal with qualified predicates here.
                 match pred.kind().no_bound_vars() {
                     Some(ty::ClauseKind::Trait(pred))
-                        if pred.def_id() != sized_trait && pred.def_id() != meta_sized_trait
-                            => Some(pred),
+                        if pred.def_id() != sized_trait && pred.def_id() != meta_sized_trait =>
+                    {
+                        Some(pred)
+                    },
                     _ => None,
                 }
             })
