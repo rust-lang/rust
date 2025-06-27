@@ -20,21 +20,21 @@ trait Foo {
 
 #[cfg_attr(any(yyy, yny, nyy, nyn), const_trait)]
 //[nyy,nyn]~^ ERROR: `const_trait` is a temporary placeholder for marking a trait that is suitable for `const` `impls` and all default bodies as `const`, which may be removed or renamed in the future
-trait Bar: ~const Foo {}
-//[yny,ynn,nny,nnn]~^ ERROR: `~const` can only be applied to `#[const_trait]`
-//[yny,ynn,nny,nnn]~| ERROR: `~const` can only be applied to `#[const_trait]`
-//[yny,ynn,nny,nnn]~| ERROR: `~const` can only be applied to `#[const_trait]`
-//[yny]~^^^^ ERROR: `~const` can only be applied to `#[const_trait]`
-//[yny]~| ERROR: `~const` can only be applied to `#[const_trait]`
-//[yyn,ynn,nny,nnn]~^^^^^^ ERROR: `~const` is not allowed here
+trait Bar: [const] Foo {}
+//[yny,ynn,nny,nnn]~^ ERROR: `[const]` can only be applied to `#[const_trait]`
+//[yny,ynn,nny,nnn]~| ERROR: `[const]` can only be applied to `#[const_trait]`
+//[yny,ynn,nny,nnn]~| ERROR: `[const]` can only be applied to `#[const_trait]`
+//[yny]~^^^^ ERROR: `[const]` can only be applied to `#[const_trait]`
+//[yny]~| ERROR: `[const]` can only be applied to `#[const_trait]`
+//[yyn,ynn,nny,nnn]~^^^^^^ ERROR: `[const]` is not allowed here
 //[nyy,nyn,nny,nnn]~^^^^^^^ ERROR: const trait impls are experimental
 
-const fn foo<T: ~const Bar>(x: &T) {
-    //[yyn,ynn,nny,nnn]~^ ERROR: `~const` can only be applied to `#[const_trait]`
-    //[yyn,ynn,nny,nnn]~| ERROR: `~const` can only be applied to `#[const_trait]`
+const fn foo<T: [const] Bar>(x: &T) {
+    //[yyn,ynn,nny,nnn]~^ ERROR: `[const]` can only be applied to `#[const_trait]`
+    //[yyn,ynn,nny,nnn]~| ERROR: `[const]` can only be applied to `#[const_trait]`
     //[nyy,nyn,nny,nnn]~^^^ ERROR: const trait impls are experimental
     x.a();
-    //[yyn]~^ ERROR: the trait bound `T: ~const Foo` is not satisfied
+    //[yyn]~^ ERROR: the trait bound `T: [const] Foo` is not satisfied
     //[ynn,yny,nny,nnn]~^^ ERROR: cannot call non-const method `<T as Foo>::a` in constant functions
     //[nyy,nyn]~^^^ ERROR: cannot call conditionally-const method `<T as Foo>::a` in constant functions
 }

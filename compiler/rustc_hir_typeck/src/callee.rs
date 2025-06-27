@@ -916,7 +916,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        // If we have `rustc_do_not_const_check`, do not check `~const` bounds.
+        // If we have `rustc_do_not_const_check`, do not check `[const]` bounds.
         if self.tcx.has_attr(self.body_id, sym::rustc_do_not_const_check) {
             return;
         }

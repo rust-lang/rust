@@ -419,7 +419,7 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 }
 
-/// `~const` bounds for a given item. This is represented using a struct much like
+/// `[const]` bounds for a given item. This is represented using a struct much like
 /// `GenericPredicates`, where you can either choose to only instantiate the "own"
 /// bounds or all of the bounds including those from the parent. This distinction
 /// is necessary for code like `compare_method_predicate_entailment`.

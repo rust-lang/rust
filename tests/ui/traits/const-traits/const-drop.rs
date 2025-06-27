@@ -16,7 +16,7 @@ impl<'a> const Drop for S<'a> {
     }
 }
 
-const fn a<T: ~const Destruct>(_: T) {}
+const fn a<T: [const] Destruct>(_: T) {}
 //FIXME ~^ ERROR destructor of
 
 const fn b() -> u8 {
@@ -108,7 +108,7 @@ fn main() {
         }
     }
 
-    // These types should pass because ~const in a non-const context should have no effect.
+    // These types should pass because [const] in a non-const context should have no effect.
     a(HasDropGlue(Box::new(0)));
     a(HasDropImpl);
 

@@ -12,7 +12,7 @@
 
 #[const_trait]
 trait Main {
-    fn compute<T: ~const Aux>() -> u32;
+    fn compute<T: [const] Aux>() -> u32;
 }
 
 impl const Main for () {

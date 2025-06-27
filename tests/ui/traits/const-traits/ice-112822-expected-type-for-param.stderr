@@ -8,32 +8,32 @@ LL |     const move || {
    = help: add `#![feature(const_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/ice-112822-expected-type-for-param.rs:3:25
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:20
    |
-LL | const fn test() -> impl ~const Fn() {
-   |                         ^^^^^^ can't be applied to `Fn`
+LL | const fn test() -> impl [const] Fn() {
+   |                    ^^^^^^^^^^^^ can't be applied to `Fn`
    |
-note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/ice-112822-expected-type-for-param.rs:3:25
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:20
    |
-LL | const fn test() -> impl ~const Fn() {
-   |                         ^^^^^^ can't be applied to `Fn`
+LL | const fn test() -> impl [const] Fn() {
+   |                    ^^^^^^^^^^^^ can't be applied to `Fn`
    |
-note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/ice-112822-expected-type-for-param.rs:3:25
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:20
    |
-LL | const fn test() -> impl ~const Fn() {
-   |                         ^^^^^^ can't be applied to `Fn`
+LL | const fn test() -> impl [const] Fn() {
+   |                    ^^^^^^^^^^^^ can't be applied to `Fn`
    |
-note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

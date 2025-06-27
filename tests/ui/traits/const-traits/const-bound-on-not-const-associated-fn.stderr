@@ -1,25 +1,25 @@
-error: `~const` is not allowed here
-  --> $DIR/const-bound-on-not-const-associated-fn.rs:11:40
+error: `[const]` is not allowed here
+  --> $DIR/const-bound-on-not-const-associated-fn.rs:11:38
    |
-LL |     fn do_something_else() where Self: ~const MyTrait;
-   |                                        ^^^^^^
+LL |     fn do_something_else() where Self: [const] MyTrait;
+   |                                      ^^^^^^^^^
    |
-note: this function is not `const`, so it cannot have `~const` trait bounds
+note: this function is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/const-bound-on-not-const-associated-fn.rs:11:8
    |
-LL |     fn do_something_else() where Self: ~const MyTrait;
+LL |     fn do_something_else() where Self: [const] MyTrait;
    |        ^^^^^^^^^^^^^^^^^
 
-error: `~const` is not allowed here
-  --> $DIR/const-bound-on-not-const-associated-fn.rs:22:32
+error: `[const]` is not allowed here
+  --> $DIR/const-bound-on-not-const-associated-fn.rs:22:30
    |
-LL |     pub fn foo(&self) where T: ~const MyTrait {
-   |                                ^^^^^^
+LL |     pub fn foo(&self) where T: [const] MyTrait {
+   |                              ^^^^^^^^^
    |
-note: this function is not `const`, so it cannot have `~const` trait bounds
+note: this function is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/const-bound-on-not-const-associated-fn.rs:22:12
    |
-LL |     pub fn foo(&self) where T: ~const MyTrait {
+LL |     pub fn foo(&self) where T: [const] MyTrait {
    |            ^^^
 
 error: aborting due to 2 previous errors

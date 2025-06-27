@@ -3919,7 +3919,6 @@ ui/traits/const-traits/issue-79450.rs
 ui/traits/const-traits/issue-88155.rs
 ui/traits/const-traits/issue-92111.rs
 ui/traits/const-traits/issue-92230-wf-super-trait-env.rs
-ui/traits/const-traits/specialization/issue-95186-specialize-on-tilde-const.rs
 ui/traits/const-traits/specialization/issue-95187-same-trait-bound-different-constness.rs
 ui/traits/issue-103563.rs
 ui/traits/issue-104322.rs

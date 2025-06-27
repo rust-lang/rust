@@ -885,6 +885,7 @@ impl<'a> Parser<'a> {
             || self.check(exp!(Tilde))
             || self.check_keyword(exp!(For))
             || self.check(exp!(OpenParen))
+            || self.check(exp!(OpenBracket))
             || self.check_keyword(exp!(Const))
             || self.check_keyword(exp!(Async))
             || self.check_keyword(exp!(Use))
@@ -982,12 +983,12 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses the modifiers that may precede a trait in a bound, e.g. `?Trait` or `~const Trait`.
+    /// Parses the modifiers that may precede a trait in a bound, e.g. `?Trait` or `[const] Trait`.
     ///
     /// If no modifiers are present, this does not consume any tokens.
     ///
     /// ```ebnf
-    /// CONSTNESS = [["~"] "const"]
+    /// CONSTNESS = [["["] "const" ["]"]]
     /// ASYNCNESS = ["async"]
     /// POLARITY = ["?" | "!"]
     /// ```
@@ -995,18 +996,7 @@ impl<'a> Parser<'a> {
     /// See `parse_generic_ty_bound` for the complete grammar of trait bound modifiers.
     fn parse_trait_bound_modifiers(&mut self) -> PResult<'a, TraitBoundModifiers> {
         let modifier_lo = self.token.span;
-        let constness = if self.eat(exp!(Tilde)) {
-            let tilde = self.prev_token.span;
-            self.expect_keyword(exp!(Const))?;
-            let span = tilde.to(self.prev_token.span);
-            self.psess.gated_spans.gate(sym::const_trait_impl, span);
-            BoundConstness::Maybe(span)
-        } else if self.eat_keyword(exp!(Const)) {
-            self.psess.gated_spans.gate(sym::const_trait_impl, self.prev_token.span);
-            BoundConstness::Always(self.prev_token.span)
-        } else {
-            BoundConstness::Never
-        };
+        let constness = self.parse_bound_constness()?;
 
         let asyncness = if self.token_uninterpolated_span().at_least_rust_2018()
             && self.eat_keyword(exp!(Async))
@@ -1068,13 +1058,41 @@ impl<'a> Parser<'a> {
         Ok(TraitBoundModifiers { constness, asyncness, polarity })
     }
 
+    pub fn parse_bound_constness(&mut self) -> PResult<'a, BoundConstness> {
+        // FIXME(const_trait_impl): remove `~const` parser support once bootstrap has the new syntax
+        // in rustfmt
+        Ok(if self.eat(exp!(Tilde)) {
+            let tilde = self.prev_token.span;
+            self.expect_keyword(exp!(Const))?;
+            let span = tilde.to(self.prev_token.span);
+            self.psess.gated_spans.gate(sym::const_trait_impl, span);
+            BoundConstness::Maybe(span)
+        } else if self.check(exp!(OpenBracket))
+            && self.look_ahead(1, |t| t.is_keyword(kw::Const))
+            && self.look_ahead(2, |t| *t == token::CloseBracket)
+        {
+            let start = self.prev_token.span;
+            self.bump();
+            self.expect_keyword(exp!(Const)).unwrap();
+            self.bump();
+            let span = start.to(self.prev_token.span);
+            self.psess.gated_spans.gate(sym::const_trait_impl, span);
+            BoundConstness::Maybe(span)
+        } else if self.eat_keyword(exp!(Const)) {
+            self.psess.gated_spans.gate(sym::const_trait_impl, self.prev_token.span);
+            BoundConstness::Always(self.prev_token.span)
+        } else {
+            BoundConstness::Never
+        })
+    }
+
     /// Parses a type bound according to:
     /// ```ebnf
     /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
     /// TY_BOUND_NOPAREN = [for<GENERIC_PARAMS> CONSTNESS ASYNCNESS | POLARITY] SIMPLE_PATH
     /// ```
     ///
-    /// For example, this grammar accepts `for<'a: 'b> ~const ?m::Trait<'a>`.
+    /// For example, this grammar accepts `for<'a: 'b> [const] ?m::Trait<'a>`.
     fn parse_generic_ty_bound(
         &mut self,
         lo: Span,
@@ -1101,7 +1119,7 @@ impl<'a> Parser<'a> {
         }
 
         // Recover erroneous lifetime bound with modifiers or binder.
-        // e.g. `T: for<'a> 'a` or `T: ~const 'a`.
+        // e.g. `T: for<'a> 'a` or `T: [const] 'a`.
         if self.token.is_lifetime() {
             let _: ErrorGuaranteed = self.error_lt_bound_with_modifiers(modifiers, binder_span);
             return self.parse_generic_lt_bound(lo, has_parens);

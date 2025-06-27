@@ -12,19 +12,19 @@ error: `?` may only modify trait bounds, not lifetime bounds
 LL |     T: ?'a,
    |        ^
 
-error: `~const` trait not allowed with `?` trait polarity modifier
-  --> $DIR/bounds-type.rs:14:15
+error: `[const]` trait not allowed with `?` trait polarity modifier
+  --> $DIR/bounds-type.rs:14:16
    |
-LL |     T: ~const ?Tr,
-   |        ------ ^
+LL |     T: [const] ?Tr,
+   |        ------- ^
    |        |
-   |        there is not a well-defined meaning for a `~const ?` trait
+   |        there is not a well-defined meaning for a `[const] ?` trait
 
-error: `~const` may only modify trait bounds, not lifetime bounds
-  --> $DIR/bounds-type.rs:16:8
+error: `[const]` may only modify trait bounds, not lifetime bounds
+  --> $DIR/bounds-type.rs:16:6
    |
-LL |     T: ~const 'a,
-   |        ^^^^^^
+LL |     T: [const] 'a,
+   |      ^^^^^^^^^
 
 error: `const` may only modify trait bounds, not lifetime bounds
   --> $DIR/bounds-type.rs:17:8

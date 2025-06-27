@@ -604,7 +604,7 @@ mod types {
         let _: impl Send + 'static;
         let _: impl 'static + Send;
         let _: impl ?Sized;
-        let _: impl ~const Clone;
+        let _: impl [const] Clone;
         let _: impl for<'a> Send;
     }
     /// TyKind::Paren

@@ -1,25 +1,25 @@
-error: `~const` is not allowed here
-  --> $DIR/trait-where-clause.rs:8:24
+error: `[const]` is not allowed here
+  --> $DIR/trait-where-clause.rs:8:22
    |
-LL |     fn b() where Self: ~const Bar;
-   |                        ^^^^^^
+LL |     fn b() where Self: [const] Bar;
+   |                      ^^^^^^^^^
    |
-note: this function is not `const`, so it cannot have `~const` trait bounds
+note: this function is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/trait-where-clause.rs:8:8
    |
-LL |     fn b() where Self: ~const Bar;
+LL |     fn b() where Self: [const] Bar;
    |        ^
 
-error: `~const` is not allowed here
-  --> $DIR/trait-where-clause.rs:10:13
+error: `[const]` is not allowed here
+  --> $DIR/trait-where-clause.rs:10:11
    |
-LL |     fn c<T: ~const Bar>();
-   |             ^^^^^^
+LL |     fn c<T: [const] Bar>();
+   |           ^^^^^^^^^
    |
-note: this function is not `const`, so it cannot have `~const` trait bounds
+note: this function is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/trait-where-clause.rs:10:8
    |
-LL |     fn c<T: ~const Bar>();
+LL |     fn c<T: [const] Bar>();
    |        ^
 
 error[E0277]: the trait bound `T: Bar` is not satisfied
@@ -31,8 +31,8 @@ LL |     T::b();
 note: required by a bound in `Foo::b`
   --> $DIR/trait-where-clause.rs:8:24
    |
-LL |     fn b() where Self: ~const Bar;
-   |                        ^^^^^^^^^^ required by this bound in `Foo::b`
+LL |     fn b() where Self: [const] Bar;
+   |                        ^^^^^^^^^^^ required by this bound in `Foo::b`
 help: consider further restricting type parameter `T` with trait `Bar`
    |
 LL | fn test1<T: Foo + Bar>() {
@@ -47,8 +47,8 @@ LL |     T::c::<T>();
 note: required by a bound in `Foo::c`
   --> $DIR/trait-where-clause.rs:10:13
    |
-LL |     fn c<T: ~const Bar>();
-   |             ^^^^^^^^^^ required by this bound in `Foo::c`
+LL |     fn c<T: [const] Bar>();
+   |             ^^^^^^^^^^^ required by this bound in `Foo::c`
 help: consider further restricting type parameter `T` with trait `Bar`
    |
 LL | fn test1<T: Foo + Bar>() {

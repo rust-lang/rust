@@ -80,10 +80,10 @@ pub enum PredicateFilter {
     /// and `<Self as Tr>::A: B`.
     SelfAndAssociatedTypeBounds,
 
-    /// Filter only the `~const` bounds, which are lowered into `HostEffect` clauses.
+    /// Filter only the `[const]` bounds, which are lowered into `HostEffect` clauses.
     ConstIfConst,
 
-    /// Filter only the `~const` bounds which are *also* in the supertrait position.
+    /// Filter only the `[const]` bounds which are *also* in the supertrait position.
     SelfConstIfConst,
 }
 
@@ -885,7 +885,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                 }
                 // On the flip side, when filtering `ConstIfConst` bounds, we only need to convert
-                // `~const` bounds. All other predicates are handled in their respective queries.
+                // `[const]` bounds. All other predicates are handled in their respective queries.
                 //
                 // Note that like `PredicateFilter::SelfOnly`, we don't need to do any filtering
                 // here because we only call this on self bounds, and deal with the recursive case

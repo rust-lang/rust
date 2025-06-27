@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `NonConstImpl: ~const ConstDefaultFn` is not satisfied
+error[E0277]: the trait bound `NonConstImpl: [const] ConstDefaultFn` is not satisfied
   --> $DIR/const-default-method-bodies.rs:25:18
    |
 LL |     NonConstImpl.a();
