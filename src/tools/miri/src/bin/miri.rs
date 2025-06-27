@@ -295,6 +295,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                                         level: SymbolExportLevel::C,
                                         kind: SymbolExportKind::Text,
                                         used: false,
+                                        rustc_std_internal_symbol: false,
                                     },
                                 ))
                             } else {
