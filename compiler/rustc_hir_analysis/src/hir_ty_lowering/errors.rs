@@ -29,7 +29,7 @@ use tracing::debug;
 use super::InherentAssocCandidate;
 use crate::errors::{
     self, AssocItemConstraintsNotAllowedHere, ManualImplementation, MissingTypeParams,
-    ParenthesizedFnTraitExpansion, TraitObjectDeclaredWithNoTraits,
+    ParenthesizedFnTraitExpansion, PointeeSizedTraitObject, TraitObjectDeclaredWithNoTraits,
 };
 use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
@@ -1409,6 +1409,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|trait_ref| tcx.def_span(trait_ref.def_id()));
 
         self.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span })
+    }
+
+    pub(super) fn report_pointee_sized_trait_object(&self, span: Span) -> ErrorGuaranteed {
+        self.dcx().emit_err(PointeeSizedTraitObject { span })
     }
 }
 
