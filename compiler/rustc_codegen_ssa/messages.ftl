@@ -205,11 +205,6 @@ codegen_ssa_missing_features = add the missing features in a `target_feature` at
 codegen_ssa_missing_query_depgraph =
     found CGU-reuse attribute but `-Zquery-dep-graph` was not specified
 
-codegen_ssa_mixed_export_name_and_no_mangle = `{$no_mangle_attr}` attribute may not be used in combination with `#[export_name]`
-    .label = `{$no_mangle_attr}` is ignored
-    .note = `#[export_name]` takes precedence
-    .suggestion = remove the `{$no_mangle_attr}` attribute
-
 codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but `link.exe` was not found
 
 codegen_ssa_multiple_external_func_decl = multiple declarations of external function `{$function}` from library `{$library_name}` have different calling conventions
@@ -229,8 +224,6 @@ codegen_ssa_no_module_named =
 codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
 codegen_ssa_no_saved_object_file = cached cgu {$cgu_name} should have an object file, but doesn't
-
-codegen_ssa_null_on_export = `export_name` may not contain null characters
 
 codegen_ssa_out_of_range_integer = integer value out of range
     .label = value must be between `0` and `255`

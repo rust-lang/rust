@@ -567,7 +567,7 @@ impl<'tcx> NonConstOp<'tcx> for EscapingCellBorrow {
         DiagImportance::Secondary
     }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.dcx().create_err(errors::InteriorMutableRefEscaping {
+        ccx.dcx().create_err(errors::InteriorMutableBorrowEscaping {
             span,
             opt_help: matches!(ccx.const_kind(), hir::ConstContext::Static(_)),
             kind: ccx.const_kind(),
@@ -580,7 +580,7 @@ impl<'tcx> NonConstOp<'tcx> for EscapingCellBorrow {
 /// This op is for `&mut` borrows in the trailing expression of a constant
 /// which uses the "enclosing scopes rule" to leak its locals into anonymous
 /// static or const items.
-pub(crate) struct EscapingMutBorrow(pub hir::BorrowKind);
+pub(crate) struct EscapingMutBorrow;
 
 impl<'tcx> NonConstOp<'tcx> for EscapingMutBorrow {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
@@ -594,20 +594,11 @@ impl<'tcx> NonConstOp<'tcx> for EscapingMutBorrow {
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        match self.0 {
-            hir::BorrowKind::Raw => ccx.tcx.dcx().create_err(errors::MutableRawEscaping {
-                span,
-                kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(E0764),
-            }),
-            hir::BorrowKind::Ref | hir::BorrowKind::Pin => {
-                ccx.dcx().create_err(errors::MutableRefEscaping {
-                    span,
-                    kind: ccx.const_kind(),
-                    teach: ccx.tcx.sess.teach(E0764),
-                })
-            }
-        }
+        ccx.dcx().create_err(errors::MutableBorrowEscaping {
+            span,
+            kind: ccx.const_kind(),
+            teach: ccx.tcx.sess.teach(E0764),
+        })
     }
 }
 

@@ -11,7 +11,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AmbigArg, ItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{self, InferCtxt, SubregionOrigin, TyCtxtInferExt};
 use rustc_lint_defs::builtin::SUPERTRAIT_ITEM_SHADOWING_DEFINITION;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -739,7 +739,7 @@ fn ty_known_to_outlive<'tcx>(
         infcx.register_type_outlives_constraint_inner(infer::TypeOutlivesConstraint {
             sub_region: region,
             sup_type: ty,
-            origin: infer::RelateParamBound(DUMMY_SP, ty, None),
+            origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
         });
     })
 }
@@ -755,7 +755,11 @@ fn region_known_to_outlive<'tcx>(
     region_b: ty::Region<'tcx>,
 ) -> bool {
     test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
-        infcx.sub_regions(infer::RelateRegionParamBound(DUMMY_SP, None), region_b, region_a);
+        infcx.sub_regions(
+            SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+            region_b,
+            region_a,
+        );
     })
 }
 
@@ -1491,7 +1495,9 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     ty::ConstKind::Unevaluated(uv) => {
                         infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
                     }
-                    ty::ConstKind::Param(param_ct) => param_ct.find_ty_from_env(wfcx.param_env),
+                    ty::ConstKind::Param(param_ct) => {
+                        param_ct.find_const_ty_from_env(wfcx.param_env)
+                    }
                 };
 
                 let param_ty = tcx.type_of(param.def_id).instantiate_identity();

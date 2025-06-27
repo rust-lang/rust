@@ -84,9 +84,6 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
     // was discarded -- this could be because of ambiguity, or because
     // a higher-priority candidate is already there.
     fn push_candidate(&mut self, candidate: ProjectionCandidate<'tcx>) -> bool {
-        use self::ProjectionCandidate::*;
-        use self::ProjectionCandidateSet::*;
-
         // This wacky variable is just used to try and
         // make code readable and avoid confusing paths.
         // It is assigned a "value" of `()` only on those
@@ -98,12 +95,12 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
         let convert_to_ambiguous;
 
         match self {
-            None => {
-                *self = Single(candidate);
+            ProjectionCandidateSet::None => {
+                *self = ProjectionCandidateSet::Single(candidate);
                 return true;
             }
 
-            Single(current) => {
+            ProjectionCandidateSet::Single(current) => {
                 // Duplicates can happen inside ParamEnv. In the case, we
                 // perform a lazy deduplication.
                 if current == &candidate {
@@ -118,16 +115,18 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
                 // clauses are the safer choice. See the comment on
                 // `select::SelectionCandidate` and #21974 for more details.
                 match (current, candidate) {
-                    (ParamEnv(..), ParamEnv(..)) => convert_to_ambiguous = (),
-                    (ParamEnv(..), _) => return false,
-                    (_, ParamEnv(..)) => bug!(
+                    (ProjectionCandidate::ParamEnv(..), ProjectionCandidate::ParamEnv(..)) => {
+                        convert_to_ambiguous = ()
+                    }
+                    (ProjectionCandidate::ParamEnv(..), _) => return false,
+                    (_, ProjectionCandidate::ParamEnv(..)) => bug!(
                         "should never prefer non-param-env candidates over param-env candidates"
                     ),
                     (_, _) => convert_to_ambiguous = (),
                 }
             }
 
-            Ambiguous | Error(..) => {
+            ProjectionCandidateSet::Ambiguous | ProjectionCandidateSet::Error(..) => {
                 return false;
             }
         }
@@ -135,7 +134,7 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
         // We only ever get here when we moved from a single candidate
         // to ambiguous.
         let () = convert_to_ambiguous;
-        *self = Ambiguous;
+        *self = ProjectionCandidateSet::Ambiguous;
         false
     }
 }

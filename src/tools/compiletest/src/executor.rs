@@ -40,9 +40,9 @@ pub(crate) fn run_tests(config: &Config, tests: Vec<CollectedTest>) -> bool {
     // In that case, the tests will effectively be run serially anyway.
     loop {
         // Spawn new test threads, up to the concurrency limit.
-        // FIXME(let_chains): Use a let-chain here when stable in bootstrap.
-        'spawn: while running_tests.len() < concurrency {
-            let Some((id, test)) = fresh_tests.next() else { break 'spawn };
+        while running_tests.len() < concurrency
+            && let Some((id, test)) = fresh_tests.next()
+        {
             listener.test_started(test);
             deadline_queue.push(id, test);
             let join_handle = spawn_test_thread(id, test, completion_tx.clone());

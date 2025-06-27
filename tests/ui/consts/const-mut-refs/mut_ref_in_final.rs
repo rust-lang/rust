@@ -12,13 +12,13 @@ const A: *const i32 = &4;
 // It could be made sound to allow it to compile,
 // but we do not want to allow this to compile,
 // as that would be an enormous footgun in oli-obk's opinion.
-const B: *mut i32 = &mut 4; //~ ERROR mutable references are not allowed
+const B: *mut i32 = &mut 4; //~ ERROR mutable borrows of lifetime-extended temporaries
 
 // Ok, no actual mutable allocation exists
 const B2: Option<&mut i32> = None;
 
 // Not ok, can't prove that no mutable allocation ends up in final value
-const B3: Option<&mut i32> = Some(&mut 42); //~ ERROR mutable references are not allowed
+const B3: Option<&mut i32> = Some(&mut 42); //~ ERROR mutable borrows of lifetime-extended temporaries
 
 const fn helper(x: &mut i32) -> Option<&mut i32> { Some(x) }
 const B4: Option<&mut i32> = helper(&mut 42); //~ ERROR temporary value dropped while borrowed
@@ -26,8 +26,10 @@ const B4: Option<&mut i32> = helper(&mut 42); //~ ERROR temporary value dropped 
 // Not ok, since it points to read-only memory.
 const IMMUT_MUT_REF: &mut u16 = unsafe { mem::transmute(&13) };
 //~^ ERROR pointing to read-only memory
+static IMMUT_MUT_REF_STATIC: &mut u16 = unsafe { mem::transmute(&13) };
+//~^ ERROR pointing to read-only memory
 
-// Ok, because no references to mutable data exist here, since the `{}` moves
+// Ok, because no borrows of mutable data exist here, since the `{}` moves
 // its value and then takes a reference to that.
 const C: *const i32 = &{
     let mut x = 42;
@@ -67,13 +69,13 @@ unsafe impl<T> Sync for SyncPtr<T> {}
 // (This relies on `SyncPtr` being a curly brace struct.)
 // However, we intern the inner memory as read-only, so this must be rejected.
 static RAW_MUT_CAST_S: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
-//~^ ERROR mutable references are not allowed
+//~^ ERROR mutable borrows of lifetime-extended temporaries
 static RAW_MUT_COERCE_S: SyncPtr<i32> = SyncPtr { x: &mut 0 };
-//~^ ERROR mutable references are not allowed
+//~^ ERROR mutable borrows of lifetime-extended temporaries
 const RAW_MUT_CAST_C: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
-//~^ ERROR mutable references are not allowed
+//~^ ERROR mutable borrows of lifetime-extended temporaries
 const RAW_MUT_COERCE_C: SyncPtr<i32> = SyncPtr { x: &mut 0 };
-//~^ ERROR mutable references are not allowed
+//~^ ERROR mutable borrows of lifetime-extended temporaries
 
 fn main() {
     println!("{}", unsafe { *A });

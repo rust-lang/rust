@@ -486,6 +486,11 @@ passes_missing_panic_handler =
 passes_missing_stability_attr =
     {$descr} has missing stability attribute
 
+passes_mixed_export_name_and_no_mangle = `{$no_mangle_attr}` attribute may not be used in combination with `{$export_name_attr}`
+    .label = `{$no_mangle_attr}` is ignored
+    .note = `{$export_name_attr}` takes precedence
+    .suggestion = remove the `{$no_mangle_attr}` attribute
+
 passes_multiple_rustc_main =
     multiple functions with a `#[rustc_main]` attribute
     .first = first `#[rustc_main]` function
