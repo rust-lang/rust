@@ -1140,6 +1140,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::Yes
     ),
     rustc_attr!(
+        TEST, rustc_no_implicit_bounds, CrateLevel, template!(Word),
+        WarnFollowing, EncodeCrossCrate::No
+    ),
+    rustc_attr!(
         TEST, rustc_strict_coherence, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::Yes
     ),
