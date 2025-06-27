@@ -93,8 +93,11 @@ attr_parsing_naked_functions_incompatible_attribute =
     attribute incompatible with `#[unsafe(naked)]`
     .label = the `{$attr}` attribute is incompatible with `#[unsafe(naked)]`
     .naked_attribute = function marked with `#[unsafe(naked)]` here
+
 attr_parsing_non_ident_feature =
     'feature' is not an identifier
+
+attr_parsing_null_on_export = `export_name` may not contain null characters
 
 attr_parsing_repr_ident =
     meta item in `repr` must be an identifier

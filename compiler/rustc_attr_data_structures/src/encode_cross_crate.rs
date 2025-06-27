@@ -22,6 +22,7 @@ impl AttributeKind {
             ConstStabilityIndirect => No,
             Deprecation { .. } => Yes,
             DocComment { .. } => Yes,
+            ExportName { .. } => Yes,
             Inline(..) => No,
             MacroTransparency(..) => Yes,
             Repr(..) => No,

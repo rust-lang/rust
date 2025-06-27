@@ -6,7 +6,7 @@ use rustc_span::{Span, Symbol, sym};
 use super::{AcceptMapping, AttributeOrder, AttributeParser, OnDuplicate, SingleAttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::ArgParser;
-use crate::session_diagnostics::NakedFunctionIncompatibleAttribute;
+use crate::session_diagnostics::{NakedFunctionIncompatibleAttribute, NullOnExport};
 
 pub(crate) struct OptimizeParser;
 
@@ -56,6 +56,33 @@ impl<S: Stage> SingleAttributeParser<S> for ColdParser {
         }
 
         Some(AttributeKind::Cold(cx.attr_span))
+    }
+}
+
+pub(crate) struct ExportNameParser;
+
+impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
+    const PATH: &[rustc_span::Symbol] = &[sym::export_name];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let Some(nv) = args.name_value() else {
+            cx.expected_name_value(cx.attr_span, None);
+            return None;
+        };
+        let Some(name) = nv.value_as_str() else {
+            cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            return None;
+        };
+        if name.as_str().contains('\0') {
+            // `#[export_name = ...]` will be converted to a null-terminated string,
+            // so it may not contain any null characters.
+            cx.emit_err(NullOnExport { span: cx.attr_span });
+            return None;
+        }
+        Some(AttributeKind::ExportName { name, span: cx.attr_span })
     }
 }
 
