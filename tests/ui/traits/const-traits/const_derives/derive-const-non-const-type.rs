@@ -3,8 +3,10 @@
 
 pub struct A;
 
-impl Default for A {
-    fn default() -> A { A }
+impl std::fmt::Debug for A {
+    fn fmt(&self, _: &mut std::fmt::Formatter<'_>)  -> Result<(), std::fmt::Error> {
+        panic!()
+    }
 }
 
 #[derive_const(Debug)]
