@@ -17,7 +17,9 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use crate::attributes::allow_unstable::{
     AllowConstFnUnstableParser, AllowInternalUnstableParser, UnstableFeatureBoundParser,
 };
-use crate::attributes::codegen_attrs::{ColdParser, NakedParser, NoMangleParser, OptimizeParser};
+use crate::attributes::codegen_attrs::{
+    ColdParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser, TrackCallerParser,
+};
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
