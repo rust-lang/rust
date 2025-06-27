@@ -396,7 +396,13 @@ impl<'a> AstValidator<'a> {
                         if let InterruptKind::X86 = interrupt_kind {
                             // "x86-interrupt" is special because it does have arguments.
                             // FIXME(workingjubilee): properly lint on acceptable input types.
-                            if let FnRetTy::Ty(ref ret_ty) = sig.decl.output {
+                            if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
+                                && match &ret_ty.kind {
+                                    TyKind::Never => false,
+                                    TyKind::Tup(tup) if tup.is_empty() => false,
+                                    _ => true,
+                                }
+                            {
                                 self.dcx().emit_err(errors::AbiMustNotHaveReturnType {
                                     span: ret_ty.span,
                                     abi,
@@ -455,7 +461,13 @@ impl<'a> AstValidator<'a> {
 
     fn reject_params_or_return(&self, abi: ExternAbi, ident: &Ident, sig: &FnSig) {
         let mut spans: Vec<_> = sig.decl.inputs.iter().map(|p| p.span).collect();
-        if let FnRetTy::Ty(ref ret_ty) = sig.decl.output {
+        if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
+            && match &ret_ty.kind {
+                TyKind::Never => false,
+                TyKind::Tup(tup) if tup.is_empty() => false,
+                _ => true,
+            }
+        {
             spans.push(ret_ty.span);
         }
 
