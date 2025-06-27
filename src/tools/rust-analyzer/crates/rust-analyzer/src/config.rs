@@ -1526,7 +1526,7 @@ impl Config {
         CompletionConfig {
             enable_postfix_completions: self.completion_postfix_enable(source_root).to_owned(),
             enable_imports_on_the_fly: self.completion_autoimport_enable(source_root).to_owned()
-                && self.caps.completion_item_edit_resolve(),
+                && self.caps.has_completion_item_resolve_additionalTextEdits(),
             enable_self_on_the_fly: self.completion_autoself_enable(source_root).to_owned(),
             enable_auto_iter: *self.completion_autoIter_enable(source_root),
             enable_auto_await: *self.completion_autoAwait_enable(source_root),
@@ -2353,10 +2353,6 @@ impl Config {
             .as_ref()
             .filter(|it| it.name.starts_with("Visual Studio Code"))
             .and_then(|it| it.version.as_ref())
-    }
-
-    pub fn client_is_helix(&self) -> bool {
-        self.client_info.as_ref().map(|it| it.name == "helix").unwrap_or_default()
     }
 
     pub fn client_is_neovim(&self) -> bool {
