@@ -179,7 +179,6 @@ fn main() {
             &ci_info,
             &librustdoc_path,
             &tools_path,
-            &src_path,
             bless,
             extra_checks,
             pos_args
