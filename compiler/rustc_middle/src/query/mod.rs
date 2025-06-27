@@ -1311,7 +1311,7 @@ rustc_queries! {
     ///
     /// This query will panic for uninhabited variants and if the passed type is not an enum.
     query tag_for_variant(
-        key: (Ty<'tcx>, abi::VariantIdx)
+        key: PseudoCanonicalInput<'tcx, (Ty<'tcx>, abi::VariantIdx)>,
     ) -> Option<ty::ScalarInt> {
         desc { "computing variant tag for enum" }
     }
