@@ -63,7 +63,9 @@ pub(crate) fn codegen_fn<'tcx>(
     func.clear();
     func.name = UserFuncName::user(0, func_id.as_u32());
     func.signature = sig;
-    func.collect_debug_info();
+    if cx.debug_context.is_some() {
+        func.collect_debug_info();
+    }
 
     let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
 
