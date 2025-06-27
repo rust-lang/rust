@@ -1,8 +1,12 @@
-error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a static are not allowed
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/write_to_static_via_mut_ref.rs:1:26
    |
 LL | static OH_NO: &mut i32 = &mut 42;
-   |                          ^^^^^^^
+   |                          ^^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0594]: cannot assign to `*OH_NO`, as `OH_NO` is an immutable static item
   --> $DIR/write_to_static_via_mut_ref.rs:4:5

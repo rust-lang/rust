@@ -1,8 +1,12 @@
-error[E0492]: interior mutable shared borrows of lifetime-extended temporaries in the top-level scope of a constant are not allowed
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/qualif_overwrite.rs:10:5
    |
 LL |     &{a}
-   |     ^^^^ this borrow of an interior mutable value refers to a lifetime-extended temporary
+   |     ^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error: aborting due to 1 previous error
 

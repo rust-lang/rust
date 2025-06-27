@@ -11,9 +11,9 @@ unsafe impl<T> Sync for SyncPtr<T> {}
 // The resulting constant would pass all validation checks, so it is crucial that this gets rejected
 // by static const checks!
 static RAW_SYNC_S: SyncPtr<Cell<i32>> = SyncPtr { x: &Cell::new(42) };
-//~^ ERROR: interior mutable shared borrows of lifetime-extended temporaries
+//~^ ERROR: interior mutable shared borrows of temporaries
 const RAW_SYNC_C: SyncPtr<Cell<i32>> = SyncPtr { x: &Cell::new(42) };
-//~^ ERROR: interior mutable shared borrows of lifetime-extended temporaries
+//~^ ERROR: interior mutable shared borrows of temporaries
 
 // This one does not get promoted because of `Drop`, and then enters interesting codepaths because
 // as a value it has no interior mutability, but as a type it does. See
@@ -39,7 +39,7 @@ const NONE_EXPLICIT_PROMOTED: &'static Option<Cell<i32>> = {
 
 // Not okay, since we are borrowing something with interior mutability.
 const INTERIOR_MUT_VARIANT: &Option<UnsafeCell<bool>> = &{
-    //~^ERROR: interior mutable shared borrows of lifetime-extended temporaries
+    //~^ERROR: interior mutable shared borrows of temporaries
     let mut x = None;
     assert!(x.is_none());
     x = Some(UnsafeCell::new(false));
