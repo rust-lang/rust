@@ -1,6 +1,5 @@
+use std::marker::PointeeSized;
 use std::ptr::Alignment;
-
-use rustc_serialize::PointeeSized;
 
 /// Returns the ABI-required minimum alignment of a type in bytes.
 ///
