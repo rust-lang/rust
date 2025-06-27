@@ -31,11 +31,17 @@ pub enum SymbolExportKind {
 
 /// The `SymbolExportInfo` of a symbols specifies symbol-related information
 /// that is relevant to code generation and linking.
+///
+/// The difference between `used` and `rustc_std_internal_symbol` is that the
+/// former is exported by LTO while the latter isn't.
 #[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub struct SymbolExportInfo {
     pub level: SymbolExportLevel,
     pub kind: SymbolExportKind,
+    /// Was the symbol marked as `#[used(compiler)]` or `#[used(linker)]`?
     pub used: bool,
+    /// Was the symbol marked as `#[rustc_std_internal_symbol]`?
+    pub rustc_std_internal_symbol: bool,
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
