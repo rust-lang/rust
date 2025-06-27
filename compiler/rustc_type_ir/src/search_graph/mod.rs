@@ -1262,7 +1262,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             has_been_used: None,
         });
 
-        if !D::ENABLE_PROVISIONAL_CACHE {
+        if true || !D::ENABLE_PROVISIONAL_CACHE {
             let result = D::compute_goal(self, cx, prev_stack_entry.input, inspect);
             let reeval_entry = self.stack.pop();
             return (reeval_entry, result);
@@ -1287,7 +1287,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         let cycles = self.tree.rerun_get_and_reset_cycles(prev_stack_entry.node_id);
         let current_stack_len = self.stack.len();
         let mut first_cycle = true;
-        let mut only_evaluated_leaf = false;
         'outer: for cycle in cycles {
             let &tree::Cycle { node_id: cycle_node_id, ref provisional_results } =
                 self.tree.get_cycle(cycle);
@@ -1366,19 +1365,15 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                                 );
                                 break;
                             }
+                        } else if current_goal.0 == node_id {
+                            debug!(parent = ?info.input, cycle = ?added_goals.last().unwrap(), "reevaluated parent, skip cycle");
+                            continue 'outer;
                         } else {
-                            if only_evaluated_leaf {
-                                break;
-                            } else {
-                                debug!(parent = ?info.input, cycle = ?added_goals.last().unwrap(), "reevaluated parent, skip cycle");
-                                continue 'outer;
-                            }
+                            break;
                         }
                     }
                 }
             }
-
-            only_evaluated_leaf = true;
 
             for (stack_depth, node_id, info) in added_goals {
                 let tree::GoalInfo { input, step_kind_from_parent, available_depth } = info;
@@ -1405,7 +1400,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     step_kind_from_parent = ?current_goal.1.step_kind_from_parent
                 );
                 let _span = span.enter();
-
                 let (node_id, result) = self.evaluate_goal(
                     cx,
                     current_goal.1.input,
@@ -1417,7 +1411,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     debug!(input = ?current_goal.1.input, ?result, "goal did not change");
                     continue 'outer;
                 } else {
-                    only_evaluated_leaf = false;
                     debug!(input = ?current_goal.1.input, ?result, "goal did change");
                     if self.stack.len() > current_stack_len {
                         let parent = self.stack.pop();
