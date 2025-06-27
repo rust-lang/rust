@@ -4538,7 +4538,6 @@ version = "0.0.0"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
- "indexmap",
  "libc",
  "rand 0.9.1",
  "rand_xorshift",

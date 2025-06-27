@@ -6,13 +6,12 @@
 //! [`join()`]: ../join/join.fn.html
 
 use std::any::Any;
+use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
 use std::{fmt, ptr};
-
-use indexmap::IndexSet;
 
 use crate::broadcast::BroadcastContext;
 use crate::job::{ArcJob, HeapJob, JobFifo, JobRef, JobRefId};
@@ -55,7 +54,8 @@ struct ScopeBase<'scope> {
     job_completed_latch: CountLatch,
 
     /// Jobs that have been spawned, but not yet started.
-    pending_jobs: Mutex<IndexSet<JobRefId>>,
+    #[allow(rustc::default_hash_types)]
+    pending_jobs: Mutex<HashSet<JobRefId>>,
 
     /// The worker which will wait on scope completion, if any.
     worker: Option<usize>,
@@ -538,7 +538,7 @@ impl<'scope> Scope<'scope> {
             let scope = scope_ptr.as_ref();
 
             // Mark this job is started.
-            scope.base.pending_jobs.lock().unwrap().swap_remove_full(&id);
+            scope.base.pending_jobs.lock().unwrap().remove(&id);
 
             ScopeBase::execute_job(&scope.base, move || body(scope))
         });
@@ -569,7 +569,7 @@ impl<'scope> Scope<'scope> {
             let current_index = WorkerThread::current().as_ref().map(|worker| worker.index());
             if current_index == scope.base.worker {
                 // Mark this job as started on the scope's worker thread.
-                scope.base.pending_jobs.lock().unwrap().swap_remove(&id);
+                scope.base.pending_jobs.lock().unwrap().remove(&id);
             }
 
             let func = move || BroadcastContext::with(move |ctx| body(scope, ctx));
@@ -611,7 +611,7 @@ impl<'scope> ScopeFifo<'scope> {
             let scope = scope_ptr.as_ref();
 
             // Mark this job is started.
-            scope.base.pending_jobs.lock().unwrap().swap_remove(&id);
+            scope.base.pending_jobs.lock().unwrap().remove(&id);
 
             ScopeBase::execute_job(&scope.base, move || body(scope))
         });
@@ -642,7 +642,7 @@ impl<'scope> ScopeFifo<'scope> {
             let current_index = WorkerThread::current().as_ref().map(|worker| worker.index());
             if current_index == scope.base.worker {
                 // Mark this job as started on the scope's worker thread.
-                scope.base.pending_jobs.lock().unwrap().swap_remove(&id);
+                scope.base.pending_jobs.lock().unwrap().remove(&id);
             }
             let body = &body;
             let func = move || BroadcastContext::with(move |ctx| body(scope, ctx));
@@ -664,7 +664,8 @@ impl<'scope> ScopeBase<'scope> {
             registry: Arc::clone(registry),
             panic: AtomicPtr::new(ptr::null_mut()),
             job_completed_latch: CountLatch::new(owner),
-            pending_jobs: Mutex::new(IndexSet::new()),
+            #[allow(rustc::default_hash_types)]
+            pending_jobs: Mutex::new(HashSet::new()),
             worker: owner.map(|w| w.index()),
             marker: PhantomData,
             tlv: tlv::get(),
