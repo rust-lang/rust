@@ -2,7 +2,7 @@
 
 use cranelift_codegen::CodegenError;
 use cranelift_codegen::ir::UserFuncName;
-use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
+use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::ModuleError;
 use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
@@ -90,8 +90,7 @@ pub(crate) fn codegen_fn<'tcx>(
         None
     };
 
-    let exception_slot = Variable::from_u32(0);
-    bcx.declare_var(exception_slot, pointer_type);
+    let exception_slot = bcx.declare_var(pointer_type);
 
     let mut fx = FunctionCx {
         module,
@@ -115,7 +114,6 @@ pub(crate) fn codegen_fn<'tcx>(
         exception_slot,
 
         clif_comments,
-        next_ssa_var: 1, // var0 is used for the exception slot
         inline_asm: String::new(),
         inline_asm_index: 0,
     };

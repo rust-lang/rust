@@ -393,9 +393,7 @@ impl<'tcx> CPlace<'tcx> {
         local: Local,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
-        let var = Variable::from_u32(fx.next_ssa_var);
-        fx.next_ssa_var += 1;
-        fx.bcx.declare_var(var, fx.clif_type(layout.ty).unwrap());
+        let var = fx.bcx.declare_var(fx.clif_type(layout.ty).unwrap());
         CPlace { inner: CPlaceInner::Var(local, var), layout }
     }
 
@@ -404,14 +402,9 @@ impl<'tcx> CPlace<'tcx> {
         local: Local,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
-        let var1 = Variable::from_u32(fx.next_ssa_var);
-        fx.next_ssa_var += 1;
-        let var2 = Variable::from_u32(fx.next_ssa_var);
-        fx.next_ssa_var += 1;
-
         let (ty1, ty2) = fx.clif_pair_type(layout.ty).unwrap();
-        fx.bcx.declare_var(var1, ty1);
-        fx.bcx.declare_var(var2, ty2);
+        let var1 = fx.bcx.declare_var(ty1);
+        let var2 = fx.bcx.declare_var(ty2);
         CPlace { inner: CPlaceInner::VarPair(local, var1, var2), layout }
     }
 

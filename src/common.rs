@@ -295,9 +295,6 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
 
     pub(crate) clif_comments: crate::pretty_clif::CommentWriter,
 
-    /// This should only be accessed by `CPlace::new_var`.
-    pub(crate) next_ssa_var: u32,
-
     pub(crate) inline_asm: String,
     pub(crate) inline_asm_index: u32,
 }
