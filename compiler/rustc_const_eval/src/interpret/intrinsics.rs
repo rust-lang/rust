@@ -6,8 +6,6 @@ use std::assert_matches::assert_matches;
 
 use rustc_abi::{FieldIdx, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
-use rustc_ast::Mutability;
-use rustc_middle::mir::interpret::{AllocId, AllocInit, alloc_range};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -30,39 +28,35 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAll
     let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes(), ());
     tcx.mk_const_alloc(alloc)
 }
-
-pub(crate) fn alloc_type_id<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> AllocId {
-    let size = Size::from_bytes(16);
-    let align = tcx.data_layout.pointer_align();
-    let mut alloc = Allocation::new(size, *align, AllocInit::Uninit, ());
-    let ptr_size = tcx.data_layout.pointer_size();
-    let type_id_hash = tcx.type_id_hash(ty).as_u128();
-    alloc
-        .write_scalar(
-            &tcx,
-            alloc_range(Size::ZERO, Size::from_bytes(16)),
-            Scalar::from_u128(type_id_hash),
-        )
-        .unwrap();
-
-    // Give the first pointer-size bytes provenance that knows about the type id
-
-    let alloc_id = tcx.reserve_and_set_type_id_alloc(ty);
-    let offset = alloc
-        .read_scalar(&tcx, alloc_range(Size::ZERO, ptr_size), false)
-        .unwrap()
-        .to_target_usize(&tcx)
-        .unwrap();
-    let ptr = Pointer::new(alloc_id.into(), Size::from_bytes(offset));
-    let val = Scalar::from_pointer(ptr, &tcx);
-    alloc.write_scalar(&tcx, alloc_range(Size::ZERO, ptr_size), val).unwrap();
-
-    alloc.mutability = Mutability::Not;
-
-    tcx.reserve_and_set_memory_alloc(tcx.mk_const_alloc(alloc))
-}
-
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
+    /// Generates a value of `TypeId` for `ty` in-place.
+    pub(crate) fn write_type_id(
+        &mut self,
+        ty: Ty<'tcx>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()> {
+        let tcx = self.tcx;
+        let type_id_hash = tcx.type_id_hash(ty).as_u128();
+        let op = self.const_val_to_op(
+            ConstValue::Scalar(Scalar::from_u128(type_id_hash)),
+            tcx.types.u128,
+            None,
+        )?;
+        self.copy_op_allow_transmute(&op, dest)?;
+
+        // Give the first pointer-size bytes provenance that knows about the type id.
+        // Here we rely on `TypeId` being a newtype around an array of pointers, so we
+        // first project to its only field and then the first array element.
+        let alloc_id = tcx.reserve_and_set_type_id_alloc(ty);
+        let first = self.project_field(dest, FieldIdx::ZERO)?;
+        let first = self.project_index(&first, 0)?;
+        let offset = self.read_scalar(&first)?.to_target_usize(&tcx)?;
+        let ptr = Pointer::new(alloc_id.into(), Size::from_bytes(offset));
+        let ptr = self.global_root_pointer(ptr)?;
+        let val = Scalar::from_pointer(ptr, &tcx);
+        self.write_scalar(val, &first)
+    }
+
     /// Returns `true` if emulation happened.
     /// Here we implement the intrinsics that are common to all Miri instances; individual machines can add their own
     /// intrinsic handling.
@@ -96,10 +90,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::type_id => {
                 let tp_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(tcx, tp_ty)?;
-                let alloc_id = alloc_type_id(tcx, tp_ty);
-                let val = ConstValue::Indirect { alloc_id, offset: Size::ZERO };
-                let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
-                self.copy_op(&val, dest)?;
+                self.write_type_id(tp_ty, dest)?;
             }
             sym::type_id_eq => {
                 // Both operands are `TypeId`, which is a newtype around an array of pointers.
