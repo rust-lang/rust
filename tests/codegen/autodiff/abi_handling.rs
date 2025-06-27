@@ -5,10 +5,10 @@
 //@ no-prefer-dynamic
 //@ needs-enzyme
 
-// This does only test the funtion attribute handling for autodiff.
-// Function argument changes are troublesome for Enzyme, so we have to
-// ensure that arguments remain the same, or if we change them, be aware
-// of the changes to handle it correctly.
+// This test checks that Rust types are lowered to LLVM-IR types in a way
+// we expect and Enzyme can handle. We explicitly check release mode to
+// ensure that LLVM's O3 pipeline doesn't rewrite function signatures
+// into forms that Enzyme can't process correctly.
 
 #![feature(autodiff)]
 
