@@ -1,14 +1,22 @@
-error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a constant are not allowed
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/mut_ref_in_final.rs:15:21
    |
 LL | const B: *mut i32 = &mut 4;
-   |                     ^^^^^^
+   |                     ^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
-error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a constant are not allowed
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/mut_ref_in_final.rs:21:35
    |
 LL | const B3: Option<&mut i32> = Some(&mut 42);
-   |                                   ^^^^^^^
+   |                                   ^^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/mut_ref_in_final.rs:24:42
@@ -72,29 +80,45 @@ LL | static mut FOO3: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                        |                              creates a temporary value which is freed while still in use
    |                                        using this value as a static requires that borrow lasts for `'static`
 
-error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a static are not allowed
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/mut_ref_in_final.rs:71:53
    |
 LL | static RAW_MUT_CAST_S: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
-   |                                                     ^^^^^^^
+   |                                                     ^^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
-error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a static are not allowed
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/mut_ref_in_final.rs:73:54
    |
 LL | static RAW_MUT_COERCE_S: SyncPtr<i32> = SyncPtr { x: &mut 0 };
-   |                                                      ^^^^^^
+   |                                                      ^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
-error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a constant are not allowed
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/mut_ref_in_final.rs:75:52
    |
 LL | const RAW_MUT_CAST_C: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
-   |                                                    ^^^^^^^
+   |                                                    ^^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
-error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a constant are not allowed
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/mut_ref_in_final.rs:77:53
    |
 LL | const RAW_MUT_COERCE_C: SyncPtr<i32> = SyncPtr { x: &mut 0 };
-   |                                                     ^^^^^^
+   |                                                     ^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error: aborting due to 12 previous errors
 

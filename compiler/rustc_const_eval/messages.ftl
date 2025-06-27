@@ -125,16 +125,11 @@ const_eval_incompatible_types =
     calling a function with argument of type {$callee_ty} passing data of type {$caller_ty}
 
 const_eval_interior_mutable_borrow_escaping =
-    interior mutable shared borrows of lifetime-extended temporaries in the top-level scope of a {const_eval_const_context} are not allowed
-    .label = this borrow of an interior mutable value refers to a lifetime-extended temporary
-    .help = to fix this, the value can be extracted to a separate `static` item and then referenced
-    .teach_note =
-        This creates a raw pointer to a temporary that has its lifetime extended to last for the entire program.
-        Lifetime-extended temporaries in constants and statics must be immutable.
-        This is to avoid accidentally creating shared mutable state.
-
-
-        If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
+    interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+    .label = this borrow of an interior mutable value refers to such a temporary
+    .note = Temporaries in constants and statics can have their lifetime extended until the end of the program
+    .note2 = To avoid accidentally creating global mutable state, such temporaries must be immutable
+    .help = If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 const_eval_intern_kind = {$kind ->
     [static] static
@@ -215,14 +210,11 @@ const_eval_modified_global =
     modifying a static's initial value from another static's initializer
 
 const_eval_mutable_borrow_escaping =
-    mutable borrows of lifetime-extended temporaries in the top-level scope of a {const_eval_const_context} are not allowed
-    .teach_note =
-        This creates a reference to a temporary that has its lifetime extended to last for the entire program.
-        Lifetime-extended temporaries in constants and statics must be immutable.
-        This is to avoid accidentally creating shared mutable state.
-
-
-        If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
+    mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+    .label = this mutable borrow refers to such a temporary
+    .note = Temporaries in constants and statics can have their lifetime extended until the end of the program
+    .note2 = To avoid accidentally creating global mutable state, such temporaries must be immutable
+    .help = If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 

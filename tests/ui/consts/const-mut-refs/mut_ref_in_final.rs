@@ -12,13 +12,13 @@ const A: *const i32 = &4;
 // It could be made sound to allow it to compile,
 // but we do not want to allow this to compile,
 // as that would be an enormous footgun in oli-obk's opinion.
-const B: *mut i32 = &mut 4; //~ ERROR mutable borrows of lifetime-extended temporaries
+const B: *mut i32 = &mut 4; //~ ERROR mutable borrows of temporaries
 
 // Ok, no actual mutable allocation exists
 const B2: Option<&mut i32> = None;
 
 // Not ok, can't prove that no mutable allocation ends up in final value
-const B3: Option<&mut i32> = Some(&mut 42); //~ ERROR mutable borrows of lifetime-extended temporaries
+const B3: Option<&mut i32> = Some(&mut 42); //~ ERROR mutable borrows of temporaries
 
 const fn helper(x: &mut i32) -> Option<&mut i32> { Some(x) }
 const B4: Option<&mut i32> = helper(&mut 42); //~ ERROR temporary value dropped while borrowed
@@ -69,13 +69,13 @@ unsafe impl<T> Sync for SyncPtr<T> {}
 // (This relies on `SyncPtr` being a curly brace struct.)
 // However, we intern the inner memory as read-only, so this must be rejected.
 static RAW_MUT_CAST_S: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
-//~^ ERROR mutable borrows of lifetime-extended temporaries
+//~^ ERROR mutable borrows of temporaries
 static RAW_MUT_COERCE_S: SyncPtr<i32> = SyncPtr { x: &mut 0 };
-//~^ ERROR mutable borrows of lifetime-extended temporaries
+//~^ ERROR mutable borrows of temporaries
 const RAW_MUT_CAST_C: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
-//~^ ERROR mutable borrows of lifetime-extended temporaries
+//~^ ERROR mutable borrows of temporaries
 const RAW_MUT_COERCE_C: SyncPtr<i32> = SyncPtr { x: &mut 0 };
-//~^ ERROR mutable borrows of lifetime-extended temporaries
+//~^ ERROR mutable borrows of temporaries
 
 fn main() {
     println!("{}", unsafe { *A });

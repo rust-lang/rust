@@ -5,7 +5,7 @@
 #![allow(static_mut_refs)]
 
 const C1: &'static mut [usize] = &mut [];
-//~^ ERROR: mutable borrows of lifetime-extended temporaries
+//~^ ERROR: mutable borrows of temporaries
 
 static mut S: i32 = 3;
 const C2: &'static mut i32 = unsafe { &mut S };
