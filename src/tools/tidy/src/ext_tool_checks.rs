@@ -248,6 +248,10 @@ fn check_impl(
         shellcheck_runner(&merge_args(&cfg_args, &file_args_shc))?;
     }
 
+    if js_lint || js_typecheck || js_es_check {
+        rustdoc_js::npm_install()?;
+    }
+
     if js_lint {
         rustdoc_js::lint(librustdoc_path, tools_path, src_path)?;
     }

@@ -9,6 +9,25 @@ use ignore::DirEntry;
 
 use crate::walk::walk_no_read;
 
+/// install all js dependencies from package.json.
+pub(super) fn npm_install() -> Result<(), super::Error> {
+    // disable a bunch of things we don't want.
+    // this makes tidy output less noisy, and also significantly improves runtime
+    // of repeated tidy invokations.
+    let mut child = Command::new("npm")
+        .args(&["install", "--audit=false", "--save=false", "--fund=false"])
+        .spawn()?;
+    match child.wait() {
+        Ok(exit_status) => {
+            if exit_status.success() {
+                return Ok(());
+            }
+            Err(super::Error::FailedCheck("npm install failed"))
+        }
+        Err(error) => Err(super::Error::Generic(format!("npm install failed: {error:?}"))),
+    }
+}
+
 fn rustdoc_js_files(librustdoc_path: &Path) -> Vec<PathBuf> {
     let mut files = Vec::new();
     walk_no_read(
@@ -22,8 +41,7 @@ fn rustdoc_js_files(librustdoc_path: &Path) -> Vec<PathBuf> {
 }
 
 fn run_eslint(args: &[PathBuf], config_folder: PathBuf) -> Result<(), super::Error> {
-    let mut child = Command::new("npx")
-        .arg("eslint")
+    let mut child = Command::new("node_modules/.bin/eslint")
         .arg("-c")
         .arg(config_folder.join(".eslintrc.js"))
         .args(args)
@@ -106,8 +124,7 @@ pub(super) fn lint(
 
 pub(super) fn typecheck(librustdoc_path: &Path) -> Result<(), super::Error> {
     // use npx to ensure correct version
-    let mut child = Command::new("npx")
-        .arg("tsc")
+    let mut child = Command::new("node_modules/.bin/tsc")
         .arg("-p")
         .arg(librustdoc_path.join("html/static/js/tsconfig.json"))
         .spawn()?;
@@ -124,9 +141,8 @@ pub(super) fn typecheck(librustdoc_path: &Path) -> Result<(), super::Error> {
 
 pub(super) fn es_check(librustdoc_path: &Path) -> Result<(), super::Error> {
     let files_to_check = rustdoc_js_files(librustdoc_path);
-    // use npx to ensure correct version
-    let mut cmd = Command::new("npx");
-    cmd.arg("es-check").arg("es2019");
+    let mut cmd = Command::new("node_modules/.bin/es-check");
+    cmd.arg("es2019");
     for f in files_to_check {
         cmd.arg(f);
     }
