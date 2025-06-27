@@ -816,9 +816,6 @@ passes_unused_variable_try_prefix = unused variable: `{$name}`
     .suggestion = if this is intentional, prefix it with an underscore
 
 
-passes_used_compiler_linker =
-    `used(compiler)` and `used(linker)` can't be used together
-
 passes_used_static =
     attribute must be applied to a `static` variable
     .label = but this is a {$target}
