@@ -3,7 +3,7 @@
 
 #![allow(incomplete_features, internal_features)]
 #![feature(sized_hierarchy)]
-#![feature(coroutines, dyn_star, extern_types, f16, never_type, unsized_fn_params)]
+#![feature(coroutines, extern_types, f16, never_type, unsized_fn_params)]
 
 use std::fmt::Debug;
 use std::marker::{MetaSized, PointeeSized};
@@ -150,11 +150,6 @@ fn main() {
     needs_sized::<!>();
     needs_metasized::<!>();
     needs_pointeesized::<!>();
-
-    // `dyn*`
-    needs_sized::<dyn* Debug>();
-    needs_metasized::<dyn* Debug>();
-    needs_pointeesized::<dyn* Debug>();
 
     // `str`
     needs_sized::<str>();

@@ -123,6 +123,9 @@ declare_features! (
     /// [^1]: Formerly known as "object safe".
     (removed, dyn_compatible_for_dispatch, "1.87.0", Some(43561),
      Some("removed, not used heavily and represented additional complexity in dyn compatibility"), 136522),
+    /// Allows `dyn* Trait` objects.
+    (removed, dyn_star, "1.65.0", Some(102425),
+     Some("removed as it was no longer necessary for AFIDT (async fn in dyn trait) support")),
     /// Uses generic effect parameters for ~const bounds
     (removed, effects, "1.84.0", Some(102090),
      Some("removed, redundant with `#![feature(const_trait_impl)]`"), 132479),

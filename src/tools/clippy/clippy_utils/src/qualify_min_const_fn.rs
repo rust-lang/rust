@@ -175,10 +175,6 @@ fn check_rvalue<'tcx>(
         Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => {
             Err((span, "casting pointers to ints is unstable in const fn".into()))
         },
-        Rvalue::Cast(CastKind::PointerCoercion(PointerCoercion::DynStar, _), _, _) => {
-            // FIXME(dyn-star)
-            unimplemented!()
-        },
         Rvalue::Cast(CastKind::Transmute, _, _) => Err((
             span,
             "transmute can attempt to turn pointers into integers, so is unstable in const fn".into(),

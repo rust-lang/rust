@@ -43,7 +43,6 @@ impl<'tcx> Stable<'tcx> for ty::DynKind {
     fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         match self {
             ty::Dyn => stable_mir::ty::DynKind::Dyn,
-            ty::DynStar => stable_mir::ty::DynKind::DynStar,
         }
     }
 }
@@ -120,7 +119,6 @@ impl<'tcx> Stable<'tcx> for ty::adjustment::PointerCoercion {
             }
             PointerCoercion::ArrayToPointer => stable_mir::mir::PointerCoercion::ArrayToPointer,
             PointerCoercion::Unsize => stable_mir::mir::PointerCoercion::Unsize,
-            PointerCoercion::DynStar => unreachable!("represented as `CastKind::DynStar` in smir"),
         }
     }
 }

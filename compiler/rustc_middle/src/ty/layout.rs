@@ -946,21 +946,6 @@ where
                     }
                 }
 
-                ty::Dynamic(_, _, ty::DynStar) => {
-                    if i == 0 {
-                        TyMaybeWithLayout::Ty(Ty::new_mut_ptr(tcx, tcx.types.unit))
-                    } else if i == 1 {
-                        // FIXME(dyn-star) same FIXME as above applies here too
-                        TyMaybeWithLayout::Ty(Ty::new_imm_ref(
-                            tcx,
-                            tcx.lifetimes.re_static,
-                            Ty::new_array(tcx, tcx.types.usize, 3),
-                        ))
-                    } else {
-                        bug!("no field {i} on dyn*")
-                    }
-                }
-
                 ty::Alias(..)
                 | ty::Bound(..)
                 | ty::Placeholder(..)

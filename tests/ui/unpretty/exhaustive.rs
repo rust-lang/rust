@@ -14,7 +14,6 @@
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
-#![feature(dyn_star)]
 #![feature(explicit_tail_calls)]
 #![feature(gen_blocks)]
 #![feature(more_qualified_paths)]
@@ -800,7 +799,6 @@ mod types {
         let _: dyn Send + 'static;
         let _: dyn 'static + Send;
         let _: dyn for<'a> Send;
-        let _: dyn* Send;
     }
 
     /// TyKind::ImplTrait

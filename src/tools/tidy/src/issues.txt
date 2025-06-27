@@ -930,7 +930,6 @@ ui/dst/issue-90528-unsizing-suggestion-3.rs
 ui/dst/issue-90528-unsizing-suggestion-4.rs
 ui/dyn-keyword/issue-5153.rs
 ui/dyn-keyword/issue-56327-dyn-trait-in-macro-is-okay.rs
-ui/dyn-star/issue-102430.rs
 ui/empty/issue-37026.rs
 ui/entry-point/issue-118772.rs
 ui/enum-discriminant/auxiliary/issue-41394.rs

@@ -112,21 +112,6 @@ fn unsize_ptr<'tcx>(
     }
 }
 
-/// Coerces `src` to `dst_ty` which is guaranteed to be a `dyn*` type.
-pub(crate) fn cast_to_dyn_star<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
-    src: Value,
-    src_ty_and_layout: TyAndLayout<'tcx>,
-    dst_ty: Ty<'tcx>,
-    old_info: Option<Value>,
-) -> (Value, Value) {
-    assert!(
-        matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
-        "destination type must be a dyn*"
-    );
-    (src, unsized_info(fx, src_ty_and_layout.ty, dst_ty, old_info))
-}
-
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
 pub(crate) fn coerce_unsized_into<'tcx>(
@@ -172,24 +157,6 @@ pub(crate) fn coerce_unsized_into<'tcx>(
         }
         _ => bug!("coerce_unsized_into: invalid coercion {:?} -> {:?}", src_ty, dst_ty),
     }
-}
-
-pub(crate) fn coerce_dyn_star<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
-    src: CValue<'tcx>,
-    dst: CPlace<'tcx>,
-) {
-    let (data, extra) = if let ty::Dynamic(_, _, ty::DynStar) = src.layout().ty.kind() {
-        let (data, vtable) = src.load_scalar_pair(fx);
-        (data, Some(vtable))
-    } else {
-        let data = src.load_scalar(fx);
-        (data, None)
-    };
-
-    let (data, vtable) = cast_to_dyn_star(fx, data, src.layout(), dst.layout().ty, extra);
-
-    dst.write_cvalue(fx, CValue::by_val_pair(data, vtable, dst.layout()));
 }
 
 // Adapted from https://github.com/rust-lang/rust/blob/2a663555ddf36f6b041445894a8c175cd1bc718c/src/librustc_codegen_ssa/glue.rs

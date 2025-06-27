@@ -631,7 +631,6 @@ pub(crate) fn encode_ty<'tcx>(
             // vendor extended type.
             let mut s = String::from(match kind {
                 ty::Dyn => "u3dynI",
-                ty::DynStar => "u7dynstarI",
             });
             s.push_str(&encode_predicates(tcx, predicates, dict, options));
             s.push_str(&encode_region(*region, dict));

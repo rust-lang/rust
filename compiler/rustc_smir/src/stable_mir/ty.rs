@@ -1205,7 +1205,6 @@ pub enum BoundRegionKind {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum DynKind {
     Dyn,
-    DynStar,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

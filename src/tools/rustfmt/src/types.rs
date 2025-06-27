@@ -835,12 +835,6 @@ impl Rewrite for ast::Ty {
                             .max_width_error(shape.width, self.span())?;
                         (shape, "dyn ")
                     }
-                    ast::TraitObjectSyntax::DynStar => {
-                        let shape = shape
-                            .offset_left(5)
-                            .max_width_error(shape.width, self.span())?;
-                        (shape, "dyn* ")
-                    }
                     ast::TraitObjectSyntax::None => (shape, ""),
                 };
                 let mut res = bounds.rewrite_result(context, shape)?;

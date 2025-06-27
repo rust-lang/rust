@@ -468,12 +468,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("unexpected non-pair operand");
                         }
                     }
-                    mir::CastKind::PointerCoercion(PointerCoercion::DynStar, _) => {
-                        let (lldata, llextra) = operand.val.pointer_parts();
-                        let (lldata, llextra) =
-                            base::cast_to_dyn_star(bx, lldata, operand.layout, cast.ty, llextra);
-                        OperandValue::Pair(lldata, llextra)
-                    }
                     | mir::CastKind::IntToInt
                     | mir::CastKind::FloatToInt
                     | mir::CastKind::FloatToFloat

@@ -25,9 +25,9 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
-    self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    Dynamic, GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt,
-    TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
+    GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, TypeVisitableExt,
+    UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::MoveData;
@@ -1230,38 +1230,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 is_implicit_coercion,
                                 unsize_to: Some(unsize_to),
                             },
-                        );
-                    }
-
-                    CastKind::PointerCoercion(PointerCoercion::DynStar, coercion_source) => {
-                        // get the constraints from the target type (`dyn* Clone`)
-                        //
-                        // apply them to prove that the source type `Foo` implements `Clone` etc
-                        let (existential_predicates, region) = match ty.kind() {
-                            Dynamic(predicates, region, ty::DynStar) => (predicates, region),
-                            _ => panic!("Invalid dyn* cast_ty"),
-                        };
-
-                        let self_ty = op.ty(self.body, tcx);
-
-                        let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
-                        self.prove_predicates(
-                            existential_predicates
-                                .iter()
-                                .map(|predicate| predicate.with_self_ty(tcx, self_ty)),
-                            location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
-                        );
-
-                        let outlives_predicate = tcx.mk_predicate(Binder::dummy(
-                            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
-                                ty::OutlivesPredicate(self_ty, *region),
-                            )),
-                        ));
-                        self.prove_predicate(
-                            outlives_predicate,
-                            location.to_locations(),
-                            ConstraintCategory::Cast { is_implicit_coercion, unsize_to: None },
                         );
                     }
 

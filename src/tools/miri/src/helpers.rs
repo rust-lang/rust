@@ -595,10 +595,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 } else if matches!(v.layout.fields, FieldsShape::Union(..)) {
                     // A (non-frozen) union. We fall back to whatever the type says.
                     (self.unsafe_cell_action)(v)
-                } else if matches!(v.layout.ty.kind(), ty::Dynamic(_, _, ty::DynStar)) {
-                    // This needs to read the vtable pointer to proceed type-driven, but we don't
-                    // want to reentrantly read from memory here.
-                    (self.unsafe_cell_action)(v)
                 } else {
                     // We want to not actually read from memory for this visit. So, before
                     // walking this value, we have to make sure it is not a

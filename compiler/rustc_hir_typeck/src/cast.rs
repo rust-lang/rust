@@ -143,7 +143,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Coroutine(..)
             | ty::Adt(..)
             | ty::Never
-            | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
                 let guar = self
                     .dcx()
@@ -733,14 +732,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     fn do_check(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<CastKind, CastError<'tcx>> {
         use rustc_middle::ty::cast::CastTy::*;
         use rustc_middle::ty::cast::IntTy::*;
-
-        if self.cast_ty.is_dyn_star() {
-            // This coercion will fail if the feature is not enabled, OR
-            // if the coercion is (currently) illegal (e.g. `dyn* Foo + Send`
-            // to `dyn* Foo`). Report "casting is invalid" rather than
-            // "non-primitive cast".
-            return Err(CastError::IllegalCast);
-        }
 
         let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty), CastTy::from_ty(self.cast_ty))
         {

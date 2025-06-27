@@ -810,7 +810,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
                 match repr {
                     ty::Dyn => p!("dyn "),
-                    ty::DynStar => p!("dyn* "),
                 }
                 p!(print(data));
                 if print_r {

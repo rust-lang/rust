@@ -1,14 +1,5 @@
-warning: the feature `dyn_star` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:1:12
-   |
-LL | #![feature(dyn_star)]
-   |            ^^^^^^^^
-   |
-   = note: see issue #102425 <https://github.com/rust-lang/rust/issues/102425> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0599]: no method named `method` found for type parameter `T` in the current scope
-  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:24:7
+  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:16:7
    |
 LL | pub fn in_ty_param<T: Fn() -> dyn std::fmt::Debug> (t: T) {
    |                    - method `method` not found for this type parameter
@@ -22,7 +13,7 @@ LL | pub fn in_ty_param<T: Fn() -> (dyn std::fmt::Debug) + Trait> (t: T) {
    |                               +                   +++++++++
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:29:21
+  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:21:21
    |
 LL | fn with_sized<T: Fn() -> &'static (dyn std::fmt::Debug) + ?Sized>() {
    |               - this type parameter needs to be `Sized`
@@ -30,7 +21,7 @@ LL |     without_sized::<T>();
    |                     ^ doesn't have a size known at compile-time
    |
 note: required by an implicit `Sized` bound in `without_sized`
-  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:33:18
+  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:25:18
    |
 LL | fn without_sized<T: Fn() -> &'static dyn std::fmt::Debug>() {}
    |                  ^ required by the implicit `Sized` requirement on this type parameter in `without_sized`
@@ -45,7 +36,7 @@ LL | fn without_sized<T: Fn() -> &'static (dyn std::fmt::Debug) + ?Sized>() {}
    |                                      +                   ++++++++++
 
 error[E0310]: the parameter type `impl FnOnce(T) -> dyn Future<Output = ()>` may not live long enough
-  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:8:5
+  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:6:5
    |
 LL |     Box::new(executor)
    |     ^^^^^^^^^^^^^^^^^^
@@ -58,21 +49,7 @@ help: consider adding an explicit lifetime bound
 LL |     executor: impl FnOnce(T) -> (dyn Future<Output = ()>) + 'static,
    |                                 +                       +++++++++++
 
-error[E0310]: the parameter type `impl FnOnce(T) -> dyn* Future<Output = ()>` may not live long enough
-  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:14:5
-   |
-LL |     Box::new(executor)
-   |     ^^^^^^^^^^^^^^^^^^
-   |     |
-   |     the parameter type `impl FnOnce(T) -> dyn* Future<Output = ()>` must be valid for the static lifetime...
-   |     ...so that the type `impl FnOnce(T) -> dyn* Future<Output = ()>` will meet its required lifetime bounds
-   |
-help: consider adding an explicit lifetime bound
-   |
-LL |     executor: impl FnOnce(T) -> (dyn* Future<Output = ()>) + 'static,
-   |                                 +                        +++++++++++
-
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0277, E0310, E0599.
 For more information about an error, try `rustc --explain E0277`.

@@ -36,9 +36,6 @@ pub enum PointerCoercion {
     /// type. Codegen backends and miri figure out what has to be done
     /// based on the precise source/target type at hand.
     Unsize,
-
-    /// Go from a pointer-like type to a `dyn*` object.
-    DynStar,
 }
 
 /// Represents coercing a value to a different type of value.

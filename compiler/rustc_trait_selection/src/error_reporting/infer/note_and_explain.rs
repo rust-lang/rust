@@ -353,26 +353,6 @@ impl<T> Trait<T> for X {
                             ));
                         }
                     }
-                    (ty::Dynamic(t, _, ty::DynKind::DynStar), _)
-                        if let Some(def_id) = t.principal_def_id() =>
-                    {
-                        let mut has_matching_impl = false;
-                        tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            if DeepRejectCtxt::relate_rigid_infer(tcx)
-                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
-                            {
-                                has_matching_impl = true;
-                            }
-                        });
-                        if has_matching_impl {
-                            let trait_name = tcx.item_name(def_id);
-                            diag.help(format!(
-                                "`{}` implements `{trait_name}`, `#[feature(dyn_star)]` is likely \
-                                 not enabled; that feature it is currently incomplete",
-                                values.found,
-                            ));
-                        }
-                    }
                     (_, ty::Alias(ty::Opaque, opaque_ty))
                     | (ty::Alias(ty::Opaque, opaque_ty), _) => {
                         if opaque_ty.def_id.is_local()

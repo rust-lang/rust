@@ -20,6 +20,9 @@ use crate::{self as ty, DebruijnIndex, Interner};
 mod closure;
 
 /// Specifies how a trait object is represented.
+///
+/// This used to have a variant `DynStar`, but that variant has been removed,
+/// and it's likely this whole enum will be removed soon.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(
     feature = "nightly",
@@ -28,13 +31,6 @@ mod closure;
 pub enum DynKind {
     /// An unsized `dyn Trait` object
     Dyn,
-    /// A sized `dyn* Trait` object
-    ///
-    /// These objects are represented as a `(data, vtable)` pair where `data` is a value of some
-    /// ptr-sized and ptr-aligned dynamically determined type `T` and `vtable` is a pointer to the
-    /// vtable of `impl T for Trait`. This allows a `dyn*` object to be treated agnostically with
-    /// respect to whether it points to a `Box<T>`, `Rc<T>`, etc.
-    DynStar,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -371,7 +367,6 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             UnsafeBinder(binder) => write!(f, "{:?}", binder),
             Dynamic(p, r, repr) => match repr {
                 DynKind::Dyn => write!(f, "dyn {p:?} + {r:?}"),
-                DynKind::DynStar => write!(f, "dyn* {p:?} + {r:?}"),
             },
             Closure(d, s) => f.debug_tuple("Closure").field(d).field(&s).finish(),
             CoroutineClosure(d, s) => f.debug_tuple("CoroutineClosure").field(d).field(&s).finish(),

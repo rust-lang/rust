@@ -183,8 +183,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Bound(_, _)
             | ty::Placeholder(_)
             | ty::Infer(_)
-            | ty::Error(_)
-            | ty::Dynamic(_, _, ty::DynStar) => false,
+            | ty::Error(_) => false,
         }
     }
 }
