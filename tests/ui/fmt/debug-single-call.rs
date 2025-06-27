@@ -1,9 +1,12 @@
+//! Test that Debug::fmt is called exactly once during formatting.
+//!
+//! This is a regression test for PR https://github.com/rust-lang/rust/pull/10715
+
 //@ run-pass
 //@ needs-threads
 
 use std::cell::Cell;
-use std::fmt;
-use std::thread;
+use std::{fmt, thread};
 
 struct Foo(Cell<isize>);
 
