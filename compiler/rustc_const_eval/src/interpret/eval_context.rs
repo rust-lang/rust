@@ -7,7 +7,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
-    self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
+    self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
+    TyAndLayout,
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypingEnv, Variance};
 use rustc_middle::{mir, span_bug};
@@ -88,6 +89,20 @@ impl<'tcx, M: Machine<'tcx>> LayoutOfHelpers<'tcx> for InterpCx<'tcx, M> {
         _: Ty<'tcx>,
     ) -> InterpErrorKind<'tcx> {
         err_inval!(Layout(err))
+    }
+}
+
+impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
+    /// This inherent method takes priority over the trait method with the same name in LayoutOf,
+    /// and allows wrapping the actual [LayoutOf::layout_of] with a tracing span.
+    /// See [LayoutOf::layout_of] for the original documentation.
+    #[inline]
+    pub fn layout_of(
+        &self,
+        ty: Ty<'tcx>,
+    ) -> <InterpCx<'tcx, M> as LayoutOfHelpers<'tcx>>::LayoutOfResult {
+        let _span = enter_trace_span!(M, "InterpCx::layout_of", "ty = {:?}", ty.kind());
+        LayoutOf::layout_of(self, ty)
     }
 }
 

@@ -7,7 +7,7 @@ use std::assert_matches::assert_matches;
 use either::{Either, Left, Right};
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_middle::ty::Ty;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, mir, span_bug};
 use tracing::{instrument, trace};
 
