@@ -293,7 +293,12 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
 
                 // FIXME(oli-obk): why don't we have any tests for this code path?
                 super::report(
-                    tcx,
+                    &InterpCx::new(
+                        tcx,
+                        tcx.def_span(def_id),
+                        key.typing_env,
+                        CompileTimeMachine::new(CanAccessMutGlobal::Yes, CheckAlignment::No),
+                    ),
                     error.into_kind(),
                     span,
                     || (span, vec![]),
@@ -433,7 +438,7 @@ fn report_eval_error<'tcx>(
     let instance = with_no_trimmed_paths!(cid.instance.to_string());
 
     super::report(
-        *ecx.tcx,
+        ecx,
         error,
         DUMMY_SP,
         || super::get_span_and_frames(ecx.tcx, ecx.stack()),
@@ -473,7 +478,7 @@ fn report_validation_error<'tcx>(
         errors::RawBytesNote { size: info.size.bytes(), align: info.align.bytes(), bytes };
 
     crate::const_eval::report(
-        *ecx.tcx,
+        ecx,
         error,
         DUMMY_SP,
         || crate::const_eval::get_span_and_frames(ecx.tcx, ecx.stack()),

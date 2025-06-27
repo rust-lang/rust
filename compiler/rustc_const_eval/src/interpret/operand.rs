@@ -7,7 +7,7 @@ use either::{Either, Left, Right};
 use rustc_abi as abi;
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_hir::def::Namespace;
-use rustc_middle::mir::interpret::ScalarSizeMismatch;
+use rustc_middle::mir::interpret::{BadBytesAccess, ScalarSizeMismatch};
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
@@ -663,7 +663,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
         let imm = self.read_immediate_raw(op)?.right().unwrap();
         if matches!(*imm, Immediate::Uninit) {
-            throw_ub!(InvalidUninitBytes(None));
+            throw_ub!(InvalidUninitBytes(match op.to_op(self)?.as_mplace_or_imm() {
+                Left(mplace) => mplace.ptr().provenance.and_then(|prov| {
+                    let start = mplace.ptr().into_parts().1;
+                    let size = op.layout().size;
+                    let range = alloc_range(start, size);
+                    Some((prov.get_alloc_id()?, BadBytesAccess { access: range, bad: range }))
+                }),
+                Right(_) => None,
+            }))
         }
         interp_ok(imm)
     }

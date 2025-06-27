@@ -1,4 +1,9 @@
 //@compile-flags: -Zmiri-disable-validation
+//@ normalize-stderr-test: ".*│.*\n" -> ""
+//@ normalize-stderr-test: "size: [0-9]+" -> "size: SIZE"
+//@ normalize-stderr-test: "align: [0-9]+" -> "align: ALIGN"
+//@ normalize-stderr-test: "\[0x[0-9a-z]..0x[0-9a-z]\]" -> "[0xX..0xY]"
+
 #![feature(core_intrinsics, custom_mir)]
 use std::intrinsics::mir::*;
 
@@ -9,7 +14,7 @@ use std::intrinsics::mir::*;
 pub unsafe fn deref_meta(p: *const *const i32) -> () {
     mir! {
         {
-            RET = PtrMetadata(*p); //~ ERROR: Undefined Behavior: using uninitialized data
+            RET = PtrMetadata(*p); //~ ERROR: /Undefined Behavior: .* but memory is uninitialized/
             Return()
         }
     }

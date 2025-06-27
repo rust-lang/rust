@@ -1,4 +1,5 @@
 //@ dont-require-annotations: NOTE
+//@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 
 type Field1 = i32;
 type Field2 = f32;
