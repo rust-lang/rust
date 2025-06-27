@@ -1,5 +1,4 @@
 use rustc_abi::ExternAbi;
-use rustc_middle::ty::layout::LayoutOf;
 
 use self::shims::windows::handle::{EvalContextExt as _, Handle, PseudoHandle};
 use crate::*;

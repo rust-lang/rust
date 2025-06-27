@@ -3,7 +3,6 @@ use rand::Rng;
 use rustc_abi::{Endian, HasDataLayout};
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::FloatTy;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
 

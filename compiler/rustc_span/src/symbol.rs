@@ -1876,6 +1876,7 @@ symbols! {
         rustc_never_returns_null_ptr,
         rustc_never_type_options,
         rustc_no_implicit_autorefs,
+        rustc_no_implicit_bounds,
         rustc_no_mir_inline,
         rustc_nonnull_optimization_guaranteed,
         rustc_nounwind,

@@ -8,7 +8,7 @@ use rustc_abi::Size;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
-use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
+use rustc_middle::ty::layout::{TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_span::{Symbol, sym};

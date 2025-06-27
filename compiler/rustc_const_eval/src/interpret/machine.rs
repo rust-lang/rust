@@ -443,7 +443,11 @@ pub trait Machine<'tcx>: Sized {
     ///
     /// Used to prevent statics from self-initializing by reading from their own memory
     /// as it is being initialized.
-    fn before_alloc_read(_ecx: &InterpCx<'tcx, Self>, _alloc_id: AllocId) -> InterpResult<'tcx> {
+    fn before_alloc_access(
+        _tcx: TyCtxtAt<'tcx>,
+        _machine: &Self,
+        _alloc_id: AllocId,
+    ) -> InterpResult<'tcx> {
         interp_ok(())
     }
 

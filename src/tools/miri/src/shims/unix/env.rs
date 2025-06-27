@@ -6,7 +6,6 @@ use rustc_abi::{FieldIdx, Size};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::ty::Ty;
-use rustc_middle::ty::layout::LayoutOf;
 
 use crate::*;
 

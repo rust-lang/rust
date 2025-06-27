@@ -727,13 +727,6 @@ pub struct UnknownArchiveKind<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_expected_used_symbol)]
-pub(crate) struct ExpectedUsedSymbol {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_multiple_main_functions)]
 #[help]
 pub(crate) struct MultipleMainFunctions {

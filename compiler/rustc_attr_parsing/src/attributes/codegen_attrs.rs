@@ -1,4 +1,4 @@
-use rustc_attr_data_structures::{AttributeKind, OptimizeAttr};
+use rustc_attr_data_structures::{AttributeKind, OptimizeAttr, UsedBy};
 use rustc_feature::{AttributeTemplate, template};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
@@ -226,5 +226,86 @@ impl<S: Stage> SingleAttributeParser<S> for NoMangleParser {
         }
 
         Some(AttributeKind::NoMangle(cx.attr_span))
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct UsedParser {
+    first_compiler: Option<Span>,
+    first_linker: Option<Span>,
+}
+
+// A custom `AttributeParser` is used rather than a Simple attribute parser because
+// - Specifying two `#[used]` attributes is a warning (but will be an error in the future)
+// - But specifying two conflicting attributes: `#[used(compiler)]` and `#[used(linker)]` is already an error today
+// We can change this to a Simple parser once the warning becomes an error
+impl<S: Stage> AttributeParser<S> for UsedParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+        &[sym::used],
+        template!(Word, List: "compiler|linker"),
+        |group: &mut Self, cx, args| {
+            let used_by = match args {
+                ArgParser::NoArgs => UsedBy::Linker,
+                ArgParser::List(list) => {
+                    let Some(l) = list.single() else {
+                        cx.expected_single_argument(list.span);
+                        return;
+                    };
+
+                    match l.meta_item().and_then(|i| i.path().word_sym()) {
+                        Some(sym::compiler) => {
+                            if !cx.features().used_with_arg() {
+                                feature_err(
+                                    &cx.sess(),
+                                    sym::used_with_arg,
+                                    cx.attr_span,
+                                    "`#[used(compiler)]` is currently unstable",
+                                )
+                                .emit();
+                            }
+                            UsedBy::Compiler
+                        }
+                        Some(sym::linker) => {
+                            if !cx.features().used_with_arg() {
+                                feature_err(
+                                    &cx.sess(),
+                                    sym::used_with_arg,
+                                    cx.attr_span,
+                                    "`#[used(linker)]` is currently unstable",
+                                )
+                                .emit();
+                            }
+                            UsedBy::Linker
+                        }
+                        _ => {
+                            cx.expected_specific_argument(l.span(), vec!["compiler", "linker"]);
+                            return;
+                        }
+                    }
+                }
+                ArgParser::NameValue(_) => return,
+            };
+
+            let target = match used_by {
+                UsedBy::Compiler => &mut group.first_compiler,
+                UsedBy::Linker => &mut group.first_linker,
+            };
+
+            let attr_span = cx.attr_span;
+            if let Some(prev) = *target {
+                cx.warn_unused_duplicate(prev, attr_span);
+            } else {
+                *target = Some(attr_span);
+            }
+        },
+    )];
+
+    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+        // Ratcheting behaviour, if both `linker` and `compiler` are specified, use `linker`
+        Some(match (self.first_compiler, self.first_linker) {
+            (_, Some(span)) => AttributeKind::Used { used_by: UsedBy::Linker, span },
+            (Some(span), _) => AttributeKind::Used { used_by: UsedBy::Compiler, span },
+            (None, None) => return None,
+        })
     }
 }

@@ -38,6 +38,7 @@ impl AttributeKind {
             PubTransparent(..) => Yes,
             SkipDuringMethodDispatch { .. } => No,
             TrackCaller(..) => Yes,
+            Used { .. } => No,
         }
     }
 }

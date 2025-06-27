@@ -2,7 +2,6 @@
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_middle::query::Key;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use tracing::instrument;

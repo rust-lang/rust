@@ -1,4 +1,6 @@
 //@ compile-flags: -Znext-solver
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 trait Tr<'a> {}
 
@@ -16,9 +18,9 @@ trait Tr<'a> {}
 // Then, when we recompute the goal `W<?0>: Constrain<'error>`, when
 // collecting ambiguities and overflows, we end up assembling a default
 // error candidate w/o ambiguity, which causes the goal to pass, and ICE.
-impl<'a, A: ?Sized> Tr<'a> for W<A> {}
-struct W<A: ?Sized>(A);
-impl<'a, A: ?Sized> Tr<'a> for A where A: Constrain<'a> {}
+impl<'a, A> Tr<'a> for W<A> {}
+struct W<A>(A);
+impl<'a, A> Tr<'a> for A where A: Constrain<'a> {}
 //~^ ERROR conflicting implementations of trait `Tr<'_>` for type `W<_>`
 
 trait Constrain<'a> {}

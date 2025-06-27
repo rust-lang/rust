@@ -24,7 +24,7 @@ use rustc_middle::mir::interpret::{
     ExpectedKind, InterpErrorKind, InvalidMetaKind, Misalignment, PointerKind, Provenance,
     UnsupportedOpInfo, ValidationErrorInfo, alloc_range, interp_ok,
 };
-use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
@@ -35,6 +35,7 @@ use super::{
     Machine, MemPlaceMeta, PlaceTy, Pointer, Projectable, Scalar, ValueVisitor, err_ub,
     format_interp_error,
 };
+use crate::enter_trace_span;
 
 // for the validation errors
 #[rustfmt::skip]
@@ -1363,8 +1364,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         })
     }
 
-    /// This function checks the data at `op` to be const-valid.
-    /// `op` is assumed to cover valid memory if it is an indirect operand.
+    /// This function checks the data at `val` to be const-valid.
+    /// `val` is assumed to cover valid memory if it is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     ///
     /// `ref_tracking` is used to record references that we encounter so that they
@@ -1390,8 +1391,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         )
     }
 
-    /// This function checks the data at `op` to be runtime-valid.
-    /// `op` is assumed to cover valid memory if it is an indirect operand.
+    /// This function checks the data at `val` to be runtime-valid.
+    /// `val` is assumed to cover valid memory if it is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     #[inline(always)]
     pub fn validate_operand(
@@ -1400,6 +1401,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         recursive: bool,
         reset_provenance_and_padding: bool,
     ) -> InterpResult<'tcx> {
+        let _span = enter_trace_span!(
+            M,
+            "validate_operand",
+            "recursive={recursive}, reset_provenance_and_padding={reset_provenance_and_padding}, val={val:?}"
+        );
+
         // Note that we *could* actually be in CTFE here with `-Zextra-const-ub-checks`, but it's
         // still correct to not use `ctfe_mode`: that mode is for validation of the final constant
         // value, it rules out things like `UnsafeCell` in awkward places.

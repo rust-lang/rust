@@ -8,13 +8,15 @@
 
 use std::mem::MaybeUninit;
 
-pub static X: (i32, MaybeUninit<i32>) = (1, foo(&X.0));
-//~^ ERROR: encountered static that tried to initialize itself with itself
+pub static X: (i32, MaybeUninit<i32>) = (1, foo(&X.0, 1));
+//~^ ERROR: encountered static that tried to access itself during initialization
+pub static Y: (i32, MaybeUninit<i32>) = (1, foo(&Y.0, 0));
+//~^ ERROR: encountered static that tried to access itself during initialization
 
-const fn foo(x: &i32) -> MaybeUninit<i32> {
+const fn foo(x: &i32, num: usize) -> MaybeUninit<i32> {
     let mut temp = MaybeUninit::<i32>::uninit();
     unsafe {
-        std::ptr::copy(x, temp.as_mut_ptr(), 1);
+        std::ptr::copy(x, temp.as_mut_ptr(), num);
     }
     temp
 }

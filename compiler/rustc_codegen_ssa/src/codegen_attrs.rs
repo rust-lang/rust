@@ -4,7 +4,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_attr_data_structures::{
-    AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr, ReprAttr, find_attr,
+    AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr, ReprAttr, UsedBy, find_attr,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -160,6 +160,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     }
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
                 }
+                AttributeKind::Used { used_by, .. } => match used_by {
+                    UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
+                    UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
+                },
                 _ => {}
             }
         }
@@ -180,44 +184,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
             sym::rustc_std_internal_symbol => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
-            }
-            sym::used => {
-                let inner = attr.meta_item_list();
-                match inner.as_deref() {
-                    Some([item]) if item.has_name(sym::linker) => {
-                        if !tcx.features().used_with_arg() {
-                            feature_err(
-                                &tcx.sess,
-                                sym::used_with_arg,
-                                attr.span(),
-                                "`#[used(linker)]` is currently unstable",
-                            )
-                            .emit();
-                        }
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER;
-                    }
-                    Some([item]) if item.has_name(sym::compiler) => {
-                        if !tcx.features().used_with_arg() {
-                            feature_err(
-                                &tcx.sess,
-                                sym::used_with_arg,
-                                attr.span(),
-                                "`#[used(compiler)]` is currently unstable",
-                            )
-                            .emit();
-                        }
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER;
-                    }
-                    Some(_) => {
-                        tcx.dcx().emit_err(errors::ExpectedUsedSymbol { span: attr.span() });
-                    }
-                    None => {
-                        // Unconditionally using `llvm.used` causes issues in handling
-                        // `.init_array` with the gold linker. Luckily gold has been
-                        // deprecated with GCC 15 and rustc now warns about using gold.
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER
-                    }
-                }
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
             sym::target_feature => {
@@ -430,7 +396,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
-    // Apply the minimum function alignment here, so that individual backends don't have to.
+    // Apply the minimum function alignment here. This ensures that a function's alignment is
+    // determined by the `-C` flags of the crate it is defined in, not the `-C` flags of the crate
+    // it happens to be codegen'd (or const-eval'd) in.
     codegen_fn_attrs.alignment =
         Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
 
