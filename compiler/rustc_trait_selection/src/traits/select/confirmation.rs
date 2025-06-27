@@ -1364,7 +1364,7 @@ fn pointer_like_goal_for_rpitit<'tcx>(
 
     let args = supertrait.skip_binder().args.extend_to(tcx, rpitit_item, |arg, _| match arg.kind {
         ty::GenericParamDefKind::Lifetime => {
-            let kind = ty::BoundRegionKind::Named(arg.def_id, tcx.item_name(arg.def_id));
+            let kind = ty::BoundRegionKind::Named(arg.def_id);
             bound_vars.push(ty::BoundVariableKind::Region(kind));
             ty::Region::new_bound(
                 tcx,
