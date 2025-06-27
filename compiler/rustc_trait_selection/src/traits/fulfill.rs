@@ -404,6 +404,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::AliasRelate(..) => {
                     bug!("AliasRelate is only used by the new solver")
                 }
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {
+                   unreachable!("unexpected higher ranked `UnstableFeature` goal")
+                }
             },
             Some(pred) => match pred {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
@@ -765,6 +768,31 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 ))
                             }
                         }
+                    }
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                    // Iterate through all goals in param_env to find the one that has the same symbol.
+                    for pred in obligation.param_env.caller_bounds().iter() {
+                        if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
+                            if sym == symbol {
+                                return ProcessResult::Changed(Default::default());
+                            }
+                        }
+                    }
+
+                    // During codegen we must assume that all feature bounds hold as we may be
+                    // monomorphizing a body from an upstream crate which had an unstable feature
+                    // enabled that we do not.
+                    //
+                    // Note: we don't consider a feature to be enabled
+                    // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
+                    if (!self.selcx.tcx().features().staged_api()
+                        && self.selcx.tcx().features().enabled(symbol))
+                        || (self.selcx.infcx.typing_mode() == TypingMode::PostAnalysis)
+                    {
+                        return ProcessResult::Changed(Default::default());
+                    } else {
+                        return ProcessResult::Unchanged;
                     }
                 }
             },
