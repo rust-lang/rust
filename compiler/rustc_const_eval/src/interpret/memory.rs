@@ -1211,8 +1211,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> std::fmt::Debug for DumpAllocs<'a, 'tcx, M> {
                         Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
                             write!(fmt, " (vtable: impl {dyn_ty} for {ty})")?;
                         }
-                        Some(GlobalAlloc::Type { ty, segment }) => {
-                            write!(fmt, " (typeid segment {segment } for {ty})")?;
+                        Some(GlobalAlloc::Type { ty }) => {
+                            write!(fmt, " (typeid for {ty})")?;
                         }
                         Some(GlobalAlloc::Static(did)) => {
                             write!(fmt, " (static: {})", self.ecx.tcx.def_path_str(did))?;

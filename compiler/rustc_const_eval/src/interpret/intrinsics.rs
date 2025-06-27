@@ -36,13 +36,26 @@ pub(crate) fn alloc_type_id<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> AllocId {
     let align = tcx.data_layout.pointer_align;
     let mut alloc = Allocation::new(size, *align, AllocInit::Uninit, ());
     let ptr_size = tcx.data_layout.pointer_size;
-    for step in 0..size.bytes() / ptr_size.bytes() {
-        let offset = ptr_size * step;
-        let alloc_id = tcx.reserve_and_set_type_id_alloc(ty, step.try_into().unwrap());
-        let ptr = Pointer::new(alloc_id.into(), Size::ZERO);
-        let val = Scalar::from_pointer(ptr, &tcx);
-        alloc.write_scalar(&tcx, alloc_range(offset, ptr_size), val).unwrap();
-    }
+    let type_id_hash = tcx.type_id_hash(ty).as_u128();
+    alloc
+        .write_scalar(
+            &tcx,
+            alloc_range(Size::ZERO, Size::from_bytes(16)),
+            Scalar::from_u128(type_id_hash),
+        )
+        .unwrap();
+
+    // Give the first pointer-size bytes provenance that knows about the type id
+
+    let alloc_id = tcx.reserve_and_set_type_id_alloc(ty);
+    let offset = alloc
+        .read_scalar(&tcx, alloc_range(Size::ZERO, ptr_size), false)
+        .unwrap()
+        .to_target_usize(&tcx)
+        .unwrap();
+    let ptr = Pointer::new(alloc_id.into(), Size::from_bytes(offset));
+    let val = Scalar::from_pointer(ptr, &tcx);
+    alloc.write_scalar(&tcx, alloc_range(Size::ZERO, ptr_size), val).unwrap();
 
     alloc.mutability = Mutability::Not;
 

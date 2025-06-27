@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 
 use libc::{c_char, c_uint};
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{self as abi, Align, HasDataLayout as _, Size};
+use rustc_abi::{self as abi, HasDataLayout as _};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
@@ -12,9 +12,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hashes::Hash128;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{
-    AllocInit, Allocation, ConstAllocation, GlobalAlloc, Scalar, alloc_range,
-};
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::DllImport;
 use tracing::debug;
@@ -326,28 +324,9 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                         assert!(!self.tcx.is_thread_local_static(def_id));
                         self.get_static(def_id)
                     }
-                    GlobalAlloc::Type { ty, segment } => {
-                        let type_id = self.tcx.type_id_hash(ty).as_u128();
-                        let mut alloc: Allocation = Allocation::new(
-                            Size::from_bytes(16),
-                            Align::from_bytes(8).unwrap(),
-                            AllocInit::Uninit,
-                            (),
-                        );
-                        alloc
-                            .write_scalar(
-                                &self.tcx,
-                                alloc_range(Size::ZERO, Size::from_bytes(16)),
-                                Scalar::from_u128(type_id),
-                            )
-                            .unwrap();
-                        let pointer_size = self.tcx.data_layout.pointer_size;
-                        let offset = pointer_size * u64::from(segment);
-                        let value = alloc
-                            .read_scalar(&self.tcx, alloc_range(offset, pointer_size), false)
-                            .unwrap();
-                        let data = value.to_bits(pointer_size).unwrap() as u64;
-                        let llval = self.const_usize(data);
+                    GlobalAlloc::Type { .. } => {
+                        // Drop the provenance, the offset contains the bytes of the hash
+                        let llval = self.const_usize(offset.bytes());
                         return unsafe { llvm::LLVMConstIntToPtr(llval, llty) };
                     }
                 };

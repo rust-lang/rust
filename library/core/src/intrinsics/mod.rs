@@ -2728,8 +2728,12 @@ pub const fn type_id<T: ?Sized + 'static>() -> crate::any::TypeId;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn type_id_eq(_a: crate::any::TypeId, _b: crate::any::TypeId) -> bool {
-    panic!("type_id_eq should only be used from const eval")
+// The intrinsic is always overridden by CTFE and we don't want to limit the default body to
+// const operations only, as that would require transmuting the raw pointers to usize because
+// you can't do that cast in CTFE.
+#[rustc_do_not_const_check]
+pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
+    a.data == b.data
 }
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.

@@ -1,10 +1,9 @@
 use gccjit::{LValue, RValue, ToRValue, Type};
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{self as abi, Align, HasDataLayout, Size};
+use rustc_abi::{self as abi, HasDataLayout};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, MiscCodegenMethods, StaticCodegenMethods,
 };
-use rustc_const_eval::interpret::{AllocInit, Allocation, alloc_range};
 use rustc_middle::mir::Mutability;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
@@ -303,28 +302,8 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                         let init = self.const_data_from_alloc(alloc);
                         self.static_addr_of(init, alloc.inner().align, None)
                     }
-                    GlobalAlloc::Type { ty: type_id_ty, segment } => {
-                        let type_id = self.tcx.type_id_hash(type_id_ty).as_u128();
-                        let mut alloc: Allocation = Allocation::new(
-                            Size::from_bytes(16),
-                            Align::from_bytes(8).unwrap(),
-                            AllocInit::Uninit,
-                            (),
-                        );
-                        alloc
-                            .write_scalar(
-                                &self.tcx,
-                                alloc_range(Size::ZERO, Size::from_bytes(16)),
-                                Scalar::from_u128(type_id),
-                            )
-                            .unwrap();
-                        let pointer_size = self.tcx.data_layout.pointer_size;
-                        let offset = pointer_size * u64::from(segment);
-                        let value = alloc
-                            .read_scalar(&self.tcx, alloc_range(offset, pointer_size), false)
-                            .unwrap();
-                        let data = value.to_bits(pointer_size).unwrap() as u64;
-                        let val = self.const_usize(data);
+                    GlobalAlloc::Type { .. } => {
+                        let val = self.const_usize(offset.bytes());
                         return self.context.new_cast(None, val, ty);
                     }
                     GlobalAlloc::Static(def_id) => {
