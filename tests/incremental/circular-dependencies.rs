@@ -27,11 +27,11 @@ fn test() {
     //[cfail2]~| NOTE expected `circular_dependencies::Foo`, found `Foo`
     //[cfail2]~| NOTE arguments to this function are incorrect
     //[cfail2]~| NOTE function defined here
-    //[cfail2]~| NOTE one version of crate `circular_dependencies` used here, as a dependency of crate `circular_dependencies_aux`
-    //[cfail2]~| NOTE one version of crate `circular_dependencies` used here, as a dependency of crate `circular_dependencies_aux`
 
     consume_foo(aux::produce_foo());
     //[cfail2]~^ ERROR mismatched types [E0308]
     //[cfail2]~| NOTE expected `Foo`, found `circular_dependencies::Foo`
     //[cfail2]~| NOTE arguments to this function are incorrect
+    //[cfail2]~| NOTE one version of crate `circular_dependencies` used here, as a dependency of crate `circular_dependencies_aux`
+    //[cfail2]~| NOTE one version of crate `circular_dependencies` used here, as a dependency of crate `circular_dependencies_aux`
 }

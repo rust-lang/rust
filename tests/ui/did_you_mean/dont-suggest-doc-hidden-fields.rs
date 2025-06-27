@@ -27,7 +27,7 @@ fn main() {
     // Here we want to hide the field `hello` since it's marked
     // `doc(hidden)` and comes from an external crate.
     doc_hidden_fields::B::default().hey;
-    //~^ ERROR no field `hey` on type `B`
+    //~^ ERROR no field `hey` on type `doc_hidden_fields::B`
     //~| NOTE unknown field
     //~| NOTE available field is: `bye`
 

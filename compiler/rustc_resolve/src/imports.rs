@@ -22,7 +22,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use smallvec::SmallVec;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::Determinacy::{self, *};
 use crate::Namespace::*;
@@ -794,6 +794,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Segment::names_to_string(&import.module_path),
             module_to_string(import.parent_scope.module).unwrap_or_else(|| "???".to_string()),
         );
+
         let module = if let Some(module) = import.imported_module.get() {
             module
         } else {
@@ -884,6 +885,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///
     /// Optionally returns an unresolved import error. This error is buffered and used to
     /// consolidate multiple unresolved import errors into a single diagnostic.
+    #[instrument(level = "debug", skip(self))]
     fn finalize_import(&mut self, import: Import<'ra>) -> Option<UnresolvedImportError> {
         let ignore_binding = match &import.kind {
             ImportKind::Single { target_bindings, .. } => target_bindings[TypeNS].get(),

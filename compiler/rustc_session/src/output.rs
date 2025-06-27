@@ -62,7 +62,7 @@ pub fn validate_crate_name(sess: &Session, crate_name: Symbol, span: Option<Span
     }
 
     for c in crate_name.as_str().chars() {
-        if c.is_alphanumeric() || c == '_' {
+        if c.is_alphanumeric() || c == '_' || c == ':' {
             continue;
         }
         guar = Some(sess.dcx().emit_err(InvalidCharacterInCrateName {

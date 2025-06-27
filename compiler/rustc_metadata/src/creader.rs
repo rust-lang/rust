@@ -35,7 +35,7 @@ use rustc_session::search_paths::PathKind;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, Target, TargetTuple};
-use tracing::{debug, info, trace};
+use tracing::{debug, info, instrument, trace};
 
 use crate::errors;
 use crate::locator::{CrateError, CrateLocator, CratePaths};
@@ -1251,11 +1251,14 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self, krate), level = "debug")]
     fn report_unused_deps(&mut self, krate: &ast::Crate) {
         // Make a point span rather than covering the whole file
         let span = krate.spans.inner_span.shrink_to_lo();
         // Complain about anything left over
         for (name, entry) in self.sess.opts.externs.iter() {
+            debug!(?name, ?entry);
+            debug!("used_extern_options: {:?}", self.used_extern_options);
             if let ExternLocation::FoundInLibrarySearchDirectories = entry.location {
                 // Don't worry about pathless `--extern foo` sysroot references
                 continue;

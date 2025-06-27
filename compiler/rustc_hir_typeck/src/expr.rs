@@ -213,7 +213,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Check an expr with an expectation type which may be used to eagerly
     /// guide inference when evaluating that expr.
-    #[instrument(skip(self, expr), level = "debug")]
     pub(super) fn check_expr_with_expectation(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
