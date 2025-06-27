@@ -1595,21 +1595,21 @@ pub enum TagEncoding<VariantIdx: Idx> {
     /// Niche (values invalid for a type) encoding the discriminant.
     /// Note that for this encoding, the discriminant and variant index of each variant coincide!
     /// (This gets checked, for example, in [codegen_ssa](https://github.com/rust-lang/rust/blob/df32e15c56f582eb2bdde07711af6271f2ae660b/compiler/rustc_codegen_ssa/src/mir/operand.rs#L485).)
-    /// 
+    ///
     /// The variant `untagged_variant` contains a niche at an arbitrary
     /// offset (field [`Variants::Multiple::tag_field`] of the enum).
     /// For a variant with variant index `i`, such that `i!=untagged_variant`,
     /// the tag is set to `(i - niche_variants.start).wrapping_add(niche_start)`
-    /// (this is wrapping arithmetic using the type of the niche field, cf. the 
+    /// (this is wrapping arithmetic using the type of the niche field, cf. the
     /// [`tag_for_variant`](../rustc_const_eval/interpret/struct.InterpCx.html#method.tag_for_variant)
     /// query implementation).
     /// To recover the variant index `i` from a `tag`, the above formula has to be reversed,
     /// i.e. `i = (tag.wrapping_sub(niche_start))+niche_variants.start`. If `i` ends up outside
     /// `niche_variants`, the tag must have encoded the `untagged_variant`.
-    /// 
+    ///
     /// For example, `Option<(usize, &T)>`  is represented such that the tag for
     /// `None` is the null pointer in the second tuple field, and
-    /// `Some` is the identity function (with a non-null reference) 
+    /// `Some` is the identity function (with a non-null reference)
     /// and has no additional tag, i.e. the reference being non-null uniquely identifies this variant.
     ///
     /// Other variants that are not `untagged_variant` and that are outside the `niche_variants`
@@ -1617,7 +1617,7 @@ pub enum TagEncoding<VariantIdx: Idx> {
     /// Nonetheless, uninhabited variants can also fall into the range of `niche_variants`.
     Niche {
         untagged_variant: VariantIdx,
-        /// This range *may* contain `untagged_variant` or uninhabited variants; 
+        /// This range *may* contain `untagged_variant` or uninhabited variants;
         /// these are then just "dead values" and not used to encode anything.
         niche_variants: RangeInclusive<VariantIdx>,
         /// This is inbounds of the type of the niche field
