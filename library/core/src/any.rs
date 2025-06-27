@@ -709,7 +709,7 @@ impl dyn Any + Send + Sync {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "type_id"]
 pub struct TypeId {
-    data: [*const (); 16 / size_of::<usize>()],
+    pub(crate) data: [*const (); 16 / size_of::<usize>()],
 }
 
 // SAFETY: the raw pointer is always an integer
@@ -724,30 +724,27 @@ unsafe impl Sync for TypeId {}
 impl const PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        const fn ct(a: &TypeId, b: &TypeId) -> bool {
-            crate::intrinsics::type_id_eq(*a, *b)
+        #[cfg(miri)]
+        return crate::intrinsics::type_id_eq(*self, *other);
+        #[cfg(not(miri))]
+        {
+            const fn ct(a: &TypeId, b: &TypeId) -> bool {
+                crate::intrinsics::type_id_eq(*a, *b)
+            }
+
+            #[inline]
+            fn rt(a: &TypeId, b: &TypeId) -> bool {
+                a.data == b.data
+            }
+
+            // Ideally we would just invoke `type_id_eq` unconditionally here,
+            // but since we do not MIR inline intrinsics, because backends
+            // may want to override them (and miri does!), MIR opts do not
+            // clean up this call sufficiently for LLVM to turn repeated calls
+            // of `TypeId` comparisons against one specific `TypeId` into
+            // a lookup table.
+            core::intrinsics::const_eval_select((self, other), ct, rt)
         }
-
-        #[inline]
-        fn rt(a: &TypeId, b: &TypeId) -> bool {
-            a.data == b.data
-        }
-
-        core::intrinsics::const_eval_select((self, other), ct, rt)
-    }
-
-    #[inline]
-    fn ne(&self, other: &Self) -> bool {
-        const fn ct(a: &TypeId, b: &TypeId) -> bool {
-            !crate::intrinsics::type_id_eq(*a, *b)
-        }
-
-        #[inline]
-        fn rt(a: &TypeId, b: &TypeId) -> bool {
-            a.data != b.data
-        }
-
-        core::intrinsics::const_eval_select((self, other), ct, rt)
     }
 }
 

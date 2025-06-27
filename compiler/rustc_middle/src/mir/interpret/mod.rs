@@ -128,11 +128,10 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
             ty.encode(encoder);
             poly_trait_ref.encode(encoder);
         }
-        GlobalAlloc::Type { ty, segment } => {
+        GlobalAlloc::Type { ty } => {
             trace!("encoding {alloc_id:?} with {ty:#?}");
             AllocDiscriminant::Type.encode(encoder);
             ty.encode(encoder);
-            segment.encode(encoder);
         }
         GlobalAlloc::Static(did) => {
             assert!(!tcx.is_thread_local_static(did));
@@ -238,9 +237,8 @@ impl<'s> AllocDecodingSession<'s> {
             AllocDiscriminant::Type => {
                 trace!("creating typeid alloc ID");
                 let ty = Decodable::decode(decoder);
-                let segment = Decodable::decode(decoder);
-                trace!("decoded typid: {ty:?} ({segment})");
-                decoder.interner().reserve_and_set_type_id_alloc(ty, segment)
+                trace!("decoded typid: {ty:?}");
+                decoder.interner().reserve_and_set_type_id_alloc(ty)
             }
             AllocDiscriminant::Static => {
                 trace!("creating extern static alloc ID");
@@ -272,9 +270,9 @@ pub enum GlobalAlloc<'tcx> {
     Static(DefId),
     /// The alloc ID points to memory.
     Memory(ConstAllocation<'tcx>),
-    /// A pointer-sized segment of a type id. On 64 bit systems, the 128 bit type id
+    /// The first pointer-sized segment of a type id. On 64 bit systems, the 128 bit type id
     /// is split into two segments, on 32 bit systems there are 4 segments, and so on.
-    Type { ty: Ty<'tcx>, segment: u8 },
+    Type { ty: Ty<'tcx> },
 }
 
 impl<'tcx> GlobalAlloc<'tcx> {
@@ -508,8 +506,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Generates an [AllocId] for a [core::any::TypeId]. Will get deduplicated.
-    pub fn reserve_and_set_type_id_alloc(self, ty: Ty<'tcx>, segment: u8) -> AllocId {
-        self.reserve_and_set_dedup(GlobalAlloc::Type { ty, segment }, 0)
+    pub fn reserve_and_set_type_id_alloc(self, ty: Ty<'tcx>) -> AllocId {
+        self.reserve_and_set_dedup(GlobalAlloc::Type { ty }, 0)
     }
 
     /// Interns the `Allocation` and return a new `AllocId`, even if there's already an identical

@@ -406,33 +406,18 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             sym::type_id_eq => {
                 let a = ecx.project_field(&args[0], FieldIdx::ZERO)?;
                 let b = ecx.project_field(&args[1], FieldIdx::ZERO)?;
-                let mut eq = true;
-                for index in 0..(16 / ecx.tcx.data_layout.pointer_size.bytes()) {
-                    let a = ecx.project_index(&a, index)?;
-                    let a = ecx.deref_pointer(&a)?;
-                    let (a, offset) = a.ptr().into_parts();
-                    assert_eq!(offset, Size::ZERO);
-                    let a = a.unwrap().alloc_id();
-                    let GlobalAlloc::Type { ty: a, segment: a_segment } = ecx.tcx.global_alloc(a)
-                    else {
-                        bug!()
-                    };
-                    let b = ecx.project_index(&b, index)?;
-                    let b = ecx.deref_pointer(&b)?;
-                    let (b, offset) = b.ptr().into_parts();
-                    assert_eq!(offset, Size::ZERO);
-                    let b = b.unwrap().alloc_id();
-                    let GlobalAlloc::Type { ty: b, segment: b_segment } = ecx.tcx.global_alloc(b)
-                    else {
-                        bug!()
-                    };
 
-                    eq &= a == b && a_segment == b_segment;
-                    if !eq {
-                        break;
-                    }
-                }
-                ecx.write_scalar(Scalar::from_bool(eq), dest)?;
+                let a = ecx.project_index(&a, 0)?;
+                let a = ecx.deref_pointer(&a)?;
+                let (a, offset_a, _) = ecx.ptr_get_alloc_id(a.ptr(), 0)?;
+                let GlobalAlloc::Type { ty: a } = ecx.tcx.global_alloc(a) else { bug!() };
+
+                let b = ecx.project_index(&b, 0)?;
+                let b = ecx.deref_pointer(&b)?;
+                let (b, offset_b, _) = ecx.ptr_get_alloc_id(b.ptr(), 0)?;
+                let GlobalAlloc::Type { ty: b } = ecx.tcx.global_alloc(b) else { bug!() };
+
+                ecx.write_scalar(Scalar::from_bool(a == b && offset_a == offset_b), dest)?;
             }
             sym::const_allocate => {
                 let size = ecx.read_scalar(&args[0])?.to_target_usize(ecx)?;
