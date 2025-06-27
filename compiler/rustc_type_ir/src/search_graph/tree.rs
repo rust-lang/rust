@@ -144,7 +144,16 @@ impl<X: Cx> SearchTree<X> {
                 NodeKind::CycleOnStack { entry_node_id: _, result: prev },
                 NodeKind::CycleOnStack { entry_node_id: _, result: new },
             ) => prev == new,
-            _ => false,
+            (&NodeKind::ProvisionalCacheHit { entry_node_id }, _) => {
+                self.result_matches(entry_node_id, new)
+            }
+            (_, &NodeKind::ProvisionalCacheHit { entry_node_id }) => {
+                self.result_matches(prev, entry_node_id)
+            }
+            result_matches => {
+                tracing::debug!(?result_matches);
+                false
+            }
         }
     }
 
