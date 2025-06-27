@@ -542,19 +542,8 @@ impl Build {
         if host.is_symlink() {
             // Left over from a previous build; overwrite it.
             // This matters if `build.build` has changed between invocations.
-            #[cfg(windows)]
-            {
-                // On Windows, symlinks (including junctions) can fail to be removed with
-                // `fs::remove_dir` if the target is invalid, causing error 267
-                // "The directory name is invalid". This can happen when the symlink
-                // points to a non-existent or corrupted target.
-                // We try removing as a file first (works for invalid symlinks),
-                // then fall back to removing as a directory if needed.
-                if let Err(_) = fs::remove_file(&host) {
-                    t!(fs::remove_dir(&host));
-                }
-            }
-            #[cfg(not(windows))]
+            // On Windows, `fs::remove_file` can remove both file and directory symlinks/junctions,
+            // even when the target is invalid (which causes error 267 with `fs::remove_dir`).
             t!(fs::remove_file(&host));
         }
         t!(
