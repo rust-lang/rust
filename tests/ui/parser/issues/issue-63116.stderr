@@ -2,9 +2,10 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-63116.rs:3:18
    |
 LL | impl W <s(f;Y(;]
-   |          -     -^
-   |          |     |
-   |          |     missing open `[` for this delimiter
+   |          -   - -^
+   |          |   | |
+   |          |   | missing open `[` for this delimiter
+   |          |   unclosed delimiter
    |          unclosed delimiter
 
 error: aborting due to 1 previous error

@@ -2,8 +2,9 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-105209.rs:3:68
    |
 LL | #![c={#![c[)x
-   |   -  -  -  - missing open `(` for this delimiter
-   |   |  |  |
+   |   -  -  - -- missing open `(` for this delimiter
+   |   |  |  | |
+   |   |  |  | unclosed delimiter
    |   |  |  unclosed delimiter
    |   |  unclosed delimiter
    |   unclosed delimiter

@@ -10,7 +10,9 @@ LL |     d: [u32; {
 LL |         #![cfg] {
    |                 - unclosed delimiter
 LL |             #![w,)
-   |                  - missing open `(` for this delimiter
+   |               -  - missing open `(` for this delimiter
+   |               |
+   |               unclosed delimiter
 LL |
    |                                                                      ^
 

@@ -14,9 +14,10 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-94171.rs:4:52
    |
 LL | fn L(]{match
-   |      -- unclosed delimiter
-   |      |
-   |      missing open `[` for this delimiter
+   |     --- unclosed delimiter
+   |     ||
+   |     |missing open `[` for this delimiter
+   |     unclosed delimiter
 LL | (; {`
    | -  - unclosed delimiter
    | |

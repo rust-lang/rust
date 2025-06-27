@@ -154,15 +154,12 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             candidate = Some(*delimiter_span);
                         }
                     }
-                    let (_, _) = self.diag_info.open_delimiters.pop().unwrap();
                     self.diag_info.unmatched_delims.push(UnmatchedDelim {
                         found_delim: Some(close_delim),
                         found_span: self.token.span,
                         unclosed_span: unclosed_delimiter,
                         candidate_span: candidate,
                     });
-                } else {
-                    self.diag_info.open_delimiters.pop();
                 }
 
                 // If the incorrect delimiter matches an earlier opening
@@ -243,6 +240,17 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let token_str = token_to_string(&self.token);
         let msg = format!("unexpected closing delimiter: `{token_str}`");
         let mut err = self.dcx().struct_span_err(self.token.span, msg);
+
+        if let Some((open_delim, open_delim_span)) = self.diag_info.open_delimiters.last().cloned()
+        {
+            if open_delim == close_delim {
+                err.span_label(
+                    open_delim_span,
+                    format!("the mismatchd closing `{}` may be matched here", token_str),
+                );
+                self.diag_info.open_delimiters.pop();
+            }
+        }
 
         report_suspicious_mismatch_block(
             &mut err,

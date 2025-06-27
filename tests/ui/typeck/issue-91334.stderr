@@ -2,9 +2,10 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-91334.rs:6:23
    |
 LL | fn f(){||yield(((){),
-   |       -       -    - ^
-   |       |       |    |
-   |       |       |    missing open `(` for this delimiter
+   |       -       --   - ^
+   |       |       ||   |
+   |       |       ||   missing open `(` for this delimiter
+   |       |       |unclosed delimiter
    |       |       unclosed delimiter
    |       unclosed delimiter
 

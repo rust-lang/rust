@@ -1,15 +1,22 @@
 error: this file contains an unclosed delimiter
   --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:20:65
    |
+LL | mod a {
+   |       - unclosed delimiter
+...
 LL |         V = [PhantomData; { [ () ].len() ].len() as isize,
    |                                          - missing open `[` for this delimiter
 ...
+LL | mod b {
+   |       - unclosed delimiter
+LL |     enum Bug {
 LL |         V = [Vec::new; { [].len()  ].len() as isize,
    |                                    - missing open `[` for this delimiter
 ...
 LL | mod c {
    |       - unclosed delimiter
 LL |     enum Bug {
+   |              - unclosed delimiter
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
    |                                    - missing open `[` for this delimiter
 ...
