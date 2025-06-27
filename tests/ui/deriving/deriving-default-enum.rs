@@ -1,5 +1,4 @@
 //@ run-pass
-#![allow(dead_code)]
 
 // nb: does not impl Default
 #[derive(Debug, PartialEq)]
@@ -9,6 +8,7 @@ struct NotDefault;
 enum Foo {
     #[default]
     Alpha,
+    #[allow(dead_code)]
     Beta(NotDefault),
 }
 
@@ -17,6 +17,7 @@ enum Foo {
 enum MyOption<T> {
     #[default]
     None,
+    #[allow(dead_code)]
     Some(T),
 }
 

@@ -105,7 +105,6 @@ use crate::ascii::Char as AsciiChar;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[const_trait]
 #[rustc_const_unstable(feature = "const_default", issue = "none")]
-#[rustc_trivial_field_reads]
 pub trait Default: Sized {
     /// Returns the "default value" for a type.
     ///
