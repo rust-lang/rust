@@ -34,7 +34,7 @@ const BAR: () = {
 };
 
 const BAZ: &Foo = &FOO;
-//[atomic]~^ ERROR: constants cannot refer to interior mutable data
+//[atomic]~^ ERROR: interior mutable shared borrows of lifetime-extended temporaries
 
 fn main() {
     let _: &'static _ = &FOO;

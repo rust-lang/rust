@@ -93,14 +93,6 @@ pub(crate) struct PanicNonStrErr {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_max_num_nodes_in_const)]
-pub(crate) struct MaxNumNodesInConstErr {
-    #[primary_span]
-    pub span: Option<Span>,
-    pub global_const_id: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(const_eval_unallowed_fn_pointer_call)]
 pub(crate) struct UnallowedFnPointerCall {
     #[primary_span]
@@ -158,8 +150,8 @@ pub(crate) struct UnmarkedIntrinsicExposed {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_mutable_ref_escaping, code = E0764)]
-pub(crate) struct MutableRefEscaping {
+#[diag(const_eval_mutable_borrow_escaping, code = E0764)]
+pub(crate) struct MutableBorrowEscaping {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
@@ -167,15 +159,6 @@ pub(crate) struct MutableRefEscaping {
     pub teach: bool,
 }
 
-#[derive(Diagnostic)]
-#[diag(const_eval_mutable_raw_escaping, code = E0764)]
-pub(crate) struct MutableRawEscaping {
-    #[primary_span]
-    pub span: Span,
-    pub kind: ConstContext,
-    #[note(const_eval_teach_note)]
-    pub teach: bool,
-}
 #[derive(Diagnostic)]
 #[diag(const_eval_non_const_fmt_macro_call, code = E0015)]
 pub(crate) struct NonConstFmtMacroCall {
@@ -233,8 +216,8 @@ pub(crate) struct UnallowedInlineAsm {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_interior_mutable_ref_escaping, code = E0492)]
-pub(crate) struct InteriorMutableRefEscaping {
+#[diag(const_eval_interior_mutable_borrow_escaping, code = E0492)]
+pub(crate) struct InteriorMutableBorrowEscaping {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -655,9 +638,8 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
 
             PointerAsInt { .. } => const_eval_validation_pointer_as_int,
             PartialPointer => const_eval_validation_partial_pointer,
-            ConstRefToMutable => const_eval_validation_const_ref_to_mutable,
-            ConstRefToExtern => const_eval_validation_const_ref_to_extern,
             MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
+            MutableRefInConst => const_eval_validation_mutable_ref_in_const,
             NullFnPtr => const_eval_validation_null_fn_ptr,
             NeverVal => const_eval_validation_never_val,
             NullablePtrOutOfRange { .. } => const_eval_validation_nullable_ptr_out_of_range,
@@ -815,9 +797,8 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 err.arg("expected_dyn_type", expected_dyn_type.to_string());
             }
             NullPtr { .. }
-            | ConstRefToMutable
-            | ConstRefToExtern
             | MutableRefToImmutable
+            | MutableRefInConst
             | NullFnPtr
             | NeverVal
             | UnsafeCellInImmutable

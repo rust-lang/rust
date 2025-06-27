@@ -13,7 +13,7 @@ LL | const C: i32 = 2;
    | ^^^^^^^^^^^^
    = note: `#[warn(const_item_mutation)]` on by default
 
-error[E0764]: mutable references are not allowed in the final value of constants
+error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a constant are not allowed
   --> $DIR/E0017.rs:8:30
    |
 LL | const CR: &'static mut i32 = &mut C;
@@ -39,7 +39,7 @@ note: `const` item defined here
 LL | const C: i32 = 2;
    | ^^^^^^^^^^^^
 
-error[E0764]: mutable references are not allowed in the final value of statics
+error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a static are not allowed
   --> $DIR/E0017.rs:13:38
    |
 LL | static CONST_REF: &'static mut i32 = &mut C;

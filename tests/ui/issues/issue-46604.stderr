@@ -1,4 +1,4 @@
-error[E0764]: mutable references are not allowed in the final value of statics
+error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a static are not allowed
   --> $DIR/issue-46604.rs:1:25
    |
 LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
