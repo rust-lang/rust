@@ -17,7 +17,8 @@ expand_expr_is!("Hello, World!", concat!("Hello, ", "World", "!"));
 expand_expr_is!("int10floats5.3booltrue", concat!("int", 10, "floats", 5.3, "bool", true));
 expand_expr_is!("Hello", concat!(r##"Hello"##));
 
-expand_expr_is!("Included file contents\n", include_str!("auxiliary/included-file.txt"));
+expand_expr_is!(r"Included file contents
+", include_str!("auxiliary/included-file.txt"));
 expand_expr_is!(b"Included file contents\n", include_bytes!("auxiliary/included-file.txt"));
 
 expand_expr_is!(

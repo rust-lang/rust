@@ -445,6 +445,11 @@ impl<'a> ExtCtxt<'a> {
         self.expr(span, ast::ExprKind::Lit(lit))
     }
 
+    pub fn expr_str_raw(&self, span: Span, s: Symbol) -> P<ast::Expr> {
+        let lit = token::Lit::new(token::StrRaw(0), s, None);
+        self.expr(span, ast::ExprKind::Lit(lit))
+    }
+
     pub fn expr_byte_str(&self, span: Span, bytes: Vec<u8>) -> P<ast::Expr> {
         let lit = token::Lit::new(token::ByteStr, literal::escape_byte_str_symbol(&bytes), None);
         self.expr(span, ast::ExprKind::Lit(lit))

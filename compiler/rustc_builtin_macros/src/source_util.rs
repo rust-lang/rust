@@ -207,7 +207,7 @@ pub(crate) fn expand_include_str(
         Ok((bytes, bsp)) => match std::str::from_utf8(&bytes) {
             Ok(src) => {
                 let interned_src = Symbol::intern(src);
-                MacEager::expr(cx.expr_str(cx.with_def_site_ctxt(bsp), interned_src))
+                MacEager::expr(cx.expr_str_raw(cx.with_def_site_ctxt(bsp), interned_src))
             }
             Err(utf8err) => {
                 let mut err = cx.dcx().struct_span_err(sp, format!("`{path}` wasn't a utf-8 file"));
