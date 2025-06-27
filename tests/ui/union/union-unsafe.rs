@@ -96,4 +96,38 @@ fn main() {
     let mut u3 = U3 { a: ManuallyDrop::new(String::from("old")) }; // OK
     u3.a = ManuallyDrop::new(String::from("new")); // OK (assignment does not drop)
     *u3.a = String::from("new"); //~ ERROR access to union field is unsafe
+
+    let mut unions = [U1 { a: 1 }, U1 { a: 2 }];
+
+    // Array indexing + union field raw borrow - should be OK
+    let ptr = &raw mut unions[0].a; // OK
+    let ptr2 = &raw const unions[1].a; // OK
+
+    // Test for union fields chain, this should be allowed
+    #[derive(Copy, Clone)]
+    union Inner {
+        a: u8,
+    }
+
+    union MoreInner {
+        moreinner: ManuallyDrop<Inner>,
+    }
+
+    union LessOuter {
+        lessouter: ManuallyDrop<MoreInner>,
+    }
+
+    union Outer {
+        outer: ManuallyDrop<LessOuter>,
+    }
+
+    let super_outer = Outer {
+        outer: ManuallyDrop::new(LessOuter {
+            lessouter: ManuallyDrop::new(MoreInner {
+                moreinner: ManuallyDrop::new(Inner { a: 42 }),
+            }),
+        }),
+    };
+
+    let ptr = &raw const super_outer.outer.lessouter.moreinner.a;
 }
