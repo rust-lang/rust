@@ -17,6 +17,9 @@ allow-unauthenticated = [
 
 [issue-links]
 
+[mentions."clippy_lints/src/doc"]
+cc = ["@notriddle"]
+
 # Prevents mentions in commits to avoid users being spammed
 [no-mentions]
 

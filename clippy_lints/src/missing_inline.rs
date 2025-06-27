@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_attr_data_structures::{find_attr, AttributeKind};
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_hir as hir;
 use rustc_hir::Attribute;
 use rustc_lint::{LateContext, LateLintPass, LintContext};

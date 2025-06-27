@@ -172,5 +172,35 @@ LL ~         }
 LL +         let y = 1;
    |
 
-error: aborting due to 10 previous errors
+error: all if blocks contain the same code at the end
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:290:5
+   |
+LL | /         0
+LL | |
+LL | |     };
+   | |_____^
+   |
+   = note: the end suggestion probably needs some adjustments to use the expression result correctly
+help: consider moving these statements after the if
+   |
+LL ~     }
+LL ~     0;
+   |
+
+error: all if blocks contain the same code at the end
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:299:5
+   |
+LL | /         1
+LL | |
+LL | |     };
+   | |_____^
+   |
+   = note: the end suggestion probably needs some adjustments to use the expression result correctly
+help: consider moving these statements after the if
+   |
+LL ~     }
+LL ~     1;
+   |
+
+error: aborting due to 12 previous errors
 

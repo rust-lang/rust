@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::option_arg_ty;
+use clippy_utils::ty::{option_arg_ty, peel_mid_ty_refs_is_mutable};
 use clippy_utils::{get_parent_expr, is_res_lang_ctor, path_res, peel_blocks, span_contains_comment};
-use rustc_ast::BindingMode;
+use rustc_ast::{BindingMode, Mutability};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr};
 use rustc_hir::def::{DefKind, Res};
@@ -133,7 +133,21 @@ fn apply_lint(cx: &LateContext<'_>, expr: &Expr<'_>, scrutinee: &Expr<'_>, is_ok
         Applicability::MachineApplicable
     };
     let scrut = Sugg::hir_with_applicability(cx, scrutinee, "..", &mut app).maybe_paren();
-    let sugg = format!("{scrut}.{method}()");
+
+    let scrutinee_ty = cx.typeck_results().expr_ty(scrutinee);
+    let (_, n_ref, mutability) = peel_mid_ty_refs_is_mutable(scrutinee_ty);
+    let prefix = if n_ref > 0 {
+        if mutability == Mutability::Mut {
+            ".as_mut()"
+        } else {
+            ".as_ref()"
+        }
+    } else {
+        ""
+    };
+
+    let sugg = format!("{scrut}{prefix}.{method}()");
+
     // If the expression being expanded is the `if …` part of an `else if …`, it must be blockified.
     let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr)
         && let ExprKind::If(_, _, Some(else_part)) = parent_expr.kind
