@@ -1,0 +1,11 @@
+error[E0284]: type annotations needed: cannot satisfy `unstable feature: `feat_bar``
+  --> $DIR/unstable-feature-cross-crate-require-bound.rs:12:5
+   |
+LL |     Bar::foo();
+   |     ^^^ cannot satisfy `unstable feature: `feat_bar``
+   |
+   = note: required for `Bar` to implement `Foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.
