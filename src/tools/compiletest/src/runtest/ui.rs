@@ -6,8 +6,8 @@ use rustfix::{Filter, apply_suggestions, get_suggestions_from_json};
 use tracing::debug;
 
 use super::{
-    AllowUnused, Emit, FailMode, LinkToAux, PassMode, TargetLocation, TestCx, TestOutput,
-    Truncated, UI_FIXED, WillExecute,
+    AllowUnused, Emit, FailMode, LinkToAux, PassMode, RunFailMode, TargetLocation, TestCx,
+    TestOutput, Truncated, UI_FIXED, WillExecute,
 };
 use crate::json;
 
@@ -140,12 +140,34 @@ impl TestCx<'_> {
                     &proc_res,
                 );
             }
+            let code = proc_res.status.code();
+            let exit_with_success = proc_res.status.success();
+            // A normal failure exit code is between 1 and 127. If we don't have
+            // an exit code or if it is outside that range (and not 0) we
+            // consider it a crash.
+            let exit_with_failure = code.is_some_and(|c| c >= 1 && c <= 127);
             if self.should_run_successfully(pm) {
-                if !proc_res.status.success() {
-                    self.fatal_proc_rec("test run failed!", &proc_res);
+                if !exit_with_success {
+                    self.fatal_proc_rec(
+                        &format!("test did not exit with success! code={code:?}"),
+                        &proc_res,
+                    );
                 }
-            } else if proc_res.status.success() {
-                self.fatal_proc_rec("test run succeeded!", &proc_res);
+            } else if self.props.fail_mode == Some(FailMode::Run(RunFailMode::ExitWithFailure)) {
+                if !exit_with_failure {
+                    self.fatal_proc_rec(
+                        &format!("test did not exit with failure! code={code:?}"),
+                        &proc_res,
+                    );
+                }
+            } else {
+                // If we get here it means we should not run successfully and we
+                // should not exit with failure. So we should crash. And if we
+                // did exit with success or did exit with failure it means we
+                // did NOT crash.
+                if exit_with_success || exit_with_failure {
+                    self.fatal_proc_rec(&format!("test did not crash! code={code:?}"), &proc_res);
+                }
             }
 
             self.get_output(&proc_res)
