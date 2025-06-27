@@ -336,30 +336,30 @@ diagnostic struct.
 
 ### Argument sharing and isolation
 
-Subdiagnostics will add their own arguments,
-i.e. some fields in their struct, into the subdiagnostic when rendering the message,
-so that the parameters in the main diagnostic can be used.
+Subdiagnostics add their own arguments (i.e., certain fields in their structure) to the `Diag` structure before rendering the information.
+`Diag` structure also stores the arguments from the main diagnostic, so the subdiagnostic can also use the arguments from the main diagnostic.
+
 However, when a subdiagnostic is added to a main diagnostic by implementing `#[derive(Subdiagnostic)]`,
 the following rules, introduced in [rust-lang/rust#142724](https://github.com/rust-lang/rust/pull/142724)
 apply to the handling of arguments (i.e., variables used in Fluent messages):
 
 **Argument isolation between sub diagnostics**:
 Arguments set by a subdiagnostic are only available during the rendering of that subdiagnostic.
-After the subdiagnostic is rendered, all arguments it introduced are restore from the main diagnostic.
+After the subdiagnostic is rendered, all arguments it introduced are restored from the main diagnostic.
 This ensures that multiple subdiagnostics do not pollute each other's argument scope.
-For example, when using a `Vec<Subdiag>`, it iteratively add the same arg over and over again.
+For example, when using a `Vec<Subdiag>`, it iteratively adds the same argument over and over again.
 
 **Same argument override between sub and main diagnostics**:
-If a subdiagnostic sets a argument with the same name as a arg already in the master diagnostic,
+If a subdiagnostic sets a argument with the same name as a arguments already in the main diagnostic,
 it will report an error at runtime unless both have exactly the same value.
-This
-- preserves the flexibility that can that *arguments is allowed to appear in the attributes of the subdiagnostic.
-For example, There is a attribute `#[suggestion(code = "{new_vis}")]` in sub-diagnostic, but `new_vis` is the field in main diagnostic struct.
-- prevents accidental overwriting or deletion of parameters required by the main diagnostic or other sub-diagnostics.
+It has two benefits:
+- preserves the flexibility that arguments in the main diagnostic are allowed to appear in the attributes of the subdiagnostic.
+For example, There is an attribute `#[suggestion(code = "{new_vis}")]` in the subdiagnostic, but `new_vis` is the field in the main diagnostic struct.
+- prevents accidental overwriting or deletion of arguments required by the main diagnostic or other subdiagnostics.
 
 These rules guarantee that arguments injected by subdiagnostics are strictly scoped to their own rendering.
 The main diagnostic's arguments remain unaffected by subdiagnostic logic, even in the presence of name collisions.
-Additionally, subdiagnostics can access parameters from the main diagnostic with the same name when needed.
+Additionally, subdiagnostics can access arguments from the main diagnostic with the same name when needed.
 
 ### Reference for `#[derive(Subdiagnostic)]`
 `#[derive(Subdiagnostic)]` supports the following attributes:
