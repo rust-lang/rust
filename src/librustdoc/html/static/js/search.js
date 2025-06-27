@@ -2515,13 +2515,17 @@ class DocSearch {
      *
      * @param  {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} origParsedQuery
      *     - The parsed user query
-     * @param  {Object} [filterCrates] - Crate to search in if defined
-     * @param  {Object} [currentCrate] - Current crate, to rank results from this crate higher
+     * @param  {Object} filterCrates - Crate to search in if defined
+     * @param  {string} currentCrate - Current crate, to rank results from this crate higher
      *
      * @return {Promise<rustdoc.ResultsTable>}
      */
     async execQuery(origParsedQuery, filterCrates, currentCrate) {
-        const results_others = new Map(), results_in_args = new Map(),
+        /** @type {rustdoc.Results} */
+        const results_others = new Map(),
+            /** @type {rustdoc.Results} */
+            results_in_args = new Map(),
+            /** @type {rustdoc.Results} */
             results_returned = new Map();
 
         /** @type {rustdoc.ParsedQuery<rustdoc.QueryElement>} */
@@ -4365,7 +4369,7 @@ class DocSearch {
          *
          * The `results` map contains information which will be used to sort the search results:
          *
-         * * `fullId` is a `string`` used as the key of the object we use for the `results` map.
+         * * `fullId` is an `integer`` used as the key of the object we use for the `results` map.
          * * `id` is the index in the `searchIndex` array for this element.
          * * `index` is an `integer`` used to sort by the position of the word in the item's name.
          * * `dist` is the main metric used to sort the search results.
@@ -4373,19 +4377,18 @@ class DocSearch {
          *   distance computed for everything other than the last path component.
          *
          * @param {rustdoc.Results} results
-         * @param {string} fullId
+         * @param {number} fullId
          * @param {number} id
          * @param {number} index
          * @param {number} dist
          * @param {number} path_dist
+         * @param {number} maxEditDistance
          */
-        // @ts-expect-error
         function addIntoResults(results, fullId, id, index, dist, path_dist, maxEditDistance) {
             if (dist <= maxEditDistance || index !== -1) {
                 if (results.has(fullId)) {
                     const result = results.get(fullId);
-                    // @ts-expect-error
-                    if (result.dontValidate || result.dist <= dist) {
+                    if (result === undefined || result.dontValidate || result.dist <= dist) {
                         return;
                     }
                 }
@@ -4452,9 +4455,8 @@ class DocSearch {
                 return;
             }
 
-            // @ts-expect-error
             results.max_dist = Math.max(results.max_dist || 0, tfpDist);
-            addIntoResults(results, row.id.toString(), pos, 0, tfpDist, 0, Number.MAX_VALUE);
+            addIntoResults(results, row.id, pos, 0, tfpDist, 0, Number.MAX_VALUE);
         }
 
         /**
@@ -4495,7 +4497,7 @@ class DocSearch {
             if (parsedQuery.foundElems === 1 && !parsedQuery.hasReturnArrow) {
                 const elem = parsedQuery.elems[0];
                 // use arrow functions to preserve `this`.
-                // @ts-expect-error
+                /** @type {function(number): void} */
                 const handleNameSearch = id => {
                     const row = this.searchIndex[id];
                     if (!typePassesFilter(elem.typeFilter, row.ty) ||
@@ -4505,22 +4507,21 @@ class DocSearch {
 
                     let pathDist = 0;
                     if (elem.fullPath.length > 1) {
-                        // @ts-expect-error
-                        pathDist = checkPath(elem.pathWithoutLast, row);
-                        if (pathDist === null) {
+
+                        const maybePathDist = checkPath(elem.pathWithoutLast, row);
+                        if (maybePathDist === null) {
                             return;
                         }
+                        pathDist = maybePathDist;
                     }
 
                     if (parsedQuery.literalSearch) {
                         if (row.word === elem.pathLast) {
-                            // @ts-expect-error
-                            addIntoResults(results_others, row.id, id, 0, 0, pathDist);
+                            addIntoResults(results_others, row.id, id, 0, 0, pathDist, 0);
                         }
                     } else {
                         addIntoResults(
                             results_others,
-                            // @ts-expect-error
                             row.id,
                             id,
                             row.normalizedName.indexOf(elem.normalizedPathLast),
@@ -4561,31 +4562,23 @@ class DocSearch {
                         const returned = row.type && row.type.output
                             && checkIfInList(row.type.output, elem, row.type.where_clause, null, 0);
                         if (in_args) {
-                            // @ts-expect-error
                             results_in_args.max_dist = Math.max(
-                                // @ts-expect-error
                                 results_in_args.max_dist || 0,
                                 tfpDist,
                             );
                             const maxDist = results_in_args.size < MAX_RESULTS ?
                                 (tfpDist + 1) :
-                                // @ts-expect-error
                                 results_in_args.max_dist;
-                            // @ts-expect-error
                             addIntoResults(results_in_args, row.id, i, -1, tfpDist, 0, maxDist);
                         }
                         if (returned) {
-                            // @ts-expect-error
                             results_returned.max_dist = Math.max(
-                                // @ts-expect-error
                                 results_returned.max_dist || 0,
                                 tfpDist,
                             );
                             const maxDist = results_returned.size < MAX_RESULTS ?
                                 (tfpDist + 1) :
-                                // @ts-expect-error
                                 results_returned.max_dist;
-                            // @ts-expect-error
                             addIntoResults(results_returned, row.id, i, -1, tfpDist, 0, maxDist);
                         }
                     }
@@ -4595,18 +4588,17 @@ class DocSearch {
                 // types with generic parameters go last.
                 // That's because of the way unification is structured: it eats off
                 // the end, and hits a fast path if the last item is a simple atom.
-                // @ts-expect-error
+                /** @type {function(rustdoc.QueryElement, rustdoc.QueryElement): number} */
                 const sortQ = (a, b) => {
                     const ag = a.generics.length === 0 && a.bindings.size === 0;
                     const bg = b.generics.length === 0 && b.bindings.size === 0;
                     if (ag !== bg) {
-                        // @ts-expect-error
-                        return ag - bg;
+                        // unary `+` converts booleans into integers.
+                        return +ag - +bg;
                     }
-                    const ai = a.id > 0;
-                    const bi = b.id > 0;
-                    // @ts-expect-error
-                    return ai - bi;
+                    const ai = a.id !== null && a.id > 0;
+                    const bi = b.id !== null && b.id > 0;
+                    return +ai - +bi;
                 };
                 parsedQuery.elems.sort(sortQ);
                 parsedQuery.returned.sort(sortQ);
@@ -4622,9 +4614,7 @@ class DocSearch {
 
         const isType = parsedQuery.foundElems !== 1 || parsedQuery.hasReturnArrow;
         const [sorted_in_args, sorted_returned, sorted_others] = await Promise.all([
-            // @ts-expect-error
             sortResults(results_in_args, "elems", currentCrate),
-            // @ts-expect-error
             sortResults(results_returned, "returned", currentCrate),
             // @ts-expect-error
             sortResults(results_others, (isType ? "query" : null), currentCrate),
@@ -4724,7 +4714,6 @@ function printTab(nb) {
         iter += 1;
     });
     if (foundCurrentTab && foundCurrentResultSet) {
-        // @ts-expect-error
         searchState.currentTab = nb;
         // Corrections only kick in on type-based searches.
         const correctionsElem = document.getElementsByClassName("search-corrections");
@@ -4777,7 +4766,6 @@ function getFilterCrates() {
 
 // @ts-expect-error
 function nextTab(direction) {
-    // @ts-expect-error
     const next = (searchState.currentTab + direction + 3) % searchState.focusedByTab.length;
     // @ts-expect-error
     searchState.focusedByTab[searchState.currentTab] = document.activeElement;
@@ -4788,14 +4776,12 @@ function nextTab(direction) {
 // Focus the first search result on the active tab, or the result that
 // was focused last time this tab was active.
 function focusSearchResult() {
-    // @ts-expect-error
     const target = searchState.focusedByTab[searchState.currentTab] ||
         document.querySelectorAll(".search-results.active a").item(0) ||
-        // @ts-expect-error
         document.querySelectorAll("#search-tabs button").item(searchState.currentTab);
-    // @ts-expect-error
     searchState.focusedByTab[searchState.currentTab] = null;
     if (target) {
+        // @ts-expect-error
         target.focus();
     }
 }
@@ -4947,7 +4933,6 @@ function makeTabHeader(tabNb, text, nbElems) {
     const fmtNbElems =
         nbElems < 10  ? `\u{2007}(${nbElems})\u{2007}\u{2007}` :
         nbElems < 100 ? `\u{2007}(${nbElems})\u{2007}` : `\u{2007}(${nbElems})`;
-    // @ts-expect-error
     if (searchState.currentTab === tabNb) {
         return "<button class=\"selected\">" + text +
             "<span class=\"count\">" + fmtNbElems + "</span></button>";
@@ -4961,7 +4946,6 @@ function makeTabHeader(tabNb, text, nbElems) {
  * @param {string} filterCrates
  */
 async function showResults(results, go_to_first, filterCrates) {
-    // @ts-expect-error
     const search = searchState.outputElement();
     if (go_to_first || (results.others.length === 1
         && getSettingValue("go-to-only-result") === "true")
@@ -4979,7 +4963,6 @@ async function showResults(results, go_to_first, filterCrates) {
         // will be used, starting search again since the search input is not empty, leading you
         // back to the previous page again.
         window.onunload = () => { };
-        // @ts-expect-error
         searchState.removeQueryParameters();
         const elem = document.createElement("a");
         elem.href = results.others[0].href;
@@ -4999,7 +4982,6 @@ async function showResults(results, go_to_first, filterCrates) {
     // Navigate to the relevant tab if the current tab is empty, like in case users search
     // for "-> String". If they had selected another tab previously, they have to click on
     // it again.
-    // @ts-expect-error
     let currentTab = searchState.currentTab;
     if ((currentTab === 0 && results.others.length === 0) ||
         (currentTab === 1 && results.in_args.length === 0) ||
@@ -5087,8 +5069,8 @@ async function showResults(results, go_to_first, filterCrates) {
     resultsElem.appendChild(ret_in_args);
     resultsElem.appendChild(ret_returned);
 
-    search.innerHTML = output;
     // @ts-expect-error
+    search.innerHTML = output;
     if (searchState.rustdocToolbar) {
         // @ts-expect-error
         search.querySelector(".main-heading").appendChild(searchState.rustdocToolbar);
@@ -5097,9 +5079,9 @@ async function showResults(results, go_to_first, filterCrates) {
     if (crateSearch) {
         crateSearch.addEventListener("input", updateCrate);
     }
+    // @ts-expect-error
     search.appendChild(resultsElem);
     // Reset focused elements.
-    // @ts-expect-error
     searchState.showResults(search);
     // @ts-expect-error
     const elems = document.getElementById("search-tabs").childNodes;
@@ -5110,7 +5092,6 @@ async function showResults(results, go_to_first, filterCrates) {
         const j = i;
         // @ts-expect-error
         elem.onclick = () => printTab(j);
-        // @ts-expect-error
         searchState.focusedByTab.push(null);
         i += 1;
     }
@@ -5122,7 +5103,6 @@ function updateSearchHistory(url) {
     if (!browserSupportsHistoryApi()) {
         return;
     }
-    // @ts-expect-error
     const params = searchState.getQueryStringParams();
     if (!history.state && !params.search) {
         history.pushState(null, "", url);
@@ -5149,10 +5129,8 @@ async function search(forced) {
         return;
     }
 
-    // @ts-expect-error
     searchState.setLoadingSearch();
 
-    // @ts-expect-error
     const params = searchState.getQueryStringParams();
 
     // In case we have no information about the saved crate and there is a URL query parameter,
@@ -5162,7 +5140,6 @@ async function search(forced) {
     }
 
     // Update document title to maintain a meaningful browser history
-    // @ts-expect-error
     searchState.title = "\"" + query.userQuery + "\" Search - Rust";
 
     // Because searching is incremental by character, only the most
@@ -5184,33 +5161,28 @@ async function search(forced) {
 function onSearchSubmit(e) {
     // @ts-expect-error
     e.preventDefault();
-    // @ts-expect-error
     searchState.clearInputTimeout();
     search();
 }
 
 function putBackSearch() {
-    // @ts-expect-error
     const search_input = searchState.input;
-    // @ts-expect-error
     if (!searchState.input) {
         return;
     }
     // @ts-expect-error
     if (search_input.value !== "" && !searchState.isDisplayed()) {
-        // @ts-expect-error
         searchState.showResults();
         if (browserSupportsHistoryApi()) {
             history.replaceState(null, "",
+                // @ts-expect-error
                 buildUrl(search_input.value, getFilterCrates()));
         }
-        // @ts-expect-error
         document.title = searchState.title;
     }
 }
 
 function registerSearchEvents() {
-    // @ts-expect-error
     const params = searchState.getQueryStringParams();
 
     // Populate search bar with query string search term when provided,
@@ -5224,14 +5196,11 @@ function registerSearchEvents() {
     }
 
     const searchAfter500ms = () => {
-        // @ts-expect-error
         searchState.clearInputTimeout();
         // @ts-expect-error
         if (searchState.input.value.length === 0) {
-            // @ts-expect-error
             searchState.hideResults();
         } else {
-            // @ts-expect-error
             searchState.timeout = setTimeout(search, 500);
         }
     };
@@ -5248,7 +5217,6 @@ function registerSearchEvents() {
             return;
         }
         // Do NOT e.preventDefault() here. It will prevent pasting.
-        // @ts-expect-error
         searchState.clearInputTimeout();
         // zero-timeout necessary here because at the time of event handler execution the
         // pasted content is not in the input field yet. Shouldn’t make any difference for
@@ -5274,7 +5242,6 @@ function registerSearchEvents() {
                 // @ts-expect-error
                 previous.focus();
             } else {
-                // @ts-expect-error
                 searchState.focus();
             }
             e.preventDefault();
@@ -5327,7 +5294,6 @@ function registerSearchEvents() {
         const previousTitle = document.title;
 
         window.addEventListener("popstate", e => {
-            // @ts-expect-error
             const params = searchState.getQueryStringParams();
             // Revert to the previous title manually since the History
             // API ignores the title parameter.
@@ -5355,7 +5321,6 @@ function registerSearchEvents() {
                 searchState.input.value = "";
                 // When browsing back from search results the main page
                 // visibility must be reset.
-                // @ts-expect-error
                 searchState.hideResults();
             }
         });
@@ -5368,7 +5333,6 @@ function registerSearchEvents() {
     // that try to sync state between the URL and the search input. To work around it,
     // do a small amount of re-init on page show.
     window.onpageshow = () => {
-        // @ts-expect-error
         const qSearch = searchState.getQueryStringParams().search;
         // @ts-expect-error
         if (searchState.input.value === "" && qSearch) {
