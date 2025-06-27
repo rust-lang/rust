@@ -22,7 +22,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath};
-use rustc_infer::infer::{self, RegionVariableOrigin};
+use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::print::{
@@ -1951,7 +1951,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if def_kind == DefKind::AssocFn {
             let ty_args = self.infcx.fresh_args_for_item(span, similar_candidate.def_id);
             let fn_sig = tcx.fn_sig(similar_candidate.def_id).instantiate(tcx, ty_args);
-            let fn_sig = self.instantiate_binder_with_fresh_vars(span, infer::FnCall, fn_sig);
+            let fn_sig = self.instantiate_binder_with_fresh_vars(
+                span,
+                BoundRegionConversionTime::FnCall,
+                fn_sig,
+            );
             if similar_candidate.is_method() {
                 if let Some(args) = args
                     && fn_sig.inputs()[1..].len() == args.len()
@@ -2033,7 +2037,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx.fn_sig(inherent_method.def_id).instantiate(self.tcx, args);
                         let fn_sig = self.instantiate_binder_with_fresh_vars(
                             item_name.span,
-                            infer::FnCall,
+                            BoundRegionConversionTime::FnCall,
                             fn_sig,
                         );
                         let name = inherent_method.name();
@@ -2348,9 +2352,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if !arg.is_suggestable(self.tcx, true) {
                         has_unsuggestable_args = true;
                         match arg.kind() {
-                            GenericArgKind::Lifetime(_) => self
-                                .next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
-                                .into(),
+                            GenericArgKind::Lifetime(_) => {
+                                self.next_region_var(RegionVariableOrigin::Misc(DUMMY_SP)).into()
+                            }
                             GenericArgKind::Type(_) => self.next_ty_var(DUMMY_SP).into(),
                             GenericArgKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
                         }

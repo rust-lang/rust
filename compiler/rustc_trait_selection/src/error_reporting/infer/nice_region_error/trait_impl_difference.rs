@@ -5,6 +5,7 @@ use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{self as hir, AmbigArg};
+use rustc_infer::infer::SubregionOrigin;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
@@ -16,7 +17,7 @@ use tracing::debug;
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlighted;
 use crate::errors::{ConsiderBorrowingParamHelp, RelationshipHelp, TraitImplDiff};
-use crate::infer::{RegionResolutionError, Subtype, ValuePairs};
+use crate::infer::{RegionResolutionError, ValuePairs};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the `impl` doesn't conform to the `trait`.
@@ -32,7 +33,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             _sup,
             _,
         ) = error.clone()
-            && let (Subtype(sup_trace), Subtype(sub_trace)) = (&sup_origin, &sub_origin)
+            && let (SubregionOrigin::Subtype(sup_trace), SubregionOrigin::Subtype(sub_trace)) =
+                (&sup_origin, &sub_origin)
             && let &ObligationCauseCode::CompareImplItem { trait_item_def_id, .. } =
                 sub_trace.cause.code()
             && sub_trace.values == sup_trace.values

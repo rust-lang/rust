@@ -7,7 +7,7 @@ use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_hir_analysis::autoderef::Autoderef;
-use rustc_infer::infer;
+use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
@@ -219,7 +219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let closure_sig = args.as_closure().sig();
                 let closure_sig = self.instantiate_binder_with_fresh_vars(
                     call_expr.span,
-                    infer::FnCall,
+                    BoundRegionConversionTime::FnCall,
                     closure_sig,
                 );
                 let adjustments = self.adjust_steps(autoderef);
@@ -246,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let closure_args = args.as_coroutine_closure();
                 let coroutine_closure_sig = self.instantiate_binder_with_fresh_vars(
                     call_expr.span,
-                    infer::FnCall,
+                    BoundRegionConversionTime::FnCall,
                     closure_args.coroutine_closure_sig(),
                 );
                 let tupled_upvars_ty = self.next_ty_var(callee_expr.span);
@@ -545,7 +545,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // renormalize the associated types at this point, since they
         // previously appeared within a `Binder<>` and hence would not
         // have been normalized before.
-        let fn_sig = self.instantiate_binder_with_fresh_vars(call_expr.span, infer::FnCall, fn_sig);
+        let fn_sig = self.instantiate_binder_with_fresh_vars(
+            call_expr.span,
+            BoundRegionConversionTime::FnCall,
+            fn_sig,
+        );
         let fn_sig = self.normalize(call_expr.span, fn_sig);
 
         self.check_argument_types(
