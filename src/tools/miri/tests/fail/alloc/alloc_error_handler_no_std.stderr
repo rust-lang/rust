@@ -9,7 +9,7 @@ LL |     core::intrinsics::abort();
    |
    = note: BACKTRACE:
    = note: inside `panic_handler` at tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
-   = note: inside `alloc::alloc::__alloc_error_handler::__rdl_oom` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `alloc::alloc::__alloc_error_handler::__rust_alloc_error_handler` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `alloc::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `alloc::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
 note: inside `miri_start`

@@ -1,10 +1,6 @@
 use libc::c_uint;
-use rustc_ast::expand::allocator::{
-    ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
-    alloc_error_handler_name, default_fn_name, global_fn_name,
-};
+use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
-use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
 use rustc_symbol_mangling::mangle_internal_symbol;
@@ -14,63 +10,8 @@ use crate::declare::declare_simple_fn;
 use crate::llvm::{self, False, True, Type};
 use crate::{SimpleCx, attributes, debuginfo};
 
-pub(crate) unsafe fn codegen(
-    tcx: TyCtxt<'_>,
-    cx: SimpleCx<'_>,
-    module_name: &str,
-    kind: AllocatorKind,
-    alloc_error_handler_kind: AllocatorKind,
-) {
-    let usize = match tcx.sess.target.pointer_width {
-        16 => cx.type_i16(),
-        32 => cx.type_i32(),
-        64 => cx.type_i64(),
-        tws => bug!("Unsupported target word size for int: {}", tws),
-    };
+pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, cx: SimpleCx<'_>, module_name: &str) {
     let i8 = cx.type_i8();
-    let i8p = cx.type_ptr();
-
-    if kind == AllocatorKind::Default {
-        for method in ALLOCATOR_METHODS {
-            let mut args = Vec::with_capacity(method.inputs.len());
-            for input in method.inputs.iter() {
-                match input.ty {
-                    AllocatorTy::Layout => {
-                        args.push(usize); // size
-                        args.push(usize); // align
-                    }
-                    AllocatorTy::Ptr => args.push(i8p),
-                    AllocatorTy::Usize => args.push(usize),
-
-                    AllocatorTy::ResultPtr | AllocatorTy::Unit => panic!("invalid allocator arg"),
-                }
-            }
-            let output = match method.output {
-                AllocatorTy::ResultPtr => Some(i8p),
-                AllocatorTy::Unit => None,
-
-                AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
-                    panic!("invalid allocator output")
-                }
-            };
-
-            let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
-            let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
-
-            create_wrapper_function(tcx, &cx, &from_name, Some(&to_name), &args, output, false);
-        }
-    }
-
-    // rust alloc error handler
-    create_wrapper_function(
-        tcx,
-        &cx,
-        &mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
-        Some(&mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind))),
-        &[usize, usize], // size, align
-        None,
-        true,
-    );
 
     unsafe {
         // __rust_alloc_error_handler_should_panic

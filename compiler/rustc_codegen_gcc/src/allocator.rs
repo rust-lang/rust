@@ -1,11 +1,7 @@
 use gccjit::{Context, FunctionType, GlobalKind, ToRValue, Type};
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute};
-use rustc_ast::expand::allocator::{
-    ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
-    alloc_error_handler_name, default_fn_name, global_fn_name,
-};
-use rustc_middle::bug;
+use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::OomStrategy;
 use rustc_symbol_mangling::mangle_internal_symbol;
@@ -14,62 +10,9 @@ use crate::GccContext;
 #[cfg(feature = "master")]
 use crate::base::symbol_visibility_to_gcc;
 
-pub(crate) unsafe fn codegen(
-    tcx: TyCtxt<'_>,
-    mods: &mut GccContext,
-    _module_name: &str,
-    kind: AllocatorKind,
-    alloc_error_handler_kind: AllocatorKind,
-) {
+pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str) {
     let context = &mods.context;
-    let usize = match tcx.sess.target.pointer_width {
-        16 => context.new_type::<u16>(),
-        32 => context.new_type::<u32>(),
-        64 => context.new_type::<u64>(),
-        tws => bug!("Unsupported target word size for int: {}", tws),
-    };
     let i8 = context.new_type::<i8>();
-    let i8p = i8.make_pointer();
-
-    if kind == AllocatorKind::Default {
-        for method in ALLOCATOR_METHODS {
-            let mut types = Vec::with_capacity(method.inputs.len());
-            for input in method.inputs.iter() {
-                match input.ty {
-                    AllocatorTy::Layout => {
-                        types.push(usize);
-                        types.push(usize);
-                    }
-                    AllocatorTy::Ptr => types.push(i8p),
-                    AllocatorTy::Usize => types.push(usize),
-
-                    AllocatorTy::ResultPtr | AllocatorTy::Unit => panic!("invalid allocator arg"),
-                }
-            }
-            let output = match method.output {
-                AllocatorTy::ResultPtr => Some(i8p),
-                AllocatorTy::Unit => None,
-
-                AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
-                    panic!("invalid allocator output")
-                }
-            };
-            let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
-            let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
-
-            create_wrapper_function(tcx, context, &from_name, Some(&to_name), &types, output);
-        }
-    }
-
-    // FIXME(bjorn3): Add noreturn attribute
-    create_wrapper_function(
-        tcx,
-        context,
-        &mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
-        Some(&mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind))),
-        &[usize, usize],
-        None,
-    );
 
     let name = mangle_internal_symbol(tcx, OomStrategy::SYMBOL);
     let global = context.new_global(None, GlobalKind::Exported, i8, name);

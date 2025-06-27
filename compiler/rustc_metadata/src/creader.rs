@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{cmp, env, iter};
 
-use rustc_ast::expand::allocator::{AllocatorKind, alloc_error_handler_name, global_fn_name};
+use rustc_ast::expand::allocator::{AllocatorKind, global_fn_name};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
@@ -25,8 +25,8 @@ use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::config::{
-    self, CrateType, ExtendedTargetModifierInfo, ExternLocation, OptionsTargetModifiers,
-    TargetModifier,
+    self, CrateType, ExtendedTargetModifierInfo, ExternLocation, OomStrategy,
+    OptionsTargetModifiers, TargetModifier,
 };
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
 use rustc_session::lint::{self, BuiltinLintDiag};
@@ -320,10 +320,6 @@ impl CStore {
 
     pub(crate) fn allocator_kind(&self) -> Option<AllocatorKind> {
         self.allocator_kind
-    }
-
-    pub(crate) fn alloc_error_handler_kind(&self) -> Option<AllocatorKind> {
-        self.alloc_error_handler_kind
     }
 
     pub(crate) fn has_global_allocator(&self) -> bool {
@@ -1067,17 +1063,17 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 }
                 spans => !spans.is_empty(),
             };
-        self.cstore.has_alloc_error_handler = match &*fn_spans(
-            krate,
-            Symbol::intern(alloc_error_handler_name(AllocatorKind::Global)),
-        ) {
-            [span1, span2, ..] => {
-                self.dcx()
-                    .emit_err(errors::NoMultipleAllocErrorHandler { span2: *span2, span1: *span1 });
-                true
-            }
-            spans => !spans.is_empty(),
-        };
+        self.cstore.has_alloc_error_handler =
+            match &*fn_spans(krate, Symbol::intern(OomStrategy::SYMBOL)) {
+                [span1, span2, ..] => {
+                    self.dcx().emit_err(errors::NoMultipleAllocErrorHandler {
+                        span2: *span2,
+                        span1: *span1,
+                    });
+                    true
+                }
+                spans => !spans.is_empty(),
+            };
 
         // Check to see if we actually need an allocator. This desire comes
         // about through the `#![needs_allocator]` attribute and is typically
@@ -1406,6 +1402,8 @@ fn fn_spans(krate: &ast::Crate, name: Symbol) -> Vec<Span> {
             if let Some(ident) = item.kind.ident()
                 && ident.name == self.name
                 && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
+                // Ignore the default allocator in libstd with weak linkage
+                && attr::find_by_name(&item.attrs, sym::linkage).is_none()
             {
                 self.spans.push(item.span);
             }
