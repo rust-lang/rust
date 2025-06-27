@@ -200,6 +200,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::NoMangle(attr_span)) => {
                     self.check_no_mangle(hir_id, *attr_span, span, target)
                 }
+                Attribute::Parsed(AttributeKind::Used { span: attr_span, .. }) => {
+                    self.check_used(*attr_span, target, span);
+                }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
                     match attr.path().as_slice() {
@@ -333,7 +336,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)
                             | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
-                            | sym::used // handled elsewhere to restrict to static items
                             | sym::instruction_set // broken on stable!!!
                             | sym::windows_subsystem // broken on stable!!!
                             | sym::patchable_function_entry // FIXME(patchable_function_entry)
@@ -403,7 +405,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
 
         self.check_repr(attrs, span, target, item, hir_id);
-        self.check_used(attrs, target, span);
         self.check_rustc_force_inline(hir_id, attrs, span, target);
         self.check_mix_no_mangle_export(hir_id, attrs);
     }
@@ -2107,44 +2108,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_used(&self, attrs: &[Attribute], target: Target, target_span: Span) {
-        let mut used_linker_span = None;
-        let mut used_compiler_span = None;
-        for attr in attrs.iter().filter(|attr| attr.has_name(sym::used)) {
-            if target != Target::Static {
-                self.dcx().emit_err(errors::UsedStatic {
-                    attr_span: attr.span(),
-                    span: target_span,
-                    target: target.name(),
-                });
-            }
-            let inner = attr.meta_item_list();
-            match inner.as_deref() {
-                Some([item]) if item.has_name(sym::linker) => {
-                    if used_linker_span.is_none() {
-                        used_linker_span = Some(attr.span());
-                    }
-                }
-                Some([item]) if item.has_name(sym::compiler) => {
-                    if used_compiler_span.is_none() {
-                        used_compiler_span = Some(attr.span());
-                    }
-                }
-                Some(_) => {
-                    // This error case is handled in rustc_hir_analysis::collect.
-                }
-                None => {
-                    // Default case (compiler) when arg isn't defined.
-                    if used_compiler_span.is_none() {
-                        used_compiler_span = Some(attr.span());
-                    }
-                }
-            }
-        }
-        if let (Some(linker_span), Some(compiler_span)) = (used_linker_span, used_compiler_span) {
-            self.tcx
-                .dcx()
-                .emit_err(errors::UsedCompilerLinker { spans: vec![linker_span, compiler_span] });
+    fn check_used(&self, attr_span: Span, target: Target, target_span: Span) {
+        if target != Target::Static {
+            self.dcx().emit_err(errors::UsedStatic {
+                attr_span,
+                span: target_span,
+                target: target.name(),
+            });
         }
     }
 

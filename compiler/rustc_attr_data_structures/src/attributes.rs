@@ -131,6 +131,17 @@ impl Deprecation {
     }
 }
 
+/// There are three valid forms of the attribute:
+/// `#[used]`, which is semantically equivalent to `#[used(linker)]` except that the latter is currently unstable.
+/// `#[used(compiler)]`
+/// `#[used(linker)]`
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum UsedBy {
+    Compiler,
+    Linker,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -285,5 +296,8 @@ pub enum AttributeKind {
 
     /// Represents `#[track_caller]`
     TrackCaller(Span),
+
+    /// Represents `#[used]`
+    Used { used_by: UsedBy, span: Span },
     // tidy-alphabetical-end
 }
