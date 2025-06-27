@@ -1313,13 +1313,6 @@ impl EarlyLintPass for UnusedParens {
                     let last = i == bounds.len() - 1;
 
                     if let ast::GenericBound::Trait(poly_trait_ref) = &bounds[i] {
-                        let parenthesized = cx
-                            .sess()
-                            .source_map()
-                            .span_to_snippet(poly_trait_ref.span)
-                            .map(|snip| snip.starts_with('(') && snip.ends_with(')'))
-                            .unwrap_or(false);
-
                         let fn_with_explicit_ret_ty = if let [.., segment] =
                             &*poly_trait_ref.trait_ref.path.segments
                             && let Some(args) = segment.args.as_ref()
@@ -1351,7 +1344,9 @@ impl EarlyLintPass for UnusedParens {
                                 .map(|s| s.ident.name == kw::PathRoot)
                                 .unwrap_or(false);
 
-                        if parenthesized && (last || !fn_with_explicit_ret_ty) && !dyn2015_exception
+                        if poly_trait_ref.parens
+                            && (last || !fn_with_explicit_ret_ty)
+                            && !dyn2015_exception
                         {
                             let s = poly_trait_ref.span;
                             let spans = (!s.from_expansion()).then(|| {
