@@ -189,7 +189,7 @@ pub enum CandidateSource<I: Interner> {
     ///     let _y = x.clone();
     /// }
     /// ```
-    AliasBound,
+    AliasBound(AliasBoundKind),
     /// A candidate that is registered only during coherence to represent some
     /// yet-unknown impl that could be produced downstream without violating orphan
     /// rules.
@@ -205,6 +205,15 @@ pub enum ParamEnvSource {
     NonGlobal,
     // Not considered unless there are non-global param-env candidates too.
     Global,
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+pub enum AliasBoundKind {
+    /// Alias bound from the self type of a projection
+    SelfBounds,
+    // Alias bound having recursed on the self type of a projection
+    NonSelfBounds,
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]

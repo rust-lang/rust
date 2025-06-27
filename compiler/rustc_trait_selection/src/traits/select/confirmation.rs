@@ -67,7 +67,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
-            ProjectionCandidate(idx) => {
+            ProjectionCandidate { idx, .. } => {
                 let obligations = self.confirm_projection_candidate(obligation, idx)?;
                 ImplSource::Param(obligations)
             }
@@ -150,7 +150,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let candidate_predicate = self
             .for_each_item_bound(
                 placeholder_self_ty,
-                |_, clause, clause_idx| {
+                |_, clause, clause_idx, _| {
                     if clause_idx == idx {
                         ControlFlow::Break(clause)
                     } else {

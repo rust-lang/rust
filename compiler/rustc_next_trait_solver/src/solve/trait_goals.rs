@@ -4,7 +4,9 @@ use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
-use rustc_type_ir::solve::{CandidatePreferenceMode, CanonicalResponse, SizedTraitKind};
+use rustc_type_ir::solve::{
+    AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, SizedTraitKind,
+};
 use rustc_type_ir::{
     self as ty, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
     TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
@@ -1381,22 +1383,21 @@ where
             return Ok((candidate.result, Some(TraitGoalProvenVia::Misc)));
         }
 
-        let potential_alias_bound_response =
-            candidates.iter().any(|c| matches!(c.source, CandidateSource::AliasBound)).then(|| {
-                let alias_bounds: Vec<_> = candidates
-                    .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound))
-                    .collect();
-                if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
-                    (response, Some(TraitGoalProvenVia::AliasBound))
-                } else {
-                    (self.bail_with_ambiguity(&alias_bounds), None)
-                }
-            });
-
+        // Extract non-nested alias bound candidates, will be preferred over where bounds if
+        // we're proving an auto-trait, sizedness trait or default trait.
         if matches!(candidate_preference_mode, CandidatePreferenceMode::Marker)
-            && let Some(alias_bound_response) = potential_alias_bound_response
+            && candidates.iter().any(|c| {
+                matches!(c.source, CandidateSource::AliasBound(AliasBoundKind::SelfBounds))
+            })
         {
-            return Ok(alias_bound_response);
+            let alias_bounds: Vec<_> = candidates
+                .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(..)))
+                .collect();
+            return if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
+                Ok((response, Some(TraitGoalProvenVia::AliasBound)))
+            } else {
+                Ok((self.bail_with_ambiguity(&alias_bounds), None))
+            };
         }
 
         // If there are non-global where-bounds, prefer where-bounds
@@ -1446,8 +1447,16 @@ where
             };
         }
 
-        if let Some(response) = potential_alias_bound_response {
-            return Ok(response);
+        // Next, prefer any alias bound (nested or otherwise).
+        if candidates.iter().any(|c| matches!(c.source, CandidateSource::AliasBound(_))) {
+            let alias_bounds: Vec<_> = candidates
+                .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(_)))
+                .collect();
+            return if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
+                Ok((response, Some(TraitGoalProvenVia::AliasBound)))
+            } else {
+                Ok((self.bail_with_ambiguity(&alias_bounds), None))
+            };
         }
 
         self.filter_specialized_impls(AllowInferenceConstraints::No, &mut candidates);
