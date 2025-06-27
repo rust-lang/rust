@@ -1,11 +1,11 @@
-//@ count "$.index[?(@.name=='generic_returns')].inner.module.items[*]" 2
+//@ jq .index["\(.root)"].inner.module.items? | length == 2
 
-//@ set foo = "$.index[?(@.name=='Foo')].id"
+//@ arg foo .index[] | select(.name == "Foo").id
 pub trait Foo {}
 
-//@ is "$.index[?(@.name=='get_foo')].inner.function.sig.inputs" []
-//@ count "$.index[?(@.name=='get_foo')].inner.function.sig.output.impl_trait[*]" 1
-//@ is "$.index[?(@.name=='get_foo')].inner.function.sig.output.impl_trait[0].trait_bound.trait.id" $foo
+//@ arg get_foo .index[] | select(.name == "get_foo").inner.function.sig
+//@ jq $get_foo.inputs? == []
+//@ jq $get_foo.output?.impl_trait[]?.trait_bound.trait?.id == $foo
 pub fn get_foo() -> impl Foo {
     Fooer {}
 }
