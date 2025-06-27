@@ -1113,8 +1113,7 @@ fn get_backend_from_raw_matches(
 ) -> Box<dyn CodegenBackend> {
     let debug_flags = matches.opt_strs("Z");
     let backend_name = debug_flags.iter().find_map(|x| {
-        x.strip_prefix("codegen")
-            .and_then(|x| x.strip_prefix("-backend=").or_else(|| x.strip_prefix("_backend=")))
+        x.strip_prefix("codegen-backend=").or(x.strip_prefix("codegen_backend="))
     });
     let target = parse_target_triple(early_dcx, matches);
     let sysroot = filesearch::materialize_sysroot(matches.opt_str("sysroot").map(PathBuf::from));
