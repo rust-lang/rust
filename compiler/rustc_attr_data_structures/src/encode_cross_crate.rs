@@ -25,6 +25,7 @@ impl AttributeKind {
             ExportName { .. } => Yes,
             Inline(..) => No,
             MacroTransparency(..) => Yes,
+            NonExhaustive(..) => Yes,
             Repr(..) => No,
             Stability { .. } => Yes,
             Cold(..) => No,

@@ -4,7 +4,6 @@ use clippy_utils::is_doc_hidden;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_indent;
 use itertools::Itertools;
-use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -12,7 +11,9 @@ use rustc_hir::{Expr, ExprKind, Item, ItemKind, QPath, TyKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
+use rustc_attr_data_structures::find_attr;
+use rustc_attr_data_structures::AttributeKind;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -93,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                         .then_some((v.def_id, v.span))
                 });
                 if let Ok((id, span)) = iter.exactly_one()
-                    && !attr::contains_name(cx.tcx.hir_attrs(item.hir_id()), sym::non_exhaustive)
+                    && !find_attr!(cx.tcx.hir_attrs(item.hir_id()), AttributeKind::NonExhaustive(..))
                 {
                     self.potential_enums.push((item.owner_id.def_id, id, item.span, span));
                 }
@@ -113,10 +114,10 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                         item.span,
                         "this seems like a manual implementation of the non-exhaustive pattern",
                         |diag| {
-                            if let Some(non_exhaustive) =
-                                attr::find_by_name(cx.tcx.hir_attrs(item.hir_id()), sym::non_exhaustive)
+                            if let Some(non_exhaustive_span) =
+                                find_attr!(cx.tcx.hir_attrs(item.hir_id()), AttributeKind::NonExhaustive(span) => *span)
                             {
-                                diag.span_note(non_exhaustive.span(), "the struct is already non-exhaustive");
+                                diag.span_note(non_exhaustive_span, "the struct is already non-exhaustive");
                             } else {
                                 let indent = snippet_indent(cx, item.span).unwrap_or_default();
                                 diag.span_suggestion_verbose(
