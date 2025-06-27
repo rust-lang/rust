@@ -1,27 +1,26 @@
+//@ arg foo .index[] | select(.name == "Foo").inner.enum.variants?
+//@ jq $foo | length == 5
+
 pub enum Foo {
-    //@ set Unit = "$.index[?(@.name=='Unit')].id"
-    //@ is "$.index[?(@.name=='Unit')].inner.variant.kind" '"plain"'
+    //@ arg unit .index[] | select(.name == "Unit")
+    //@ jq $unit.id == $foo[0]
+    //@ jq $unit.inner.variant.kind? == "plain"
     Unit,
-    //@ set Named = "$.index[?(@.name=='Named')].id"
-    //@ is "$.index[?(@.name=='Named')].inner.variant.kind.struct" '{"fields": [], "has_stripped_fields": false}'
+    //@ arg named .index[] | select(.name == "Named")
+    //@ jq $named.id == $foo[1]
+    //@ jq $named.inner.variant.kind?.struct == {"fields": [], "has_stripped_fields": false}
     Named {},
-    //@ set Tuple = "$.index[?(@.name=='Tuple')].id"
-    //@ is "$.index[?(@.name=='Tuple')].inner.variant.kind.tuple" []
+    //@ arg tuple .index[] | select(.name == "Tuple")
+    //@ jq $tuple.id == $foo[2]
+    //@ jq $tuple.inner.variant.kind?.tuple == []
     Tuple(),
-    //@ set NamedField = "$.index[?(@.name=='NamedField')].id"
-    //@ set x = "$.index[?(@.name=='x' && @.inner.struct_field)].id"
-    //@ is "$.index[?(@.name=='NamedField')].inner.variant.kind.struct.fields[*]" $x
-    //@ is "$.index[?(@.name=='NamedField')].inner.variant.kind.struct.has_stripped_fields" false
+    //@ arg named_field .index[] | select(.name == "NamedField")
+    //@ jq $named_field.id == $foo[3]
+    //@ jq $named_field.inner.variant.kind?.struct.fields[]? == (.index[] | select(.name == "x" and .inner.struct_field).id)
+    //@ jq $named_field.inner.variant.kind?.struct.has_stripped_fields? == false
     NamedField { x: i32 },
-    //@ set TupleField = "$.index[?(@.name=='TupleField')].id"
-    //@ set tup_field = "$.index[?(@.name=='0' && @.inner.struct_field)].id"
-    //@ is "$.index[?(@.name=='TupleField')].inner.variant.kind.tuple[*]" $tup_field
+    //@ arg tuple_field .index[] | select(.name == "TupleField")
+    //@ jq $tuple_field.id == $foo[4]
+    //@ jq $tuple_field.inner.variant.kind?.tuple[]? == (.index[] | select(.name == "0" and .inner.struct_field).id)
     TupleField(i32),
 }
-
-//@ is    "$.index[?(@.name=='Foo')].inner.enum.variants[0]" $Unit
-//@ is    "$.index[?(@.name=='Foo')].inner.enum.variants[1]" $Named
-//@ is    "$.index[?(@.name=='Foo')].inner.enum.variants[2]" $Tuple
-//@ is    "$.index[?(@.name=='Foo')].inner.enum.variants[3]" $NamedField
-//@ is    "$.index[?(@.name=='Foo')].inner.enum.variants[4]" $TupleField
-//@ count "$.index[?(@.name=='Foo')].inner.enum.variants[*]" 5
