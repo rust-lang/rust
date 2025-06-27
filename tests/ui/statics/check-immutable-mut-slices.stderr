@@ -1,8 +1,12 @@
-error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a static are not allowed
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/check-immutable-mut-slices.rs:3:37
    |
 LL | static TEST: &'static mut [isize] = &mut [];
-   |                                     ^^^^^^^
+   |                                     ^^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error: aborting due to 1 previous error
 

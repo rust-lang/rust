@@ -11,7 +11,7 @@ trait Trait<const N: u32> {}
 const fn f<
     T: Trait<
         {
-            struct I<U: ~const Trait<0>>(U);
+            struct I<U: [const] Trait<0>>(U);
             0
         },
     >,

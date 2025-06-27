@@ -734,11 +734,11 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
     let destruct_def_id = cx.require_lang_item(TraitSolverLangItem::Destruct);
 
     match self_ty.kind() {
-        // `ManuallyDrop` is trivially `~const Destruct` as we do not run any drop glue on it.
+        // `ManuallyDrop` is trivially `[const] Destruct` as we do not run any drop glue on it.
         ty::Adt(adt_def, _) if adt_def.is_manually_drop() => Ok(vec![]),
 
-        // An ADT is `~const Destruct` only if all of the fields are,
-        // *and* if there is a `Drop` impl, that `Drop` impl is also `~const`.
+        // An ADT is `[const] Destruct` only if all of the fields are,
+        // *and* if there is a `Drop` impl, that `Drop` impl is also `[const]`.
         ty::Adt(adt_def, args) => {
             let mut const_conditions: Vec<_> = adt_def
                 .all_field_tys(cx)
@@ -746,9 +746,9 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
                 .map(|field_ty| ty::TraitRef::new(cx, destruct_def_id, [field_ty]))
                 .collect();
             match adt_def.destructor(cx) {
-                // `Drop` impl exists, but it's not const. Type cannot be `~const Destruct`.
+                // `Drop` impl exists, but it's not const. Type cannot be `[const] Destruct`.
                 Some(AdtDestructorKind::NotConst) => return Err(NoSolution),
-                // `Drop` impl exists, and it's const. Require `Ty: ~const Drop` to hold.
+                // `Drop` impl exists, and it's const. Require `Ty: [const] Drop` to hold.
                 Some(AdtDestructorKind::Const) => {
                     let drop_def_id = cx.require_lang_item(TraitSolverLangItem::Drop);
                     let drop_trait_ref = ty::TraitRef::new(cx, drop_def_id, [self_ty]);
@@ -769,7 +769,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
             .map(|field_ty| ty::TraitRef::new(cx, destruct_def_id, [field_ty]))
             .collect()),
 
-        // Trivially implement `~const Destruct`
+        // Trivially implement `[const] Destruct`
         ty::Bool
         | ty::Char
         | ty::Int(..)
@@ -784,14 +784,14 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
         | ty::Error(_) => Ok(vec![]),
 
-        // Coroutines and closures could implement `~const Drop`,
+        // Coroutines and closures could implement `[const] Drop`,
         // but they don't really need to right now.
         ty::Closure(_, _)
         | ty::CoroutineClosure(_, _)
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(_, _) => Err(NoSolution),
 
-        // FIXME(unsafe_binders): Unsafe binders could implement `~const Drop`
+        // FIXME(unsafe_binders): Unsafe binders could implement `[const] Drop`
         // if their inner type implements it.
         ty::UnsafeBinder(_) => Err(NoSolution),
 

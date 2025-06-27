@@ -151,12 +151,14 @@ pub(crate) struct UnmarkedIntrinsicExposed {
 
 #[derive(Diagnostic)]
 #[diag(const_eval_mutable_borrow_escaping, code = E0764)]
+#[note]
+#[note(const_eval_note2)]
+#[help]
 pub(crate) struct MutableBorrowEscaping {
     #[primary_span]
+    #[label]
     pub span: Span,
     pub kind: ConstContext,
-    #[note(const_eval_teach_note)]
-    pub teach: bool,
 }
 
 #[derive(Diagnostic)]
@@ -217,15 +219,14 @@ pub(crate) struct UnallowedInlineAsm {
 
 #[derive(Diagnostic)]
 #[diag(const_eval_interior_mutable_borrow_escaping, code = E0492)]
+#[note]
+#[note(const_eval_note2)]
+#[help]
 pub(crate) struct InteriorMutableBorrowEscaping {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[help]
-    pub opt_help: bool,
     pub kind: ConstContext,
-    #[note(const_eval_teach_note)]
-    pub teach: bool,
 }
 
 #[derive(LintDiagnostic)]

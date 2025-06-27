@@ -22,7 +22,7 @@ LL | #[derive_const(Default, PartialEq)]
    = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
    = note: adding a non-const method body in the future would be a breaking change
 
-error[E0277]: the trait bound `(): ~const PartialEq` is not satisfied
+error[E0277]: the trait bound `(): [const] PartialEq` is not satisfied
   --> $DIR/derive-const-use.rs:16:14
    |
 LL | #[derive_const(Default, PartialEq)]

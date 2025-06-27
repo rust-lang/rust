@@ -319,6 +319,13 @@ pub(crate) struct TraitObjectDeclaredWithNoTraits {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_pointee_sized_trait_object)]
+pub(crate) struct PointeeSizedTraitObject {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_ambiguous_lifetime_bound, code = E0227)]
 pub(crate) struct AmbiguousLifetimeBound {
     #[primary_span]

@@ -66,18 +66,13 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
 #[instrument(skip(tcx), level = "debug")]
 pub fn tag_for_variant_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (ty, variant_index): (Ty<'tcx>, VariantIdx),
+    key: ty::PseudoCanonicalInput<'tcx, (Ty<'tcx>, VariantIdx)>,
 ) -> Option<ty::ScalarInt> {
+    let (ty, variant_index) = key.value;
     assert!(ty.is_enum());
 
-    // FIXME: This uses an empty `TypingEnv` even though
-    // it may be used by a generic CTFE.
-    let ecx = InterpCx::new(
-        tcx,
-        ty.default_span(tcx),
-        ty::TypingEnv::fully_monomorphized(),
-        crate::const_eval::DummyMachine,
-    );
+    let ecx =
+        InterpCx::new(tcx, ty.default_span(tcx), key.typing_env, crate::const_eval::DummyMachine);
 
     let layout = ecx.layout_of(ty).unwrap();
     ecx.tag_for_variant(layout, variant_index).unwrap().map(|(tag, _tag_field)| tag)

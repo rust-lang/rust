@@ -149,7 +149,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         debug!(?param_ty);
                         if let Some(generics) = tcx.hir_node_by_def_id(caller).generics() {
                             let constraint = with_no_trimmed_paths!(format!(
-                                "~const {}",
+                                "[const] {}",
                                 trait_ref.print_trait_sugared(),
                             ));
                             suggest_constraining_type_param(
@@ -567,12 +567,7 @@ impl<'tcx> NonConstOp<'tcx> for EscapingCellBorrow {
         DiagImportance::Secondary
     }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.dcx().create_err(errors::InteriorMutableBorrowEscaping {
-            span,
-            opt_help: matches!(ccx.const_kind(), hir::ConstContext::Static(_)),
-            kind: ccx.const_kind(),
-            teach: ccx.tcx.sess.teach(E0492),
-        })
+        ccx.dcx().create_err(errors::InteriorMutableBorrowEscaping { span, kind: ccx.const_kind() })
     }
 }
 
@@ -594,11 +589,7 @@ impl<'tcx> NonConstOp<'tcx> for EscapingMutBorrow {
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.dcx().create_err(errors::MutableBorrowEscaping {
-            span,
-            kind: ccx.const_kind(),
-            teach: ccx.tcx.sess.teach(E0764),
-        })
+        ccx.dcx().create_err(errors::MutableBorrowEscaping { span, kind: ccx.const_kind() })
     }
 }
 

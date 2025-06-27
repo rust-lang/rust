@@ -1625,7 +1625,7 @@ fn op_to_prop_const<'tcx>(
     // If this constant is already represented as an `Allocation`,
     // try putting it into global memory to return it.
     if let Either::Left(mplace) = op.as_mplace_or_imm() {
-        let (size, _align) = ecx.size_and_align_of_mplace(&mplace).discard_err()??;
+        let (size, _align) = ecx.size_and_align_of_val(&mplace).discard_err()??;
 
         // Do not try interning a value that contains provenance.
         // Due to https://github.com/rust-lang/rust/issues/79738, doing so could lead to bugs.

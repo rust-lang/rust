@@ -147,8 +147,8 @@ LL |         let _: impl ?Sized;
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
   --> $DIR/exhaustive.rs:812:16
    |
-LL |         let _: impl ~const Clone;
-   |                ^^^^^^^^^^^^^^^^^
+LL |         let _: impl [const] Clone;
+   |                ^^^^^^^^^^^^^^^^^^
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information

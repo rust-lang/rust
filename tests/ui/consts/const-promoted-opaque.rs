@@ -34,7 +34,7 @@ const BAR: () = {
 };
 
 const BAZ: &Foo = &FOO;
-//[atomic]~^ ERROR: interior mutable shared borrows of lifetime-extended temporaries
+//[atomic]~^ ERROR: interior mutable shared borrows of temporaries
 
 fn main() {
     let _: &'static _ = &FOO;

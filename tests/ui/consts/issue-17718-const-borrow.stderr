@@ -1,20 +1,32 @@
-error[E0492]: interior mutable shared borrows of lifetime-extended temporaries in the top-level scope of a constant are not allowed
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/issue-17718-const-borrow.rs:4:39
    |
 LL | const B: &'static UnsafeCell<usize> = &A;
-   |                                       ^^ this borrow of an interior mutable value refers to a lifetime-extended temporary
+   |                                       ^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
-error[E0492]: interior mutable shared borrows of lifetime-extended temporaries in the top-level scope of a constant are not allowed
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/issue-17718-const-borrow.rs:9:39
    |
 LL | const E: &'static UnsafeCell<usize> = &D.a;
-   |                                       ^^^^ this borrow of an interior mutable value refers to a lifetime-extended temporary
+   |                                       ^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
-error[E0492]: interior mutable shared borrows of lifetime-extended temporaries in the top-level scope of a constant are not allowed
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/issue-17718-const-borrow.rs:11:23
    |
 LL | const F: &'static C = &D;
-   |                       ^^ this borrow of an interior mutable value refers to a lifetime-extended temporary
+   |                       ^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error: aborting due to 3 previous errors
 

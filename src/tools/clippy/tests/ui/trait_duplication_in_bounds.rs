@@ -169,9 +169,9 @@ where
 // #13476
 #[const_trait]
 trait ConstTrait {}
-const fn const_trait_bounds_good<T: ConstTrait + ~const ConstTrait>() {}
+const fn const_trait_bounds_good<T: ConstTrait + [const] ConstTrait>() {}
 
-const fn const_trait_bounds_bad<T: ~const ConstTrait + ~const ConstTrait>() {}
+const fn const_trait_bounds_bad<T: [const] ConstTrait + [const] ConstTrait>() {}
 //~^ trait_duplication_in_bounds
 
 fn projections<T, U, V>()

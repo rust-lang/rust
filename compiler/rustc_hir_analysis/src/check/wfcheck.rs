@@ -1402,7 +1402,7 @@ fn check_impl<'tcx>(
                     }
                 }
 
-                // Ensure that the `~const` where clauses of the trait hold for the impl.
+                // Ensure that the `[const]` where clauses of the trait hold for the impl.
                 if tcx.is_conditionally_const(item.owner_id.def_id) {
                     for (bound, _) in
                         tcx.const_conditions(trait_ref.def_id).instantiate(tcx, trait_ref.args)

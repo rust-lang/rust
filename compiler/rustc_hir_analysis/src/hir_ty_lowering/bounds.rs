@@ -494,7 +494,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
-                    // `ConstIfConst` is only interested in `~const` bounds.
+                    // `ConstIfConst` is only interested in `[const]` bounds.
                     if matches!(
                         predicate_filter,
                         PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst
@@ -710,7 +710,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                     // SelfTraitThatDefines is only interested in trait predicates.
                     PredicateFilter::SelfTraitThatDefines(_) => {}
-                    // `ConstIfConst` is only interested in `~const` bounds.
+                    // `ConstIfConst` is only interested in `[const]` bounds.
                     PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
                 }
             }

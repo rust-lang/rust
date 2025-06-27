@@ -39,11 +39,11 @@ error: expected parameter name, found `{`
 LL | fn foo3(_: &dyn {Drop + AsRef<str>}) {}
    |                 ^ expected parameter name
 
-error: expected one of `!`, `(`, `)`, `*`, `,`, `?`, `async`, `const`, `for`, `use`, `~`, lifetime, or path, found `{`
+error: expected one of `!`, `(`, `)`, `*`, `,`, `?`, `[`, `async`, `const`, `for`, `use`, `~`, lifetime, or path, found `{`
   --> $DIR/trait-object-delimiters.rs:10:17
    |
 LL | fn foo3(_: &dyn {Drop + AsRef<str>}) {}
-   |                -^ expected one of 13 possible tokens
+   |                -^ expected one of 14 possible tokens
    |                |
    |                help: missing `,`
 

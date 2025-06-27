@@ -4,13 +4,13 @@
 trait Tr {}
 impl Tr for () {}
 
-const fn foo<T>() where T: ~const Tr {}
+const fn foo<T>() where T: [const] Tr {}
 
 #[const_trait]
 pub trait Foo {
     fn foo() {
         foo::<()>();
-        //~^ ERROR the trait bound `(): ~const Tr` is not satisfied
+        //~^ ERROR the trait bound `(): [const] Tr` is not satisfied
     }
 }
 

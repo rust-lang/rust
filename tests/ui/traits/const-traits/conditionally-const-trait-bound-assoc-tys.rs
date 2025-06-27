@@ -4,11 +4,11 @@
 
 #[const_trait]
 trait Trait {
-    type Assoc<T: ~const Bound>;
+    type Assoc<T: [const] Bound>;
 }
 
 impl const Trait for () {
-    type Assoc<T: ~const Bound> = T;
+    type Assoc<T: [const] Bound> = T;
 }
 
 #[const_trait]
