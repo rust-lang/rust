@@ -4,7 +4,7 @@ error: invalid signature for `extern "x86-interrupt"` function
 LL | extern "x86-interrupt" fn x86_ret() -> u8 {
    |                                        ^^
    |
-   = note: functions with the "custom" ABI cannot have a return type
+   = note: functions with the "x86-interrupt" ABI cannot have a return type
 help: remove the return type
   --> $DIR/interrupt-invalid-signature.rs:83:40
    |
