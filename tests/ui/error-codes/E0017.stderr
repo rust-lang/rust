@@ -13,11 +13,15 @@ LL | const C: i32 = 2;
    | ^^^^^^^^^^^^
    = note: `#[warn(const_item_mutation)]` on by default
 
-error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a constant are not allowed
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/E0017.rs:8:30
    |
 LL | const CR: &'static mut i32 = &mut C;
-   |                              ^^^^^^
+   |                              ^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error[E0596]: cannot borrow immutable static item `X` as mutable
   --> $DIR/E0017.rs:11:39
@@ -39,11 +43,15 @@ note: `const` item defined here
 LL | const C: i32 = 2;
    | ^^^^^^^^^^^^
 
-error[E0764]: mutable borrows of lifetime-extended temporaries in the top-level scope of a static are not allowed
+error[E0764]: mutable borrows of temporaries that have their lifetime extended until the end of the program are not allowed
   --> $DIR/E0017.rs:13:38
    |
 LL | static CONST_REF: &'static mut i32 = &mut C;
-   |                                      ^^^^^^
+   |                                      ^^^^^^ this mutable borrow refers to such a temporary
+   |
+   = note: Temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: To avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: If you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
 
 error: aborting due to 3 previous errors; 2 warnings emitted
 
