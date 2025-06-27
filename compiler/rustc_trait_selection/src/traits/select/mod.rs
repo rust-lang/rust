@@ -485,7 +485,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         } else {
             let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
-            if let Some(candidate) = self.winnow_candidates(has_non_region_infer, candidates) {
+            let did = stack.obligation.predicate.def_id();
+            let is_sizedness_or_auto_or_default_predicate = self.tcx().is_sizedness_trait(did)
+                || self.tcx().trait_is_auto(did)
+                || self.tcx().is_default_trait(did);
+            if let Some(candidate) = self.winnow_candidates(
+                has_non_region_infer,
+                is_sizedness_or_auto_or_default_predicate,
+                candidates,
+            ) {
                 self.filter_reservation_impls(candidate)
             } else {
                 Ok(None)
@@ -1826,6 +1834,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn winnow_candidates(
         &mut self,
         has_non_region_infer: bool,
+        prefer_alias_over_param_candidates: bool,
         mut candidates: Vec<EvaluatedCandidate<'tcx>>,
     ) -> Option<SelectionCandidate<'tcx>> {
         if candidates.len() == 1 {
@@ -1879,6 +1888,19 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             break;
         }
 
+        let alias_bound = candidates
+            .iter()
+            .filter_map(|c| if let ProjectionCandidate(i) = c.candidate { Some(i) } else { None })
+            .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
+
+        if prefer_alias_over_param_candidates {
+            match alias_bound {
+                Some(Some(index)) => return Some(ProjectionCandidate(index)),
+                Some(None) => {}
+                None => return None,
+            }
+        }
+
         // The next highest priority is for non-global where-bounds. However, while we don't
         // prefer global where-clauses here, we do bail with ambiguity when encountering both
         // a global and a non-global where-clause.
@@ -1912,10 +1934,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // fairly arbitrary but once again necessary for backwards compatibility.
         // If there are multiple applicable candidates which don't affect type inference,
         // choose the one with the lowest index.
-        let alias_bound = candidates
-            .iter()
-            .filter_map(|c| if let ProjectionCandidate(i) = c.candidate { Some(i) } else { None })
-            .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
         match alias_bound {
             Some(Some(index)) => return Some(ProjectionCandidate(index)),
             Some(None) => {}

@@ -1,6 +1,5 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
-//@[next] check-pass
 
 #![feature(type_alias_impl_trait)]
 trait Trait<'a> {
@@ -19,7 +18,9 @@ where
     for<'a> X: Trait<'a>,
     for<'a> <X as Trait<'a>>::Out<()>: Copy,
 {
-    let x = *x; //[old]~ ERROR: cannot move out of `*x`
+    let x = *x;
+    //[old]~^ ERROR: cannot move out of `*x`
+    //[next]~^^ ERROR: type annotations needed for `<X as Trait<'static>>::Out<_>`
     todo!();
 }
 
