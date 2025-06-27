@@ -1,13 +1,16 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::{IntoSpan as _, SpanRangeExt, snippet, snippet_block, snippet_block_with_applicability};
+use clippy_utils::source::{IntoSpan as _, SpanRangeExt, snippet, snippet_block_with_applicability};
+use clippy_utils::{span_contains_non_whitespace, tokenize_with_text};
 use rustc_ast::BinOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
+use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use rustc_span::source_map::SourceMap;
+use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -90,35 +93,74 @@ impl CollapsibleIf {
         }
     }
 
-    fn check_collapsible_else_if(cx: &LateContext<'_>, then_span: Span, else_block: &Block<'_>) {
-        if !block_starts_with_comment(cx, else_block)
-            && let Some(else_) = expr_block(else_block)
+    fn check_collapsible_else_if(&self, cx: &LateContext<'_>, then_span: Span, else_block: &Block<'_>) {
+        if let Some(else_) = expr_block(else_block)
             && cx.tcx.hir_attrs(else_.hir_id).is_empty()
             && !else_.span.from_expansion()
-            && let ExprKind::If(..) = else_.kind
+            && let ExprKind::If(else_if_cond, ..) = else_.kind
+            && !block_starts_with_significant_tokens(cx, else_block, else_, self.lint_commented_code)
         {
-            // Prevent "elseif"
-            // Check that the "else" is followed by whitespace
-            let up_to_else = then_span.between(else_block.span);
-            let requires_space = if let Some(c) = snippet(cx, up_to_else, "..").chars().last() {
-                !c.is_whitespace()
-            } else {
-                false
-            };
-
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 COLLAPSIBLE_ELSE_IF,
                 else_block.span,
                 "this `else { if .. }` block can be collapsed",
-                "collapse nested if block",
-                format!(
-                    "{}{}",
-                    if requires_space { " " } else { "" },
-                    snippet_block_with_applicability(cx, else_.span, "..", Some(else_block.span), &mut applicability)
-                ),
-                applicability,
+                |diag| {
+                    let up_to_else = then_span.between(else_block.span);
+                    let else_before_if = else_.span.shrink_to_lo().with_hi(else_if_cond.span.lo() - BytePos(1));
+                    if self.lint_commented_code
+                        && let Some(else_keyword_span) =
+                            span_extract_keyword(cx.tcx.sess.source_map(), up_to_else, "else")
+                        && let Some(else_if_keyword_span) =
+                            span_extract_keyword(cx.tcx.sess.source_map(), else_before_if, "if")
+                    {
+                        let else_keyword_span = else_keyword_span.with_leading_whitespace(cx).into_span();
+                        let else_open_bracket = else_block.span.split_at(1).0.with_leading_whitespace(cx).into_span();
+                        let else_closing_bracket = {
+                            let end = else_block.span.shrink_to_hi();
+                            end.with_lo(end.lo() - BytePos(1))
+                                .with_leading_whitespace(cx)
+                                .into_span()
+                        };
+                        let sugg = vec![
+                            // Remove the outer else block `else`
+                            (else_keyword_span, String::new()),
+                            // Replace the inner `if` by `else if`
+                            (else_if_keyword_span, String::from("else if")),
+                            // Remove the outer else block `{`
+                            (else_open_bracket, String::new()),
+                            // Remove the outer else block '}'
+                            (else_closing_bracket, String::new()),
+                        ];
+                        diag.multipart_suggestion("collapse nested if block", sugg, Applicability::MachineApplicable);
+                        return;
+                    }
+
+                    // Prevent "elseif"
+                    // Check that the "else" is followed by whitespace
+                    let requires_space = if let Some(c) = snippet(cx, up_to_else, "..").chars().last() {
+                        !c.is_whitespace()
+                    } else {
+                        false
+                    };
+                    let mut applicability = Applicability::MachineApplicable;
+                    diag.span_suggestion(
+                        else_block.span,
+                        "collapse nested if block",
+                        format!(
+                            "{}{}",
+                            if requires_space { " " } else { "" },
+                            snippet_block_with_applicability(
+                                cx,
+                                else_.span,
+                                "..",
+                                Some(else_block.span),
+                                &mut applicability
+                            )
+                        ),
+                        applicability,
+                    );
+                },
             );
         }
     }
@@ -130,7 +172,7 @@ impl CollapsibleIf {
             && self.eligible_condition(cx, check_inner)
             && let ctxt = expr.span.ctxt()
             && inner.span.ctxt() == ctxt
-            && (self.lint_commented_code || !block_starts_with_comment(cx, then))
+            && !block_starts_with_significant_tokens(cx, then, inner, self.lint_commented_code)
         {
             span_lint_and_then(
                 cx,
@@ -141,7 +183,7 @@ impl CollapsibleIf {
                     let then_open_bracket = then.span.split_at(1).0.with_leading_whitespace(cx).into_span();
                     let then_closing_bracket = {
                         let end = then.span.shrink_to_hi();
-                        end.with_lo(end.lo() - rustc_span::BytePos(1))
+                        end.with_lo(end.lo() - BytePos(1))
                             .with_leading_whitespace(cx)
                             .into_span()
                     };
@@ -179,7 +221,7 @@ impl LateLintPass<'_> for CollapsibleIf {
             if let Some(else_) = else_
                 && let ExprKind::Block(else_, None) = else_.kind
             {
-                Self::check_collapsible_else_if(cx, then.span, else_);
+                self.check_collapsible_else_if(cx, then.span, else_);
             } else if else_.is_none()
                 && self.eligible_condition(cx, cond)
                 && let ExprKind::Block(then, None) = then.kind
@@ -190,12 +232,16 @@ impl LateLintPass<'_> for CollapsibleIf {
     }
 }
 
-fn block_starts_with_comment(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
-    // We trim all opening braces and whitespaces and then check if the next string is a comment.
-    let trimmed_block_text = snippet_block(cx, block.span, "..", None)
-        .trim_start_matches(|c: char| c.is_whitespace() || c == '{')
-        .to_owned();
-    trimmed_block_text.starts_with("//") || trimmed_block_text.starts_with("/*")
+// Check that nothing significant can be found but whitespaces between the initial `{` of `block`
+// and the beginning of `stop_at`.
+fn block_starts_with_significant_tokens(
+    cx: &LateContext<'_>,
+    block: &Block<'_>,
+    stop_at: &Expr<'_>,
+    lint_commented_code: bool,
+) -> bool {
+    let span = block.span.split_at(1).1.until(stop_at.span);
+    span_contains_non_whitespace(cx, span, lint_commented_code)
 }
 
 /// If `block` is a block with either one expression or a statement containing an expression,
@@ -225,4 +271,17 @@ fn parens_around(expr: &Expr<'_>) -> Vec<(Span, String)> {
     } else {
         vec![]
     }
+}
+
+fn span_extract_keyword(sm: &SourceMap, span: Span, keyword: &str) -> Option<Span> {
+    let snippet = sm.span_to_snippet(span).ok()?;
+    tokenize_with_text(&snippet)
+        .filter(|(t, s, _)| matches!(t, TokenKind::Ident if *s == keyword))
+        .map(|(_, _, inner)| {
+            span.split_at(u32::try_from(inner.start).unwrap())
+                .1
+                .split_at(u32::try_from(inner.end - inner.start).unwrap())
+                .0
+        })
+        .next()
 }

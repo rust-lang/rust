@@ -107,7 +107,7 @@ impl ClippyCmd {
     }
 
     fn into_std_cmd(self) -> Command {
-        let mut cmd = Command::new(env::var("CARGO").unwrap_or("cargo".into()));
+        let mut cmd = Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".into()));
         let clippy_args: String = self
             .clippy_args
             .iter()

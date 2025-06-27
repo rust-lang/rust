@@ -122,7 +122,7 @@ use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{InnerSpan, Span};
-use source::walk_span_to_context;
+use source::{SpanRangeExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
@@ -1886,10 +1886,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         _ => None,
     };
 
-    did.is_some_and(|did| find_attr!(
-            cx.tcx.get_all_attrs(did),
-            AttributeKind::MustUse { ..}
-        ))
+    did.is_some_and(|did| find_attr!(cx.tcx.get_all_attrs(did), AttributeKind::MustUse { .. }))
 }
 
 /// Checks if a function's body represents the identity function. Looks for bodies of the form:
@@ -2713,7 +2710,7 @@ impl<'tcx> ExprUseNode<'tcx> {
 }
 
 /// Gets the context an expression's value is used in.
-pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> ExprUseCtxt<'tcx> {
+pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'tcx>) -> ExprUseCtxt<'tcx> {
     let mut adjustments = [].as_slice();
     let mut is_ty_unified = false;
     let mut moved_before_use = false;
@@ -2790,6 +2787,19 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
     });
 }
 
+/// Checks whether a given span has any significant token. A significant token is a non-whitespace
+/// token, including comments unless `skip_comments` is set.
+/// This is useful to determine if there are any actual code tokens in the span that are omitted in
+/// the late pass, such as platform-specific code.
+pub fn span_contains_non_whitespace(cx: &impl source::HasSession, span: Span, skip_comments: bool) -> bool {
+    matches!(span.get_source_text(cx), Some(snippet) if tokenize_with_text(&snippet).any(|(token, _, _)|
+        match token {
+            TokenKind::Whitespace => false,
+            TokenKind::BlockComment { .. } | TokenKind::LineComment { .. } => !skip_comments,
+            _ => true,
+        }
+    ))
+}
 /// Returns all the comments a given span contains
 ///
 /// Comments are returned wrapped with their relevant delimiters

@@ -537,7 +537,7 @@ checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 
 [[package]]
 name = "clippy"
-version = "0.1.89"
+version = "0.1.90"
 dependencies = [
  "anstream",
  "askama",
@@ -547,6 +547,7 @@ dependencies = [
  "clippy_lints_internal",
  "clippy_utils",
  "color-print",
+ "declare_clippy_lint",
  "filetime",
  "futures",
  "if_chain",
@@ -569,7 +570,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.89"
+version = "0.1.90"
 dependencies = [
  "clippy_utils",
  "itertools",
@@ -592,12 +593,13 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.89"
+version = "0.1.90"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
  "clippy_config",
  "clippy_utils",
+ "declare_clippy_lint",
  "itertools",
  "quine-mc_cluskey",
  "regex-syntax 0.8.5",
@@ -622,7 +624,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.89"
+version = "0.1.90"
 dependencies = [
  "arrayvec",
  "itertools",
@@ -930,6 +932,10 @@ dependencies = [
  "libdbus-sys",
  "winapi",
 ]
+
+[[package]]
+name = "declare_clippy_lint"
+version = "0.1.90"
 
 [[package]]
 name = "derive-where"
