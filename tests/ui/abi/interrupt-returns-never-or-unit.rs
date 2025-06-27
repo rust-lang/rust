@@ -37,54 +37,54 @@ use minicore::*;
 
 #[cfg(avr)]
 extern "avr-interrupt" fn avr_ret_never() -> ! {
-    unsafe { hint::unreachable_unchecked() }
+    loop {}
 }
 
 #[cfg(msp430)]
 extern "msp430-interrupt" fn msp430_ret_never() -> ! {
-    unsafe { hint::unreachable_unchecked() }
+    loop {}
 }
 
 #[cfg(any(riscv32,riscv64))]
 extern "riscv-interrupt-m" fn riscv_m_ret_never() -> ! {
-    unsafe { hint::unreachable_unchecked() }
+    loop {}
 }
 
 #[cfg(any(riscv32,riscv64))]
 extern "riscv-interrupt-s" fn riscv_s_ret_never() -> ! {
-    unsafe { hint::unreachable_unchecked() }
+    loop {}
 }
 
 #[cfg(any(x64,i686))]
 extern "x86-interrupt" fn x86_ret_never() -> ! {
-    unsafe { hint::unreachable_unchecked() }
+    loop {}
 }
 
 /* interrupts can return explicit () */
 
 #[cfg(avr)]
 extern "avr-interrupt" fn avr_ret_unit() -> () {
-    unsafe { hint::unreachable_unchecked() }
+    ()
 }
 
 #[cfg(msp430)]
 extern "msp430-interrupt" fn msp430_ret_unit() -> () {
-    unsafe { hint::unreachable_unchecked() }
+    ()
 }
 
 #[cfg(any(riscv32,riscv64))]
 extern "riscv-interrupt-m" fn riscv_m_ret_unit() -> () {
-    unsafe { hint::unreachable_unchecked() }
+    ()
 }
 
 #[cfg(any(riscv32,riscv64))]
 extern "riscv-interrupt-s" fn riscv_s_ret_unit() -> () {
-    unsafe { hint::unreachable_unchecked() }
+    ()
 }
 
 #[cfg(any(x64,i686))]
 extern "x86-interrupt" fn x86_ret_unit() -> () {
-    unsafe { hint::unreachable_unchecked() }
+    ()
 }
 
 /* extern "interrupt" fnptrs can return ! too */
