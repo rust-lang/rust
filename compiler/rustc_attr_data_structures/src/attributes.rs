@@ -285,5 +285,8 @@ pub enum AttributeKind {
 
     /// Represents `#[track_caller]`
     TrackCaller(Span),
+
+    /// Represents `#[unstable_feature_bound]`.
+    UnstableFeatureBound(ThinVec<(Symbol, Span)>),
     // tidy-alphabetical-end
 }

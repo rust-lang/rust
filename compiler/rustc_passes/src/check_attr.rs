@@ -183,6 +183,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::TrackCaller(attr_span)) => {
                     self.check_track_caller(hir_id, *attr_span, attrs, span, target)
                 }
+                Attribute::Parsed(AttributeKind::UnstableFeatureBound(syms)) => {
+                    self.check_unstable_feature_bound(syms.first().unwrap().1, span, target)
+                }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
@@ -2234,6 +2237,46 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
+    fn check_unstable_feature_bound(&self, attr_span: Span, span: Span, target: Target) {
+        match target {
+            // FIXME(staged_api): There's no reason we can't support more targets here. We're just
+            // being conservative to begin with.
+            Target::Fn | Target::Impl => {}
+            Target::ExternCrate
+            | Target::Use
+            | Target::Static
+            | Target::Const
+            | Target::Closure
+            | Target::Mod
+            | Target::ForeignMod
+            | Target::GlobalAsm
+            | Target::TyAlias
+            | Target::Enum
+            | Target::Variant
+            | Target::Struct
+            | Target::Field
+            | Target::Union
+            | Target::Trait
+            | Target::TraitAlias
+            | Target::Expression
+            | Target::Statement
+            | Target::Arm
+            | Target::AssocConst
+            | Target::Method(_)
+            | Target::AssocTy
+            | Target::ForeignFn
+            | Target::ForeignStatic
+            | Target::ForeignTy
+            | Target::GenericParam(_)
+            | Target::MacroDef
+            | Target::Param
+            | Target::PatField
+            | Target::ExprField
+            | Target::WherePredicate => {
+                self.tcx.dcx().emit_err(errors::RustcUnstableFeatureBound { attr_span, span });
+            }
+        }
+    }
     fn check_rustc_std_internal_symbol(&self, attr: &Attribute, span: Span, target: Target) {
         match target {
             Target::Fn | Target::Static | Target::ForeignFn | Target::ForeignStatic => {}
