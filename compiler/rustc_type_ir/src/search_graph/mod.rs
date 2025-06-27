@@ -1215,7 +1215,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             Self::clear_dependent_provisional_results(&self.stack, &mut self.provisional_cache);
 
             debug!(?i, ?result, "changed provisional results");
-            // TODO: expected wtf
             match self.reevaluate_goal_on_stack(cx, stack_entry, result, inspect) {
                 (new_stack_entry, new_result) => {
                     if new_result == result {
@@ -1262,7 +1261,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             has_been_used: None,
         });
 
-        if true || !D::ENABLE_PROVISIONAL_CACHE {
+        if !D::ENABLE_PROVISIONAL_CACHE {
             let result = D::compute_goal(self, cx, prev_stack_entry.input, inspect);
             let reeval_entry = self.stack.pop();
             return (reeval_entry, result);
