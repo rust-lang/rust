@@ -1,5 +1,6 @@
 use ide_db::{
-    imports::import_assets::item_for_path_search, use_trivial_constructor::use_trivial_constructor,
+    imports::import_assets::item_for_path_search, syntax_helpers::suggest_name::NameGenerator,
+    use_trivial_constructor::use_trivial_constructor,
 };
 use syntax::{
     ast::{self, AstNode, HasName, HasVisibility, StructKind, edit_in_place::Indent, make},
@@ -39,11 +40,25 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         StructKind::Record(named) => {
             named.fields().filter_map(|f| Some((f.name()?, f.ty()?))).collect::<Vec<_>>()
         }
-        StructKind::Tuple(tuple) => tuple
-            .fields()
-            .enumerate()
-            .filter_map(|(i, f)| Some((make::name(&format!("_{}", i)), f.ty()?)))
-            .collect::<Vec<_>>(),
+        StructKind::Tuple(tuple) => {
+            let mut name_generator = NameGenerator::default();
+            tuple
+                .fields()
+                .enumerate()
+                .filter_map(|(i, f)| {
+                    let ty = f.ty()?;
+                    let name = match name_generator.for_type(
+                        &ctx.sema.resolve_type(&ty)?,
+                        ctx.db(),
+                        ctx.edition(),
+                    ) {
+                        Some(name) => name,
+                        None => name_generator.suggest_name(&format!("_{i}")),
+                    };
+                    Some((make::name(name.as_str()), f.ty()?))
+                })
+                .collect::<Vec<_>>()
+        }
         StructKind::Unit => return None,
     };
 
