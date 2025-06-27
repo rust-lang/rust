@@ -21,7 +21,7 @@ use std::marker::PhantomData;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
-use rustc_type_ir::data_structures::HashMap;
+use rustc_type_ir::data_structures::{HashMap, HashSet};
 use tracing::{debug, instrument};
 
 mod stack;
@@ -1113,7 +1113,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
     /// Whether we've reached a fixpoint when evaluating a cycle head.
     fn reached_fixpoint(
-        &mut self,
         cx: X,
         stack_entry: &StackEntry<X>,
         usage_kind: UsageKind,
@@ -1161,7 +1160,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         // is equal to the provisional result of the previous iteration, or because
         // this was only the root of either coinductive or inductive cycles, and the
         // final result is equal to the initial response for that case.
-        if self.reached_fixpoint(cx, &stack_entry, usage_kind, result) {
+        if Self::reached_fixpoint(cx, &stack_entry, usage_kind, result) {
             Self::rebase_provisional_cache_entries(
                 &self.stack,
                 &mut self.provisional_cache,
@@ -1270,7 +1269,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         let truncate_stack = |stack: &mut Stack<X>, provisional_cache: &mut _, depth| {
             while stack.next_index() > depth {
                 let reeval_entry = stack.pop();
-                // TODO
+                // TODO: How can we tell whether this entry was the final revision.
+                //
+                // We should be able to rebase provisional entries in most cases.
                 Self::clear_dependent_provisional_results(stack, provisional_cache);
                 Self::update_parent_goal(
                     stack,
@@ -1286,6 +1287,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         let cycles = self.tree.rerun_get_and_reset_cycles(prev_stack_entry.node_id);
         let current_stack_len = self.stack.len();
         let mut first_cycle = true;
+        let mut has_changed = HashSet::default();
         'outer: for cycle in cycles {
             let &tree::Cycle { node_id: cycle_node_id, ref provisional_results } =
                 self.tree.get_cycle(cycle);
@@ -1308,6 +1310,13 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     // This provisional cache entry was computed with the current goal on the
                     // stack. Check whether it depends on it.
                     if !self.tree.get_heads(entry_node_id).contains_stack_entry(current_depth) {
+                        continue;
+                    }
+
+                    // We've evaluated the `entry_node_id` before evaluating this goal. In case
+                    // that node and its parents has not changed, we can reinsert the cache entry
+                    // before starting to reevaluate it.
+                    if !self.tree.goal_or_parent_has_changed(node_id, &has_changed, entry_node_id) {
                         continue;
                     }
                 }
@@ -1345,8 +1354,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     while let Some(&(stack_depth, node_id, info)) = added_goals.peek() {
                         if let Some(existing_entry) = self.stack.get(stack_depth) {
                             let provisional_result = provisional_results.get(&stack_depth).copied();
-                            // Issue: changing the provisional result means we must not rebase, but instead
-                            // invalidate.
                             if existing_entry.node_id == node_id
                                 && provisional_result == existing_entry.provisional_result
                             {
@@ -1410,10 +1417,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     debug!(input = ?current_goal.1.input, ?result, "goal did not change");
                     continue 'outer;
                 } else {
+                    has_changed.insert(current_goal.0);
                     debug!(input = ?current_goal.1.input, ?result, "goal did change");
                     if self.stack.len() > current_stack_len {
                         let parent = self.stack.pop();
-                        // TODO
                         Self::clear_dependent_provisional_results(
                             &self.stack,
                             &mut self.provisional_cache,

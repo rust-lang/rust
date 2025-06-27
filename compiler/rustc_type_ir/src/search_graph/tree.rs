@@ -3,7 +3,7 @@ use std::ops::Range;
 
 use derive_where::derive_where;
 use rustc_index::IndexVec;
-use rustc_type_ir::data_structures::HashMap;
+use rustc_type_ir::data_structures::{HashMap, HashSet};
 
 use crate::search_graph::{AvailableDepth, Cx, CycleHeads, PathKind, Stack, StackDepth};
 
@@ -172,6 +172,23 @@ impl<X: Cx> SearchTree<X> {
             heads
         } else {
             panic!("unexpected node kind: {:?}", self.nodes[node_id]);
+        }
+    }
+
+    pub(super) fn goal_or_parent_has_changed(
+        &self,
+        cycle_head: NodeId,
+        has_changed: &HashSet<NodeId>,
+        mut node_id: NodeId,
+    ) -> bool {
+        loop {
+            if node_id == cycle_head {
+                return false;
+            } else if has_changed.contains(&node_id) {
+                return true;
+            } else {
+                node_id = self.nodes[node_id].parent.unwrap();
+            }
         }
     }
 
