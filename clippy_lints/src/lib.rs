@@ -718,7 +718,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(move |_| Box::new(manual_rotate::ManualRotate));
     store.register_late_pass(move |_| Box::new(operators::Operators::new(conf)));
     store.register_late_pass(move |_| Box::new(std_instead_of_core::StdReexports::new(conf)));
-    store.register_late_pass(move |_| Box::new(time_subtraction::InstantSubtraction::new(conf)));
+    store.register_late_pass(move |_| Box::new(time_subtraction::UncheckedTimeSubtraction::new(conf)));
     store.register_late_pass(|_| Box::new(partialeq_to_none::PartialeqToNone));
     store.register_late_pass(move |_| Box::new(manual_abs_diff::ManualAbsDiff::new(conf)));
     store.register_late_pass(move |_| Box::new(manual_clamp::ManualClamp::new(conf)));

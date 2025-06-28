@@ -25,5 +25,29 @@ error: unchecked subtraction of a 'Duration' from an 'Instant'
 LL |     let _ = Instant::now() - second;
    |             ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Instant::now().checked_sub(second).unwrap()`
 
-error: aborting due to 4 previous errors
+error: unchecked subtraction between 'Duration' values
+  --> tests/ui/unchecked_time_subtraction.rs:25:13
+   |
+LL |     let _ = dur1 - dur2;
+   |             ^^^^^^^^^^^ help: try: `dur1.checked_sub(dur2).unwrap()`
+
+error: unchecked subtraction between 'Duration' values
+  --> tests/ui/unchecked_time_subtraction.rs:28:13
+   |
+LL |     let _ = Duration::from_secs(10) - Duration::from_secs(5);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Duration::from_secs(10).checked_sub(Duration::from_secs(5)).unwrap()`
+
+error: unchecked subtraction between 'Duration' values
+  --> tests/ui/unchecked_time_subtraction.rs:31:13
+   |
+LL |     let _ = second - dur1;
+   |             ^^^^^^^^^^^^^ help: try: `second.checked_sub(dur1).unwrap()`
+
+error: unchecked subtraction between 'Duration' values
+  --> tests/ui/unchecked_time_subtraction.rs:35:13
+   |
+LL |     let _ = 2 * dur1 - dur2;
+   |             ^^^^^^^^^^^^^^^ help: try: `(2 * dur1).checked_sub(dur2).unwrap()`
+
+error: aborting due to 8 previous errors
 
