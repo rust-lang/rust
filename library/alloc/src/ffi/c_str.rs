@@ -1,7 +1,7 @@
 //! [`CString`] and its related types.
 
 use core::borrow::Borrow;
-use core::ffi::{CStr, c_char};
+use core::ffi::{CStr, c_char, FromBytesWithNulError};
 use core::num::NonZero;
 use core::slice::memchr;
 use core::str::{self, FromStr, Utf8Error};
@@ -130,12 +130,6 @@ pub struct CString {
 #[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub struct NulError(usize, Vec<u8>);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-enum FromBytesWithNulErrorKind {
-    InteriorNul(usize),
-    NotNulTerminated,
-}
-
 /// An error indicating that a nul byte was not in the expected position.
 ///
 /// The vector used to create a [`CString`] must have one and only one nul byte,
@@ -154,7 +148,7 @@ enum FromBytesWithNulErrorKind {
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub struct FromVecWithNulError {
-    error_kind: FromBytesWithNulErrorKind,
+    error_kind: FromBytesWithNulError,
     bytes: Vec<u8>,
 }
 
@@ -206,6 +200,13 @@ impl FromVecWithNulError {
     #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
     pub fn into_bytes(self) -> Vec<u8> {
         self.bytes
+    }
+
+    /// Access the underlying conversion error that was the cause of this error.
+    #[must_use]
+    #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
+    pub fn kind(&self) -> FromBytesWithNulError {
+        self.error_kind
     }
 }
 
@@ -679,11 +680,11 @@ impl CString {
                 Ok(unsafe { Self::_from_vec_with_nul_unchecked(v) })
             }
             Some(nul_pos) => Err(FromVecWithNulError {
-                error_kind: FromBytesWithNulErrorKind::InteriorNul(nul_pos),
+                error_kind: FromBytesWithNulError::InteriorNul { position: nul_pos },
                 bytes: v,
             }),
             None => Err(FromVecWithNulError {
-                error_kind: FromBytesWithNulErrorKind::NotNulTerminated,
+                error_kind: FromBytesWithNulError::NotNulTerminated,
                 bytes: v,
             }),
         }
@@ -1033,14 +1034,7 @@ impl fmt::Display for NulError {
 #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
 impl fmt::Display for FromVecWithNulError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.error_kind {
-            FromBytesWithNulErrorKind::InteriorNul(pos) => {
-                write!(f, "data provided contains an interior nul byte at pos {pos}")
-            }
-            FromBytesWithNulErrorKind::NotNulTerminated => {
-                write!(f, "data provided is not nul terminated")
-            }
-        }
+        self.error_kind.fmt(f)
     }
 }
 
