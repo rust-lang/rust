@@ -32,6 +32,7 @@ use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateS
 use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
+use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, Target, TargetTuple};
@@ -274,6 +275,12 @@ impl CStore {
         self.metas
             .iter_enumerated()
             .filter_map(|(cnum, data)| data.as_deref().map(|data| (cnum, data)))
+    }
+
+    pub fn all_proc_macro_def_ids(&self) -> Vec<DefId> {
+        self.iter_crate_data()
+            .flat_map(|(krate, data)| data.proc_macros_for_crate(krate, self))
+            .collect()
     }
 
     fn iter_crate_data_mut(&mut self) -> impl Iterator<Item = (CrateNum, &mut CrateMetadata)> {
