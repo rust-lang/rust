@@ -12,7 +12,7 @@ use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_apfloat::{Float, Round, Status, ieee};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{
-    AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
+    AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
 };
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -26,7 +26,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
 };
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, AtomicOrdering, Instance, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::FnAbi;
@@ -75,7 +75,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let load_ordering = match order {
             // TODO(antoyo): does this make sense?
-            AtomicOrdering::AcquireRelease | AtomicOrdering::Release => AtomicOrdering::Acquire,
+            AtomicOrdering::AcqRel | AtomicOrdering::Release => AtomicOrdering::Acquire,
             _ => order,
         };
         let previous_value =
@@ -781,6 +781,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 return self.context.new_call(self.location, fmod, &[a, b]);
             }
             TypeKind::FP128 => {
+                // TODO(antoyo): use get_simple_function_f128_2args.
                 let f128_type = self.type_f128();
                 let fmodf128 = self.context.new_function(
                     None,
@@ -1118,7 +1119,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn store(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
+    fn store(&mut self, mut val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
+        if self.structs_as_pointer.borrow().contains(&val) {
+            // NOTE: hack to workaround a limitation of the rustc API: see comment on
+            // CodegenCx.structs_as_pointer
+            val = val.dereference(self.location).to_rvalue();
+        }
+
         self.store_with_flags(val, ptr, align, MemFlags::empty())
     }
 
@@ -1564,16 +1571,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         aggregate_value
     }
 
-    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
+    fn set_personality_fn(&mut self, _personality: Function<'gcc>) {
         #[cfg(feature = "master")]
-        {
-            let personality = self.rvalue_as_function(_personality);
-            self.current_func().set_personality_function(personality);
-        }
+        self.current_func().set_personality_function(_personality);
     }
 
     #[cfg(feature = "master")]
-    fn cleanup_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn cleanup_landing_pad(&mut self, pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         self.set_personality_fn(pers_fn);
 
         // NOTE: insert the current block in a variable so that a later call to invoke knows to
@@ -1594,7 +1598,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature = "master"))]
-    fn cleanup_landing_pad(&mut self, _pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn cleanup_landing_pad(&mut self, _pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         let value1 = self
             .current_func()
             .new_local(self.location, self.u8_type.make_pointer(), "landing_pad0")
@@ -1604,7 +1608,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         (value1, value2)
     }
 
-    fn filter_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn filter_landing_pad(&mut self, pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         // TODO(antoyo): generate the correct landing pad
         self.cleanup_landing_pad(pers_fn)
     }
@@ -2511,8 +2515,8 @@ impl ToGccOrdering for AtomicOrdering {
             AtomicOrdering::Relaxed => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
             AtomicOrdering::Acquire => __ATOMIC_ACQUIRE,
             AtomicOrdering::Release => __ATOMIC_RELEASE,
-            AtomicOrdering::AcquireRelease => __ATOMIC_ACQ_REL,
-            AtomicOrdering::SequentiallyConsistent => __ATOMIC_SEQ_CST,
+            AtomicOrdering::AcqRel => __ATOMIC_ACQ_REL,
+            AtomicOrdering::SeqCst => __ATOMIC_SEQ_CST,
         };
         ordering as i32
     }

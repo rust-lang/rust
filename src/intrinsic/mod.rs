@@ -4,7 +4,9 @@ mod simd;
 #[cfg(feature = "master")]
 use std::iter;
 
-use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
+#[cfg(feature = "master")]
+use gccjit::Type;
+use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, UnaryOp};
 #[cfg(feature = "master")]
 use rustc_abi::ExternAbi;
 use rustc_abi::{BackendRepr, HasDataLayout};
@@ -22,11 +24,11 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_middle::bug;
 #[cfg(feature = "master")]
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
-use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
+use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, PassMode};
 use rustc_target::spec::PanicStrategy;
 
 #[cfg(feature = "master")]
@@ -253,30 +255,19 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
     fn codegen_intrinsic_call(
         &mut self,
         instance: Instance<'tcx>,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, RValue<'gcc>>],
-        llresult: RValue<'gcc>,
+        result: PlaceRef<'tcx, RValue<'gcc>>,
         span: Span,
     ) -> Result<(), Instance<'tcx>> {
         let tcx = self.tcx;
-        let callee_ty = instance.ty(tcx, self.typing_env());
 
-        let (def_id, fn_args) = match *callee_ty.kind() {
-            ty::FnDef(def_id, fn_args) => (def_id, fn_args),
-            _ => bug!("expected fn item type, found {}", callee_ty),
-        };
-
-        let sig = callee_ty.fn_sig(tcx);
-        let sig = tcx.normalize_erasing_late_bound_regions(self.typing_env(), sig);
-        let arg_tys = sig.inputs();
-        let ret_ty = sig.output();
-        let name = tcx.item_name(def_id);
+        let name = tcx.item_name(instance.def_id());
         let name_str = name.as_str();
-
-        let llret_ty = self.layout_of(ret_ty).gcc_type(self);
-        let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
+        let fn_args = instance.args;
 
         let simple = get_simple_intrinsic(self, name);
+        // TODO(antoyo): Only call get_simple_function_f128 and get_simple_function_f128_2args when
+        // it is the symbols for the supported f128 builtins.
         let simple_func = get_simple_function(self, name)
             .or_else(|| get_simple_function_f128(self, name))
             .or_else(|| get_simple_function_f128_2args(self, name));
@@ -364,7 +355,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     args[0].immediate(),
                     args[1].immediate(),
                     args[2].immediate(),
-                    llresult,
+                    result,
                 );
                 return Ok(());
             }
@@ -379,17 +370,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
-                let tp_ty = fn_args.type_at(0);
                 let ptr = args[0].immediate();
-                let layout = self.layout_of(tp_ty);
-                let load = if let PassMode::Cast { cast: ref ty, pad_i32: _ } = fn_abi.ret.mode {
-                    let gcc_ty = ty.gcc_type(self);
-                    self.volatile_load(gcc_ty, ptr)
-                } else {
-                    self.volatile_load(layout.gcc_type(self), ptr)
-                };
+                let load = self.volatile_load(result.layout.gcc_type(self), ptr);
                 // TODO(antoyo): set alignment.
-                if let BackendRepr::Scalar(scalar) = layout.backend_repr {
+                if let BackendRepr::Scalar(scalar) = result.layout.backend_repr {
                     self.to_immediate_scalar(load, scalar)
                 } else {
                     load
@@ -422,8 +406,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::rotate_right
             | sym::saturating_add
             | sym::saturating_sub => {
-                let ty = arg_tys[0];
-                match int_type_width_signed(ty, self) {
+                match int_type_width_signed(args[0].layout.ty, self) {
                     Some((width, signed)) => match name {
                         sym::ctlz | sym::cttz => {
                             let func = self.current_func();
@@ -502,7 +485,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
                             span,
                             name,
-                            ty,
+                            ty: args[0].layout.ty,
                         });
                         return Ok(());
                     }
@@ -594,7 +577,14 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
 
             _ if name_str.starts_with("simd_") => {
-                match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
+                match generic_simd_intrinsic(
+                    self,
+                    name,
+                    args,
+                    result.layout.ty,
+                    result.layout.gcc_type(self),
+                    span,
+                ) {
                     Ok(value) => value,
                     Err(()) => return Ok(()),
                 }
@@ -604,16 +594,11 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             _ => return Err(Instance::new_raw(instance.def_id(), instance.args)),
         };
 
-        if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast { cast: ref ty, .. } = fn_abi.ret.mode {
-                let ptr_llty = self.type_ptr_to(ty.gcc_type(self));
-                let ptr = self.pointercast(result.val.llval, ptr_llty);
-                self.store(value, ptr, result.val.align);
-            } else {
-                OperandRef::from_immediate_or_packed_pair(self, value, result.layout)
-                    .val
-                    .store(self, result);
-            }
+        if result.layout.ty.is_bool() {
+            let val = self.from_immediate(value);
+            self.store_to_place(val, result.val);
+        } else if !result.layout.ty.is_unit() {
+            self.store_to_place(value, result.val);
         }
         Ok(())
     }
@@ -678,14 +663,9 @@ impl<'a, 'gcc, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) {
         arg_abi.store(self, val, dst)
     }
-
-    fn arg_memory_ty(&self, arg_abi: &ArgAbi<'tcx, Ty<'tcx>>) -> Type<'gcc> {
-        arg_abi.memory_ty(self)
-    }
 }
 
 pub trait ArgAbiExt<'gcc, 'tcx> {
-    fn memory_ty(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     fn store(
         &self,
         bx: &mut Builder<'_, 'gcc, 'tcx>,
@@ -701,12 +681,6 @@ pub trait ArgAbiExt<'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
-    /// Gets the LLVM type for a place of the original Rust type of
-    /// this argument/return, i.e., the result of `type_of::type_of`.
-    fn memory_ty(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
-        self.layout.gcc_type(cx)
-    }
-
     /// Stores a direct/indirect value described by this ArgAbi into a
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
@@ -1323,14 +1297,13 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
     try_func: RValue<'gcc>,
     data: RValue<'gcc>,
     _catch_func: RValue<'gcc>,
-    dest: RValue<'gcc>,
+    dest: PlaceRef<'tcx, RValue<'gcc>>,
 ) {
     if bx.sess().panic_strategy() == PanicStrategy::Abort {
         bx.call(bx.type_void(), None, None, try_func, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
-        let ret_align = bx.tcx.data_layout.i32_align.abi;
-        bx.store(bx.const_i32(0), dest, ret_align);
+        OperandValue::Immediate(bx.const_i32(0)).store(bx, dest);
     } else {
         if wants_msvc_seh(bx.sess()) {
             unimplemented!();
@@ -1354,12 +1327,12 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
 // functions in play. By calling a shim we're guaranteed that our shim will have
 // the right personality function.
 #[cfg(feature = "master")]
-fn codegen_gnu_try<'gcc>(
-    bx: &mut Builder<'_, 'gcc, '_>,
+fn codegen_gnu_try<'gcc, 'tcx>(
+    bx: &mut Builder<'_, 'gcc, 'tcx>,
     try_func: RValue<'gcc>,
     data: RValue<'gcc>,
     catch_func: RValue<'gcc>,
-    dest: RValue<'gcc>,
+    dest: PlaceRef<'tcx, RValue<'gcc>>,
 ) {
     let cx: &CodegenCx<'gcc, '_> = bx.cx;
     let (llty, func) = get_rust_try_fn(cx, &mut |mut bx| {
@@ -1415,8 +1388,7 @@ fn codegen_gnu_try<'gcc>(
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(llty, None, None, func, &[try_func, data, catch_func], None, None);
-    let i32_align = bx.tcx().data_layout.i32_align.abi;
-    bx.store(ret, dest, i32_align);
+    OperandValue::Immediate(ret).store(bx, dest);
 }
 
 // Helper function used to get a handle to the `__rust_try` function used to
