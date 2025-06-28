@@ -21,13 +21,14 @@ fn alloc_caller_location<'tcx>(
     assert!(!filename.as_str().as_bytes().contains(&0));
 
     let loc_details = ecx.tcx.sess.opts.unstable_opts.location_detail;
-    let file_wide_ptr = {
+    let filename = {
         let filename = if loc_details.file { filename.as_str() } else { "<redacted>" };
         let filename_with_nul = filename.to_owned() + "\0";
         // This can fail if rustc runs out of memory right here. Trying to emit an error would be
         // pointless, since that would require allocating more memory than these short strings.
         let file_ptr = ecx.allocate_bytes_dedup(filename_with_nul.as_bytes()).unwrap();
-        Immediate::new_slice(file_ptr.into(), filename_with_nul.len().try_into().unwrap(), ecx)
+        let file_len = u64::try_from(filename.len()).unwrap();
+        Immediate::new_slice(file_ptr.into(), file_len, ecx)
     };
     let line = if loc_details.line { Scalar::from_u32(line) } else { Scalar::from_u32(0) };
     let col = if loc_details.column { Scalar::from_u32(col) } else { Scalar::from_u32(0) };
@@ -41,11 +42,8 @@ fn alloc_caller_location<'tcx>(
     let location = ecx.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 
     // Initialize fields.
-    ecx.write_immediate(
-        file_wide_ptr,
-        &ecx.project_field(&location, FieldIdx::from_u32(0)).unwrap(),
-    )
-    .expect("writing to memory we just allocated cannot fail");
+    ecx.write_immediate(filename, &ecx.project_field(&location, FieldIdx::from_u32(0)).unwrap())
+        .expect("writing to memory we just allocated cannot fail");
     ecx.write_scalar(line, &ecx.project_field(&location, FieldIdx::from_u32(1)).unwrap())
         .expect("writing to memory we just allocated cannot fail");
     ecx.write_scalar(col, &ecx.project_field(&location, FieldIdx::from_u32(2)).unwrap())
