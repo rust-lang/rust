@@ -21,7 +21,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{ErrorGuaranteed, ExpnKind, Span, sym};
+use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
 use tracing::{info, instrument};
 
 pub use self::overflow::*;
@@ -136,17 +136,6 @@ pub enum DefIdOrName {
     Name(&'static str),
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum ErrorSortKey {
-    SubtypeFormat(usize, usize),
-    OtherKind,
-    SizedTrait,
-    MetaSizedTrait,
-    PointeeSizedTrait,
-    Coerce,
-    ClauseWellFormed,
-}
-
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(
         &self,
@@ -171,9 +160,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             })
             .collect();
 
-        // Ensure `T: Sized`, `T: MetaSized`, `T: PointeeSized` and `T: WF` obligations come last.
+        // Ensure `T: Sized`, `T: MetaSized`, `T: PointeeSized` and `T: WF` obligations come last,
+        // and `Subtype` obligations from `FormatLiteral` desugarings come first.
         // This lets us display diagnostics with more relevant type information and hide redundant
         // E0282 errors.
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+        enum ErrorSortKey {
+            SubtypeFormat(usize, usize),
+            OtherKind,
+            SizedTrait,
+            MetaSizedTrait,
+            PointeeSizedTrait,
+            Coerce,
+            WellFormed,
+        }
         errors.sort_by_key(|e| {
             let maybe_sizedness_did = match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => Some(pred.def_id()),
@@ -181,31 +181,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 _ => None,
             };
 
-
-            let span = e.obligation.cause.span;
-            let outer_expn_data = span.ctxt().outer_expn_data();
-            let source_span = outer_expn_data.call_site.source_callsite();
-            let source_map = self.tcx.sess.source_map();
-
             match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Subtype(_)
-                    if let Some(def_id) = outer_expn_data.macro_def_id
-                        && let (Some(span_file), row, col, ..) =
-                            source_map.span_to_location_info(span)
-                        && let (Some(source_file), ..) =
-                            source_map.span_to_location_info(source_span)
-                        && (self.tcx.is_diagnostic_item(sym::format_args_nl_macro, def_id)
-                            || self.tcx.is_diagnostic_item(sym::format_args_macro, def_id))
-                        && span_file.src_hash == source_file.src_hash =>
+                    if matches!(
+                        e.obligation.cause.span.desugaring_kind(),
+                        Some(DesugaringKind::FormatLiteral { .. })
+                    ) =>
                 {
+                    let (_, row, col, ..) =
+                        self.tcx.sess.source_map().span_to_location_info(e.obligation.cause.span);
                     ErrorSortKey::SubtypeFormat(row, col)
                 }
-                _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => ErrorSortKey::SizedTrait,
-                _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => ErrorSortKey::MetaSizedTrait,
-                _ if maybe_sizedness_did == self.tcx.lang_items().pointee_sized_trait() => ErrorSortKey::PointeeSizedTrait,
+                _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => {
+                    ErrorSortKey::SizedTrait
+                }
+                _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => {
+                    ErrorSortKey::MetaSizedTrait
+                }
+                _ if maybe_sizedness_did == self.tcx.lang_items().pointee_sized_trait() => {
+                    ErrorSortKey::PointeeSizedTrait
+                }
                 ty::PredicateKind::Coerce(_) => ErrorSortKey::Coerce,
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
-                    ErrorSortKey::ClauseWellFormed
+                    ErrorSortKey::WellFormed
                 }
                 _ => ErrorSortKey::OtherKind,
             }
