@@ -5,9 +5,9 @@ use ipc_channel::ipc;
 use nix::sys::{ptrace, signal};
 use nix::unistd;
 
-use super::messages::{Confirmation, MemEvents, TraceRequest};
+use super::CALLBACK_STACK_SIZE;
+use super::messages::{Confirmation, MemEvents, StartFfiInfo, TraceRequest};
 use super::parent::{ChildListener, sv_loop};
-use super::{CALLBACK_STACK_SIZE, StartFfiInfo};
 use crate::alloc::isolated_alloc::IsolatedAlloc;
 
 static SUPERVISOR: std::sync::Mutex<Option<Supervisor>> = std::sync::Mutex::new(None);

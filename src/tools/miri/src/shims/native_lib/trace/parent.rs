@@ -4,8 +4,8 @@ use ipc_channel::ipc;
 use nix::sys::{ptrace, signal, wait};
 use nix::unistd;
 
-use super::messages::{Confirmation, MemEvents, TraceRequest};
-use super::{AccessEvent, CALLBACK_STACK_SIZE, StartFfiInfo};
+use super::CALLBACK_STACK_SIZE;
+use super::messages::{AccessEvent, Confirmation, MemEvents, StartFfiInfo, TraceRequest};
 
 /// The flags to use when calling `waitid()`.
 /// Since bitwise or on the nix version of these flags is implemented as a trait,

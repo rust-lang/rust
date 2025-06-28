@@ -18,21 +18,34 @@
 //! in `super::child` (namely `start_ffi()` and `end_ffi()`) to handle this. It is
 //! trivially easy to cause a deadlock or crash by messing this up!
 
+use std::ops::Range;
+
 /// An IPC request sent by the child process to the parent.
 ///
 /// The sender for this channel should live on the child process.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub(super) enum TraceRequest {
+pub enum TraceRequest {
     /// Requests that tracing begins. Following this being sent, the child must
     /// wait to receive a `Confirmation` on the respective channel and then
     /// `raise(SIGSTOP)`.
     ///
     /// To avoid possible issues while allocating memory for IPC channels, ending
     /// the tracing is instead done via `raise(SIGUSR1)`.
-    StartFfi(super::StartFfiInfo),
+    StartFfi(StartFfiInfo),
     /// Manually overrides the code that the supervisor will return upon exiting.
     /// Once set, it is permanent. This can be called again to change the value.
     OverrideRetcode(i32),
+}
+
+/// Information needed to begin tracing.
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct StartFfiInfo {
+    /// A vector of page addresses. These should have been automatically obtained
+    /// with `IsolatedAlloc::pages` and prepared with `IsolatedAlloc::prepare_ffi`.
+    pub page_ptrs: Vec<usize>,
+    /// The address of an allocation that can serve as a temporary stack.
+    /// This should be a leaked `Box<[u8; CALLBACK_STACK_SIZE]>` cast to an int.
+    pub stack_ptr: usize,
 }
 
 /// A marker type confirming that the supervisor has received the request to begin
@@ -40,7 +53,7 @@ pub(super) enum TraceRequest {
 ///
 /// The sender for this channel should live on the parent process.
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
-pub(super) struct Confirmation;
+pub struct Confirmation;
 
 /// The final results of an FFI trace, containing every relevant event detected
 /// by the tracer. Sent by the supervisor after receiving a `SIGUSR1` signal.
@@ -53,5 +66,15 @@ pub struct MemEvents {
     /// pessimistically rounded up, and if the type (read/write/both) is uncertain
     /// it is reported as whatever would be safest to assume; i.e. a read + maybe-write
     /// becomes a read + write, etc.
-    pub acc_events: Vec<super::AccessEvent>,
+    pub acc_events: Vec<AccessEvent>,
+}
+
+/// A single memory access, conservatively overestimated
+/// in case of ambiguity.
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub enum AccessEvent {
+    /// A read may have occurred on no more than the specified address range.
+    Read(Range<usize>),
+    /// A write may have occurred on no more than the specified address range.
+    Write(Range<usize>),
 }
