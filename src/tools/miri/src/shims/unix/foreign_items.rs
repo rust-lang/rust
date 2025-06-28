@@ -945,8 +945,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "pthread_join" => {
                 let [thread, retval] = this.check_shim(abi, CanonAbi::C, link_name, args)?;
-                let res = this.pthread_join(thread, retval)?;
-                this.write_scalar(res, dest)?;
+                this.pthread_join(thread, retval, dest)?;
             }
             "pthread_detach" => {
                 let [thread] = this.check_shim(abi, CanonAbi::C, link_name, args)?;

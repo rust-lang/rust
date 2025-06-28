@@ -40,6 +40,12 @@ libc = "0.2"
 libffi = "4.0.0"
 libloading = "0.8"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { version = "0.30.1", features = ["mman", "ptrace", "signal"] }
+ipc-channel = "0.19.0"
+serde = { version = "1.0.219", features = ["derive"] }
+capstone = "0.13"
+
 [dev-dependencies]
 ui_test = "0.29.1"
 colored = "2"
