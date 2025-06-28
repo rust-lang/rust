@@ -67,6 +67,7 @@ use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use rustc_abi::Align;
 use rustc_arena::TypedArena;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -1479,6 +1480,10 @@ rustc_queries! {
 
     query should_inherit_track_caller(def_id: DefId) -> bool {
         desc { |tcx| "computing should_inherit_track_caller of `{}`", tcx.def_path_str(def_id) }
+    }
+
+    query inherited_align(def_id: DefId) -> Option<Align> {
+        desc { |tcx| "computing inherited_align of `{}`", tcx.def_path_str(def_id) }
     }
 
     query lookup_deprecation_entry(def_id: DefId) -> Option<DeprecationEntry> {
