@@ -2361,7 +2361,14 @@ impl Rewrite for ast::Param {
 
             Ok(result)
         } else {
-            self.ty.rewrite_result(context, shape)
+            combine_strs_with_missing_comments(
+                context,
+                &param_attrs_result,
+                &self.ty.rewrite_result(context, shape)?,
+                span,
+                shape,
+                !has_multiple_attr_lines && !has_doc_comments,
+            )
         }
     }
 }
