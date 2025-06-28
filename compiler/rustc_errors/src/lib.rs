@@ -3,7 +3,6 @@
 //! This module contains the code for creating and emitting diagnostics.
 
 // tidy-alphabetical-start
-#![allow(incomplete_features)]
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
