@@ -11,13 +11,9 @@
 #![feature(file_buffered)]
 #![feature(format_args_nl)]
 #![feature(if_let_guard)]
-#![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
-#![feature(never_type)]
 #![feature(round_char_boundary)]
 #![feature(test)]
-#![feature(type_alias_impl_trait)]
-#![feature(type_ascription)]
 #![warn(rustc::internal)]
 
 extern crate thin_vec;
