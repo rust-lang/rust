@@ -3,7 +3,10 @@ use crate::{
     assist_context::{AssistContext, Assists},
     utils::add_cfg_attrs_to,
 };
-use ide_db::assists::{AssistId, AssistKind, ExprFillDefaultMode};
+use ide_db::{
+    assists::{AssistId, AssistKind, ExprFillDefaultMode},
+    syntax_helpers::suggest_name,
+};
 use syntax::{
     AstNode,
     ast::{
@@ -42,7 +45,7 @@ use syntax::{
 //     }
 // }
 //
-// impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
+// impl<T: Send, T1: ToOwned + ?Sized> Foo<T> for $0T1
 // where
 //     Self::Owned: Default,
 // {
@@ -207,13 +210,9 @@ fn exlucde_sized(bounds: ast::TypeBoundList) -> Option<ast::TypeBoundList> {
 }
 
 fn this_name(traitd: &ast::Trait) -> ast::Name {
-    let mut use_t = false;
-    let mut use_i = false;
-    let mut use_this = false;
-
     let has_iter = find_bound("Iterator", traitd.type_bound_list()).is_some();
 
-    traitd
+    let params = traitd
         .generic_param_list()
         .into_iter()
         .flat_map(|param_list| param_list.generic_params())
@@ -222,26 +221,13 @@ fn this_name(traitd: &ast::Trait) -> ast::Name {
             GenericParam::ConstParam(cp) => cp.name(),
             GenericParam::TypeParam(tp) => tp.name(),
         })
-        .for_each(|name| match &*name.text() {
-            "T" => use_t = true,
-            "I" => use_i = true,
-            "This" => use_this = true,
-            _ => (),
-        });
+        .map(|name| name.to_string())
+        .collect::<Vec<_>>();
 
-    make::name(if has_iter {
-        if !use_i {
-            "I"
-        } else if !use_t {
-            "T"
-        } else {
-            "This"
-        }
-    } else if !use_t {
-        "T"
-    } else {
-        "This"
-    })
+    let mut name_gen =
+        suggest_name::NameGenerator::new_with_names(params.iter().map(String::as_str));
+
+    make::name(&name_gen.suggest_name(if has_iter { "I" } else { "T" }))
 }
 
 fn find_bound(s: &str, bounds: Option<ast::TypeBoundList>) -> Option<ast::TypeBound> {
@@ -316,7 +302,7 @@ where
     }
 }
 
-impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
+impl<T: Send, T1: ToOwned + ?Sized> Foo<T> for $0T1
 where
     Self::Owned: Default,
 {
@@ -499,7 +485,7 @@ mod foo {
         }
     }
 
-    impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
+    impl<T: Send, T1: ToOwned + ?Sized> Foo<T> for $0T1
     where
         Self::Owned: Default,
     {
@@ -541,7 +527,7 @@ mod foo {
         }
     }
 
-    impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
+    impl<T: Send, T1: ToOwned + ?Sized> Foo<T> for $0T1
     where
         Self::Owned: Default,
         Self: Send,
@@ -587,7 +573,7 @@ mod foo {
             }
         }
 
-        impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
+        impl<T: Send, T1: ToOwned + ?Sized> Foo<T> for $0T1
         where
             Self::Owned: Default,
             Self: Send,
@@ -738,7 +724,7 @@ where
     }
 }
 
-impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
+impl<T: Send, T1: ToOwned + ?Sized> Foo<T> for $0T1
 where
     Self::Owned: Default,
 {
@@ -782,7 +768,7 @@ where
     }
 }
 
-impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
+impl<T: Send, T1: ToOwned + ?Sized> Foo<T> for $0T1
 where
     Self::Owned: Default,
 {
@@ -828,7 +814,7 @@ where
     }
 }
 
-impl<T: Send, This: ?Sized> Foo<T> for $0This
+impl<T: Send, T1: ?Sized> Foo<T> for $0T1
 where
     Self: ToOwned,
     Self::Owned: Default,
@@ -867,7 +853,7 @@ trait Foo<T: Send> {
     }
 }
 
-impl<T: Send, This: ?Sized> Foo<T> for $0This {
+impl<T: Send, T1: ?Sized> Foo<T> for $0T1 {
     fn foo(&self, x: Self::X) -> T {
         todo!()
     }
