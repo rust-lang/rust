@@ -228,7 +228,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             let return_code = miri::eval_entry(tcx, entry_def_id, entry_type, &config, None)
                 .unwrap_or_else(|| {
                     #[cfg(target_os = "linux")]
-                    miri::register_retcode_sv(rustc_driver::EXIT_FAILURE);
+                    miri::native_lib::register_retcode_sv(rustc_driver::EXIT_FAILURE);
                     tcx.dcx().abort_if_errors();
                     rustc_driver::EXIT_FAILURE
                 });
@@ -724,8 +724,8 @@ fn main() {
             } else {
                 show_error!("-Zmiri-native-lib `{}` does not exist", filename);
             }
-        } else if arg == "-Zmiri-force-old-native-lib-mode" {
-            miri_config.force_old_native_lib = true;
+        } else if arg == "-Zmiri-native-lib-enable-tracing" {
+            miri_config.native_lib_enable_tracing = true;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-num-cpus=") {
             let num_cpus = param
                 .parse::<u32>()
@@ -797,14 +797,14 @@ fn main() {
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("crate arguments: {:?}", miri_config.args);
     #[cfg(target_os = "linux")]
-    if !miri_config.native_lib.is_empty() && !miri_config.force_old_native_lib {
+    if !miri_config.native_lib.is_empty() && miri_config.native_lib_enable_tracing {
         // FIXME: This should display a diagnostic / warning on error
         // SAFETY: If any other threads exist at this point (namely for the ctrlc
         // handler), they will not interact with anything on the main rustc/Miri
         // thread in an async-signal-unsafe way such as by accessing shared
         // semaphores, etc.; the handler only calls `sleep()` and `exit()`, which
         // are async-signal-safe, as is accessing atomics
-        let _ = unsafe { miri::init_sv() };
+        let _ = unsafe { miri::native_lib::init_sv() };
     }
     run_compiler_and_exit(
         &rustc_args,

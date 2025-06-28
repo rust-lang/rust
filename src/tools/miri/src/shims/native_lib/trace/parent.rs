@@ -4,8 +4,8 @@ use ipc_channel::ipc;
 use nix::sys::{ptrace, signal, wait};
 use nix::unistd;
 
-use crate::shims::trace::messages::{Confirmation, MemEvents, TraceRequest};
-use crate::shims::trace::{AccessEvent, FAKE_STACK_SIZE, StartFfiInfo};
+use super::CALLBACK_STACK_SIZE;
+use super::messages::{AccessEvent, Confirmation, MemEvents, StartFfiInfo, TraceRequest};
 
 /// The flags to use when calling `waitid()`.
 /// Since bitwise or on the nix version of these flags is implemented as a trait,
@@ -263,7 +263,7 @@ pub fn sv_loop(
             ExecEvent::Start(ch_info) => {
                 // All the pages that the child process is "allowed to" access.
                 ch_pages = ch_info.page_ptrs;
-                // And the fake stack it allocated for us to use later.
+                // And the temporary callback stack it allocated for us to use later.
                 ch_stack = Some(ch_info.stack_ptr);
 
                 // We received the signal and are no longer in the main listener loop,
@@ -529,111 +529,113 @@ fn handle_segfault(
     let addr = unsafe { siginfo.si_addr().addr() };
     let page_addr = addr.strict_sub(addr.strict_rem(page_size));
 
-    if ch_pages.iter().any(|pg| (*pg..pg.strict_add(page_size)).contains(&addr)) {
-        // Overall structure:
-        // - Get the address that caused the segfault
-        // - Unprotect the memory
-        // - Step 1 instruction
-        // - Parse executed code to estimate size & type of access
-        // - Reprotect the memory
-        // - Continue
-
-        // Ensure the stack is properly zeroed out!
-        for a in (ch_stack..ch_stack.strict_add(FAKE_STACK_SIZE)).step_by(ARCH_WORD_SIZE) {
-            ptrace::write(pid, std::ptr::with_exposed_provenance_mut(a), 0).unwrap();
-        }
-
-        // Guard against both architectures with upwards and downwards-growing stacks.
-        let stack_ptr = ch_stack.strict_add(FAKE_STACK_SIZE / 2);
-        let regs_bak = ptrace::getregs(pid).unwrap();
-        let mut new_regs = regs_bak;
-        let ip_prestep = regs_bak.ip();
-
-        // Move the instr ptr into the deprotection code.
-        #[expect(clippy::as_conversions)]
-        new_regs.set_ip(mempr_off as usize);
-        // Don't mess up the stack by accident!
-        new_regs.set_sp(stack_ptr);
-
-        // Modify the PAGE_ADDR global on the child process to point to the page
-        // that we want unprotected.
-        ptrace::write(
-            pid,
-            (&raw const PAGE_ADDR).cast_mut().cast(),
-            libc::c_long::try_from(page_addr).unwrap(),
-        )
-        .unwrap();
-
-        // Check if we also own the next page, and if so unprotect it in case
-        // the access spans the page boundary.
-        let flag = if ch_pages.contains(&page_addr.strict_add(page_size)) { 2 } else { 1 };
-        ptrace::write(pid, (&raw const PAGE_COUNT).cast_mut().cast(), flag).unwrap();
-
-        ptrace::setregs(pid, new_regs).unwrap();
-
-        // Our mempr_* functions end with a raise(SIGSTOP).
-        wait_for_signal(Some(pid), signal::SIGSTOP, true)?;
-
-        // Step 1 instruction.
-        ptrace::setregs(pid, regs_bak).unwrap();
-        ptrace::step(pid, None).unwrap();
-        // Don't use wait_for_signal here since 1 instruction doesn't give room
-        // for any uncertainty + we don't want it `cont()`ing randomly by accident
-        // Also, don't let it continue with unprotected memory if something errors!
-        let _ = wait::waitid(wait::Id::Pid(pid), WAIT_FLAGS).map_err(|_| ExecEnd(None))?;
-
-        // Zero out again to be safe
-        for a in (ch_stack..ch_stack.strict_add(FAKE_STACK_SIZE)).step_by(ARCH_WORD_SIZE) {
-            ptrace::write(pid, std::ptr::with_exposed_provenance_mut(a), 0).unwrap();
-        }
-
-        // Save registers and grab the bytes that were executed. This would
-        // be really nasty if it was a jump or similar but those thankfully
-        // won't do memory accesses and so can't trigger this!
-        let regs_bak = ptrace::getregs(pid).unwrap();
-        new_regs = regs_bak;
-        let ip_poststep = regs_bak.ip();
-        // We need to do reads/writes in word-sized chunks.
-        let diff = (ip_poststep.strict_sub(ip_prestep)).div_ceil(ARCH_WORD_SIZE);
-        let instr = (ip_prestep..ip_prestep.strict_add(diff)).fold(vec![], |mut ret, ip| {
-            // This only needs to be a valid pointer in the child process, not ours.
-            ret.append(
-                &mut ptrace::read(pid, std::ptr::without_provenance_mut(ip))
-                    .unwrap()
-                    .to_ne_bytes()
-                    .to_vec(),
-            );
-            ret
-        });
-
-        // Now figure out the size + type of access and log it down
-        // This will mark down e.g. the same area being read multiple times,
-        // since it's more efficient to compress the accesses at the end.
-        if capstone_disassemble(&instr, addr, cs, acc_events).is_err() {
-            // Read goes first because we need to be pessimistic.
-            acc_events.push(AccessEvent::Read(addr..addr.strict_add(ARCH_MAX_ACCESS_SIZE)));
-            acc_events.push(AccessEvent::Write(addr..addr.strict_add(ARCH_MAX_ACCESS_SIZE)));
-        }
-
-        // Reprotect everything and continue.
-        #[expect(clippy::as_conversions)]
-        new_regs.set_ip(mempr_on as usize);
-        new_regs.set_sp(stack_ptr);
-        ptrace::setregs(pid, new_regs).unwrap();
-        wait_for_signal(Some(pid), signal::SIGSTOP, true)?;
-
-        ptrace::setregs(pid, regs_bak).unwrap();
-        ptrace::syscall(pid, None).unwrap();
-        Ok(())
-    } else {
-        // This was a real segfault, so print some debug info and quit.
+    if !ch_pages.iter().any(|pg| (*pg..pg.strict_add(page_size)).contains(&addr)) {
+        // This was a real segfault (not one of the Miri memory pages), so print some debug info and
+        // quit.
         let regs = ptrace::getregs(pid).unwrap();
         eprintln!("Segfault occurred during FFI at {addr:#018x}");
         eprintln!("Expected access on pages: {ch_pages:#018x?}");
         eprintln!("Register dump: {regs:#x?}");
         ptrace::kill(pid).unwrap();
-        Err(ExecEnd(None))
+        return Err(ExecEnd(None));
     }
+
+    // Overall structure:
+    // - Get the address that caused the segfault
+    // - Unprotect the memory: we force the child to execute `mempr_off`, passing parameters via
+    //   global atomic variables. This is what we use the temporary callback stack for.
+    // - Step 1 instruction
+    // - Parse executed code to estimate size & type of access
+    // - Reprotect the memory by executing `mempr_on` in the child.
+    // - Continue
+
+    // Ensure the stack is properly zeroed out!
+    for a in (ch_stack..ch_stack.strict_add(CALLBACK_STACK_SIZE)).step_by(ARCH_WORD_SIZE) {
+        ptrace::write(pid, std::ptr::with_exposed_provenance_mut(a), 0).unwrap();
+    }
+
+    // Guard against both architectures with upwards and downwards-growing stacks.
+    let stack_ptr = ch_stack.strict_add(CALLBACK_STACK_SIZE / 2);
+    let regs_bak = ptrace::getregs(pid).unwrap();
+    let mut new_regs = regs_bak;
+    let ip_prestep = regs_bak.ip();
+
+    // Move the instr ptr into the deprotection code.
+    #[expect(clippy::as_conversions)]
+    new_regs.set_ip(mempr_off as usize);
+    // Don't mess up the stack by accident!
+    new_regs.set_sp(stack_ptr);
+
+    // Modify the PAGE_ADDR global on the child process to point to the page
+    // that we want unprotected.
+    ptrace::write(
+        pid,
+        (&raw const PAGE_ADDR).cast_mut().cast(),
+        libc::c_long::try_from(page_addr).unwrap(),
+    )
+    .unwrap();
+
+    // Check if we also own the next page, and if so unprotect it in case
+    // the access spans the page boundary.
+    let flag = if ch_pages.contains(&page_addr.strict_add(page_size)) { 2 } else { 1 };
+    ptrace::write(pid, (&raw const PAGE_COUNT).cast_mut().cast(), flag).unwrap();
+
+    ptrace::setregs(pid, new_regs).unwrap();
+
+    // Our mempr_* functions end with a raise(SIGSTOP).
+    wait_for_signal(Some(pid), signal::SIGSTOP, true)?;
+
+    // Step 1 instruction.
+    ptrace::setregs(pid, regs_bak).unwrap();
+    ptrace::step(pid, None).unwrap();
+    // Don't use wait_for_signal here since 1 instruction doesn't give room
+    // for any uncertainty + we don't want it `cont()`ing randomly by accident
+    // Also, don't let it continue with unprotected memory if something errors!
+    let _ = wait::waitid(wait::Id::Pid(pid), WAIT_FLAGS).map_err(|_| ExecEnd(None))?;
+
+    // Zero out again to be safe
+    for a in (ch_stack..ch_stack.strict_add(CALLBACK_STACK_SIZE)).step_by(ARCH_WORD_SIZE) {
+        ptrace::write(pid, std::ptr::with_exposed_provenance_mut(a), 0).unwrap();
+    }
+
+    // Save registers and grab the bytes that were executed. This would
+    // be really nasty if it was a jump or similar but those thankfully
+    // won't do memory accesses and so can't trigger this!
+    let regs_bak = ptrace::getregs(pid).unwrap();
+    new_regs = regs_bak;
+    let ip_poststep = regs_bak.ip();
+    // We need to do reads/writes in word-sized chunks.
+    let diff = (ip_poststep.strict_sub(ip_prestep)).div_ceil(ARCH_WORD_SIZE);
+    let instr = (ip_prestep..ip_prestep.strict_add(diff)).fold(vec![], |mut ret, ip| {
+        // This only needs to be a valid pointer in the child process, not ours.
+        ret.append(
+            &mut ptrace::read(pid, std::ptr::without_provenance_mut(ip))
+                .unwrap()
+                .to_ne_bytes()
+                .to_vec(),
+        );
+        ret
+    });
+
+    // Now figure out the size + type of access and log it down.
+    // This will mark down e.g. the same area being read multiple times,
+    // since it's more efficient to compress the accesses at the end.
+    if capstone_disassemble(&instr, addr, cs, acc_events).is_err() {
+        // Read goes first because we need to be pessimistic.
+        acc_events.push(AccessEvent::Read(addr..addr.strict_add(ARCH_MAX_ACCESS_SIZE)));
+        acc_events.push(AccessEvent::Write(addr..addr.strict_add(ARCH_MAX_ACCESS_SIZE)));
+    }
+
+    // Reprotect everything and continue.
+    #[expect(clippy::as_conversions)]
+    new_regs.set_ip(mempr_on as usize);
+    new_regs.set_sp(stack_ptr);
+    ptrace::setregs(pid, new_regs).unwrap();
+    wait_for_signal(Some(pid), signal::SIGSTOP, true)?;
+
+    ptrace::setregs(pid, regs_bak).unwrap();
+    ptrace::syscall(pid, None).unwrap();
+    Ok(())
 }
 
 // We only get dropped into these functions via offsetting the instr pointer

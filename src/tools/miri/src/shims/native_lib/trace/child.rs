@@ -5,9 +5,9 @@ use ipc_channel::ipc;
 use nix::sys::{ptrace, signal};
 use nix::unistd;
 
-use super::messages::{Confirmation, MemEvents, TraceRequest};
+use super::CALLBACK_STACK_SIZE;
+use super::messages::{Confirmation, MemEvents, StartFfiInfo, TraceRequest};
 use super::parent::{ChildListener, sv_loop};
-use super::{FAKE_STACK_SIZE, StartFfiInfo};
 use crate::alloc::isolated_alloc::IsolatedAlloc;
 
 static SUPERVISOR: std::sync::Mutex<Option<Supervisor>> = std::sync::Mutex::new(None);
@@ -30,7 +30,7 @@ pub struct SvInitError;
 
 impl Supervisor {
     /// Returns `true` if the supervisor process exists, and `false` otherwise.
-    pub fn poll() -> bool {
+    pub fn is_enabled() -> bool {
         SUPERVISOR.lock().unwrap().is_some()
     }
 
@@ -45,8 +45,8 @@ impl Supervisor {
     /// SAFETY: The resulting guard must be dropped *via `end_ffi`* immediately
     /// after the desired call has concluded.
     pub unsafe fn start_ffi(
-        alloc: Rc<RefCell<IsolatedAlloc>>,
-    ) -> (std::sync::MutexGuard<'static, Option<Supervisor>>, Option<*mut [u8; FAKE_STACK_SIZE]>)
+        alloc: &Rc<RefCell<IsolatedAlloc>>,
+    ) -> (std::sync::MutexGuard<'static, Option<Supervisor>>, Option<*mut [u8; CALLBACK_STACK_SIZE]>)
     {
         let mut sv_guard = SUPERVISOR.lock().unwrap();
         // If the supervisor is not initialised for whatever reason, fast-fail.
@@ -58,10 +58,10 @@ impl Supervisor {
         };
 
         // Get pointers to all the pages the supervisor must allow accesses in
-        // and prepare the fake stack.
+        // and prepare the callback stack.
         let page_ptrs = alloc.borrow().pages();
-        let raw_stack_ptr: *mut [u8; FAKE_STACK_SIZE] =
-            Box::leak(Box::new([0u8; FAKE_STACK_SIZE])).as_mut_ptr().cast();
+        let raw_stack_ptr: *mut [u8; CALLBACK_STACK_SIZE] =
+            Box::leak(Box::new([0u8; CALLBACK_STACK_SIZE])).as_mut_ptr().cast();
         let stack_ptr = raw_stack_ptr.expose_provenance();
         let start_info = StartFfiInfo { page_ptrs, stack_ptr };
 
@@ -99,9 +99,9 @@ impl Supervisor {
     /// received by a prior call to `start_ffi`, and the allocator must be the
     /// one passed to it also.
     pub unsafe fn end_ffi(
+        alloc: &Rc<RefCell<IsolatedAlloc>>,
         mut sv_guard: std::sync::MutexGuard<'static, Option<Supervisor>>,
-        alloc: Rc<RefCell<IsolatedAlloc>>,
-        raw_stack_ptr: Option<*mut [u8; FAKE_STACK_SIZE]>,
+        raw_stack_ptr: Option<*mut [u8; CALLBACK_STACK_SIZE]>,
     ) -> Option<MemEvents> {
         // We can't use IPC channels here to signal that FFI mode has ended,
         // since they might allocate memory which could get us stuck in a SIGTRAP
