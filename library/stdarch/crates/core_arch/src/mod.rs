@@ -16,6 +16,9 @@ mod riscv_shared;
 ))]
 mod arm_shared;
 
+#[cfg(any(target_arch = "loongarch32", target_arch = "loongarch64", doc))]
+mod loongarch_shared;
+
 mod simd;
 
 #[doc = include_str!("core_arch_docs.md")]
@@ -271,13 +274,25 @@ pub mod arch {
         pub use crate::core_arch::nvptx::*;
     }
 
-    /// Platform-specific intrinsics for the `loongarch` platform.
+    /// Platform-specific intrinsics for the `loongarch32` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_arch = "loongarch32", doc))]
+    #[doc(cfg(target_arch = "loongarch32"))]
+    #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+    pub mod loongarch32 {
+        pub use crate::core_arch::loongarch_shared::*;
+        pub use crate::core_arch::loongarch32::*;
+    }
+
+    /// Platform-specific intrinsics for the `loongarch64` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "loongarch64", doc))]
     #[doc(cfg(target_arch = "loongarch64"))]
     #[unstable(feature = "stdarch_loongarch", issue = "117427")]
     pub mod loongarch64 {
+        pub use crate::core_arch::loongarch_shared::*;
         pub use crate::core_arch::loongarch64::*;
     }
 
@@ -333,6 +348,10 @@ mod powerpc64;
 #[cfg(any(target_arch = "nvptx64", doc))]
 #[doc(cfg(target_arch = "nvptx64"))]
 mod nvptx;
+
+#[cfg(any(target_arch = "loongarch32", doc))]
+#[doc(cfg(target_arch = "loongarch32"))]
+mod loongarch32;
 
 #[cfg(any(target_arch = "loongarch64", doc))]
 #[doc(cfg(target_arch = "loongarch64"))]

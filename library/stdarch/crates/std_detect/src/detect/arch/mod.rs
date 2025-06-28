@@ -49,7 +49,7 @@ cfg_if! {
     } else if #[cfg(target_arch = "mips64")] {
         #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
         pub use mips64::*;
-    } else if #[cfg(target_arch = "loongarch64")] {
+    } else if #[cfg(any(target_arch = "loongarch32", target_arch = "loongarch64"))] {
         #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")]
         pub use loongarch::*;
     } else if #[cfg(target_arch = "s390x")] {

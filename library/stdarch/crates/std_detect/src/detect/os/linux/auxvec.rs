@@ -80,6 +80,7 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
             target_arch = "riscv64",
             target_arch = "mips",
             target_arch = "mips64",
+            target_arch = "loongarch32",
             target_arch = "loongarch64",
         ))]
         {
@@ -182,6 +183,7 @@ fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, ()> {
         target_arch = "riscv64",
         target_arch = "mips",
         target_arch = "mips64",
+        target_arch = "loongarch32",
         target_arch = "loongarch64",
     ))]
     {
