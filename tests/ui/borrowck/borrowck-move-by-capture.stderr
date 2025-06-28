@@ -12,7 +12,7 @@ LL |         let _h = to_fn_once(move || -> isize { *bar });
    |                             |                  move occurs because `bar` has type `Box<isize>`, which does not implement the `Copy` trait
    |                             `bar` is moved here
    |
-help: clone the value before moving it into the closure
+help: consider cloning the value before moving it into the closure
    |
 LL ~         let value = bar.clone();
 LL ~         let _h = to_fn_once(move || -> isize { value });

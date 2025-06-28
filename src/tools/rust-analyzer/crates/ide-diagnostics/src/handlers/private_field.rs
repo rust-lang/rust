@@ -1,4 +1,8 @@
-use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
+use hir::{EditionedFileId, FileRange, HasCrate, HasSource, Semantics};
+use ide_db::{RootDatabase, assists::Assist, source_change::SourceChange, text_edit::TextEdit};
+use syntax::{AstNode, TextRange, TextSize, ast::HasVisibility};
+
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: private-field
 //
@@ -16,11 +20,59 @@ pub(crate) fn private_field(ctx: &DiagnosticsContext<'_>, d: &hir::PrivateField)
         d.expr.map(|it| it.into()),
     )
     .stable()
+    .with_fixes(field_is_private_fixes(
+        &ctx.sema,
+        d.expr.file_id.original_file(ctx.sema.db),
+        d.field,
+        ctx.sema.original_range(d.expr.to_node(ctx.sema.db).syntax()).range,
+    ))
+}
+
+pub(crate) fn field_is_private_fixes(
+    sema: &Semantics<'_, RootDatabase>,
+    usage_file_id: EditionedFileId,
+    private_field: hir::Field,
+    fix_range: TextRange,
+) -> Option<Vec<Assist>> {
+    let def_crate = private_field.krate(sema.db);
+    let usage_crate = sema.file_to_module_def(usage_file_id.file_id(sema.db))?.krate();
+    let mut visibility_text = if usage_crate == def_crate { "pub(crate) " } else { "pub " };
+
+    let source = private_field.source(sema.db)?;
+    let existing_visibility = match &source.value {
+        hir::FieldSource::Named(it) => it.visibility(),
+        hir::FieldSource::Pos(it) => it.visibility(),
+    };
+    let range = match existing_visibility {
+        Some(visibility) => {
+            // If there is an existing visibility, don't insert whitespace after.
+            visibility_text = visibility_text.trim_end();
+            source.with_value(visibility.syntax()).original_file_range_opt(sema.db)?.0
+        }
+        None => {
+            let (range, _) = source.syntax().original_file_range_opt(sema.db)?;
+            FileRange {
+                file_id: range.file_id,
+                range: TextRange::at(range.range.start(), TextSize::new(0)),
+            }
+        }
+    };
+    let source_change = SourceChange::from_text_edit(
+        range.file_id.file_id(sema.db),
+        TextEdit::replace(range.range, visibility_text.into()),
+    );
+
+    Some(vec![fix(
+        "increase_field_visibility",
+        "Increase field visibility",
+        source_change,
+        fix_range,
+    )])
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_diagnostics;
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn private_field() {
@@ -29,7 +81,7 @@ mod tests {
 mod module { pub struct Struct { field: u32 } }
 fn main(s: module::Struct) {
     s.field;
-  //^^^^^^^ error: field `field` of `Struct` is private
+  //^^^^^^^ 💡 error: field `field` of `Struct` is private
 }
 "#,
         );
@@ -42,7 +94,7 @@ fn main(s: module::Struct) {
 mod module { pub struct Struct(u32); }
 fn main(s: module::Struct) {
     s.0;
-  //^^^ error: field `0` of `Struct` is private
+  //^^^ 💡 error: field `0` of `Struct` is private
 }
 "#,
         );
@@ -111,6 +163,70 @@ fn main() {
     strukt.field;
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn change_visibility_fix() {
+        check_fix(
+            r#"
+pub mod foo {
+    pub mod bar {
+        pub struct Struct {
+            field: i32,
+        }
+    }
+}
+
+fn foo(v: foo::bar::Struct) {
+    v.field$0;
+}
+            "#,
+            r#"
+pub mod foo {
+    pub mod bar {
+        pub struct Struct {
+            pub(crate) field: i32,
+        }
+    }
+}
+
+fn foo(v: foo::bar::Struct) {
+    v.field;
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn change_visibility_with_existing_visibility() {
+        check_fix(
+            r#"
+pub mod foo {
+    pub mod bar {
+        pub struct Struct {
+            pub(super) field: i32,
+        }
+    }
+}
+
+fn foo(v: foo::bar::Struct) {
+    v.field$0;
+}
+            "#,
+            r#"
+pub mod foo {
+    pub mod bar {
+        pub struct Struct {
+            pub(crate) field: i32,
+        }
+    }
+}
+
+fn foo(v: foo::bar::Struct) {
+    v.field;
+}
+            "#,
         );
     }
 }

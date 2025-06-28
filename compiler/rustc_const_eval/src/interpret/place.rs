@@ -7,7 +7,7 @@ use std::assert_matches::assert_matches;
 use either::{Either, Left, Right};
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_middle::ty::Ty;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, mir, span_bug};
 use tracing::{instrument, trace};
 
@@ -470,7 +470,7 @@ where
     ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
         let (size, _align) = self
-            .size_and_align_of_mplace(mplace)?
+            .size_and_align_of_val(mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // We check alignment separately, and *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
@@ -486,7 +486,7 @@ where
     ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
         let (size, _align) = self
-            .size_and_align_of_mplace(mplace)?
+            .size_and_align_of_val(mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // We check alignment separately, and raise that error *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
@@ -888,11 +888,11 @@ where
         trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout().ty);
 
         let dest = dest.force_mplace(self)?;
-        let Some((dest_size, _)) = self.size_and_align_of_mplace(&dest)? else {
+        let Some((dest_size, _)) = self.size_and_align_of_val(&dest)? else {
             span_bug!(self.cur_span(), "copy_op needs (dynamically) sized values")
         };
         if cfg!(debug_assertions) {
-            let src_size = self.size_and_align_of_mplace(&src)?.unwrap().0;
+            let src_size = self.size_and_align_of_val(&src)?.unwrap().0;
             assert_eq!(src_size, dest_size, "Cannot copy differently-sized data");
         } else {
             // As a cheap approximation, we compare the fixed parts of the size.
@@ -980,7 +980,7 @@ where
         kind: MemoryKind<M::MemoryKind>,
         meta: MemPlaceMeta<M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let Some((size, align)) = self.size_and_align_of(&meta, &layout)? else {
+        let Some((size, align)) = self.size_and_align_from_meta(&meta, &layout)? else {
             span_bug!(self.cur_span(), "cannot allocate space for `extern` type, size is not known")
         };
         let ptr = self.allocate_ptr(size, align, kind, AllocInit::Uninit)?;
@@ -1056,9 +1056,9 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
+    static_assert_size!(MPlaceTy<'_>, 64);
     static_assert_size!(MemPlace, 48);
     static_assert_size!(MemPlaceMeta, 24);
-    static_assert_size!(MPlaceTy<'_>, 64);
     static_assert_size!(Place, 48);
     static_assert_size!(PlaceTy<'_>, 64);
     // tidy-alphabetical-end

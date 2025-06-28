@@ -62,7 +62,7 @@ pub struct CompileTimeMachine<'tcx> {
 
     /// If `Some`, we are evaluating the initializer of the static with the given `LocalDefId`,
     /// storing the result in the given `AllocId`.
-    /// Used to prevent reads from a static's base allocation, as that may allow for self-initialization loops.
+    /// Used to prevent accesses to a static's base allocation, as that may allow for self-initialization loops.
     pub(crate) static_root_ids: Option<(AllocId, LocalDefId)>,
 
     /// A cache of "data range" computations for unions (i.e., the offsets of non-padding bytes).
@@ -705,19 +705,27 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         interp_ok(())
     }
 
-    fn before_alloc_read(ecx: &InterpCx<'tcx, Self>, alloc_id: AllocId) -> InterpResult<'tcx> {
+    fn before_alloc_access(
+        tcx: TyCtxtAt<'tcx>,
+        machine: &Self,
+        alloc_id: AllocId,
+    ) -> InterpResult<'tcx> {
+        if machine.stack.is_empty() {
+            // Get out of the way for the final copy.
+            return interp_ok(());
+        }
         // Check if this is the currently evaluated static.
-        if Some(alloc_id) == ecx.machine.static_root_ids.map(|(id, _)| id) {
+        if Some(alloc_id) == machine.static_root_ids.map(|(id, _)| id) {
             return Err(ConstEvalErrKind::RecursiveStatic).into();
         }
         // If this is another static, make sure we fire off the query to detect cycles.
         // But only do that when checks for static recursion are enabled.
-        if ecx.machine.static_root_ids.is_some() {
-            if let Some(GlobalAlloc::Static(def_id)) = ecx.tcx.try_get_global_alloc(alloc_id) {
-                if ecx.tcx.is_foreign_item(def_id) {
+        if machine.static_root_ids.is_some() {
+            if let Some(GlobalAlloc::Static(def_id)) = tcx.try_get_global_alloc(alloc_id) {
+                if tcx.is_foreign_item(def_id) {
                     throw_unsup!(ExternStatic(def_id));
                 }
-                ecx.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))?;
+                tcx.eval_static_initializer(def_id)?;
             }
         }
         interp_ok(())

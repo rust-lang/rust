@@ -40,6 +40,9 @@ declare_clippy_lint! {
     ///     # When using an inline table, can add a `reason` for why the macro
     ///     # is disallowed.
     ///     { path = "serde::Serialize", reason = "no serializing" },
+    ///     # This would normally error if the path is incorrect, but with `allow-invalid` = `true`,
+    ///     # it will be silently ignored
+    ///     { path = "std::invalid_macro", reason = "use alternative instead", allow-invalid = true }
     /// ]
     /// ```
     /// ```no_run

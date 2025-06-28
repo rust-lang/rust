@@ -1,6 +1,6 @@
 [package]
 name = "clippy_utils"
-version = "0.1.89"
+version = "0.1.90"
 edition = "2024"
 description = "Helpful tools for writing lints, provided as they are used in Clippy"
 repository = "https://github.com/rust-lang/rust-clippy"

@@ -11,12 +11,12 @@ use syntax::{AstPtr, ast};
 use triomphe::Arc;
 
 use crate::{
-    AssocItemId, AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, EnumVariantId,
-    EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
-    FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroExpander,
-    MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId,
-    StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId,
-    TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
+    AssocItemId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc,
+    EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc,
+    FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc,
+    MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId,
+    ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId,
+    TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
     attr::{Attrs, AttrsWithOwner},
     expr_store::{
         Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, scope::ExprScopes,
@@ -90,7 +90,10 @@ pub trait InternDatabase: RootQueryDb {
 
     #[salsa::interned]
     fn intern_macro_rules(&self, loc: MacroRulesLoc) -> MacroRulesId;
-    // // endregion: items
+    // endregion: items
+
+    #[salsa::interned]
+    fn intern_block(&self, loc: BlockLoc) -> BlockId;
 }
 
 #[query_group::query_group]

@@ -4,6 +4,7 @@ use std::sync::{Arc, OnceLock as OnceCell};
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
+use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_attr_data_structures::{
     AttributeKind, ConstStability, Deprecation, Stability, StableSince,
@@ -199,49 +200,49 @@ impl ExternalCrate {
             .unwrap_or(Unknown) // Well, at least we tried.
     }
 
-    pub(crate) fn keywords(&self, tcx: TyCtxt<'_>) -> ThinVec<(DefId, Symbol)> {
+    fn mapped_root_modules<T>(
+        &self,
+        tcx: TyCtxt<'_>,
+        f: impl Fn(DefId, TyCtxt<'_>) -> Option<(DefId, T)>,
+    ) -> impl Iterator<Item = (DefId, T)> {
         let root = self.def_id();
 
-        let as_keyword = |res: Res<!>| {
-            if let Res::Def(DefKind::Mod, def_id) = res {
-                let mut keyword = None;
-                let meta_items = tcx
-                    .get_attrs(def_id, sym::doc)
-                    .flat_map(|attr| attr.meta_item_list().unwrap_or_default());
-                for meta in meta_items {
-                    if meta.has_name(sym::keyword)
-                        && let Some(v) = meta.value_str()
-                    {
-                        keyword = Some(v);
-                        break;
-                    }
-                }
-                return keyword.map(|p| (def_id, p));
-            }
-            None
-        };
         if root.is_local() {
-            tcx.hir_root_module()
-                .item_ids
-                .iter()
-                .filter_map(|&id| {
-                    let item = tcx.hir_item(id);
-                    match item.kind {
-                        hir::ItemKind::Mod(..) => {
-                            as_keyword(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
-                        }
-                        _ => None,
-                    }
-                })
-                .collect()
+            Either::Left(
+                tcx.hir_root_module()
+                    .item_ids
+                    .iter()
+                    .filter(move |&&id| matches!(tcx.hir_item(id).kind, hir::ItemKind::Mod(..)))
+                    .filter_map(move |&id| f(id.owner_id.into(), tcx)),
+            )
         } else {
-            tcx.module_children(root).iter().map(|item| item.res).filter_map(as_keyword).collect()
+            Either::Right(
+                tcx.module_children(root)
+                    .iter()
+                    .filter_map(|item| {
+                        if let Res::Def(DefKind::Mod, did) = item.res { Some(did) } else { None }
+                    })
+                    .filter_map(move |did| f(did, tcx)),
+            )
         }
     }
 
-    pub(crate) fn primitives(&self, tcx: TyCtxt<'_>) -> ThinVec<(DefId, PrimitiveType)> {
-        let root = self.def_id();
+    pub(crate) fn keywords(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = (DefId, Symbol)> {
+        fn as_keyword(did: DefId, tcx: TyCtxt<'_>) -> Option<(DefId, Symbol)> {
+            tcx.get_attrs(did, sym::doc)
+                .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
+                .filter(|meta| meta.has_name(sym::keyword))
+                .find_map(|meta| meta.value_str())
+                .map(|value| (did, value))
+        }
 
+        self.mapped_root_modules(tcx, as_keyword)
+    }
+
+    pub(crate) fn primitives(
+        &self,
+        tcx: TyCtxt<'_>,
+    ) -> impl Iterator<Item = (DefId, PrimitiveType)> {
         // Collect all inner modules which are tagged as implementations of
         // primitives.
         //
@@ -259,40 +260,21 @@ impl ExternalCrate {
         // Also note that this does not attempt to deal with modules tagged
         // duplicately for the same primitive. This is handled later on when
         // rendering by delegating everything to a hash map.
-        let as_primitive = |res: Res<!>| {
-            let Res::Def(DefKind::Mod, def_id) = res else { return None };
-            tcx.get_attrs(def_id, sym::rustc_doc_primitive)
-                .map(|attr| {
-                    let attr_value = attr.value_str().expect("syntax should already be validated");
-                    let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
-                        span_bug!(
-                            attr.span(),
-                            "primitive `{attr_value}` is not a member of `PrimitiveType`"
-                        );
-                    };
+        fn as_primitive(def_id: DefId, tcx: TyCtxt<'_>) -> Option<(DefId, PrimitiveType)> {
+            tcx.get_attrs(def_id, sym::rustc_doc_primitive).next().map(|attr| {
+                let attr_value = attr.value_str().expect("syntax should already be validated");
+                let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
+                    span_bug!(
+                        attr.span(),
+                        "primitive `{attr_value}` is not a member of `PrimitiveType`"
+                    );
+                };
 
-                    (def_id, prim)
-                })
-                .next()
-        };
-
-        if root.is_local() {
-            tcx.hir_root_module()
-                .item_ids
-                .iter()
-                .filter_map(|&id| {
-                    let item = tcx.hir_item(id);
-                    match item.kind {
-                        hir::ItemKind::Mod(..) => {
-                            as_primitive(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
-                        }
-                        _ => None,
-                    }
-                })
-                .collect()
-        } else {
-            tcx.module_children(root).iter().map(|item| item.res).filter_map(as_primitive).collect()
+                (def_id, prim)
+            })
         }
+
+        self.mapped_root_modules(tcx, as_primitive)
     }
 }
 
@@ -764,15 +746,21 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    pub(crate) fn attributes_without_repr(&self, tcx: TyCtxt<'_>, is_json: bool) -> Vec<String> {
+    fn attributes_without_repr(&self, tcx: TyCtxt<'_>, is_json: bool) -> Vec<String> {
         const ALLOWED_ATTRIBUTES: &[Symbol] =
             &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
-
         self.attrs
             .other_attrs
             .iter()
             .filter_map(|attr| {
-                if is_json {
+                // NoMangle is special cased, as it appears in HTML output, and we want to show it in source form, not HIR printing.
+                // It is also used by cargo-semver-checks.
+                if let hir::Attribute::Parsed(AttributeKind::NoMangle(..)) = attr {
+                    Some("#[no_mangle]".to_string())
+                } else if let hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) = attr
+                {
+                    Some(format!("#[export_name = \"{name}\"]"))
+                } else if is_json {
                     match attr {
                         // rustdoc-json stores this in `Item::deprecation`, so we
                         // don't want it it `Item::attrs`.
@@ -785,26 +773,22 @@ impl Item {
                             s
                         }),
                     }
-                } else if attr.has_any_name(ALLOWED_ATTRIBUTES) {
+                } else {
+                    if !attr.has_any_name(ALLOWED_ATTRIBUTES) {
+                        return None;
+                    }
                     Some(
                         rustc_hir_pretty::attribute_to_string(&tcx, attr)
                             .replace("\\\n", "")
                             .replace('\n', "")
                             .replace("  ", " "),
                     )
-                } else {
-                    None
                 }
             })
             .collect()
     }
 
-    pub(crate) fn attributes_and_repr(
-        &self,
-        tcx: TyCtxt<'_>,
-        cache: &Cache,
-        is_json: bool,
-    ) -> Vec<String> {
+    pub(crate) fn attributes(&self, tcx: TyCtxt<'_>, cache: &Cache, is_json: bool) -> Vec<String> {
         let mut attrs = self.attributes_without_repr(tcx, is_json);
 
         if let Some(repr_attr) = self.repr(tcx, cache, is_json) {
@@ -1966,7 +1950,7 @@ impl PrimitiveType {
                 let e = ExternalCrate { crate_num };
                 let crate_name = e.name(tcx);
                 debug!(?crate_num, ?crate_name);
-                for &(def_id, prim) in &e.primitives(tcx) {
+                for (def_id, prim) in e.primitives(tcx) {
                     // HACK: try to link to std instead where possible
                     if crate_name == sym::core && primitive_locations.contains_key(&prim) {
                         continue;
@@ -2448,20 +2432,6 @@ pub(crate) enum ConstantKind {
     Local { def_id: DefId, body: BodyId },
     /// An inferred constant as in `[10u8; _]`.
     Infer,
-}
-
-impl Constant {
-    pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> String {
-        self.kind.expr(tcx)
-    }
-
-    pub(crate) fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        self.kind.value(tcx)
-    }
-
-    pub(crate) fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
-        self.kind.is_literal(tcx)
-    }
 }
 
 impl ConstantKind {

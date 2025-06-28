@@ -7,7 +7,7 @@ use either::{Either, Left, Right};
 use rustc_hir as hir;
 use rustc_hir::definitions::DefPathData;
 use rustc_index::IndexVec;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_mir_dataflow::impls::always_storage_live_locals;

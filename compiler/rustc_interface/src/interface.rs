@@ -18,7 +18,6 @@ use rustc_parse::parser::attr::AllowLeadingUnsafe;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
-use rustc_session::filesearch::sysroot_with_fallback;
 use rustc_session::parse::ParseSess;
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
@@ -52,10 +51,9 @@ pub struct Compiler {
 pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
-            let psess = ParseSess::with_silent_emitter(
+            let psess = ParseSess::with_fatal_emitter(
                 vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
                 format!("this error occurred on the command line: `--cfg={s}`"),
-                true,
             );
             let filename = FileName::cfg_spec_source_code(&s);
 
@@ -116,10 +114,9 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
     let mut check_cfg = CheckCfg { exhaustive_names, exhaustive_values, ..CheckCfg::default() };
 
     for s in specs {
-        let psess = ParseSess::with_silent_emitter(
+        let psess = ParseSess::with_fatal_emitter(
             vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
             format!("this error occurred on the command line: `--check-cfg={s}`"),
-            true,
         );
         let filename = FileName::cfg_spec_source_code(&s);
 
@@ -407,8 +404,11 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
     crate::callbacks::setup_callbacks();
 
-    let sysroot = config.opts.sysroot.clone();
-    let target = config::build_target_config(&early_dcx, &config.opts.target_triple, &sysroot);
+    let target = config::build_target_config(
+        &early_dcx,
+        &config.opts.target_triple,
+        config.opts.sysroot.path(),
+    );
     let file_loader = config.file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
     let path_mapping = config.opts.file_path_mapping();
     let hash_kind = config.opts.unstable_opts.src_hash_algorithm(&target);
@@ -428,7 +428,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let codegen_backend = match config.make_codegen_backend {
                 None => util::get_codegen_backend(
                     &early_dcx,
-                    &sysroot,
+                    &config.opts.sysroot,
                     config.opts.unstable_opts.codegen_backend.as_deref(),
                     &target,
                 ),
@@ -442,7 +442,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
 
             let bundle = match rustc_errors::fluent_bundle(
-                sysroot_with_fallback(&config.opts.sysroot),
+                &config.opts.sysroot.all_paths().collect::<Vec<_>>(),
                 config.opts.unstable_opts.translate_lang.clone(),
                 config.opts.unstable_opts.translate_additional_ftl.as_deref(),
                 config.opts.unstable_opts.translate_directionality_markers,
@@ -471,7 +471,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 locale_resources,
                 config.lint_caps,
                 target,
-                sysroot,
                 util::rustc_version_str().unwrap_or("unknown"),
                 config.ice_file,
                 config.using_internal_features,

@@ -1,0 +1,30 @@
+[package]
+name = "stdarch_examples"
+version = "0.0.0"
+authors = [
+    "Alex Crichton <alex@alexcrichton.com>",
+    "Andrew Gallant <jamslam@gmail.com>",
+    "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
+]
+description = "Examples of the stdarch crate."
+edition = "2024"
+default-run = "hex"
+
+[dependencies]
+core_arch = { path = "../crates/core_arch" }
+std_detect = { path = "../crates/std_detect" }
+quickcheck = "1.0"
+rand = "0.8"
+
+[[bin]]
+name = "hex"
+path = "hex.rs"
+
+[[bin]]
+name = "connect5"
+path = "connect5.rs"
+
+[[example]]
+name = "wasm"
+crate-type = ["cdylib"]
+path = "wasm.rs"

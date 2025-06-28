@@ -1,16 +1,16 @@
-error: `~const` is not allowed here
-  --> $DIR/super-traits-fail-2.rs:11:12
+error: `[const]` is not allowed here
+  --> $DIR/super-traits-fail-2.rs:11:10
    |
-LL | trait Bar: ~const Foo {}
-   |            ^^^^^^
+LL | trait Bar: [const] Foo {}
+   |          ^^^^^^^^^
    |
-note: this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
+note: this trait is not a `#[const_trait]`, so it cannot have `[const]` trait bounds
   --> $DIR/super-traits-fail-2.rs:11:1
    |
-LL | trait Bar: ~const Foo {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | trait Bar: [const] Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `T: ~const Foo` is not satisfied
+error[E0277]: the trait bound `T: [const] Foo` is not satisfied
   --> $DIR/super-traits-fail-2.rs:20:7
    |
 LL |     x.a();

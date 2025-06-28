@@ -38,7 +38,7 @@ pub(crate) fn goto_type_definition(
             }
         }
     };
-    let mut process_ty = |ty: hir::Type| {
+    let mut process_ty = |ty: hir::Type<'_>| {
         // collect from each `ty` into the `res` result vec
         let ty = ty.strip_references();
         ty.walk(db, |t| {

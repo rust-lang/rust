@@ -323,7 +323,7 @@ impl ParenthesizedArgs {
 
 pub use crate::node_id::{CRATE_NODE_ID, DUMMY_NODE_ID, NodeId};
 
-/// Modifiers on a trait bound like `~const`, `?` and `!`.
+/// Modifiers on a trait bound like `[const]`, `?` and `!`.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
 pub struct TraitBoundModifiers {
     pub constness: BoundConstness,
@@ -904,6 +904,10 @@ pub enum BorrowKind {
     /// The resulting type is either `*const T` or `*mut T`
     /// where `T = typeof($expr)`.
     Raw,
+    /// A pinned borrow, `&pin const $expr` or `&pin mut $expr`.
+    /// The resulting type is either `Pin<&'a T>` or `Pin<&'a mut T>`
+    /// where `T = typeof($expr)` and `'a` is some lifetime.
+    Pin,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
@@ -3111,7 +3115,7 @@ pub enum BoundConstness {
     Never,
     /// `Type: const Trait`
     Always(Span),
-    /// `Type: ~const Trait`
+    /// `Type: [const] Trait`
     Maybe(Span),
 }
 
@@ -3120,7 +3124,7 @@ impl BoundConstness {
         match self {
             Self::Never => "",
             Self::Always(_) => "const",
-            Self::Maybe(_) => "~const",
+            Self::Maybe(_) => "[const]",
         }
     }
 }
@@ -4060,9 +4064,9 @@ mod size_asserts {
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 72);
+    static_assert_size!(PatKind, 48);
     static_assert_size!(Path, 24);
     static_assert_size!(PathSegment, 24);
-    static_assert_size!(PatKind, 48);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
     static_assert_size!(Ty, 64);

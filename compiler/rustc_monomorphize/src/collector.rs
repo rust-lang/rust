@@ -949,6 +949,9 @@ fn visit_instance_use<'tcx>(
         }
         ty::InstanceKind::DropGlue(_, None) => {
             // Don't need to emit noop drop glue if we are calling directly.
+            //
+            // Note that we also optimize away the call to visit_instance_use in vtable construction
+            // (see create_mono_items_for_vtable_methods).
             if !is_direct_call {
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
@@ -1177,8 +1180,13 @@ fn create_mono_items_for_vtable_methods<'tcx>(
         output.extend(methods);
     }
 
-    // Also add the destructor.
-    visit_drop_use(tcx, impl_ty, false, source, output);
+    // Also add the destructor, if it's necessary.
+    //
+    // This matches the check in vtable_allocation_provider in middle/ty/vtable.rs,
+    // if we don't need drop we're not adding an actual pointer to the vtable.
+    if impl_ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized()) {
+        visit_drop_use(tcx, impl_ty, false, source, output);
+    }
 }
 
 /// Scans the CTFE alloc in order to find function pointers and statics that must be monomorphized.
@@ -1481,12 +1489,14 @@ impl<'v> RootCollector<'_, 'v> {
                 // Const items only generate mono items if they are actually used somewhere.
                 // Just declaring them is insufficient.
 
-                // But even just declaring them must collect the items they refer to
-                // unless their generics require monomorphization.
-                if !self.tcx.generics_of(id.owner_id).own_requires_monomorphization()
-                    && let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id())
-                {
-                    collect_const_value(self.tcx, val, self.output);
+                // If we're collecting items eagerly, then recurse into all constants.
+                // Otherwise the value is only collected when explicitly mentioned in other items.
+                if self.strategy == MonoItemCollectionStrategy::Eager {
+                    if !self.tcx.generics_of(id.owner_id).own_requires_monomorphization()
+                        && let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id())
+                    {
+                        collect_const_value(self.tcx, val, self.output);
+                    }
                 }
             }
             DefKind::Impl { .. } => {

@@ -37,6 +37,7 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     term_search_borrowck: true,
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
+    prefer_self_ty: false,
 };
 
 pub(crate) const TEST_CONFIG_NO_GROUPING: AssistConfig = AssistConfig {
@@ -57,6 +58,7 @@ pub(crate) const TEST_CONFIG_NO_GROUPING: AssistConfig = AssistConfig {
     term_search_borrowck: true,
     code_action_grouping: false,
     expr_fill_default: ExprFillDefaultMode::Todo,
+    prefer_self_ty: false,
 };
 
 pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
@@ -77,6 +79,7 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
     term_search_borrowck: true,
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
+    prefer_self_ty: false,
 };
 
 pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
@@ -97,6 +100,7 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     term_search_borrowck: true,
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
+    prefer_self_ty: false,
 };
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, EditionedFileId) {
@@ -111,6 +115,23 @@ pub(crate) fn check_assist(
 ) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
     check(assist, ra_fixture_before, ExpectedResult::After(&ra_fixture_after), None);
+}
+
+#[track_caller]
+pub(crate) fn check_assist_with_config(
+    assist: Handler,
+    config: AssistConfig,
+    #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+) {
+    let ra_fixture_after = trim_indent(ra_fixture_after);
+    check_with_config(
+        config,
+        assist,
+        ra_fixture_before,
+        ExpectedResult::After(&ra_fixture_after),
+        None,
+    );
 }
 
 #[track_caller]

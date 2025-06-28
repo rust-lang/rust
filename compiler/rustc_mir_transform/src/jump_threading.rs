@@ -45,7 +45,6 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, ScalarInt, TyCtxt};
 use rustc_mir_dataflow::lattice::HasBottom;
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
@@ -89,7 +88,7 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             opportunities: Vec::new(),
         };
 
-        for bb in body.basic_blocks.indices() {
+        for (bb, _) in traversal::preorder(body) {
             finder.start_from_switch(bb);
         }
 

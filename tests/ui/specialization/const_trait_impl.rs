@@ -10,7 +10,7 @@ pub unsafe trait Sup {
 
 #[rustc_specialization_trait]
 #[const_trait]
-pub unsafe trait Sub: ~const Sup {}
+pub unsafe trait Sub: [const] Sup {}
 
 unsafe impl const Sup for u8 {
     default fn foo() -> u32 {
@@ -31,19 +31,19 @@ pub trait A {
     fn a() -> u32;
 }
 
-impl<T: ~const Default> const A for T {
+impl<T: [const] Default> const A for T {
     default fn a() -> u32 {
         2
     }
 }
 
-impl<T: ~const Default + ~const Sup> const A for T {
+impl<T: [const] Default + [const] Sup> const A for T {
     default fn a() -> u32 {
         3
     }
 }
 
-impl<T: ~const Default + ~const Sub> const A for T {
+impl<T: [const] Default + [const] Sub> const A for T {
     fn a() -> u32 {
         T::foo()
     }

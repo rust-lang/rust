@@ -31,6 +31,36 @@ pub(crate) struct AutoDiffAttr {
     pub attr_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_loop_match_attr)]
+pub(crate) struct LoopMatchAttr {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub node_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_const_continue_attr)]
+pub(crate) struct ConstContinueAttr {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub node_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_mixed_export_name_and_no_mangle)]
+pub(crate) struct MixedExportNameAndNoMangle {
+    #[label]
+    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
+    pub no_mangle_span: Span,
+    #[note]
+    pub export_name_span: Span,
+    pub no_mangle_attr: &'static str,
+    pub export_name_attr: &'static str,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]
 pub(crate) struct OuterCrateLevelAttr;
@@ -612,13 +642,6 @@ pub(crate) struct UsedStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_used_compiler_linker)]
-pub(crate) struct UsedCompilerLinker {
-    #[primary_span]
-    pub spans: Vec<Span>,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_allow_internal_unstable)]
 pub(crate) struct AllowInternalUnstable {
     #[primary_span]
@@ -1071,17 +1094,6 @@ pub(crate) struct FeaturePreviouslyDeclared<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_naked_functions_incompatible_attribute, code = E0736)]
-pub(crate) struct NakedFunctionIncompatibleAttribute {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(passes_naked_attribute)]
-    pub naked_span: Span,
-    pub attr: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_attr_only_in_functions)]
 pub(crate) struct AttrOnlyInFunctions {
     #[primary_span]
@@ -1509,7 +1521,7 @@ pub(crate) struct EnumVariantSameName<'tcx> {
     #[primary_span]
     pub variant_span: Span,
     pub dead_name: Symbol,
-    pub descr: &'tcx str,
+    pub dead_descr: &'tcx str,
 }
 
 #[derive(Subdiagnostic)]
@@ -1707,6 +1719,7 @@ impl Subdiagnostic for UnusedVariableStringInterp {
 #[derive(LintDiagnostic)]
 #[diag(passes_unused_variable_try_ignore)]
 pub(crate) struct UnusedVarTryIgnore {
+    pub name: String,
     #[subdiagnostic]
     pub sugg: UnusedVarTryIgnoreSugg,
 }

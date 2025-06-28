@@ -1,6 +1,6 @@
 //@ aux-build:staged-api.rs
 
-// Ensure that we enforce const stability of traits in `~const`/`const` bounds.
+// Ensure that we enforce const stability of traits in `[const]`/`const` bounds.
 
 #![feature(const_trait_impl)]
 
@@ -10,19 +10,19 @@ extern crate staged_api;
 use staged_api::MyTrait;
 
 #[const_trait]
-trait Foo: ~const MyTrait {
+trait Foo: [const] MyTrait {
     //~^ ERROR use of unstable const library feature `unstable`
-    type Item: ~const MyTrait;
+    type Item: [const] MyTrait;
     //~^ ERROR use of unstable const library feature `unstable`
 }
 
-const fn where_clause<T>() where T: ~const MyTrait {}
+const fn where_clause<T>() where T: [const] MyTrait {}
 //~^ ERROR use of unstable const library feature `unstable`
 
-const fn nested<T>() where T: Deref<Target: ~const MyTrait> {}
+const fn nested<T>() where T: Deref<Target: [const] MyTrait> {}
 //~^ ERROR use of unstable const library feature `unstable`
 
-const fn rpit() -> impl ~const MyTrait { Local }
+const fn rpit() -> impl [const] MyTrait { Local }
 //~^ ERROR use of unstable const library feature `unstable`
 
 struct Local;

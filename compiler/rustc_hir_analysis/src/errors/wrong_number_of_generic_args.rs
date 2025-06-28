@@ -635,7 +635,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 self.suggest_adding_type_and_const_args(err);
             }
             ExcessTypesOrConsts { .. } => {
-                // this can happen with `~const T` where T isn't a const_trait.
+                // this can happen with `[const] T` where T isn't a const_trait.
             }
             _ => unreachable!(),
         }

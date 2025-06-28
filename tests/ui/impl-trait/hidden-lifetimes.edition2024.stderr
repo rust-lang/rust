@@ -1,0 +1,26 @@
+error[E0515]: cannot return value referencing local variable `x`
+  --> $DIR/hidden-lifetimes.rs:41:5
+   |
+LL |     hide_ref(&mut res).swap(hide_ref(&mut &x));
+   |                                           -- `x` is borrowed here
+LL |     res
+   |     ^^^ returns a value referencing data owned by the current function
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/hidden-lifetimes.rs:57:38
+   |
+LL |     let x = [1, 2, 3];
+   |         - binding `x` declared here
+LL |     let short = Rc::new(RefCell::new(&x));
+   |                                      ^^ borrowed value does not live long enough
+LL |     hide_rc_refcell(long.clone()).swap(hide_rc_refcell(short));
+LL |     let res: &'static [i32; 3] = *long.borrow();
+   |              ----------------- type annotation requires that `x` is borrowed for `'static`
+LL |     res
+LL | }
+   | - `x` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0515, E0597.
+For more information about an error, try `rustc --explain E0515`.

@@ -7,15 +7,24 @@ use anyhow::Context;
 use base_db::Env;
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use la_arena::{Arena, Idx};
-use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde_derive::Deserialize;
 use serde_json::from_value;
 use span::Edition;
+use stdx::process::spawn_with_streaming_output;
 use toolchain::Tool;
 
 use crate::{CfgOverrides, InvocationStrategy};
 use crate::{ManifestPath, Sysroot};
+
+const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH: semver::Version = semver::Version {
+    major: 1,
+    minor: 82,
+    patch: 0,
+    pre: semver::Prerelease::EMPTY,
+    build: semver::BuildMetadata::EMPTY,
+};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -290,6 +299,13 @@ pub struct CargoMetadataConfig {
     pub extra_args: Vec<String>,
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, Option<String>>,
+    /// The target dir for this workspace load.
+    pub target_dir: Utf8PathBuf,
+    /// What kind of metadata are we fetching: workspace, rustc, or sysroot.
+    pub kind: &'static str,
+    /// The toolchain version, if known.
+    /// Used to conditionally enable unstable cargo features.
+    pub toolchain_version: Option<semver::Version>,
 }
 
 // Deserialize helper for the cargo metadata
@@ -382,28 +398,74 @@ impl CargoWorkspace {
                 config.targets.iter().flat_map(|it| ["--filter-platform".to_owned(), it.clone()]),
             );
         }
-        // The manifest is a rust file, so this means its a script manifest
-        if cargo_toml.is_rust_manifest() {
-            // Deliberately don't set up RUSTC_BOOTSTRAP or a nightly override here, the user should
-            // opt into it themselves.
-            other_options.push("-Zscript".to_owned());
-        }
-        if locked {
-            other_options.push("--locked".to_owned());
-        }
         if no_deps {
             other_options.push("--no-deps".to_owned());
+        }
+
+        let mut using_lockfile_copy = false;
+        // The manifest is a rust file, so this means its a script manifest
+        if cargo_toml.is_rust_manifest() {
+            other_options.push("-Zscript".to_owned());
+        } else if config
+            .toolchain_version
+            .as_ref()
+            .is_some_and(|v| *v >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH)
+        {
+            let lockfile = <_ as AsRef<Utf8Path>>::as_ref(cargo_toml).with_extension("lock");
+            let target_lockfile = config
+                .target_dir
+                .join("rust-analyzer")
+                .join("metadata")
+                .join(config.kind)
+                .join("Cargo.lock");
+            match std::fs::copy(&lockfile, &target_lockfile) {
+                Ok(_) => {
+                    using_lockfile_copy = true;
+                    other_options.push("--lockfile-path".to_owned());
+                    other_options.push(target_lockfile.to_string());
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    // There exists no lockfile yet
+                    using_lockfile_copy = true;
+                    other_options.push("--lockfile-path".to_owned());
+                    other_options.push(target_lockfile.to_string());
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to copy lock file from `{lockfile}` to `{target_lockfile}`: {e}",
+                    );
+                }
+            }
+        }
+        if using_lockfile_copy {
+            other_options.push("-Zunstable-options".to_owned());
+            meta.env("RUSTC_BOOTSTRAP", "1");
+        }
+        // No need to lock it if we copied the lockfile, we won't modify the original after all/
+        // This way cargo cannot error out on us if the lockfile requires updating.
+        if !using_lockfile_copy && locked {
+            other_options.push("--locked".to_owned());
         }
         meta.other_options(other_options);
 
         // FIXME: Fetching metadata is a slow process, as it might require
         // calling crates.io. We should be reporting progress here, but it's
         // unclear whether cargo itself supports it.
-        progress("metadata".to_owned());
+        progress("cargo metadata: started".to_owned());
 
-        (|| -> anyhow::Result<(_, _)> {
-            let output = meta.cargo_command().output()?;
+        let res = (|| -> anyhow::Result<(_, _)> {
+            let mut errored = false;
+            let output =
+                spawn_with_streaming_output(meta.cargo_command(), &mut |_| (), &mut |line| {
+                    errored = errored || line.starts_with("error") || line.starts_with("warning");
+                    if errored {
+                        progress("cargo metadata: ?".to_owned());
+                        return;
+                    }
+                    progress(format!("cargo metadata: {line}"));
+                })?;
             if !output.status.success() {
+                progress(format!("cargo metadata: failed {}", output.status));
                 let error = cargo_metadata::Error::CargoMetadata {
                     stderr: String::from_utf8(output.stderr)?,
                 }
@@ -416,8 +478,8 @@ impl CargoWorkspace {
                         current_dir,
                         config,
                         sysroot,
-                        locked,
                         true,
+                        locked,
                         progress,
                     ) {
                         return Ok((metadata, Some(error)));
@@ -431,7 +493,9 @@ impl CargoWorkspace {
                 .ok_or(cargo_metadata::Error::NoJson)?;
             Ok((cargo_metadata::MetadataCommand::parse(stdout)?, None))
         })()
-        .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))
+        .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()));
+        progress("cargo metadata: finished".to_owned());
+        res
     }
 
     pub fn new(

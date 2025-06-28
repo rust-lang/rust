@@ -168,7 +168,7 @@ fn pow_call_result_sign(cx: &LateContext<'_>, base: &Expr<'_>, exponent: &Expr<'
 
     // Rust's integer pow() functions take an unsigned exponent.
     let exponent_val = get_const_unsigned_int_eval(cx, exponent, None);
-    let exponent_is_even = exponent_val.map(|val| val % 2 == 0);
+    let exponent_is_even = exponent_val.map(|val| val.is_multiple_of(2));
 
     match (base_sign, exponent_is_even) {
         // Non-negative bases always return non-negative results, ignoring overflow.

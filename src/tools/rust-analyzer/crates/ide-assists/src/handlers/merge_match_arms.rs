@@ -105,7 +105,7 @@ fn contains_placeholder(a: &ast::MatchArm) -> bool {
 }
 
 fn are_same_types(
-    current_arm_types: &FxHashMap<String, Option<Type>>,
+    current_arm_types: &FxHashMap<String, Option<Type<'_>>>,
     arm: &ast::MatchArm,
     ctx: &AssistContext<'_>,
 ) -> bool {
@@ -121,15 +121,15 @@ fn are_same_types(
     true
 }
 
-fn get_arm_types(
-    context: &AssistContext<'_>,
+fn get_arm_types<'db>(
+    context: &AssistContext<'db>,
     arm: &ast::MatchArm,
-) -> FxHashMap<String, Option<Type>> {
-    let mut mapping: FxHashMap<String, Option<Type>> = FxHashMap::default();
+) -> FxHashMap<String, Option<Type<'db>>> {
+    let mut mapping: FxHashMap<String, Option<Type<'db>>> = FxHashMap::default();
 
-    fn recurse(
-        map: &mut FxHashMap<String, Option<Type>>,
-        ctx: &AssistContext<'_>,
+    fn recurse<'db>(
+        map: &mut FxHashMap<String, Option<Type<'db>>>,
+        ctx: &AssistContext<'db>,
         pat: &Option<ast::Pat>,
     ) {
         if let Some(local_pat) = pat {

@@ -141,13 +141,6 @@ pub(crate) struct RequiresRustAbi {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_null_on_export, code = E0648)]
-pub(crate) struct NullOnExport {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_unsupported_instruction_set, code = E0779)]
 pub(crate) struct UnsupportedInstructionSet {
     #[primary_span]
@@ -205,20 +198,6 @@ pub(crate) struct InvalidLiteralValue {
 pub(crate) struct OutOfRangeInteger {
     #[primary_span]
     #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_expected_one_argument, code = E0722)]
-pub(crate) struct ExpectedOneArgumentOptimize {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_invalid_argument, code = E0722)]
-pub(crate) struct InvalidArgumentOptimize {
-    #[primary_span]
     pub span: Span,
 }
 
@@ -748,13 +727,6 @@ pub struct UnknownArchiveKind<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_expected_used_symbol)]
-pub(crate) struct ExpectedUsedSymbol {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_multiple_main_functions)]
 #[help]
 pub(crate) struct MultipleMainFunctions {
@@ -1217,45 +1189,9 @@ pub(crate) struct ErrorCreatingImportLibrary<'a> {
     pub error: String,
 }
 
-pub struct TargetFeatureDisableOrEnable<'a> {
-    pub features: &'a [&'a str],
-    pub span: Option<Span>,
-    pub missing_features: Option<MissingFeatures>,
-}
-
-#[derive(Subdiagnostic)]
-#[help(codegen_ssa_missing_features)]
-pub struct MissingFeatures;
-
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, fluent::codegen_ssa_target_feature_disable_or_enable);
-        if let Some(span) = self.span {
-            diag.span(span);
-        };
-        if let Some(missing_features) = self.missing_features {
-            diag.subdiagnostic(missing_features);
-        }
-        diag.arg("features", self.features.join(", "));
-        diag
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_aix_strip_not_used)]
 pub(crate) struct AixStripNotUsed;
-
-#[derive(LintDiagnostic)]
-#[diag(codegen_ssa_mixed_export_name_and_no_mangle)]
-pub(crate) struct MixedExportNameAndNoMangle {
-    #[label]
-    pub no_mangle: Span,
-    pub no_mangle_attr: String,
-    #[note]
-    pub export_name: Span,
-    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
-    pub removal_span: Span,
-}
 
 #[derive(Diagnostic, Debug)]
 pub(crate) enum XcrunError {
@@ -1283,3 +1219,76 @@ pub(crate) struct XcrunSdkPathWarning {
 #[derive(LintDiagnostic)]
 #[diag(codegen_ssa_aarch64_softfloat_neon)]
 pub(crate) struct Aarch64SoftfloatNeon;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unknown_ctarget_feature_prefix)]
+#[note]
+pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
+    pub feature: &'a str,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum PossibleFeature<'a> {
+    #[help(codegen_ssa_possible_feature)]
+    Some { rust_feature: &'a str },
+    #[help(codegen_ssa_consider_filing_feature_request)]
+    None,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unknown_ctarget_feature)]
+#[note]
+pub(crate) struct UnknownCTargetFeature<'a> {
+    pub feature: &'a str,
+    #[subdiagnostic]
+    pub rust_feature: PossibleFeature<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unstable_ctarget_feature)]
+#[note]
+pub(crate) struct UnstableCTargetFeature<'a> {
+    pub feature: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_forbidden_ctarget_feature)]
+#[note]
+#[note(codegen_ssa_forbidden_ctarget_feature_issue)]
+pub(crate) struct ForbiddenCTargetFeature<'a> {
+    pub feature: &'a str,
+    pub enabled: &'a str,
+    pub reason: &'a str,
+}
+
+pub struct TargetFeatureDisableOrEnable<'a> {
+    pub features: &'a [&'a str],
+    pub span: Option<Span>,
+    pub missing_features: Option<MissingFeatures>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(codegen_ssa_missing_features)]
+pub struct MissingFeatures;
+
+impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::codegen_ssa_target_feature_disable_or_enable);
+        if let Some(span) = self.span {
+            diag.span(span);
+        };
+        if let Some(missing_features) = self.missing_features {
+            diag.subdiagnostic(missing_features);
+        }
+        diag.arg("features", self.features.join(", "));
+        diag
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_no_mangle_nameless)]
+pub(crate) struct NoMangleNameless {
+    #[primary_span]
+    pub span: Span,
+    pub definition: String,
+}

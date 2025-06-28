@@ -7,7 +7,7 @@ description = "A script to extract the lint documentation for the rustc book."
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rustc-literal-escaper = "0.0.2"
+rustc-literal-escaper = "0.0.4"
 serde_json = "1.0.57"
 tempfile = "3.1.0"
 walkdir = "2.3.1"

@@ -34,12 +34,6 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL |     fn fold<T>(&self, _: T, &self._) {}
    |                                   ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL -     fn fold<T>(&self, _: T, &self._) {}
-LL +     fn fold<T, U>(&self, _: T, &self.U) {}
-   |
 
 error: aborting due to 4 previous errors; 1 warning emitted
 

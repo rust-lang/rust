@@ -162,7 +162,6 @@ pub(crate) struct FeatureRemoved<'a> {
     #[subdiagnostic]
     pub reason: Option<FeatureRemovedReason<'a>>,
     pub removed_rustc_version: &'a str,
-    pub current_rustc_version: &'a str,
     pub pull_note: String,
 }
 
@@ -183,12 +182,12 @@ pub(crate) struct FeatureNotAllowed {
 #[derive(Diagnostic)]
 #[diag(expand_recursion_limit_reached)]
 #[help]
-pub(crate) struct RecursionLimitReached<'a> {
+pub(crate) struct RecursionLimitReached {
     #[primary_span]
     pub span: Span,
     pub descr: String,
     pub suggested_limit: Limit,
-    pub crate_name: &'a str,
+    pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]

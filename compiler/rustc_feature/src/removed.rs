@@ -54,6 +54,7 @@ declare_features! (
 
     /// Allows using the `amdgpu-kernel` ABI.
     (removed, abi_amdgpu_kernel, "1.77.0", Some(51575), None, 120495),
+    (removed, abi_c_cmse_nonsecure_call, "CURRENT_RUSTC_VERSION", Some(81391), Some("renamed to abi_cmse_nonsecure_call"), 142146),
     (removed, advanced_slice_patterns, "1.42.0", Some(62254),
      Some("merged into `#![feature(slice_patterns)]`"), 67712),
     (removed, allocator, "1.0.0", None, None),
@@ -86,7 +87,7 @@ declare_features! (
      Some("at compile-time, pointers do not have an integer value, so these casts cannot be properly supported"), 87020),
     /// Allows `T: ?const Trait` syntax in bounds.
     (removed, const_trait_bound_opt_out, "1.56.0", Some(67794),
-     Some("Removed in favor of `~const` bound in #![feature(const_trait_impl)]"), 88328),
+     Some("Removed in favor of `[const]` bound in #![feature(const_trait_impl)]"), 88328),
     /// Allows using `crate` as visibility modifier, synonymous with `pub(crate)`.
     (removed, crate_visibility_modifier, "1.63.0", Some(53120), Some("removed in favor of `pub(crate)`"), 97254),
     /// Allows using custom attributes (RFC 572).
@@ -122,7 +123,7 @@ declare_features! (
     /// [^1]: Formerly known as "object safe".
     (removed, dyn_compatible_for_dispatch, "1.87.0", Some(43561),
      Some("removed, not used heavily and represented additional complexity in dyn compatibility"), 136522),
-    /// Uses generic effect parameters for ~const bounds
+    /// Uses generic effect parameters for [const] bounds
     (removed, effects, "1.84.0", Some(102090),
      Some("removed, redundant with `#![feature(const_trait_impl)]`"), 132479),
     /// Allows defining `existential type`s.
@@ -284,5 +285,19 @@ declare_features! (
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
+    // -------------------------------------------------------------------------
+
+
+    // -------------------------------------------------------------------------
+    // feature-group-start: removed library features
+    // -------------------------------------------------------------------------
+    //
+    // FIXME(#141617): we should have a better way to track removed library features, but we reuse
+    // the infrastructure here so users still get hints. The symbols used here can be remove from
+    // `symbol.rs` when that happens.
+    (removed, concat_idents, "CURRENT_RUSTC_VERSION", Some(29599),
+     Some("use the `${concat(..)}` metavariable expression instead"), 142704),
+    // -------------------------------------------------------------------------
+    // feature-group-end: removed library features
     // -------------------------------------------------------------------------
 );

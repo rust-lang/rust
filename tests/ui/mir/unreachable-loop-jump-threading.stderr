@@ -1,0 +1,10 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/unreachable-loop-jump-threading.rs:6:5
+   |
+LL |     while true {}
+   |     ^^^^^^^^^^ help: use `loop`
+   |
+   = note: `#[warn(while_true)]` on by default
+
+warning: 1 warning emitted
+

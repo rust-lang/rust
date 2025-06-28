@@ -481,7 +481,7 @@ impl<T: ?Sized> RwLock<T> {
     /// in the returned error.
     ///
     /// This function will return the [`WouldBlock`] error if the `RwLock` could
-    /// not be acquired because it was already locked exclusively.
+    /// not be acquired because it was already locked.
     ///
     /// [`Poisoned`]: TryLockError::Poisoned
     /// [`WouldBlock`]: TryLockError::WouldBlock

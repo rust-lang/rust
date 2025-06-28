@@ -1,5 +1,5 @@
 hir_analysis_abi_custom_clothed_function =
-    items with the `"custom"` ABI can only be declared externally or defined via naked functions
+    items with the "custom" ABI can only be declared externally or defined via naked functions
     .suggestion = convert this to an `#[unsafe(naked)]` function
 
 hir_analysis_ambiguous_assoc_item = ambiguous associated {$assoc_kind} `{$assoc_ident}` in bounds of `{$qself}`
@@ -73,10 +73,10 @@ hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are fo
     .label = `for<...>` is here
 
 hir_analysis_cmse_call_generic =
-    function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
+    function pointers with the `"cmse-nonsecure-call"` ABI cannot contain generics in their type
 
 hir_analysis_cmse_entry_generic =
-    functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
+    functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
 
 hir_analysis_cmse_inputs_stack_spill =
     arguments for `{$abi}` function too large to pass via registers
@@ -447,6 +447,9 @@ hir_analysis_parenthesized_fn_trait_expansion =
 
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
+
+hir_analysis_pointee_sized_trait_object = `PointeeSized` cannot be used with trait objects
+
 hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>` precise captures list, since it is an alias
     .label = `Self` is not a generic argument, but an alias to the type of the {$what}
 

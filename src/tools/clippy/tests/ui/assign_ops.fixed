@@ -91,7 +91,7 @@ mod issue14871 {
 
     impl<T> const NumberConstants for T
     where
-        T: Number + ~const core::ops::Add,
+        T: Number + [const] core::ops::Add,
     {
         fn constant(value: usize) -> Self {
             let mut res = Self::ZERO;

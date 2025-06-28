@@ -16,7 +16,6 @@ rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 unic-langid = { version = "0.9.0", features = ["macros"] }
 # tidy-alphabetical-end

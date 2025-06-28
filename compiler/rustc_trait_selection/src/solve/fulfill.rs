@@ -14,7 +14,7 @@ use rustc_middle::ty::{
 };
 use rustc_next_trait_solver::delegate::SolverDelegate as _;
 use rustc_next_trait_solver::solve::{
-    GenerateProofTree, GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _,
+    GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _,
 };
 use rustc_span::Span;
 use thin_vec::ThinVec;
@@ -106,14 +106,11 @@ impl<'tcx> ObligationStorage<'tcx> {
             self.overflowed.extend(
                 ExtractIf::new(&mut self.pending, |(o, stalled_on)| {
                     let goal = o.as_goal();
-                    let result = <&SolverDelegate<'tcx>>::from(infcx)
-                        .evaluate_root_goal(
-                            goal,
-                            GenerateProofTree::No,
-                            o.cause.span,
-                            stalled_on.take(),
-                        )
-                        .0;
+                    let result = <&SolverDelegate<'tcx>>::from(infcx).evaluate_root_goal(
+                        goal,
+                        o.cause.span,
+                        stalled_on.take(),
+                    );
                     matches!(result, Ok(GoalEvaluation { has_changed: HasChanged::Yes, .. }))
                 })
                 .map(|(o, _)| o),
@@ -207,14 +204,7 @@ where
                     continue;
                 }
 
-                let result = delegate
-                    .evaluate_root_goal(
-                        goal,
-                        GenerateProofTree::No,
-                        obligation.cause.span,
-                        stalled_on,
-                    )
-                    .0;
+                let result = delegate.evaluate_root_goal(goal, obligation.cause.span, stalled_on);
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
                 let GoalEvaluation { certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,

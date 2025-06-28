@@ -19,9 +19,10 @@ use rustc_errors::emitter::{
 };
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
+use rustc_errors::translation::Translator;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
-    FluentBundle, LazyFallbackBundle, TerminalUrl, fallback_fluent_bundle,
+    TerminalUrl, fallback_fluent_bundle,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -148,7 +149,6 @@ pub struct Session {
     pub opts: config::Options,
     pub target_tlib_path: Arc<SearchPath>,
     pub psess: ParseSess,
-    pub sysroot: PathBuf,
     /// Input, input file path and output file path to this compilation process.
     pub io: CompilerIO,
 
@@ -455,8 +455,10 @@ impl Session {
     /// directories are also returned, for example if `--sysroot` is used but tools are missing
     /// (#125246): we also add the bin directories to the sysroot where rustc is located.
     pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
-        let search_paths = filesearch::sysroot_with_fallback(&self.sysroot)
-            .into_iter()
+        let search_paths = self
+            .opts
+            .sysroot
+            .all_paths()
             .map(|sysroot| filesearch::make_target_bin_path(&sysroot, config::host_tuple()));
 
         if self_contained {
@@ -948,8 +950,7 @@ impl Session {
 fn default_emitter(
     sopts: &config::Options,
     source_map: Arc<SourceMap>,
-    bundle: Option<Arc<FluentBundle>>,
-    fallback_bundle: LazyFallbackBundle,
+    translator: Translator,
 ) -> Box<DynEmitter> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
     let track_diagnostics = sopts.unstable_opts.track_diagnostics;
@@ -974,17 +975,11 @@ fn default_emitter(
             let short = kind.short();
 
             if let HumanReadableErrorType::AnnotateSnippet = kind {
-                let emitter = AnnotateSnippetEmitter::new(
-                    source_map,
-                    bundle,
-                    fallback_bundle,
-                    short,
-                    macro_backtrace,
-                );
+                let emitter =
+                    AnnotateSnippetEmitter::new(source_map, translator, short, macro_backtrace);
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
-                let emitter = HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
-                    .fluent_bundle(bundle)
+                let emitter = HumanEmitter::new(stderr_destination(color_config), translator)
                     .sm(source_map)
                     .short_message(short)
                     .diagnostic_width(sopts.diagnostic_width)
@@ -1006,12 +1001,11 @@ fn default_emitter(
             JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 source_map,
-                fallback_bundle,
+                translator,
                 pretty,
                 json_rendered,
                 color_config,
             )
-            .fluent_bundle(bundle)
             .ui_testing(sopts.unstable_opts.ui_testing)
             .ignored_directories_in_source_blocks(
                 sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
@@ -1030,12 +1024,11 @@ fn default_emitter(
 pub fn build_session(
     sopts: config::Options,
     io: CompilerIO,
-    bundle: Option<Arc<rustc_errors::FluentBundle>>,
+    fluent_bundle: Option<Arc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
     fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     target: Target,
-    sysroot: PathBuf,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
     using_internal_features: &'static AtomicBool,
@@ -1052,12 +1045,15 @@ pub fn build_session(
     let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
-    let fallback_bundle = fallback_fluent_bundle(
-        fluent_resources,
-        sopts.unstable_opts.translate_directionality_markers,
-    );
+    let translator = Translator {
+        fluent_bundle,
+        fallback_fluent_bundle: fallback_fluent_bundle(
+            fluent_resources,
+            sopts.unstable_opts.translate_directionality_markers,
+        ),
+    };
     let source_map = rustc_span::source_map::get_source_map().unwrap();
-    let emitter = default_emitter(&sopts, Arc::clone(&source_map), bundle, fallback_bundle);
+    let emitter = default_emitter(&sopts, Arc::clone(&source_map), translator);
 
     let mut dcx = DiagCtxt::new(emitter)
         .with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings))
@@ -1067,7 +1063,7 @@ pub fn build_session(
     }
 
     let host_triple = TargetTuple::from_tuple(config::host_tuple());
-    let (host, target_warnings) = Target::search(&host_triple, &sysroot)
+    let (host, target_warnings) = Target::search(&host_triple, sopts.sysroot.path())
         .unwrap_or_else(|e| dcx.handle().fatal(format!("Error loading host specification: {e}")));
     for warning in target_warnings.warning_messages() {
         dcx.handle().warn(warning)
@@ -1100,13 +1096,14 @@ pub fn build_session(
     let host_triple = config::host_tuple();
     let target_triple = sopts.target_triple.tuple();
     // FIXME use host sysroot?
-    let host_tlib_path = Arc::new(SearchPath::from_sysroot_and_triple(&sysroot, host_triple));
+    let host_tlib_path =
+        Arc::new(SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), host_triple));
     let target_tlib_path = if host_triple == target_triple {
         // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
         // rescanning of the target lib path and an unnecessary allocation.
         Arc::clone(&host_tlib_path)
     } else {
-        Arc::new(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
+        Arc::new(SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), target_triple))
     };
 
     let prof = SelfProfilerRef::new(
@@ -1138,7 +1135,6 @@ pub fn build_session(
         opts: sopts,
         target_tlib_path,
         psess,
-        sysroot,
         io,
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
@@ -1500,13 +1496,13 @@ impl EarlyDiagCtxt {
 fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     // FIXME(#100717): early errors aren't translated at the moment, so this is fine, but it will
     // need to reference every crate that might emit an early error for translation to work.
-    let fallback_bundle =
-        fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
+    let translator =
+        Translator::with_fallback_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
             Box::new(
-                HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
+                HumanEmitter::new(stderr_destination(color_config), translator)
                     .theme(if let HumanReadableErrorType::Unicode = kind {
                         OutputTheme::Unicode
                     } else {
@@ -1519,7 +1515,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
             Box::new(JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 Some(Arc::new(SourceMap::new(FilePathMapping::empty()))),
-                fallback_bundle,
+                translator,
                 pretty,
                 json_rendered,
                 color_config,

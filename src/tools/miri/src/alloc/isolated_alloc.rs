@@ -189,7 +189,7 @@ impl IsolatedAlloc {
         };
         assert_ne!(page_ptr.addr(), usize::MAX, "mmap failed");
         // `page_infos` has to have one bit for each `COMPRESSION_FACTOR`-sized chunk of bytes in the page.
-        assert!(self.page_size % COMPRESSION_FACTOR == 0);
+        assert!(self.page_size.is_multiple_of(COMPRESSION_FACTOR));
         self.page_infos.push(DenseBitSet::new_empty(self.page_size / COMPRESSION_FACTOR));
         self.page_ptrs.push(NonNull::new(page_ptr).unwrap());
         (NonNull::new(page_ptr).unwrap(), self.page_infos.last_mut().unwrap())

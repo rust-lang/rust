@@ -21,7 +21,9 @@ const fn test_op() {
     let _y = Custom + Custom;
 }
 
-const fn call_indirect<T: ~const Fn()>(t: &T) { t() }
+const fn call_indirect<T: [const] Fn()>(t: &T) {
+    t()
+}
 
 const fn call() {
     call_indirect(&call);

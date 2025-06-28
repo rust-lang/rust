@@ -44,10 +44,9 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
-use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
 use rustc_infer::traits::{
-    IfExpressionCause, MatchExpressionArmCause, Obligation, PredicateObligation,
-    PredicateObligations, SelectionError,
+    MatchExpressionArmCause, Obligation, PredicateObligation, PredicateObligations, SelectionError,
 };
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
@@ -59,7 +58,7 @@ use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
+    self, ImplSource, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -431,7 +430,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             } else {
                 if r_borrow_var.is_none() {
                     // create var lazily, at most once
-                    let coercion = Coercion(span);
+                    let coercion = RegionVariableOrigin::Coercion(span);
                     let r = self.next_region_var(coercion);
                     r_borrow_var = Some(r); // [4] above
                 }
@@ -549,7 +548,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
                 coerce_mutbls(mutbl_a, mutbl_b)?;
 
-                let coercion = Coercion(self.cause.span);
+                let coercion = RegionVariableOrigin::Coercion(self.cause.span);
                 let r_borrow = self.next_region_var(coercion);
 
                 // We don't allow two-phase borrows here, at least for initial
@@ -672,7 +671,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         return Err(TypeError::Mismatch);
                     }
                 }
-                Err(traits::Unimplemented) => {
+                Err(SelectionError::Unimplemented) => {
                     debug!("coerce_unsized: early return - can't prove obligation");
                     return Err(TypeError::Mismatch);
                 }
@@ -704,6 +703,19 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // be silent, as it causes a type mismatch later.
                 }
 
+                Ok(Some(ImplSource::UserDefined(impl_source))) => {
+                    queue.extend(impl_source.nested);
+                    // Certain incoherent `CoerceUnsized` implementations may cause ICEs,
+                    // so check the impl's validity. Taint the body so that we don't try
+                    // to evaluate these invalid coercions in CTFE. We only need to do this
+                    // for local impls, since upstream impls should be valid.
+                    if impl_source.impl_def_id.is_local()
+                        && let Err(guar) =
+                            self.tcx.ensure_ok().coerce_unsized_info(impl_source.impl_def_id)
+                    {
+                        self.fcx.set_tainted_by_errors(guar);
+                    }
+                }
                 Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
             }
         }
@@ -1706,14 +1718,17 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             );
                         }
                     }
-                    ObligationCauseCode::IfExpression(box IfExpressionCause {
-                        then_id,
-                        else_id,
-                        then_ty,
-                        else_ty,
+                    ObligationCauseCode::IfExpression {
+                        expr_id,
                         tail_defines_return_position_impl_trait: Some(rpit_def_id),
-                        ..
-                    }) => {
+                    } => {
+                        let hir::Node::Expr(hir::Expr {
+                            kind: hir::ExprKind::If(_, then_expr, Some(else_expr)),
+                            ..
+                        }) = fcx.tcx.hir_node(expr_id)
+                        else {
+                            unreachable!();
+                        };
                         err = fcx.err_ctxt().report_mismatched_types(
                             cause,
                             fcx.param_env,
@@ -1721,24 +1736,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             found,
                             coercion_error,
                         );
-                        let then_span = fcx.find_block_span_from_hir_id(then_id);
-                        let else_span = fcx.find_block_span_from_hir_id(else_id);
-                        // don't suggest wrapping either blocks in `if .. {} else {}`
-                        let is_empty_arm = |id| {
-                            let hir::Node::Block(blk) = fcx.tcx.hir_node(id) else {
-                                return false;
-                            };
-                            if blk.expr.is_some() || !blk.stmts.is_empty() {
-                                return false;
-                            }
-                            let Some((_, hir::Node::Expr(expr))) =
-                                fcx.tcx.hir_parent_iter(id).nth(1)
-                            else {
-                                return false;
-                            };
-                            matches!(expr.kind, hir::ExprKind::If(..))
-                        };
-                        if !is_empty_arm(then_id) && !is_empty_arm(else_id) {
+                        let then_span = fcx.find_block_span_from_hir_id(then_expr.hir_id);
+                        let else_span = fcx.find_block_span_from_hir_id(else_expr.hir_id);
+                        // Don't suggest wrapping whole block in `Box::new`.
+                        if then_span != then_expr.span && else_span != else_expr.span {
+                            let then_ty = fcx.typeck_results.borrow().expr_ty(then_expr);
+                            let else_ty = fcx.typeck_results.borrow().expr_ty(else_expr);
                             self.suggest_boxing_tail_for_return_position_impl_trait(
                                 fcx,
                                 &mut err,

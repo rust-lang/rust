@@ -652,8 +652,10 @@ mod llvm_enzyme {
                 exprs = ecx.expr_call(new_decl_span, bb_call_expr, thin_vec![exprs]);
             } else {
                 let q = QSelf { ty: d_ret_ty, path_span: span, position: 0 };
-                let y =
-                    ExprKind::Path(Some(P(q)), ecx.path_ident(span, Ident::from_str("default")));
+                let y = ExprKind::Path(
+                    Some(P(q)),
+                    ecx.path_ident(span, Ident::with_dummy_span(kw::Default)),
+                );
                 let default_call_expr = ecx.expr(span, y);
                 let default_call_expr =
                     ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);

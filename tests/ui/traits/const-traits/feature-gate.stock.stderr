@@ -9,10 +9,10 @@ LL | impl const T for S {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/feature-gate.rs:13:15
+  --> $DIR/feature-gate.rs:13:13
    |
-LL | const fn f<A: ~const T>() {}
-   |               ^^^^^^
+LL | const fn f<A: [const] T>() {}
+   |             ^^^^^^^^^
    |
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
@@ -29,10 +29,10 @@ LL | fn g<A: const T>() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/feature-gate.rs:18:17
+  --> $DIR/feature-gate.rs:18:12
    |
-LL | discard! { impl ~const T }
-   |                 ^^^^^^
+LL | discard! { impl [const] T }
+   |            ^^^^^^^^^^^^
    |
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable

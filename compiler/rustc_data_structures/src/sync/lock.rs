@@ -1,8 +1,6 @@
 //! This module implements a lock which only uses synchronization if `might_be_dyn_thread_safe` is true.
 //! It implements `DynSend` and `DynSync` instead of the typical `Send` and `Sync` traits.
 
-#![allow(dead_code)]
-
 use std::fmt;
 
 #[derive(Clone, Copy, PartialEq)]

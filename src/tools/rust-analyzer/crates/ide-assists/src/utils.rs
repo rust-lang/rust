@@ -405,7 +405,7 @@ pub(crate) fn does_pat_variant_nested_or_literal(ctx: &AssistContext<'_>, pat: &
 }
 
 fn check_pat_variant_from_enum(ctx: &AssistContext<'_>, pat: &ast::Pat) -> bool {
-    ctx.sema.type_of_pat(pat).is_none_or(|ty: hir::TypeInfo| {
+    ctx.sema.type_of_pat(pat).is_none_or(|ty: hir::TypeInfo<'_>| {
         ty.adjusted().as_adt().is_some_and(|adt| matches!(adt, hir::Adt::Enum(_)))
     })
 }
@@ -780,9 +780,9 @@ pub(crate) fn add_method_to_adt(
 }
 
 #[derive(Debug)]
-pub(crate) struct ReferenceConversion {
+pub(crate) struct ReferenceConversion<'db> {
     conversion: ReferenceConversionType,
-    ty: hir::Type,
+    ty: hir::Type<'db>,
     impls_deref: bool,
 }
 
@@ -802,10 +802,10 @@ enum ReferenceConversionType {
     Result,
 }
 
-impl ReferenceConversion {
+impl<'db> ReferenceConversion<'db> {
     pub(crate) fn convert_type(
         &self,
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         display_target: DisplayTarget,
     ) -> ast::Type {
         let ty = match self.conversion {
@@ -878,11 +878,11 @@ impl ReferenceConversion {
 // FIXME: It should return a new hir::Type, but currently constructing new types is too cumbersome
 //        and all users of this function operate on string type names, so they can do the conversion
 //        itself themselves.
-pub(crate) fn convert_reference_type(
-    ty: hir::Type,
-    db: &RootDatabase,
-    famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversion> {
+pub(crate) fn convert_reference_type<'db>(
+    ty: hir::Type<'db>,
+    db: &'db RootDatabase,
+    famous_defs: &FamousDefs<'_, 'db>,
+) -> Option<ReferenceConversion<'db>> {
     handle_copy(&ty, db)
         .or_else(|| handle_as_ref_str(&ty, db, famous_defs))
         .or_else(|| handle_as_ref_slice(&ty, db, famous_defs))
@@ -892,18 +892,21 @@ pub(crate) fn convert_reference_type(
         .map(|(conversion, impls_deref)| ReferenceConversion { ty, conversion, impls_deref })
 }
 
-fn could_deref_to_target(ty: &hir::Type, target: &hir::Type, db: &dyn HirDatabase) -> bool {
+fn could_deref_to_target(ty: &hir::Type<'_>, target: &hir::Type<'_>, db: &dyn HirDatabase) -> bool {
     let ty_ref = ty.add_reference(hir::Mutability::Shared);
     let target_ref = target.add_reference(hir::Mutability::Shared);
     ty_ref.could_coerce_to(db, &target_ref)
 }
 
-fn handle_copy(ty: &hir::Type, db: &dyn HirDatabase) -> Option<(ReferenceConversionType, bool)> {
+fn handle_copy(
+    ty: &hir::Type<'_>,
+    db: &dyn HirDatabase,
+) -> Option<(ReferenceConversionType, bool)> {
     ty.is_copy(db).then_some((ReferenceConversionType::Copy, true))
 }
 
 fn handle_as_ref_str(
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
@@ -914,7 +917,7 @@ fn handle_as_ref_str(
 }
 
 fn handle_as_ref_slice(
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
@@ -928,7 +931,7 @@ fn handle_as_ref_slice(
 }
 
 fn handle_dereferenced(
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
@@ -941,7 +944,7 @@ fn handle_dereferenced(
 }
 
 fn handle_option_as_ref(
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
@@ -953,7 +956,7 @@ fn handle_option_as_ref(
 }
 
 fn handle_result_as_ref(
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {

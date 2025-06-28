@@ -309,23 +309,23 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
 }
 
 #[derive(Debug)]
-struct Function {
+struct Function<'db> {
     name: ast::NameRef,
     self_param: Option<ast::SelfParam>,
-    params: Vec<Param>,
-    control_flow: ControlFlow,
-    ret_ty: RetType,
+    params: Vec<Param<'db>>,
+    control_flow: ControlFlow<'db>,
+    ret_ty: RetType<'db>,
     body: FunctionBody,
     outliving_locals: Vec<OutlivedLocal>,
     /// Whether at least one of the container's tail expr is contained in the range we're extracting.
     contains_tail_expr: bool,
-    mods: ContainerInfo,
+    mods: ContainerInfo<'db>,
 }
 
 #[derive(Debug)]
-struct Param {
+struct Param<'db> {
     var: Local,
-    ty: hir::Type,
+    ty: hir::Type<'db>,
     move_local: bool,
     requires_mut: bool,
     is_copy: bool,
@@ -340,10 +340,10 @@ enum ParamKind {
 }
 
 #[derive(Debug)]
-enum FunType {
+enum FunType<'db> {
     Unit,
-    Single(hir::Type),
-    Tuple(Vec<hir::Type>),
+    Single(hir::Type<'db>),
+    Tuple(Vec<hir::Type<'db>>),
 }
 
 /// Where to put extracted function definition
@@ -358,19 +358,19 @@ enum Anchor {
 // FIXME: ControlFlow and ContainerInfo both track some function modifiers, feels like these two should
 // probably be merged somehow.
 #[derive(Debug)]
-struct ControlFlow {
-    kind: Option<FlowKind>,
+struct ControlFlow<'db> {
+    kind: Option<FlowKind<'db>>,
     is_async: bool,
     is_unsafe: bool,
 }
 
 /// The thing whose expression we are extracting from. Can be a function, const, static, const arg, ...
 #[derive(Clone, Debug)]
-struct ContainerInfo {
+struct ContainerInfo<'db> {
     is_const: bool,
     parent_loop: Option<SyntaxNode>,
     /// The function's return type, const's type etc.
-    ret_type: Option<hir::Type>,
+    ret_type: Option<hir::Type<'db>>,
     generic_param_lists: Vec<ast::GenericParamList>,
     where_clauses: Vec<ast::WhereClause>,
     edition: Edition,
@@ -389,11 +389,11 @@ struct ContainerInfo {
 /// }
 /// ```
 #[derive(Debug, Clone)]
-enum FlowKind {
+enum FlowKind<'db> {
     /// Return with value (`return $expr;`)
     Return(Option<ast::Expr>),
     Try {
-        kind: TryKind,
+        kind: TryKind<'db>,
     },
     /// Break with label and value (`break 'label $expr;`)
     Break(Option<ast::Lifetime>, Option<ast::Expr>),
@@ -402,18 +402,18 @@ enum FlowKind {
 }
 
 #[derive(Debug, Clone)]
-enum TryKind {
+enum TryKind<'db> {
     Option,
-    Result { ty: hir::Type },
+    Result { ty: hir::Type<'db> },
 }
 
 #[derive(Debug)]
-enum RetType {
-    Expr(hir::Type),
+enum RetType<'db> {
+    Expr(hir::Type<'db>),
     Stmt,
 }
 
-impl RetType {
+impl RetType<'_> {
     fn is_unit(&self) -> bool {
         match self {
             RetType::Expr(ty) => ty.is_unit(),
@@ -456,8 +456,8 @@ impl LocalUsages {
     }
 }
 
-impl Function {
-    fn return_type(&self, ctx: &AssistContext<'_>) -> FunType {
+impl<'db> Function<'db> {
+    fn return_type(&self, ctx: &AssistContext<'db>) -> FunType<'db> {
         match &self.ret_ty {
             RetType::Expr(ty) if ty.is_unit() => FunType::Unit,
             RetType::Expr(ty) => FunType::Single(ty.clone()),
@@ -487,7 +487,7 @@ impl ParamKind {
     }
 }
 
-impl Param {
+impl<'db> Param<'db> {
     fn kind(&self) -> ParamKind {
         match (self.move_local, self.requires_mut, self.is_copy) {
             (false, true, _) => ParamKind::MutRef,
@@ -497,7 +497,7 @@ impl Param {
         }
     }
 
-    fn to_arg(&self, ctx: &AssistContext<'_>, edition: Edition) -> ast::Expr {
+    fn to_arg(&self, ctx: &AssistContext<'db>, edition: Edition) -> ast::Expr {
         let var = path_expr_from_local(ctx, self.var, edition);
         match self.kind() {
             ParamKind::Value | ParamKind::MutValue => var,
@@ -532,8 +532,12 @@ impl Param {
     }
 }
 
-impl TryKind {
-    fn of_ty(ty: hir::Type, ctx: &AssistContext<'_>, edition: Edition) -> Option<TryKind> {
+impl<'db> TryKind<'db> {
+    fn of_ty(
+        ty: hir::Type<'db>,
+        ctx: &AssistContext<'db>,
+        edition: Edition,
+    ) -> Option<TryKind<'db>> {
         if ty.is_unknown() {
             // We favour Result for `expr?`
             return Some(TryKind::Result { ty });
@@ -551,7 +555,7 @@ impl TryKind {
     }
 }
 
-impl FlowKind {
+impl<'db> FlowKind<'db> {
     fn make_result_handler(&self, expr: Option<ast::Expr>) -> ast::Expr {
         match self {
             FlowKind::Return(_) => make::expr_return(expr),
@@ -567,7 +571,7 @@ impl FlowKind {
         }
     }
 
-    fn expr_ty(&self, ctx: &AssistContext<'_>) -> Option<hir::Type> {
+    fn expr_ty(&self, ctx: &AssistContext<'db>) -> Option<hir::Type<'db>> {
         match self {
             FlowKind::Return(Some(expr)) | FlowKind::Break(_, Some(expr)) => {
                 ctx.sema.type_of_expr(expr).map(TypeInfo::adjusted)
@@ -876,11 +880,11 @@ impl FunctionBody {
         (res, self_param)
     }
 
-    fn analyze_container(
+    fn analyze_container<'db>(
         &self,
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         edition: Edition,
-    ) -> Option<(ContainerInfo, bool)> {
+    ) -> Option<(ContainerInfo<'db>, bool)> {
         let mut ancestors = self.parent()?.ancestors();
         let infer_expr_opt = |expr| sema.type_of_expr(&expr?).map(TypeInfo::adjusted);
         let mut parent_loop = None;
@@ -985,7 +989,7 @@ impl FunctionBody {
         ))
     }
 
-    fn return_ty(&self, ctx: &AssistContext<'_>) -> Option<RetType> {
+    fn return_ty<'db>(&self, ctx: &AssistContext<'db>) -> Option<RetType<'db>> {
         match self.tail_expr() {
             Some(expr) => ctx.sema.type_of_expr(&expr).map(TypeInfo::original).map(RetType::Expr),
             None => Some(RetType::Stmt),
@@ -1006,11 +1010,11 @@ impl FunctionBody {
     }
 
     /// Analyses the function body for external control flow.
-    fn external_control_flow(
+    fn external_control_flow<'db>(
         &self,
-        ctx: &AssistContext<'_>,
-        container_info: &ContainerInfo,
-    ) -> Option<ControlFlow> {
+        ctx: &AssistContext<'db>,
+        container_info: &ContainerInfo<'db>,
+    ) -> Option<ControlFlow<'db>> {
         let mut ret_expr = None;
         let mut try_expr = None;
         let mut break_expr = None;
@@ -1096,12 +1100,12 @@ impl FunctionBody {
     /// find variables that should be extracted as params
     ///
     /// Computes additional info that affects param type and mutability
-    fn extracted_function_params(
+    fn extracted_function_params<'db>(
         &self,
-        ctx: &AssistContext<'_>,
-        container_info: &ContainerInfo,
+        ctx: &AssistContext<'db>,
+        container_info: &ContainerInfo<'db>,
         locals: FxIndexSet<Local>,
-    ) -> Vec<Param> {
+    ) -> Vec<Param<'db>> {
         locals
             .into_iter()
             .sorted()
@@ -1449,7 +1453,7 @@ fn fixup_call_site(builder: &mut SourceChangeBuilder, body: &FunctionBody) {
     }
 }
 
-fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> SyntaxNode {
+fn make_call(ctx: &AssistContext<'_>, fun: &Function<'_>, indent: IndentLevel) -> SyntaxNode {
     let ret_ty = fun.return_type(ctx);
 
     let args = make::arg_list(fun.params.iter().map(|param| param.to_arg(ctx, fun.mods.edition)));
@@ -1508,17 +1512,17 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> Sy
     }
 }
 
-enum FlowHandler {
+enum FlowHandler<'db> {
     None,
-    Try { kind: TryKind },
-    If { action: FlowKind },
-    IfOption { action: FlowKind },
-    MatchOption { none: FlowKind },
-    MatchResult { err: FlowKind },
+    Try { kind: TryKind<'db> },
+    If { action: FlowKind<'db> },
+    IfOption { action: FlowKind<'db> },
+    MatchOption { none: FlowKind<'db> },
+    MatchResult { err: FlowKind<'db> },
 }
 
-impl FlowHandler {
-    fn from_ret_ty(fun: &Function, ret_ty: &FunType) -> FlowHandler {
+impl<'db> FlowHandler<'db> {
+    fn from_ret_ty(fun: &Function<'db>, ret_ty: &FunType<'db>) -> FlowHandler<'db> {
         if fun.contains_tail_expr {
             return FlowHandler::None;
         }
@@ -1628,7 +1632,7 @@ fn path_expr_from_local(ctx: &AssistContext<'_>, var: Local, edition: Edition) -
 fn format_function(
     ctx: &AssistContext<'_>,
     module: hir::Module,
-    fun: &Function,
+    fun: &Function<'_>,
     old_indent: IndentLevel,
 ) -> ast::Fn {
     let fun_name = make::name(&fun.name.text());
@@ -1654,7 +1658,7 @@ fn format_function(
 
 fn make_generic_params_and_where_clause(
     ctx: &AssistContext<'_>,
-    fun: &Function,
+    fun: &Function<'_>,
 ) -> (Option<ast::GenericParamList>, Option<ast::WhereClause>) {
     let used_type_params = fun.type_params(ctx);
 
@@ -1666,7 +1670,7 @@ fn make_generic_params_and_where_clause(
 
 fn make_generic_param_list(
     ctx: &AssistContext<'_>,
-    fun: &Function,
+    fun: &Function<'_>,
     used_type_params: &[TypeParam],
 ) -> Option<ast::GenericParamList> {
     let mut generic_params = fun
@@ -1703,7 +1707,7 @@ fn param_is_required(
 
 fn make_where_clause(
     ctx: &AssistContext<'_>,
-    fun: &Function,
+    fun: &Function<'_>,
     used_type_params: &[TypeParam],
 ) -> Option<ast::WhereClause> {
     let mut predicates = fun
@@ -1743,9 +1747,9 @@ fn resolved_type_param(ctx: &AssistContext<'_>, pred: &ast::WherePred) -> Option
     }
 }
 
-impl Function {
+impl<'db> Function<'db> {
     /// Collect all the `TypeParam`s used in the `body` and `params`.
-    fn type_params(&self, ctx: &AssistContext<'_>) -> Vec<TypeParam> {
+    fn type_params(&self, ctx: &AssistContext<'db>) -> Vec<TypeParam> {
         let type_params_in_descendant_paths =
             self.body.descendant_paths().filter_map(|it| match ctx.sema.resolve_path(&it) {
                 Some(PathResolution::TypeParam(type_param)) => Some(type_param),
@@ -1808,8 +1812,8 @@ impl Function {
     }
 }
 
-impl FunType {
-    fn make_ty(&self, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Type {
+impl<'db> FunType<'db> {
+    fn make_ty(&self, ctx: &AssistContext<'db>, module: hir::Module) -> ast::Type {
         match self {
             FunType::Unit => make::ty_unit(),
             FunType::Single(ty) => make_ty(ty, ctx, module),
@@ -1831,7 +1835,11 @@ impl FunType {
     }
 }
 
-fn make_body(ctx: &AssistContext<'_>, old_indent: IndentLevel, fun: &Function) -> ast::BlockExpr {
+fn make_body(
+    ctx: &AssistContext<'_>,
+    old_indent: IndentLevel,
+    fun: &Function<'_>,
+) -> ast::BlockExpr {
     let ret_ty = fun.return_type(ctx);
     let handler = FlowHandler::from_ret_ty(fun, &ret_ty);
 
@@ -2009,19 +2017,19 @@ fn with_tail_expr(block: ast::BlockExpr, tail_expr: ast::Expr) -> ast::BlockExpr
     make::hacky_block_expr(elements, Some(tail_expr))
 }
 
-fn format_type(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> String {
+fn format_type(ty: &hir::Type<'_>, ctx: &AssistContext<'_>, module: hir::Module) -> String {
     ty.display_source_code(ctx.db(), module.into(), true).ok().unwrap_or_else(|| "_".to_owned())
 }
 
-fn make_ty(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Type {
+fn make_ty(ty: &hir::Type<'_>, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Type {
     let ty_str = format_type(ty, ctx, module);
     make::ty(&ty_str)
 }
 
 fn rewrite_body_segment(
     ctx: &AssistContext<'_>,
-    params: &[Param],
-    handler: &FlowHandler,
+    params: &[Param<'_>],
+    handler: &FlowHandler<'_>,
     syntax: &SyntaxNode,
 ) -> SyntaxNode {
     let syntax = fix_param_usages(ctx, params, syntax);
@@ -2030,8 +2038,12 @@ fn rewrite_body_segment(
 }
 
 /// change all usages to account for added `&`/`&mut` for some params
-fn fix_param_usages(ctx: &AssistContext<'_>, params: &[Param], syntax: &SyntaxNode) -> SyntaxNode {
-    let mut usages_for_param: Vec<(&Param, Vec<ast::Expr>)> = Vec::new();
+fn fix_param_usages(
+    ctx: &AssistContext<'_>,
+    params: &[Param<'_>],
+    syntax: &SyntaxNode,
+) -> SyntaxNode {
+    let mut usages_for_param: Vec<(&Param<'_>, Vec<ast::Expr>)> = Vec::new();
 
     let tm = TreeMutator::new(syntax);
 
@@ -2085,7 +2097,7 @@ fn fix_param_usages(ctx: &AssistContext<'_>, params: &[Param], syntax: &SyntaxNo
     res
 }
 
-fn update_external_control_flow(handler: &FlowHandler, syntax: &SyntaxNode) {
+fn update_external_control_flow(handler: &FlowHandler<'_>, syntax: &SyntaxNode) {
     let mut nested_loop = None;
     let mut nested_scope = None;
     for event in syntax.preorder() {
@@ -2146,7 +2158,10 @@ fn update_external_control_flow(handler: &FlowHandler, syntax: &SyntaxNode) {
     }
 }
 
-fn make_rewritten_flow(handler: &FlowHandler, arg_expr: Option<ast::Expr>) -> Option<ast::Expr> {
+fn make_rewritten_flow(
+    handler: &FlowHandler<'_>,
+    arg_expr: Option<ast::Expr>,
+) -> Option<ast::Expr> {
     let value = match handler {
         FlowHandler::None | FlowHandler::Try { .. } => return None,
         FlowHandler::If { .. } => make::expr_call(
