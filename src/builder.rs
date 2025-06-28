@@ -1105,7 +1105,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn store(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
+    fn store(&mut self, mut val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
+        if self.structs_as_pointer.borrow().contains(&val) {
+            // NOTE: hack to workaround a limitation of the rustc API: see comment on
+            // CodegenCx.structs_as_pointer
+            val = val.dereference(self.location).to_rvalue();
+        }
+
         self.store_with_flags(val, ptr, align, MemFlags::empty())
     }
 
