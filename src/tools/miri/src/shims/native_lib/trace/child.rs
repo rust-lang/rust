@@ -30,7 +30,7 @@ pub struct SvInitError;
 
 impl Supervisor {
     /// Returns `true` if the supervisor process exists, and `false` otherwise.
-    pub fn poll() -> bool {
+    pub fn is_enabled() -> bool {
         SUPERVISOR.lock().unwrap().is_some()
     }
 
@@ -45,7 +45,7 @@ impl Supervisor {
     /// SAFETY: The resulting guard must be dropped *via `end_ffi`* immediately
     /// after the desired call has concluded.
     pub unsafe fn start_ffi(
-        alloc: Rc<RefCell<IsolatedAlloc>>,
+        alloc: &Rc<RefCell<IsolatedAlloc>>,
     ) -> (std::sync::MutexGuard<'static, Option<Supervisor>>, Option<*mut [u8; FAKE_STACK_SIZE]>)
     {
         let mut sv_guard = SUPERVISOR.lock().unwrap();
@@ -99,8 +99,8 @@ impl Supervisor {
     /// received by a prior call to `start_ffi`, and the allocator must be the
     /// one passed to it also.
     pub unsafe fn end_ffi(
+        alloc: &Rc<RefCell<IsolatedAlloc>>,
         mut sv_guard: std::sync::MutexGuard<'static, Option<Supervisor>>,
-        alloc: Rc<RefCell<IsolatedAlloc>>,
         raw_stack_ptr: Option<*mut [u8; FAKE_STACK_SIZE]>,
     ) -> Option<MemEvents> {
         // We can't use IPC channels here to signal that FFI mode has ended,

@@ -4,8 +4,8 @@ use ipc_channel::ipc;
 use nix::sys::{ptrace, signal, wait};
 use nix::unistd;
 
-use crate::shims::trace::messages::{Confirmation, MemEvents, TraceRequest};
-use crate::shims::trace::{AccessEvent, FAKE_STACK_SIZE, StartFfiInfo};
+use super::messages::{Confirmation, MemEvents, TraceRequest};
+use super::{AccessEvent, FAKE_STACK_SIZE, StartFfiInfo};
 
 /// The flags to use when calling `waitid()`.
 /// Since bitwise or on the nix version of these flags is implemented as a trait,
@@ -532,10 +532,11 @@ fn handle_segfault(
     if ch_pages.iter().any(|pg| (*pg..pg.strict_add(page_size)).contains(&addr)) {
         // Overall structure:
         // - Get the address that caused the segfault
-        // - Unprotect the memory
+        // - Unprotect the memory: we force the child to execute `mempr_off`, passing
+        //   parameters via global atomic variables.
         // - Step 1 instruction
         // - Parse executed code to estimate size & type of access
-        // - Reprotect the memory
+        // - Reprotect the memory by executing `mempr_on` in the child.
         // - Continue
 
         // Ensure the stack is properly zeroed out!
@@ -606,7 +607,7 @@ fn handle_segfault(
             ret
         });
 
-        // Now figure out the size + type of access and log it down
+        // Now figure out the size + type of access and log it down.
         // This will mark down e.g. the same area being read multiple times,
         // since it's more efficient to compress the accesses at the end.
         if capstone_disassemble(&instr, addr, cs, acc_events).is_err() {
