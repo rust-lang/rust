@@ -127,6 +127,7 @@ pub(crate) enum AssocItemNotFoundSugg<'a> {
     SimilarInOtherTrait {
         #[primary_span]
         span: Span,
+        trait_name: &'a str,
         assoc_kind: &'static str,
         suggested_name: Symbol,
     },
@@ -315,6 +316,13 @@ pub(crate) struct TraitObjectDeclaredWithNoTraits {
     pub span: Span,
     #[label(hir_analysis_alias_span)]
     pub trait_alias_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_pointee_sized_trait_object)]
+pub(crate) struct PointeeSizedTraitObject {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

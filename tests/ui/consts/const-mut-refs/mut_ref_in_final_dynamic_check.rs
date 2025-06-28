@@ -16,7 +16,7 @@ static mut BUFFER: i32 = 42;
 const fn helper() -> Option<&'static mut i32> { unsafe {
     Some(&mut *std::ptr::addr_of_mut!(BUFFER))
 } }
-const MUT: Option<&mut i32> = helper(); //~ ERROR encountered reference to mutable
+const MUT: Option<&mut i32> = helper(); //~ ERROR encountered mutable reference
 
 const fn helper_int2ptr() -> Option<&'static mut i32> { unsafe {
     // Undefined behaviour (integer as pointer), who doesn't love tests like this.

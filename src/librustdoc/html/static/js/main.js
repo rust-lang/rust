@@ -1,6 +1,6 @@
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass, updateLocalStorage */
-/* global onEachLazy, removeClass, getVar */
+/* global onEachLazy, removeClass, getVar, nonnull */
 
 "use strict";
 
@@ -2136,5 +2136,33 @@ function preLoadCss(cssUrl) {
     onEachLazy(document.querySelectorAll(".docblock .example-wrap"), elem => {
         elem.addEventListener("mouseover", addCopyButton);
         elem.addEventListener("click", showHideCodeExampleButtons);
+    });
+}());
+
+// This section is a bugfix for firefox: when copying text with `user-select: none`, it adds
+// extra backline characters.
+//
+// Rustdoc issue: Workaround for https://github.com/rust-lang/rust/issues/141464
+// Firefox issue: https://bugzilla.mozilla.org/show_bug.cgi?id=1273836
+(function() {
+    document.body.addEventListener("copy", event => {
+        let target = nonnull(event.target);
+        let isInsideCode = false;
+        while (target && target !== document.body) {
+            // @ts-expect-error
+            if (target.tagName === "CODE") {
+                isInsideCode = true;
+                break;
+            }
+            // @ts-expect-error
+            target = target.parentElement;
+        }
+        if (!isInsideCode) {
+            return;
+        }
+        const selection = document.getSelection();
+         // @ts-expect-error
+        nonnull(event.clipboardData).setData("text/plain", selection.toString());
+        event.preventDefault();
     });
 }());

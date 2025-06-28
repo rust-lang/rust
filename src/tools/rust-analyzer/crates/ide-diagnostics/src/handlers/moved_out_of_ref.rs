@@ -4,7 +4,10 @@ use hir::HirDisplay;
 // Diagnostic: moved-out-of-ref
 //
 // This diagnostic is triggered on moving non copy things out of references.
-pub(crate) fn moved_out_of_ref(ctx: &DiagnosticsContext<'_>, d: &hir::MovedOutOfRef) -> Diagnostic {
+pub(crate) fn moved_out_of_ref(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::MovedOutOfRef<'_>,
+) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::RustcHardError("E0507"),
@@ -215,6 +218,25 @@ fn test() {
     let _x = (&(&mut (),)).0 as *const ();
 }
             "#,
+        )
+    }
+
+    #[test]
+    fn regression_18201() {
+        check_diagnostics(
+            r#"
+//- minicore: copy
+struct NotCopy;
+struct S(NotCopy);
+impl S {
+    fn f(&mut self) {
+        || {
+            if let ref mut _cb = self.0 {
+            }
+        };
+    }
+}
+"#,
         )
     }
 }

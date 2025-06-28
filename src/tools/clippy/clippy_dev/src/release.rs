@@ -5,6 +5,7 @@ static CARGO_TOML_FILES: &[&str] = &[
     "clippy_config/Cargo.toml",
     "clippy_lints/Cargo.toml",
     "clippy_utils/Cargo.toml",
+    "declare_clippy_lint/Cargo.toml",
     "Cargo.toml",
 ];
 

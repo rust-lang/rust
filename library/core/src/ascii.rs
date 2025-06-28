@@ -15,6 +15,7 @@ use crate::iter::FusedIterator;
 use crate::num::NonZero;
 
 mod ascii_char;
+#[doc(alias("AsciiChar"))]
 #[unstable(feature = "ascii_char", issue = "110998")]
 pub use ascii_char::AsciiChar as Char;
 

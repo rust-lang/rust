@@ -227,7 +227,7 @@ fn clean_generic_bound<'tcx>(
     Some(match bound {
         hir::GenericBound::Outlives(lt) => GenericBound::Outlives(clean_lifetime(lt, cx)),
         hir::GenericBound::Trait(t) => {
-            // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
+            // `T: [const] Destruct` is hidden because `T: Destruct` is a no-op.
             if let hir::BoundConstness::Maybe(_) = t.modifiers.constness
                 && cx.tcx.lang_items().destruct_trait() == Some(t.trait_ref.trait_def_id().unwrap())
             {
@@ -395,7 +395,7 @@ pub(crate) fn clean_predicate<'tcx>(
         ty::ClauseKind::ConstEvaluatable(..)
         | ty::ClauseKind::WellFormed(..)
         | ty::ClauseKind::ConstArgHasType(..)
-        // FIXME(const_trait_impl): We can probably use this `HostEffect` pred to render `~const`.
+        // FIXME(const_trait_impl): We can probably use this `HostEffect` pred to render `[const]`.
         | ty::ClauseKind::HostEffect(_) => None,
     }
 }
@@ -404,7 +404,7 @@ fn clean_poly_trait_predicate<'tcx>(
     pred: ty::PolyTraitPredicate<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
-    // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
+    // `T: [const] Destruct` is hidden because `T: Destruct` is a no-op.
     // FIXME(const_trait_impl) check constness
     if Some(pred.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait() {
         return None;

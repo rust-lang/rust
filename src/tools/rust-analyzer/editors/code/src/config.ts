@@ -20,15 +20,9 @@ export class Config {
     configureLang: vscode.Disposable | undefined;
 
     readonly rootSection = "rust-analyzer";
-    private readonly requiresServerReloadOpts = [
-        "cargo",
-        "procMacro",
-        "serverPath",
-        "server",
-        "files",
-        "cfg",
-        "showSyntaxTree",
-    ].map((opt) => `${this.rootSection}.${opt}`);
+    private readonly requiresServerReloadOpts = ["server", "files", "showSyntaxTree"].map(
+        (opt) => `${this.rootSection}.${opt}`,
+    );
 
     private readonly requiresWindowReloadOpts = ["testExplorer"].map(
         (opt) => `${this.rootSection}.${opt}`,
@@ -208,7 +202,7 @@ export class Config {
     }
 
     get serverPath() {
-        return this.get<null | string>("server.path") ?? this.get<null | string>("serverPath");
+        return this.get<null | string>("server.path");
     }
 
     get serverExtraEnv(): Env {

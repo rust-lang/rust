@@ -131,6 +131,9 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 used: codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                     || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
                     || used,
+                rustc_std_internal_symbol: codegen_attrs
+                    .flags
+                    .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL),
             };
             (def_id.to_def_id(), info)
         })
@@ -143,6 +146,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Data,
                 used: false,
+                rustc_std_internal_symbol: false,
             },
         );
     }
@@ -191,6 +195,7 @@ fn exported_symbols_provider_local<'tcx>(
                         level: info.level,
                         kind: SymbolExportKind::Text,
                         used: info.used,
+                        rustc_std_internal_symbol: info.rustc_std_internal_symbol,
                     },
                 )
             })
@@ -207,6 +212,7 @@ fn exported_symbols_provider_local<'tcx>(
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Text,
                 used: false,
+                rustc_std_internal_symbol: false,
             },
         ));
     }
@@ -230,6 +236,7 @@ fn exported_symbols_provider_local<'tcx>(
                     level: SymbolExportLevel::Rust,
                     kind: SymbolExportKind::Text,
                     used: false,
+                    rustc_std_internal_symbol: true,
                 },
             ));
         }
@@ -250,6 +257,7 @@ fn exported_symbols_provider_local<'tcx>(
                     level: SymbolExportLevel::C,
                     kind: SymbolExportKind::Data,
                     used: false,
+                    rustc_std_internal_symbol: false,
                 },
             )
         }));
@@ -275,6 +283,7 @@ fn exported_symbols_provider_local<'tcx>(
                     level: SymbolExportLevel::C,
                     kind: SymbolExportKind::Data,
                     used: false,
+                    rustc_std_internal_symbol: false,
                 },
             )
         }));
@@ -292,6 +301,7 @@ fn exported_symbols_provider_local<'tcx>(
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Data,
                 used: true,
+                rustc_std_internal_symbol: false,
             },
         ));
     }
@@ -367,6 +377,8 @@ fn exported_symbols_provider_local<'tcx>(
                 }
             }
 
+            // Note: These all set rustc_std_internal_symbol to false as generic functions must not
+            // be marked with this attribute and we are only handling generic functions here.
             match *mono_item {
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
                     let has_generics = args.non_erasable_generics().next().is_some();
@@ -382,6 +394,7 @@ fn exported_symbols_provider_local<'tcx>(
                                 level: SymbolExportLevel::Rust,
                                 kind: SymbolExportKind::Text,
                                 used: false,
+                                rustc_std_internal_symbol: false,
                             },
                         ));
                     }
@@ -404,6 +417,7 @@ fn exported_symbols_provider_local<'tcx>(
                                 level: SymbolExportLevel::Rust,
                                 kind: SymbolExportKind::Text,
                                 used: false,
+                                rustc_std_internal_symbol: false,
                             },
                         ));
                     }
@@ -420,6 +434,7 @@ fn exported_symbols_provider_local<'tcx>(
                             level: SymbolExportLevel::Rust,
                             kind: SymbolExportKind::Text,
                             used: false,
+                            rustc_std_internal_symbol: false,
                         },
                     ));
                 }
@@ -430,6 +445,7 @@ fn exported_symbols_provider_local<'tcx>(
                             level: SymbolExportLevel::Rust,
                             kind: SymbolExportKind::Text,
                             used: false,
+                            rustc_std_internal_symbol: false,
                         },
                     ));
                 }
@@ -680,6 +696,7 @@ fn calling_convention_for_symbol<'tcx>(
 pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
+    export_kind: SymbolExportKind,
     instantiating_crate: CrateNum,
 ) -> String {
     let mut undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
@@ -700,8 +717,9 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
     let prefix = match &target.arch[..] {
         "x86" => Some('_'),
         "x86_64" => None,
-        "arm64ec" => Some('#'),
-        // Only x86/64 use symbol decorations.
+        // Only functions are decorated for arm64ec.
+        "arm64ec" if export_kind == SymbolExportKind::Text => Some('#'),
+        // Only x86/64 and arm64ec use symbol decorations.
         _ => return undecorated,
     };
 
@@ -741,7 +759,7 @@ pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(
 /// Add it to the symbols list for all kernel functions, so that it is exported in the linked
 /// object.
 pub(crate) fn extend_exported_symbols<'tcx>(
-    symbols: &mut Vec<String>,
+    symbols: &mut Vec<(String, SymbolExportKind)>,
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
     instantiating_crate: CrateNum,
@@ -755,7 +773,9 @@ pub(crate) fn extend_exported_symbols<'tcx>(
     let undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
 
     // Add the symbol for the kernel descriptor (with .kd suffix)
-    symbols.push(format!("{undecorated}.kd"));
+    // Per https://llvm.org/docs/AMDGPUUsage.html#symbols these will always be `STT_OBJECT` so
+    // export as data.
+    symbols.push((format!("{undecorated}.kd"), SymbolExportKind::Data));
 }
 
 fn maybe_emutls_symbol_name<'tcx>(

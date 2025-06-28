@@ -76,7 +76,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
                 "exported enums should not be exhaustive",
                 [].as_slice(),
             ),
-            ItemKind::Struct(_, _, v) => (
+            ItemKind::Struct(_, _, v) if v.fields().iter().all(|f| f.default.is_none()) => (
                 EXHAUSTIVE_STRUCTS,
                 "exported structs should not be exhaustive",
                 v.fields(),

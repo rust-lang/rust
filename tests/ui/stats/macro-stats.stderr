@@ -2,25 +2,25 @@ macro-stats ====================================================================
 macro-stats MACRO EXPANSION STATS: macro_stats
 macro-stats Macro Name                         Uses      Lines  Avg Lines      Bytes  Avg Bytes
 macro-stats -----------------------------------------------------------------------------------
-macro-stats #[derive(Clone)]                      8         56        7.0      1_660      207.5
-macro-stats #[derive(PartialOrd)]                 1         16       16.0        654      654.0
-macro-stats #[derive(Hash)]                       2         15        7.5        547      273.5
-macro-stats #[derive(Ord)]                        1         14       14.0        489      489.0
-macro-stats q!                                    1         24       24.0        435      435.0
-macro-stats #[derive(Default)]                    2         14        7.0        367      183.5
-macro-stats #[derive(Eq)]                         1         10       10.0        312      312.0
-macro-stats #[derive(Debug)]                      1          7        7.0        261      261.0
-macro-stats #[derive(PartialEq)]                  1          8        8.0        247      247.0
-macro-stats #[derive(Copy)]                       1          1        1.0         46       46.0
-macro-stats p!                                    1          2        2.0         28       28.0
-macro-stats trait_impl_tys!                       1          1        1.0         11       11.0
-macro-stats foreign_item!                         1          0        0.0          6        6.0
-macro-stats impl_const!                           1          0        0.0          4        4.0
-macro-stats trait_tys!                            1          1        1.0          3        3.0
-macro-stats u32!                                  1          0        0.0         -3       -3.0
-macro-stats none!                                 1          0        0.0         -3       -3.0
-macro-stats n99!                                  2          0        0.0         -8       -4.0
+macro-stats #[derive(Clone)]                      8         64        8.0      1_788      223.5
+macro-stats #[derive(PartialOrd)]                 1         17       17.0        675      675.0
+macro-stats #[derive(Hash)]                       2         17        8.5        577      288.5
+macro-stats q!                                    1         26       26.0        519      519.0
+macro-stats #[derive(Ord)]                        1         15       15.0        503      503.0
+macro-stats #[derive(Default)]                    2         16        8.0        403      201.5
+macro-stats #[derive(Eq)]                         1         11       11.0        325      325.0
+macro-stats #[derive(Debug)]                      1          8        8.0        277      277.0
+macro-stats #[derive(PartialEq)]                  1          9        9.0        267      267.0
+macro-stats #[derive(Copy)]                       1          2        2.0         61       61.0
+macro-stats p!                                    1          3        3.0         32       32.0
+macro-stats trait_impl_tys!                       1          2        2.0         28       28.0
+macro-stats foreign_item!                         1          1        1.0         21       21.0
 macro-stats this_is_a_really_really_long_macro_name!
-macro-stats                                       1          0        0.0        -30      -30.0
-macro-stats #[test]                               1         -6       -6.0       -158     -158.0
+macro-stats                                       1          1        1.0         18       18.0
+macro-stats impl_const!                           1          1        1.0         17       17.0
+macro-stats trait_tys!                            1          2        2.0         15       15.0
+macro-stats n99!                                  2          2        1.0          4        2.0
+macro-stats none!                                 1          1        1.0          4        4.0
+macro-stats u32!                                  1          1        1.0          3        3.0
+macro-stats #[test]                               1          1        1.0          0        0.0
 macro-stats ===================================================================================

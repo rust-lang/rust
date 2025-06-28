@@ -87,18 +87,16 @@ error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
   --> $DIR/issue-59488.rs:30:5
    |
 LL |     assert_eq!(Foo::Bar, i);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for fn item `fn(usize) -> Foo {Foo::Bar}`
    |
-   = help: the trait `Debug` is not implemented for fn item `fn(usize) -> Foo {Foo::Bar}`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
   --> $DIR/issue-59488.rs:30:5
    |
 LL |     assert_eq!(Foo::Bar, i);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for fn item `fn(usize) -> Foo {Foo::Bar}`
    |
-   = help: the trait `Debug` is not implemented for fn item `fn(usize) -> Foo {Foo::Bar}`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 10 previous errors

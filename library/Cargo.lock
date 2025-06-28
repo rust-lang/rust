@@ -219,21 +219,19 @@ dependencies = [
 
 [[package]]
 name = "r-efi"
-version = "5.2.0"
+version = "5.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74765f6d916ee2faa39bc8e68e4f3ed8949b48cccdac59983d287a7cb71ce9c5"
+checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
 dependencies = [
- "compiler_builtins",
  "rustc-std-workspace-core",
 ]
 
 [[package]]
 name = "r-efi-alloc"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e43c53ff1a01d423d1cb762fd991de07d32965ff0ca2e4f80444ac7804198203"
+checksum = "dc2f58ef3ca9bb0f9c44d9aa8537601bcd3df94cc9314a40178cadf7d4466354"
 dependencies = [
- "compiler_builtins",
  "r-efi",
  "rustc-std-workspace-core",
 ]
@@ -273,10 +271,11 @@ dependencies = [
 
 [[package]]
 name = "rustc-literal-escaper"
-version = "0.0.2"
+version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0041b6238913c41fe704213a4a9329e2f685a156d1781998128b4149c230ad04"
+checksum = "ab03008eb631b703dd16978282ae36c73282e7922fe101a4bd072a40ecea7b8b"
 dependencies = [
+ "rustc-std-workspace-core",
  "rustc-std-workspace-std",
 ]
 

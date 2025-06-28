@@ -385,17 +385,17 @@ fn find_std_module(
 
 // FIXME: IdentClass as a name no longer fits
 #[derive(Debug)]
-pub enum IdentClass {
-    NameClass(NameClass),
-    NameRefClass(NameRefClass),
+pub enum IdentClass<'db> {
+    NameClass(NameClass<'db>),
+    NameRefClass(NameRefClass<'db>),
     Operator(OperatorClass),
 }
 
-impl IdentClass {
+impl<'db> IdentClass<'db> {
     pub fn classify_node(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         node: &SyntaxNode,
-    ) -> Option<IdentClass> {
+    ) -> Option<IdentClass<'db>> {
         match_ast! {
             match node {
                 ast::Name(name) => NameClass::classify(sema, &name).map(IdentClass::NameClass),
@@ -418,23 +418,23 @@ impl IdentClass {
     }
 
     pub fn classify_token(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         token: &SyntaxToken,
-    ) -> Option<IdentClass> {
+    ) -> Option<IdentClass<'db>> {
         let parent = token.parent()?;
         Self::classify_node(sema, &parent)
     }
 
     pub fn classify_lifetime(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         lifetime: &ast::Lifetime,
-    ) -> Option<IdentClass> {
+    ) -> Option<IdentClass<'db>> {
         NameRefClass::classify_lifetime(sema, lifetime)
             .map(IdentClass::NameRefClass)
             .or_else(|| NameClass::classify_lifetime(sema, lifetime).map(IdentClass::NameClass))
     }
 
-    pub fn definitions(self) -> ArrayVec<(Definition, Option<GenericSubstitution>), 2> {
+    pub fn definitions(self) -> ArrayVec<(Definition, Option<GenericSubstitution<'db>>), 2> {
         let mut res = ArrayVec::new();
         match self {
             IdentClass::NameClass(NameClass::Definition(it) | NameClass::ConstReference(it)) => {
@@ -518,7 +518,7 @@ impl IdentClass {
 ///
 /// A model special case is `None` constant in pattern.
 #[derive(Debug)]
-pub enum NameClass {
+pub enum NameClass<'db> {
     Definition(Definition),
     /// `None` in `if let None = Some(82) {}`.
     /// Syntactically, it is a name, but semantically it is a reference.
@@ -528,11 +528,11 @@ pub enum NameClass {
     PatFieldShorthand {
         local_def: Local,
         field_ref: Field,
-        adt_subst: GenericSubstitution,
+        adt_subst: GenericSubstitution<'db>,
     },
 }
 
-impl NameClass {
+impl<'db> NameClass<'db> {
     /// `Definition` defined by this name.
     pub fn defined(self) -> Option<Definition> {
         let res = match self {
@@ -545,7 +545,10 @@ impl NameClass {
         Some(res)
     }
 
-    pub fn classify(sema: &Semantics<'_, RootDatabase>, name: &ast::Name) -> Option<NameClass> {
+    pub fn classify(
+        sema: &Semantics<'db, RootDatabase>,
+        name: &ast::Name,
+    ) -> Option<NameClass<'db>> {
         let _p = tracing::info_span!("NameClass::classify").entered();
 
         let parent = name.syntax().parent()?;
@@ -597,10 +600,10 @@ impl NameClass {
             Some(definition)
         }
 
-        fn classify_ident_pat(
-            sema: &Semantics<'_, RootDatabase>,
+        fn classify_ident_pat<'db>(
+            sema: &Semantics<'db, RootDatabase>,
             ident_pat: ast::IdentPat,
-        ) -> Option<NameClass> {
+        ) -> Option<NameClass<'db>> {
             if let Some(def) = sema.resolve_bind_pat_to_const(&ident_pat) {
                 return Some(NameClass::ConstReference(Definition::from(def)));
             }
@@ -638,9 +641,9 @@ impl NameClass {
     }
 
     pub fn classify_lifetime(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         lifetime: &ast::Lifetime,
-    ) -> Option<NameClass> {
+    ) -> Option<NameClass<'db>> {
         let _p = tracing::info_span!("NameClass::classify_lifetime", ?lifetime).entered();
         let parent = lifetime.syntax().parent()?;
 
@@ -723,12 +726,12 @@ impl OperatorClass {
 /// A model special case is field shorthand syntax, which uses a single
 /// reference to point to two different defs.
 #[derive(Debug)]
-pub enum NameRefClass {
-    Definition(Definition, Option<GenericSubstitution>),
+pub enum NameRefClass<'db> {
+    Definition(Definition, Option<GenericSubstitution<'db>>),
     FieldShorthand {
         local_ref: Local,
         field_ref: Field,
-        adt_subst: GenericSubstitution,
+        adt_subst: GenericSubstitution<'db>,
     },
     /// The specific situation where we have an extern crate decl without a rename
     /// Here we have both a declaration and a reference.
@@ -741,13 +744,13 @@ pub enum NameRefClass {
     },
 }
 
-impl NameRefClass {
+impl<'db> NameRefClass<'db> {
     // Note: we don't have unit-tests for this rather important function.
     // It is primarily exercised via goto definition tests in `ide`.
     pub fn classify(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         name_ref: &ast::NameRef,
-    ) -> Option<NameRefClass> {
+    ) -> Option<NameRefClass<'db>> {
         let _p = tracing::info_span!("NameRefClass::classify", ?name_ref).entered();
 
         let parent = name_ref.syntax().parent()?;
@@ -866,9 +869,9 @@ impl NameRefClass {
     }
 
     pub fn classify_lifetime(
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         lifetime: &ast::Lifetime,
-    ) -> Option<NameRefClass> {
+    ) -> Option<NameRefClass<'db>> {
         let _p = tracing::info_span!("NameRefClass::classify_lifetime", ?lifetime).entered();
         if lifetime.text() == "'static" {
             return Some(NameRefClass::Definition(

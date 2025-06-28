@@ -11,6 +11,7 @@ trait Foo {
     //~| HELP if this is a dyn-compatible trait, use `dyn`
     //~| ERROR the trait `Clone` is not dyn compatible [E0038]
     //~| HELP there is an associated type with the same name
+    //~| HELP use `Self` to refer to the implementing type
 }
 
 trait DbHandle: Sized {}
@@ -26,6 +27,7 @@ trait DbInterface {
     //~| HELP if this is a dyn-compatible trait, use `dyn`
     //~| ERROR the trait `DbHandle` is not dyn compatible [E0038]
     //~| HELP there is an associated type with the same name
+    //~| HELP use `Self` to refer to the implementing type
 }
 
 fn main() {}

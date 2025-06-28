@@ -1,19 +1,19 @@
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/unstable-const-fn-in-libcore.rs:19:32
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/unstable-const-fn-in-libcore.rs:19:30
    |
-LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T>(self, f: F) -> T {
-   |                                ^^^^^^ can't be applied to `FnOnce`
+LL |     const fn unwrap_or_else<F: [const] FnOnce() -> T>(self, f: F) -> T {
+   |                              ^^^^^^^^^ can't be applied to `FnOnce`
    |
-note: `FnOnce` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/unstable-const-fn-in-libcore.rs:19:32
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/unstable-const-fn-in-libcore.rs:19:30
    |
-LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T>(self, f: F) -> T {
-   |                                ^^^^^^ can't be applied to `FnOnce`
+LL |     const fn unwrap_or_else<F: [const] FnOnce() -> T>(self, f: F) -> T {
+   |                              ^^^^^^^^^ can't be applied to `FnOnce`
    |
-note: `FnOnce` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
@@ -26,19 +26,19 @@ LL |             Opt::None => f(),
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error[E0493]: destructor of `F` cannot be evaluated at compile-time
-  --> $DIR/unstable-const-fn-in-libcore.rs:19:60
+  --> $DIR/unstable-const-fn-in-libcore.rs:19:61
    |
-LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T>(self, f: F) -> T {
-   |                                                            ^ the destructor for this type cannot be evaluated in constant functions
+LL |     const fn unwrap_or_else<F: [const] FnOnce() -> T>(self, f: F) -> T {
+   |                                                             ^ the destructor for this type cannot be evaluated in constant functions
 ...
 LL |     }
    |     - value is dropped here
 
 error[E0493]: destructor of `Opt<T>` cannot be evaluated at compile-time
-  --> $DIR/unstable-const-fn-in-libcore.rs:19:54
+  --> $DIR/unstable-const-fn-in-libcore.rs:19:55
    |
-LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T>(self, f: F) -> T {
-   |                                                      ^^^^ the destructor for this type cannot be evaluated in constant functions
+LL |     const fn unwrap_or_else<F: [const] FnOnce() -> T>(self, f: F) -> T {
+   |                                                       ^^^^ the destructor for this type cannot be evaluated in constant functions
 ...
 LL |     }
    |     - value is dropped here

@@ -12,7 +12,7 @@ use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
-use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
+use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
 use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
 
 pub trait Ty<I: Interner<Ty = Self>>:
@@ -536,6 +536,45 @@ pub trait PlaceholderLike<I: Interner>: Copy + Debug + Hash + Eq {
     fn new(ui: ty::UniverseIndex, bound: Self::Bound) -> Self;
     fn new_anon(ui: ty::UniverseIndex, var: ty::BoundVar) -> Self;
     fn with_updated_universe(self, ui: ty::UniverseIndex) -> Self;
+}
+
+pub trait PlaceholderConst<I: Interner>: PlaceholderLike<I, Bound = I::BoundConst> {
+    fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty;
+}
+impl<I: Interner> PlaceholderConst<I> for I::PlaceholderConst {
+    fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {
+        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
+            // `ConstArgHasType` are never desugared to be higher ranked.
+            match clause.kind().skip_binder() {
+                ty::ClauseKind::ConstArgHasType(placeholder_ct, ty) => {
+                    assert!(!(placeholder_ct, ty).has_escaping_bound_vars());
+
+                    match placeholder_ct.kind() {
+                        ty::ConstKind::Placeholder(placeholder_ct) if placeholder_ct == self => {
+                            Some(ty)
+                        }
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        });
+
+        // N.B. it may be tempting to fix ICEs by making this function return
+        // `Option<Ty<'tcx>>` instead of `Ty<'tcx>`; however, this is generally
+        // considered to be a bandaid solution, since it hides more important
+        // underlying issues with how we construct generics and predicates of
+        // items. It's advised to fix the underlying issue rather than trying
+        // to modify this function.
+        let ty = candidates.next().unwrap_or_else(|| {
+            panic!("cannot find `{self:?}` in param-env: {env:#?}");
+        });
+        assert!(
+            candidates.next().is_none(),
+            "did not expect duplicate `ConstParamHasTy` for `{self:?}` in param-env: {env:#?}"
+        );
+        ty
+    }
 }
 
 pub trait IntoKind {

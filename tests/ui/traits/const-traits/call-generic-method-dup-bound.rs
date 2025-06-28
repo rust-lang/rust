@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
-//@ known-bug: #110395
-// FIXME(const_trait_impl) check-pass
+//@ check-pass
 
 #![feature(const_trait_impl)]
 
@@ -15,16 +14,16 @@ impl const PartialEq for S {
     }
 }
 
-// This duplicate bound should not result in ambiguities. It should be equivalent to a single ~const
-// bound.
-const fn equals_self<T: PartialEq + ~const PartialEq>(t: &T) -> bool {
+// This duplicate bound should not result in ambiguities.
+// It should be equivalent to a single [const] bound.
+const fn equals_self<T: PartialEq + [const] PartialEq>(t: &T) -> bool {
     *t == *t
 }
 
 trait A: PartialEq {}
 impl<T: PartialEq> A for T {}
 
-const fn equals_self2<T: A + ~const PartialEq>(t: &T) -> bool {
+const fn equals_self2<T: A + [const] PartialEq>(t: &T) -> bool {
     *t == *t
 }
 

@@ -1,0 +1,17 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/rpit-hide-lifetime-for-swap.rs:27:38
+   |
+LL |     let x = [1, 2, 3];
+   |         - binding `x` declared here
+LL |     let short = Rc::new(RefCell::new(&x));
+   |                                      ^^ borrowed value does not live long enough
+...
+LL |     let res: &'static [i32; 3] = *long.borrow();
+   |              ----------------- type annotation requires that `x` is borrowed for `'static`
+LL |     res
+LL | }
+   | - `x` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

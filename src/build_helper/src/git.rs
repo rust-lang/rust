@@ -198,7 +198,7 @@ fn get_latest_upstream_commit_that_modified_files(
 /// author.
 ///
 /// If we are in CI, we simply return our first parent.
-fn get_closest_upstream_commit(
+pub fn get_closest_upstream_commit(
     git_dir: Option<&Path>,
     config: &GitConfig<'_>,
     env: CiEnv,

@@ -2,7 +2,6 @@
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_middle::query::Key;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use tracing::instrument;
@@ -25,13 +24,6 @@ pub(crate) use self::valtrees::{eval_to_valtree, valtree_to_const_value};
 
 // We forbid type-level constants that contain more than `VALTREE_MAX_NODES` nodes.
 const VALTREE_MAX_NODES: usize = 100000;
-
-pub(crate) enum ValTreeCreationError<'tcx> {
-    NodesOverflow,
-    /// Values of this type, or this particular value, are not supported as valtrees.
-    NonSupportedType(Ty<'tcx>),
-}
-pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeCreationError<'tcx>>;
 
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
@@ -74,18 +66,13 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
 #[instrument(skip(tcx), level = "debug")]
 pub fn tag_for_variant_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (ty, variant_index): (Ty<'tcx>, VariantIdx),
+    key: ty::PseudoCanonicalInput<'tcx, (Ty<'tcx>, VariantIdx)>,
 ) -> Option<ty::ScalarInt> {
+    let (ty, variant_index) = key.value;
     assert!(ty.is_enum());
 
-    // FIXME: This uses an empty `TypingEnv` even though
-    // it may be used by a generic CTFE.
-    let ecx = InterpCx::new(
-        tcx,
-        ty.default_span(tcx),
-        ty::TypingEnv::fully_monomorphized(),
-        crate::const_eval::DummyMachine,
-    );
+    let ecx =
+        InterpCx::new(tcx, ty.default_span(tcx), key.typing_env, crate::const_eval::DummyMachine);
 
     let layout = ecx.layout_of(ty).unwrap();
     ecx.tag_for_variant(layout, variant_index).unwrap().map(|(tag, _tag_field)| tag)

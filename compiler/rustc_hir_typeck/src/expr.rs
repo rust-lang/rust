@@ -5,8 +5,9 @@
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
-use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
@@ -18,11 +19,10 @@ use rustc_errors::{
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{Attribute, ExprKind, HirId, QPath};
+use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
-use rustc_infer::infer;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -43,10 +43,9 @@ use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectatio
 use crate::coercion::{CoerceMany, DynamicCoerceMany};
 use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
-    BaseExpressionDoubleDotEnableDefaultFieldValues, BaseExpressionDoubleDotRemove,
-    CantDereference, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
-    HelpUseLatestEdition, NakedAsmOutsideNakedFn, NoFieldOnType, NoFieldOnVariant,
-    ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
+    BaseExpressionDoubleDotRemove, CantDereference, FieldMultiplySpecifiedInInitializer,
+    FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition, NakedAsmOutsideNakedFn, NoFieldOnType,
+    NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
     TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
 use crate::{
@@ -56,7 +55,7 @@ use crate::{
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
-        let for_each_attr = |id: HirId, callback: &mut dyn FnMut(&Attribute)| {
+        let has_attr = |id: HirId| -> bool {
             for attr in self.tcx.hir_attrs(id) {
                 // For the purpose of rendering suggestions, disregard attributes
                 // that originate from desugaring of any kind. For example, `x?`
@@ -72,11 +71,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //     let y: u32 = (x?).try_into().unwrap();
                 //                  +  +++++++++++++++++++++
                 if attr.span().desugaring_kind().is_none() {
-                    callback(attr);
+                    return true;
                 }
             }
+            false
         };
-        expr.precedence(&for_each_attr)
+        expr.precedence(&has_attr)
     }
 
     /// Check an expr with an expectation type, and also demand that the expr's
@@ -582,7 +582,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ascribed_ty
             }
             ExprKind::If(cond, then_expr, opt_else_expr) => {
-                self.check_expr_if(cond, then_expr, opt_else_expr, expr.span, expected)
+                self.check_expr_if(expr.hir_id, cond, then_expr, opt_else_expr, expr.span, expected)
             }
             ExprKind::DropTemps(e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
@@ -689,7 +689,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_named_place_expr(oprnd);
                 Ty::new_ptr(self.tcx, ty, mutbl)
             }
-            hir::BorrowKind::Ref => {
+            hir::BorrowKind::Ref | hir::BorrowKind::Pin => {
                 // Note: at this point, we cannot say what the best lifetime
                 // is to use for resulting pointer. We want to use the
                 // shortest lifetime possible so as to avoid spurious borrowck
@@ -704,8 +704,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this time with enough precision to check that the value
                 // whose address was taken can actually be made to live as long
                 // as it needs to live.
-                let region = self.next_region_var(infer::BorrowRegion(expr.span));
-                Ty::new_ref(self.tcx, region, ty, mutbl)
+                let region = self.next_region_var(RegionVariableOrigin::BorrowRegion(expr.span));
+                match kind {
+                    hir::BorrowKind::Ref => Ty::new_ref(self.tcx, region, ty, mutbl),
+                    hir::BorrowKind::Pin => Ty::new_pinned_ref(self.tcx, region, ty, mutbl),
+                    _ => unreachable!(),
+                }
             }
         }
     }
@@ -1338,6 +1342,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // or 'if-else' expression.
     fn check_expr_if(
         &self,
+        expr_id: HirId,
         cond_expr: &'tcx hir::Expr<'tcx>,
         then_expr: &'tcx hir::Expr<'tcx>,
         opt_else_expr: Option<&'tcx hir::Expr<'tcx>>,
@@ -1377,15 +1382,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let tail_defines_return_position_impl_trait =
                 self.return_position_impl_trait_from_match_expectation(orig_expected);
-            let if_cause = self.if_cause(
-                sp,
-                cond_expr.span,
-                then_expr,
-                else_expr,
-                then_ty,
-                else_ty,
-                tail_defines_return_position_impl_trait,
-            );
+            let if_cause =
+                self.if_cause(expr_id, else_expr, tail_defines_return_position_impl_trait);
 
             coerce.coerce(self, &if_cause, else_expr, else_ty);
 
@@ -1651,13 +1649,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(method.def_id),
                 );
 
-                // Functions of type `extern "custom" fn(/* ... */)` cannot be called using
-                // `ExprKind::MethodCall`. These functions have a calling convention that is
-                // unknown to rust, hence it cannot generate code for the call. The only way
-                // to execute such a function is via inline assembly.
-                if let ExternAbi::Custom = method.sig.abi {
-                    self.tcx.dcx().emit_err(crate::errors::AbiCustomCall { span: expr.span });
-                }
+                self.check_call_abi(method.sig.abi, expr.span);
 
                 method.sig.output()
             }
@@ -2158,7 +2150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             if !self.tcx.features().default_field_values() {
-                let sugg = self.tcx.crate_level_attribute_injection_span(expr.hir_id);
+                let sugg = self.tcx.crate_level_attribute_injection_span();
                 self.dcx().emit_err(BaseExpressionDoubleDot {
                     span: span.shrink_to_hi(),
                     // We only mention enabling the feature if this is a nightly rustc *and* the
@@ -2166,18 +2158,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     default_field_values_suggestion: if self.tcx.sess.is_nightly_build()
                         && missing_mandatory_fields.is_empty()
                         && !missing_optional_fields.is_empty()
-                        && sugg.is_some()
                     {
-                        sugg
-                    } else {
-                        None
-                    },
-                    default_field_values_help: if self.tcx.sess.is_nightly_build()
-                        && missing_mandatory_fields.is_empty()
-                        && !missing_optional_fields.is_empty()
-                        && sugg.is_none()
-                    {
-                        Some(BaseExpressionDoubleDotEnableDefaultFieldValues)
+                        Some(sugg)
                     } else {
                         None
                     },
@@ -3795,7 +3777,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>, span: Span) -> Ty<'tcx> {
         if let rustc_ast::AsmMacro::NakedAsm = asm.asm_macro {
-            if !self.tcx.has_attr(self.body_id, sym::naked) {
+            if !find_attr!(self.tcx.get_all_attrs(self.body_id), AttributeKind::Naked(..)) {
                 self.tcx.dcx().emit_err(NakedAsmOutsideNakedFn { span });
             }
         }

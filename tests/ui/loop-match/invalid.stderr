@@ -1,0 +1,91 @@
+error[E0308]: mismatched types
+  --> $DIR/invalid.rs:120:21
+   |
+LL |                     break 'blk;
+   |                     ^^^^^^^^^^ expected `State`, found `()`
+   |
+help: give the `break` a value of the expected type
+   |
+LL |                     break 'blk /* value */;
+   |                                +++++++++++
+
+error: invalid update of the `#[loop_match]` state
+  --> $DIR/invalid.rs:18:9
+   |
+LL |         fake = 'blk: {
+   |         ^^^^
+LL |
+LL |             match state {
+   |                   ----- the assignment must update this variable
+
+error: invalid match on `#[loop_match]` state
+  --> $DIR/invalid.rs:32:19
+   |
+LL |             match State::A {
+   |                   ^^^^^^^^
+   |
+   = note: a local variable must be the scrutinee within a `#[loop_match]`
+
+error: statements are not allowed in this position within a `#[loop_match]`
+  --> $DIR/invalid.rs:44:9
+   |
+LL |         1;
+   |         ^^
+
+error: statements are not allowed in this position within a `#[loop_match]`
+  --> $DIR/invalid.rs:59:13
+   |
+LL |             1;
+   |             ^^
+
+error: this expression must be a single `match` wrapped in a labeled block
+  --> $DIR/invalid.rs:72:17
+   |
+LL |         state = State::B
+   |                 ^^^^^^^^
+
+error: this expression must be a single `match` wrapped in a labeled block
+  --> $DIR/invalid.rs:82:13
+   |
+LL |             State::B
+   |             ^^^^^^^^
+
+error: this expression must be a single `match` wrapped in a labeled block
+  --> $DIR/invalid.rs:92:17
+   |
+LL |           state = 'blk: {
+   |  _________________^
+LL | |
+LL | |         }
+   | |_________^
+
+error: expected a single assignment expression
+  --> $DIR/invalid.rs:101:9
+   |
+LL |         ()
+   |         ^^
+
+error: expected a single assignment expression
+  --> $DIR/invalid.rs:107:10
+   |
+LL |       loop {
+   |  __________^
+LL | |
+LL | |     }
+   | |_____^
+
+error: a `#[const_continue]` must break to a label with a value
+  --> $DIR/invalid.rs:137:21
+   |
+LL |                     break 'blk;
+   |                     ^^^^^^^^^^
+
+error: match arms that are part of a `#[loop_match]` cannot have guards
+  --> $DIR/invalid.rs:155:29
+   |
+LL |                 State::B if cond => break 'a,
+   |                             ^^^^
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

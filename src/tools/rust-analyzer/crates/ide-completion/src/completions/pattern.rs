@@ -124,7 +124,7 @@ pub(crate) fn complete_pattern(
 pub(crate) fn complete_pattern_path(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
 ) {
     match qualified {
         Qualified::With { resolution: Some(resolution), super_chain_len, .. } => {

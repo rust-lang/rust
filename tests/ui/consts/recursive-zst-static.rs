@@ -8,7 +8,7 @@
 // See https://github.com/rust-lang/rust/issues/71078 for more details.
 
 static FOO: () = FOO;
-//~^ ERROR encountered static that tried to initialize itself with itself
+//~^ ERROR encountered static that tried to access itself during initialization
 
 static A: () = B; //~ ERROR cycle detected when evaluating initializer of static `A`
 static B: () = A;

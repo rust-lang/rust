@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value at .<enum-variant(Some)>.0: encountered reference to mutable memory in `const`
+error[E0080]: constructing invalid value at .<enum-variant(Some)>.0: encountered mutable reference in `const` value
   --> $DIR/mut_ref_in_final_dynamic_check.rs:19:1
    |
 LL | const MUT: Option<&mut i32> = helper();

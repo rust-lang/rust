@@ -72,8 +72,8 @@ pub mod wfcheck;
 
 use std::num::NonZero;
 
-pub use check::{check_abi, check_abi_fn_ptr, check_custom_abi};
-use rustc_abi::{ExternAbi, VariantIdx};
+pub use check::{check_abi, check_custom_abi};
+use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir::LangItem;
@@ -311,9 +311,7 @@ fn default_body_is_unstable(
         reason: reason_str,
     });
 
-    let inject_span = item_did
-        .as_local()
-        .and_then(|id| tcx.crate_level_attribute_injection_span(tcx.local_def_id_to_hir_id(id)));
+    let inject_span = item_did.is_local().then(|| tcx.crate_level_attribute_injection_span());
     rustc_session::parse::add_feature_diagnostics_for_issue(
         &mut err,
         &tcx.sess,

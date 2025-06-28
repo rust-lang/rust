@@ -16,7 +16,7 @@
 // tidy-alphabetical-end
 
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::{OnceCell, RefCell};
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
@@ -391,7 +391,7 @@ fn do_mir_borrowck<'tcx>(
             used_mut_upvars: SmallVec::new(),
             borrow_set: &borrow_set,
             upvars: &[],
-            local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
+            local_names: OnceCell::from(IndexVec::from_elem(None, &promoted_body.local_decls)),
             region_names: RefCell::default(),
             next_region_name: RefCell::new(1),
             polonius_output: None,
@@ -414,26 +414,6 @@ fn do_mir_borrowck<'tcx>(
         promoted_mbcx.report_move_errors();
     }
 
-    let mut local_names = IndexVec::from_elem(None, &body.local_decls);
-    for var_debug_info in &body.var_debug_info {
-        if let VarDebugInfoContents::Place(place) = var_debug_info.value {
-            if let Some(local) = place.as_local() {
-                if let Some(prev_name) = local_names[local]
-                    && var_debug_info.name != prev_name
-                {
-                    span_bug!(
-                        var_debug_info.source_info.span,
-                        "local {:?} has many names (`{}` vs `{}`)",
-                        local,
-                        prev_name,
-                        var_debug_info.name
-                    );
-                }
-                local_names[local] = Some(var_debug_info.name);
-            }
-        }
-    }
-
     let mut mbcx = MirBorrowckCtxt {
         root_cx,
         infcx: &infcx,
@@ -450,7 +430,7 @@ fn do_mir_borrowck<'tcx>(
         used_mut_upvars: SmallVec::new(),
         borrow_set: &borrow_set,
         upvars: tcx.closure_captures(def),
-        local_names,
+        local_names: OnceCell::new(),
         region_names: RefCell::default(),
         next_region_name: RefCell::new(1),
         move_errors: Vec::new(),
@@ -682,7 +662,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     upvars: &'tcx [&'tcx ty::CapturedPlace<'tcx>],
 
     /// Names of local (user) variables (extracted from `var_debug_info`).
-    local_names: IndexVec<Local, Option<Symbol>>,
+    local_names: OnceCell<IndexVec<Local, Option<Symbol>>>,
 
     /// Record the region names generated for each region in the given
     /// MIR def so that we can reuse them later in help/error messages.
@@ -2610,7 +2590,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             };
 
             // Skip over locals that begin with an underscore or have no name
-            if self.local_names[local].is_none_or(|name| name.as_str().starts_with('_')) {
+            if self.local_excluded_from_unused_mut_lint(local) {
                 continue;
             }
 

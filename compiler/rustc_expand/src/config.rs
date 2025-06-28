@@ -92,7 +92,6 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                     span: mi.span(),
                     reason: f.reason.map(|reason| FeatureRemovedReason { reason }),
                     removed_rustc_version: f.feature.since,
-                    current_rustc_version: sess.cfg_version,
                     pull_note,
                 });
                 continue;

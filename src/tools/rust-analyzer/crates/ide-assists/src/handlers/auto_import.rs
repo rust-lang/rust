@@ -164,9 +164,9 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     Some(())
 }
 
-pub(super) fn find_importable_node(
-    ctx: &AssistContext<'_>,
-) -> Option<(ImportAssets, SyntaxNode, Option<Type>)> {
+pub(super) fn find_importable_node<'a: 'db, 'db>(
+    ctx: &'a AssistContext<'db>,
+) -> Option<(ImportAssets<'db>, SyntaxNode, Option<Type<'db>>)> {
     // Deduplicate this with the `expected_type_and_name` logic for completions
     let expected = |expr_or_pat: Either<ast::Expr, ast::Pat>| match expr_or_pat {
         Either::Left(expr) => {
@@ -226,7 +226,7 @@ pub(super) fn find_importable_node(
     }
 }
 
-fn group_label(import_candidate: &ImportCandidate) -> GroupLabel {
+fn group_label(import_candidate: &ImportCandidate<'_>) -> GroupLabel {
     let name = match import_candidate {
         ImportCandidate::Path(candidate) => format!("Import {}", candidate.name.text()),
         ImportCandidate::TraitAssocItem(candidate) => {
@@ -244,7 +244,7 @@ fn group_label(import_candidate: &ImportCandidate) -> GroupLabel {
 pub(crate) fn relevance_score(
     ctx: &AssistContext<'_>,
     import: &LocatedImport,
-    expected: Option<&Type>,
+    expected: Option<&Type<'_>>,
     current_module: Option<&Module>,
 ) -> i32 {
     let mut score = 0;

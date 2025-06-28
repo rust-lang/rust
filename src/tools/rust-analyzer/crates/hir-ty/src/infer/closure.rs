@@ -1230,11 +1230,15 @@ impl InferenceContext<'_> {
                     self.select_from_expr(*expr);
                 }
             }
+            Expr::Let { pat: _, expr } => {
+                self.walk_expr(*expr);
+                let place = self.place_of_expr(*expr);
+                self.ref_expr(*expr, place);
+            }
             Expr::UnaryOp { expr, op: _ }
             | Expr::Array(Array::Repeat { initializer: expr, repeat: _ })
             | Expr::Await { expr }
             | Expr::Loop { body: expr, label: _ }
-            | Expr::Let { pat: _, expr }
             | Expr::Box { expr }
             | Expr::Cast { expr, type_ref: _ } => {
                 self.consume_expr(*expr);

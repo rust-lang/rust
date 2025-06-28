@@ -3,34 +3,10 @@ use std::path::Path;
 
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
 use crate::fluent_generated as fluent;
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_unknown_ctarget_feature_prefix)]
-#[note]
-pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
-    pub feature: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_unknown_ctarget_feature)]
-#[note]
-pub(crate) struct UnknownCTargetFeature<'a> {
-    pub feature: &'a str,
-    #[subdiagnostic]
-    pub rust_feature: PossibleFeature<'a>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum PossibleFeature<'a> {
-    #[help(codegen_llvm_possible_feature)]
-    Some { rust_feature: &'a str },
-    #[help(codegen_llvm_consider_filing_feature_request)]
-    None,
-}
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_symbol_already_defined)]

@@ -1495,6 +1495,9 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
+    /// If there are no matches the full string slice is returned as the only
+    /// item in the iterator.
+    ///
     /// [`char`]: prim@char
     /// [pattern]: self::pattern
     ///
@@ -1525,6 +1528,9 @@ impl str {
     ///
     /// let v: Vec<&str> = "lion::tiger::leopard".split("::").collect();
     /// assert_eq!(v, ["lion", "tiger", "leopard"]);
+    ///
+    /// let v: Vec<&str> = "AABBCC".split("DD").collect();
+    /// assert_eq!(v, ["AABBCC"]);
     ///
     /// let v: Vec<&str> = "abc1def2ghi".split(char::is_numeric).collect();
     /// assert_eq!(v, ["abc", "def", "ghi"]);
@@ -2424,6 +2430,83 @@ impl str {
         for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
     {
         suffix.strip_suffix_of(self)
+    }
+
+    /// Returns a string slice with the optional prefix removed.
+    ///
+    /// If the string starts with the pattern `prefix`, returns the substring after the prefix.
+    /// Unlike [`strip_prefix`], this method always returns `&str` for easy method chaining,
+    /// instead of returning [`Option<&str>`].
+    ///
+    /// If the string does not start with `prefix`, returns the original string unchanged.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    /// [`strip_prefix`]: Self::strip_prefix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(trim_prefix_suffix)]
+    ///
+    /// // Prefix present - removes it
+    /// assert_eq!("foo:bar".trim_prefix("foo:"), "bar");
+    /// assert_eq!("foofoo".trim_prefix("foo"), "foo");
+    ///
+    /// // Prefix absent - returns original string
+    /// assert_eq!("foo:bar".trim_prefix("bar"), "foo:bar");
+    ///
+    /// // Method chaining example
+    /// assert_eq!("<https://example.com/>".trim_prefix('<').trim_suffix('>'), "https://example.com/");
+    /// ```
+    #[must_use = "this returns the remaining substring as a new slice, \
+                  without modifying the original"]
+    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    pub fn trim_prefix<P: Pattern>(&self, prefix: P) -> &str {
+        prefix.strip_prefix_of(self).unwrap_or(self)
+    }
+
+    /// Returns a string slice with the optional suffix removed.
+    ///
+    /// If the string ends with the pattern `suffix`, returns the substring before the suffix.
+    /// Unlike [`strip_suffix`], this method always returns `&str` for easy method chaining,
+    /// instead of returning [`Option<&str>`].
+    ///
+    /// If the string does not end with `suffix`, returns the original string unchanged.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    /// [`strip_suffix`]: Self::strip_suffix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(trim_prefix_suffix)]
+    ///
+    /// // Suffix present - removes it
+    /// assert_eq!("bar:foo".trim_suffix(":foo"), "bar");
+    /// assert_eq!("foofoo".trim_suffix("foo"), "foo");
+    ///
+    /// // Suffix absent - returns original string
+    /// assert_eq!("bar:foo".trim_suffix("bar"), "bar:foo");
+    ///
+    /// // Method chaining example
+    /// assert_eq!("<https://example.com/>".trim_prefix('<').trim_suffix('>'), "https://example.com/");
+    /// ```
+    #[must_use = "this returns the remaining substring as a new slice, \
+                  without modifying the original"]
+    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    pub fn trim_suffix<P: Pattern>(&self, suffix: P) -> &str
+    where
+        for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
+    {
+        suffix.strip_suffix_of(self).unwrap_or(self)
     }
 
     /// Returns a string slice with all suffixes that match a pattern

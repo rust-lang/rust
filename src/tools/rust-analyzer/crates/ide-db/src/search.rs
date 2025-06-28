@@ -429,7 +429,7 @@ pub struct FindUsages<'a> {
     /// The container of our definition should it be an assoc item
     assoc_item_container: Option<hir::AssocItemContainer>,
     /// whether to search for the `Self` type of the definition
-    include_self_kw_refs: Option<hir::Type>,
+    include_self_kw_refs: Option<hir::Type<'a>>,
     /// whether to search for the `self` module
     search_self_mod: bool,
 }
@@ -1087,12 +1087,12 @@ impl<'a> FindUsages<'a> {
 
     fn found_self_ty_name_ref(
         &self,
-        self_ty: &hir::Type,
+        self_ty: &hir::Type<'_>,
         name_ref: &ast::NameRef,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         // See https://github.com/rust-lang/rust-analyzer/pull/15864/files/e0276dc5ddc38c65240edb408522bb869f15afb4#r1389848845
-        let ty_eq = |ty: hir::Type| match (ty.as_adt(), self_ty.as_adt()) {
+        let ty_eq = |ty: hir::Type<'_>| match (ty.as_adt(), self_ty.as_adt()) {
             (Some(ty), Some(self_ty)) => ty == self_ty,
             (None, None) => ty == *self_ty,
             _ => false,
@@ -1315,7 +1315,7 @@ impl<'a> FindUsages<'a> {
     }
 }
 
-fn def_to_ty(sema: &Semantics<'_, RootDatabase>, def: &Definition) -> Option<hir::Type> {
+fn def_to_ty<'db>(sema: &Semantics<'db, RootDatabase>, def: &Definition) -> Option<hir::Type<'db>> {
     match def {
         Definition::Adt(adt) => Some(adt.ty(sema.db)),
         Definition::TypeAlias(it) => Some(it.ty(sema.db)),

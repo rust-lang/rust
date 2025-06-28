@@ -1,0 +1,8 @@
+error: valid forms for the attribute are `#[must_use = "reason"]` and `#[must_use]`
+  --> $DIR/malformed-must_use.rs:1:1
+   |
+LL | #[must_use()]
+   | ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

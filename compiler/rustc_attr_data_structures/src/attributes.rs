@@ -38,7 +38,8 @@ pub enum InstructionSetAttr {
     ArmT32,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, PrintAttribute)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum OptimizeAttr {
     /// No `#[optimize(..)]` attribute
     #[default]
@@ -130,6 +131,17 @@ impl Deprecation {
     }
 }
 
+/// There are three valid forms of the attribute:
+/// `#[used]`, which is semantically equivalent to `#[used(linker)]` except that the latter is currently unstable.
+/// `#[used(compiler)]`
+/// `#[used(linker)]`
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum UsedBy {
+    Compiler,
+    Linker,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -201,12 +213,18 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[cold]`.
+    Cold(Span),
+
     /// Represents `#[rustc_confusables]`.
     Confusables {
         symbols: ThinVec<Symbol>,
         // FIXME(jdonszelmann): remove when target validation code is moved
         first_span: Span,
     },
+
+    /// Represents `#[const_continue]`.
+    ConstContinue(Span),
 
     /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
     ConstStability {
@@ -224,14 +242,50 @@ pub enum AttributeKind {
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
+    /// Represents [`#[export_name]`](https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute).
+    ExportName {
+        /// The name to export this item with.
+        /// It may not contain \0 bytes as it will be converted to a null-terminated string.
+        name: Symbol,
+        span: Span,
+    },
+
     /// Represents `#[inline]` and `#[rustc_force_inline]`.
     Inline(InlineAttr, Span),
+
+    /// Represents `#[loop_match]`.
+    LoopMatch(Span),
 
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
 
+    /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
+    MayDangle(Span),
+
+    /// Represents `#[must_use]`.
+    MustUse {
+        span: Span,
+        /// must_use can optionally have a reason: `#[must_use = "reason this must be used"]`
+        reason: Option<Symbol>,
+    },
+
+    /// Represents `#[naked]`
+    Naked(Span),
+
+    /// Represents `#[no_mangle]`
+    NoMangle(Span),
+
+    /// Represents `#[optimize(size|speed)]`
+    Optimize(OptimizeAttr, Span),
+
+    /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
+    PubTransparent(Span),
+
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr(ThinVec<(ReprAttr, Span)>),
+
+    /// Represents `#[rustc_skip_during_method_dispatch]`.
+    SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },
 
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {
@@ -239,5 +293,11 @@ pub enum AttributeKind {
         /// Span of the attribute.
         span: Span,
     },
+
+    /// Represents `#[track_caller]`
+    TrackCaller(Span),
+
+    /// Represents `#[used]`
+    Used { used_by: UsedBy, span: Span },
     // tidy-alphabetical-end
 }

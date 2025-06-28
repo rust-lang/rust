@@ -1302,6 +1302,7 @@ impl AttributeExt for Attribute {
             // FIXME: should not be needed anymore when all attrs are parsed
             Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::MayDangle(span)) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
@@ -1345,12 +1346,13 @@ impl AttributeExt for Attribute {
         }
     }
 
-    #[inline]
-    fn style(&self) -> AttrStyle {
-        match &self {
-            Attribute::Unparsed(u) => u.style,
-            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => *style,
-            _ => panic!(),
+    fn doc_resolution_scope(&self) -> Option<AttrStyle> {
+        match self {
+            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => Some(*style),
+            Attribute::Unparsed(attr) if self.has_name(sym::doc) && self.value_str().is_some() => {
+                Some(attr.style)
+            }
+            _ => None,
         }
     }
 }
@@ -1440,11 +1442,6 @@ impl Attribute {
     #[inline]
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         AttributeExt::doc_str_and_comment_kind(self)
-    }
-
-    #[inline]
-    pub fn style(&self) -> AttrStyle {
-        AttributeExt::style(self)
     }
 }
 
@@ -2285,16 +2282,9 @@ pub struct Expr<'hir> {
 }
 
 impl Expr<'_> {
-    pub fn precedence(
-        &self,
-        for_each_attr: &dyn Fn(HirId, &mut dyn FnMut(&Attribute)),
-    ) -> ExprPrecedence {
+    pub fn precedence(&self, has_attr: &dyn Fn(HirId) -> bool) -> ExprPrecedence {
         let prefix_attrs_precedence = || -> ExprPrecedence {
-            let mut has_outer_attr = false;
-            for_each_attr(self.hir_id, &mut |attr: &Attribute| {
-                has_outer_attr |= matches!(attr.style(), AttrStyle::Outer)
-            });
-            if has_outer_attr { ExprPrecedence::Prefix } else { ExprPrecedence::Unambiguous }
+            if has_attr(self.hir_id) { ExprPrecedence::Prefix } else { ExprPrecedence::Unambiguous }
         };
 
         match &self.kind {
@@ -2350,7 +2340,7 @@ impl Expr<'_> {
             | ExprKind::Use(..)
             | ExprKind::Err(_) => prefix_attrs_precedence(),
 
-            ExprKind::DropTemps(expr, ..) => expr.precedence(for_each_attr),
+            ExprKind::DropTemps(expr, ..) => expr.precedence(has_attr),
         }
     }
 
@@ -3151,6 +3141,15 @@ pub enum TraitItemKind<'hir> {
     /// type.
     Type(GenericBounds<'hir>, Option<&'hir Ty<'hir>>),
 }
+impl TraitItemKind<'_> {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            TraitItemKind::Const(..) => "associated constant",
+            TraitItemKind::Fn(..) => "function",
+            TraitItemKind::Type(..) => "associated type",
+        }
+    }
+}
 
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
@@ -3211,6 +3210,15 @@ pub enum ImplItemKind<'hir> {
     Fn(FnSig<'hir>, BodyId),
     /// An associated type.
     Type(&'hir Ty<'hir>),
+}
+impl ImplItemKind<'_> {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            ImplItemKind::Const(..) => "associated constant",
+            ImplItemKind::Fn(..) => "function",
+            ImplItemKind::Type(..) => "associated type",
+        }
+    }
 }
 
 /// A constraint on an associated item.
@@ -4537,6 +4545,16 @@ pub enum ForeignItemKind<'hir> {
     Type,
 }
 
+impl ForeignItemKind<'_> {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            ForeignItemKind::Fn(..) => "function",
+            ForeignItemKind::Static(..) => "static variable",
+            ForeignItemKind::Type => "type",
+        }
+    }
+}
+
 /// A variable captured by a closure.
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Upvar {
@@ -5002,9 +5020,9 @@ mod size_asserts {
     static_assert_size!(LetStmt<'_>, 72);
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 72);
+    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Path<'_>, 40);
     static_assert_size!(PathSegment<'_>, 48);
-    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(QPath<'_>, 24);
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);

@@ -421,7 +421,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             Some(ConstConditionsHold::Yes)
         } else {
             tcx.dcx()
-                .span_delayed_bug(call_span, "this should have reported a ~const error in HIR");
+                .span_delayed_bug(call_span, "this should have reported a [const] error in HIR");
             Some(ConstConditionsHold::No)
         }
     }
@@ -461,12 +461,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             },
             err_span,
         );
-    }
-
-    fn crate_inject_span(&self) -> Option<Span> {
-        self.tcx.hir_crate_items(()).definitions().next().and_then(|id| {
-            self.tcx.crate_level_attribute_injection_span(self.tcx.local_def_id_to_hir_id(id))
-        })
     }
 
     /// Check the const stability of the given item (fn or trait).
@@ -543,7 +537,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                         feature,
                         feature_enabled,
                         safe_to_expose_on_stable: callee_safe_to_expose_on_stable,
-                        suggestion_span: self.crate_inject_span(),
                         is_function_call: self.tcx.def_kind(def_id) != DefKind::Trait,
                     });
                 }
@@ -602,11 +595,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut);
 
                 if !is_allowed && self.place_may_escape(place) {
-                    self.check_op(ops::EscapingMutBorrow(if matches!(rvalue, Rvalue::Ref(..)) {
-                        hir::BorrowKind::Ref
-                    } else {
-                        hir::BorrowKind::Raw
-                    }));
+                    self.check_op(ops::EscapingMutBorrow);
                 }
             }
 
@@ -919,7 +908,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 name: intrinsic.name,
                                 feature,
                                 const_stable_indirect: is_const_stable,
-                                suggestion: self.crate_inject_span(),
                             });
                         }
                         Some(attrs::ConstStability {

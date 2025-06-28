@@ -1,5 +1,4 @@
-//@ known-bug: #110395
-// FIXME(const_trait_impl) check-pass
+//@ check-pass
 #![feature(const_trait_impl)]
 
 #[const_trait]
@@ -7,7 +6,7 @@ trait MyPartialEq {
     fn eq(&self, other: &Self) -> bool;
 }
 
-impl<T: ~const PartialEq> const MyPartialEq for T {
+impl<T: [const] PartialEq> const MyPartialEq for T {
     fn eq(&self, other: &Self) -> bool {
         PartialEq::eq(self, other)
     }

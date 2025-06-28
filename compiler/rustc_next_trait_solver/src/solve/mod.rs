@@ -191,6 +191,7 @@ where
         goal: Goal<I, (I::Const, I::Ty)>,
     ) -> QueryResult<I> {
         let (ct, ty) = goal.predicate;
+        let ct = self.structurally_normalize_const(goal.param_env, ct)?;
 
         let ct_ty = match ct.kind() {
             ty::ConstKind::Infer(_) => {
@@ -211,7 +212,7 @@ where
             ty::ConstKind::Bound(_, _) => panic!("escaping bound vars in {:?}", ct),
             ty::ConstKind::Value(cv) => cv.ty(),
             ty::ConstKind::Placeholder(placeholder) => {
-                self.cx().find_const_ty_from_env(goal.param_env, placeholder)
+                placeholder.find_const_ty_from_env(goal.param_env)
             }
         };
 

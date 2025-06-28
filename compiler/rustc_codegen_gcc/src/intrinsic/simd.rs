@@ -61,7 +61,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let (len, _) = args[1].layout.ty.simd_size_and_type(bx.tcx());
 
         let expected_int_bits = (len.max(8) - 1).next_power_of_two();
-        let expected_bytes = len / 8 + ((len % 8 > 0) as u64);
+        let expected_bytes = len / 8 + ((!len.is_multiple_of(8)) as u64);
 
         let mask_ty = args[0].layout.ty;
         let mut mask = match *mask_ty.kind() {
@@ -676,7 +676,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         let elem_type = vector_type.get_element_type();
 
         let expected_int_bits = in_len.max(8);
-        let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
+        let expected_bytes =
+            expected_int_bits / 8 + ((!expected_int_bits.is_multiple_of(8)) as u64);
 
         // FIXME(antoyo): that's not going to work for masks bigger than 128 bits.
         let result_type = bx.type_ix(expected_int_bits);

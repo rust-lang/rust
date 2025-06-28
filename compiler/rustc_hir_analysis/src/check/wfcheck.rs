@@ -11,7 +11,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AmbigArg, ItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{self, InferCtxt, SubregionOrigin, TyCtxtInferExt};
 use rustc_lint_defs::builtin::SUPERTRAIT_ITEM_SHADOWING_DEFINITION;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -231,7 +231,6 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         item.name = ? tcx.def_path_str(def_id)
     );
     crate::collect::lower_item(tcx, item.item_id());
-    crate::collect::reject_placeholder_type_signatures_in_item(tcx, item);
 
     let res = match item.kind {
         // Right now we check that every default trait implementation
@@ -381,8 +380,6 @@ fn check_trait_item<'tcx>(
         hir::TraitItemKind::Type(_bounds, Some(ty)) => (None, ty.span),
         _ => (None, trait_item.span),
     };
-
-    check_dyn_incompatible_self_trait_by_name(tcx, trait_item);
 
     // Check that an item definition in a subtrait is shadowing a supertrait item.
     lint_item_shadowing_supertrait_item(tcx, def_id);
@@ -741,7 +738,7 @@ fn ty_known_to_outlive<'tcx>(
         infcx.register_type_outlives_constraint_inner(infer::TypeOutlivesConstraint {
             sub_region: region,
             sup_type: ty,
-            origin: infer::RelateParamBound(DUMMY_SP, ty, None),
+            origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
         });
     })
 }
@@ -757,7 +754,11 @@ fn region_known_to_outlive<'tcx>(
     region_b: ty::Region<'tcx>,
 ) -> bool {
     test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
-        infcx.sub_regions(infer::RelateRegionParamBound(DUMMY_SP, None), region_b, region_a);
+        infcx.sub_regions(
+            SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+            region_b,
+            region_a,
+        );
     })
 }
 
@@ -829,70 +830,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATArgsCollector<'tcx> {
             _ => {}
         }
         t.super_visit_with(self)
-    }
-}
-
-fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
-    match ty.kind {
-        hir::TyKind::TraitObject([trait_ref], ..) => match trait_ref.trait_ref.path.segments {
-            [s] => s.res.opt_def_id() == Some(trait_def_id.to_def_id()),
-            _ => false,
-        },
-        _ => false,
-    }
-}
-
-/// Detect when a dyn-incompatible trait is referring to itself in one of its associated items.
-///
-/// In such cases, suggest using `Self` instead.
-fn check_dyn_incompatible_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
-    let (trait_ident, trait_def_id) =
-        match tcx.hir_node_by_def_id(tcx.hir_get_parent_item(item.hir_id()).def_id) {
-            hir::Node::Item(item) => match item.kind {
-                hir::ItemKind::Trait(_, _, ident, ..) => (ident, item.owner_id),
-                _ => return,
-            },
-            _ => return,
-        };
-    let mut trait_should_be_self = vec![];
-    match &item.kind {
-        hir::TraitItemKind::Const(ty, _) | hir::TraitItemKind::Type(_, Some(ty))
-            if could_be_self(trait_def_id.def_id, ty) =>
-        {
-            trait_should_be_self.push(ty.span)
-        }
-        hir::TraitItemKind::Fn(sig, _) => {
-            for ty in sig.decl.inputs {
-                if could_be_self(trait_def_id.def_id, ty) {
-                    trait_should_be_self.push(ty.span);
-                }
-            }
-            match sig.decl.output {
-                hir::FnRetTy::Return(ty) if could_be_self(trait_def_id.def_id, ty) => {
-                    trait_should_be_self.push(ty.span);
-                }
-                _ => {}
-            }
-        }
-        _ => {}
-    }
-    if !trait_should_be_self.is_empty() {
-        if tcx.is_dyn_compatible(trait_def_id) {
-            return;
-        }
-        let sugg = trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();
-        tcx.dcx()
-            .struct_span_err(
-                trait_should_be_self,
-                "associated item referring to unboxed trait object for its own trait",
-            )
-            .with_span_label(trait_ident.span, "in this trait")
-            .with_multipart_suggestion(
-                "you might have meant to use `Self` to refer to the implementing type",
-                sugg,
-                Applicability::MachineApplicable,
-            )
-            .emit();
     }
 }
 
@@ -1064,7 +1001,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                     Ok(..) => Some(vec![(adt_const_params_feature_string, sym::adt_const_params)]),
                 };
                 if let Some(features) = may_suggest_feature {
-                    tcx.disabled_nightly_features(&mut diag, Some(param.hir_id), features);
+                    tcx.disabled_nightly_features(&mut diag, features);
                 }
 
                 Err(diag.emit())
@@ -1465,7 +1402,7 @@ fn check_impl<'tcx>(
                     }
                 }
 
-                // Ensure that the `~const` where clauses of the trait hold for the impl.
+                // Ensure that the `[const]` where clauses of the trait hold for the impl.
                 if tcx.is_conditionally_const(item.owner_id.def_id) {
                     for (bound, _) in
                         tcx.const_conditions(trait_ref.def_id).instantiate(tcx, trait_ref.args)
@@ -1557,7 +1494,9 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     ty::ConstKind::Unevaluated(uv) => {
                         infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
                     }
-                    ty::ConstKind::Param(param_ct) => param_ct.find_ty_from_env(wfcx.param_env),
+                    ty::ConstKind::Param(param_ct) => {
+                        param_ct.find_const_ty_from_env(wfcx.param_env)
+                    }
                 };
 
                 let param_ty = tcx.type_of(param.def_id).instantiate_identity();

@@ -1,5 +1,10 @@
+//@revisions: edition2015 edition2024
+//@[edition2015] edition:2015
+//@[edition2024] edition:2024
 mod foo {
+//[edition2015]~^ HELP you might be missing a crate named `spam`, add it to your project and import it in your code
     use spam::*; //~ ERROR unresolved import `spam` [E0432]
+    //[edition2024]~^ HELP you might be missing a crate named `spam`
 }
 
 fn main() {

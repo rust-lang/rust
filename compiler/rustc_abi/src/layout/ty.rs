@@ -71,7 +71,7 @@ pub struct Layout<'a>(pub Interned<'a, LayoutData<FieldIdx, VariantIdx>>);
 
 impl<'a> fmt::Debug for Layout<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // See comment on `<LayoutS as Debug>::fmt` above.
+        // See comment on `<LayoutData as Debug>::fmt` above.
         self.0.0.fmt(f)
     }
 }

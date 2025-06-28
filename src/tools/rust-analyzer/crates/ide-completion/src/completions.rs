@@ -161,7 +161,11 @@ impl Completions {
         item.add_to(self, ctx.db);
     }
 
-    pub(crate) fn add_expr(&mut self, ctx: &CompletionContext<'_>, expr: &hir::term_search::Expr) {
+    pub(crate) fn add_expr(
+        &mut self,
+        ctx: &CompletionContext<'_>,
+        expr: &hir::term_search::Expr<'_>,
+    ) {
         if let Some(item) = render_expr(ctx, expr) {
             item.add_to(self, ctx.db)
         }
@@ -170,7 +174,7 @@ impl Completions {
     pub(crate) fn add_crate_roots(
         &mut self,
         ctx: &CompletionContext<'_>,
-        path_ctx: &PathCompletionCtx,
+        path_ctx: &PathCompletionCtx<'_>,
     ) {
         ctx.process_all_names(&mut |name, res, doc_aliases| match res {
             ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root() => {
@@ -183,7 +187,7 @@ impl Completions {
     pub(crate) fn add_path_resolution(
         &mut self,
         ctx: &CompletionContext<'_>,
-        path_ctx: &PathCompletionCtx,
+        path_ctx: &PathCompletionCtx<'_>,
         local_name: hir::Name,
         resolution: hir::ScopeDef,
         doc_aliases: Vec<syntax::SmolStr>,
@@ -232,7 +236,7 @@ impl Completions {
     pub(crate) fn add_enum_variants(
         &mut self,
         ctx: &CompletionContext<'_>,
-        path_ctx: &PathCompletionCtx,
+        path_ctx: &PathCompletionCtx<'_>,
         e: hir::Enum,
     ) {
         if !ctx.check_stability_and_hidden(e) {
@@ -246,7 +250,7 @@ impl Completions {
     pub(crate) fn add_module(
         &mut self,
         ctx: &CompletionContext<'_>,
-        path_ctx: &PathCompletionCtx,
+        path_ctx: &PathCompletionCtx<'_>,
         module: hir::Module,
         local_name: hir::Name,
         doc_aliases: Vec<syntax::SmolStr>,
@@ -263,7 +267,7 @@ impl Completions {
     pub(crate) fn add_macro(
         &mut self,
         ctx: &CompletionContext<'_>,
-        path_ctx: &PathCompletionCtx,
+        path_ctx: &PathCompletionCtx<'_>,
         mac: hir::Macro,
         local_name: hir::Name,
     ) {
@@ -286,7 +290,7 @@ impl Completions {
     pub(crate) fn add_function(
         &mut self,
         ctx: &CompletionContext<'_>,
-        path_ctx: &PathCompletionCtx,
+        path_ctx: &PathCompletionCtx<'_>,
         func: hir::Function,
         local_name: Option<hir::Name>,
     ) {
@@ -312,7 +316,7 @@ impl Completions {
     pub(crate) fn add_method(
         &mut self,
         ctx: &CompletionContext<'_>,
-        dot_access: &DotAccess,
+        dot_access: &DotAccess<'_>,
         func: hir::Function,
         receiver: Option<SmolStr>,
         local_name: Option<hir::Name>,
@@ -340,7 +344,7 @@ impl Completions {
     pub(crate) fn add_method_with_import(
         &mut self,
         ctx: &CompletionContext<'_>,
-        dot_access: &DotAccess,
+        dot_access: &DotAccess<'_>,
         func: hir::Function,
         import: LocatedImport,
     ) {
@@ -407,7 +411,7 @@ impl Completions {
     pub(crate) fn add_qualified_enum_variant(
         &mut self,
         ctx: &CompletionContext<'_>,
-        path_ctx: &PathCompletionCtx,
+        path_ctx: &PathCompletionCtx<'_>,
         variant: hir::Variant,
         path: hir::ModPath,
     ) {
@@ -424,7 +428,7 @@ impl Completions {
     pub(crate) fn add_enum_variant(
         &mut self,
         ctx: &CompletionContext<'_>,
-        path_ctx: &PathCompletionCtx,
+        path_ctx: &PathCompletionCtx<'_>,
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
@@ -447,10 +451,10 @@ impl Completions {
     pub(crate) fn add_field(
         &mut self,
         ctx: &CompletionContext<'_>,
-        dot_access: &DotAccess,
+        dot_access: &DotAccess<'_>,
         receiver: Option<SmolStr>,
         field: hir::Field,
-        ty: &hir::Type,
+        ty: &hir::Type<'_>,
     ) {
         let is_private_editable = match ctx.is_visible(&field) {
             Visible::Yes => false,
@@ -471,7 +475,7 @@ impl Completions {
     pub(crate) fn add_struct_literal(
         &mut self,
         ctx: &CompletionContext<'_>,
-        path_ctx: &PathCompletionCtx,
+        path_ctx: &PathCompletionCtx<'_>,
         strukt: hir::Struct,
         path: Option<hir::ModPath>,
         local_name: Option<hir::Name>,
@@ -518,7 +522,7 @@ impl Completions {
         ctx: &CompletionContext<'_>,
         receiver: Option<SmolStr>,
         field: usize,
-        ty: &hir::Type,
+        ty: &hir::Type<'_>,
     ) {
         // Only used for (unnamed) tuples, whose all fields *are* stable. No need to check
         // stability here.
@@ -550,7 +554,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext<'_>,
         pattern_ctx: &PatternContext,
-        path_ctx: Option<&PathCompletionCtx>,
+        path_ctx: Option<&PathCompletionCtx<'_>>,
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
@@ -704,7 +708,7 @@ pub(super) fn complete_name(
 pub(super) fn complete_name_ref(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    NameRefContext { nameref, kind }: &NameRefContext,
+    NameRefContext { nameref, kind }: &NameRefContext<'_>,
 ) {
     match kind {
         NameRefKind::Path(path_ctx) => {

@@ -175,7 +175,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     }
 
     // We extend the param-env of our item with the const conditions of the item,
-    // since we're allowed to assume `~const` bounds hold within the item itself.
+    // since we're allowed to assume `[const]` bounds hold within the item itself.
     if tcx.is_conditionally_const(def_id) {
         predicates.extend(
             tcx.const_conditions(def_id).instantiate_identity(tcx).into_iter().map(

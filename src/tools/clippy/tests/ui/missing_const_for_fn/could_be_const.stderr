@@ -332,5 +332,75 @@ help: make the function `const`
 LL | const fn mut_add(x: &mut i32) {
    | +++++
 
-error: aborting due to 25 previous errors
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:239:9
+   |
+LL | /         pub fn new_1_61() -> Self {
+LL | |
+LL | |             Self { _t: None }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new_1_61() -> Self {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:251:9
+   |
+LL | /         pub fn new_1_60() -> Self {
+LL | |
+LL | |             Self { _t: None }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new_1_60() -> Self {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:257:9
+   |
+LL | /         pub fn new_1_61() -> Self {
+LL | |
+LL | |             Self { _t: None }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new_1_61() -> Self {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:269:9
+   |
+LL | /         pub fn new_1_60() -> Self {
+LL | |
+LL | |             Self { _t: None }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new_1_60() -> Self {
+   |             +++++
+
+error: this could be a `const fn`
+  --> tests/ui/missing_const_for_fn/could_be_const.rs:275:9
+   |
+LL | /         pub fn new_1_61() -> Self {
+LL | |
+LL | |             Self { _t: None }
+LL | |         }
+   | |_________^
+   |
+help: make the function `const`
+   |
+LL |         pub const fn new_1_61() -> Self {
+   |             +++++
+
+error: aborting due to 30 previous errors
 

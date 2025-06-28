@@ -57,7 +57,8 @@ fn main() {
         diff()
             .expected_file("short-error.txt")
             .actual_text("(linker error)", out.stderr())
-            .normalize(r#"/rustc[^/]*/"#, "/rustc/")
+            .normalize(r#"/rustc[^/_-]*/"#, "/rustc/")
+            .normalize("libpanic_abort", "libpanic_unwind")
             .normalize(
                 regex::escape(run_make_support::build_root().to_str().unwrap()),
                 "/build-root",

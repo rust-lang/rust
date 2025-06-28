@@ -426,4 +426,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Added new option `tool.TOOL_NAME.features` to specify the features to compile a tool with",
     },
+    ChangeInfo {
+        change_id: 142581,
+        severity: ChangeSeverity::Warning,
+        summary: "It is no longer possible to `x build` with stage 0. All build commands have to be on stage 1+.",
+    },
 ];

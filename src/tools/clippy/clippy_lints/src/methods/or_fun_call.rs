@@ -136,7 +136,7 @@ pub(super) fn check<'tcx>(
         fun_span: Option<Span>,
     ) -> bool {
         // (path, fn_has_argument, methods, suffix)
-        const KNOW_TYPES: [(Symbol, bool, &[Symbol], &str); 4] = [
+        const KNOW_TYPES: [(Symbol, bool, &[Symbol], &str); 5] = [
             (sym::BTreeEntry, false, &[sym::or_insert], "with"),
             (sym::HashMapEntry, false, &[sym::or_insert], "with"),
             (
@@ -145,16 +145,17 @@ pub(super) fn check<'tcx>(
                 &[sym::map_or, sym::ok_or, sym::or, sym::unwrap_or],
                 "else",
             ),
-            (sym::Result, true, &[sym::or, sym::unwrap_or], "else"),
+            (sym::Option, false, &[sym::get_or_insert], "with"),
+            (sym::Result, true, &[sym::map_or, sym::or, sym::unwrap_or], "else"),
         ];
 
         if KNOW_TYPES.iter().any(|k| k.2.contains(&name))
             && switch_to_lazy_eval(cx, arg)
             && !contains_return(arg)
             && let self_ty = cx.typeck_results().expr_ty(self_expr)
-            && let Some(&(_, fn_has_arguments, poss, suffix)) =
-                KNOW_TYPES.iter().find(|&&i| is_type_diagnostic_item(cx, self_ty, i.0))
-            && poss.contains(&name)
+            && let Some(&(_, fn_has_arguments, _, suffix)) = KNOW_TYPES
+                .iter()
+                .find(|&&i| is_type_diagnostic_item(cx, self_ty, i.0) && i.2.contains(&name))
         {
             let ctxt = span.ctxt();
             let mut app = Applicability::HasPlaceholders;

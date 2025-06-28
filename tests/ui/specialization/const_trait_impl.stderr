@@ -1,57 +1,57 @@
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const_trait_impl.rs:34:9
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/const_trait_impl.rs:34:7
    |
-LL | impl<T: ~const Default> const A for T {
-   |         ^^^^^^ can't be applied to `Default`
+LL | impl<T: [const] Default> const A for T {
+   |       ^^^^^^^^^ can't be applied to `Default`
    |
-note: `Default` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Default` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/default.rs:LL:COL
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const_trait_impl.rs:40:9
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/const_trait_impl.rs:40:7
    |
-LL | impl<T: ~const Default + ~const Sup> const A for T {
-   |         ^^^^^^ can't be applied to `Default`
+LL | impl<T: [const] Default + [const] Sup> const A for T {
+   |       ^^^^^^^^^ can't be applied to `Default`
    |
-note: `Default` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Default` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/default.rs:LL:COL
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const_trait_impl.rs:46:9
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/const_trait_impl.rs:46:7
    |
-LL | impl<T: ~const Default + ~const Sub> const A for T {
-   |         ^^^^^^ can't be applied to `Default`
+LL | impl<T: [const] Default + [const] Sub> const A for T {
+   |       ^^^^^^^^^ can't be applied to `Default`
    |
-note: `Default` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Default` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/default.rs:LL:COL
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const_trait_impl.rs:40:9
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/const_trait_impl.rs:40:7
    |
-LL | impl<T: ~const Default + ~const Sup> const A for T {
-   |         ^^^^^^ can't be applied to `Default`
+LL | impl<T: [const] Default + [const] Sup> const A for T {
+   |       ^^^^^^^^^ can't be applied to `Default`
    |
-note: `Default` can't be used with `~const` because it isn't annotated with `#[const_trait]`
-  --> $SRC_DIR/core/src/default.rs:LL:COL
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const_trait_impl.rs:34:9
-   |
-LL | impl<T: ~const Default> const A for T {
-   |         ^^^^^^ can't be applied to `Default`
-   |
-note: `Default` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Default` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/default.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const_trait_impl.rs:46:9
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/const_trait_impl.rs:34:7
    |
-LL | impl<T: ~const Default + ~const Sub> const A for T {
-   |         ^^^^^^ can't be applied to `Default`
+LL | impl<T: [const] Default> const A for T {
+   |       ^^^^^^^^^ can't be applied to `Default`
    |
-note: `Default` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Default` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/default.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/const_trait_impl.rs:46:7
+   |
+LL | impl<T: [const] Default + [const] Sub> const A for T {
+   |       ^^^^^^^^^ can't be applied to `Default`
+   |
+note: `Default` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/default.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

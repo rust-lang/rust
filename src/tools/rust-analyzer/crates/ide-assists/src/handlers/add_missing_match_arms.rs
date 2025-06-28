@@ -1,12 +1,13 @@
 use std::iter::{self, Peekable};
 
 use either::Either;
-use hir::{Adt, Crate, HasAttrs, ImportPathConfig, ModuleDef, Semantics, sym};
+use hir::{Adt, AsAssocItem, Crate, HasAttrs, ImportPathConfig, ModuleDef, Semantics, sym};
 use ide_db::RootDatabase;
 use ide_db::assists::ExprFillDefaultMode;
 use ide_db::syntax_helpers::suggest_name;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
+use syntax::ToSmolStr;
 use syntax::ast::edit::IndentLevel;
 use syntax::ast::edit_in_place::Indent;
 use syntax::ast::syntax_factory::SyntaxFactory;
@@ -79,12 +80,20 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
 
     let make = SyntaxFactory::with_mappings();
 
-    let module = ctx.sema.scope(expr.syntax())?.module();
+    let scope = ctx.sema.scope(expr.syntax())?;
+    let module = scope.module();
+    let self_ty = if ctx.config.prefer_self_ty {
+        scope
+            .containing_function()
+            .and_then(|function| function.as_assoc_item(ctx.db())?.implementing_ty(ctx.db()))
+    } else {
+        None
+    };
     let (mut missing_pats, is_non_exhaustive, has_hidden_variants): (
         Peekable<Box<dyn Iterator<Item = (ast::Pat, bool)>>>,
         bool,
         bool,
-    ) = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr) {
+    ) = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr, self_ty.as_ref()) {
         let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db(), module.krate());
 
         let variants = enum_def.variants(ctx.db());
@@ -102,8 +111,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
 
-        let option_enum = FamousDefs(&ctx.sema, module.krate()).core_option_Option().map(lift_enum);
-        let missing_pats: Box<dyn Iterator<Item = _>> = if Some(enum_def) == option_enum {
+        let option_enum = FamousDefs(&ctx.sema, module.krate()).core_option_Option();
+        let missing_pats: Box<dyn Iterator<Item = _>> = if matches!(enum_def, ExtendedEnum::Enum { enum_: e, .. } if Some(e) == option_enum)
+        {
             // Match `Some` variant first.
             cov_mark::hit!(option_order);
             Box::new(missing_pats.rev())
@@ -111,7 +121,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             Box::new(missing_pats)
         };
         (missing_pats.peekable(), is_non_exhaustive, has_hidden_variants)
-    } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr) {
+    } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr, self_ty.as_ref()) {
         let is_non_exhaustive =
             enum_defs.iter().any(|enum_def| enum_def.is_non_exhaustive(ctx.db(), module.krate()));
 
@@ -159,7 +169,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             is_non_exhaustive,
             has_hidden_variants,
         )
-    } else if let Some((enum_def, len)) = resolve_array_of_enum_def(&ctx.sema, &expr) {
+    } else if let Some((enum_def, len)) =
+        resolve_array_of_enum_def(&ctx.sema, &expr, self_ty.as_ref())
+    {
         let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db(), module.krate());
         let variants = enum_def.variants(ctx.db());
 
@@ -373,23 +385,23 @@ fn does_pat_match_variant(pat: &Pat, var: &Pat) -> bool {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone)]
 enum ExtendedEnum {
     Bool,
-    Enum(hir::Enum),
+    Enum { enum_: hir::Enum, use_self: bool },
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 enum ExtendedVariant {
     True,
     False,
-    Variant(hir::Variant),
+    Variant { variant: hir::Variant, use_self: bool },
 }
 
 impl ExtendedVariant {
     fn should_be_hidden(self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
-            ExtendedVariant::Variant(var) => {
+            ExtendedVariant::Variant { variant: var, .. } => {
                 var.attrs(db).has_doc_hidden() && var.module(db).krate() != krate
             }
             _ => false,
@@ -397,25 +409,35 @@ impl ExtendedVariant {
     }
 }
 
-fn lift_enum(e: hir::Enum) -> ExtendedEnum {
-    ExtendedEnum::Enum(e)
-}
-
 impl ExtendedEnum {
-    fn is_non_exhaustive(self, db: &RootDatabase, krate: Crate) -> bool {
+    fn enum_(
+        db: &RootDatabase,
+        enum_: hir::Enum,
+        enum_ty: &hir::Type<'_>,
+        self_ty: Option<&hir::Type<'_>>,
+    ) -> Self {
+        ExtendedEnum::Enum {
+            enum_,
+            use_self: self_ty.is_some_and(|self_ty| self_ty.could_unify_with_deeply(db, enum_ty)),
+        }
+    }
+
+    fn is_non_exhaustive(&self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
-            ExtendedEnum::Enum(e) => {
+            ExtendedEnum::Enum { enum_: e, .. } => {
                 e.attrs(db).by_key(sym::non_exhaustive).exists() && e.module(db).krate() != krate
             }
             _ => false,
         }
     }
 
-    fn variants(self, db: &RootDatabase) -> Vec<ExtendedVariant> {
-        match self {
-            ExtendedEnum::Enum(e) => {
-                e.variants(db).into_iter().map(ExtendedVariant::Variant).collect::<Vec<_>>()
-            }
+    fn variants(&self, db: &RootDatabase) -> Vec<ExtendedVariant> {
+        match *self {
+            ExtendedEnum::Enum { enum_: e, use_self } => e
+                .variants(db)
+                .into_iter()
+                .map(|variant| ExtendedVariant::Variant { variant, use_self })
+                .collect::<Vec<_>>(),
             ExtendedEnum::Bool => {
                 Vec::<ExtendedVariant>::from([ExtendedVariant::True, ExtendedVariant::False])
             }
@@ -423,9 +445,13 @@ impl ExtendedEnum {
     }
 }
 
-fn resolve_enum_def(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> Option<ExtendedEnum> {
+fn resolve_enum_def(
+    sema: &Semantics<'_, RootDatabase>,
+    expr: &ast::Expr,
+    self_ty: Option<&hir::Type<'_>>,
+) -> Option<ExtendedEnum> {
     sema.type_of_expr(expr)?.adjusted().autoderef(sema.db).find_map(|ty| match ty.as_adt() {
-        Some(Adt::Enum(e)) => Some(ExtendedEnum::Enum(e)),
+        Some(Adt::Enum(e)) => Some(ExtendedEnum::enum_(sema.db, e, &ty, self_ty)),
         _ => ty.is_bool().then_some(ExtendedEnum::Bool),
     })
 }
@@ -433,6 +459,7 @@ fn resolve_enum_def(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> Opt
 fn resolve_tuple_of_enum_def(
     sema: &Semantics<'_, RootDatabase>,
     expr: &ast::Expr,
+    self_ty: Option<&hir::Type<'_>>,
 ) -> Option<Vec<ExtendedEnum>> {
     sema.type_of_expr(expr)?
         .adjusted()
@@ -441,7 +468,7 @@ fn resolve_tuple_of_enum_def(
         .map(|ty| {
             ty.autoderef(sema.db).find_map(|ty| {
                 match ty.as_adt() {
-                    Some(Adt::Enum(e)) => Some(lift_enum(e)),
+                    Some(Adt::Enum(e)) => Some(ExtendedEnum::enum_(sema.db, e, &ty, self_ty)),
                     // For now we only handle expansion for a tuple of enums. Here
                     // we map non-enum items to None and rely on `collect` to
                     // convert Vec<Option<hir::Enum>> into Option<Vec<hir::Enum>>.
@@ -456,10 +483,11 @@ fn resolve_tuple_of_enum_def(
 fn resolve_array_of_enum_def(
     sema: &Semantics<'_, RootDatabase>,
     expr: &ast::Expr,
+    self_ty: Option<&hir::Type<'_>>,
 ) -> Option<(ExtendedEnum, usize)> {
     sema.type_of_expr(expr)?.adjusted().as_array(sema.db).and_then(|(ty, len)| {
         ty.autoderef(sema.db).find_map(|ty| match ty.as_adt() {
-            Some(Adt::Enum(e)) => Some((lift_enum(e), len)),
+            Some(Adt::Enum(e)) => Some((ExtendedEnum::enum_(sema.db, e, &ty, self_ty), len)),
             _ => ty.is_bool().then_some((ExtendedEnum::Bool, len)),
         })
     })
@@ -474,9 +502,21 @@ fn build_pat(
 ) -> Option<ast::Pat> {
     let db = ctx.db();
     match var {
-        ExtendedVariant::Variant(var) => {
+        ExtendedVariant::Variant { variant: var, use_self } => {
             let edition = module.krate().edition(db);
-            let path = mod_path_to_ast(&module.find_path(db, ModuleDef::from(var), cfg)?, edition);
+            let path = if use_self {
+                make::path_from_segments(
+                    [
+                        make::path_segment(make::name_ref_self_ty()),
+                        make::path_segment(make::name_ref(
+                            &var.name(db).display(db, edition).to_smolstr(),
+                        )),
+                    ],
+                    false,
+                )
+            } else {
+                mod_path_to_ast(&module.find_path(db, ModuleDef::from(var), cfg)?, edition)
+            };
             let fields = var.fields(db);
             let pat: ast::Pat = match var.kind(db) {
                 hir::StructKind::Tuple => {
@@ -509,8 +549,10 @@ fn build_pat(
 
 #[cfg(test)]
 mod tests {
+    use crate::AssistConfig;
     use crate::tests::{
-        check_assist, check_assist_not_applicable, check_assist_target, check_assist_unresolved,
+        TEST_CONFIG, check_assist, check_assist_not_applicable, check_assist_target,
+        check_assist_unresolved, check_assist_with_config,
     };
 
     use super::add_missing_match_arms;
@@ -2093,6 +2135,113 @@ fn f() {
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn prefer_self() {
+        check_assist_with_config(
+            add_missing_match_arms,
+            AssistConfig { prefer_self_ty: true, ..TEST_CONFIG },
+            r#"
+enum Foo {
+    Bar,
+    Baz,
+}
+
+impl Foo {
+    fn qux(&self) {
+        match self {
+            $0_ => {}
+        }
+    }
+}
+            "#,
+            r#"
+enum Foo {
+    Bar,
+    Baz,
+}
+
+impl Foo {
+    fn qux(&self) {
+        match self {
+            Self::Bar => ${1:todo!()},
+            Self::Baz => ${2:todo!()},$0
+        }
+    }
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn prefer_self_with_generics() {
+        check_assist_with_config(
+            add_missing_match_arms,
+            AssistConfig { prefer_self_ty: true, ..TEST_CONFIG },
+            r#"
+enum Foo<T> {
+    Bar(T),
+    Baz,
+}
+
+impl<T> Foo<T> {
+    fn qux(&self) {
+        match self {
+            $0_ => {}
+        }
+    }
+}
+            "#,
+            r#"
+enum Foo<T> {
+    Bar(T),
+    Baz,
+}
+
+impl<T> Foo<T> {
+    fn qux(&self) {
+        match self {
+            Self::Bar(${1:_}) => ${2:todo!()},
+            Self::Baz => ${3:todo!()},$0
+        }
+    }
+}
+            "#,
+        );
+        check_assist_with_config(
+            add_missing_match_arms,
+            AssistConfig { prefer_self_ty: true, ..TEST_CONFIG },
+            r#"
+enum Foo<T> {
+    Bar(T),
+    Baz,
+}
+
+impl<T> Foo<T> {
+    fn qux(v: Foo<i32>) {
+        match v {
+            $0_ => {}
+        }
+    }
+}
+            "#,
+            r#"
+enum Foo<T> {
+    Bar(T),
+    Baz,
+}
+
+impl<T> Foo<T> {
+    fn qux(v: Foo<i32>) {
+        match v {
+            Foo::Bar(${1:_}) => ${2:todo!()},
+            Foo::Baz => ${3:todo!()},$0
+        }
+    }
+}
+            "#,
         );
     }
 }

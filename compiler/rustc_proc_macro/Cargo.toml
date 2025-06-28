@@ -15,7 +15,7 @@ test = false
 doctest = false
 
 [dependencies]
-rustc-literal-escaper = "0.0.2"
+rustc-literal-escaper = "0.0.4"
 
 [features]
 rustc-dep-of-std = []

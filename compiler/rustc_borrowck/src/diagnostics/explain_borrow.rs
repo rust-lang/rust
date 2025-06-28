@@ -71,7 +71,6 @@ impl<'tcx> BorrowExplanation<'tcx> {
     ) {
         let tcx = cx.infcx.tcx;
         let body = cx.body;
-        let local_names = &cx.local_names;
 
         if let Some(span) = borrow_span {
             let def_id = body.source.def_id();
@@ -220,7 +219,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     _ => ("destructor", format!("type `{}`", local_decl.ty)),
                 };
 
-                match local_names[dropped_local] {
+                match cx.local_name(dropped_local) {
                     Some(local_name) if !local_decl.from_compiler_desugaring() => {
                         let message = format!(
                             "{borrow_desc}borrow might be used here, when `{local_name}` is dropped \
@@ -670,10 +669,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
             Some(Cause::DropVar(local, location)) => {
                 let mut should_note_order = false;
-                if self.local_names[local].is_some()
+                if self.local_name(local).is_some()
                     && let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place
                     && let Some(borrowed_local) = place.as_local()
-                    && self.local_names[borrowed_local].is_some()
+                    && self.local_name(borrowed_local).is_some()
                     && local != borrowed_local
                 {
                     should_note_order = true;
@@ -748,7 +747,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         Operand::Copy(place) | Operand::Move(place) => {
                             if let Some(l) = place.as_local() {
                                 let local_decl = &self.body.local_decls[l];
-                                if self.local_names[l].is_none() {
+                                if self.local_name(l).is_none() {
                                     local_decl.source_info.span
                                 } else {
                                     span
@@ -793,7 +792,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             Operand::Copy(place) | Operand::Move(place) => {
                                 if let Some(l) = place.as_local() {
                                     let local_decl = &self.body.local_decls[l];
-                                    if self.local_names[l].is_none() {
+                                    if self.local_name(l).is_none() {
                                         local_decl.source_info.span
                                     } else {
                                         span

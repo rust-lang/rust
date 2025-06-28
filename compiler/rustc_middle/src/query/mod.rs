@@ -850,14 +850,14 @@ rustc_queries! {
     }
 
     /// Compute the conditions that need to hold for a conditionally-const item to be const.
-    /// That is, compute the set of `~const` where clauses for a given item.
+    /// That is, compute the set of `[const]` where clauses for a given item.
     ///
-    /// This can be thought of as the `~const` equivalent of `predicates_of`. These are the
+    /// This can be thought of as the `[const]` equivalent of `predicates_of`. These are the
     /// predicates that need to be proven at usage sites, and can be assumed at definition.
     ///
-    /// This query also computes the `~const` where clauses for associated types, which are
-    /// not "const", but which have item bounds which may be `~const`. These must hold for
-    /// the `~const` item bound to hold.
+    /// This query also computes the `[const]` where clauses for associated types, which are
+    /// not "const", but which have item bounds which may be `[const]`. These must hold for
+    /// the `[const]` item bound to hold.
     query const_conditions(
         key: DefId
     ) -> ty::ConstConditions<'tcx> {
@@ -869,13 +869,13 @@ rustc_queries! {
 
     /// Compute the const bounds that are implied for a conditionally-const item.
     ///
-    /// This can be though of as the `~const` equivalent of `explicit_item_bounds`. These
+    /// This can be though of as the `[const]` equivalent of `explicit_item_bounds`. These
     /// are the predicates that need to proven at definition sites, and can be assumed at
     /// usage sites.
     query explicit_implied_const_bounds(
         key: DefId
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
-        desc { |tcx| "computing the implied `~const` bounds for `{}`",
+        desc { |tcx| "computing the implied `[const]` bounds for `{}`",
             tcx.def_path_str(key)
         }
         separate_provide_extern
@@ -1311,7 +1311,7 @@ rustc_queries! {
     ///
     /// This query will panic for uninhabited variants and if the passed type is not an enum.
     query tag_for_variant(
-        key: (Ty<'tcx>, abi::VariantIdx)
+        key: PseudoCanonicalInput<'tcx, (Ty<'tcx>, abi::VariantIdx)>,
     ) -> Option<ty::ScalarInt> {
         desc { "computing variant tag for enum" }
     }

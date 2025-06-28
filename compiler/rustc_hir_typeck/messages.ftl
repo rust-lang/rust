@@ -1,6 +1,6 @@
-hir_typeck_abi_custom_call =
-    functions with the `"custom"` ABI cannot be called
-    .note = an `extern "custom"` function can only be called from within inline assembly
+hir_typeck_abi_cannot_be_called =
+    functions with the {$abi} ABI cannot be called
+    .note = an `extern {$abi}` function can only be called using inline assembly
 
 hir_typeck_add_missing_parentheses_in_range = you must surround the range in parentheses to call its `{$func_name}` function
 
@@ -78,6 +78,9 @@ hir_typeck_cast_unknown_pointer = cannot cast {$to ->
     .label_to = needs more type information
     .note = the type information given here is insufficient to check whether the pointer cast is valid
     .label_from = the type information given here is insufficient to check whether the pointer cast is valid
+
+hir_typeck_const_continue_bad_label =
+    `#[const_continue]` must break to a labeled block that participates in a `#[loop_match]`
 
 hir_typeck_const_select_must_be_const = this argument must be a `const fn`
     .help = consult the documentation on `const_eval_select` for more information

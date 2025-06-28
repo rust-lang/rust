@@ -17,7 +17,6 @@
 use std::marker::PhantomData;
 
 use rustc_attr_data_structures::AttributeKind;
-use rustc_attr_data_structures::lints::AttributeLintKind;
 use rustc_feature::AttributeTemplate;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
@@ -28,12 +27,17 @@ use crate::session_diagnostics::UnusedMultiple;
 
 pub(crate) mod allow_unstable;
 pub(crate) mod cfg;
+pub(crate) mod codegen_attrs;
 pub(crate) mod confusables;
 pub(crate) mod deprecation;
 pub(crate) mod inline;
 pub(crate) mod lint_helpers;
+pub(crate) mod loop_match;
+pub(crate) mod must_use;
 pub(crate) mod repr;
+pub(crate) mod semantics;
 pub(crate) mod stability;
+pub(crate) mod traits;
 pub(crate) mod transparency;
 pub(crate) mod util;
 
@@ -86,8 +90,19 @@ pub(crate) trait AttributeParser<S: Stage>: Default + 'static {
 /// [`SingleAttributeParser`] can only convert attributes one-to-one, and cannot combine multiple
 /// attributes together like is necessary for `#[stable()]` and `#[unstable()]` for example.
 pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
+    /// The single path of the attribute this parser accepts.
+    ///
+    /// If you need the parser to accept more than one path, use [`AttributeParser`] instead
     const PATH: &[Symbol];
+
+    /// Configures the precedence of attributes with the same `PATH` on a syntax node.
     const ATTRIBUTE_ORDER: AttributeOrder;
+
+    /// Configures what to do when when the same attribute is
+    /// applied more than once on the same syntax node.
+    ///
+    /// [`ATTRIBUTE_ORDER`](Self::ATTRIBUTE_ORDER) specified which one is assumed to be correct,
+    /// and this specified whether to, for example, warn or error on the other one.
     const ON_DUPLICATE: OnDuplicate<S>;
 
     /// The template this attribute parser should implement. Used for diagnostics.
@@ -97,6 +112,8 @@ pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind>;
 }
 
+/// Use in combination with [`SingleAttributeParser`].
+/// `Single<T: SingleAttributeParser>` implements [`AttributeParser`].
 pub(crate) struct Single<T: SingleAttributeParser<S>, S: Stage>(
     PhantomData<(S, T)>,
     Option<(AttributeKind, Span)>,
@@ -173,14 +190,8 @@ impl<S: Stage> OnDuplicate<S> {
         unused: Span,
     ) {
         match self {
-            OnDuplicate::Warn => cx.emit_lint(
-                AttributeLintKind::UnusedDuplicate { this: unused, other: used, warning: false },
-                unused,
-            ),
-            OnDuplicate::WarnButFutureError => cx.emit_lint(
-                AttributeLintKind::UnusedDuplicate { this: unused, other: used, warning: true },
-                unused,
-            ),
+            OnDuplicate::Warn => cx.warn_unused_duplicate(used, unused),
+            OnDuplicate::WarnButFutureError => cx.warn_unused_duplicate_future_error(used, unused),
             OnDuplicate::Error => {
                 cx.emit_err(UnusedMultiple {
                     this: used,
@@ -229,6 +240,10 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     const PATH: &[rustc_span::Symbol];
 
     type Item;
+    /// A function that converts individual items (of type [`Item`](Self::Item)) into the final attribute.
+    ///
+    /// For example, individual representations fomr `#[repr(...)]` attributes into an `AttributeKind::Repr(x)`,
+    ///  where `x` is a vec of these individual reprs.
     const CONVERT: ConvertFn<Self::Item>;
 
     /// The template this attribute parser should implement. Used for diagnostics.
@@ -241,6 +256,8 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     ) -> impl IntoIterator<Item = Self::Item> + 'c;
 }
 
+/// Use in combination with [`CombineAttributeParser`].
+/// `Combine<T: CombineAttributeParser>` implements [`AttributeParser`].
 pub(crate) struct Combine<T: CombineAttributeParser<S>, S: Stage>(
     PhantomData<(S, T)>,
     ThinVec<<T as CombineAttributeParser<S>>::Item>,

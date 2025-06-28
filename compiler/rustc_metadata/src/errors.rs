@@ -45,7 +45,8 @@ pub struct CrateDepMultiple {
 #[derive(Subdiagnostic)]
 #[note(metadata_crate_dep_not_static)]
 pub struct NonStaticCrateDep {
-    pub crate_name: Symbol,
+    /// It's different from `crate_name` in main Diagnostic.
+    pub crate_name_: Symbol,
 }
 
 #[derive(Subdiagnostic)]

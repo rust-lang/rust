@@ -36,6 +36,10 @@ pub enum ExternAbi {
     /// Stronger than just `#[cold]` because `fn` pointers might be incompatible.
     RustCold,
 
+    /// An always-invalid ABI that's used to test "this ABI is not supported by this platform"
+    /// in a platform-agnostic way.
+    RustInvalid,
+
     /// Unstable impl detail that directly uses Rust types to describe the ABI to LLVM.
     /// Even normally-compatible Rust types can become ABI-incompatible with this ABI!
     Unadjusted,
@@ -55,9 +59,9 @@ pub enum ExternAbi {
         unwind: bool,
     },
     /// extremely constrained barely-C ABI for TrustZone
-    CCmseNonSecureCall,
+    CmseNonSecureCall,
     /// extremely constrained barely-C ABI for TrustZone
-    CCmseNonSecureEntry,
+    CmseNonSecureEntry,
 
     /* gpu */
     /// An entry-point function called by the GPU's host
@@ -136,8 +140,6 @@ macro_rules! abi_impls {
 abi_impls! {
     ExternAbi = {
             C { unwind: false } =><= "C",
-            CCmseNonSecureCall =><= "C-cmse-nonsecure-call",
-            CCmseNonSecureEntry =><= "C-cmse-nonsecure-entry",
             C { unwind: true } =><= "C-unwind",
             Rust =><= "Rust",
             Aapcs { unwind: false } =><= "aapcs",
@@ -146,6 +148,8 @@ abi_impls! {
             AvrNonBlockingInterrupt =><= "avr-non-blocking-interrupt",
             Cdecl { unwind: false } =><= "cdecl",
             Cdecl { unwind: true } =><= "cdecl-unwind",
+            CmseNonSecureCall =><= "cmse-nonsecure-call",
+            CmseNonSecureEntry =><= "cmse-nonsecure-entry",
             Custom =><= "custom",
             EfiApi =><= "efiapi",
             Fastcall { unwind: false } =><= "fastcall",
@@ -157,6 +161,7 @@ abi_impls! {
             RiscvInterruptS =><= "riscv-interrupt-s",
             RustCall =><= "rust-call",
             RustCold =><= "rust-cold",
+            RustInvalid =><= "rust-invalid",
             Stdcall { unwind: false } =><= "stdcall",
             Stdcall { unwind: true } =><= "stdcall-unwind",
             System { unwind: false } =><= "system",

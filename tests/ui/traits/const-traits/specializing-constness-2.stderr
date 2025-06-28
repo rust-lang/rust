@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: ~const A` is not satisfied
+error[E0277]: the trait bound `T: [const] A` is not satisfied
   --> $DIR/specializing-constness-2.rs:27:6
    |
 LL |     <T as A>::a();

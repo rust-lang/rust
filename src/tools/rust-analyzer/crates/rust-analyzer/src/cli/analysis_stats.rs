@@ -532,7 +532,7 @@ impl flags::AnalysisStats {
                 }
 
                 let todo = syntax::ast::make::ext::expr_todo().to_string();
-                let mut formatter = |_: &hir::Type| todo.clone();
+                let mut formatter = |_: &hir::Type<'_>| todo.clone();
                 let mut syntax_hit_found = false;
                 for term in found_terms {
                     let generated = term

@@ -215,6 +215,8 @@ pub(crate) struct ConcatBytesInvalid {
     pub(crate) lit_kind: &'static str,
     #[subdiagnostic]
     pub(crate) sugg: Option<ConcatBytesInvalidSuggestion>,
+    #[note(builtin_macros_c_str_note)]
+    pub(crate) cs_note: Option<()>,
 }
 
 #[derive(Subdiagnostic)]
@@ -238,6 +240,13 @@ pub(crate) enum ConcatBytesInvalidSuggestion {
         #[primary_span]
         span: Span,
         snippet: String,
+    },
+    #[note(builtin_macros_c_str_note)]
+    #[suggestion(builtin_macros_c_str, code = "{as_bstr}", applicability = "machine-applicable")]
+    CStrLit {
+        #[primary_span]
+        span: Span,
+        as_bstr: String,
     },
     #[suggestion(
         builtin_macros_number_array,
@@ -286,27 +295,6 @@ pub(crate) struct ConcatBytesArray {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_bad_repeat)]
 pub(crate) struct ConcatBytesBadRepeat {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_concat_idents_missing_args)]
-pub(crate) struct ConcatIdentsMissingArgs {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_concat_idents_missing_comma)]
-pub(crate) struct ConcatIdentsMissingComma {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_concat_idents_ident_args)]
-pub(crate) struct ConcatIdentsIdentArgs {
     #[primary_span]
     pub(crate) span: Span,
 }
@@ -672,6 +660,7 @@ impl Subdiagnostic for FormatUnusedArg {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("named", self.named);
         let msg = diag.eagerly_translate(crate::fluent_generated::builtin_macros_format_unused_arg);
+        diag.remove_arg("named");
         diag.span_label(self.span, msg);
     }
 }
