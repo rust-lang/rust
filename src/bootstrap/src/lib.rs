@@ -549,7 +549,7 @@ impl Build {
                 if e.kind() == io::ErrorKind::NotADirectory {
                     t!(fs::remove_file(&host));
                 } else {
-                    panic!("failed to remove symlink: {}", e);
+                    panic!("failed to remove symlink: {e}");
                 }
             }
         }
