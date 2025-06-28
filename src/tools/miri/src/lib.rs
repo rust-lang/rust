@@ -1,4 +1,5 @@
 #![cfg_attr(bootstrap, feature(cfg_match))]
+#![cfg_attr(bootstrap, feature(nonnull_provenance))]
 #![cfg_attr(not(bootstrap), feature(cfg_select))]
 #![feature(rustc_private)]
 #![feature(float_gamma)]
