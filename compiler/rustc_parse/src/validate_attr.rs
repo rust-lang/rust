@@ -302,6 +302,7 @@ fn emit_malformed_attribute(
             | sym::no_mangle
             | sym::must_use
             | sym::track_caller
+            | sym::link_name
     ) {
         return;
     }
