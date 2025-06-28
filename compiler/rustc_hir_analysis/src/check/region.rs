@@ -176,15 +176,31 @@ fn resolve_block<'tcx>(
     visitor.cx = prev_cx;
 }
 
-fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
-    fn has_let_expr(expr: &Expr<'_>) -> bool {
-        match &expr.kind {
-            hir::ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
-            hir::ExprKind::Let(..) => true,
-            _ => false,
-        }
-    }
+/// Resolve a condition from an `if` expression or match guard so that it is a terminating scope
+/// if it doesn't contain `let` expressions.
+fn resolve_cond<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, cond: &'tcx hir::Expr<'tcx>) {
+    let terminate = match cond.kind {
+        // Temporaries for `let` expressions must live into the success branch.
+        hir::ExprKind::Let(_) => false,
+        // Logical operator chains are handled in `resolve_expr`. Since logical operator chains in
+        // conditions are lowered to control-flow rather than boolean temporaries, there's no
+        // temporary to drop for logical operators themselves. `resolve_expr` will also recursively
+        // wrap any operands in terminating scopes, other than `let` expressions (which we shouldn't
+        // terminate) and other logical operators (which don't need a terminating scope, since their
+        // operands will be terminated). Any temporaries that would need to be dropped will be
+        // dropped before we leave this operator's scope; terminating them here would be redundant.
+        hir::ExprKind::Binary(
+            source_map::Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+            _,
+            _,
+        ) => false,
+        // Otherwise, conditions should always drop their temporaries.
+        _ => true,
+    };
+    resolve_expr(visitor, cond, terminate);
+}
 
+fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
     let prev_cx = visitor.cx;
 
     visitor.enter_node_scope_with_dtor(arm.hir_id.local_id, true);
@@ -192,7 +208,7 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
 
     resolve_pat(visitor, arm.pat);
     if let Some(guard) = arm.guard {
-        resolve_expr(visitor, guard, !has_let_expr(guard));
+        resolve_cond(visitor, guard);
     }
     resolve_expr(visitor, arm.body, false);
 
@@ -420,7 +436,7 @@ fn resolve_expr<'tcx>(
             };
             visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
             visitor.cx.var_parent = visitor.cx.parent;
-            visitor.visit_expr(cond);
+            resolve_cond(visitor, cond);
             resolve_expr(visitor, then, true);
             visitor.cx = expr_cx;
             resolve_expr(visitor, otherwise, true);
@@ -435,7 +451,7 @@ fn resolve_expr<'tcx>(
             };
             visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
             visitor.cx.var_parent = visitor.cx.parent;
-            visitor.visit_expr(cond);
+            resolve_cond(visitor, cond);
             resolve_expr(visitor, then, true);
             visitor.cx = expr_cx;
         }

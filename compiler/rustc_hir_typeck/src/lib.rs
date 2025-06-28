@@ -428,11 +428,9 @@ fn report_unexpected_variant_res(
                 }
                 hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(..), hir_id, .. }) => {
                     suggestion.push((expr.span.shrink_to_lo(), "(".to_string()));
-                    if let hir::Node::Expr(drop_temps) = tcx.parent_hir_node(*hir_id)
-                        && let hir::ExprKind::DropTemps(_) = drop_temps.kind
-                        && let hir::Node::Expr(parent) = tcx.parent_hir_node(drop_temps.hir_id)
+                    if let hir::Node::Expr(parent) = tcx.parent_hir_node(*hir_id)
                         && let hir::ExprKind::If(condition, block, None) = parent.kind
-                        && condition.hir_id == drop_temps.hir_id
+                        && condition.hir_id == *hir_id
                         && let hir::ExprKind::Block(block, _) = block.kind
                         && block.stmts.is_empty()
                         && let Some(expr) = block.expr
