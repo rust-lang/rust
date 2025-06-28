@@ -10,6 +10,7 @@
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
+#![cfg_attr(bootstrap, feature(nonnull_provenance))]
 #![feature(strict_overflow_ops)]
 #![feature(pointer_is_aligned_to)]
 #![feature(ptr_metadata)]
