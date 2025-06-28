@@ -1,4 +1,5 @@
-#![feature(type_alias_impl_trait)]
+#![feature(associated_const_equality, type_alias_impl_trait, return_type_notation)]
+#![allow(refining_impl_trait_internal)]
 
 use std::iter;
 
@@ -37,4 +38,43 @@ fn mismatch_2() -> impl Iterator<Item: Copy, Item: Send> { //~ ERROR [E0277]
     iter::empty::<String>()
 }
 
-fn main() {}
+trait Trait {
+    type Gat<T>;
+
+    const ASSOC: i32;
+
+    fn foo() -> impl Sized;
+}
+
+impl Trait for () {
+    type Gat<T> = ();
+
+    const ASSOC: i32 = 3;
+
+    fn foo() {}
+}
+
+impl Trait for u32 {
+    type Gat<T> = ();
+
+    const ASSOC: i32 = 4;
+
+    fn foo() -> u32 {
+        42
+    }
+}
+
+fn uncallable(_: impl Iterator<Item = i32, Item = u32>) {}
+
+fn uncallable_const(_: impl Trait<ASSOC = 3, ASSOC = 4>) {}
+
+fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>) {}
+
+fn main() {
+    uncallable(iter::empty::<u32>()); //~ ERROR [E0271]
+    uncallable(iter::empty::<i32>()); //~ ERROR [E0271]
+    uncallable_const(()); //~ ERROR [E0271]
+    uncallable_const(4u32); //~ ERROR [E0271]
+    uncallable_rtn(()); //~ ERROR [E0271]
+    uncallable_rtn(17u32); //~ ERROR [E0271]
+}

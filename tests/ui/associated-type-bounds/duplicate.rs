@@ -1,6 +1,7 @@
-//@ check-pass
+//@ run-pass
 
-#![allow(type_alias_bounds)]
+#![feature(associated_const_equality, return_type_notation)]
+#![allow(dead_code, refining_impl_trait_internal, type_alias_bounds)]
 
 use std::iter;
 use std::mem::ManuallyDrop;
@@ -185,8 +186,46 @@ trait TRA3 {
 
 trait Trait {
     type Gat<T>;
+
+    const ASSOC: i32;
+
+    fn foo() -> impl Sized;
+}
+
+impl Trait for () {
+    type Gat<T> = ();
+
+    const ASSOC: i32 = 3;
+
+    fn foo() {}
 }
 
 trait Subtrait: Trait<Gat<u32> = u32, Gat<u64> = u64> {}
 
-fn main() {}
+fn f<T: Trait<Gat<i32> = (), Gat<i64> = ()>>() {
+    let _: T::Gat<i32> = ();
+    let _: T::Gat<i64> = ();
+}
+
+fn g<T: Trait<Gat<i32> = (), Gat<i64> = &'static str>>() {
+    let _: T::Gat<i32> = ();
+    let _: T::Gat<i64> = "";
+}
+
+fn uncallable(_: impl Iterator<Item = i32, Item = u32>) {}
+
+fn callable(_: impl Iterator<Item = i32, Item = i32>) {}
+
+fn uncallable_const(_: impl Trait<ASSOC = 3, ASSOC = 4>) {}
+
+fn callable_const(_: impl Trait<ASSOC = 3, ASSOC = 3>) {}
+
+fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>) {}
+
+fn callable_rtn(_: impl Trait<foo(..): Send, foo(..): Send, foo(..): Eq>) {}
+
+fn main() {
+    callable(iter::empty::<i32>());
+    callable_const(());
+    callable_rtn(());
+}
