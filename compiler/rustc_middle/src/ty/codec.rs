@@ -8,12 +8,12 @@
 
 use std::hash::Hash;
 use std::intrinsics;
-use std::marker::DiscriminantKind;
+use std::marker::{DiscriminantKind, PointeeSized};
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
-use rustc_serialize::{Decodable, Encodable, PointeeSized};
+use rustc_serialize::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, SpanDecoder, SpanEncoder};
 
