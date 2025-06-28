@@ -216,7 +216,7 @@ pub fn provide(providers: &mut Providers) {
         optimized_mir,
         is_mir_available,
         is_ctfe_mir_available: is_mir_available,
-        mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
+        mir_callgraph_cyclic: inline::cycle::mir_callgraph_cyclic,
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
         promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
