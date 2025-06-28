@@ -42,7 +42,7 @@ use syntax::{
 //     }
 // }
 //
-// $0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
+// impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
 // where
 //     Self::Owned: Default,
 // {
@@ -128,7 +128,9 @@ pub(crate) fn generate_blanket_trait_impl(
             );
 
             if let Some(cap) = ctx.config.snippet_cap {
-                builder.add_tabstop_before_token(cap, impl_.impl_token().unwrap());
+                if let Some(self_ty) = impl_.self_ty() {
+                    builder.add_tabstop_before(cap, self_ty);
+                }
             }
 
             builder.add_file_edits(ctx.vfs_file_id(), edit);
@@ -314,7 +316,7 @@ where
     }
 }
 
-$0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
+impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
 where
     Self::Owned: Default,
 {
@@ -344,7 +346,7 @@ trait Foo: Iterator + Sized {
     }
 }
 
-$0impl<I: Iterator> Foo for I {}
+impl<I: Iterator> Foo for $0I {}
 "#,
         );
 
@@ -360,7 +362,7 @@ trait Foo: Iterator {
     fn foo(self) -> Self::Item;
 }
 
-$0impl<I: Iterator> Foo for I {
+impl<I: Iterator> Foo for $0I {
     fn foo(self) -> Self::Item {
         todo!()
     }
@@ -380,7 +382,7 @@ trait Foo {
     fn foo(&self) -> Self;
 }
 
-$0impl<T> Foo for T {
+impl<T> Foo for $0T {
     fn foo(&self) -> Self {
         todo!()
     }
@@ -403,7 +405,7 @@ trait Foo: Iterator {
     fn foo(&self) -> Self::Item;
 }
 
-$0impl<I: Iterator + ?Sized> Foo for I {
+impl<I: Iterator + ?Sized> Foo for $0I {
     fn foo(&self) -> Self::Item {
         todo!()
     }
@@ -426,7 +428,7 @@ trait Foo: Iterator {
     fn each(self) where Self: Sized;
 }
 
-$0impl<I: Iterator + ?Sized> Foo for I {
+impl<I: Iterator + ?Sized> Foo for $0I {
     fn foo(&self) -> Self::Item {
         todo!()
     }
@@ -453,7 +455,7 @@ trait Foo: Iterator {
     fn each(&self) -> Self where Self: Sized;
 }
 
-$0impl<I: Iterator + ?Sized> Foo for I {
+impl<I: Iterator + ?Sized> Foo for $0I {
     fn foo(&self) -> Self::Item {
         todo!()
     }
@@ -497,7 +499,7 @@ mod foo {
         }
     }
 
-    $0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
+    impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
     where
         Self::Owned: Default,
     {
@@ -539,7 +541,7 @@ mod foo {
         }
     }
 
-    $0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
+    impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
     where
         Self::Owned: Default,
         Self: Send,
@@ -585,7 +587,7 @@ mod foo {
             }
         }
 
-        $0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
+        impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
         where
             Self::Owned: Default,
             Self: Send,
@@ -621,7 +623,7 @@ mod foo {
         }
     }
 
-    $0impl<T: ?Sized> Foo for T {
+    impl<T: ?Sized> Foo for $0T {
         fn foo(&self) -> i32 {
             todo!()
         }
@@ -655,7 +657,7 @@ mod foo {
             }
         }
 
-        $0impl<T: ?Sized> Foo for T {
+        impl<T: ?Sized> Foo for $0T {
             fn foo(&self) -> i32 {
                 todo!()
             }
@@ -693,7 +695,7 @@ mod foo {
         }
 
         #[cfg(test)]
-        $0impl<T: ?Sized> Foo for T {
+        impl<T: ?Sized> Foo for $0T {
             fn foo(&self) -> i32 {
                 todo!()
             }
@@ -736,7 +738,7 @@ where
     }
 }
 
-$0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
+impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
 where
     Self::Owned: Default,
 {
@@ -780,7 +782,7 @@ where
     }
 }
 
-$0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
+impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
 where
     Self::Owned: Default,
 {
@@ -826,7 +828,7 @@ where
     }
 }
 
-$0impl<T: Send, This: ?Sized> Foo<T> for This
+impl<T: Send, This: ?Sized> Foo<T> for $0This
 where
     Self: ToOwned,
     Self::Owned: Default,
@@ -865,7 +867,7 @@ trait Foo<T: Send> {
     }
 }
 
-$0impl<T: Send, This: ?Sized> Foo<T> for This {
+impl<T: Send, This: ?Sized> Foo<T> for $0This {
     fn foo(&self, x: Self::X) -> T {
         todo!()
     }
@@ -900,7 +902,7 @@ trait Foo {
     }
 }
 
-$0impl<T: ?Sized> Foo for T {
+impl<T: ?Sized> Foo for $0T {
     fn foo(&self, x: Self::X) -> i32 {
         todo!()
     }
@@ -934,7 +936,7 @@ trait Foo {
 }
 
 #[cfg(test)]
-$0impl<T: ?Sized> Foo for T {
+impl<T: ?Sized> Foo for $0T {
     fn foo(&self, x: i32) -> i32 {
         todo!()
     }
@@ -968,7 +970,7 @@ trait Foo {
 }
 
 #[cfg(test)]
-$0impl<T: ?Sized> Foo for T {
+impl<T: ?Sized> Foo for $0T {
     #[cfg(test)]
     fn foo(&self, x: i32) -> i32 {
         todo!()
@@ -988,7 +990,7 @@ trait $0Foo {}
             r#"
 trait Foo {}
 
-$0impl<T: ?Sized> Foo for T {}
+impl<T: ?Sized> Foo for $0T {}
 "#,
         );
     }
@@ -1003,7 +1005,7 @@ trait $0Foo: Copy {}
             r#"
 trait Foo: Copy {}
 
-$0impl<T: Copy + ?Sized> Foo for T {}
+impl<T: Copy + ?Sized> Foo for $0T {}
 "#,
         );
     }
@@ -1018,7 +1020,7 @@ trait $0Foo where Self: Copy {}
             r#"
 trait Foo where Self: Copy {}
 
-$0impl<T: ?Sized> Foo for T
+impl<T: ?Sized> Foo for $0T
 where Self: Copy
 {
 }
@@ -1036,7 +1038,7 @@ trait $0Foo where Self: Copy, {}
             r#"
 trait Foo where Self: Copy, {}
 
-$0impl<T: ?Sized> Foo for T
+impl<T: ?Sized> Foo for $0T
 where Self: Copy,
 {
 }
@@ -1058,7 +1060,7 @@ trait Foo
 where Self: Copy
 {}
 
-$0impl<T: ?Sized> Foo for T
+impl<T: ?Sized> Foo for $0T
 where Self: Copy
 {
 }
@@ -1082,7 +1084,7 @@ where
     Self: Copy
 {}
 
-$0impl<T: ?Sized> Foo for T
+impl<T: ?Sized> Foo for $0T
 where
     Self: Copy
 {
@@ -1107,7 +1109,7 @@ where
     Self: Copy,
 {}
 
-$0impl<T: ?Sized> Foo for T
+impl<T: ?Sized> Foo for $0T
 where
     Self: Copy,
 {
@@ -1134,7 +1136,7 @@ where
     (): Into<Self>,
 {}
 
-$0impl<T: ?Sized> Foo for T
+impl<T: ?Sized> Foo for $0T
 where
     Self: Copy,
     (): Into<Self>,
@@ -1162,7 +1164,7 @@ where
     (): Into<Self>,
 {}
 
-$0impl<T: ?Sized> Foo for T
+impl<T: ?Sized> Foo for $0T
 where
     Self: Copy + Sync,
     (): Into<Self>,
@@ -1186,7 +1188,7 @@ trait Foo {
     fn foo(&self) {}
 }
 
-$0impl<T: ?Sized> Foo for T {}
+impl<T: ?Sized> Foo for $0T {}
 "#,
         );
     }
@@ -1203,7 +1205,7 @@ trait $0Foo {}
 /// some docs
 trait Foo {}
 
-$0impl<T: ?Sized> Foo for T {}
+impl<T: ?Sized> Foo for $0T {}
 "#,
         );
     }
@@ -1224,7 +1226,7 @@ trait Foo {
     fn bar(&self);
 }
 
-$0impl<T: ?Sized> Foo for T {
+impl<T: ?Sized> Foo for $0T {
     fn foo(&self) {
         todo!()
     }
@@ -1253,7 +1255,7 @@ trait Foo {
     fn bar<T>(&self, value: i32) -> i32 { todo!() }
 }
 
-$0impl<T: ?Sized> Foo for T {
+impl<T: ?Sized> Foo for $0T {
     fn foo<T>(&self, value: i32) -> i32 {
         todo!()
     }
@@ -1276,7 +1278,7 @@ trait Foo<'a> {
     fn foo(&self) -> &'a str;
 }
 
-$0impl<'a, T: ?Sized> Foo<'a> for T {
+impl<'a, T: ?Sized> Foo<'a> for $0T {
     fn foo(&self) -> &'a str {
         todo!()
     }
@@ -1299,7 +1301,7 @@ trait Foo<'a: 'static> {
     fn foo(&self) -> &'a str;
 }
 
-$0impl<'a: 'static, T: ?Sized> Foo<'a> for T {
+impl<'a: 'static, T: ?Sized> Foo<'a> for $0T {
     fn foo(&self) -> &'a str {
         todo!()
     }
@@ -1322,7 +1324,7 @@ trait Foo<'a>: 'a {
     fn foo(&self) -> &'a str;
 }
 
-$0impl<'a, T: 'a + ?Sized> Foo<'a> for T {
+impl<'a, T: 'a + ?Sized> Foo<'a> for $0T {
     fn foo(&self) -> &'a str {
         todo!()
     }
@@ -1345,7 +1347,7 @@ trait Foo<'a, 'b> {
     fn foo(&self) -> &'a &'b str;
 }
 
-$0impl<'a, 'b, T: ?Sized> Foo<'a, 'b> for T {
+impl<'a, 'b, T: ?Sized> Foo<'a, 'b> for $0T {
     fn foo(&self) -> &'a &'b str {
         todo!()
     }
@@ -1372,7 +1374,7 @@ where 'a: 'static,
     fn foo(&self) -> &'a str;
 }
 
-$0impl<'a, T: ?Sized> Foo<'a> for T
+impl<'a, T: ?Sized> Foo<'a> for $0T
 where 'a: 'static,
 {
     fn foo(&self) -> &'a str {
@@ -1459,7 +1461,7 @@ trait Foo {
     }
 }
 
-$0impl<T: ?Sized> Foo for T {
+impl<T: ?Sized> Foo for $0T {
     fn foo(&self) -> i32 {
         todo!()
     }
@@ -1496,7 +1498,7 @@ trait Foo {
     }
 }
 
-$0impl<T: ?Sized> Foo for T {
+impl<T: ?Sized> Foo for $0T {
     fn foo(&self) -> i32 {
         todo!()
     }

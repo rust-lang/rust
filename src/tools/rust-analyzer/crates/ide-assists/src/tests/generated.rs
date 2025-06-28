@@ -1339,7 +1339,7 @@ where
     }
 }
 
-$0impl<T: Send, This: ToOwned + ?Sized> Foo<T> for This
+impl<T: Send, This: ToOwned + ?Sized> Foo<T> for $0This
 where
     Self::Owned: Default,
 {
