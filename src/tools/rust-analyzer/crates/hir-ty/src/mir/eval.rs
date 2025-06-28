@@ -3044,7 +3044,10 @@ impl IntValue {
             (8, true) => Self::I64(i64::from_le_bytes(bytes.try_into().unwrap())),
             (16, false) => Self::U128(u128::from_le_bytes(bytes.try_into().unwrap())),
             (16, true) => Self::I128(i128::from_le_bytes(bytes.try_into().unwrap())),
-            _ => panic!("invalid integer size"),
+            (len, is_signed) => {
+                never!("invalid integer size: {len}, signed: {is_signed}");
+                Self::I32(0)
+            }
         }
     }
 

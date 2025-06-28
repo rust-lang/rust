@@ -84,6 +84,7 @@ jobs:
       CC: deny_c
 
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
@@ -326,12 +327,12 @@ jobs:
 
   cancel-if-matrix-failed:
     needs: rust
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Cancel parallel jobs
-        if: failure()
         run: |
-          if [ jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}' ]; then
+          if jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'; then
             exit 0
           fi
           # https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2022-11-28#cancel-a-workflow-run
