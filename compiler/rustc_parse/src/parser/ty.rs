@@ -1071,7 +1071,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| t.is_keyword(kw::Const))
             && self.look_ahead(2, |t| *t == token::CloseBracket)
         {
-            let start = self.prev_token.span;
+            let start = self.token.span;
             self.bump();
             self.expect_keyword(exp!(Const)).unwrap();
             self.bump();

@@ -1,8 +1,8 @@
 error: `[const]` is not allowed here
-  --> $DIR/super-traits-fail-3.rs:23:10
+  --> $DIR/super-traits-fail-3.rs:23:12
    |
 LL | trait Bar: [const] Foo {}
-   |          ^^^^^^^^^
+   |            ^^^^^^^
    |
 note: this trait is not a `#[const_trait]`, so it cannot have `[const]` trait bounds
   --> $DIR/super-traits-fail-3.rs:23:1
@@ -11,30 +11,30 @@ LL | trait Bar: [const] Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/super-traits-fail-3.rs:23:10
+  --> $DIR/super-traits-fail-3.rs:23:12
    |
 LL | trait Bar: [const] Foo {}
-   |          ^^^^^^^^^
+   |            ^^^^^^^
    |
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/super-traits-fail-3.rs:32:15
+  --> $DIR/super-traits-fail-3.rs:32:17
    |
 LL | const fn foo<T: [const] Bar>(x: &T) {
-   |               ^^^^^^^^^
+   |                 ^^^^^^^
    |
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-3.rs:23:10
+  --> $DIR/super-traits-fail-3.rs:23:12
    |
 LL | trait Bar: [const] Foo {}
-   |          ^^^^^^^^^ can't be applied to `Foo`
+   |            ^^^^^^^ can't be applied to `Foo`
    |
 help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `#[const_trait]` to allow it to have `const` implementations
    |
@@ -42,10 +42,10 @@ LL | #[const_trait] trait Foo {
    | ++++++++++++++
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-3.rs:23:10
+  --> $DIR/super-traits-fail-3.rs:23:12
    |
 LL | trait Bar: [const] Foo {}
-   |          ^^^^^^^^^ can't be applied to `Foo`
+   |            ^^^^^^^ can't be applied to `Foo`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `#[const_trait]` to allow it to have `const` implementations
@@ -54,10 +54,10 @@ LL | #[const_trait] trait Foo {
    | ++++++++++++++
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-3.rs:23:10
+  --> $DIR/super-traits-fail-3.rs:23:12
    |
 LL | trait Bar: [const] Foo {}
-   |          ^^^^^^^^^ can't be applied to `Foo`
+   |            ^^^^^^^ can't be applied to `Foo`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `#[const_trait]` to allow it to have `const` implementations
@@ -66,10 +66,10 @@ LL | #[const_trait] trait Foo {
    | ++++++++++++++
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-3.rs:32:15
+  --> $DIR/super-traits-fail-3.rs:32:17
    |
 LL | const fn foo<T: [const] Bar>(x: &T) {
-   |               ^^^^^^^^^ can't be applied to `Bar`
+   |                 ^^^^^^^ can't be applied to `Bar`
    |
 help: enable `#![feature(const_trait_impl)]` in your crate and mark `Bar` as `#[const_trait]` to allow it to have `const` implementations
    |
@@ -77,10 +77,10 @@ LL | #[const_trait] trait Bar: [const] Foo {}
    | ++++++++++++++
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-3.rs:32:15
+  --> $DIR/super-traits-fail-3.rs:32:17
    |
 LL | const fn foo<T: [const] Bar>(x: &T) {
-   |               ^^^^^^^^^ can't be applied to `Bar`
+   |                 ^^^^^^^ can't be applied to `Bar`
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: enable `#![feature(const_trait_impl)]` in your crate and mark `Bar` as `#[const_trait]` to allow it to have `const` implementations
