@@ -115,6 +115,7 @@ trait Inliner<'tcx> {
 
     /// Has the caller body been changed?
     fn changed(self) -> bool;
+    fn set_changed(&mut self);
 
     /// Should inlining happen for a given callee?
     fn should_inline_for_callee(&self, def_id: DefId) -> bool;
@@ -185,6 +186,10 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
 
     fn changed(self) -> bool {
         self.changed
+    }
+
+    fn set_changed(&mut self) {
+        self.changed = true;
     }
 
     fn should_inline_for_callee(&self, def_id: DefId) -> bool {
@@ -332,6 +337,10 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
 
     fn changed(self) -> bool {
         self.changed
+    }
+
+    fn set_changed(&mut self) {
+        self.changed = true;
     }
 
     fn should_inline_for_callee(&self, _: DefId) -> bool {
@@ -529,10 +538,35 @@ fn process_blocks<'tcx, I: Inliner<'tcx>>(
         let span = trace_span!("process_blocks", %callsite.callee, ?bb);
         let _guard = span.enter();
 
-        match try_inlining(inliner, caller_body, &callsite) {
+        let mut unwind_unreachable = Err("did not reach analysis");
+        match try_inlining(inliner, caller_body, &callsite, &mut unwind_unreachable) {
             Err(reason) => {
                 debug!("not-inlined {} [{}]", callsite.callee, reason);
                 inliner.on_inline_failure(&callsite, reason);
+
+                match unwind_unreachable {
+                    Ok(()) => {
+                        if let Some(TerminatorKind::Call { unwind, .. }) =
+                            caller_body[callsite.block].terminator.as_mut().map(|v| &mut v.kind)
+                        {
+                            inliner.set_changed();
+                            tracing::info!("marked {} unwind unreachable", callsite.callee);
+                            *unwind = UnwindAction::Unreachable;
+                        } else {
+                            bug!(
+                                "unexpected terminator: {:?}",
+                                caller_body[callsite.block].terminator
+                            );
+                        }
+                    }
+                    Err(reason) => {
+                        tracing::info!(
+                            "not marking unwind unreachable {}: {}",
+                            callsite.callee,
+                            reason
+                        );
+                    }
+                }
             }
             Ok(new_blocks) => {
                 debug!("inlined {}", callsite.callee);
@@ -595,6 +629,54 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
     None
 }
 
+/// Ok indicates yes, Err(reason) otherwise.
+fn should_mark_nounwind<'tcx>(_tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> Result<(), &'static str> {
+    // Unwinds can only start at certain terminators.
+    for block in body.basic_blocks.iter() {
+        let unwind = match block.terminator().kind {
+            // These never unwind.
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::UnwindTerminate(_)
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable
+            | TerminatorKind::CoroutineDrop
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. } => continue,
+
+            // Resume will *continue* unwinding, but if there's no other unwinding terminator it
+            // will never be reached.
+            TerminatorKind::UnwindResume => continue,
+
+            TerminatorKind::Yield { .. } => {
+                return Err("impl limitation: yield");
+            }
+
+            TerminatorKind::Drop { unwind, .. }
+            | TerminatorKind::Call { unwind, .. }
+            | TerminatorKind::Assert { unwind, .. } => unwind,
+
+            TerminatorKind::InlineAsm { .. } => return Err("inlineasm"),
+
+            TerminatorKind::TailCall { .. } => {
+                return Err("impl limitation: tail call");
+            }
+        };
+
+        match unwind {
+            UnwindAction::Continue => return Err("unwind: continue"),
+            // cannot unwind
+            UnwindAction::Unreachable => {}
+            // cannot unwind either -- will terminate instead
+            UnwindAction::Terminate(_) => {}
+            UnwindAction::Cleanup(_) => return Err("unwind: cleanup"),
+        }
+    }
+
+    // If we didn't find an unwinding terminator, the function cannot unwind.
+    Ok(())
+}
+
 /// Attempts to inline a callsite into the caller body. When successful returns basic blocks
 /// containing the inlined body. Otherwise returns an error describing why inlining didn't take
 /// place.
@@ -602,9 +684,13 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     inliner: &I,
     caller_body: &mut Body<'tcx>,
     callsite: &CallSite<'tcx>,
+    unwind: &mut Result<(), &'static str>,
 ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
     let tcx = inliner.tcx();
     check_mir_is_available(inliner, caller_body, callsite.callee)?;
+
+    let callee_body = try_instance_mir(tcx, callsite.callee.def)?;
+    *unwind = should_mark_nounwind(tcx, callee_body);
 
     let callee_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
     check_inline::is_inline_valid_on_fn(tcx, callsite.callee.def_id())?;
@@ -622,7 +708,6 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
         }
     }
 
-    let callee_body = try_instance_mir(tcx, callsite.callee.def)?;
     check_inline::is_inline_valid_on_body(tcx, callee_body)?;
     inliner.check_callee_mir_body(callsite, callee_body, callee_attrs)?;
 

@@ -76,9 +76,9 @@
           _7 = copy _9;
           StorageLive(_8);
 -         _8 = copy _1;
--         _6 = std::alloc::Global::alloc_impl(move _7, move _8, const false) -> [return: bb5, unwind continue];
+-         _6 = std::alloc::Global::alloc_impl(move _7, move _8, const false) -> [return: bb5, unwind unreachable];
 +         _8 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }};
-+         _6 = std::alloc::Global::alloc_impl(copy _9, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }}, const false) -> [return: bb5, unwind continue];
++         _6 = std::alloc::Global::alloc_impl(copy _9, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum) }}, const false) -> [return: bb5, unwind unreachable];
       }
   
       bb5: {
