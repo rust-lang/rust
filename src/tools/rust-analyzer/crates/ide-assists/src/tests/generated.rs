@@ -1895,8 +1895,8 @@ trait Foo {
 }
 
 impl Foo for ${1:_} {
-    $0fn foo(&self) -> i32 {
-        todo!()
+    fn foo(&self) -> i32 {
+        $0todo!()
     }
 }
 "#####,

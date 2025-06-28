@@ -141,8 +141,8 @@ pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 // }
 //
 // impl Foo for ${1:_} {
-//     $0fn foo(&self) -> i32 {
-//         todo!()
+//     fn foo(&self) -> i32 {
+//         $0todo!()
 //     }
 // }
 // ```
@@ -206,8 +206,10 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                     edit.add_placeholder_snippet(cap, ty);
                 }
 
-                if let Some(item) = impl_.assoc_item_list().and_then(|it| it.assoc_items().next()) {
-                    edit.add_tabstop_before(cap, item);
+                if let Some(expr) =
+                    impl_.assoc_item_list().and_then(|it| it.assoc_items().find_map(extract_expr))
+                {
+                    edit.add_tabstop_before(cap, expr);
                 } else if let Some(l_curly) =
                     impl_.assoc_item_list().and_then(|it| it.l_curly_token())
                 {
@@ -218,6 +220,13 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             insert_impl(impl_, &trait_);
         },
     )
+}
+
+fn extract_expr(item: ast::AssocItem) -> Option<ast::Expr> {
+    let ast::AssocItem::Fn(f) = item else {
+        return None;
+    };
+    f.body()?.tail_expr()
 }
 
 #[cfg(test)]
@@ -616,8 +625,8 @@ mod tests {
                 }
 
                 impl Foo for ${1:_} {
-                    $0fn foo(&self) -> i32 {
-                        todo!()
+                    fn foo(&self) -> i32 {
+                        $0todo!()
                     }
                 }
             "#,
@@ -647,8 +656,8 @@ mod tests {
                 }
 
                 impl Foo<${1:_}> for ${2:_} {
-                    $0fn foo(&self) -> _ {
-                        todo!()
+                    fn foo(&self) -> _ {
+                        $0todo!()
                     }
                 }
             "#,
@@ -674,8 +683,8 @@ mod tests {
                 }
 
                 impl Foo<${1:_}, ${2:_}> for ${3:_} {
-                    $0fn foo(&self) -> _ {
-                        todo!()
+                    fn foo(&self) -> _ {
+                        $0todo!()
                     }
                 }
             "#,
@@ -709,8 +718,8 @@ mod tests {
                 }
 
                 impl Foo for ${1:_} {
-                    $0fn foo(&self) -> i32 {
-                        todo!()
+                    fn foo(&self) -> i32 {
+                        $0todo!()
                     }
                 }
             "#,
@@ -736,10 +745,10 @@ mod tests {
                 }
 
                 impl Foo for ${1:_} {
-                    $0type Output;
+                    type Output;
 
                     fn foo(&self) -> Self::Output {
-                        todo!()
+                        $0todo!()
                     }
                 }
             "#,
