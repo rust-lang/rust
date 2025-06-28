@@ -103,7 +103,7 @@ jobs:
           rustup toolchain install nightly --profile minimal --component rustfmt
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
       - name: Install Rust Problem Matcher
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'macos-latest'
         run: echo "::add-matcher::.github/rust.json"
 
       # - name: Cache Dependencies
@@ -120,22 +120,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: cargo codegen --check
 
-      - name: Compile tests
-        run: cargo test --no-run
-
       - name: Run tests
         run: cargo nextest run --no-fail-fast --hide-progress-bar --status-level fail
-
-      - name: Cancel parallel jobs
-        if: failure()
-        run: |
-          # https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2022-11-28#cancel-a-workflow-run
-          curl -L \
-          -X POST \
-          -H "Accept: application/vnd.github.v3+json" \
-          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-          -H "X-GitHub-Api-Version: 2022-11-28" \
-          https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/cancel
 
       - name: Run Clippy
         if: matrix.os == 'macos-latest'
@@ -337,3 +323,21 @@ jobs:
           jq -C <<< '${{ toJson(needs) }}'
           # Check if all jobs that we depend on (in the needs array) were successful (or have been skipped).
           jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'
+
+  cancel-if-matrix-failed:
+    needs: rust
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel parallel jobs
+        if: failure()
+        run: |
+          if [ jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}' ]; then
+            exit 0
+          fi
+          # https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2022-11-28#cancel-a-workflow-run
+          curl -L \
+          -X POST \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/cancel
