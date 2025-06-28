@@ -1,0 +1,103 @@
+error[E0282]: type annotations needed
+  --> $DIR/duplicate_err.rs:6:5
+   |
+LL |     iter::empty()
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
+   |
+help: consider specifying the generic argument
+   |
+LL |     iter::empty::<T>()
+   |                +++++
+
+error[E0282]: type annotations needed
+  --> $DIR/duplicate_err.rs:10:5
+   |
+LL |     iter::empty()
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
+   |
+help: consider specifying the generic argument
+   |
+LL |     iter::empty::<T>()
+   |                +++++
+
+error[E0282]: type annotations needed
+  --> $DIR/duplicate_err.rs:14:5
+   |
+LL |     iter::empty()
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
+   |
+help: consider specifying the generic argument
+   |
+LL |     iter::empty::<T>()
+   |                +++++
+
+error: unconstrained opaque type
+  --> $DIR/duplicate_err.rs:18:51
+   |
+LL | type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
+   |                                                   ^^^^^^^^^
+   |
+   = note: `ETAI1` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/duplicate_err.rs:20:51
+   |
+LL | type ETAI2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
+   |                                                   ^^^^^^^^^
+   |
+   = note: `ETAI2` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/duplicate_err.rs:22:57
+   |
+LL | type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
+   |                                                         ^^^^^^^^^
+   |
+   = note: `ETAI3` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/duplicate_err.rs:25:14
+   |
+LL | type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `ETAI4` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/duplicate_err.rs:27:14
+   |
+LL | type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `ETAI5` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/duplicate_err.rs:29:14
+   |
+LL | type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `ETAI6` must be used in combination with a concrete type within the same crate
+
+error[E0277]: `*const ()` cannot be sent between threads safely
+  --> $DIR/duplicate_err.rs:32:18
+   |
+LL | fn mismatch() -> impl Iterator<Item: Copy, Item: Send> {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `*const ()` cannot be sent between threads safely
+LL |     iter::empty::<*const ()>()
+   |     -------------------------- return type was inferred to be `std::iter::Empty<*const ()>` here
+   |
+   = help: the trait `Send` is not implemented for `*const ()`
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/duplicate_err.rs:36:20
+   |
+LL | fn mismatch_2() -> impl Iterator<Item: Copy, Item: Send> {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+LL |     iter::empty::<String>()
+   |     ----------------------- return type was inferred to be `std::iter::Empty<String>` here
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0277, E0282.
+For more information about an error, try `rustc --explain E0277`.

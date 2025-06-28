@@ -24,7 +24,7 @@ use std::assert_matches::assert_matches;
 use std::slice;
 
 use rustc_ast::TraitObjectSyntax;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, struct_span_code_err,
@@ -801,7 +801,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         poly_trait_ref,
                         constraint,
                         &mut Default::default(),
-                        &mut Default::default(),
                         constraint.span,
                         predicate_filter,
                     );
@@ -907,7 +906,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        let mut dup_constraints = FxIndexMap::default();
         for constraint in trait_segment.args().constraints {
             // Don't register any associated item constraints for negative bounds,
             // since we should have emitted an error for them earlier, and they
@@ -926,7 +924,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 poly_trait_ref,
                 constraint,
                 bounds,
-                &mut dup_constraints,
                 constraint.span,
                 predicate_filter,
             );
