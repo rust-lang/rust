@@ -622,6 +622,17 @@ impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
     where
         A: SliceLike<Item = I::GenericArg>,
     {
+        // Nothing to fold, so let's avoid visiting things and possibly re-hashing/equating
+        // them when interning. Perf testing found this to be a modest improvement.
+        // See: <https://github.com/rust-lang/rust/pull/142317>
+        if args.is_empty() {
+            assert!(
+                !self.value.has_param(),
+                "{:?} has parameters, but no args were provided in instantiate",
+                self.value,
+            );
+            return self.value;
+        }
         let mut folder = ArgFolder { cx, args: args.as_slice(), binders_passed: 0 };
         self.value.fold_with(&mut folder)
     }
