@@ -227,7 +227,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::init_numbered_fields::INIT_NUMBERED_FIELDS_INFO,
     crate::inline_fn_without_body::INLINE_FN_WITHOUT_BODY_INFO,
     crate::instant_subtraction::MANUAL_INSTANT_ELAPSED_INFO,
-    crate::instant_subtraction::UNCHECKED_DURATION_SUBTRACTION_INFO,
+    crate::instant_subtraction::UNCHECKED_TIME_SUBTRACTION_INFO,
     crate::int_plus_one::INT_PLUS_ONE_INFO,
     crate::integer_division_remainder_used::INTEGER_DIVISION_REMAINDER_USED_INFO,
     crate::invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS_INFO,

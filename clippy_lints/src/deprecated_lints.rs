@@ -184,6 +184,8 @@ declare_with_version! { RENAMED(RENAMED_VERSION) = [
     ("clippy::transmute_int_to_float", "unnecessary_transmutes"),
     #[clippy::version = "1.88.0"]
     ("clippy::transmute_num_to_bytes", "unnecessary_transmutes"),
+    #[clippy::version = "1.90.0"]
+    ("clippy::unchecked_duration_subtraction", "clippy::unchecked_time_subtraction"),
     #[clippy::version = ""]
     ("clippy::undropped_manually_drops", "undropped_manually_drops"),
     #[clippy::version = ""]
