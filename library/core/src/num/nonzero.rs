@@ -111,6 +111,12 @@ impl_zeroable_primitive!(
 /// ```
 ///
 /// [null pointer optimization]: crate::option#representation
+///
+/// **Note:** `NonZero<T>` can only be used with standard library primitive integer
+/// types (such as u8, i32, etc.). The type parameter T must implement the internal
+/// trait `ZeroablePrimitive`, which is currently permanently unstable and cannot be
+/// implemented by users. Therefore, you cannot use `NonZero<T>` with your own types,
+/// nor can you implement traits for all `NonZero<T>`, only for concrete types.
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
@@ -1472,7 +1478,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
 
         /// Returns the smallest power of two greater than or equal to `self`.
         /// Checks for overflow and returns [`None`]
-        /// if the next power of two is greater than the type’s maximum value.
+        /// if the next power of two is greater than the type's maximum value.
         /// As a consequence, the result cannot wrap to zero.
         ///
         /// # Examples
