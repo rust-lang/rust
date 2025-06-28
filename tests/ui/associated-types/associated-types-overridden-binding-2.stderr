@@ -1,4 +1,4 @@
-error: conflicting associated type bounds for `Item` when expanding trait alias
+error: conflicting associated type bounds for `Item`
   --> $DIR/associated-types-overridden-binding-2.rs:6:13
    |
 LL | trait I32Iterator = Iterator<Item = i32>;

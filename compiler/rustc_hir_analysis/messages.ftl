@@ -591,11 +591,6 @@ hir_analysis_unused_generic_parameter_ty_alias_help =
 
 hir_analysis_useless_impl_item = this item cannot be used as its where bounds are not satisfied for the `Self` type
 
-hir_analysis_value_of_associated_struct_already_specified =
-    the value of the associated type `{$item_name}` in trait `{$def_path}` is already specified
-    .label = re-bound here
-    .previous_bound_label = `{$item_name}` bound here first
-
 hir_analysis_variadic_function_compatible_convention = C-variadic functions with the {$convention} calling convention are not supported
     .label = C-variadic function must have a compatible calling convention
 
