@@ -756,8 +756,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         ptr: Pointer<CtfeProvenance>,
         _size: i64,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
-        // We know `offset` is relative to the allocation, so we can use `into_parts`.
-        let (prov, offset) = ptr.into_parts();
+        let (prov, offset) = ptr.prov_and_relative_offset();
         Some((prov.alloc_id(), offset, prov.immutable()))
     }
 
