@@ -225,6 +225,7 @@ fn f16_builtin<'gcc, 'tcx>(
     let f32_type = cx.type_f32();
     let builtin_name = match name {
         sym::ceilf16 => "__builtin_ceilf",
+        sym::copysignf16 => "__builtin_copysignf",
         sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
         sym::maxnumf16 => "__builtin_fmaxf",
@@ -294,6 +295,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 )
             }
             sym::ceilf16
+            | sym::copysignf16
             | sym::floorf16
             | sym::fmaf16
             | sym::maxnumf16
