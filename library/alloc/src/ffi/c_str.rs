@@ -1,7 +1,7 @@
 //! [`CString`] and its related types.
 
 use core::borrow::Borrow;
-use core::ffi::{CStr, c_char, FromBytesWithNulError};
+use core::ffi::{CStr, FromBytesWithNulError, c_char};
 use core::num::NonZero;
 use core::slice::memchr;
 use core::str::{self, FromStr, Utf8Error};
