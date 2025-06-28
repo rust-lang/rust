@@ -1,8 +1,11 @@
 #[doc(keyword = "as")]
 //
-/// Cast between types, or rename an import.
+/// The `as` keyword is used in many syntactic locations:
+/// * `as` is used to cast between types.
+/// * `as` is used to rename an import in `use` and `extern crate` statements.
+/// * `as` is also used to disambiguate trait implementations.
 ///
-/// `as` is most commonly used to turn primitive types into other primitive types, but it has other
+/// In the type-casting sense, `as` is most commonly used to turn primitive types into other primitive types, but it has other
 /// uses that include turning pointers into addresses, addresses into pointers, and pointers into
 /// other pointers.
 ///
@@ -14,7 +17,7 @@
 /// assert_eq!(true as u8 + thing2 as u8, 100);
 /// ```
 ///
-/// In general, any cast that can be performed via ascribing the type can also be done using `as`,
+/// In general, any type-cast that can be performed via ascribing the type can also be done using `as`,
 /// so instead of writing `let x: u32 = 123`, you can write `let x = 123 as u32` (note: `let x: u32
 /// = 123` would be best in that situation). The same is not true in the other direction, however;
 /// explicitly using `as` allows a few more coercions that aren't allowed implicitly, such as
@@ -37,9 +40,35 @@
 /// use std::{mem as memory, net as network};
 /// // Now you can use the names `memory` and `network` to refer to `std::mem` and `std::net`.
 /// ```
-/// For more information on what `as` is capable of, see the [Reference].
 ///
-/// [Reference]: ../reference/expressions/operator-expr.html#type-cast-expressions
+/// `as` is also used to [disambiguate call expressions][Disambiguation Call Expressions]:
+///
+/// ```rust
+/// struct S;
+/// impl S {
+///     fn f() { println!("S"); }
+/// }
+/// trait T1 {
+///     fn f() { println!("T1 f"); }
+/// }
+/// impl T1 for S {}
+/// trait T2 {
+///     fn f() { println!("T2 f"); }
+/// }
+/// impl T2 for S {}
+/// S::f();  // Calls the inherent impl.
+/// <S as T1>::f();  // Calls the T1 trait function.
+/// <S as T2>::f();  // Calls the T2 trait function.
+///
+/// ```
+///
+/// More information for `as` is available at the references for [Type Casting], [Call Expressions][Disambiguation Call Expressions], [Qualified Paths][Disambiguation Qualified Paths].
+///
+/// See also: [`use`], [`crate`].
+///
+/// [Type Casting]: ../reference/expressions/operator-expr.html#type-cast-expressions
+/// [Disambiguation Qualified Paths]: ../reference/paths.html#r-paths.qualified.intro
+/// [Disambiguation Call Expressions]: ../reference/expressions/call-expr.html#disambiguating-function-calls
 /// [`crate`]: keyword.crate.html
 /// [`use`]: keyword.use.html
 /// [const-cast]: pointer::cast
