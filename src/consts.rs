@@ -325,7 +325,7 @@ pub(crate) fn const_alloc_to_gcc_uncached<'gcc>(
             // and we properly interpret the provenance as a relocation pointer offset.
             alloc.inspect_with_uninit_and_ptr_outside_interpreter(offset..(offset + pointer_size)),
         )
-        .expect("const_alloc_to_llvm: could not read relocation pointer")
+        .expect("const_alloc_to_gcc_uncached: could not read relocation pointer")
             as u64;
 
         let address_space = cx.tcx.global_alloc(alloc_id).address_space(cx);

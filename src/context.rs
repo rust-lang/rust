@@ -158,6 +158,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(rust_type))
                 .unwrap();
             let align = layout.align.abi.bytes();
+            // For types with size 1, the alignment can be 1 and only 1
+            // So, we can skip the call to ``get_aligned`.
+            // In the future, we can add a GCC API to query the type align,
+            // and call `get_aligned` if and only if that differs from Rust's expectations.
+            if layout.size.bytes() == 1 {
+                return context.new_c_type(ctype);
+            }
             #[cfg(feature = "master")]
             {
                 context.new_c_type(ctype).get_aligned(align)
@@ -376,8 +383,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Value = RValue<'gcc>;
     type Metadata = RValue<'gcc>;
-    // TODO(antoyo): change to Function<'gcc>.
-    type Function = RValue<'gcc>;
+    type Function = Function<'gcc>;
 
     type BasicBlock = Block<'gcc>;
     type Type = Type<'gcc>;
@@ -395,11 +401,10 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         &self.vtables
     }
 
-    fn get_fn(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
+    fn get_fn(&self, instance: Instance<'tcx>) -> Function<'gcc> {
         let func = get_fn(self, instance);
         *self.current_func.borrow_mut() = Some(func);
-        // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
-        unsafe { std::mem::transmute(func) }
+        func
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
@@ -444,8 +449,8 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // `rust_eh_personality` function, but rather we wired it up to the
         // CRT's custom personality function, which forces LLVM to consider
         // landing pads as "landing pads for SEH".
-        if let Some(llpersonality) = self.eh_personality.get() {
-            return llpersonality;
+        if let Some(personality_func) = self.eh_personality.get() {
+            return personality_func;
         }
         let tcx = self.tcx;
         let func = match tcx.lang_items().eh_personality() {
@@ -484,11 +489,11 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.tcx.sess
     }
 
-    fn set_frame_pointer_type(&self, _llfn: RValue<'gcc>) {
+    fn set_frame_pointer_type(&self, _llfn: Function<'gcc>) {
         // TODO(antoyo)
     }
 
-    fn apply_target_cpu_attr(&self, _llfn: RValue<'gcc>) {
+    fn apply_target_cpu_attr(&self, _llfn: Function<'gcc>) {
         // TODO(antoyo)
     }
 
