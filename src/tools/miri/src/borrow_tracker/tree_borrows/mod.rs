@@ -468,10 +468,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // - when `extern type` is involved we use the size of the known prefix,
         // - if the pointer is not reborrowed (raw pointer) then we override the size
         //   to do a zero-length reborrow.
-        let reborrow_size = this
-            .size_and_align_of_val(place)?
-            .map(|(size, _)| size)
-            .unwrap_or(place.layout.size);
+        let reborrow_size =
+            this.size_and_align_of_val(place)?.map(|(size, _)| size).unwrap_or(place.layout.size);
         trace!("Creating new permission: {:?} with size {:?}", new_perm, reborrow_size);
 
         // This new tag is not guaranteed to actually be used.
