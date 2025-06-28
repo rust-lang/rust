@@ -1,8 +1,8 @@
+// tidy-alphabetical-start
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
 )]
-#![feature(rustc_private)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
 #![feature(assert_matches)]
@@ -13,8 +13,10 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(round_char_boundary)]
+#![feature(rustc_private)]
 #![feature(test)]
 #![warn(rustc::internal)]
+// tidy-alphabetical-end
 
 extern crate thin_vec;
 
