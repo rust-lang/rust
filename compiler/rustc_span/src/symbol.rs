@@ -1586,6 +1586,7 @@ symbols! {
         panic_implementation,
         panic_in_cleanup,
         panic_info,
+        panic_invalid_enum_construction,
         panic_location,
         panic_misaligned_pointer_dereference,
         panic_nounwind,
