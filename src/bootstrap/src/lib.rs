@@ -542,9 +542,16 @@ impl Build {
         if host.is_symlink() {
             // Left over from a previous build; overwrite it.
             // This matters if `build.build` has changed between invocations.
-            // On Windows, `fs::remove_file` can remove both file and directory symlinks/junctions,
-            // even when the target is invalid (which causes error 267 with `fs::remove_dir`).
-            t!(fs::remove_file(&host));
+            // Try remove_dir first (for directory symlinks), then remove_file (for file symlinks).
+            // On Windows, there are two types of symlinks: directory and file symlinks.
+            // remove_dir only works on directory symlinks, remove_file only works on file symlinks.
+            if let Err(e) = fs::remove_dir(&host) {
+                if e.kind() == io::ErrorKind::NotADirectory {
+                    t!(fs::remove_file(&host));
+                } else {
+                    panic!("failed to remove symlink: {}", e);
+                }
+            }
         }
         t!(
             symlink_dir(&build.config, &build_triple, &host),
