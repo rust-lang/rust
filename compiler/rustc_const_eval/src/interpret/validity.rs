@@ -518,7 +518,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             Ub(DanglingIntPointer { addr: i, .. }) => DanglingPtrNoProvenance {
                 ptr_kind,
                 // FIXME this says "null pointer" when null but we need translate
-                pointer: format!("{}", Pointer::<Option<AllocId>>::from_addr_invalid(i))
+                pointer: format!("{}", Pointer::<Option<AllocId>>::without_provenance(i))
             },
             Ub(PointerOutOfBounds { .. }) => DanglingPtrOutOfBounds {
                 ptr_kind

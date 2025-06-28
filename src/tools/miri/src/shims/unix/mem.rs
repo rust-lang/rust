@@ -49,7 +49,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             && matches!(&*this.tcx.sess.target.os, "macos" | "solaris" | "illumos")
             && (flags & map_fixed) != 0
         {
-            return interp_ok(Scalar::from_maybe_pointer(Pointer::from_addr_invalid(addr), this));
+            return interp_ok(Scalar::from_maybe_pointer(Pointer::without_provenance(addr), this));
         }
 
         let prot_read = this.eval_libc_i32("PROT_READ");

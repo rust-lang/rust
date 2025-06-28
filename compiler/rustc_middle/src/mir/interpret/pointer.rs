@@ -318,13 +318,13 @@ impl<Prov> Pointer<Option<Prov>> {
     /// Creates a pointer to the given address, with invalid provenance (i.e., cannot be used for
     /// any memory access).
     #[inline(always)]
-    pub fn from_addr_invalid(addr: u64) -> Self {
+    pub fn without_provenance(addr: u64) -> Self {
         Pointer { provenance: None, offset: Size::from_bytes(addr) }
     }
 
     #[inline(always)]
     pub fn null() -> Self {
-        Pointer::from_addr_invalid(0)
+        Pointer::without_provenance(0)
     }
 }
 

@@ -747,7 +747,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         // Allow these casts, but make the pointer not dereferenceable.
         // (I.e., they behave like transmutation.)
         // This is correct because no pointers can ever be exposed in compile-time evaluation.
-        interp_ok(Pointer::from_addr_invalid(addr))
+        interp_ok(Pointer::without_provenance(addr))
     }
 
     #[inline(always)]

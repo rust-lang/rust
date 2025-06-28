@@ -276,7 +276,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
             Right(ptr) => interp_ok(ptr.into()),
             Left(bits) => {
                 let addr = u64::try_from(bits).unwrap();
-                interp_ok(Pointer::from_addr_invalid(addr))
+                interp_ok(Pointer::without_provenance(addr))
             }
         }
     }
