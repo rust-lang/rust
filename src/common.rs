@@ -234,19 +234,6 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
         match cv {
             Scalar::Int(int) => {
                 let data = int.to_bits(layout.size(self));
-
-                // FIXME(antoyo): there's some issues with using the u128 code that follows, so hard-code
-                // the paths for floating-point values.
-                // TODO: Remove this code?
-                /*if ty == self.float_type {
-                    return self
-                        .context
-                        .new_rvalue_from_double(ty, f32::from_bits(data as u32) as f64);
-                }
-                if ty == self.double_type {
-                    return self.context.new_rvalue_from_double(ty, f64::from_bits(data as u64));
-                }*/
-
                 let value = self.const_uint_big(self.type_ix(bitsize), data);
                 let bytesize = layout.size(self).bytes();
                 if bitsize > 1 && ty.is_integral() && bytesize as u32 == ty.get_size() {
