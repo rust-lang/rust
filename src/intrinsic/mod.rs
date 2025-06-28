@@ -266,6 +266,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let fn_args = instance.args;
 
         let simple = get_simple_intrinsic(self, name);
+        // TODO(antoyo): Only call get_simple_function_f128 and get_simple_function_f128_2args when
+        // it is the symbols for the supported f128 builtins.
         let simple_func = get_simple_function(self, name)
             .or_else(|| get_simple_function_f128(self, name))
             .or_else(|| get_simple_function_f128_2args(self, name));

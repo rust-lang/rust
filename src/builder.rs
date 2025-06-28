@@ -781,6 +781,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 return self.context.new_call(self.location, fmod, &[a, b]);
             }
             TypeKind::FP128 => {
+                // TODO(antoyo): use get_simple_function_f128_2args.
                 let f128_type = self.type_f128();
                 let fmodf128 = self.context.new_function(
                     None,
