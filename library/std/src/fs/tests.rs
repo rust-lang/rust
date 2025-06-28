@@ -591,6 +591,23 @@ fn test_read_buf_exact_at() {
 
 #[test]
 #[cfg(unix)]
+fn file_test_append_write_at() {
+    use crate::os::unix::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_test_append_write_at.txt");
+    let msg = b"it's not working!";
+    check!(fs::write(&filename, &msg));
+    // write_at should work even in in append mode
+    let f = check!(fs::File::options().append(true).open(&filename));
+    assert_eq!(check!(f.write_at(b"   ", 5)), 3);
+
+    let content = check!(fs::read(&filename));
+    assert_eq!(&content, b"it's     working!");
+}
+
+#[test]
+#[cfg(unix)]
 fn set_get_unix_permissions() {
     use crate::os::unix::fs::PermissionsExt;
 
