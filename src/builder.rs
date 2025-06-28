@@ -1570,16 +1570,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         aggregate_value
     }
 
-    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
+    fn set_personality_fn(&mut self, _personality: Function<'gcc>) {
         #[cfg(feature = "master")]
-        {
-            let personality = self.rvalue_as_function(_personality);
-            self.current_func().set_personality_function(personality);
-        }
+        self.current_func().set_personality_function(_personality);
     }
 
     #[cfg(feature = "master")]
-    fn cleanup_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn cleanup_landing_pad(&mut self, pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         self.set_personality_fn(pers_fn);
 
         // NOTE: insert the current block in a variable so that a later call to invoke knows to
@@ -1610,7 +1607,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         (value1, value2)
     }
 
-    fn filter_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn filter_landing_pad(&mut self, pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         // TODO(antoyo): generate the correct landing pad
         self.cleanup_landing_pad(pers_fn)
     }

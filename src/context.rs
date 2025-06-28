@@ -120,7 +120,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
 
-    eh_personality: Cell<Option<RValue<'gcc>>>,
+    eh_personality: Cell<Option<Function<'gcc>>>,
     #[cfg(feature = "master")]
     pub rust_try_fn: Cell<Option<(Type<'gcc>, Function<'gcc>)>>,
 
@@ -428,7 +428,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         ptr
     }
 
-    fn eh_personality(&self) -> RValue<'gcc> {
+    fn eh_personality(&self) -> Function<'gcc> {
         // The exception handling personality function.
         //
         // If our compilation unit has the `eh_personality` lang item somewhere
@@ -466,9 +466,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 let symbol_name = tcx.symbol_name(instance).name;
                 let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
                 self.linkage.set(FunctionType::Extern);
-                let func = self.declare_fn(symbol_name, fn_abi);
-                let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
-                func
+                self.declare_fn(symbol_name, fn_abi)
             }
             _ => {
                 let name = if wants_msvc_seh(self.sess()) {
@@ -476,8 +474,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 } else {
                     "rust_eh_personality"
                 };
-                let func = self.declare_func(name, self.type_i32(), &[], true);
-                unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) }
+                self.declare_func(name, self.type_i32(), &[], true)
             }
         };
         // TODO(antoyo): apply target cpu attributes.
