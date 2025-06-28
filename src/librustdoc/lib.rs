@@ -18,7 +18,6 @@
 #![feature(test)]
 #![feature(type_alias_impl_trait)]
 #![feature(type_ascription)]
-#![recursion_limit = "256"]
 #![warn(rustc::internal)]
 
 extern crate thin_vec;
