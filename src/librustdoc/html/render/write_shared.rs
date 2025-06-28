@@ -428,6 +428,7 @@ impl CratesIndexPart {
             title: "Index of crates",
             css_class: "mod sys",
             root_path: "./",
+            relative_url: None,
             static_root_path: cx.shared.static_root_path.as_deref(),
             description: "List of crates",
             resource_suffix: &cx.shared.resource_suffix,
