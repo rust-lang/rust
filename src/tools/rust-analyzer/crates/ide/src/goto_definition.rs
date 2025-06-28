@@ -3851,4 +3851,76 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn goto_const_from_match_pat_with_tuple_struct() {
+        check(
+            r#"
+struct Tag(u8);
+struct Path {}
+
+const Path: u8 = 0;
+   // ^^^^
+fn main() {
+    match Tag(Path) {
+        Tag(Path$0) => {}
+        _ => {}
+    }
+}
+
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_const_from_match_pat() {
+        check(
+            r#"
+type T1 = u8;
+const T1: u8 = 0;
+   // ^^
+fn main() {
+    let x = 0;
+    match x {
+        T1$0 => {}
+        _ => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_struct_from_match_pat() {
+        check(
+            r#"
+struct T1;
+    // ^^
+fn main() {
+    let x = 0;
+    match x {
+        T1$0 => {}
+        _ => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_goto_trait_from_match_pat() {
+        check(
+            r#"
+trait T1 {}
+fn main() {
+    let x = 0;
+    match x {
+        T1$0 => {}
+     // ^^
+        _ => {}
+    }
+}
+"#,
+        );
+    }
 }
