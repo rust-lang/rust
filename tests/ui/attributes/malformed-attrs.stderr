@@ -368,10 +368,7 @@ error[E0539]: malformed `export_name` attribute input
   --> $DIR/malformed-attrs.rs:32:1
    |
 LL | #[unsafe(export_name)]
-   | ^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected this to be of the form `export_name = "..."`
-   | help: must be of the form: `#[export_name = "name"]`
+   | ^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[export_name = "name"]`
 
 error: `rustc_allow_const_fn_unstable` expects a list of feature names
   --> $DIR/malformed-attrs.rs:34:1
@@ -418,10 +415,7 @@ error[E0539]: malformed `rustc_macro_transparency` attribute input
   --> $DIR/malformed-attrs.rs:45:1
    |
 LL | #[rustc_macro_transparency]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected this to be of the form `rustc_macro_transparency = "..."`
-   | help: must be of the form: `#[rustc_macro_transparency = "transparent|semitransparent|opaque"]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_macro_transparency = "transparent|semitransparent|opaque"]`
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/malformed-attrs.rs:47:1
@@ -505,10 +499,7 @@ error[E0539]: malformed `export_name` attribute input
   --> $DIR/malformed-attrs.rs:68:1
    |
 LL | #[export_name()]
-   | ^^^^^^^^^^^^^^^^
-   | |
-   | expected this to be of the form `export_name = "..."`
-   | help: must be of the form: `#[export_name = "name"]`
+   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[export_name = "name"]`
 
 error[E0805]: malformed `used` attribute input
   --> $DIR/malformed-attrs.rs:70:1
@@ -530,10 +521,7 @@ error[E0539]: malformed `link_name` attribute input
   --> $DIR/malformed-attrs.rs:84:1
    |
 LL | #[link_name]
-   | ^^^^^^^^^^^^
-   | |
-   | expected this to be of the form `link_name = "..."`
-   | help: must be of the form: `#[link_name = "name"]`
+   | ^^^^^^^^^^^^ help: must be of the form: `#[link_name = "name"]`
 
 error[E0539]: malformed `must_use` attribute input
   --> $DIR/malformed-attrs.rs:117:1
