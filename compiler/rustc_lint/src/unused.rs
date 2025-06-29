@@ -1042,16 +1042,16 @@ pub(crate) struct UnusedParens {
 /// Whether parentheses may be omitted from a type without resulting in ambiguity.
 ///
 /// ```
-/// type Example = Box<dyn Fn() -> &'static (dyn Trait) + Send>
+/// type Example = Box<dyn Fn() -> &'static (dyn Send) + Sync>;
 /// ```
 ///
-/// Here, `&'static (dyn Trait) + Send` is a `TypeNoBounds`. As such, it may not directly
-/// contain `ImplTraitType` or `TraitObjectType` which is why `(dyn Trait)` is parenthesized.
+/// Here, `&'static (dyn Send) + Sync` is a `TypeNoBounds`. As such, it may not directly
+/// contain `ImplTraitType` or `TraitObjectType` which is why `(dyn Send)` is parenthesized.
 /// However, an exception is made for `ImplTraitTypeOneBound` and `TraitObjectTypeOneBound`.
 /// The following is accepted because there is no `+`.
 ///
 /// ```
-/// type Example = Box<dyn Fn() -> &'static dyn Trait>
+/// type Example = Box<dyn Fn() -> &'static dyn Send>;
 /// ```
 enum NoBoundsException {
     /// The type must be parenthesized.
