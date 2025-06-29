@@ -1491,16 +1491,16 @@ fn test_non_determinism() {
     test_operations_f128(25., 18.);
 
 
-    // x^(SNaN) = (1 | NaN)
-    ensure_nondet(|| f32::powf(SNAN_F32, 0.0));
-    ensure_nondet(|| f64::powf(SNAN_F64, 0.0));
+    // SNaN^0 = (1 | NaN)
+    ensure_nondet(|| f32::powf(SNAN_F32, 0.0).is_nan());
+    ensure_nondet(|| f64::powf(SNAN_F64, 0.0).is_nan());
 
-    // 1^(SNaN) = (1 | NaN)
-    ensure_nondet(|| f32::powf(1.0, SNAN_F32));
-    ensure_nondet(|| f64::powf(1.0, SNAN_F64));
+    // 1^SNaN = (1 | NaN)
+    ensure_nondet(|| f32::powf(1.0, SNAN_F32).is_nan());
+    ensure_nondet(|| f64::powf(1.0, SNAN_F64).is_nan());
 
     // same as powf (keep it consistent):
-    // x^(SNaN) = (1 | NaN)
-    ensure_nondet(|| f32::powi(SNAN_F32, 0));
-    ensure_nondet(|| f64::powi(SNAN_F64, 0));
+    // x^SNaN = (1 | NaN)
+    ensure_nondet(|| f32::powi(SNAN_F32, 0).is_nan());
+    ensure_nondet(|| f64::powi(SNAN_F64, 0).is_nan());
 }

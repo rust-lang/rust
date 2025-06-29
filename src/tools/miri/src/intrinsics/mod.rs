@@ -17,7 +17,6 @@ use self::atomic::EvalContextExt as _;
 use self::helpers::{ToHost, ToSoft, check_intrinsic_arg_count};
 use self::simd::EvalContextExt as _;
 use crate::math::{IeeeExt, apply_random_float_error_ulp};
-use crate::operator::EvalContextExt as _;
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -192,7 +191,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
 
-                let res = fixed_float_value(this, intrinsic_name, &[f]).unwrap_or_else(||{
+                let res = fixed_float_value(this, intrinsic_name, &[f]).unwrap_or_else(|| {
                     // Using host floats (but it's fine, these operations do not have
                     // guaranteed precision).
                     let host = f.to_host();
@@ -236,7 +235,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
 
-                let res = fixed_float_value(this, intrinsic_name, &[f]).unwrap_or_else(||{
+                let res = fixed_float_value(this, intrinsic_name, &[f]).unwrap_or_else(|| {
                     // Using host floats (but it's fine, these operations do not have
                     // guaranteed precision).
                     let host = f.to_host();
@@ -535,49 +534,50 @@ fn fixed_float_value<S: Semantics>(
         // (-1)^(±INF) = 1
         ("powf32" | "powf64", [base, exp]) if *base == -one && exp.is_infinite() => one,
 
-        // 1^y = 1 for any y, even a NaN, *but* not a SNaN
+        // 1^y = 1 for any y, even a NaN
         ("powf32" | "powf64", [base, exp]) if *base == one => {
             let rng = ecx.machine.rng.get_mut();
-            let return_nan = ecx.machine.float_nondet && rng.random() && exp.is_signaling();
+            // SNaN exponents get special treatment: they might return 1, or a NaN.
+            let return_nan = exp.is_signaling() && ecx.machine.float_nondet && rng.random();
             // Handle both the musl and glibc cases non-deterministically.
             if return_nan { ecx.generate_nan(args) } else { one }
         }
 
-        // x^(±0) = 1 for any x, even a NaN, *but* not a SNaN
+        // x^(±0) = 1 for any x, even a NaN
         ("powf32" | "powf64", [base, exp]) if exp.is_zero() => {
             let rng = ecx.machine.rng.get_mut();
-            let return_nan = ecx.machine.float_nondet && rng.random() && base.is_signaling();
+            // SNaN bases get special treatment: they might return 1, or a NaN.
+            let return_nan = base.is_signaling() && ecx.machine.float_nondet && rng.random();
             // Handle both the musl and glibc cases non-deterministically.
             if return_nan { ecx.generate_nan(args) } else { one }
         }
 
-        // There are a lot of cases for fixed outputs according to the C Standard, but these are mainly INF or zero
-        // which are not affected by the applied error.
+        // There are a lot of cases for fixed outputs according to the C Standard, but these are
+        // mainly INF or zero which are not affected by the applied error.
         _ => return None,
     })
 }
 
-/// Returns `Some(output)` if `powi` (called `pown` in C) results in a fixed value specified in the C standard
-/// (specifically, C23 annex F.10.4.6) when doing `base^exp`. Otherwise, returns `None`.
-// TODO: I'm not sure what I should document here about pown(1, SNaN) since musl and glibc do the same and the C standard is explicit here.
+/// Returns `Some(output)` if `powi` (called `pown` in C) results in a fixed value specified in the
+/// C standard (specifically, C23 annex F.10.4.6) when doing `base^exp`. Otherwise, returns `None`.
 fn fixed_powi_float_value<S: Semantics>(
     ecx: &mut MiriInterpCx<'_>,
     base: IeeeFloat<S>,
     exp: i32,
 ) -> Option<IeeeFloat<S>> {
-    match exp {
+    Some(match exp {
         0 => {
             let one = IeeeFloat::<S>::one();
             let rng = ecx.machine.rng.get_mut();
             let return_nan = ecx.machine.float_nondet && rng.random() && base.is_signaling();
-            Some(
-                // Handle both the musl and glibc powf cases non-deterministically.
-                if return_nan { ecx.generate_nan(&[base]) } else { one },
-            )
+            // For SNaN treatment, we are consistent with `powf`above.
+            // (We wouldn't have two, unlike powf all implementations seem to agree for powi,
+            // but for now we are maximally conservative.)
+            if return_nan { ecx.generate_nan(&[base]) } else { one }
         }
 
-        _ => None,
-    }
+        _ => return None,
+    })
 }
 
 /// Given an floating-point operation and a floating-point value, clamps the result to the output
