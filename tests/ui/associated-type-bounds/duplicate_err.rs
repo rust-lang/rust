@@ -70,6 +70,16 @@ fn uncallable_const(_: impl Trait<ASSOC = 3, ASSOC = 4>) {}
 
 fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>) {}
 
+type MustFail = dyn Iterator<Item = i32, Item = u32>;
+//~^ ERROR conflicting associated type bounds
+
+trait Trait2 {
+    const ASSOC: u32;
+}
+
+type MustFail2 = dyn Trait2<ASSOC = 3u32, ASSOC = 4u32>;
+//~^ ERROR conflicting associated type bounds
+
 fn main() {
     uncallable(iter::empty::<u32>()); //~ ERROR [E0271]
     uncallable(iter::empty::<i32>()); //~ ERROR [E0271]
