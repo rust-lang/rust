@@ -31,6 +31,11 @@ jobs:
             os: ubuntu-24.04-arm
             multiarch: armhf
             gcc_cross: arm-linux-gnueabihf
+          - host_target: s390x-unknown-linux-gnu
+            os: ubuntu-latest
+            multiarch: s390x
+            gcc_cross: s390x-linux-gnu
+            qemu: true
           - host_target: aarch64-apple-darwin
             os: macos-latest
           - host_target: i686-pc-windows-msvc
@@ -40,11 +45,18 @@ jobs:
       HOST_TARGET: ${{ matrix.host_target }}
     steps:
       - uses: actions/checkout@v4
+      - name: install qemu
+        if: ${{ matrix.qemu }}
+        run: sudo apt install qemu-user qemu-user-binfmt
       - name: install multiarch
         if: ${{ matrix.multiarch != '' }}
         run: |
+          # s390x, ppc64el need Ubuntu Ports to be in the mirror list
+          sudo bash -c "echo 'https://ports.ubuntu.com/	priority:4' >> /etc/apt/apt-mirrors.txt"
+          # Add architecture
           sudo dpkg --add-architecture ${{ matrix.multiarch }}
           sudo apt update
+          # Install needed packages
           sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed 's/:/:${{ matrix.multiarch }}/g')
       - uses: ./.github/workflows/setup
         with:
@@ -61,7 +73,10 @@ jobs:
           TARGET_UPPERCASE=$(echo ${{ matrix.host_target }} | tr '[:lower:]-' '[:upper:]_')
           echo "CARGO_TARGET_${TARGET_UPPERCASE}_LINKER=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
 
+      # The main test job! We don't run this in qemu as that is quite slow,
+      # so those targets only get the clippy check below.
       - name: Test Miri
+        if: ${{ !matrix.qemu }}
         run: ./ci/ci.sh
 
       # The `style` job only runs on Linux; this makes sure the host-specific
