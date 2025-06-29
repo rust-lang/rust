@@ -1310,7 +1310,7 @@ impl EarlyLintPass for UnusedParens {
             }
             ast::TyKind::TraitObject(bounds, _) | ast::TyKind::ImplTrait(_, bounds) => {
                 for i in 0..bounds.len() {
-                    let last = i == bounds.len() - 1;
+                    let is_last = i == bounds.len() - 1;
 
                     if let ast::GenericBound::Trait(poly_trait_ref) = &bounds[i] {
                         let fn_with_explicit_ret_ty = if let [.., segment] =
@@ -1321,7 +1321,7 @@ impl EarlyLintPass for UnusedParens {
                         {
                             self.in_no_bounds_pos.insert(
                                 ret_ty.id,
-                                if last {
+                                if is_last {
                                     NoBoundsException::OneBound
                                 } else {
                                     NoBoundsException::None
@@ -1345,7 +1345,7 @@ impl EarlyLintPass for UnusedParens {
                                 .unwrap_or(false);
 
                         if let ast::Grouping::Parenthesized = poly_trait_ref.grouping
-                            && (last || !fn_with_explicit_ret_ty)
+                            && (is_last || !fn_with_explicit_ret_ty)
                             && !dyn2015_exception
                         {
                             let s = poly_trait_ref.span;
