@@ -1,7 +1,8 @@
 //! Implements calling functions from a native library.
 
-#[cfg(target_os = "linux")]
-pub mod trace;
+// FIXME: disabled since it fails to build on many targets.
+//#[cfg(target_os = "linux")]
+//pub mod trace;
 
 use std::ops::Deref;
 
@@ -12,13 +13,13 @@ use rustc_middle::mir::interpret::Pointer;
 use rustc_middle::ty::{self as ty, IntTy, UintTy};
 use rustc_span::Symbol;
 
-#[cfg(target_os = "linux")]
-use self::trace::Supervisor;
+//#[cfg(target_os = "linux")]
+//use self::trace::Supervisor;
 use crate::*;
 
-#[cfg(target_os = "linux")]
-type CallResult<'tcx> = InterpResult<'tcx, (ImmTy<'tcx>, Option<self::trace::messages::MemEvents>)>;
-#[cfg(not(target_os = "linux"))]
+//#[cfg(target_os = "linux")]
+//type CallResult<'tcx> = InterpResult<'tcx, (ImmTy<'tcx>, Option<self::trace::messages::MemEvents>)>;
+//#[cfg(not(target_os = "linux"))]
 type CallResult<'tcx> = InterpResult<'tcx, (ImmTy<'tcx>, Option<!>)>;
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -32,12 +33,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         libffi_args: Vec<libffi::high::Arg<'a>>,
     ) -> CallResult<'tcx> {
         let this = self.eval_context_mut();
-        #[cfg(target_os = "linux")]
-        let alloc = this.machine.allocator.as_ref().unwrap();
+        //#[cfg(target_os = "linux")]
+        //let alloc = this.machine.allocator.as_ref().unwrap();
 
         // SAFETY: We don't touch the machine memory past this point.
-        #[cfg(target_os = "linux")]
-        let (guard, stack_ptr) = unsafe { Supervisor::start_ffi(alloc) };
+        //#[cfg(target_os = "linux")]
+        //let (guard, stack_ptr) = unsafe { Supervisor::start_ffi(alloc) };
 
         // Call the function (`ptr`) with arguments `libffi_args`, and obtain the return value
         // as the specified primitive integer type
@@ -111,9 +112,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // SAFETY: We got the guard and stack pointer from start_ffi, and
         // the allocator is the same
-        #[cfg(target_os = "linux")]
-        let events = unsafe { Supervisor::end_ffi(alloc, guard, stack_ptr) };
-        #[cfg(not(target_os = "linux"))]
+        //#[cfg(target_os = "linux")]
+        //let events = unsafe { Supervisor::end_ffi(alloc, guard, stack_ptr) };
+        //#[cfg(not(target_os = "linux"))]
         let events = None;
 
         interp_ok((res?, events))
@@ -213,9 +214,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if !this.machine.native_call_mem_warned.replace(true) {
                     // Newly set, so first time we get here.
                     this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem {
-                        #[cfg(target_os = "linux")]
-                        tracing: self::trace::Supervisor::is_enabled(),
-                        #[cfg(not(target_os = "linux"))]
+                        //#[cfg(target_os = "linux")]
+                        //tracing: self::trace::Supervisor::is_enabled(),
+                        //#[cfg(not(target_os = "linux"))]
                         tracing: false,
                     });
                 }

@@ -3,7 +3,6 @@
 #![doc(rust_logo)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
-#![feature(type_alias_impl_trait)]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;

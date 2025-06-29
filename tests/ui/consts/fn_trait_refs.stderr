@@ -5,145 +5,145 @@ LL | #![feature(const_fn_trait_ref_impls)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:14:6
+  --> $DIR/fn_trait_refs.rs:14:8
    |
 LL |     T: [const] Fn<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `Fn`
+   |        ^^^^^^^ can't be applied to `Fn`
    |
 note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:14:6
+  --> $DIR/fn_trait_refs.rs:14:8
    |
 LL |     T: [const] Fn<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `Fn`
-   |
-note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
-  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:14:6
-   |
-LL |     T: [const] Fn<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `Fn`
+   |        ^^^^^^^ can't be applied to `Fn`
    |
 note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:21:6
+  --> $DIR/fn_trait_refs.rs:14:8
+   |
+LL |     T: [const] Fn<()> + [const] Destruct,
+   |        ^^^^^^^ can't be applied to `Fn`
+   |
+note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/fn_trait_refs.rs:21:8
    |
 LL |     T: [const] FnMut<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `FnMut`
+   |        ^^^^^^^ can't be applied to `FnMut`
    |
 note: `FnMut` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:21:6
+  --> $DIR/fn_trait_refs.rs:21:8
    |
 LL |     T: [const] FnMut<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `FnMut`
+   |        ^^^^^^^ can't be applied to `FnMut`
    |
 note: `FnMut` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:21:6
+  --> $DIR/fn_trait_refs.rs:21:8
    |
 LL |     T: [const] FnMut<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `FnMut`
+   |        ^^^^^^^ can't be applied to `FnMut`
    |
 note: `FnMut` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:28:6
+  --> $DIR/fn_trait_refs.rs:28:8
    |
 LL |     T: [const] FnOnce<()>,
-   |      ^^^^^^^^^ can't be applied to `FnOnce`
+   |        ^^^^^^^ can't be applied to `FnOnce`
    |
 note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:28:6
+  --> $DIR/fn_trait_refs.rs:28:8
    |
 LL |     T: [const] FnOnce<()>,
-   |      ^^^^^^^^^ can't be applied to `FnOnce`
-   |
-note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
-  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:28:6
-   |
-LL |     T: [const] FnOnce<()>,
-   |      ^^^^^^^^^ can't be applied to `FnOnce`
+   |        ^^^^^^^ can't be applied to `FnOnce`
    |
 note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:35:6
+  --> $DIR/fn_trait_refs.rs:28:8
+   |
+LL |     T: [const] FnOnce<()>,
+   |        ^^^^^^^ can't be applied to `FnOnce`
+   |
+note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/fn_trait_refs.rs:35:8
    |
 LL |     T: [const] Fn<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `Fn`
+   |        ^^^^^^^ can't be applied to `Fn`
    |
 note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:35:6
+  --> $DIR/fn_trait_refs.rs:35:8
    |
 LL |     T: [const] Fn<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `Fn`
+   |        ^^^^^^^ can't be applied to `Fn`
    |
 note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:35:6
+  --> $DIR/fn_trait_refs.rs:35:8
    |
 LL |     T: [const] Fn<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `Fn`
+   |        ^^^^^^^ can't be applied to `Fn`
    |
 note: `Fn` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:49:6
+  --> $DIR/fn_trait_refs.rs:49:8
    |
 LL |     T: [const] FnMut<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `FnMut`
+   |        ^^^^^^^ can't be applied to `FnMut`
    |
 note: `FnMut` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:49:6
+  --> $DIR/fn_trait_refs.rs:49:8
    |
 LL |     T: [const] FnMut<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `FnMut`
+   |        ^^^^^^^ can't be applied to `FnMut`
    |
 note: `FnMut` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:49:6
+  --> $DIR/fn_trait_refs.rs:49:8
    |
 LL |     T: [const] FnMut<()> + [const] Destruct,
-   |      ^^^^^^^^^ can't be applied to `FnMut`
+   |        ^^^^^^^ can't be applied to `FnMut`
    |
 note: `FnMut` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL

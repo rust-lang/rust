@@ -1,8 +1,8 @@
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-and-const-params.rs:8:13
+  --> $DIR/conditionally-const-and-const-params.rs:8:15
    |
 LL |     fn add<A: [const] Add42>(self) -> Foo<{ A::add(N) }> {
-   |             ^^^^^^^^^
+   |               ^^^^^^^
    |
 note: this function is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/conditionally-const-and-const-params.rs:8:8
@@ -11,10 +11,10 @@ LL |     fn add<A: [const] Add42>(self) -> Foo<{ A::add(N) }> {
    |        ^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-and-const-params.rs:26:9
+  --> $DIR/conditionally-const-and-const-params.rs:26:11
    |
 LL | fn bar<A: [const] Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
-   |         ^^^^^^^^^
+   |           ^^^^^^^
    |
 note: this function is not `const`, so it cannot have `[const]` trait bounds
   --> $DIR/conditionally-const-and-const-params.rs:26:4

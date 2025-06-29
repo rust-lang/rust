@@ -284,15 +284,15 @@ pub enum FakeBorrowKind {
     ///
     /// This is used when lowering deref patterns, where shallow borrows wouldn't prevent something
     /// like:
-    // ```compile_fail
-    // let mut b = Box::new(false);
-    // match b {
-    //     deref!(true) => {} // not reached because `*b == false`
-    //     _ if { *b = true; false } => {} // not reached because the guard is `false`
-    //     deref!(false) => {} // not reached because the guard changed it
-    //     // UB because we reached the unreachable.
-    // }
-    // ```
+    /// ```compile_fail
+    /// let mut b = Box::new(false);
+    /// match b {
+    ///     deref!(true) => {} // not reached because `*b == false`
+    ///     _ if { *b = true; false } => {} // not reached because the guard is `false`
+    ///     deref!(false) => {} // not reached because the guard changed it
+    ///     // UB because we reached the unreachable.
+    /// }
+    /// ```
     Deep,
 }
 

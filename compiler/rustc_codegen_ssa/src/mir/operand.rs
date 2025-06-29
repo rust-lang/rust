@@ -479,17 +479,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     _ => (tag_imm, bx.cx().immediate_backend_type(tag_op.layout)),
                 };
 
-                // Layout ensures that we only get here for cases where the discriminant
+                // `layout_sanity_check` ensures that we only get here for cases where the discriminant
                 // value and the variant index match, since that's all `Niche` can encode.
-                // But for emphasis and debugging, let's double-check one anyway.
-                debug_assert_eq!(
-                    self.layout
-                        .ty
-                        .discriminant_for_variant(bx.tcx(), untagged_variant)
-                        .unwrap()
-                        .val,
-                    u128::from(untagged_variant.as_u32()),
-                );
 
                 let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
 

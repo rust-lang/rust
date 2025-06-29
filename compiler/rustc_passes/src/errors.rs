@@ -502,7 +502,7 @@ pub(crate) struct Link {
 #[warning]
 pub(crate) struct LinkName<'a> {
     #[help]
-    pub attr_span: Option<Span>,
+    pub help_span: Option<Span>,
     #[label]
     pub span: Span,
     pub value: &'a str,
