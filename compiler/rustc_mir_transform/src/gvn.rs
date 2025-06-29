@@ -152,8 +152,9 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
             state.visit_basic_block_data(bb, data);
         }
 
-        // If we emit storage annotations, use `MaybeStorageDead` to check which reused locals
-        // require storage removal (making them alive for the duration of the function).
+        // When emitting storage statements, we want to retain the reused locals' storage statements,
+        // as this enables better optimizations. For each local use location, we mark it for storage removal
+        // only if it might be uninitialized at that point.
         let storage_to_remove = if tcx.sess.emit_lifetime_markers() {
             let maybe_uninit = MaybeUninitializedLocals::new()
                 .iterate_to_fixpoint(tcx, body, Some("mir_opt::gvn"))
@@ -171,7 +172,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
 
             storage_checker.storage_to_remove
         } else {
-            // Conservatively remove all storage statements for reused locals.
+            // Remove the storage statements of all the reused locals.
             state.reused_locals.clone()
         };
 
@@ -2014,7 +2015,11 @@ impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
         self.maybe_uninit.seek_before_primary_effect(location);
 
         if self.maybe_uninit.get().contains(local) {
-            debug!(?location, ?local, "local is maybe uninit in this location, removing storage");
+            debug!(
+                ?location,
+                ?local,
+                "local is reused and is maybe uninit at this location, marking it for storage statement removal"
+            );
             self.storage_to_remove.insert(local);
         }
     }
