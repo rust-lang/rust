@@ -1,5 +1,5 @@
 error[E0252]: the name `X` is defined multiple times
-  --> $DIR/double-type-import.rs:3:9
+  --> $DIR/duplicate-use-bindings.rs:5:9
    |
 LL |     pub use self::bar::X;
    |             ------------ previous import of the type `X` here

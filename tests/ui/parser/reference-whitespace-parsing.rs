@@ -1,3 +1,5 @@
+//! Test parsing of multiple references with various whitespace arrangements
+
 //@ run-pass
 
 #![allow(dead_code)]
