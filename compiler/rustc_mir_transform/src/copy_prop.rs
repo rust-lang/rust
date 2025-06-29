@@ -52,9 +52,10 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         let fully_moved = fully_moved_locals(&ssa, body);
         debug!(?fully_moved);
 
-        // We can determine if we can keep the head's storage statements (which enables better optimizations).
-        // For every local's usage location, we'll to remove it's storage statements only if the head is maybe-uninitialized,
-        // or if the local is borrowed (since we cannot easily identify when it is used).
+        // When emitting storage statements, we want to retain the head locals' storage statements,
+        // as this enables better optimizations. For each local use location, we mark the head for storage removal
+        // only if the head might be uninitialized at that point, or if the local is borrowed
+        // (since we cannot easily determine when it's used).
         let storage_to_remove = if tcx.sess.emit_lifetime_markers() {
             storage_to_remove.clear();
 
@@ -75,7 +76,7 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
 
             storage_checker.storage_to_remove
         } else {
-            // Conservatively remove all storage statements for the head locals.
+            // Remove the storage statements of all the head locals.
             storage_to_remove
         };
 
@@ -233,7 +234,7 @@ impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
                 ?context,
                 ?local,
                 ?head,
-                "found a head at a location in which it is maybe uninit, marking head for storage statement removal"
+                "local's head is maybe uninit at this location, marking head for storage statement removal"
             );
             self.storage_to_remove.insert(head);
         }
