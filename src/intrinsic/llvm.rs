@@ -649,9 +649,8 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 args = new_args.into();
             }
             "__builtin_ia32_rdtscp" => {
-                let ptr_type = builder.u32_type.make_pointer();
-                let result = builder.current_func().new_local(None, ptr_type, "result");
-                let new_args = vec![result.to_rvalue()];
+                let result = builder.current_func().new_local(None, builder.u32_type, "result");
+                let new_args = vec![result.get_address(None).to_rvalue()];
                 args = new_args.into();
             }
             _ => (),
