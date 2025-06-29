@@ -61,7 +61,31 @@ LL - #[align(16)]
 LL + #[repr(align(16))]
    |
 
-error: aborting due to 7 previous errors
+error: `#[align(...)]` should be applied to a function item
+  --> $DIR/malformed-fn-align.rs:27:1
+   |
+LL | #[align(32)]
+   | ^^^^^^^^^^^^
+LL | const FOO: i32 = 42;
+   | -------------------- not a function item
+
+error: `#[align(...)]` should be applied to a function item
+  --> $DIR/malformed-fn-align.rs:30:1
+   |
+LL | #[align(32)]
+   | ^^^^^^^^^^^^
+LL | mod test {}
+   | ----------- not a function item
+
+error: `#[align(...)]` should be applied to a function item
+  --> $DIR/malformed-fn-align.rs:33:1
+   |
+LL | #[align(32)]
+   | ^^^^^^^^^^^^
+LL | use ::std::iter;
+   | ---------------- not a function item
+
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0539, E0589, E0805.
 For more information about an error, try `rustc --explain E0539`.

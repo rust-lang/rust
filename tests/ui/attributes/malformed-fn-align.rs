@@ -23,3 +23,12 @@ fn f4() {}
 
 #[align(16)] //~ ERROR `#[align(...)]` is not supported on struct items
 struct S1;
+
+#[align(32)] //~ ERROR `#[align(...)]` should be applied to a function item
+const FOO: i32 = 42;
+
+#[align(32)] //~ ERROR `#[align(...)]` should be applied to a function item
+mod test {}
+
+#[align(32)] //~ ERROR `#[align(...)]` should be applied to a function item
+use ::std::iter;

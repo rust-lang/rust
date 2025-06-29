@@ -13,6 +13,10 @@ passes_abi_ne =
 passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
+passes_align_attr_application =
+    `#[align(...)]` should be applied to a function item
+    .label = not a function item
+
 passes_align_should_be_repr_align =
     `#[align(...)]` is not supported on {$item} items
     .suggestion = use `#[repr(align(...))]` instead
